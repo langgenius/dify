@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, Union
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -39,7 +39,7 @@ class AgentScratchpadUnit(BaseModel):
         """
 
         action_name: str
-        action_input: Union[dict, str]
+        action_input: dict | str
 
         def to_dict(self):
             """

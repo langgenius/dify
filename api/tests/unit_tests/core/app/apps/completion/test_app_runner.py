@@ -260,7 +260,7 @@ class TestCompletionAppRunner:
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="App not found"):
             runner.run(app_generate_entity, queue_manager, _message(), sqlite_session)
 
     def test_run_moderation_error_outputs_direct(

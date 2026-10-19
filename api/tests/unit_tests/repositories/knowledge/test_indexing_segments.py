@@ -85,7 +85,7 @@ def test_token_count_mismatch_rolls_back_segments_and_state(
     sqlite_session_factory: sessionmaker[Session], indexing_rows: IndexingRows
 ) -> None:
     segments, job, chunks = indexing_rows
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="zip\\(\\) argument 2 is shorter than argument 1"):
         segments.save_for_indexing(job, chunks, [13])
     with sqlite_session_factory() as session:
         assert session.scalars(select(DocumentSegment)).all() == []

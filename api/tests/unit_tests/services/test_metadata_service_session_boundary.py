@@ -69,7 +69,12 @@ def test_create_commits_through_owned_session(
 
 @pytest.mark.parametrize("name", ["x" * 256, "document_name", "uploader", "upload_date", "last_update_date", "source"])
 def test_invalid_name_is_rejected(metadata_service: MetadataService, name: str) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:Metadata name already exists in Built\\-in fields\\.|Metadata name cannot exceed 255 characters\\.)"
+        ),
+    ):
         metadata_service.create_metadata(REF, MetadataArgs(type="string", name=name), actor_id="actor")
     assert metadata_service.get_dataset_metadatas(REF)["doc_metadata"] == []
 

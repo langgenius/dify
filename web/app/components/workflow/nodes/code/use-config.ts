@@ -1,7 +1,12 @@
 import type { Var, Variable } from '../../types'
 import type { CodeNodeType, OutputVar } from './types'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useState } from 'react'
+import {
+  editorAppIdAtom,
+  editorPipelineIdAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { fetchNodeDefault, fetchPipelineNodeDefault } from '@/service/workflow'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
@@ -14,8 +19,8 @@ import { CodeLanguage } from './types'
 const useConfig = (id: string, payload: CodeNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
 
-  const appId = useStore((s) => s.appId)
-  const pipelineId = useStore((s) => s.pipelineId)
+  const appId = useAtomValue(editorAppIdAtom)
+  const pipelineId = useAtomValue(editorPipelineIdAtom)
 
   const [allLanguageDefault, setAllLanguageDefault] = useState<Record<
     CodeLanguage,

@@ -226,7 +226,7 @@ class TestDatasetServiceUpdateDataset:
 
         update_data = {"name": "new_name", "external_knowledge_api_id": str(uuid4())}
 
-        with pytest.raises(ValueError) as context:
+        with pytest.raises(ValueError, match="External knowledge id is required") as context:
             DatasetService.update_dataset(
                 dataset.id, update_data, user, session=db_session_with_containers, external_templates=external_templates
             )
@@ -254,7 +254,7 @@ class TestDatasetServiceUpdateDataset:
 
         update_data = {"name": "new_name", "external_knowledge_id": "knowledge_id"}
 
-        with pytest.raises(ValueError) as context:
+        with pytest.raises(ValueError, match="External knowledge api id is required") as context:
             DatasetService.update_dataset(
                 dataset.id, update_data, user, session=db_session_with_containers, external_templates=external_templates
             )
@@ -285,7 +285,7 @@ class TestDatasetServiceUpdateDataset:
             "external_knowledge_api_id": external_api.id,
         }
 
-        with pytest.raises(ValueError) as context:
+        with pytest.raises(ValueError, match="External knowledge binding not found") as context:
             DatasetService.update_dataset(
                 dataset.id, update_data, user, session=db_session_with_containers, external_templates=external_templates
             )
@@ -584,7 +584,7 @@ class TestDatasetServiceUpdateDataset:
         user, _ = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
         update_data = {"name": "new_name"}
 
-        with pytest.raises(ValueError) as context:
+        with pytest.raises(ValueError, match="Dataset not found") as context:
             DatasetService.update_dataset(
                 str(uuid4()),
                 update_data,
@@ -650,7 +650,7 @@ class TestDatasetServiceUpdateDataset:
         ):
             mock_model_manager.return_value.get_model_instance.side_effect = Exception("No Embedding Model available")
 
-            with pytest.raises(Exception) as context:
+            with pytest.raises(Exception, match="(?i)No Embedding Model available") as context:
                 DatasetService.update_dataset(
                     dataset.id,
                     update_data,

@@ -78,12 +78,19 @@ class ExternalKnowledgeApiBindingResponse(ResponseModel):
     name: str
 
 
+class ExternalKnowledgeApiSettingsResponse(ResponseModel):
+    endpoint: str | None = None
+    api_key: str | None = None
+
+
 class ExternalKnowledgeApiResponse(ResponseModel):
     id: str
     tenant_id: str
     name: str
     description: str
-    settings: dict[str, Any] | None = Field(validation_alias=AliasChoices("settings_dict", "settings"))
+    settings: ExternalKnowledgeApiSettingsResponse | None = Field(
+        validation_alias=AliasChoices("settings_dict", "settings")
+    )
     dataset_bindings: list[ExternalKnowledgeApiBindingResponse]
     created_by: str
     created_at: str

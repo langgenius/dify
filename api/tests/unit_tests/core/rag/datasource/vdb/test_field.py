@@ -23,7 +23,12 @@ class TestParseMetadataJson:
         assert parse_metadata_json("{}") == {}
 
     def test_invalid_json_raises_value_error(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=(
+                "1 validation error for dict\\[str,any\\]\\\n  Invalid JSON: key must be a string at line 1 column 2"
+            ),
+        ):
             parse_metadata_json("{invalid json")
 
     def test_nested_metadata(self) -> None:

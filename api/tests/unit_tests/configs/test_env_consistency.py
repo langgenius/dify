@@ -108,13 +108,13 @@ def _docker_config_set() -> set[str]:
     return docker_config_set
 
 
-def test_api_env_keys_exist_in_docker_env_examples():
+def test_api_env_keys_exist_in_docker_env_examples() -> None:
     diff = _api_config_set() - _docker_config_set() - BASE_API_AND_DOCKER_CONFIG_SET_DIFF
 
     assert not diff, f"API and Docker config sets are different with keys: {sorted(diff)}"
 
 
-def test_api_env_keys_exist_in_docker_compose_env_examples():
+def test_api_env_keys_exist_in_docker_compose_env_examples() -> None:
     diff = _api_config_set() - _docker_config_set() - BASE_API_AND_DOCKER_COMPOSE_CONFIG_SET_DIFF
 
     assert not diff, f"API and Docker Compose config sets are different with keys: {sorted(diff)}"

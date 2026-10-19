@@ -157,5 +157,7 @@ def test_tidb_retrieval_setting(fulltext: bool) -> None:
 
 @pytest.mark.parametrize("store", [None, "unsupported"])
 def test_invalid_vector_store(store: str | None) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError, match=("(?:Unsupported vector db type unsupported\\.|Vector store type is not configured\\.)")
+    ):
         retrieval_methods(store)

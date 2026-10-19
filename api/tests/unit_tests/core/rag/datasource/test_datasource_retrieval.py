@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock, Mock, PropertyMock, call, patch
@@ -171,12 +172,12 @@ def _upload_file(
     return upload
 
 
+@dataclass(eq=False, repr=False)
 class _SimpleRetrievalChildChunk:
-    def __init__(self, id: str, content: str, score: float, position: int) -> None:
-        self.id = id
-        self.content = content
-        self.score = score
-        self.position = position
+    id: str
+    content: str
+    score: float
+    position: int
 
 
 class _SimpleRetrievalSegment:

@@ -1,8 +1,15 @@
+import type { EditorResource } from '../../editor-resource/resource'
 import type { Node } from '../../types'
-import { act, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createElement } from 'react'
 import { useNodes } from 'reactflow'
 import { createNode } from '../../__tests__/fixtures'
-import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
+import {
+  renderWorkflowFlowComponent,
+  renderWorkflowFlowHook,
+} from '../../__tests__/workflow-test-env'
+import { EditorResourceScope } from '../../editor-resource/provider'
 import { BlockEnum } from '../../types'
 import { useAutoGenerateWebhookUrl } from '../use-auto-generate-webhook-url'
 
@@ -13,13 +20,7 @@ type WebhookFlowNode = Node & {
   }
 }
 
-const routeParams = vi.hoisted(() => ({ appId: 'app-123' as string | undefined }))
 const mockRequest = vi.hoisted(() => vi.fn())
-
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useParams: () => routeParams,
-}))
 
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: { call: mockRequest },
@@ -42,16 +43,16 @@ describe('useAutoGenerateWebhookUrl', () => {
     renderWorkflowFlowHook(
       () => ({
         autoGenerateWebhookUrl: useAutoGenerateWebhookUrl(),
-        nodes: useNodes<WebhookFlowNode>(),
+        nodes: useNodes<WebhookFlowNode['data']>(),
       }),
       {
+        resource: { kind: 'app', appId: 'app-123', mode: 'workflow' },
         nodes: createFlowNodes(),
         edges: [],
       },
     )
 
   beforeEach(() => {
-    routeParams.appId = 'app-123'
     mockRequest.mockReset()
   })
 
@@ -82,29 +83,43 @@ describe('useAutoGenerateWebhookUrl', () => {
     })
   })
 
-  it('uses the current route after switching apps and skips routes without an app', async () => {
-    routeParams.appId = undefined
-    const { result, rerender } = renderAutoGenerateWebhookUrlHook()
-
-    await act(async () => {
-      await result.current.autoGenerateWebhookUrl('webhook-1')
-    })
+  it('uses the scoped app after switching resources and skips snippets', async () => {
+    const user = userEvent.setup()
+    function GenerateButton() {
+      const generate = useAutoGenerateWebhookUrl()
+      return createElement(
+        'button',
+        { type: 'button', onClick: () => generate('webhook-1') },
+        'Generate URL',
+      )
+    }
+    const view = (identity: EditorResource) =>
+      createElement(EditorResourceScope, {
+        resource: identity,
+        children: createElement(GenerateButton),
+      })
+    const { rerender } = renderWorkflowFlowComponent(
+      view({ kind: 'snippet', snippetId: 'snippet-1' }),
+      {
+        nodes: createFlowNodes(),
+        edges: [],
+      },
+    )
+    await user.click(screen.getByRole('button', { name: 'Generate URL' }))
     expect(mockRequest).not.toHaveBeenCalled()
 
-    routeParams.appId = 'app-456'
-    rerender()
     mockRequest.mockResolvedValue({
       webhook_url: 'https://example.com/other-webhook',
       webhook_debug_url: 'https://example.com/other-debug',
     })
-    await act(async () => {
-      await result.current.autoGenerateWebhookUrl('webhook-1')
-    })
-
-    expect(mockRequest).toHaveBeenCalledWith(
-      ['apps', 'byAppId', 'workflows', 'triggers', 'webhook', 'get'],
-      { params: { app_id: 'app-456' }, query: { node_id: 'webhook-1' } },
-      expect.any(Object),
+    rerender(view({ kind: 'app', appId: 'app-456', mode: 'workflow' }))
+    await user.click(screen.getByRole('button', { name: 'Generate URL' }))
+    await waitFor(() =>
+      expect(mockRequest).toHaveBeenCalledWith(
+        ['apps', 'byAppId', 'workflows', 'triggers', 'webhook', 'get'],
+        { params: { app_id: 'app-456' }, query: { node_id: 'webhook-1' } },
+        expect.any(Object),
+      ),
     )
   })
 
@@ -159,7 +174,7 @@ describe('useAutoGenerateWebhookUrl', () => {
     expect(mockRequest).not.toHaveBeenCalled()
   })
 
-  it('should handle API errors gracefully', async () => {
+  it('leaves failed URL generation retryable', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     mockRequest.mockRejectedValue(new Error('network error'))
 
@@ -177,6 +192,16 @@ describe('useAutoGenerateWebhookUrl', () => {
       | WebhookFlowNode
       | undefined
     expect(webhookNode?.data.webhook_url).toBe('')
+    mockRequest.mockResolvedValue({
+      webhook_url: 'https://example.com/retry',
+      webhook_debug_url: 'https://example.com/debug',
+    })
+    await act(async () => {
+      await result.current.autoGenerateWebhookUrl('webhook-1')
+    })
+    expect(result.current.nodes.find((node) => node.id === 'webhook-1')?.data.webhook_url).toBe(
+      'https://example.com/retry',
+    )
     consoleSpy.mockRestore()
   })
 })

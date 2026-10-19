@@ -67,6 +67,26 @@ export const zAnnotationReplyActionPayload = z.object({
   score_threshold: z.number(),
 })
 
+export const zAnyJsonValue = z.unknown()
+
+/**
+ * AgentThought
+ */
+export const zAgentThought = z.object({
+  answer: z.string().nullish(),
+  chain_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  files: z.array(z.string()),
+  id: z.string(),
+  message_id: z.string(),
+  observation: z.string().nullish(),
+  position: z.int(),
+  thought: z.string().nullish(),
+  tool: z.string().nullish(),
+  tool_input: z.string().nullish(),
+  tool_labels: zAnyJsonValue,
+})
+
 /**
  * AppFeedbackResponse
  */
@@ -312,7 +332,7 @@ export const zChildChunkResponse = z.object({
   id: z.string(),
   position: z.int(),
   segment_id: z.string(),
-  type: z.string(),
+  type: z.enum(['automatic', 'customized']),
   updated_at: z.int(),
   word_count: z.int(),
 })
@@ -597,7 +617,7 @@ export const zDatasetBoundTagListResponse = z.object({
 export const zDatasetDocMetadataResponse = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.string(),
+  type: z.enum(['number', 'string', 'time']),
 })
 
 /**
@@ -659,7 +679,7 @@ export const zDatasetMetadataActionResponse = z.object({
  */
 export const zDatasetMetadataBuiltInFieldResponse = z.object({
   name: z.string(),
-  type: z.string(),
+  type: z.enum(['number', 'string', 'time']),
 })
 
 /**
@@ -676,7 +696,7 @@ export const zDatasetMetadataListItemResponse = z.object({
   count: z.int().optional().default(0),
   id: z.string(),
   name: z.string(),
-  type: z.string(),
+  type: z.enum(['number', 'string', 'time']),
 })
 
 /**
@@ -693,7 +713,7 @@ export const zDatasetMetadataListResponse = z.object({
 export const zDatasetMetadataResponse = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.string(),
+  type: z.enum(['number', 'string', 'time']),
 })
 
 /**
@@ -739,116 +759,6 @@ export const zDatasetWeightedScoreResponse = z.object({
   keyword_setting: zDatasetKeywordSettingResponse.optional(),
   vector_setting: zDatasetVectorSettingResponse.optional(),
   weight_type: z.string().nullish(),
-})
-
-/**
- * DatasetRetrievalModelResponse
- */
-export const zDatasetRetrievalModelResponse = z.object({
-  reranking_enable: z.boolean(),
-  reranking_mode: z.string().nullish(),
-  reranking_model: zDatasetRerankingModelResponse.optional(),
-  score_threshold: z.number().nullish(),
-  score_threshold_enabled: z.boolean(),
-  search_method: z.string(),
-  top_k: z.int(),
-  weights: zDatasetWeightedScoreResponse.nullish(),
-})
-
-/**
- * DatasetDetailResponse
- */
-export const zDatasetDetailResponse = z.object({
-  app_count: z.int(),
-  author_name: z.string().nullable(),
-  built_in_field_enabled: z.boolean(),
-  chunk_structure: z.string().nullable(),
-  created_at: z.int(),
-  created_by: z.string(),
-  data_source_type: z.string().nullable(),
-  description: z.string().nullable(),
-  doc_form: z.string().nullable(),
-  doc_metadata: z.array(zDatasetDocMetadataResponse),
-  document_count: z.int(),
-  embedding_available: z.boolean().nullish(),
-  embedding_model: z.string().nullable(),
-  embedding_model_provider: z.string().nullable(),
-  enable_api: z.boolean(),
-  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
-  external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
-  icon_info: zDatasetIconInfoResponse.optional(),
-  id: z.string(),
-  indexing_technique: z.string().nullable(),
-  is_multimodal: z.boolean(),
-  is_published: z.boolean(),
-  maintainer: z.string().nullish(),
-  name: z.string(),
-  permission: z.string(),
-  pipeline_id: z.string().nullable(),
-  provider: z.string(),
-  retrieval_model_dict: zDatasetRetrievalModelResponse,
-  runtime_mode: z.string().nullable(),
-  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
-  tags: z.array(zDatasetTagResponse),
-  total_available_documents: z.int(),
-  total_documents: z.int(),
-  updated_at: z.int(),
-  updated_by: z.string().nullable(),
-  word_count: z.int(),
-})
-
-/**
- * DatasetDetailWithPartialMembersResponse
- */
-export const zDatasetDetailWithPartialMembersResponse = z.object({
-  app_count: z.int(),
-  author_name: z.string().nullable(),
-  built_in_field_enabled: z.boolean(),
-  chunk_structure: z.string().nullable(),
-  created_at: z.int(),
-  created_by: z.string(),
-  data_source_type: z.string().nullable(),
-  description: z.string().nullable(),
-  doc_form: z.string().nullable(),
-  doc_metadata: z.array(zDatasetDocMetadataResponse),
-  document_count: z.int(),
-  embedding_available: z.boolean().nullish(),
-  embedding_model: z.string().nullable(),
-  embedding_model_provider: z.string().nullable(),
-  enable_api: z.boolean(),
-  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
-  external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
-  icon_info: zDatasetIconInfoResponse.optional(),
-  id: z.string(),
-  indexing_technique: z.string().nullable(),
-  is_multimodal: z.boolean(),
-  is_published: z.boolean(),
-  maintainer: z.string().nullish(),
-  name: z.string(),
-  partial_member_list: z.array(z.string()).nullish(),
-  permission: z.string(),
-  pipeline_id: z.string().nullable(),
-  provider: z.string(),
-  retrieval_model_dict: zDatasetRetrievalModelResponse,
-  runtime_mode: z.string().nullable(),
-  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
-  tags: z.array(zDatasetTagResponse),
-  total_available_documents: z.int(),
-  total_documents: z.int(),
-  updated_at: z.int(),
-  updated_by: z.string().nullable(),
-  word_count: z.int(),
-})
-
-/**
- * DatasetListResponse
- */
-export const zDatasetListResponse = z.object({
-  data: z.array(zDatasetDetailResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
 })
 
 /**
@@ -930,8 +840,8 @@ export const zDocumentListQuery = z.object({
 export const zDocumentMetadataResponse = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.string(),
-  value: z.union([z.string(), z.int(), z.number(), z.boolean()]).nullish(),
+  type: z.enum(['number', 'string', 'time']),
+  value: z.union([z.string(), z.int(), z.number()]).nullable(),
 })
 
 /**
@@ -974,55 +884,6 @@ export const zDocumentDetailResponse = z.object({
 })
 
 /**
- * DocumentResponse
- */
-export const zDocumentResponse = z.object({
-  archived: z.boolean().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  created_from: z.string().nullish(),
-  data_source_detail_dict: z.record(z.string(), z.unknown()),
-  data_source_info: z.record(z.string(), z.unknown()).nullish(),
-  data_source_type: z.string().nullish(),
-  dataset_process_rule_id: z.string().nullish(),
-  disabled_at: z.int().nullish(),
-  disabled_by: z.string().nullish(),
-  display_status: z.string().nullish(),
-  doc_form: z.string().nullish(),
-  doc_metadata: z.array(zDocumentMetadataResponse).optional(),
-  enabled: z.boolean().nullish(),
-  error: z.string().nullish(),
-  hit_count: z.int().nullish(),
-  id: z.string(),
-  indexing_status: z.string().nullish(),
-  name: z.string(),
-  need_summary: z.boolean().nullish(),
-  position: z.int().nullish(),
-  summary_index_status: z.string().nullish(),
-  tokens: z.int().nullish(),
-  word_count: z.int().nullish(),
-})
-
-/**
- * DocumentAndBatchResponse
- */
-export const zDocumentAndBatchResponse = z.object({
-  batch: z.string(),
-  document: zDocumentResponse,
-})
-
-/**
- * DocumentListResponse
- */
-export const zDocumentListResponse = z.object({
-  data: z.array(zDocumentResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
  * DocumentStatusPayload
  */
 export const zDocumentStatusPayload = z.object({
@@ -1037,10 +898,19 @@ export const zDocumentStatusResponse = z.object({
   completed_at: z.int().nullable(),
   completed_segments: z.int().nullish(),
   error: z.string().nullable(),
-  error_code: z.string().nullish(),
+  error_code: z.literal('vector_space_estimate_exceeded').nullish(),
   estimated_vector_space_mb: z.int().nullish(),
   id: z.string(),
-  indexing_status: z.string(),
+  indexing_status: z.enum([
+    'cleaning',
+    'completed',
+    'error',
+    'indexing',
+    'parsing',
+    'paused',
+    'splitting',
+    'waiting',
+  ]),
   parsing_completed_at: z.int().nullable(),
   paused_at: z.int().nullable(),
   processing_started_at: z.int().nullable(),
@@ -1055,6 +925,28 @@ export const zDocumentStatusResponse = z.object({
  */
 export const zDocumentStatusListResponse = z.object({
   data: z.array(zDocumentStatusResponse),
+})
+
+/**
+ * DocumentUploadFileDetailResponse
+ */
+export const zDocumentUploadFileDetailResponse = z.object({
+  created_at: z.number(),
+  created_by: z.string(),
+  extension: z.string(),
+  id: z.string(),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  size: z.int(),
+})
+
+/**
+ * DocumentSourceDetailResponse
+ *
+ * The uploaded file for file documents; Notion and website documents repeat their source info.
+ */
+export const zDocumentSourceDetailResponse = z.object({
+  upload_file: zDocumentUploadFileDetailResponse.nullish(),
 })
 
 /**
@@ -1476,16 +1368,6 @@ export const zHumanInputFormSubmittedError = zErrorResponse.and(
 )
 
 /**
- * I18nObject
- *
- * Model class for i18n object.
- */
-export const zI18nObject = z.object({
-  en_US: z.string(),
-  zh_Hans: z.string().nullish(),
-})
-
-/**
  * IndexInfoResponse
  */
 export const zIndexInfoResponse = z.object({
@@ -1493,6 +1375,11 @@ export const zIndexInfoResponse = z.object({
   server_version: z.string(),
   welcome: z.string(),
 })
+
+/**
+ * IndexTechniqueType
+ */
+export const zIndexTechniqueType = z.enum(['economy', 'high_quality'])
 
 /**
  * InvalidActionError
@@ -1594,33 +1481,62 @@ export const zChatPausedBlockingResponse = z.object({
  * Blocking chat response for a completed message or paused Chatflow.
  */
 export const zChatBlockingResponse = z.discriminatedUnion('event', [
-  zChatMessageBlockingResponse.extend({ event: z.literal('message') }),
-  zChatPausedBlockingResponse.extend({ event: z.literal('workflow_paused') }),
+  zChatMessageBlockingResponse,
+  zChatPausedBlockingResponse,
 ])
+
+export const zJsonValueType = z.unknown()
 
 export const zJsonValue = z.unknown()
 
 /**
- * AgentThought
+ * DocumentResponse
  */
-export const zAgentThought = z.object({
-  answer: z.string().nullish(),
-  chain_id: z.string().nullish(),
+export const zDocumentResponse = z.object({
+  archived: z.boolean().nullish(),
   created_at: z.int().nullish(),
-  files: z.array(z.string()),
+  created_by: z.string().nullish(),
+  created_from: z.string().nullish(),
+  data_source_detail_dict: zDocumentSourceDetailResponse,
+  data_source_info: z.record(z.string(), zJsonValue).nullish(),
+  data_source_type: z.string().nullish(),
+  dataset_process_rule_id: z.string().nullish(),
+  disabled_at: z.int().nullish(),
+  disabled_by: z.string().nullish(),
+  display_status: z.string().nullish(),
+  doc_form: z.string().nullish(),
+  doc_metadata: z.array(zDocumentMetadataResponse).optional(),
+  enabled: z.boolean().nullish(),
+  error: z.string().nullish(),
+  hit_count: z.int().nullish(),
   id: z.string(),
-  message_id: z.string(),
-  observation: z.string().nullish(),
-  position: z.int(),
-  thought: z.string().nullish(),
-  tool: z.string().nullish(),
-  tool_input: z.string().nullish(),
-  tool_labels: zJsonValue,
+  indexing_status: z.string().nullish(),
+  name: z.string(),
+  need_summary: z.boolean().nullish(),
+  position: z.int().nullish(),
+  summary_index_status: z.string().nullish(),
+  tokens: z.int().nullish(),
+  word_count: z.int().nullish(),
 })
 
-export const zJsonValueType = z.unknown()
+/**
+ * DocumentAndBatchResponse
+ */
+export const zDocumentAndBatchResponse = z.object({
+  batch: z.string(),
+  document: zDocumentResponse,
+})
 
-export const zJsonValue2 = z.unknown()
+/**
+ * DocumentListResponse
+ */
+export const zDocumentListResponse = z.object({
+  data: z.array(zDocumentResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
 
 /**
  * HumanInputFormSubmissionData
@@ -1631,7 +1547,7 @@ export const zHumanInputFormSubmissionData = z.object({
   node_id: z.string(),
   node_title: z.string(),
   rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
+  submitted_data: z.record(z.string(), zJsonValue).nullish(),
 })
 
 /**
@@ -1639,7 +1555,7 @@ export const zHumanInputFormSubmissionData = z.object({
  */
 export const zHumanInputFormSubmitPayload = z.object({
   action: z.string(),
-  inputs: z.record(z.string(), zJsonValue2),
+  inputs: z.record(z.string(), zJsonValue),
 })
 
 /**
@@ -1647,7 +1563,7 @@ export const zHumanInputFormSubmitPayload = z.object({
  */
 export const zHumanInputFormSubmitPayloadWithUser = z.object({
   action: z.string(),
-  inputs: z.record(z.string(), zJsonValue2),
+  inputs: z.record(z.string(), zJsonValue),
   user: z.string(),
 })
 
@@ -1807,6 +1723,16 @@ export const zModelPropertyKey = z.enum([
   'voices',
   'word_limit',
 ])
+
+/**
+ * I18nObject
+ *
+ * Model class for i18n object.
+ */
+export const zModelRuntimeI18nObject = z.object({
+  en_US: z.string(),
+  zh_Hans: z.string().nullish(),
+})
 
 /**
  * ModelStatus
@@ -2016,7 +1942,7 @@ export const zProviderModelWithStatusEntity = z.object({
   features: z.array(zModelFeature).nullish(),
   fetch_from: zFetchFrom,
   has_invalid_load_balancing_configs: z.boolean().optional().default(false),
-  label: zI18nObject,
+  label: zModelRuntimeI18nObject,
   load_balancing_enabled: z.boolean().optional().default(false),
   model: z.string(),
   model_properties: z.record(z.string(), z.unknown()),
@@ -2066,9 +1992,9 @@ export const zProviderQuotaExceededError = zErrorResponse.and(
  * Model class for provider with models response.
  */
 export const zProviderWithModelsResponse = z.object({
-  icon_small: zI18nObject.nullish(),
-  icon_small_dark: zI18nObject.nullish(),
-  label: zI18nObject,
+  icon_small: zModelRuntimeI18nObject.nullish(),
+  icon_small_dark: zModelRuntimeI18nObject.nullish(),
+  label: zModelRuntimeI18nObject,
   models: z.array(zProviderModelWithStatusEntity),
   provider: z.string(),
   status: zCustomConfigurationStatus,
@@ -2127,6 +2053,134 @@ export const zRetrievalMethod = z.enum([
   'keyword_search',
   'semantic_search',
 ])
+
+/**
+ * DatasetRetrievalModelResponse
+ */
+export const zDatasetRetrievalModelResponse = z.object({
+  reranking_enable: z.boolean(),
+  reranking_mode: z.string().nullish(),
+  reranking_model: zDatasetRerankingModelResponse.optional(),
+  score_threshold: z.number().nullish(),
+  score_threshold_enabled: z.boolean(),
+  search_method: zRetrievalMethod,
+  top_k: z.int(),
+  weights: zDatasetWeightedScoreResponse.nullish(),
+})
+
+/**
+ * DatasetDetailResponse
+ */
+export const zDatasetDetailResponse = z.object({
+  app_count: z.int(),
+  author_name: z.string().nullable(),
+  built_in_field_enabled: z.boolean(),
+  chunk_structure: z.string().nullable(),
+  created_at: z.int(),
+  created_by: z.string(),
+  data_source_type: z
+    .enum([
+      'local_file',
+      'notion_import',
+      'online_document',
+      'online_drive',
+      'upload_file',
+      'website_crawl',
+    ])
+    .nullable(),
+  description: z.string().nullable(),
+  doc_form: z.string().nullable(),
+  doc_metadata: z.array(zDatasetDocMetadataResponse),
+  document_count: z.int(),
+  embedding_available: z.boolean().nullish(),
+  embedding_model: z.string().nullable(),
+  embedding_model_provider: z.string().nullable(),
+  enable_api: z.boolean(),
+  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
+  external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
+  icon_info: zDatasetIconInfoResponse.optional(),
+  id: z.string(),
+  indexing_technique: zIndexTechniqueType.nullable(),
+  is_multimodal: z.boolean(),
+  is_published: z.boolean(),
+  maintainer: z.string().nullish(),
+  name: z.string(),
+  permission: z.enum(['all_team_members', 'only_me', 'partial_members']),
+  pipeline_id: z.string().nullable(),
+  provider: z.string(),
+  retrieval_model_dict: zDatasetRetrievalModelResponse,
+  runtime_mode: z.enum(['general', 'rag_pipeline']).nullable(),
+  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
+  tags: z.array(zDatasetTagResponse),
+  total_available_documents: z.int(),
+  total_documents: z.int(),
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  word_count: z.int(),
+})
+
+/**
+ * DatasetDetailWithPartialMembersResponse
+ */
+export const zDatasetDetailWithPartialMembersResponse = z.object({
+  app_count: z.int(),
+  author_name: z.string().nullable(),
+  built_in_field_enabled: z.boolean(),
+  chunk_structure: z.string().nullable(),
+  created_at: z.int(),
+  created_by: z.string(),
+  data_source_type: z
+    .enum([
+      'local_file',
+      'notion_import',
+      'online_document',
+      'online_drive',
+      'upload_file',
+      'website_crawl',
+    ])
+    .nullable(),
+  description: z.string().nullable(),
+  doc_form: z.string().nullable(),
+  doc_metadata: z.array(zDatasetDocMetadataResponse),
+  document_count: z.int(),
+  embedding_available: z.boolean().nullish(),
+  embedding_model: z.string().nullable(),
+  embedding_model_provider: z.string().nullable(),
+  enable_api: z.boolean(),
+  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
+  external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
+  icon_info: zDatasetIconInfoResponse.optional(),
+  id: z.string(),
+  indexing_technique: zIndexTechniqueType.nullable(),
+  is_multimodal: z.boolean(),
+  is_published: z.boolean(),
+  maintainer: z.string().nullish(),
+  name: z.string(),
+  partial_member_list: z.array(z.string()).nullish(),
+  permission: z.enum(['all_team_members', 'only_me', 'partial_members']),
+  pipeline_id: z.string().nullable(),
+  provider: z.string(),
+  retrieval_model_dict: zDatasetRetrievalModelResponse,
+  runtime_mode: z.enum(['general', 'rag_pipeline']).nullable(),
+  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
+  tags: z.array(zDatasetTagResponse),
+  total_available_documents: z.int(),
+  total_documents: z.int(),
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  word_count: z.int(),
+})
+
+/**
+ * DatasetListResponse
+ */
+export const zDatasetListResponse = z.object({
+  data: z.array(zDatasetDetailResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
 
 /**
  * RetrieverResource
@@ -2226,7 +2280,7 @@ export const zSegmentResponse = z.object({
   keywords: z.array(z.string()).nullable(),
   position: z.int(),
   sign_content: z.string(),
-  status: z.string(),
+  status: z.enum(['completed', 'error', 'indexing', 'paused', 're_segment', 'waiting']),
   stopped_at: z.int().nullable(),
   summary: z.string().nullable(),
   tokens: z.int(),
@@ -2325,7 +2379,7 @@ export const zSimpleAccountResponse = z.object({
 export const zSimpleConversation = z.object({
   created_at: z.int().nullish(),
   id: z.uuid(),
-  inputs: z.record(z.string(), zJsonValue),
+  inputs: z.record(z.string(), zAnyJsonValue),
   introduction: z.string().nullish(),
   name: z.string(),
   status: z.string(),
@@ -2961,10 +3015,10 @@ export const zParagraphInputConfig = z.object({
 })
 
 export const zFormInputConfig = z.discriminatedUnion('type', [
-  zParagraphInputConfig.extend({ type: z.literal('paragraph') }),
-  zSelectInputConfig.extend({ type: z.literal('select') }),
-  zFileInputConfig.extend({ type: z.literal('file') }),
-  zFileListInputConfig.extend({ type: z.literal('file-list') }),
+  zParagraphInputConfig,
+  zSelectInputConfig,
+  zFileInputConfig,
+  zFileListInputConfig,
 ])
 
 /**

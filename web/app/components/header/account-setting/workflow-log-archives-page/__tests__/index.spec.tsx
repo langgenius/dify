@@ -4,7 +4,7 @@ import type {
   WorkflowRunArchiveDeletionTaskResponse,
 } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
 import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -38,21 +38,6 @@ vi.mock('@/service/console/browser', () => ({
     },
   },
 }))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-  }
-})
-
-vi.mock('@/context/modal-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/modal-context')>()
-  return {
-    ...actual,
-    useModalContext: vi.fn(),
-  }
-})
 
 const archiveMonth: GetWorkflowRunArchivesResponse['months'][number] = {
   year: 2025,
@@ -585,33 +570,21 @@ describe('WorkflowLogArchivesPage', () => {
   })
 
   describe('Plan access', () => {
-    it('should show upgrade guidance instead of archive content for sandbox workspaces', () => {
-      // Arrange
-      plan = 'sandbox'
-
-      // Act
-      renderPage()
-
-      // Assert
-      expect(screen.getByText('appLog.archives.upgradeTip.title')).toBeInTheDocument()
-      expect(screen.queryByText('2025-03')).not.toBeInTheDocument()
-    })
-
-    it('should open pricing modal from the sandbox upgrade guidance', async () => {
-      // Arrange
+    it('restricts sandbox archive access and opens pricing from upgrade guidance', async () => {
+      const user = userEvent.setup()
       plan = 'sandbox'
       renderPage()
 
-      // Act
-      fireEvent.click(screen.getByRole('button', { name: 'billing.upgradeBtn.encourageShort' }))
+      expect(screen.queryByRole('table')).not.toBeInTheDocument()
+      expect(archiveRequests.list).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'billing.upgradeBtn.encourageShort' }))
 
-      // Assert
       await waitFor(() =>
         expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
       )
     })
 
-    it('shows failure details on the retry button without preparing a download', async () => {
+    it('discloses download failure details before retrying the affected month', async () => {
       const user = userEvent.setup()
       renderPage({
         ...archiveData,
@@ -646,17 +619,17 @@ describe('WorkflowLogArchivesPage', () => {
       expect(
         screen.queryByRole('button', { name: 'common.operation.learnMore: 2025-03' }),
       ).not.toBeInTheDocument()
-      expect(retry).toBeEnabled()
+      await user.click(retry)
+      expect(archiveRequests.prepareDownload).toHaveBeenCalledWith({
+        body: { year: 2025, month: 3 },
+      })
     })
 
     it('should show archive content for paid workspaces', () => {
-      // Arrange
       plan = 'professional'
 
-      // Act
       renderPage()
 
-      // Assert
       expect(screen.queryByText('appLog.archives.upgradeTip.title')).not.toBeInTheDocument()
       expect(screen.getByText('2025-03')).toBeInTheDocument()
       const table = screen.getByRole('table')

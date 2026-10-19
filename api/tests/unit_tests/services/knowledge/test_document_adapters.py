@@ -18,18 +18,18 @@ REF = DatasetRef("tenant-1", "dataset-1")
 
 
 def _dataset(**values: object) -> Dataset:
-    return Dataset(
-        **{
-            "id": "dataset-1",
-            "tenant_id": "tenant-1",
-            "name": "Dataset",
-            "created_by": "actor-1",
-            "maintainer": "actor-1",
-            "indexing_technique": "economy",
-            "chunk_structure": "text_model",
-            **values,
-        }
+    row = Dataset(
+        id="dataset-1",
+        tenant_id="tenant-1",
+        name="Dataset",
+        created_by="actor-1",
+        maintainer="actor-1",
+        indexing_technique="economy",
+        chunk_structure="text_model",
     )
+    for key, value in values.items():
+        setattr(row, key, value)
+    return row
 
 
 def _document(**values: object) -> Document:

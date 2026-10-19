@@ -256,7 +256,7 @@ class TestHitTestingPayload:
 
     def test_query_max_length(self) -> None:
         assert len(HitTestingPayload(query="x" * 250).query) == 250
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for HitTestingPayload\\\nquery"):
             HitTestingPayload(query="x" * 251)
 
     def test_unknown_fields_remain_ignored(self) -> None:

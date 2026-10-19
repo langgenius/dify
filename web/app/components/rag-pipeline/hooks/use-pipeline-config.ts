@@ -1,13 +1,15 @@
-import type { FileUploadConfigResponse } from '@/models/common'
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect } from 'react'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
 import { useWorkflowConfig } from '@/service/use-workflow'
 
 export const usePipelineConfig = () => {
-  const pipelineId = useStore((s) => s.pipelineId)
+  const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
   const workflowStore = useWorkflowStore()
 
   const handleUpdateNodesDefaultConfigs = useCallback(
@@ -19,7 +21,7 @@ export const usePipelineConfig = () => {
           res[item.type] = item.config
         })
       } else {
-        res = nodesDefaultConfigs as Record<string, any>
+        res = nodesDefaultConfigs
       }
 
       setNodesDefaultConfigs!(res)
@@ -45,7 +47,7 @@ export const usePipelineConfig = () => {
   )
 
   const handleUpdateWorkflowFileUploadConfig = useCallback(
-    (config: FileUploadConfigResponse) => {
+    (config: UploadConfig) => {
       const { setFileUploadConfig } = workflowStore.getState()
       setFileUploadConfig(config)
     },

@@ -148,7 +148,6 @@ def fixture() -> ServiceFixture:
 
 
 def test_estimate_new_sources_resolves_each_variant_and_normalizes_rule(fixture: ServiceFixture) -> None:
-
     result = fixture.service.estimate_new_sources(
         _context(),
         NewSourcesEstimateCommand(
@@ -259,7 +258,6 @@ def test_estimate_new_notion_source_maps_actor_credential_failure_without_runnin
 
 
 def test_estimate_empty_new_sources_returns_zero_without_runner_call(fixture: ServiceFixture) -> None:
-
     result = fixture.service.estimate_new_sources(
         _context(),
         NewSourcesEstimateCommand(sources=(), process_rule={"mode": "automatic"}),
@@ -310,7 +308,6 @@ def test_estimate_rejects_missing_saved_process_rule(fixture: ServiceFixture) ->
 
 
 def test_estimate_empty_batch_raises_not_found_without_runner_call(fixture: ServiceFixture) -> None:
-
     with pytest.raises(EstimateDocumentNotFoundError):
         fixture.service.estimate_batch(_context(), dataset_id="dataset-1", batch="batch-1")
 

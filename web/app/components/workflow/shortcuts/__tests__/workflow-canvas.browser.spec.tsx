@@ -1,4 +1,5 @@
 import type { ContextMenuActions } from '@langgenius/dify-ui/context-menu'
+import type { ReactElement } from 'react'
 import type { Edge, Node, NodeProps } from 'reactflow'
 import type { StoreApi } from 'zustand'
 import { ContextMenu, ContextMenuTrigger } from '@langgenius/dify-ui/context-menu'
@@ -7,8 +8,10 @@ import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Handle, Position, ReactFlowProvider, useStore as useReactFlowStore } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
+import { render as renderBrowser } from 'vitest-browser-react'
 import { createStore, useStore } from 'zustand'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { WorkflowContext } from '../../context'
 import { EdgeContextmenu } from '../../edge-contextmenu'
 import { useNodeKeyboardInteractions } from '../../hooks/use-node-keyboard-interactions'
@@ -22,6 +25,12 @@ import { createWorkflowStore } from '../../store/workflow'
 import { BlockEnum, VarType } from '../../types'
 import { WorkflowCanvas } from '../workflow-canvas'
 import 'reactflow/dist/style.css'
+
+function render(ui: ReactElement) {
+  const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, { workflowTools: [] })
+  return renderBrowser(<Wrapper>{ui}</Wrapper>)
+}
 
 const actions = vi.hoisted(() => ({
   copy: vi.fn(),
@@ -38,10 +47,6 @@ const actions = vi.hoisted(() => ({
   comment: vi.fn(),
   dim: vi.fn(),
   undim: vi.fn(),
-  zoomTo: vi.fn(),
-  fitView: vi.fn(),
-  getZoom: vi.fn(() => 1),
-  getNodes: vi.fn<() => { data: { _isBundled?: boolean } }[]>(() => []),
 }))
 
 vi.mock('../../hooks/use-nodes-interactions', () => ({
@@ -94,7 +99,6 @@ vi.mock('../../hooks/use-nodes-meta-data', () => ({
     author: 'Dify',
   }),
 }))
-vi.mock('@/service/use-tools', () => ({ useAllWorkflowTools: () => ({ data: [] }) }))
 vi.mock('../../node-actions-menu/change-block-popup', () => ({ ChangeBlockPopup: () => null }))
 
 vi.mock('@/context/permission-state', async () => {
@@ -441,18 +445,17 @@ it('returns to canvas undo after a selection context-menu action removes the foc
     targetPosition: { x: 700, y: 380 },
     steps: 5,
   })
-  await expect
-    .poll(() => canvas.element().querySelector('.react-flow__nodesselection-rect'))
-    .not.toBeNull()
   await canvas.click({ button: 'right', position: { x: 450, y: 220 } })
   await screen.getByRole('menuitem', { name: /common.operation.delete/ }).click()
   await expect
     .element(screen.getByRole('button', { name: 'Workflow node' }))
     .not.toBeInTheDocument()
+  await expect.element(screen.getByRole('button', { name: 'Other node' })).not.toBeInTheDocument()
   await expect.element(canvas).toHaveFocus()
   const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
   await userEvent.keyboard(`{${mod}>}z{/${mod}}`)
   await expect.element(screen.getByRole('button', { name: 'Workflow node' })).toBeInTheDocument()
+  await expect.element(screen.getByRole('button', { name: 'Other node' })).toBeInTheDocument()
   expect(actions.undo).toHaveBeenCalledTimes(1)
 })
 

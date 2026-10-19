@@ -99,7 +99,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
     ;(async () => {
       if (!appData || !appParams) return
       const { site: siteInfo, custom_config } = appData
-      setSiteInfo(siteInfo as SiteInfo)
+      setSiteInfo(siteInfo)
       setCustomConfig(custom_config)
 
       const { user_input_form, more_like_this, file_upload, text_to_speech } = appParams

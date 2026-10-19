@@ -6,7 +6,7 @@ import threading
 import time
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from flask import Flask, current_app
 from opentelemetry.trace import get_current_span
@@ -1761,7 +1761,7 @@ class DatasetRetrieval:
         model_mode = ModelMode(mode)
         input_text = query
 
-        prompt_template: Union[CompletionModelPromptTemplate, list[ChatModelMessage]]
+        prompt_template: CompletionModelPromptTemplate | list[ChatModelMessage]
         if model_mode == ModelMode.CHAT:
             prompt_template = []
             system_prompt_messages = ChatModelMessage(role=PromptMessageRole.SYSTEM, text=METADATA_FILTER_SYSTEM_PROMPT)

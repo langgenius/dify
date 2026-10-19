@@ -347,9 +347,7 @@ class TestDatasetListApi:
             for i in range(3)
         ]
 
-        paginated_response = ControllerApiTestDataFactory.create_paginated_response(
-            items=datasets, total=3, page=1, per_page=20
-        )
+        ControllerApiTestDataFactory.create_paginated_response(items=datasets, total=3, page=1, per_page=20)
 
         with patch("controllers.console.datasets.datasets.DatasetService.get_datasets") as mock_get_datasets:
             mock_get_datasets.return_value = (datasets, 3)
@@ -538,7 +536,7 @@ class TestDatasetApiGet:
 
         with (
             patch("controllers.console.datasets.datasets.DatasetService.get_dataset") as mock_get_dataset,
-            patch("controllers.console.datasets.datasets.DatasetService.check_dataset_permission") as mock_check_perm,
+            patch("controllers.console.datasets.datasets.DatasetService.check_dataset_permission"),
         ):
             mock_get_dataset.return_value = None  # Dataset not found
 

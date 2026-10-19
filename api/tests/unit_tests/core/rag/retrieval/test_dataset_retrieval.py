@@ -1472,7 +1472,7 @@ class TestRetrievalService:
         mock_retrieve.side_effect = side_effect_with_exception
 
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Search failed") as exc_info:
             RetrievalService.retrieve(
                 retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
                 dataset_id=mock_dataset.id,
@@ -4103,7 +4103,7 @@ class TestDatasetRetrievalAdditionalHelpers:
                 assert prompt_messages_completion == ["prompt"]
                 assert stop_completion == []
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="'unknown\\-mode' is not a valid ModelMode"):
             retrieval._get_prompt_template(
                 model_config=model_config_chat,
                 mode="unknown-mode",
@@ -4579,7 +4579,14 @@ class TestKnowledgeRetrievalCoverage:
             patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager,
         ):
             mock_model_manager.return_value.get_model_instance.return_value = model_instance
-            with pytest.raises(Exception) as exc_info:
+            with pytest.raises(
+                Exception,
+                match=(
+                    "(?:Dify Hosted OpenAI gpt\\-4 currently not support\\.|Model gpt\\-4 "
+                    "credentials is not initialized\\.|Model provider openai quota "
+                    "exceeded\\.)"
+                ),
+            ) as exc_info:
                 retrieval.knowledge_retrieval(self.orm_session, request)
             mock_model_manager.assert_called_once_with(tenant_id="tenant-1", user_id="user-1")
             assert error_cls in type(exc_info.value).__name__
@@ -5826,7 +5833,7 @@ class TestInternalHooksCoverage:
         assert len(ranked) == 1
         assert ranked[0].metadata.get("score") == 0.0
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="metadata_model_config is required"):
             retrieval._automatic_metadata_filter_func(
                 self.orm_session,
                 dataset_ids=[str(uuid4())],

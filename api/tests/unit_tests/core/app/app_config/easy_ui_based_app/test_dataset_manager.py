@@ -221,7 +221,7 @@ class TestValidateAndSetDefaults:
                 }
             }
         }
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Dataset query variable is required when dataset is exist"):
             DatasetConfigManager.validate_and_set_defaults("tenant1", AppMode.COMPLETION, config, unbound_session)
 
 
@@ -242,21 +242,21 @@ class TestExtractDatasetConfig:
 
     def test_extract_invalid_agent_mode_type(self, unbound_session: Session):
         config = {"agent_mode": "invalid"}
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="agent_mode must be of object type"):
             DatasetConfigManager.extract_dataset_config_for_legacy_compatibility(
                 "tenant1", AppMode.CHAT, config, unbound_session
             )
 
     def test_extract_invalid_enabled_type(self, unbound_session: Session):
         config = {"agent_mode": {"enabled": "yes"}}
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="enabled in agent_mode must be of boolean type"):
             DatasetConfigManager.extract_dataset_config_for_legacy_compatibility(
                 "tenant1", AppMode.CHAT, config, unbound_session
             )
 
     def test_extract_invalid_tools_type(self, unbound_session: Session):
         config = {"agent_mode": {"enabled": True, "tools": "invalid"}}
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="tools in agent_mode must be a list of objects"):
             DatasetConfigManager.extract_dataset_config_for_legacy_compatibility(
                 "tenant1", AppMode.CHAT, config, unbound_session
             )
@@ -270,7 +270,7 @@ class TestExtractDatasetConfig:
                 "tools": [{"dataset": {"id": invalid_uuid, "enabled": True}}],
             }
         }
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="id in dataset must be of UUID type"):
             DatasetConfigManager.extract_dataset_config_for_legacy_compatibility(
                 "tenant1", AppMode.CHAT, config, unbound_session
             )
@@ -287,7 +287,7 @@ class TestExtractDatasetConfig:
                 "tools": [{"dataset": {"id": valid_uuid, "enabled": True}}],
             }
         }
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Dataset ID does not exist, please check your permission\\."):
             DatasetConfigManager.extract_dataset_config_for_legacy_compatibility(
                 "tenant1", AppMode.CHAT, config, unbound_session
             )

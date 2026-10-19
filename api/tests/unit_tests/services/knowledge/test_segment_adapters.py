@@ -295,7 +295,6 @@ def _application(
 def test_mutations_use_request_actor_without_a_flask_request(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-
     with sqlite_session_factory.begin() as session:
         session.add(_dataset("dataset-1", "workspace-1"))
         session.add(_document("document-1", "workspace-1", "dataset-1"))
@@ -395,7 +394,6 @@ def test_redis_state_uses_existing_keys_and_decodes_status() -> None:
 def test_child_chunk_mutations_preserve_explicit_actors(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-
     with sqlite_session_factory.begin() as session:
         session.add(_dataset("dataset-1", "workspace-1"))
         document = _document("document-1", "workspace-1", "dataset-1")

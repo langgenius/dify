@@ -1,77 +1,23 @@
 import type { QuestionClassifierNodeType } from '../types'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useStore } from '@/app/components/workflow/store'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
+import { act, waitFor } from '@testing-library/react'
+import { useNodes, useReactFlow } from 'reactflow'
+import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
-import useConfigVision from '../../../hooks/use-config-vision'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import useConfig from '../use-config'
 
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: vi.fn(),
-    useIsChatMode: vi.fn(),
-    useWorkflow: vi.fn(),
-  }
-})
-
-vi.mock('reactflow', () => ({
-  useUpdateNodeInternals: vi.fn(() => vi.fn()),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
+// Model capabilities are external catalog data; node updates and vision reconciliation stay real.
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(),
+  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({}),
+  useTextGenerationCurrentProviderAndModelAndModelList: ({ model }: { model: string }) => ({
+    currentModel: { features: model === 'vision-model' ? [ModelFeatureEnum.vision] : [] },
+  }),
 }))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: vi.fn(),
-}))
-
-const mockFlowType = vi.hoisted(() => ({
-  value: undefined as FlowType | undefined,
-}))
-
-vi.mock('@/app/components/workflow/hooks-store/store', () => ({
-  useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) =>
-    selector({
-      configsMap: {
-        flowType: mockFlowType.value,
-      },
-    }),
-}))
-
-vi.mock('../../../hooks/use-config-vision', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-const mockUseIsChatMode = vi.mocked(useIsChatMode)
-const mockUseWorkflow = vi.mocked(useWorkflow)
-const mockUseNodeCrud = vi.mocked(useNodeCrud)
-const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.mocked(
-  useModelListAndDefaultModelAndCurrentProviderAndModel,
-)
-const mockUseStore = vi.mocked(useStore)
-const mockUseConfigVision = vi.mocked(useConfigVision)
-const mockUseAvailableVarList = vi.mocked(useAvailableVarList)
 
 const createPayload = (
   overrides: Partial<QuestionClassifierNodeType> = {},
@@ -79,136 +25,106 @@ const createPayload = (
   type: BlockEnum.QuestionClassifier,
   title: 'Question Classifier',
   desc: '',
-  model: {
-    provider: '',
-    name: '',
-    mode: AppModeEnum.CHAT,
-    completion_params: {},
-  },
+  model: { provider: 'openai', name: 'vision-model', mode: 'chat', completion_params: {} },
   classes: [{ id: 'topic-1', name: 'Billing questions', label: 'CLASS 1' }],
-  query_variable_selector: ['start-node', 'sys.query'],
+  _targetBranches: [{ id: 'topic-1', name: 'Billing questions' }],
+  query_variable_selector: ['start', 'query'],
   instruction: 'Route by topic',
-  vision: {
-    enabled: false,
-  },
+  vision: { enabled: true },
   ...overrides,
 })
 
-describe('question-classifier/use-config', () => {
-  const setInputs = vi.fn()
-  let latestVisionOptions: {
-    onChange: (payload: QuestionClassifierNodeType['vision']) => void
-  } | null = null
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    latestVisionOptions = null
-    mockFlowType.value = undefined
-    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false, getNodesReadOnly: () => false })
-    mockUseIsChatMode.mockReturnValue(true)
-    mockUseWorkflow.mockReturnValue({
-      getBeforeNodesInSameBranch: vi.fn(() => []),
-    } as unknown as ReturnType<typeof useWorkflow>)
-    mockUseNodeCrud.mockReturnValue({
-      inputs: createPayload(),
-      setInputs,
-    })
-    mockUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
-      modelList: [],
-      defaultModel: undefined,
-      currentProvider: undefined,
-      currentModel: undefined,
-    } as ReturnType<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>)
-    mockUseStore.mockImplementation((selector) => {
-      return selector({ nodesDefaultConfigs: {} } as never)
-    })
-    mockUseConfigVision.mockImplementation((_model, options) => {
-      latestVisionOptions = options as typeof latestVisionOptions
+const setup = (
+  payload = createPayload(),
+  resource: EditorResource = { kind: 'app', appId: 'app-1', mode: 'workflow' },
+) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  return renderWorkflowFlowHook(
+    () => {
+      const nodes = useNodes<QuestionClassifierNodeType>()
       return {
-        isVisionModel: false,
-        handleVisionResolutionEnabledChange: vi.fn(),
-        handleVisionResolutionChange: vi.fn(),
-        handleModelChanged: vi.fn(() => {
-          latestVisionOptions?.onChange({ enabled: false })
-        }),
+        config: useConfig(
+          'classifier',
+          nodes.find((node) => node.id === 'classifier')?.data ?? payload,
+        ),
+        flow: useReactFlow(),
       }
-    })
-    mockUseAvailableVarList.mockReturnValue({
-      availableVars: [],
-      availableNodes: [],
-      availableNodesWithParent: [],
-    } as unknown as ReturnType<typeof useAvailableVarList>)
-  })
+    },
+    {
+      resource,
+      queryClient,
+      initialStoreState: {
+        nodesDefaultConfigs: { [BlockEnum.QuestionClassifier]: createPayload() },
+      },
+      nodes: [
+        createNode({ id: 'start', data: { type: BlockEnum.Start, variables: [] } }),
+        createNode({ id: 'classifier', data: payload }),
+      ],
+      edges: [createEdge({ source: 'start', target: 'classifier' })],
+    },
+  )
+}
 
-  it('preserves the selected model when the vision follow-up updates after model selection', async () => {
-    const { result } = renderHook(() => useConfig('question-classifier-node', createPayload()))
+it('keeps the selected model after real vision reconciliation disables unsupported vision', async () => {
+  const { result } = setup()
+  expect(result.current.config.inputs.vision.enabled).toBe(true)
+  act(() =>
+    result.current.config.handleModelChanged({
+      provider: 'openai',
+      modelId: 'text-model',
+      mode: 'chat',
+    }),
+  )
+  await waitFor(() => expect(result.current.config.inputs.vision.enabled).toBe(false))
+  expect(result.current.flow.getNode('classifier')?.data.model).toEqual(
+    expect.objectContaining({ provider: 'openai', name: 'text-model', mode: 'chat' }),
+  )
+})
 
-    act(() => {
-      result.current.handleModelChanged({
-        provider: 'openai',
-        modelId: 'gpt-4o',
-        mode: AppModeEnum.CHAT,
-      })
-    })
-
-    await waitFor(() => {
-      expect(setInputs).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          model: expect.objectContaining({
-            provider: 'openai',
-            name: 'gpt-4o',
-            mode: AppModeEnum.CHAT,
-          }),
-          vision: {
-            enabled: false,
-          },
-        }),
-      )
-    })
-  })
-
-  it('does not default the query selector to sys.query in snippet flows', async () => {
-    mockFlowType.value = FlowType.snippet
-    mockUseWorkflow.mockReturnValue({
-      getBeforeNodesInSameBranch: vi.fn(() => [
-        {
-          id: 'start-node',
-          data: {
-            type: BlockEnum.Start,
-            title: 'Start',
-          },
-        },
-      ]),
-    } as unknown as ReturnType<typeof useWorkflow>)
-    mockUseStore.mockImplementation((selector) => {
-      return selector({
-        nodesDefaultConfigs: {
-          [BlockEnum.QuestionClassifier]: {
-            model: createPayload().model,
-            classes: createPayload().classes,
-            vision: createPayload().vision,
-          },
-        },
-      } as never)
-    })
-    mockUseNodeCrud.mockReturnValue({
-      inputs: createPayload({
-        query_variable_selector: [],
+it('persists consecutive model, completion and class edits without losing earlier changes', async () => {
+  const { result } = setup()
+  act(() =>
+    result.current.config.handleModelChanged({
+      provider: 'openai',
+      modelId: 'text-model',
+      mode: 'chat',
+    }),
+  )
+  await waitFor(() => expect(result.current.config.inputs.vision.enabled).toBe(false))
+  act(() => result.current.config.handleCompletionParamsChange({ temperature: 0.2 }))
+  act(() =>
+    result.current.config.handleTopicsChange([{ id: 'refund', name: 'Refunds', label: 'CLASS 1' }]),
+  )
+  expect(result.current.flow.getNode('classifier')?.data).toEqual(
+    expect.objectContaining({
+      model: expect.objectContaining({
+        name: 'text-model',
+        completion_params: { temperature: 0.2 },
       }),
-      setInputs,
-    })
+      classes: [{ id: 'refund', name: 'Refunds', label: 'CLASS 1' }],
+      _targetBranches: [{ id: 'refund', name: 'Refunds' }],
+      vision: { enabled: false },
+    }),
+  )
+})
 
-    renderHook(() =>
-      useConfig(
-        'question-classifier-node',
-        createPayload({
-          query_variable_selector: [],
-        }),
-      ),
-    )
-
-    await waitFor(() => {
-      expect(setInputs).not.toHaveBeenCalled()
-    })
-  })
+it.each([
+  { resource: { kind: 'snippet', snippetId: 'snippet-1' } as EditorResource, selector: [] },
+  { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } as EditorResource, selector: [] },
+  {
+    resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' } as EditorResource,
+    selector: ['start', 'sys.query'],
+  },
+])('derives the default query selector from $resource', async ({ resource, selector }) => {
+  const { result } = setup(createPayload({ query_variable_selector: [] }), resource)
+  await waitFor(() =>
+    expect(result.current.config.inputs.query_variable_selector).toEqual(selector),
+  )
 })

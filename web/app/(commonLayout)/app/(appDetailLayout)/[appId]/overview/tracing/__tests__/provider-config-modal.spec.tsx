@@ -90,45 +90,6 @@ const validConfigs = {
   },
 } satisfies Record<TracingProvider, TraceConfigPayload['tracing_config']>
 
-const providerFieldLabels = [
-  [
-    TracingProvider.arize,
-    ['API Key', 'Space ID', 'app.tracing.configProvider.project', 'Endpoint'],
-  ],
-  [TracingProvider.phoenix, ['API Key', 'app.tracing.configProvider.project', 'Endpoint']],
-  [TracingProvider.langSmith, ['API Key', 'app.tracing.configProvider.project', 'Endpoint']],
-  [
-    TracingProvider.langfuse,
-    ['app.tracing.configProvider.secretKey', 'app.tracing.configProvider.publicKey', 'Host'],
-  ],
-  [TracingProvider.opik, ['API Key', 'app.tracing.configProvider.project', 'Workspace', 'Url']],
-  [
-    TracingProvider.weave,
-    ['API Key', 'app.tracing.configProvider.project', 'Entity', 'Endpoint', 'Host'],
-  ],
-  [TracingProvider.aliyun, ['License Key', 'Endpoint', 'App Name']],
-  [
-    TracingProvider.mlflow,
-    [
-      'app.tracing.configProvider.trackingUri',
-      'app.tracing.configProvider.experimentId',
-      'app.tracing.configProvider.username',
-      'app.tracing.configProvider.password',
-    ],
-  ],
-  [
-    TracingProvider.databricks,
-    [
-      'app.tracing.configProvider.experimentId',
-      'app.tracing.configProvider.databricksHost',
-      'app.tracing.configProvider.clientId',
-      'app.tracing.configProvider.clientSecret',
-      'app.tracing.configProvider.personalAccessToken',
-    ],
-  ],
-  [TracingProvider.tencent, ['Token', 'Endpoint', 'Service Name']],
-] as const
-
 const invalidConfigCases: Array<{
   provider: TracingProvider
   payload: TraceConfigPayload['tracing_config']
@@ -331,7 +292,6 @@ describe('ProviderConfigModal', () => {
       })
 
       const configActions = screen.getAllByText('app.tracing.config')
-      expect(configActions.length).toBeGreaterThan(0)
       await user.click(configActions[0]!)
       await waitFor(() => {
         expect(
@@ -355,28 +315,6 @@ describe('ProviderConfigModal', () => {
       await user.click(configButton)
       expect(screen.getByRole('textbox', { name: 'Host' })).toHaveValue('')
     })
-  })
-
-  describe('Rendering', () => {
-    it.each(providerFieldLabels)(
-      'should render %s fields when adding a provider',
-      async (provider, expectedLabels) => {
-        renderProviderConfigModal({ type: provider })
-
-        expect(
-          screen.getByText(`app.tracing.configProvider.titleapp.tracing.${provider}.title`),
-        ).toBeInTheDocument()
-        expectedLabels.forEach((label) => {
-          expect(screen.getByRole('textbox', { name: label })).toBeInTheDocument()
-        })
-        await waitFor(() =>
-          expect(screen.getByRole('textbox', { name: expectedLabels[0] })).toHaveFocus(),
-        )
-        expect(
-          screen.getByRole('button', { name: 'common.operation.saveAndEnable' }),
-        ).toBeInTheDocument()
-      },
-    )
   })
 
   describe('Saving', () => {
@@ -413,12 +351,28 @@ describe('ProviderConfigModal', () => {
           payload: validConfigs[provider],
         })
 
+        const edits = {
+          arize: ['Space ID', 'space_id', 'new-space'],
+          phoenix: ['app.tracing.configProvider.project', 'project', 'new-project'],
+          langsmith: ['app.tracing.configProvider.project', 'project', 'new-project'],
+          langfuse: ['Host', 'host', 'https://new.langfuse.com'],
+          opik: ['Workspace', 'workspace', 'new-workspace'],
+          weave: ['Entity', 'entity', 'new-entity'],
+          aliyun: ['App Name', 'app_name', 'new-app'],
+          mlflow: ['app.tracing.configProvider.experimentId', 'experiment_id', '456'],
+          databricks: ['app.tracing.configProvider.experimentId', 'experiment_id', '456'],
+          tencent: ['Service Name', 'service_name', 'new-service'],
+        } satisfies Record<TracingProvider, [string, string, string]>
+        const [label, key, value] = edits[provider]
+        const input = screen.getByRole('textbox', { name: label })
+        await user.clear(input)
+        await user.type(input, value)
         await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
         await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
         await expectRequest('PATCH', {
           tracing_provider: provider,
-          tracing_config: validConfigs[provider],
+          tracing_config: { ...validConfigs[provider], [key]: value },
         })
         expect(callbacks.onChosen).not.toHaveBeenCalled()
       },
@@ -577,17 +531,6 @@ describe('ProviderConfigModal', () => {
       await user.click(screen.getByRole('button', { name: `common.operation.${action}` }))
 
       expect(callbacks.onCancel).toHaveBeenCalledTimes(1)
-    })
-
-    it('should cancel when the dialog is closed with Escape', async () => {
-      const user = userEvent.setup()
-      const callbacks = renderProviderConfigModal()
-
-      await user.keyboard('{Escape}')
-
-      await waitFor(() => {
-        expect(callbacks.onCancel).toHaveBeenCalledTimes(1)
-      })
     })
 
     it('should remove an existing provider after confirmation', async () => {

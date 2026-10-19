@@ -104,7 +104,11 @@ def test_process_rule_authorizes_document_dataset_before_read(app, documents):
 
 
 def test_default_process_rule_does_not_require_dataset_permission(app, documents):
-    documents.get_process_rule.return_value = {"mode": "automatic", "rules": {}, "limits": {}}
+    documents.get_process_rule.return_value = {
+        "mode": "automatic",
+        "rules": {},
+        "limits": {"indexing_max_segmentation_tokens_length": 4000},
+    }
     with app.test_request_context("/"), patch.object(controller, "enforce_rbac_checks") as enforce_checks:
         unwrap(GetProcessRuleApi.get)(GetProcessRuleApi(), CONTEXT)
     enforce_checks.assert_not_called()

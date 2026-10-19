@@ -58,6 +58,7 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
         *,
         role: str,
         setup: AccountSetup | None,
+        create_membership: bool = True,
     ) -> ActivationPersistenceResult | None:
         with self._session_factory.begin() as session:
             tenant_id = session.scalar(
@@ -83,6 +84,8 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
                     TenantAccountJoin.account_id == account.id,
                 )
             )
+            if membership is None and not create_membership:
+                return None
             membership_created = membership is None
             if membership is None:
                 membership = TenantAccountJoin(

@@ -23,7 +23,7 @@ from core.rag.entities.metadata_entities import SupportedComparisonOperator
 from core.rag.entities.retrieval_settings import KeywordSetting, VectorSetting
 
 type JsonScalar = str | int | float | bool | None
-type JsonValue = JsonScalar | list[JsonScalar] | dict[str, JsonScalar]
+type CompletionParamValue = JsonScalar | list[JsonScalar] | dict[str, JsonScalar]
 type MetadataValue = str | list[str] | int | float | None
 
 
@@ -47,7 +47,7 @@ class InnerKnowledgeRetrieveModelConfig(BaseModel):
     provider: str = Field(min_length=1)
     name: str = Field(min_length=1)
     mode: str = Field(min_length=1)
-    completion_params: dict[str, JsonValue] = Field(default_factory=dict)
+    completion_params: dict[str, CompletionParamValue] = Field(default_factory=dict)
 
 
 class InnerKnowledgeRetrieveRerankingModelConfig(BaseModel):

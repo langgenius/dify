@@ -97,8 +97,29 @@ export default defineConfig(({ command, mode, isPreview }) => {
       attachmentsDir: './.vitest-browser/attachments',
       coverage: {
         provider: 'v8',
-        reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],
-        exclude: ['**/__mocks__/**'],
+        // Include authored sources even when no test imports them.
+        include: ['**/*.{js,jsx,ts,tsx,mjs,mts,cjs,cts}'],
+        reporter: isCI ? ['json', 'json-summary'] : ['text', 'html', 'json', 'json-summary'],
+        exclude: [
+          // Test infrastructure and examples do not belong in the source denominator.
+          '**/{__tests__,__mocks__}/**',
+          '**/*.{spec,test,stories}.*',
+          'test/**',
+          'vitest*.setup.ts',
+          'plugins/tsslint/test-utils.ts',
+          // Declarations, generated sources, tool configuration, and build output.
+          '**/*.d.{ts,mts,cts}',
+          '**/*.{generated,gen}.*',
+          'types/doc-paths.ts',
+          '*.config.*',
+          'scripts/a11y/oxlint.config.ts',
+          '.*/**',
+          '**/dist/**',
+          '{coverage,build,out,storybook-static}/**',
+          // Keep public/embed.js, but omit its minified copy and vendored workers/editor.
+          'public/**/*.min.{js,mjs}',
+          'public/vs/**',
+        ],
       },
       projects: [
         {

@@ -95,11 +95,12 @@ PartialMemberList = Annotated[
 
 
 class DatasetDetailResponse(BaseDatasetDetailResponse):
-    # The Service API dump helpers exclude Console permission metadata.
+    # The Service API dump helpers exclude Console permission metadata and form settings.
     permission_keys: list[str] = Field(default_factory=list, exclude=True)
+    keyword_number: int | None = Field(default=None, exclude=True)
 
 
-_SERVICE_DATASET_DETAIL_EXCLUDE = {"permission_keys"}
+_SERVICE_DATASET_DETAIL_EXCLUDE = {"permission_keys", "keyword_number"}
 _SERVICE_DATASET_LIST_EXCLUDE = {"data": {"__all__": _SERVICE_DATASET_DETAIL_EXCLUDE}}
 
 

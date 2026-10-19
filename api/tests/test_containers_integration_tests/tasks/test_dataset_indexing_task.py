@@ -602,7 +602,7 @@ class TestDatasetIndexingTaskIntegration:
             db_session_with_containers,
             document_ids=large_document_ids,
         )
-        features = patched_external_dependencies["features"]
+        patched_external_dependencies["features"]
 
         # Act
         _document_indexing(dataset.id, large_document_ids)

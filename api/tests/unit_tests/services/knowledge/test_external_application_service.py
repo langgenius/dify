@@ -81,7 +81,7 @@ def test_template_validation_prevents_io(
     extra: dict[str, str] = (
         {"template_id": "template"} if method is ExternalKnowledgeApplicationService.update_template else {}
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="(?:api list is empty|api_key is required|endpoint is required)"):
         method(service, CONTEXT, name="API", settings=settings, **extra)
     assert repository.mock_calls == []
 
@@ -99,7 +99,7 @@ def test_retrieval_authorization_precedes_validation_and_network(
 def test_invalid_query_prevents_retrieval(
     service: ExternalKnowledgeApplicationService, repository: Mock, query: str
 ) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="(?:Query cannot exceed 250 characters|Query or attachment_ids is required)"):
         service.hit_testing(CONTEXT, dataset_id="dataset", query=query, retrieval_model=None, metadata_filters=None)
     repository.prepare_retrieval.assert_not_called()
 

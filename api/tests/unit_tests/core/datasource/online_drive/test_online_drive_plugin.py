@@ -64,8 +64,8 @@ class TestOnlineDriveDatasourcePlugin:
         messages = [OnlineDriveBrowseFilesResponse(result=[])]
         response_stream = (message for message in messages)
 
-        with patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager") as MockManager:
-            mock_manager_instance = MockManager.return_value
+        with patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager") as mock_manager:
+            mock_manager_instance = mock_manager.return_value
             mock_manager_instance.online_drive_browse_files.return_value = response_stream
 
             # Act
@@ -111,8 +111,8 @@ class TestOnlineDriveDatasourcePlugin:
         messages = [DatasourceMessage(type="text", message=DatasourceMessage.TextMessage(text="document content"))]
         response_stream = (message for message in messages)
 
-        with patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager") as MockManager:
-            mock_manager_instance = MockManager.return_value
+        with patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager") as mock_manager:
+            mock_manager_instance = mock_manager.return_value
             mock_manager_instance.online_drive_download_file.return_value = response_stream
 
             # Act

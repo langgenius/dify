@@ -1,3 +1,5 @@
+from types import ModuleType
+
 from flask import Blueprint
 from flask_restx import Namespace
 
@@ -24,19 +26,51 @@ api = ExternalApi(
 # Create namespace
 inner_api_ns = Namespace("inner_api", description="Internal API operations", path="/")
 
-from . import mail as _mail
-from . import runtime_credentials as _runtime_credentials
-from .agent import files as _agent_files
-from .agent import llm as _agent_llm
-from .agent import runtime_usage as _agent_runtime_usage
-from .agent import tools as _agent_tools
-from .app import dsl as _app_dsl
-from .app import file_grants as _app_file_grants
-from .knowledge import retrieval as _knowledge_retrieval
-from .plugin import agent_config as _agent_config
-from .plugin import plugin as _plugin
-from .plugin import skills as _skills
-from .workspace import workspace as _workspace
+
+def _register_controllers() -> tuple[ModuleType, ...]:
+    """Load route modules after their namespace exists."""
+
+    from . import mail, runtime_credentials
+    from .agent import files, llm, runtime_usage, tools
+    from .app import app, dsl, file_grants
+    from .knowledge import retrieval
+    from .plugin import agent_config, plugin, skills
+    from .workspace import workspace
+
+    return (
+        mail,
+        runtime_credentials,
+        files,
+        llm,
+        runtime_usage,
+        tools,
+        app,
+        dsl,
+        file_grants,
+        retrieval,
+        agent_config,
+        plugin,
+        skills,
+        workspace,
+    )
+
+
+(
+    _mail,
+    _runtime_credentials,
+    _agent_files,
+    _agent_llm,
+    _agent_runtime_usage,
+    _agent_tools,
+    _app_app,
+    _app_dsl,
+    _app_file_grants,
+    _knowledge_retrieval,
+    _agent_config,
+    _plugin,
+    _skills,
+    _workspace,
+) = _register_controllers()
 
 api.add_namespace(inner_api_ns)
 
@@ -46,6 +80,7 @@ __all__ = [
     "_agent_llm",
     "_agent_runtime_usage",
     "_agent_tools",
+    "_app_app",
     "_app_dsl",
     "_app_file_grants",
     "_knowledge_retrieval",

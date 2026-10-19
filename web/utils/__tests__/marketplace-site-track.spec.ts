@@ -1,12 +1,5 @@
-// @vitest-environment happy-dom
-
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
-import {
-  markMarketplaceSiteFilter,
-  markMarketplaceSiteSearch,
-  trackMarketplaceSiteCardClick,
-  trackMarketplaceSiteEvent,
-} from '../marketplace-site-track'
+import { trackMarketplaceSiteCardClick, trackMarketplaceSiteEvent } from '../marketplace-site-track'
 
 describe('marketplace site track bridge', () => {
   afterEach(() => {
@@ -16,7 +9,14 @@ describe('marketplace site track bridge', () => {
 
   it('does not forward events outside the standalone marketplace', () => {
     const track = vi.fn()
-    window.__marketplaceTracking__ = { track } as never
+    window.__marketplaceTracking__ = {
+      track,
+      rememberReferrer: vi.fn(),
+      markSearch: vi.fn(),
+      flushSearch: vi.fn(),
+      markFilter: vi.fn(),
+      flushFilter: vi.fn(),
+    }
 
     trackMarketplaceSiteEvent('marketplace_card_click', { click_target: 'card' })
 
@@ -45,14 +45,6 @@ describe('marketplace site track bridge', () => {
       itemName: 'OpenAI',
       section: 'partners',
     })
-    markMarketplaceSiteSearch('openai')
-    markMarketplaceSiteFilter({
-      filter_type: 'type_tab',
-      selection_mode: 'single',
-      filter_value: 'tool',
-      selected_values: ['tool'],
-    })
-
     expect(track).toHaveBeenNthCalledWith(1, 'marketplace_creator_partner_click', {
       click_target: 'creator_center',
     })

@@ -204,7 +204,7 @@ def test_generate_rejects_original_document_outside_pipeline_dataset_before_disp
     sqlite_session.add_all([dataset, pipeline, outside_document])
     sqlite_session.commit()
     mocker.patch.object(PipelineGenerateService, "_get_workflow", return_value=_make_workflow())
-    generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
+    mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
 
     with pytest.raises(ValueError, match="Pipeline document not found"):
         PipelineGenerateService.generate(

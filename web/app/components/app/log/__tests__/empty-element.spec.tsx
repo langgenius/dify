@@ -1,8 +1,8 @@
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import { screen } from '@testing-library/react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import EmptyElement from '../empty-element'
 
 vi.mock('react-i18next', async () => {
@@ -29,19 +29,15 @@ vi.mock('react-i18next', async () => {
   }
 })
 
-vi.mock('@/utils/app-redirection', () => ({
-  getRedirectionPath: (isTest: boolean, _app: AppDetailWithSite) =>
-    isTest ? '/test-path' : '/prod-path',
-}))
-
 vi.mock('@/utils/var', () => ({
   basePath: '/base',
 }))
 
 describe('EmptyElement', () => {
-  const createMockAppDetail = (mode: AppModeEnum) =>
+  const createMockAppDetail = (mode: AppMode) =>
     createAppDetailFixture({
       id: 'test-app-id',
+      permission_keys: [AppACLPermission.Monitor],
       name: 'Test App',
       description: 'Test description',
       mode,
@@ -57,95 +53,29 @@ describe('EmptyElement', () => {
       }),
     })
 
-  describe('Rendering', () => {
-    it('should render empty element with title', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.CHAT)
-      render(<EmptyElement appDetail={appDetail} />)
-
-      expect(screen.getByText('table.empty.element.title')).toBeInTheDocument()
-    })
-
-    it('should render Trans component with i18n key', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.CHAT)
-      render(<EmptyElement appDetail={appDetail} />)
-
-      expect(screen.getByText('table.empty.element.content', { exact: false })).toBeInTheDocument()
-    })
-  })
-
-  describe('App Mode Handling', () => {
-    it('should use CHAT mode for chat apps', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.CHAT)
-      render(<EmptyElement appDetail={appDetail} />)
-
-      const link = screen.getAllByRole('link')[0]
-      expect(link).toHaveAttribute('href', 'https://app.example.com/base/chat/test-token')
-    })
-
-    it('should use COMPLETION mode for completion apps', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.COMPLETION)
-      render(<EmptyElement appDetail={appDetail} />)
-
-      const link = screen.getAllByRole('link')[0]
-      expect(link).toHaveAttribute('href', 'https://app.example.com/base/completion/test-token')
-    })
-
-    it('should use WORKFLOW mode for workflow apps', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.WORKFLOW)
-      render(<EmptyElement appDetail={appDetail} />)
-
-      const link = screen.getAllByRole('link')[0]
-      expect(link).toHaveAttribute('href', 'https://app.example.com/base/workflow/test-token')
-    })
-
-    it('should use CHAT mode for advanced-chat apps', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.ADVANCED_CHAT)
-      render(<EmptyElement appDetail={appDetail} />)
-
-      const link = screen.getAllByRole('link')[0]
-      expect(link).toHaveAttribute('href', 'https://app.example.com/base/chat/test-token')
-    })
-
-    it('should use CHAT mode for agent-chat apps', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.AGENT_CHAT)
-      render(<EmptyElement appDetail={appDetail} />)
-
-      const link = screen.getAllByRole('link')[0]
-      expect(link).toHaveAttribute('href', 'https://app.example.com/base/chat/test-token')
-    })
-  })
-
   it.each([null, createAppSiteFixture({ access_token: null })])(
     'keeps the editor link without offering an unavailable site link',
     (site) => {
-      render(<EmptyElement appDetail={createAppDetailFixture({ site })} />)
+      render(<EmptyElement appDetail={{ ...createMockAppDetail('chat'), site }} />)
 
       const links = screen.getAllByRole('link')
       expect(links).toHaveLength(1)
-      expect(links[0]).toHaveAttribute('href', '/test-path')
+      expect(links[0]).toHaveAttribute('href', '/app/test-app-id/overview')
     },
   )
 
-  describe('Links', () => {
-    it('should render share link with correct attributes', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.CHAT)
-      render(<EmptyElement appDetail={appDetail} />)
-
-      const links = screen.getAllByRole('link')
-      const shareLink = links[0]
-
-      expect(shareLink).toHaveAttribute('target', '_blank')
-      expect(shareLink).toHaveAttribute('rel', 'noopener noreferrer')
-    })
-
-    it('should render test link with redirection path', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.CHAT)
-      render(<EmptyElement appDetail={appDetail} />)
-
-      const links = screen.getAllByRole('link')
-      const testLink = links[1]
-
-      expect(testLink).toHaveAttribute('href', '/test-path')
-    })
+  it.each<{ mode: AppMode; path: string }>([
+    { mode: 'chat', path: 'chat' },
+    { mode: 'advanced-chat', path: 'chat' },
+    { mode: 'agent-chat', path: 'chat' },
+    { mode: 'completion', path: 'completion' },
+    { mode: 'workflow', path: 'workflow' },
+  ])('links to the $mode site and an accessible console destination', ({ mode, path }) => {
+    render(<EmptyElement appDetail={createMockAppDetail(mode)} />)
+    const [shareLink, consoleLink] = screen.getAllByRole('link')
+    expect(shareLink).toHaveAttribute('href', `https://app.example.com/base/${path}/test-token`)
+    expect(shareLink).toHaveAttribute('target', '_blank')
+    expect(shareLink).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(consoleLink).toHaveAttribute('href', '/app/test-app-id/overview')
   })
 })

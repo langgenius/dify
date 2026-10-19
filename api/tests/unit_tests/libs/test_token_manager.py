@@ -17,7 +17,7 @@ import libs.helper as helper_module
 from libs.helper import TokenManager
 
 
-def _build_fake_redis(storage: dict[str, str]):
+def _build_fake_redis(storage: dict[str, str]) -> SimpleNamespace:
     def store_value(key: str, _ttl: int, value: str) -> bool:
         storage[key] = value
         return True
