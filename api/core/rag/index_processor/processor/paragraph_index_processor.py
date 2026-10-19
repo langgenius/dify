@@ -1,5 +1,6 @@
 """Paragraph index processor."""
 
+import contextlib
 import logging
 import re
 import uuid
@@ -459,11 +460,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         # This is especially important for image-only chunks where text is empty or minimal
         if is_default_prompt:
             language_for_prompt = document_language or "the same language as the input content"
-            try:
+            # If default prompt doesn't have {language} placeholder, use it as-is
+            with contextlib.suppress(KeyError):
                 summary_prompt = summary_prompt.format(language=language_for_prompt)
-            except KeyError:
-                # If default prompt doesn't have {language} placeholder, use it as-is
-                pass
 
         model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_model_instance(

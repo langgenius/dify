@@ -1,328 +1,314 @@
-import type { CustomFile as File, FileItem } from '@/models/datasets'
-import { screen } from '@testing-library/react'
+import type { FileResponse } from '@dify/contracts/api/console/files/types.gen'
+import type { ComponentProps } from 'react'
+import type { FileItem } from '@/models/datasets'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { useState } from 'react'
+import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
-import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../constants'
+import { createDeferred } from '@/test/deferred'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import FileUploader from '../index'
 
-const render = (ui: React.ReactElement) => {
+const upload = vi.hoisted(() => vi.fn<typeof import('@/service/base').upload>())
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  upload,
+}))
+
+const file = (name = 'Guide.pdf') => new File(['document'], name, { type: 'application/pdf' })
+const response = (name = 'Guide.pdf'): FileResponse => ({
+  id: `server-${name}`,
+  name,
+  size: 8,
+  extension: 'pdf',
+  mime_type: 'application/pdf',
+})
+const savedFile = (name: string): FileItem => ({
+  fileID: name,
+  file: Object.assign(file(name), { id: `server-${name}` }),
+  progress: 100,
+})
+const input = () => screen.getByLabelText('datasetCreation.stepOne.uploader.browse')
+const preview = (name = 'Guide.pdf') =>
+  screen.getByRole('button', { name: `datasetCreation.stepOne.filePreview ${name}` })
+const remove = (name = 'Guide.pdf') =>
+  screen.getByRole('button', { name: `common.operation.remove ${name}` })
+const tip = () => screen.getByText(/datasetCreation.stepOne.uploader.tip/)
+
+const setup = ({
+  fileList = [],
+  supportBatchUpload = true,
+  edition = 'CLOUD',
+  formats = ['pdf', 'docx', 'txt', 'md'],
+}: {
+  fileList?: FileItem[]
+  supportBatchUpload?: boolean
+  edition?: 'CLOUD' | 'COMMUNITY'
+  formats?: string[]
+} = {}) => {
+  // Disable chooser filtering so invalid selections reach application validation.
+  const user = userEvent.setup({ applyAccept: false })
+  const onPreview = vi.fn<ComponentProps<typeof FileUploader>['onPreview']>()
   const queryClient = createConsoleQueryClient()
-  queryClient.setQueryData(consoleQuery.files.supportType.get.queryOptions().queryKey, {
-    allowed_extensions: ['pdf', 'docx', 'txt'],
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryKey(),
+    createFileUploadConfigFixture({
+      file_size_limit: 1,
+      knowledge_file_size_limit: 2,
+      batch_count_limit: 2,
+      file_upload_limit: 3,
+    }),
+  )
+  queryClient.setQueryData(consoleQuery.files.supportType.get.queryKey(), {
+    allowed_extensions: formats,
   })
-  return renderWithConsoleQuery(ui, {
-    queryClient,
-    systemFeatures: { deployment_edition: 'CLOUD' },
-  })
+  function Owner() {
+    const [files, setFiles] = useState(fileList)
+    return (
+      <FileUploader
+        fileList={files}
+        supportBatchUpload={supportBatchUpload}
+        prepareFileList={(next) => setFiles([...next])}
+        onFileListUpdate={setFiles}
+        onFileUpdate={(item, progress, list) =>
+          setFiles(
+            list.map((entry) => (entry.fileID === item.fileID ? { ...item, progress } : entry)),
+          )
+        }
+        onPreview={onPreview}
+      />
+    )
+  }
+  renderWithConsoleQuery(
+    <>
+      <Owner />
+      <AppToastHost timeout={0} />
+    </>,
+    { queryClient, systemFeatures: { deployment_edition: edition } },
+  )
+  return { user, onPreview }
 }
 
-const mockNotify = vi.fn()
-vi.mock('use-context-selector', async () => {
-  const actual =
-    await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
-  return {
-    ...actual,
-    useContext: vi.fn(() => ({ notify: mockNotify })),
-  }
+beforeEach(() => {
+  upload.mockReset().mockImplementation(async ({ data }) => {
+    const selected = data.get('file')
+    if (!(selected instanceof File)) throw new Error('Expected an uploaded file')
+    return response(selected.name)
+  })
+})
+afterEach(() => {
+  toast.dismiss()
+  vi.restoreAllMocks()
 })
 
-// Mock services
-vi.mock('@/service/base', () => ({
-  upload: vi.fn().mockResolvedValue({ id: 'uploaded-id' }),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: { file_size_limit: 15, batch_count_limit: 5, file_upload_limit: 10 },
-  }),
-}))
-vi.mock('@/i18n/language', () => ({
-  LanguagesSupported: ['en-US', 'zh-Hans'],
-}))
-
-vi.mock('@/app/components/base/file-uploader/utils', () => ({
-  getFileUploadErrorMessage: () => 'Upload error',
-}))
-
-// Mock theme
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: 'light' }),
-}))
-
-vi.mock('@/types/app', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/types/app')>()),
-  Theme: { dark: 'dark', light: 'light' },
-}))
-
-// Mock DocumentFileIcon - uses relative path from file-list-item.tsx
-vi.mock('@/app/components/datasets/common/document-file-icon', () => ({
-  default: ({ extension }: { extension: string }) => (
-    <div data-testid="document-icon">{extension}</div>
-  ),
-}))
-
-// Mock SimplePieChart
-vi.mock('next/dynamic', () => ({
-  default: () => {
-    const Component = ({ percentage }: { percentage: number }) => (
-      <div data-testid="pie-chart">{percentage}%</div>
+it('preserves existing documents through upload progress, server acceptance, preview and removal', async () => {
+  const pending = createDeferred<FileResponse>()
+  upload.mockReturnValue(pending.promise)
+  const { user, onPreview } = setup({ fileList: [savedFile('Existing.pdf')] })
+  const selected = file()
+  await user.upload(input(), selected)
+  expect(preview()).toBeDisabled()
+  expect(preview('Existing.pdf')).toBeEnabled()
+  expect(screen.getByRole('status')).toHaveTextContent('Guide.pdf: common.loading')
+  expect(upload).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ data: expect.any(FormData) }),
+    false,
+    undefined,
+    '?source=datasets',
+  )
+  const request = upload.mock.calls[0]![0]
+  expect(request.data.get('file')).toMatchObject({ name: selected.name, size: selected.size })
+  for (const loaded of [53, 100]) {
+    act(() =>
+      request.onprogress?.call(
+        request.xhr,
+        new ProgressEvent('progress', { lengthComputable: true, loaded, total: 100 }),
+      ),
     )
-    return Component
-  },
-}))
-
-describe('FileUploader', () => {
-  const createMockFile = (overrides: Partial<File> = {}): File =>
-    ({
-      name: 'test.pdf',
-      size: 1024,
-      type: 'application/pdf',
-      ...overrides,
-    }) as File
-
-  const createMockFileItem = (overrides: Partial<FileItem> = {}): FileItem => ({
-    fileID: `file-${Date.now()}`,
-    file: createMockFile(overrides.file as Partial<File>),
-    progress: PROGRESS_NOT_STARTED,
-    ...overrides,
-  })
-
-  const defaultProps = {
-    fileList: [] as FileItem[],
-    prepareFileList: vi.fn(),
-    onFileUpdate: vi.fn(),
-    onFileListUpdate: vi.fn(),
-    onPreview: vi.fn(),
-    supportBatchUpload: true,
+    expect(screen.getByRole('status')).toHaveTextContent('Guide.pdf: common.loading')
+    expect(preview()).toBeDisabled()
   }
+  await act(async () => pending.resolve(response()))
+  expect(
+    await screen.findByText('Guide.pdf: datasetCreation.stepOne.uploader.completed'),
+  ).toBeInTheDocument()
+  await user.click(preview())
+  expect(onPreview).toHaveBeenCalledExactlyOnceWith(response())
+  await user.click(remove())
+  expect(screen.queryByText('Guide.pdf')).not.toBeInTheDocument()
+  expect(preview('Existing.pdf')).toBeEnabled()
+  expect(onPreview).toHaveBeenCalledOnce()
+})
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+it('keeps the live status present before upload and announces mixed batch results by filename', async () => {
+  upload.mockRejectedValueOnce(new Error('offline'))
+  const { user, onPreview } = setup()
+  expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  await user.upload(input(), [file('Failed.pdf'), file('Ready.pdf')])
+  await waitFor(() =>
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Failed.pdf: datasetCreation.stepOne.uploader.failed',
+    ),
+  )
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'Ready.pdf: datasetCreation.stepOne.uploader.completed',
+  )
+  expect(screen.getByRole('status')).toHaveAttribute('aria-atomic', 'false')
+  expect(
+    await screen.findByText('datasetCreation.stepOne.uploader.failed', { exact: true }),
+  ).toBeVisible()
+  await user.click(preview('Failed.pdf'))
+  expect(onPreview).not.toHaveBeenCalled()
+  await user.click(remove('Failed.pdf'))
+  expect(preview('Ready.pdf')).toBeEnabled()
+})
 
-  describe('rendering', () => {
-    it('should render the component', () => {
-      render(<FileUploader {...defaultProps} />)
-      expect(screen.getByText('datasetCreation.stepOne.uploader.title')).toBeInTheDocument()
-    })
+it('restores single-file upload after removal and accepts the same file again', async () => {
+  const { user, onPreview } = setup({ supportBatchUpload: false })
+  const selected = file()
+  expect(input()).not.toHaveAttribute('multiple')
+  await user.upload(input(), selected)
+  await waitFor(() => expect(preview()).toBeEnabled())
+  expect(screen.queryByLabelText('datasetCreation.stepOne.uploader.browse')).not.toBeInTheDocument()
+  await user.tab()
+  expect(preview()).toHaveFocus()
+  await user.keyboard('{Enter}')
+  await user.tab()
+  expect(remove()).toHaveFocus()
+  await user.keyboard(' ')
+  expect(onPreview).toHaveBeenCalledOnce()
+  await user.upload(input(), selected)
+  await waitFor(() => expect(preview()).toBeEnabled())
+  expect(upload).toHaveBeenCalledTimes(2)
+})
 
-    it('should render dropzone when no files', () => {
-      render(<FileUploader {...defaultProps} />)
-      expect(screen.getByText(/datasetCreation\.stepOne\.uploader\.button/)).toBeInTheDocument()
-    })
-
-    it('should render browse button', () => {
-      render(<FileUploader {...defaultProps} />)
-      expect(screen.getByText('datasetCreation.stepOne.uploader.browse')).toBeInTheDocument()
-    })
-  })
-
-  describe('file list rendering', () => {
-    it('should render file items when fileList has items', () => {
-      const fileList = [
-        createMockFileItem({ file: createMockFile({ name: 'file1.pdf' }) }),
-        createMockFileItem({ file: createMockFile({ name: 'file2.pdf' }) }),
-      ]
-
-      render(<FileUploader {...defaultProps} fileList={fileList} />)
-
-      expect(screen.getByText('file1.pdf')).toBeInTheDocument()
-      expect(screen.getByText('file2.pdf')).toBeInTheDocument()
-    })
-
-    it('should render document icons for files', () => {
-      const fileList = [createMockFileItem()]
-      render(<FileUploader {...defaultProps} fileList={fileList} />)
-
-      expect(screen.getByTestId('document-icon')).toBeInTheDocument()
-    })
-  })
-
-  describe('batch upload mode', () => {
-    it('should show dropzone with batch upload enabled', () => {
-      render(<FileUploader {...defaultProps} supportBatchUpload={true} />)
-      expect(screen.getByText(/datasetCreation\.stepOne\.uploader\.button/)).toBeInTheDocument()
-    })
-
-    it('should show single file text when batch upload disabled', () => {
-      render(<FileUploader {...defaultProps} supportBatchUpload={false} />)
+it.each(['COMMUNITY', 'CLOUD'] as const)(
+  'shows and enforces the applicable limits for %s',
+  async (edition) => {
+    const { user } = setup({ edition, fileList: [savedFile('One.pdf'), savedFile('Two.pdf')] })
+    expect(tip()).toHaveTextContent('"size":2')
+    expect(tip()).toHaveTextContent('"batchCount":2')
+    expect(tip()).toHaveTextContent('"supportTypes":"PDF, DOCX, TXT, MARKDOWN"')
+    await user.upload(input(), [file('Three.pdf'), file('Four.pdf')])
+    if (edition === 'CLOUD') {
+      expect(tip()).toHaveTextContent('"totalCount":3')
       expect(
-        screen.getByText(/datasetCreation\.stepOne\.uploader\.buttonSingleFile/),
-      ).toBeInTheDocument()
-    })
+        await screen.findByText(
+          'datasetCreation.stepOne.uploader.validation.filesNumber:{"filesNumber":3}',
+        ),
+      ).toBeVisible()
+      expect(upload).not.toHaveBeenCalled()
+      expect(screen.queryByText('Three.pdf')).not.toBeInTheDocument()
+    } else {
+      expect(tip()).not.toHaveTextContent('"totalCount"')
+      await waitFor(() => expect(preview('Four.pdf')).toBeEnabled())
+      expect(upload).toHaveBeenCalledTimes(2)
+    }
+    expect(preview('One.pdf')).toBeEnabled()
+    expect(preview('Two.pdf')).toBeEnabled()
+  },
+)
 
-    it('should hide dropzone when not batch upload and has files', () => {
-      const fileList = [createMockFileItem()]
-      render(<FileUploader {...defaultProps} supportBatchUpload={false} fileList={fileList} />)
+it.each([
+  {
+    reason: 'unsupported extension',
+    makeFile: () => file('invalid.exe'),
+    error: 'datasetCreation.stepOne.uploader.validation.typeError',
+  },
+  {
+    reason: 'knowledge file size limit',
+    makeFile: () =>
+      new File([new Uint8Array(2 * 1024 * 1024 + 1)], 'Large.pdf', { type: 'application/pdf' }),
+    error: 'datasetCreation.stepOne.uploader.validation.size:{"size":2}',
+  },
+])('rejects $reason before uploading', async ({ makeFile, error }) => {
+  const { user } = setup()
+  await user.upload(input(), makeFile())
+  expect(await screen.findByText(error)).toBeVisible()
+  expect(upload).not.toHaveBeenCalled()
+  expect(screen.getByRole('status')).toBeEmptyDOMElement()
+})
 
-      expect(
-        screen.queryByText(/datasetCreation\.stepOne\.uploader\.button/),
-      ).not.toBeInTheDocument()
-    })
-  })
+it('limits selections to the configured batch size and accepts case-insensitive extensions', async () => {
+  const { user } = setup()
+  await user.upload(input(), [file('First.PDF'), file('Second.pdf'), file('Third.pdf')])
+  await waitFor(() => expect(preview('Second.pdf')).toBeEnabled())
+  expect(preview('First.PDF')).toBeEnabled()
+  expect(upload).toHaveBeenCalledTimes(2)
+  expect(screen.queryByText('Third.pdf')).not.toBeInTheDocument()
+})
 
-  describe('event handlers', () => {
-    it('should handle file preview click', async () => {
-      const user = userEvent.setup()
-      const onPreview = vi.fn()
-      const fileItem = createMockFileItem({
-        file: createMockFile({ id: 'file-id' } as Partial<File>),
-      })
+it('connects Browse to the file chooser and exposes supported file types', async () => {
+  const { user } = setup()
+  const click = vi.spyOn(input(), 'click')
+  expect(input()).toHaveAttribute('accept', '.pdf,.docx,.txt,.md')
+  await user.click(screen.getByRole('button', { name: 'datasetCreation.stepOne.uploader.browse' }))
+  expect(click).toHaveBeenCalledOnce()
+})
 
-      render(<FileUploader {...defaultProps} fileList={[fileItem]} onPreview={onPreview} />)
+it('does not offer Browse when no file types are supported', () => {
+  setup({ formats: [] })
+  expect(
+    screen.queryByRole('button', { name: 'datasetCreation.stepOne.uploader.browse' }),
+  ).not.toBeInTheDocument()
+})
 
-      await user.click(
-        screen.getByRole('button', { name: 'datasetCreation.stepOne.filePreview test.pdf' }),
-      )
+// Synthetic drops exercise the OS file-data contract, not native drag gesture generation.
+it.each([true, false])('uploads dropped files with batch mode %s', async (supportBatchUpload) => {
+  setup({ supportBatchUpload })
+  const dataTransfer = new DataTransfer()
+  for (const name of ['One.pdf', 'Two.pdf', 'Three.pdf']) dataTransfer.items.add(file(name))
+  fireEvent.drop(tip(), { dataTransfer })
+  await waitFor(() => expect(preview('One.pdf')).toBeEnabled())
+  expect(upload).toHaveBeenCalledTimes(supportBatchUpload ? 2 : 1)
+  expect(screen.queryByText('Three.pdf')).not.toBeInTheDocument()
+})
 
-      expect(onPreview).toHaveBeenCalledWith(fileItem.file)
-    })
+type Entry = {
+  isFile: boolean
+  isDirectory: boolean
+  name: string
+  file?: (callback: (file: File) => void) => void
+  createReader?: () => { readEntries: (callback: (entries: Entry[]) => void) => void }
+}
+const fileEntry = (name: string): Entry => ({
+  isFile: true,
+  isDirectory: false,
+  name,
+  file: (callback) => callback(file(name)),
+})
+const directoryEntry = (name: string, batches: Entry[][]): Entry => ({
+  isFile: false,
+  isDirectory: true,
+  name,
+  createReader: () => {
+    let page = 0
+    return { readEntries: (callback) => callback(batches[page++] ?? []) }
+  },
+})
 
-    it('keeps other uploaded files when removing one after mounting with an existing list', async () => {
-      const user = userEvent.setup()
-      const onFileListUpdate = vi.fn()
-      const firstFile = createMockFileItem({
-        fileID: 'first',
-        file: createMockFile({ name: 'first.pdf', id: 'first-id' }),
-      })
-      const secondFile = createMockFileItem({
-        fileID: 'second',
-        file: createMockFile({ name: 'second.pdf', id: 'second-id' }),
-      })
+it('reads all directory batches and nested files while filtering unsupported files', async () => {
+  setup()
+  const directory = directoryEntry('folder', [
+    [fileEntry('invalid.exe')],
+    [directoryEntry('nested', [[fileEntry('Nested.pdf')]])],
+  ])
+  fireEvent.drop(tip(), { dataTransfer: { items: [{ webkitGetAsEntry: () => directory }] } })
+  await waitFor(() => expect(preview('Nested.pdf')).toBeEnabled())
+  expect(upload).toHaveBeenCalledOnce()
+  expect(screen.queryByText('invalid.exe')).not.toBeInTheDocument()
+})
 
-      render(
-        <FileUploader
-          {...defaultProps}
-          fileList={[firstFile, secondFile]}
-          onFileListUpdate={onFileListUpdate}
-        />,
-      )
-
-      await user.click(screen.getByRole('button', { name: 'common.operation.remove first.pdf' }))
-
-      expect(onFileListUpdate).toHaveBeenCalledWith([secondFile])
-    })
-  })
-
-  describe('upload announcements', () => {
-    it('keeps a live status mounted before any upload starts', () => {
-      render(<FileUploader {...defaultProps} />)
-      expect(screen.getByRole('status')).toBeEmptyDOMElement()
-    })
-
-    it('keeps progress announcements stable until the server confirms the file', () => {
-      const fileItem = createMockFileItem({ fileID: 'upload-1', progress: 0 })
-      const { rerender } = render(<FileUploader {...defaultProps} fileList={[fileItem]} />)
-      const status = screen.getByRole('status')
-      expect(status).toHaveTextContent('test.pdf: common.loading')
-
-      for (const progress of [25, 75, PROGRESS_COMPLETE]) {
-        rerender(<FileUploader {...defaultProps} fileList={[{ ...fileItem, progress }]} />)
-        expect(screen.getByRole('status')).toHaveTextContent('test.pdf: common.loading')
-        expect(screen.getByRole('status')).not.toHaveTextContent(
-          'datasetCreation.stepOne.uploader.completed',
-        )
-      }
-
-      rerender(
-        <FileUploader
-          {...defaultProps}
-          fileList={[
-            {
-              ...fileItem,
-              progress: PROGRESS_COMPLETE,
-              file: createMockFile({ id: 'server-file-id' }),
-            },
-          ]}
-        />,
-      )
-      expect(screen.getByRole('status')).toHaveTextContent(
-        'test.pdf: datasetCreation.stepOne.uploader.completed',
-      )
-      expect(screen.getByRole('status')).not.toHaveTextContent('common.loading')
-    })
-
-    it('announces failed and completed files by name within a batch', () => {
-      const pendingFiles = [
-        createMockFileItem({
-          fileID: 'upload-1',
-          file: createMockFile({ name: 'first.pdf' }),
-          progress: 10,
-        }),
-        createMockFileItem({
-          fileID: 'upload-2',
-          file: createMockFile({ name: 'second.pdf' }),
-          progress: 20,
-        }),
-      ]
-      const { rerender } = render(<FileUploader {...defaultProps} fileList={pendingFiles} />)
-      rerender(
-        <FileUploader
-          {...defaultProps}
-          fileList={[
-            { ...pendingFiles[0]!, progress: PROGRESS_ERROR },
-            {
-              ...pendingFiles[1]!,
-              progress: PROGRESS_COMPLETE,
-              file: createMockFile({ name: 'second.pdf', id: 'second-server-id' }),
-            },
-          ]}
-        />,
-      )
-      const status = screen.getByRole('status')
-      expect(status).toHaveTextContent('first.pdf: datasetCreation.stepOne.uploader.failed')
-      expect(status).toHaveTextContent('second.pdf: datasetCreation.stepOne.uploader.completed')
-      expect(status).toHaveAttribute('aria-atomic', 'false')
-    })
-  })
-
-  describe('upload progress', () => {
-    it('should show progress chart for uploading files', () => {
-      const fileItem = createMockFileItem({ progress: 50 })
-      render(<FileUploader {...defaultProps} fileList={[fileItem]} />)
-
-      expect(screen.getByTestId('pie-chart')).toBeInTheDocument()
-      expect(screen.getByText('50%')).toBeInTheDocument()
-    })
-
-    it('should not show progress chart for completed files', () => {
-      const fileItem = createMockFileItem({ progress: 100 })
-      render(<FileUploader {...defaultProps} fileList={[fileItem]} />)
-
-      expect(screen.queryByTestId('pie-chart')).not.toBeInTheDocument()
-    })
-
-    it('should not show progress chart for not started files', () => {
-      const fileItem = createMockFileItem({ progress: PROGRESS_NOT_STARTED })
-      render(<FileUploader {...defaultProps} fileList={[fileItem]} />)
-
-      expect(screen.queryByTestId('pie-chart')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('multiple files', () => {
-    it('should render all files in the list', () => {
-      const fileList = [
-        createMockFileItem({ fileID: 'f1', file: createMockFile({ name: 'doc1.pdf' }) }),
-        createMockFileItem({ fileID: 'f2', file: createMockFile({ name: 'doc2.docx' }) }),
-        createMockFileItem({ fileID: 'f3', file: createMockFile({ name: 'doc3.txt' }) }),
-      ]
-
-      render(<FileUploader {...defaultProps} fileList={fileList} />)
-
-      expect(screen.getByText('doc1.pdf')).toBeInTheDocument()
-      expect(screen.getByText('doc2.docx')).toBeInTheDocument()
-      expect(screen.getByText('doc3.txt')).toBeInTheDocument()
-    })
-  })
-
-  describe('styling', () => {
-    it('should have proper spacing', () => {
-      const { container } = render(<FileUploader {...defaultProps} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('mb-5')
-    })
-  })
+it('ignores an empty dropped directory', async () => {
+  setup()
+  await act(async () =>
+    fireEvent.drop(tip(), {
+      dataTransfer: { items: [{ webkitGetAsEntry: () => directoryEntry('empty', []) }] },
+    }),
+  )
+  expect(upload).not.toHaveBeenCalled()
+  expect(screen.getByRole('status')).toBeEmptyDOMElement()
 })

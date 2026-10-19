@@ -10,6 +10,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.clearAllTimers()
   vi.useRealTimers()
+  vi.restoreAllMocks()
 })
 
 describe('token refresh HTTP failures', () => {

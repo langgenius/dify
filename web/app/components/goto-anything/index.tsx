@@ -10,14 +10,7 @@ import {
   AutocompleteInputGroup,
   AutocompleteStatus,
 } from '@langgenius/dify-ui/autocomplete'
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogClose,
-  DialogPopup,
-  DialogPortal,
-  DialogTitle,
-} from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import {
   ScrollArea,
@@ -437,145 +430,139 @@ export function GotoAnything() {
         handle={gotoAnythingDialogHandle}
         onOpenChangeComplete={handleDialogOpenChangeComplete}
       >
-        <DialogPortal>
-          <DialogBackdrop />
-          <DialogPopup
-            initialFocus={inputRef}
-            className="fixed top-1/2 left-1/2 isolate flex max-h-[calc(100dvh-2rem)] w-160 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden p-0"
+        <DialogContent initialFocus={inputRef} className="w-160">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[url('/marketplace/hero-gradient-noise.svg')] bg-cover bg-center opacity-18 dark:opacity-28"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-linear-to-b from-components-panel-bg/20 via-components-panel-bg/70 to-components-panel-bg"
+          />
+          <DialogTitle className="sr-only">
+            {t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
+          </DialogTitle>
+          <Autocomplete<GotoAnythingOption>
+            items={visibleOptions}
+            value={searchQuery}
+            onValueChange={handleAutocompleteValueChange}
+            itemToStringValue={optionToInputValue}
+            filter={null}
+            grid={isCommandsMode}
+            open
+            inline
+            autoHighlight="always"
+            keepHighlight
+            loopFocus
           >
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[url('/marketplace/hero-gradient-noise.svg')] bg-cover bg-center opacity-18 dark:opacity-28"
-            />
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-linear-to-b from-components-panel-bg/20 via-components-panel-bg/70 to-components-panel-bg"
-            />
-            <DialogTitle className="sr-only">
-              {t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-            </DialogTitle>
-            <Autocomplete<GotoAnythingOption>
-              items={visibleOptions}
-              value={searchQuery}
-              onValueChange={handleAutocompleteValueChange}
-              itemToStringValue={optionToInputValue}
-              filter={null}
-              grid={isCommandsMode}
-              open
-              inline
-              autoHighlight="always"
-              keepHighlight
-              loopFocus
+            <AutocompleteInputGroup
+              size="medium"
+              className="h-auto shrink-0 gap-3 rounded-none border-0 bg-components-panel-bg-blur px-4 py-3 has-[input:focus]:ring-0"
             >
-              <AutocompleteInputGroup
-                size="medium"
-                className="h-auto shrink-0 gap-3 rounded-none border-0 bg-components-panel-bg-blur px-4 py-3 has-[input:focus]:ring-0"
+              <span aria-hidden className="i-ri-search-line size-4 text-text-quaternary" />
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <AutocompleteInput
+                  ref={inputRef}
+                  size="medium"
+                  aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
+                  placeholder={t(($) => $['gotoAnything.searchPlaceholder'], { ns: 'app' })}
+                  aria-describedby={searchHintId}
+                  className="px-0"
+                />
+              </div>
+              <KbdGroup className="hidden sm:flex">
+                {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
+                  <Kbd key={key}>{key}</Kbd>
+                ))}
+              </KbdGroup>
+            </AutocompleteInputGroup>
+            <p id={searchHintId} className="sr-only">
+              {t(($) => $['gotoAnything.searchHint'], { ns: 'app' })}
+            </p>
+
+            <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
+
+            <ScrollArea className="h-120 min-h-0 shrink overflow-hidden border-t border-divider-subtle">
+              <ScrollAreaViewport
+                tabIndex={-1}
+                aria-busy={isLoading || undefined}
+                className="scroll-pt-10 scroll-pb-1 overscroll-contain"
               >
-                <span aria-hidden className="i-ri-search-line size-4 text-text-quaternary" />
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <AutocompleteInput
-                    ref={inputRef}
-                    size="medium"
-                    aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-                    placeholder={t(($) => $['gotoAnything.searchPlaceholder'], { ns: 'app' })}
-                    aria-describedby={searchHintId}
-                    className="px-0"
-                  />
-                </div>
-                <KbdGroup className="hidden sm:flex">
-                  {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
-                    <Kbd key={key}>{key}</Kbd>
-                  ))}
-                </KbdGroup>
-              </AutocompleteInputGroup>
-              <p id={searchHintId} className="sr-only">
-                {t(($) => $['gotoAnything.searchHint'], { ns: 'app' })}
-              </p>
-
-              <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
-
-              <ScrollArea className="h-120 min-h-0 shrink overflow-hidden border-t border-divider-subtle">
-                <ScrollAreaViewport
-                  tabIndex={-1}
-                  aria-busy={isLoading || undefined}
-                  className="scroll-pt-10 scroll-pb-1 overscroll-contain"
+                <ScrollAreaContent
+                  className="min-h-full w-full max-w-full"
+                  style={{ minWidth: '100%' }}
                 >
-                  <ScrollAreaContent
-                    className="min-h-full w-full max-w-full"
-                    style={{ minWidth: '100%' }}
-                  >
-                    {emptyStateVariant === 'loading' && <EmptyState variant="loading" />}
+                  {emptyStateVariant === 'loading' && <EmptyState variant="loading" />}
 
-                    {emptyStateVariant === 'error' && <EmptyState variant="error" error={error} />}
+                  {emptyStateVariant === 'error' && <EmptyState variant="error" error={error} />}
 
-                    {emptyStateVariant === 'no-results' && isCommandsMode && (
-                      <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
-                        <div>
-                          <div className="text-sm font-medium text-text-tertiary">
-                            {t(($) => $['gotoAnything.noMatchingCommands'], { ns: 'app' })}
-                          </div>
-                          <div className="mt-1 text-xs text-text-quaternary">
-                            {t(($) => $['gotoAnything.tryDifferentSearch'], { ns: 'app' })}
-                          </div>
+                  {emptyStateVariant === 'no-results' && isCommandsMode && (
+                    <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
+                      <div>
+                        <div className="text-sm font-medium text-text-tertiary">
+                          {t(($) => $['gotoAnything.noMatchingCommands'], { ns: 'app' })}
+                        </div>
+                        <div className="mt-1 text-xs text-text-quaternary">
+                          {t(($) => $['gotoAnything.tryDifferentSearch'], { ns: 'app' })}
                         </div>
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {emptyStateVariant === 'no-results' && !isCommandsMode && (
-                      <EmptyState
-                        variant={emptyStateVariant}
-                        searchMode={searchMode}
-                        actions={actions}
-                      />
-                    )}
+                  {emptyStateVariant === 'no-results' && !isCommandsMode && (
+                    <EmptyState
+                      variant={emptyStateVariant}
+                      searchMode={searchMode}
+                      actions={actions}
+                    />
+                  )}
 
-                    {isCommandsMode ? (
-                      <CommandGrid
-                        groups={optionGroups}
-                        label={
-                          isHome
-                            ? t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })
-                            : optionGroups[0]!.label
-                        }
-                        onSelect={selectOption}
-                      />
-                    ) : (
-                      <ResultList
-                        groups={[
-                          {
-                            id: 'commands',
-                            label: getGroupLabel('command'),
-                            items: optionSuggestions,
-                          },
-                          ...Object.entries(groupedResults).map(([type, items]) => ({
-                            id: type,
-                            label: getGroupLabel(type),
-                            items,
-                          })),
-                        ]}
-                        label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-                        onSelect={selectOption}
-                      />
-                    )}
-                  </ScrollAreaContent>
-                </ScrollAreaViewport>
-                <ScrollAreaScrollbar>
-                  <ScrollAreaThumb />
-                </ScrollAreaScrollbar>
-              </ScrollArea>
+                  {isCommandsMode ? (
+                    <CommandGrid
+                      groups={optionGroups}
+                      label={
+                        isHome
+                          ? t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })
+                          : optionGroups[0]!.label
+                      }
+                      onSelect={selectOption}
+                    />
+                  ) : (
+                    <ResultList
+                      groups={[
+                        {
+                          id: 'commands',
+                          label: getGroupLabel('command'),
+                          items: optionSuggestions,
+                        },
+                        ...Object.entries(groupedResults).map(([type, items]) => ({
+                          id: type,
+                          label: getGroupLabel(type),
+                          items,
+                        })),
+                      ]}
+                      label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
+                      onSelect={selectOption}
+                    />
+                  )}
+                </ScrollAreaContent>
+              </ScrollAreaViewport>
+              <ScrollAreaScrollbar>
+                <ScrollAreaThumb />
+              </ScrollAreaScrollbar>
+            </ScrollArea>
 
-              <Footer
-                onSelectMode={changeSearchQuery}
-                resultCount={trimmedSearchQuery ? autocompleteResultCount : null}
-                isLoading={isLoading}
-                hasPartialFailure={hasUnavailableServices && !isError}
-              />
-            </Autocomplete>
-            <DialogClose tabIndex={-1} className="sr-only">
-              {t(($) => $['operation.close'], { ns: 'common' })}
-            </DialogClose>
-          </DialogPopup>
-        </DialogPortal>
+            <Footer
+              onSelectMode={changeSearchQuery}
+              resultCount={trimmedSearchQuery ? autocompleteResultCount : null}
+              isLoading={isLoading}
+              hasPartialFailure={hasUnavailableServices && !isError}
+            />
+          </Autocomplete>
+          <DialogClose tabIndex={-1} className="sr-only">
+            {t(($) => $['operation.close'], { ns: 'common' })}
+          </DialogClose>
+        </DialogContent>
       </Dialog>
 
       {activePlugin && canInstallPlugin && (

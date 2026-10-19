@@ -185,12 +185,13 @@ describe('unified Console server identity', () => {
         identities.run(identity, () => consoleClient.systemFeatures.get()),
       ),
     )
-    expect(
-      fetch.mock.calls.map(([request]) => (request as Request).headers.get('cookie')).sort(),
-    ).toEqual(['session=alice', 'session=bob'])
-    expect(
-      fetch.mock.calls.map(([request]) => (request as Request).headers.get('X-CSRF-Token')).sort(),
-    ).toEqual(['alice', 'bob'])
+    expect(fetch.mock.calls.map(([request]) => request.headers.get('cookie')).sort()).toEqual([
+      'session=alice',
+      'session=bob',
+    ])
+    expect(fetch.mock.calls.map(([request]) => request.headers.get('X-CSRF-Token')).sort()).toEqual(
+      ['alice', 'bob'],
+    )
   })
 
   it('supports anonymous requests and selects the internal host at call time', async () => {

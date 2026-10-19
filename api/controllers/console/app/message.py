@@ -45,7 +45,9 @@ from fields.conversation_fields import (
     MessageDetail as BaseMessageDetailResponse,
 )
 from fields.conversation_fields import MessageResponseSource
+from fields.message_fields import SuggestedQuestionsResponse
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import login_required
@@ -53,7 +55,7 @@ from machinery.context import RequestContext
 from models.account import Account
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
-from services.agent.errors import AgentNotFoundError
+from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -86,7 +88,7 @@ class ChatMessagesQuery(BaseModel):
         return uuid_value(value)
 
 
-class MessageFeedbackPayload(_MessageFeedbackPayloadBase):
+class AppMessageFeedbackPayload(_MessageFeedbackPayloadBase):
     message_id: str = Field(..., description="Message ID")
 
     @field_validator("message_id")
@@ -97,10 +99,6 @@ class MessageFeedbackPayload(_MessageFeedbackPayloadBase):
 
 class AnnotationCountResponse(ResponseModel):
     count: int = Field(description="Number of annotations")
-
-
-class SuggestedQuestionsResponse(ResponseModel):
-    data: list[str] = Field(description="Suggested question")
 
 
 class MessageDetailResponse(BaseMessageDetailResponse):
@@ -116,7 +114,7 @@ class MessageInfiniteScrollPaginationResponse(ResponseModel):
 register_schema_models(
     console_ns,
     ChatMessagesQuery,
-    MessageFeedbackPayload,
+    AppMessageFeedbackPayload,
 )
 register_response_schema_models(
     console_ns,
@@ -155,6 +153,7 @@ class ChatMessageListApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages")
 class AgentChatMessageListApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc("list_agent_chat_messages")
     @console_ns.doc(description="Get Agent App chat messages for a conversation with pagination")
     @console_ns.doc(params={"agent_id": "Agent ID"})
@@ -196,18 +195,17 @@ class MessageFeedbackApi(Resource):
     @console_ns.doc("create_message_feedback")
     @console_ns.doc(description="Create or update message feedback (like/dislike)")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
+    @console_ns.expect(console_ns.models[AppMessageFeedbackPayload.__name__])
     @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(404, "Message not found")
-    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
     @with_session
     @get_app_model
-    @model_validate(MessageFeedbackPayload)
-    def post(self, req_data: MessageFeedbackPayload, session: Session, current_user: Account, app_model: App):
+    @model_validate(AppMessageFeedbackPayload)
+    def post(self, req_data: AppMessageFeedbackPayload, session: Session, current_user: Account, app_model: App):
         return _update_message_feedback(
             args=req_data,
             session=session,
@@ -218,10 +216,11 @@ class MessageFeedbackApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/feedbacks")
 class AgentMessageFeedbackApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc("create_agent_message_feedback")
     @console_ns.doc(description="Create or update Agent App message feedback")
     @console_ns.doc(params={"agent_id": "Agent ID"})
-    @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
+    @console_ns.expect(console_ns.models[AppMessageFeedbackPayload.__name__])
     @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(404, "Agent or message not found")
     @setup_required
@@ -231,10 +230,10 @@ class AgentMessageFeedbackApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @with_session
-    @model_validate(MessageFeedbackPayload)
+    @model_validate(AppMessageFeedbackPayload)
     def post(
         self,
-        req_data: MessageFeedbackPayload,
+        req_data: AppMessageFeedbackPayload,
         session: Session,
         current_tenant_id: str,
         current_user: Account,
@@ -278,6 +277,15 @@ class MessageAnnotationCountApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages/<uuid:message_id>/suggested-questions")
 class MessageSuggestedQuestionApi(Resource):
+    @error_responses(
+        AppNotFoundError,
+        AppSuggestedQuestionsAfterAnswerDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("get_message_suggested_questions")
     @console_ns.doc(description="Get suggested questions for a message")
     @console_ns.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
@@ -306,6 +314,16 @@ class MessageSuggestedQuestionApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages/<uuid:message_id>/suggested-questions")
 class AgentMessageSuggestedQuestionApi(Resource):
+    @error_responses(
+        AgentNotFoundError,
+        AgentVersionNotFoundError,
+        AppSuggestedQuestionsAfterAnswerDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("get_agent_message_suggested_questions")
     @console_ns.doc(description="Get suggested questions for an Agent App message")
     @console_ns.doc(params={"agent_id": "Agent ID", "message_id": "Message ID"})
@@ -349,6 +367,7 @@ class MessageApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/messages/<uuid:message_id>")
 class AgentMessageApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc("get_agent_message")
     @console_ns.doc(description="Get Agent App message details by ID")
     @console_ns.doc(params={"agent_id": "Agent ID", "message_id": "Message ID"})
@@ -454,7 +473,7 @@ def _list_chat_messages(
 
 def _update_message_feedback(
     *,
-    args: MessageFeedbackPayload,
+    args: AppMessageFeedbackPayload,
     session: Session,
     current_user: Account,
     app_model: App,
@@ -498,7 +517,6 @@ def _update_message_feedback(
 def _get_message_suggested_questions(
     *, context: RequestContext, app_id: str, app_mode: str, message_id: UUID
 ) -> dict[str, object]:
-
     try:
         questions = application_services().message_suggested_questions.get_suggested_questions(
             app_id=app_id,

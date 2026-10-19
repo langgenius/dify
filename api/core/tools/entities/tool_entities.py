@@ -4,7 +4,7 @@ import base64
 import contextlib
 from collections.abc import Mapping
 from enum import StrEnum, auto
-from typing import Any, Union
+from typing import Any
 
 from pydantic import (
     BaseModel,
@@ -549,7 +549,7 @@ class ToolSelector(BaseModel):
         type: ToolParameter.ToolParameterType = Field(..., description="The type of the parameter")
         required: bool = Field(..., description="Whether the parameter is required")
         description: str = Field(..., description="The description of the parameter")
-        default: Union[int, float, str] | None = None
+        default: int | float | str | None = None
         options: list[PluginParameterOption] | None = None
 
     provider_id: str = Field(..., description="The id of the provider")

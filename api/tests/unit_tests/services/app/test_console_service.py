@@ -477,6 +477,10 @@ class Lifecycle:
         assert settings.app == {"mode": params.mode}
         return RECORD
 
+    def create_draft(self, context: RequestContext, app_id: str) -> None:
+        del context, app_id
+        pytest.fail("Unexpected draft creation")
+
     def prepare_creation(self, context: RequestContext, params: CreateAppParams) -> AppCreationSettings:
         assert context is CONTEXT
         return AppCreationSettings({"mode": params.mode}, None)

@@ -1,9 +1,3 @@
-from repositories.knowledge.dataset_read_repository import (
-    get_dataset_available_segment_count,
-    get_document_hit_count,
-    get_document_segment_count,
-)
-
 """
 Integration tests for Dataset and Document model properties using testcontainers.
 
@@ -21,8 +15,11 @@ from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from repositories.knowledge.dataset_read_repository import (
     get_dataset_available_document_count,
+    get_dataset_available_segment_count,
     get_dataset_document_count,
     get_dataset_word_count,
+    get_document_hit_count,
+    get_document_segment_count,
     get_next_segment,
     get_previous_segment,
     get_segment_dataset,

@@ -23,9 +23,9 @@ def test_frozen_variables() -> None:
     with pytest.raises(ValidationError):
         int_var.value = 100  # pyrefly: ignore[read-only]
 
-    float_var = FloatVariable(name="float", value=3.14)
+    float_var = FloatVariable(name="float", value=float("3.14"))
     with pytest.raises(ValidationError):
-        float_var.value = 2.718  # pyrefly: ignore[read-only]
+        float_var.value = float("2.718")  # pyrefly: ignore[read-only]
 
     secret_var = SecretVariable(name="secret", value="secret_value")
     with pytest.raises(ValidationError):
@@ -43,7 +43,7 @@ def test_variable_value_type_immutable() -> None:
     with pytest.raises(ValidationError):
         IntegerVariable(value_type=SegmentType.ARRAY_ANY, name=var.name, value=var.value)
 
-    var = FloatVariable(name="float", value=3.14)
+    var = FloatVariable(name="float", value=float("3.14"))
     with pytest.raises(ValidationError):
         FloatVariable(value_type=SegmentType.ARRAY_ANY, name=var.name, value=var.value)
 
@@ -80,8 +80,8 @@ def test_variable_to_object() -> None:
     assert var.to_object() == "text"
     var = IntegerVariable(name="integer", value=42)
     assert var.to_object() == 42
-    var = FloatVariable(name="float", value=3.14)
-    assert var.to_object() == 3.14
+    var = FloatVariable(name="float", value=float("3.14"))
+    assert var.to_object() == float("3.14")
     var = SecretVariable(name="secret", value="secret_value")
     assert var.to_object() == "secret_value"
 

@@ -122,26 +122,6 @@ describe('variable-in-markdown', () => {
       expect(screen.getByText('Plain value')).toBeInTheDocument()
     })
 
-    it('should render a select preview control for select inputs', () => {
-      render(
-        <Note
-          input={{
-            type: InputVarType.select,
-            output_variable_name: 'approval',
-            option_source: {
-              type: 'constant',
-              selector: [],
-              value: ['Approved', 'Rejected'],
-            },
-          }}
-          nodeName={(nodeId) => nodeId}
-        />,
-      )
-
-      expect(screen.getByTestId('human-input-note-select-preview')).toBeInTheDocument()
-      expect(screen.getByText('Approved')).toBeInTheDocument()
-    })
-
     it('should render dynamic select inputs as variable information without a select control', () => {
       render(
         <Note
@@ -158,7 +138,6 @@ describe('variable-in-markdown', () => {
         />,
       )
 
-      expect(screen.queryByTestId('human-input-note-select-preview')).not.toBeInTheDocument()
       expect(
         screen.queryByRole('combobox', { name: 'human-input-note-select' }),
       ).not.toBeInTheDocument()
@@ -185,7 +164,10 @@ describe('variable-in-markdown', () => {
 
       await user.click(screen.getByRole('combobox', { name: 'human-input-note-select' }))
 
-      expect(await screen.findByRole('option', { name: 'Rejected' })).toBeInTheDocument()
+      await user.click(await screen.findByRole('option', { name: 'Rejected' }))
+      expect(screen.getByRole('combobox', { name: 'human-input-note-select' })).toHaveTextContent(
+        'Rejected',
+      )
     })
 
     it('should render upload placeholders for file inputs', () => {
@@ -202,7 +184,6 @@ describe('variable-in-markdown', () => {
         />,
       )
 
-      expect(screen.getByTestId('human-input-note-file-preview')).toBeInTheDocument()
       expect(screen.getByText('common.fileUploader.uploadFromComputer')).toBeInTheDocument()
       expect(screen.getByText('common.fileUploader.pasteFileLink')).toBeInTheDocument()
     })

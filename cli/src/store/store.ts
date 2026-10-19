@@ -2,7 +2,6 @@ import type { Options as LockOptions } from 'lockfile'
 import type { Platform } from '@/sys'
 import { promises as fsp } from 'node:fs'
 import { dirname } from 'node:path'
-import { AsyncEntry } from '@napi-rs/keyring'
 import {
   binaryTag,
   CORE_SCHEMA,
@@ -17,11 +16,12 @@ import {
 } from 'js-yaml'
 import lockfile from 'lockfile'
 import { pid, resolvePlatform } from '@/sys'
+import { DIR_PERM, FILE_PERM } from './dir'
 import { BadYamlFormatError, ConcurrentAccessError } from './errors'
 
-const FILE_PERM = 0o600
-const DIR_PERM = 0o700
 const LOCK_STALE_MS = 30_000
+// Parallel difyctl runs (an agent's usual case) wait their turn instead of failing.
+const LOCK_WAIT_MS = 5_000
 const YAML_LOAD_SCHEMA = CORE_SCHEMA.withTags(
   binaryTag,
   mergeTag,
@@ -43,21 +43,10 @@ function unlockAsync(path: string): Promise<void> {
   })
 }
 
-export type Key<T> = {
-  default: T
-  key: string
-}
-
-export type Store = {
-  get: <T>(key: Key<T>) => Promise<T>
-  set: <T>(key: Key<T>, value: T) => Promise<void>
-  unset: <T>(key: Key<T>) => Promise<void>
-}
-
 export const STORAGE_MODES = ['keychain', 'file'] as const
 export type StorageMode = (typeof STORAGE_MODES)[number]
 
-abstract class FileBasedStore implements Store {
+export class YamlStore {
   filePath: string
   private rawContent: string | undefined
   private readonly platform: Platform
@@ -110,6 +99,7 @@ abstract class FileBasedStore implements Store {
     try {
       await lockAsync(`${this.filePath}.lock`, {
         stale: LOCK_STALE_MS,
+        wait: LOCK_WAIT_MS,
       })
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code
@@ -142,36 +132,13 @@ abstract class FileBasedStore implements Store {
     return this.rawContent
   }
 
-  protected async withLock<R>(body: () => R | Promise<R>): Promise<R> {
+  private async withLock<R>(body: () => R | Promise<R>): Promise<R> {
     await this.lock()
     try {
       return await body()
     } finally {
       await this.unlock()
     }
-  }
-
-  async get<T>(key: Key<T>): Promise<T> {
-    return this.withLock(async () => {
-      await this.load()
-      return this.doGet(key)
-    })
-  }
-
-  async set<T>(key: Key<T>, value: T): Promise<void> {
-    await this.withLock(async () => {
-      await this.load()
-      this.doSet(key, value)
-      await this.flush()
-    })
-  }
-
-  async unset<T>(key: Key<T>): Promise<void> {
-    await this.withLock(async () => {
-      await this.load()
-      this.doUnset(key)
-      await this.flush()
-    })
   }
 
   /**
@@ -185,26 +152,15 @@ abstract class FileBasedStore implements Store {
     }
   }
 
-  abstract doGet<T>(key: Key<T>): T
-  abstract doSet<T>(key: Key<T>, value: T): void
-  abstract doUnset<T>(key: Key<T>): void
-}
-
-export class YamlStore extends FileBasedStore {
-  constructor(file_path: string) {
-    super(file_path)
-  }
-
-  doGet<T>(key: Key<T>): T {
-    const data = loadYaml(this.getRawContent(), this.filePath)
-    const parts = key.key.split('.')
-    let current: unknown = data
-    for (const part of parts) {
-      if (current === null || current === undefined || typeof current !== 'object')
-        return key.default
-      current = (current as Record<string, unknown>)[part]
-    }
-    return (current as T) ?? key.default
+  /**
+   * Remove the file only when `matches` accepts what it holds now. The read and the
+   * removal share one lock, so a file another process rewrote in between survives.
+   */
+  async rmIf(matches: (doc: Record<string, unknown> | null) => boolean): Promise<void> {
+    await this.withLock(async () => {
+      await this.load()
+      if (matches(loadYaml(this.getRawContent(), this.filePath))) await this.rm()
+    })
   }
 
   async getTyped<T>(): Promise<T | null> {
@@ -221,41 +177,6 @@ export class YamlStore extends FileBasedStore {
       await this.flush()
     })
   }
-
-  doSet<T>(key: Key<T>, value: T): void {
-    const data = loadYaml(this.getRawContent(), this.filePath) || {}
-    const parts = key.key.split('.')
-    const lastKey = parts.pop()
-    if (lastKey === undefined) return
-    let current: Record<string, unknown> = data
-    for (const part of parts) {
-      if (
-        current[part] === null ||
-        current[part] === undefined ||
-        typeof current[part] !== 'object'
-      )
-        current[part] = {}
-      current = current[part] as Record<string, unknown>
-    }
-    current[lastKey] = value
-    this.setRawContent(dump(data, { lineWidth: -1, noRefs: true }))
-  }
-
-  doUnset<T>(key: Key<T>): void {
-    const data = loadYaml(this.getRawContent(), this.filePath) || {}
-    const parts = key.key.split('.')
-    const lastKey = parts.pop()
-    if (lastKey === undefined) return
-    let current: Record<string, unknown> = data
-    for (const part of parts) {
-      const next = current[part]
-      if (next === null || next === undefined || typeof next !== 'object') return
-      current = next as Record<string, unknown>
-    }
-    if (!(lastKey in current)) return
-    delete current[lastKey]
-    this.setRawContent(dump(data, { lineWidth: -1, noRefs: true }))
-  }
 }
 
 function loadYaml(raw: string | undefined, file_path: string): Record<string, unknown> | null {
@@ -268,40 +189,5 @@ function loadYaml(raw: string | undefined, file_path: string): Record<string, un
   } catch (err) {
     if (err instanceof YAMLException) throw new BadYamlFormatError(file_path, raw, err)
     throw err
-  }
-}
-
-/**
- * OS-keyring-based storage primitive. Sits at the same layer as
- * `FileBasedStore`: implements `Store` with each `Key<T>` corresponding to a
- * single keyring entry under the configured service. Values are JSON-encoded.
- */
-export class KeyringBasedStore implements Store {
-  private readonly service: string
-
-  constructor(service: string) {
-    this.service = service
-  }
-
-  async get<T>(key: Key<T>): Promise<T> {
-    try {
-      const v = await new AsyncEntry(this.service, key.key).getPassword()
-      if (v === null || v === undefined || v === '') return key.default
-      return JSON.parse(v) as T
-    } catch {
-      return key.default
-    }
-  }
-
-  async set<T>(key: Key<T>, value: T): Promise<void> {
-    await new AsyncEntry(this.service, key.key).setPassword(JSON.stringify(value))
-  }
-
-  async unset<T>(key: Key<T>): Promise<void> {
-    try {
-      await new AsyncEntry(this.service, key.key).deletePassword()
-    } catch {
-      /* missing entry is fine */
-    }
   }
 }

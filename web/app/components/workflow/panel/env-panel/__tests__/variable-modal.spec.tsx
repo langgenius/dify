@@ -1,82 +1,20 @@
-import type {
-  ProviderModelWithStatusEntity,
-  ProviderWithModelsResponse,
-} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
 import type { Shape } from '@/app/components/workflow/store/workflow'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import {
-  ConfigurationMethodEnum,
-  ModelStatusEnum,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import VariableModal from '../variable-modal'
-
-type MockModelParameterModalProps = {
-  provider: string
-  modelId: string
-  completionParams: Record<string, unknown>
-  modelList?: ProviderWithModelsResponse[]
-  setModel: (model: { provider: string; modelId: string; mode?: string }) => void
-  onCompletionParamsChange: (params: Record<string, unknown>) => void
-}
-
-let mockTextGenerationModelList: ProviderWithModelsResponse[] = []
-let latestModelParameterModalProps: MockModelParameterModalProps | undefined
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useTextGenerationCurrentProviderAndModelAndModelList: () => ({
-    currentProvider: undefined,
-    currentModel: undefined,
-    textGenerationModelList: mockTextGenerationModelList,
-    activeTextGenerationModelList: mockTextGenerationModelList,
-  }),
-}))
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    default: (props: MockModelParameterModalProps) => {
-      latestModelParameterModalProps = props
-
-      return (
-        <div>
-          <div>{props.modelId ? `selected:${props.modelId}` : 'selected:none'}</div>
-          {(props.modelList ?? mockTextGenerationModelList).flatMap((provider) =>
-            provider.models.map((model) => (
-              <button
-                key={`${provider.provider}:${model.model}`}
-                type="button"
-                onClick={() =>
-                  props.setModel({
-                    provider: provider.provider,
-                    modelId: model.model,
-                    mode: model.model_properties.mode as string,
-                  })
-                }
-              >
-                {model.model}
-              </button>
-            )),
-          )}
-          <button
-            type="button"
-            onClick={() =>
-              props.onCompletionParamsChange({ ...props.completionParams, temperature: 0.4 })
-            }
-          >
-            Set temperature
-          </button>
-        </div>
-      )
-    },
-  }),
-)
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -89,29 +27,6 @@ vi.mock('@/app/notifications', () => ({
 
 const mockToastError = vi.mocked(toast.error)
 
-const createModelItem = (model: string, mode: string): ProviderModelWithStatusEntity => ({
-  model,
-  label: { en_US: model, zh_Hans: model },
-  model_type: ModelTypeEnum.textGeneration,
-  features: [],
-  fetch_from: ConfigurationMethodEnum.predefinedModel,
-  status: ModelStatusEnum.active,
-  model_properties: { mode },
-  load_balancing_enabled: false,
-})
-
-const createModelProvider = (): ProviderWithModelsResponse => ({
-  tenant_id: 'test-workspace',
-  provider: 'openai',
-  icon_small: { en_US: '', zh_Hans: '' },
-  label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-  models: [
-    createModelItem('chat-model', 'chat'),
-    createModelItem('completion-model', 'completion'),
-  ],
-  status: ModelStatusEnum.active,
-})
-
 const createEnv = (overrides: Partial<EnvironmentVariable> = {}): EnvironmentVariable => ({
   id: 'env-1',
   name: 'api_key',
@@ -121,29 +36,65 @@ const createEnv = (overrides: Partial<EnvironmentVariable> = {}): EnvironmentVar
   ...overrides,
 })
 
-const renderWithProviders = (
-  ui: ReactElement,
-  options: {
-    storeState?: Partial<Shape>
-  } = {},
-) => {
-  const store = createWorkflowStore({})
+const renderWithProviders = createNuqsTestRenderer(
+  (
+    ui: ReactElement,
+    options: {
+      storeState?: Partial<Shape>
+    } = {},
+  ) => {
+    const store = createWorkflowStore({})
 
-  if (options.storeState) store.setState(options.storeState)
+    if (options.storeState) store.setState(options.storeState)
 
-  const result = render(<WorkflowContext value={store}>{ui}</WorkflowContext>)
+    const queryClient = createConsoleQueryClient()
+    seedModelProviderQueries(queryClient, [
+      createModelCatalogFixture({
+        models: [
+          createCatalogModelFixture({
+            model: 'chat-model',
+            label: { en_US: 'chat-model' },
+            model_properties: { mode: 'chat' },
+          }),
+          createCatalogModelFixture({
+            model: 'completion-model',
+            label: { en_US: 'completion-model' },
+            model_properties: { mode: 'completion' },
+          }),
+        ],
+      }),
+    ])
+    queryClient.setQueryDefaults(
+      consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.key(),
+      {
+        initialData: {
+          data: [
+            {
+              name: 'temperature',
+              label: { en_US: 'Temperature' },
+              type: 'float',
+              default: 0.7,
+              min: 0,
+              max: 2,
+            },
+          ],
+        },
+      },
+    )
+    const result = renderWithConsoleQuery(<WorkflowContext value={store}>{ui}</WorkflowContext>, {
+      queryClient,
+    })
 
-  return {
-    ...result,
-    store,
-  }
-}
+    return {
+      ...result,
+      store,
+    }
+  },
+)
 
 describe('VariableModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockTextGenerationModelList = [createModelProvider()]
-    latestModelParameterModalProps = undefined
   })
 
   it('closes from an accessible icon button', async () => {
@@ -194,7 +145,9 @@ describe('VariableModal', () => {
 
   it('rejects invalid and duplicate variable names', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<VariableModal onClose={vi.fn()} onSave={vi.fn()} />, {
+    const onSave = vi.fn()
+    const onClose = vi.fn()
+    renderWithProviders(<VariableModal onClose={onClose} onSave={onSave} />, {
       storeState: {
         environmentVariables: [
           createEnv({ id: 'env-existing', name: 'duplicated', value_type: 'string', value: '1' }),
@@ -202,9 +155,8 @@ describe('VariableModal', () => {
       },
     })
 
-    fireEvent.change(screen.getByPlaceholderText('workflow.env.modal.namePlaceholder'), {
-      target: { value: '1bad' },
-    })
+    await user.click(screen.getByRole('textbox', { name: 'workflow.env.modal.name' }))
+    await user.paste('1bad')
     expect(mockToastError).toHaveBeenCalled()
 
     mockToastError.mockClear()
@@ -216,6 +168,8 @@ describe('VariableModal', () => {
     expect(mockToastError).toHaveBeenCalledWith(
       'appDebug.varKeyError.keyAlreadyExists:{"key":"workflow.env.modal.name"}',
     )
+    expect(onSave).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('loads existing secret values and converts them to numbers when editing', async () => {
@@ -274,8 +228,18 @@ describe('VariableModal', () => {
       screen.getByPlaceholderText('workflow.env.modal.namePlaceholder'),
       'for_summarize',
     )
-    await user.click(screen.getByRole('button', { name: 'chat-model' }))
-    await user.click(screen.getByRole('button', { name: 'Set temperature' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+    const picker = within(
+      await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+    )
+    await user.click(picker.getByRole('button', { name: /^chat-model/ }))
+    await user.click(screen.getByRole('button', { name: /modelProvider.modelSettings/ }))
+    await user.click(screen.getByRole('switch', { name: 'Temperature' }))
+    const temperature = screen.getByRole('spinbutton', { name: 'Temperature' })
+    await user.clear(temperature)
+    await user.type(temperature, '0.4')
+    await user.tab()
+    await user.keyboard('{Escape}')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(onSave).toHaveBeenCalledWith({
@@ -329,26 +293,19 @@ describe('VariableModal', () => {
       },
     })
 
-    expect(screen.getByText('selected:chat-model')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'chat-model' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'completion-model' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'String' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Number' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Secret', pressed: false })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'workflow.blocks.llm' })).toBeEnabled()
-
-    act(() => {
-      latestModelParameterModalProps?.setModel({
-        provider: 'openai',
-        modelId: 'completion-model',
-        mode: 'completion',
-      })
-    })
+    await user.click(screen.getByRole('button', { name: /^chat-model/ }))
+    const picker = within(
+      await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+    )
+    expect(picker.getByRole('button', { name: /^chat-model/ })).toBeInTheDocument()
+    expect(picker.queryByRole('button', { name: /^completion-model/ })).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(mockToastError).toHaveBeenCalledWith(
-      'modelProvider.modelProvider.selector.incompatibleTip',
-    )
     expect(onSave).toHaveBeenCalledWith(env)
   })
 })

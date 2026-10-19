@@ -8,12 +8,24 @@ from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, create_autospec, patch
 
+# Ensure OpenDAL fs writes to tmp to avoid polluting workspace
+os.environ.setdefault("OPENDAL_SCHEME", "fs")
+os.environ.setdefault("OPENDAL_FS_ROOT", "/tmp/dify-storage")
+os.environ.setdefault("STORAGE_TYPE", "opendal")
+
 import pytest
 from flask import Flask
 from redis import Redis
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import Session, sessionmaker
+
+import core.db.session_factory as session_factory_module
+from extensions import ext_redis
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.base import TypeBase
+from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.rbac_fakes import RBACDomain, build_rbac_domain
 
 if TYPE_CHECKING:
     from extensions.ext_application_services import ApplicationServices
@@ -26,6 +38,8 @@ ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.abspath(os.path.join(ABS_PATH, os.pardir, os.pardir))
 
 CACHED_APP = Flask(__name__)
+
+pytest_plugins = ("tests.unit_tests.audio_runtime_fixtures", "tests.unit_tests.agent_runtime_fixtures")
 
 # set global mock for Redis client
 redis_mock = MagicMock()
@@ -40,18 +54,6 @@ redis_mock.expire = MagicMock()
 redis_mock.hgetall = MagicMock(return_value={})
 redis_mock.hdel = MagicMock()
 redis_mock.incr = MagicMock(return_value=1)
-
-# Ensure OpenDAL fs writes to tmp to avoid polluting workspace
-os.environ.setdefault("OPENDAL_SCHEME", "fs")
-os.environ.setdefault("OPENDAL_FS_ROOT", "/tmp/dify-storage")
-os.environ.setdefault("STORAGE_TYPE", "opendal")
-
-import core.db.session_factory as session_factory_module
-from extensions import ext_redis
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.base import TypeBase
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.rbac_fakes import RBACDomain, build_rbac_domain
 
 if TYPE_CHECKING:
     from extensions.application_services.app import AppServices

@@ -188,7 +188,7 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
                 return_value=None,
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="No OAuth Client Config for notion"):
                 method(api, "tenant-1", user, "notion")
 
     def test_get_without_credential_id_sets_cookie(self, app: Flask):
@@ -466,7 +466,7 @@ class TestDatasourceAuth:
                 side_effect=CredentialsValidateFailedError("invalid"),
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="invalid"):
                 method(api, DatasourceCredentialPayload.model_validate(payload), "tenant-1", "notion")
 
     def test_get_success(self, app: Flask):
@@ -497,7 +497,7 @@ class TestDatasourceAuth:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="1 validation error for DatasourceCredentialPayload\\\ncredentials"):
                 method(api, DatasourceCredentialPayload.model_validate(payload), "tenant-1", "notion")
 
     def test_get_empty_list(self, app: Flask):
@@ -558,7 +558,9 @@ class TestDatasourceAuthDeleteApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(
+                ValueError, match="1 validation error for DatasourceCredentialDeletePayload\\\ncredential_id"
+            ):
                 method(api, DatasourceCredentialDeletePayload.model_validate(payload), "tenant-1", "notion")
 
 
@@ -880,7 +882,7 @@ class TestDatasourceAuthDefaultApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="1 validation error for DatasourceDefaultPayload\\\nid"):
                 method(api, DatasourceDefaultPayload.model_validate(payload), "tenant-1", "notion")
 
 
@@ -924,7 +926,7 @@ class TestDatasourceUpdateProviderNameApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="1 validation error for DatasourceUpdateNamePayload\\\nname"):
                 method(api, DatasourceUpdateNamePayload.model_validate(payload), "tenant-1", "notion")
 
     def test_update_name_missing_credential_id(self, app: Flask):
@@ -937,5 +939,5 @@ class TestDatasourceUpdateProviderNameApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="1 validation error for DatasourceUpdateNamePayload\\\ncredential_id"):
                 method(api, DatasourceUpdateNamePayload.model_validate(payload), "tenant-1", "notion")

@@ -284,21 +284,21 @@ def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_sess
     # 5. w:fldChar (end)
 
     run1 = OxmlElement("w:r")
-    fldCharBegin = OxmlElement("w:fldChar")
-    fldCharBegin.set(qn("w:fldCharType"), "begin")
-    run1.append(fldCharBegin)
+    fld_char_begin = OxmlElement("w:fldChar")
+    fld_char_begin.set(qn("w:fldCharType"), "begin")
+    run1.append(fld_char_begin)
     p._p.append(run1)
 
     run2 = OxmlElement("w:r")
-    instrText = OxmlElement("w:instrText")
-    _set_oxml_text(instrText, ' HYPERLINK "http://example.com" ')
-    run2.append(instrText)
+    instr_text = OxmlElement("w:instrText")
+    _set_oxml_text(instr_text, ' HYPERLINK "http://example.com" ')
+    run2.append(instr_text)
     p._p.append(run2)
 
     run3 = OxmlElement("w:r")
-    fldCharSep = OxmlElement("w:fldChar")
-    fldCharSep.set(qn("w:fldCharType"), "separate")
-    run3.append(fldCharSep)
+    fld_char_sep = OxmlElement("w:fldChar")
+    fld_char_sep.set(qn("w:fldCharType"), "separate")
+    run3.append(fld_char_sep)
     p._p.append(run3)
 
     run4 = OxmlElement("w:r")
@@ -308,9 +308,9 @@ def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_sess
     p._p.append(run4)
 
     run5 = OxmlElement("w:r")
-    fldCharEnd = OxmlElement("w:fldChar")
-    fldCharEnd.set(qn("w:fldCharType"), "end")
-    run5.append(fldCharEnd)
+    fld_char_end = OxmlElement("w:fldChar")
+    fld_char_end.set(qn("w:fldCharType"), "end")
+    run5.append(fld_char_end)
     p._p.append(run5)
 
     with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:

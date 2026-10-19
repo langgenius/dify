@@ -127,125 +127,29 @@ def main(arg1: str, arg2: str):
     expect(extractFunctionParams(code, language)).toEqual(['arg1', 'arg2'])
   })
 
-  describe('Python3', () => {
-    it('handles no parameters', () => {
-      const result = extractFunctionParams(SAMPLE_CODES.python3.noParams, CodeLanguage.python3)
-      expect(result).toEqual([])
-    })
-
-    it('extracts single parameter', () => {
-      const result = extractFunctionParams(SAMPLE_CODES.python3.singleParam, CodeLanguage.python3)
-      expect(result).toEqual(['param1'])
-    })
-
-    it('extracts multiple parameters', () => {
-      const result = extractFunctionParams(
-        SAMPLE_CODES.python3.multipleParams,
-        CodeLanguage.python3,
-      )
-      expect(result).toEqual(['param1', 'param2', 'param3'])
-    })
-
-    it('handles type hints', () => {
-      const result = extractFunctionParams(SAMPLE_CODES.python3.withTypes, CodeLanguage.python3)
-      expect(result).toEqual(['param1', 'param2', 'param3'])
-    })
-
-    it('handles default values', () => {
-      const result = extractFunctionParams(SAMPLE_CODES.python3.withDefaults, CodeLanguage.python3)
-      expect(result).toEqual(['param1', 'param2'])
-    })
-
-    it('handles a multi-line parameter list', () => {
-      const result = extractFunctionParams(
-        SAMPLE_CODES.python3.multiLineParams,
-        CodeLanguage.python3,
-      )
-      expect(result).toEqual(['param1', 'param2'])
-    })
-
-    it('ignores a commented-out signature', () => {
-      const result = extractFunctionParams(
-        SAMPLE_CODES.python3.commentedOutSignature,
-        CodeLanguage.python3,
-      )
-      expect(result).toEqual(['arg1', 'arg2'])
-    })
-  })
-
-  // JavaScript のテストケース
-  describe('JavaScript', () => {
-    it('handles no parameters', () => {
-      const result = extractFunctionParams(
-        SAMPLE_CODES.javascript.noParams,
-        CodeLanguage.javascript,
-      )
-      expect(result).toEqual([])
-    })
-
-    it('extracts single parameter', () => {
-      const result = extractFunctionParams(
-        SAMPLE_CODES.javascript.singleParam,
-        CodeLanguage.javascript,
-      )
-      expect(result).toEqual(['param1'])
-    })
-
-    it('extracts multiple parameters', () => {
-      const result = extractFunctionParams(
-        SAMPLE_CODES.javascript.multipleParams,
-        CodeLanguage.javascript,
-      )
-      expect(result).toEqual(['param1', 'param2', 'param3'])
-    })
-
-    it('handles comments in code', () => {
-      const result = extractFunctionParams(
-        SAMPLE_CODES.javascript.withComments,
-        CodeLanguage.javascript,
-      )
-      expect(result).toEqual(['param1', 'param2'])
-    })
-
-    it('handles whitespace', () => {
-      const result = extractFunctionParams(
-        SAMPLE_CODES.javascript.withSpaces,
-        CodeLanguage.javascript,
-      )
-      expect(result).toEqual(['param1', 'param2'])
-    })
-
-    it('handles destructured parameters', () => {
-      const result = extractFunctionParams(
-        SAMPLE_CODES.javascript.destructuredParams,
-        CodeLanguage.javascript,
-      )
-      expect(result).toEqual(['param1', 'param2'])
-    })
-
-    it('handles a multi-line parameter list', () => {
-      const result = extractFunctionParams(
-        SAMPLE_CODES.javascript.multiLineParams,
-        CodeLanguage.javascript,
-      )
-      expect(result).toEqual(['param1', 'param2'])
-    })
-
-    it('ignores a commented-out signature', () => {
-      const result = extractFunctionParams(
-        SAMPLE_CODES.javascript.commentedOutSignature,
-        CodeLanguage.javascript,
-      )
-      expect(result).toEqual(['arg1', 'arg2'])
-    })
-
-    it('ignores a block-commented signature', () => {
-      const result = extractFunctionParams(
-        SAMPLE_CODES.javascript.blockCommentedSignature,
-        CodeLanguage.javascript,
-      )
-      expect(result).toEqual(['arg1', 'arg2'])
-    })
+  it.each([
+    [CodeLanguage.python3, SAMPLE_CODES.python3.noParams, []],
+    [CodeLanguage.python3, SAMPLE_CODES.python3.singleParam, ['param1']],
+    [CodeLanguage.python3, SAMPLE_CODES.python3.multipleParams, ['param1', 'param2', 'param3']],
+    [CodeLanguage.python3, SAMPLE_CODES.python3.withTypes, ['param1', 'param2', 'param3']],
+    [CodeLanguage.python3, SAMPLE_CODES.python3.withDefaults, ['param1', 'param2']],
+    [CodeLanguage.python3, SAMPLE_CODES.python3.multiLineParams, ['param1', 'param2']],
+    [CodeLanguage.python3, SAMPLE_CODES.python3.commentedOutSignature, ['arg1', 'arg2']],
+    [CodeLanguage.javascript, SAMPLE_CODES.javascript.noParams, []],
+    [CodeLanguage.javascript, SAMPLE_CODES.javascript.singleParam, ['param1']],
+    [
+      CodeLanguage.javascript,
+      SAMPLE_CODES.javascript.multipleParams,
+      ['param1', 'param2', 'param3'],
+    ],
+    [CodeLanguage.javascript, SAMPLE_CODES.javascript.withComments, ['param1', 'param2']],
+    [CodeLanguage.javascript, SAMPLE_CODES.javascript.withSpaces, ['param1', 'param2']],
+    [CodeLanguage.javascript, SAMPLE_CODES.javascript.destructuredParams, ['param1', 'param2']],
+    [CodeLanguage.javascript, SAMPLE_CODES.javascript.multiLineParams, ['param1', 'param2']],
+    [CodeLanguage.javascript, SAMPLE_CODES.javascript.commentedOutSignature, ['arg1', 'arg2']],
+    [CodeLanguage.javascript, SAMPLE_CODES.javascript.blockCommentedSignature, ['arg1', 'arg2']],
+  ] as const)('extracts %s arguments from %s', (language, code, expected) => {
+    expect(extractFunctionParams(code, language)).toEqual(expected)
   })
 })
 
@@ -342,177 +246,33 @@ function main(name, age, city) {
 }
 
 describe('extractReturnType', () => {
-  // Python3 のテスト
-  describe('Python3', () => {
-    it('extracts single return value', () => {
-      const result = extractReturnType(
-        RETURN_TYPE_SAMPLES.python3.singleReturn,
-        CodeLanguage.python3,
-      )
-      expect(result).toEqual({
-        result: {
-          type: VarType.string,
-          children: null,
-        },
-      })
-    })
-
-    it('extracts multiple return values', () => {
-      const result = extractReturnType(
-        RETURN_TYPE_SAMPLES.python3.multipleReturns,
-        CodeLanguage.python3,
-      )
-      expect(result).toEqual({
-        result: {
-          type: VarType.string,
-          children: null,
-        },
-        status: {
-          type: VarType.string,
-          children: null,
-        },
-      })
-    })
-
-    it('returns empty object when no return statement', () => {
-      const result = extractReturnType(RETURN_TYPE_SAMPLES.python3.noReturn, CodeLanguage.python3)
-      expect(result).toEqual({})
-    })
-
-    it('handles complex return statement', () => {
-      const result = extractReturnType(
-        RETURN_TYPE_SAMPLES.python3.complexReturn,
-        CodeLanguage.python3,
-      )
-      expect(result).toEqual({
-        result: {
-          type: VarType.string,
-          children: null,
-        },
-        count: {
-          type: VarType.string,
-          children: null,
-        },
-        messages: {
-          type: VarType.string,
-          children: null,
-        },
-      })
-    })
-    it('handles nested object structure', () => {
-      const result = extractReturnType(
-        RETURN_TYPE_SAMPLES.python3.nestedObject,
-        CodeLanguage.python3,
-      )
-      expect(result).toEqual({
-        personal_info: {
-          type: VarType.string,
-          children: null,
-        },
-        timestamp: {
-          type: VarType.string,
-          children: null,
-        },
-        status: {
-          type: VarType.string,
-          children: null,
-        },
-      })
-    })
-  })
-
-  // JavaScript のテスト
-  describe('JavaScript', () => {
-    it('extracts single return value', () => {
-      const result = extractReturnType(
-        RETURN_TYPE_SAMPLES.javascript.singleReturn,
-        CodeLanguage.javascript,
-      )
-      expect(result).toEqual({
-        result: {
-          type: VarType.string,
-          children: null,
-        },
-      })
-    })
-
-    it('extracts multiple return values', () => {
-      const result = extractReturnType(
-        RETURN_TYPE_SAMPLES.javascript.multipleReturns,
-        CodeLanguage.javascript,
-      )
-      expect(result).toEqual({
-        result: {
-          type: VarType.string,
-          children: null,
-        },
-        status: {
-          type: VarType.string,
-          children: null,
-        },
-      })
-    })
-
-    it('handles return with parentheses', () => {
-      const result = extractReturnType(
-        RETURN_TYPE_SAMPLES.javascript.withParentheses,
-        CodeLanguage.javascript,
-      )
-      expect(result).toEqual({
-        result: {
-          type: VarType.string,
-          children: null,
-        },
-        status: {
-          type: VarType.string,
-          children: null,
-        },
-      })
-    })
-
-    it('returns empty object when no return statement', () => {
-      const result = extractReturnType(
-        RETURN_TYPE_SAMPLES.javascript.noReturn,
-        CodeLanguage.javascript,
-      )
-      expect(result).toEqual({})
-    })
-
-    it('handles quoted keys', () => {
-      const result = extractReturnType(
-        RETURN_TYPE_SAMPLES.javascript.withQuotes,
-        CodeLanguage.javascript,
-      )
-      expect(result).toEqual({
-        result: {
-          type: VarType.string,
-          children: null,
-        },
-        status: {
-          type: VarType.string,
-          children: null,
-        },
-      })
-    })
-    it('handles nested object structure', () => {
-      const result = extractReturnType(
-        RETURN_TYPE_SAMPLES.javascript.nestedObject,
-        CodeLanguage.javascript,
-      )
-      expect(result).toEqual({
-        personal_info: {
-          type: VarType.string,
-          children: null,
-        },
-        timestamp: {
-          type: VarType.string,
-          children: null,
-        },
-        status: {
-          type: VarType.string,
-          children: null,
-        },
-      })
-    })
+  it.each([
+    [CodeLanguage.python3, RETURN_TYPE_SAMPLES.python3.singleReturn, ['result']],
+    [CodeLanguage.python3, RETURN_TYPE_SAMPLES.python3.multipleReturns, ['result', 'status']],
+    [CodeLanguage.python3, RETURN_TYPE_SAMPLES.python3.noReturn, []],
+    [
+      CodeLanguage.python3,
+      RETURN_TYPE_SAMPLES.python3.complexReturn,
+      ['result', 'count', 'messages'],
+    ],
+    [
+      CodeLanguage.python3,
+      RETURN_TYPE_SAMPLES.python3.nestedObject,
+      ['personal_info', 'timestamp', 'status'],
+    ],
+    [CodeLanguage.javascript, RETURN_TYPE_SAMPLES.javascript.singleReturn, ['result']],
+    [CodeLanguage.javascript, RETURN_TYPE_SAMPLES.javascript.multipleReturns, ['result', 'status']],
+    [CodeLanguage.javascript, RETURN_TYPE_SAMPLES.javascript.withParentheses, ['result', 'status']],
+    [CodeLanguage.javascript, RETURN_TYPE_SAMPLES.javascript.noReturn, []],
+    [CodeLanguage.javascript, RETURN_TYPE_SAMPLES.javascript.withQuotes, ['result', 'status']],
+    [
+      CodeLanguage.javascript,
+      RETURN_TYPE_SAMPLES.javascript.nestedObject,
+      ['personal_info', 'timestamp', 'status'],
+    ],
+  ] as const)('extracts %s return fields from %s', (language, code, keys) => {
+    expect(extractReturnType(code, language)).toEqual(
+      Object.fromEntries(keys.map((key) => [key, { type: VarType.string, children: null }])),
+    )
   })
 })

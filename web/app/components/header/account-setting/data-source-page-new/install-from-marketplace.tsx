@@ -1,4 +1,4 @@
-import type { DataSourceAuth } from './types'
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -16,7 +16,7 @@ import { useMarketplaceAllPlugins } from './hooks'
 
 type InstallFromMarketplaceProps = {
   onOpenMarketplace?: () => void
-  providers: DataSourceAuth[]
+  providers: DatasourceProviderAuthResponse[]
   searchText: string
 }
 const InstallFromMarketplace = ({
