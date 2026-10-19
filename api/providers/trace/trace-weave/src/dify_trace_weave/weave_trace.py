@@ -4,8 +4,6 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast, override
 
-import wandb
-import weave
 from sqlalchemy.orm import sessionmaker
 from weave.trace_server.trace_server_interface import (
     CallEndReq,
@@ -30,12 +28,26 @@ from core.ops.entities.trace_entity import (
 )
 from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_weave.config import WeaveConfig
+from dify_trace_weave.configuration import console_url, project_url, verify_configuration
 from dify_trace_weave.entities.weave_trace_entity import WeaveTraceModel
+from dify_trace_weave.transport import TraceServer, resolve_project
 from extensions.ext_database import db
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
+from services.tracing.provider_common import endpoint
+from services.tracing.provider_dispatch import TraceExportUncertainError
 
 logger = logging.getLogger(__name__)
+
+
+def _same_identifier(actual: str, expected: str) -> bool:
+    """Accept UUID formatting differences without rewriting legacy wire identifiers."""
+    if actual == expected:
+        return True
+    try:
+        return uuid.UUID(actual) == uuid.UUID(expected)
+    except ValueError:
+        return False
 
 
 class WeaveDataTrace(BaseTraceInstance):
@@ -44,39 +56,30 @@ class WeaveDataTrace(BaseTraceInstance):
         weave_config: WeaveConfig,
     ):
         super().__init__(weave_config)
-        self.weave_api_key = weave_config.api_key
-        self.project_name = weave_config.project
-        self.entity = weave_config.entity
-        self.host = weave_config.host
-
-        # Login with API key first, including host if provided
-        if self.host:
-            login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True, host=self.host)
-        else:
-            login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
-
-        if not login_status:
-            logger.error("Failed to login to Weights & Biases with the provided API key")
-            raise ValueError("Weave login failed")
-
-        # Then initialize weave client
-        self.weave_client = weave.init(
-            project_name=(f"{self.entity}/{self.project_name}" if self.entity else self.project_name)
+        # Construction is local: no global SDK client, login, netrc, or background queue.
+        self._config = weave_config.model_copy(deep=True)
+        self.weave_api_key = self._config.api_key
+        self.project_name = self._config.project
+        self.entity = self._config.entity
+        self.host = self._config.host
+        self.server = TraceServer(  # pyrefly: ignore[bad-instantiation]
+            endpoint(self._config.endpoint), should_batch=False, auth=("api", self.weave_api_key)
         )
+        self._project_id: str | None = None
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
         self.calls: dict[str, Any] = {}
-        self.project_id = f"{self.weave_client.entity}/{self.weave_client.project}"
 
-    def get_project_url(
-        self,
-    ):
-        try:
-            project_identifier = f"{self.entity}/{self.project_name}" if self.entity else self.project_name
-            project_url = f"https://wandb.ai/{project_identifier}"
-            return project_url
-        except Exception as e:
-            logger.debug("Weave get run url failed", exc_info=True)
-            raise ValueError(f"Weave get run url failed: {str(e)}") from e
+    @property
+    def project_id(self) -> str:
+        # Existing saved configurations may omit entity. Resolve it lazily with
+        # this instance's credentials, never W&B's process-global defaults.
+        if self._project_id is None:
+            entity, project, _ = resolve_project(self._config.model_dump(), self.weave_api_key)
+            self._project_id = f"{entity}/{project}"
+        return self._project_id
+
+    def get_project_url(self):
+        return project_url(self._config) or console_url(self._config)
 
     @override
     def trace(self, trace_info: BaseTraceInfo):
@@ -421,20 +424,9 @@ class WeaveDataTrace(BaseTraceInstance):
         self.finish_call(name_run)
 
     def api_check(self):
-        try:
-            if self.host:
-                login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True, host=self.host)
-            else:
-                login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
-
-            if not login_status:
-                raise ValueError("Weave login failed")
-            else:
-                logger.info("Weave login successful")
-                return True
-        except Exception as e:
-            logger.debug("Weave API check failed", exc_info=True)
-            raise ValueError(f"Weave API check failed: {str(e)}") from e
+        # Read-only credential/project/endpoint verification; it creates no calls.
+        verify_configuration(self._config)
+        return True
 
     def _normalize_time(self, dt: datetime | None) -> datetime:
         if dt is None:
@@ -475,7 +467,9 @@ class WeaveDataTrace(BaseTraceInstance):
                 wb_user_id=None,
             )
         )
-        self.weave_client.server.call_start(call_start_req)
+        started = self.server.call_start(call_start_req)
+        if not _same_identifier(started.id, run_data.id) or not _same_identifier(started.trace_id, trace_id):
+            raise TraceExportUncertainError("Weave did not acknowledge the submitted identifiers")
         self.calls[run_data.id] = {"trace_id": trace_id, "parent_id": parent_run_id}
 
     def finish_call(self, run_data: WeaveTraceModel):
@@ -523,4 +517,7 @@ class WeaveDataTrace(BaseTraceInstance):
                 summary=cast(SummaryInsertMap, summary),
             )
         )
-        self.weave_client.server.call_end(call_end_req)
+        try:
+            self.server.call_end(call_end_req)
+        finally:
+            self.calls.pop(run_data.id, None)
