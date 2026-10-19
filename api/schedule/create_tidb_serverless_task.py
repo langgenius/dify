@@ -22,7 +22,7 @@ def create_tidb_serverless_task():
         try:
             # check the number of idle tidb serverless
             idle_tidb_serverless_number = (
-                db.session.scalar(select(func.count(TidbAuthBinding.id)).where(TidbAuthBinding.active == False)) or 0
+                db.session.scalar(select(func.count(TidbAuthBinding.id)).where(TidbAuthBinding.active.is_(False))) or 0
             )
             if idle_tidb_serverless_number >= tidb_serverless_number:
                 break

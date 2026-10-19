@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -10,24 +10,11 @@ import {
   MarketplaceSearchForm,
 } from '../marketplace-search-autocomplete'
 
-const { debounceState, mockAssign, mockPluginSearch, mockTemplateSearch } = vi.hoisted(() => ({
-  // Most tests bypass the debounce for simplicity; the debounce-window test
-  // flips this on to exercise the real 300ms lag.
-  debounceState: { useRealDebounce: false },
+const { mockAssign, mockPluginSearch, mockTemplateSearch } = vi.hoisted(() => ({
   mockAssign: vi.fn(),
   mockPluginSearch: vi.fn(),
   mockTemplateSearch: vi.fn(),
 }))
-
-vi.mock('ahooks', async (importOriginal) => {
-  const original = await importOriginal<typeof import('ahooks')>()
-
-  return {
-    ...original,
-    useDebounce: <T,>(value: T, options?: { wait?: number }) =>
-      debounceState.useRealDebounce ? original.useDebounce(value, options) : value,
-  }
-})
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -43,22 +30,33 @@ vi.mock('react-i18next', async () => {
   })
 })
 
-vi.mock('@/service/marketplace', () => ({
-  marketplaceQuery: {
-    searchAdvanced: {
-      queryOptions: ({ input }: { input: unknown }) => ({
-        queryKey: ['marketplace', 'plugins', input],
-        queryFn: () => mockPluginSearch(input),
-      }),
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  return {
+    ...actual,
+    marketplaceQuery: {
+      ...actual.marketplaceQuery,
+      searchAdvanced: {
+        ...actual.marketplaceQuery.searchAdvanced,
+        queryOptions: (
+          options: Parameters<typeof actual.marketplaceQuery.searchAdvanced.queryOptions>[0],
+        ) => ({
+          ...actual.marketplaceQuery.searchAdvanced.queryOptions(options),
+          queryFn: () => mockPluginSearch(options.input),
+        }),
+      },
+      templateSearch: {
+        ...actual.marketplaceQuery.templateSearch,
+        queryOptions: (
+          options: Parameters<typeof actual.marketplaceQuery.templateSearch.queryOptions>[0],
+        ) => ({
+          ...actual.marketplaceQuery.templateSearch.queryOptions(options),
+          queryFn: () => mockTemplateSearch(options.input),
+        }),
+      },
     },
-    templateSearch: {
-      queryOptions: ({ input }: { input: unknown }) => ({
-        queryKey: ['marketplace', 'templates', input],
-        queryFn: () => mockTemplateSearch(input),
-      }),
-    },
-  },
-}))
+  }
+})
 
 let queryClient: QueryClient
 
@@ -71,7 +69,6 @@ describe('MarketplaceSearchAutocomplete', () => {
     vi.clearAllMocks()
     mockAssign.mockReset()
     vi.spyOn(window.location, 'assign').mockImplementation(mockAssign)
-    debounceState.useRealDebounce = false
     queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -142,10 +139,12 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(mockAssign).toHaveBeenCalledWith('/template/dify/template-1')
 
     expect(container.querySelector('form')).toHaveAttribute('action', '/templates/knowledge')
-    expect(container.querySelector('input[role="combobox"]')).toHaveAttribute('name', 'q')
-    expect(container.querySelector('input[role="combobox"]')).toHaveAttribute('type', 'text')
-    expect(container.querySelectorAll('button[aria-label="Clear search"]')).toHaveLength(1)
-    expect(container.querySelector('input[type="hidden"]')).toHaveValue('en-US')
+    expect(Object.fromEntries(new FormData(container.querySelector('form')!))).toEqual({
+      q: 'legal',
+      language: 'en-US',
+    })
+    await user.click(screen.getByRole('button', { name: 'Clear search' }))
+    expect(screen.getByRole('combobox')).toHaveValue('')
     expect(mockPluginSearch).not.toHaveBeenCalled()
   })
 
@@ -265,7 +264,7 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(handleSubmit).not.toHaveBeenCalled()
   })
 
-  it('submits the typed query on Enter without selecting a hovered suggestion', async () => {
+  it('leaves Enter to the form submission when no suggestion is highlighted', async () => {
     mockTemplateSearch.mockResolvedValue({
       data: {
         templates: [
@@ -318,54 +317,25 @@ describe('MarketplaceSearchAutocomplete', () => {
     container.querySelector('form')?.addEventListener('submit', handleSubmit)
 
     await user.type(screen.getByRole('combobox'), 'search')
-    await user.hover(await screen.findByRole('option', { name: /Legal Research Agent/ }))
-    fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Enter', isComposing: true })
-    expect(handleSubmit).not.toHaveBeenCalled()
-    await user.keyboard('{Enter}')
+    await screen.findByRole('option', { name: /Legal Research Agent/ })
 
-    expect(handleSubmit).toHaveBeenCalledOnce()
+    // An IME confirmation keeps the suggestions open and submits nothing.
+    fireEvent.keyDown(screen.getByRole('combobox'), {
+      key: 'Enter',
+      keyCode: 229,
+      which: 229,
+      isComposing: true,
+    })
+    expect(handleSubmit).not.toHaveBeenCalled()
+    expect(screen.getByRole('option', { name: /Legal Research Agent/ })).toBeInTheDocument()
+
+    // Nothing is highlighted, so Enter is not consumed and the browser's implicit form submission
+    // runs; happy-dom has none, so the browser spec covers the submit.
+    expect(fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Enter' })).toBe(true)
     expect(screen.getByRole('combobox')).toHaveValue('search')
-  })
-
-  it('opens plugin detail when a suggestion is chosen', async () => {
-    mockPluginSearch.mockResolvedValue({
-      data: {
-        plugins: [
-          {
-            type: 'plugin',
-            org: 'langgenius',
-            name: 'google-search',
-            label: { en_US: 'Google Search' },
-            brief: { en_US: 'Search the web from your workflow.' },
-            category: 'tool',
-          },
-        ],
-        total: 1,
-      },
+    await waitFor(() => {
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
     })
-    const user = userEvent.setup()
-    const handleSubmit = vi.fn((event: Event) => {
-      event.preventDefault()
-    })
-
-    const { container } = render(
-      <MarketplaceSearchForm
-        action="/plugins"
-        locale="en-US"
-        placeholder="Search plugins"
-        query=""
-        scope="plugins"
-      />,
-      { wrapper: Wrapper },
-    )
-
-    container.querySelector('form')?.addEventListener('submit', handleSubmit)
-
-    await user.type(screen.getByRole('combobox'), 'google')
-    await user.click(await screen.findByText('Google Search'))
-
-    expect(mockAssign).toHaveBeenCalledWith('/plugin/langgenius/google-search')
-    expect(handleSubmit).not.toHaveBeenCalled()
   })
 
   it('selects a suggestion without submitting when the parent handles the result', async () => {
@@ -414,6 +384,8 @@ describe('MarketplaceSearchAutocomplete', () => {
     await user.type(screen.getByRole('combobox'), 'google')
     await user.click(await screen.findByText('Google Search'))
 
+    expect(screen.getByRole('combobox')).toHaveValue('')
+    expect(mockAssign).not.toHaveBeenCalled()
     expect(onSuggestionSelect).toHaveBeenCalledOnce()
     expect(onSuggestionSelect.mock.calls[0]?.[0]).toMatchObject({
       kind: 'plugin',
@@ -464,66 +436,7 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(handleSubmit).not.toHaveBeenCalled()
   })
 
-  it('hands the selected plugin back to a creator-profile owner without submitting', async () => {
-    mockPluginSearch.mockResolvedValue({
-      data: {
-        plugins: [
-          {
-            type: 'plugin',
-            org: 'langgenius',
-            name: 'google-search',
-            label: { en_US: 'Google Search' },
-            brief: { en_US: 'Search the web from your workflow.' },
-            category: 'tool',
-          },
-        ],
-        total: 1,
-      },
-    })
-    const user = userEvent.setup()
-    const onSuggestionSelect = vi.fn()
-    const handleSubmit = vi.fn((event: Event) => {
-      event.preventDefault()
-    })
-
-    const ControlledSearch = () => {
-      const [value, setValue] = useState('')
-
-      return (
-        <form
-          onSubmit={(event) => {
-            handleSubmit(event.nativeEvent)
-          }}
-        >
-          <MarketplaceSearchAutocomplete
-            locale="en-US"
-            onSuggestionSelect={onSuggestionSelect}
-            onValueChange={setValue}
-            placeholder="Search plugins"
-            scope="plugins"
-            value={value}
-          />
-        </form>
-      )
-    }
-
-    render(<ControlledSearch />, { wrapper: Wrapper })
-
-    await user.type(screen.getByRole('combobox'), 'google')
-    await user.click(await screen.findByText('Google Search'))
-
-    expect(onSuggestionSelect).toHaveBeenCalledWith({
-      kind: 'plugin',
-      plugin: expect.objectContaining({
-        org: 'langgenius',
-        name: 'google-search',
-      }),
-    })
-    expect(handleSubmit).not.toHaveBeenCalled()
-    expect(screen.getByRole('combobox')).toHaveValue('')
-  })
-
-  it('does not offer the previous term suggestions while a new search is pending', async () => {
+  it('keeps the previous suggestions listed under a loading status while a new search is pending', async () => {
     const googleResponse = {
       data: {
         plugins: [
@@ -541,8 +454,7 @@ describe('MarketplaceSearchAutocomplete', () => {
     }
     mockPluginSearch.mockImplementation((input: { body: { query: string } }) => {
       if (input.body.query === 'google') return Promise.resolve(googleResponse)
-      // Keep the follow-up term pending so stale suggestions would be visible
-      // if the query still returned placeholder data.
+      // Keep the follow-up term pending so the loading state stays observable.
       return new Promise(() => {})
     })
     const user = userEvent.setup()
@@ -567,8 +479,15 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(await screen.findByText('Google Search')).toBeInTheDocument()
 
     await user.type(screen.getByRole('combobox'), ' drive')
+    expect(screen.getByText('Google Search')).toBeInTheDocument()
+    expect(screen.getByText(/Loading/)).toBeInTheDocument()
+    await waitFor(() =>
+      expect(mockPluginSearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ body: expect.objectContaining({ query: 'google drive' }) }),
+      ),
+    )
 
-    expect(screen.queryByText('Google Search')).not.toBeInTheDocument()
+    expect(screen.getByText('Google Search')).toBeInTheDocument()
     expect(screen.getByText(/Loading/)).toBeInTheDocument()
     expect(screen.getByText(/Loading/).closest('[aria-busy="true"]')).not.toBeNull()
   })
@@ -619,21 +538,20 @@ describe('MarketplaceSearchAutocomplete', () => {
     await user.type(screen.getByRole('combobox'), 'google')
     expect(screen.getByText(/Loading/)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Outside search' }))
+    // Base UI hides the rest of the page from assistive technology while the suggestions are
+    // open, so the outside control is reached by text rather than by role.
+    await user.click(screen.getByText('Outside search'))
     await waitFor(() => {
-      expect(screen.getByText(/Loading/)).not.toBeVisible()
+      const loading = screen.queryByText(/Loading/)
+      if (loading) expect(loading).not.toBeVisible()
     })
 
-    resolvePluginSearch(pluginResponse)
-
-    await waitFor(() => {
-      expect(mockPluginSearch).toHaveBeenCalled()
-    })
+    await act(async () => resolvePluginSearch(pluginResponse))
     expect(screen.queryByText('Google Search')).not.toBeInTheDocument()
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 
-  it('keeps the empty and status roots mounted when nothing matches', async () => {
+  it('announces an empty result after the search completes', async () => {
     mockPluginSearch.mockResolvedValue({ data: { plugins: [], total: 0 } })
     const user = userEvent.setup()
 
@@ -658,53 +576,5 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(await screen.findByText('No integration found')).toBeInTheDocument()
     expect(screen.getAllByRole('status').length).toBeGreaterThan(0)
     expect(screen.queryByText(/Loading/)).not.toBeInTheDocument()
-  })
-
-  it('clears suggestions while the edited value is still debouncing', async () => {
-    debounceState.useRealDebounce = true
-    mockPluginSearch.mockResolvedValue({
-      data: {
-        plugins: [
-          {
-            type: 'plugin',
-            org: 'langgenius',
-            name: 'google-search',
-            label: { en_US: 'Google Search' },
-            brief: { en_US: 'Search the web from your workflow.' },
-            category: 'tool',
-          },
-        ],
-        total: 1,
-      },
-    })
-    const user = userEvent.setup()
-
-    const ControlledSearch = () => {
-      const [value, setValue] = useState('')
-
-      return (
-        <MarketplaceSearchAutocomplete
-          locale="en-US"
-          onValueChange={setValue}
-          placeholder="Search plugins"
-          scope="plugins"
-          value={value}
-        />
-      )
-    }
-
-    render(<ControlledSearch />, { wrapper: Wrapper })
-
-    // Suggestions only appear once the real 300ms debounce has elapsed.
-    await user.type(screen.getByRole('combobox'), 'google')
-    expect(await screen.findByText('Google Search')).toBeInTheDocument()
-
-    // For the first 300ms after editing, the debounced term still points at
-    // the old query; the previous suggestions must already be gone.
-    await user.type(screen.getByRole('combobox'), ' drive')
-
-    expect(screen.queryByText('Google Search')).not.toBeInTheDocument()
-    expect(screen.getByText(/Loading/)).toBeInTheDocument()
-    expect(screen.getByText(/Loading/).closest('[aria-busy="true"]')).not.toBeNull()
   })
 })

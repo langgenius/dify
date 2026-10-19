@@ -10,6 +10,7 @@ from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from extensions.application_services.retrieval import build_dataset_retrieval
 from libs.helper import generate_text_hash
+from repositories.app.console_repository import ConsoleAppRepository
 from repositories.knowledge.dataset_api_key_repository import DatasetApiKeyRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
@@ -18,7 +19,6 @@ from repositories.knowledge.retrieval_repository import KnowledgeRetrievalReposi
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
 from services.api_token_service import ApiTokenCache
-from services.app.query_service import AppQueryService
 from services.data_source.credential_gateway import (
     ActorAwareDatasourceCredentialGateway,
     TrustedStoredDatasourceCredentialGateway,
@@ -53,6 +53,7 @@ from services.knowledge.segments.adapters import (
 from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.knowledge.segments.indexing import SegmentIndexingGateway
 from services.knowledge_retrieval_inner_service import InnerKnowledgeRetrievalService
+from services.rbac.members import MemberService
 from services.tag_application_service import TagTargetQuery
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
@@ -96,7 +97,7 @@ def build_knowledge_services(
     providers: DatasourceProviderService,
     redis: RedisSegmentClient,
     tags: TagTargetQuery,
-    app_queries: AppQueryService,
+    rbac_members: MemberService,
 ) -> KnowledgeServices:
     """Build the dataset-controller knowledge use cases."""
 
@@ -133,7 +134,12 @@ def build_knowledge_services(
         ),
         datasets=DatasetApplicationService(
             dataset_access=dataset_access,
-            operations=SQLAlchemyDatasetOperations(session_factory=database_client, tags=tags, app_queries=app_queries),
+            operations=SQLAlchemyDatasetOperations(
+                session_factory=database_client,
+                tags=tags,
+                app_queries=ConsoleAppRepository(session_factory=database_client),
+                members=rbac_members,
+            ),
             rbac_enabled=dify_config.RBAC_ENABLED,
             service_api_url=dify_config.SERVICE_API_URL,
             vector_store=dify_config.VECTOR_STORE,
@@ -141,7 +147,7 @@ def build_knowledge_services(
         ),
         external=ExternalKnowledgeApplicationService(
             dataset_access=dataset_access,
-            operations=SQLAlchemyExternalKnowledgeOperations(session_factory=database_client),
+            operations=SQLAlchemyExternalKnowledgeOperations(session_factory=database_client, members=rbac_members),
         ),
         documents=DatasetDocumentApplicationService(
             dataset_access=dataset_access,

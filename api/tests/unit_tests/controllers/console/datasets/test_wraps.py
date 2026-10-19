@@ -32,7 +32,7 @@ def current_account() -> Account:
 class TestGetRagPipeline:
     def test_missing_pipeline_id(self) -> None:
         @get_rag_pipeline
-        def dummy_view(**kwargs: object) -> str:
+        def dummy_view(**_kwargs: object) -> str:
             return "ok"
 
         with pytest.raises(ValueError, match="missing pipeline_id"):
@@ -45,7 +45,7 @@ class TestGetRagPipeline:
         current_account: Account,
     ) -> None:
         @get_rag_pipeline
-        def dummy_view(**kwargs: object) -> str:
+        def dummy_view(**_kwargs: object) -> str:
             return "ok"
 
         mocker.patch(

@@ -538,7 +538,7 @@ def test_workflow_tool_should_handle_empty_outputs(
     [
         ("string_var", "test string"),
         ("int_var", 42),
-        ("float_var", 3.14),
+        ("float_var", float("3.14")),
         ("bool_var", True),
         ("list_var", [1, 2, 3]),
         ("dict_var", {"key": "value"}),

@@ -84,6 +84,53 @@ def test_invitation_token_store_revokes_its_redis_key(redis_transport: tuple[Red
     assert commands.call_count == 1
 
 
+def test_invitation_token_store_marks_membership_use_with_token_ttl(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.side_effect = [1200, b"OK"]
+    lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
+
+    assert RedisInvitationTokenStore(redis=redis).consume_membership(lookup) is True
+
+    assert commands.call_args_list[0].args == ("PTTL", "member_invite:token:token-1")
+    set_args = commands.call_args_list[1].args
+    assert set_args[:3] == ("SET", "member_invite:token:token-1:membership_used", "1")
+    assert "NX" in set_args
+    assert set_args[set_args.index("PX") + 1] == 1200
+
+
+@pytest.mark.parametrize("ttl", [-2, -1, 0])
+def test_invitation_token_store_refuses_membership_use_without_live_token(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], ttl: int
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = ttl
+    lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
+
+    assert RedisInvitationTokenStore(redis=redis).consume_membership(lookup) is False
+
+    assert commands.call_count == 1
+    assert commands.call_args.args == ("PTTL", "member_invite:token:token-1")
+
+
+@pytest.mark.parametrize(("stored", "expected"), [(b"1", True), (None, False)])
+def test_invitation_token_store_reports_membership_use(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], stored: bytes | None, expected: bool
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = stored
+    lookup = InvitationLookup(workspace_id="workspace-1", email="invitee@example.com", token="token-1")
+
+    assert RedisInvitationTokenStore(redis=redis).is_membership_consumed(lookup) is expected
+
+    commands.assert_called_once_with(
+        "GET",
+        "member_invite:token:token-1:membership_used",
+        keys=["member_invite:token:token-1:membership_used"],
+    )
+
+
 def test_billing_eligibility_skips_gateway_when_disabled() -> None:
     with patch("services.account.adapters.BillingService.get_email_freeze_type") as get_freeze_type:
         result = BillingAccountActivationEligibility(enabled=False).get_freeze_type("invitee@example.com")

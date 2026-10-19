@@ -53,12 +53,15 @@ class OpenApiWorkflowEventsApi(Resource):
     @endpoint(
         op="get.run.event",
         kind=Kind.SSE,
-        summary="Stream the events of a workflow run",
+        summary="Stream the events of a workflow run; `task_id` takes the workflow run id",
         examples=(
-            Example(title="Follow the events of a running task", input={"app_id": "<app_id>", "task_id": "<task_id>"}),
+            Example(
+                title="Follow the events of a workflow run by its run id",
+                input={"app_id": "<app_id>", "task_id": "<workflow_run_id>"},
+            ),
             Example(
                 title="Keep the stream open across a human-input pause",
-                input={"app_id": "<app_id>", "task_id": "<task_id>", "continue_on_pause": True},
+                input={"app_id": "<app_id>", "task_id": "<workflow_run_id>", "continue_on_pause": True},
             ),
         ),
         requirements=(
@@ -116,7 +119,7 @@ class OpenApiWorkflowEventsApi(Resource):
             payload = response.model_dump(mode="json")
             payload["event"] = response.event.value
 
-            def _generate_finished_events() -> Generator[str, None, None]:
+            def _generate_finished_events() -> Generator[str]:
                 yield f"data: {json.dumps(payload)}\n\n"
 
             event_generator = _generate_finished_events

@@ -60,14 +60,7 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
       <div className={cn('flex h-full flex-col rounded-2xl bg-background-section-burn', className)}>
         <div className="flex shrink-0 justify-between p-3">
           <div className="flex grow items-center space-x-2">
-            <AppIcon
-              decorative
-              size="large"
-              iconType={appDetail.site.icon_type}
-              icon={appDetail.site.icon ?? undefined}
-              background={appDetail.site.icon_background ?? undefined}
-              imageUrl={appDetail.site.icon_url ?? undefined}
-            />
+            <AppIcon size="large" icon={appDetail.site} />
             <div
               className="grow truncate system-md-semibold text-text-primary"
               title={appDetail.name}

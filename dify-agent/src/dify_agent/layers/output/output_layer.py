@@ -1,15 +1,7 @@
-"""Runtime layer for Dify Agent structured final output contracts.
+"""Native structured output assembly with shared JSON Schema validation.
 
-``DifyOutputLayer`` is intentionally state-free and does not participate in
-prompt, user prompt, or tool aggregation. Instead, the scheduler and runner read
-the conventionally named layer after ``Compositor.enter(...)`` and convert its
-top-level object JSON Schema into a ``ToolOutput(...)`` whose inner dynamic type
-both exposes the model-facing schema and validates runtime output. ``jsonschema``
-performs the real content validation inside that custom Pydantic-compatible
-dict-like type, so Pydantic AI's normal output validation flow can request
-retries without a separate Dify-owned output-validator callback. Keeping both
-steps here lets request validation and execution reuse the same schema checks
-without teaching Agenton core about output aggregation.
+The runner resolves output_type before invoking Pydantic AI. Its dynamic type
+exposes the schema and validates the result in Pydantic AI's retry pipeline.
 """
 
 from __future__ import annotations
@@ -27,11 +19,13 @@ from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, JsonValue
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_ai.output import OutputSpec, ToolOutput
 from pydantic_core import PydanticCustomError, core_schema
-from typing_extensions import Self, assert_never, override
+from typing_extensions import assert_never
 
 
-from agenton.layers import EmptyRuntimeState, NoLayerDeps, PlainLayer
-from dify_agent.layers.output.configs import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
+from pydantic import BaseModel, ConfigDict
+from pydantic_ai.capabilities import AbstractCapability
+from dify_agent.runtime.context import Deps
+from dify_agent.layers.output.configs import DifyOutputLayerConfig
 
 
 _FINAL_OUTPUT_TOOL_NAME: Final[str] = "final_output"
@@ -52,21 +46,22 @@ class DifyOutputContract:
     output_type: OutputSpec[object]
 
 
-@dataclass(slots=True)
-class DifyOutputLayer(PlainLayer[NoLayerDeps, DifyOutputLayerConfig, EmptyRuntimeState]):
-    """State-free layer that stores the final structured output contract."""
+class Config(DifyOutputLayerConfig):
+    pass
 
-    type_id = DIFY_OUTPUT_LAYER_TYPE_ID
 
-    config: DifyOutputLayerConfig
+class State(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-    @classmethod
-    @override
-    def from_config(cls, config: DifyOutputLayerConfig) -> Self:
-        """Create the output layer from validated public config."""
-        return cls(config=DifyOutputLayerConfig.model_validate(config))
 
-    def build_output_contract(self) -> DifyOutputContract:
+class Capability(AbstractCapability[Deps]):
+    """Explicit runner assembly for the native output_type parameter."""
+
+    def __init__(self, name: str):
+        self.id = name
+        self.name = name
+
+    def build_output_contract(self, deps: Deps) -> DifyOutputContract:
         """Return the pydantic-ai output contract for this layer.
 
         The returned contract always keeps model-facing schema exposure plus
@@ -82,11 +77,12 @@ class DifyOutputLayer(PlainLayer[NoLayerDeps, DifyOutputLayerConfig, EmptyRuntim
                 references, or cannot be represented as a supported structured
                 output tool schema.
         """
-        user_schema = deepcopy(self.config.json_schema)
+        config = Config.model_validate(deps.layers[self.name]["config"])
+        user_schema = deepcopy(config.json_schema)
         _reject_non_local_refs(user_schema)
         validated_output_type = _build_validated_output_type(
             user_schema,
-            description=self.config.description,
+            description=config.description,
         )
 
         return DifyOutputContract(
@@ -95,7 +91,7 @@ class DifyOutputLayer(PlainLayer[NoLayerDeps, DifyOutputLayerConfig, EmptyRuntim
                 ToolOutput(
                     validated_output_type,
                     name=_FINAL_OUTPUT_TOOL_NAME,
-                    strict=self.config.strict,
+                    strict=config.strict,
                 ),
             ),
         )
@@ -310,4 +306,4 @@ def _sort_error_path(path: Sequence[object]) -> tuple[str, ...]:
     return tuple(str(segment) for segment in path)
 
 
-__all__ = ["DifyOutputContract", "DifyOutputLayer"]
+__all__ = ["DifyOutputContract", "Config", "State", "Capability"]

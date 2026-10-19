@@ -1,74 +1,58 @@
-import type { DataSourceInfo, FullDocumentDetail, IndexingStatusResponse } from '@/models/datasets'
+import type {
+  DocumentResponse,
+  DocumentStatusResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import { describe, expect, it } from 'vite-plus/test'
-import {
-  createDocumentLookup,
-  getFileType,
-  getSourcePercent,
-  isLegacyDataSourceInfo,
-  isSourceEmbedding,
-} from '../utils'
+import { createDocumentLookup, getFileType, getSourcePercent, isSourceEmbedding } from '../utils'
 
-describe('isLegacyDataSourceInfo', () => {
-  it('should return true when upload_file object exists', () => {
-    const info = { upload_file: { id: '1', name: 'test.pdf' } } as unknown as DataSourceInfo
-    expect(isLegacyDataSourceInfo(info)).toBe(true)
-  })
-
-  it('should return false when upload_file is absent', () => {
-    const info = { notion_page_icon: 'icon' } as unknown as DataSourceInfo
-    expect(isLegacyDataSourceInfo(info)).toBe(false)
-  })
-
-  it('should return false for null', () => {
-    expect(isLegacyDataSourceInfo(null as unknown as DataSourceInfo)).toBe(false)
-  })
-
-  it('should return false when upload_file is a string', () => {
-    const info = { upload_file: 'not-an-object' } as unknown as DataSourceInfo
-    expect(isLegacyDataSourceInfo(info)).toBe(false)
-  })
+const status = (overrides: Partial<DocumentStatusResponse> = {}): DocumentStatusResponse => ({
+  id: 'doc-1',
+  indexing_status: 'indexing',
+  processing_started_at: null,
+  parsing_completed_at: null,
+  cleaning_completed_at: null,
+  splitting_completed_at: null,
+  completed_at: null,
+  paused_at: null,
+  error: null,
+  stopped_at: null,
+  completed_segments: 0,
+  total_segments: 0,
+  ...overrides,
 })
 
 describe('isSourceEmbedding', () => {
-  const embeddingStatuses = ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting']
-  const nonEmbeddingStatuses = ['completed', 'error', 'paused', 'unknown']
+  const embeddingStatuses = ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'] as const
+  const nonEmbeddingStatuses = ['completed', 'error', 'paused'] as const
 
-  it.each(embeddingStatuses)('should return true for status "%s"', (status) => {
-    expect(isSourceEmbedding({ indexing_status: status } as IndexingStatusResponse)).toBe(true)
+  it.each(embeddingStatuses)('should return true for status "%s"', (indexing_status) => {
+    expect(isSourceEmbedding(status({ indexing_status }))).toBe(true)
   })
 
-  it.each(nonEmbeddingStatuses)('should return false for status "%s"', (status) => {
-    expect(isSourceEmbedding({ indexing_status: status } as IndexingStatusResponse)).toBe(false)
+  it.each(nonEmbeddingStatuses)('should return false for status "%s"', (indexing_status) => {
+    expect(isSourceEmbedding(status({ indexing_status }))).toBe(false)
   })
 })
 
 describe('getSourcePercent', () => {
   it('should calculate correct percentage', () => {
-    expect(
-      getSourcePercent({ completed_segments: 50, total_segments: 100 } as IndexingStatusResponse),
-    ).toBe(50)
+    expect(getSourcePercent(status({ completed_segments: 50, total_segments: 100 }))).toBe(50)
   })
 
   it('should return 0 when total is 0', () => {
-    expect(
-      getSourcePercent({ completed_segments: 0, total_segments: 0 } as IndexingStatusResponse),
-    ).toBe(0)
+    expect(getSourcePercent(status({ completed_segments: 0, total_segments: 0 }))).toBe(0)
   })
 
   it('should cap at 100', () => {
-    expect(
-      getSourcePercent({ completed_segments: 150, total_segments: 100 } as IndexingStatusResponse),
-    ).toBe(100)
+    expect(getSourcePercent(status({ completed_segments: 150, total_segments: 100 }))).toBe(100)
   })
 
   it('should round to nearest integer', () => {
-    expect(
-      getSourcePercent({ completed_segments: 1, total_segments: 3 } as IndexingStatusResponse),
-    ).toBe(33)
+    expect(getSourcePercent(status({ completed_segments: 1, total_segments: 3 }))).toBe(33)
   })
 
-  it('should handle undefined segments as 0', () => {
-    expect(getSourcePercent({} as IndexingStatusResponse)).toBe(0)
+  it('treats absent segment totals as zero', () => {
+    expect(getSourcePercent(status({ completed_segments: null, total_segments: null }))).toBe(0)
   })
 })
 
@@ -91,8 +75,9 @@ describe('getFileType', () => {
 })
 
 describe('createDocumentLookup', () => {
-  const documents = [
+  const documents: DocumentResponse[] = [
     {
+      data_source_detail_dict: {},
       id: 'doc-1',
       name: 'test.pdf',
       data_source_type: 'upload_file',
@@ -102,6 +87,7 @@ describe('createDocumentLookup', () => {
       },
     },
     {
+      data_source_detail_dict: {},
       id: 'doc-2',
       name: 'notion-page',
       data_source_type: 'notion_import',
@@ -110,17 +96,7 @@ describe('createDocumentLookup', () => {
         notion_page_icon: 'https://icon.url',
       },
     },
-  ] as unknown as FullDocumentDetail[]
-
-  it('should get document by id', () => {
-    const lookup = createDocumentLookup(documents)
-    expect(lookup.getDocument('doc-1')).toBe(documents[0])
-  })
-
-  it('should return undefined for non-existent id', () => {
-    const lookup = createDocumentLookup(documents)
-    expect(lookup.getDocument('non-existent')).toBeUndefined()
-  })
+  ]
 
   it('should get name by id', () => {
     const lookup = createDocumentLookup(documents)
@@ -138,12 +114,14 @@ describe('createDocumentLookup', () => {
   })
 
   it('should return undefined notion icon for non-legacy info', () => {
-    const docs = [
+    const docs: DocumentResponse[] = [
       {
         id: 'doc-3',
+        name: 'New source',
+        data_source_detail_dict: {},
         data_source_info: { some_other: 'field' },
       },
-    ] as unknown as FullDocumentDetail[]
+    ]
     const lookup = createDocumentLookup(docs)
     expect(lookup.getNotionIcon('doc-3')).toBeUndefined()
   })

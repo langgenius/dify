@@ -1,9 +1,11 @@
 import type { ValueSelector, Var } from '../../types'
 import type { AssignerNodeOperation, AssignerNodeType } from './types'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
+import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { useWorkflowVariables } from '../../hooks/use-workflow-variables'
 import { useGetAvailableVars } from './hooks'
 import { WriteMode, writeModeTypesNum } from './types'
@@ -20,7 +22,7 @@ import { convertV1ToV2 } from './utils'
 const useConfig = (id: string, rawPayload: AssignerNodeType) => {
   const payload = useMemo(() => convertV1ToV2(rawPayload), [rawPayload])
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   const getAvailableVars = useGetAvailableVars()
 
   const store = useStoreApi()
@@ -50,11 +52,11 @@ const useConfig = (id: string, rawPayload: AssignerNodeType) => {
         parentNode: isInIteration ? iterationNode : null,
         valueSelector: valueSelector || [],
         availableNodes,
-        isChatMode,
+        isChatflow,
         isConstant: false,
       })
     },
-    [getCurrentVariableType, isInIteration, iterationNode, availableNodes, isChatMode],
+    [getCurrentVariableType, isInIteration, iterationNode, availableNodes, isChatflow],
   )
 
   const handleOperationListChanges = useCallback(

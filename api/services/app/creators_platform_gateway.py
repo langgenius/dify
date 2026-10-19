@@ -1,6 +1,6 @@
 """Creators Platform uploads, redirects and OAuth authorization adapter."""
 
-from typing import override
+from typing import BinaryIO, override
 
 from configs import dify_config
 from core.helper import creators
@@ -18,8 +18,8 @@ class CreatorsPlatformGateway(CreatorsPlatform):
             raise CreatorsPlatformDisabledError("Creators Platform features are not enabled")
 
     @override
-    def upload(self, dsl: str) -> str:
-        return creators.upload_dsl(dsl.encode("utf-8"))
+    def upload(self, source: BinaryIO, *, filename: str) -> str:
+        return creators.upload_package(source, filename=filename)
 
     @override
     def authorize(self, account_id: str) -> str | None:

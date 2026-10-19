@@ -19,24 +19,33 @@ from core.schemas.resolver import (
 )
 
 
+def _nested_schema(depth: int) -> dict[str, object]:
+    """Return {"type": "object", "properties": {"level_0": {... "level_<depth-1>": {...}}}} without refs."""
+    schema: dict[str, object] = {"type": "object", "properties": {}}
+    for i in reversed(range(depth)):
+        schema = {"type": "object", "properties": {f"level_{i}": schema}}
+    return schema
+
+
 class TestSchemaResolver:
     """Test cases for schema reference resolution"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Setup method to initialize test resources"""
         self.registry = SchemaRegistry.default_registry()
         # Clear cache before each test
         SchemaResolver.clear_cache()
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Cleanup after each test"""
         SchemaResolver.clear_cache()
 
-    def test_simple_ref_resolution(self):
+    def test_simple_ref_resolution(self) -> None:
         """Test resolving a simple $ref to a complete schema"""
         schema_with_ref = {"$ref": "https://dify.ai/schemas/v1/qa_structure.json"}
 
         resolved = resolve_dify_schema_refs(schema_with_ref)
+        assert isinstance(resolved, dict)
 
         # Should be resolved to the actual qa_structure schema
         assert resolved["type"] == "object"
@@ -49,7 +58,7 @@ class TestSchemaResolver:
         assert "$schema" not in resolved
         assert "version" not in resolved
 
-    def test_nested_object_with_refs(self):
+    def test_nested_object_with_refs(self) -> None:
         """Test resolving $refs within nested object structures"""
         nested_schema = {
             "type": "object",
@@ -60,6 +69,7 @@ class TestSchemaResolver:
         }
 
         resolved = resolve_dify_schema_refs(nested_schema)
+        assert isinstance(resolved, dict)
 
         # Original structure should be preserved
         assert resolved["type"] == "object"
@@ -77,7 +87,7 @@ class TestSchemaResolver:
         assert "$schema" not in file_schema
         assert "version" not in file_schema
 
-    def test_array_items_ref_resolution(self):
+    def test_array_items_ref_resolution(self) -> None:
         """Test resolving $refs in array items"""
         array_schema = {
             "type": "array",
@@ -86,6 +96,7 @@ class TestSchemaResolver:
         }
 
         resolved = resolve_dify_schema_refs(array_schema)
+        assert isinstance(resolved, dict)
 
         # Array structure should be preserved
         assert resolved["type"] == "array"
@@ -96,7 +107,7 @@ class TestSchemaResolver:
         assert items_schema["type"] == "array"
         assert items_schema["title"] == "General Structure"
 
-    def test_non_dify_ref_unchanged(self):
+    def test_non_dify_ref_unchanged(self) -> None:
         """Test that non-Dify $refs are left unchanged"""
         external_ref_schema = {
             "type": "object",
@@ -107,6 +118,7 @@ class TestSchemaResolver:
         }
 
         resolved = resolve_dify_schema_refs(external_ref_schema)
+        assert isinstance(resolved, dict)
 
         # External $ref should remain unchanged
         assert resolved["properties"]["external_data"]["$ref"] == "https://example.com/external-schema.json"
@@ -115,7 +127,7 @@ class TestSchemaResolver:
         assert resolved["properties"]["dify_data"]["type"] == "object"
         assert resolved["properties"]["dify_data"]["title"] == "File"
 
-    def test_no_refs_schema_unchanged(self):
+    def test_no_refs_schema_unchanged(self) -> None:
         """Test that schemas without $refs are returned unchanged"""
         simple_schema = {
             "type": "object",
@@ -127,6 +139,7 @@ class TestSchemaResolver:
         }
 
         resolved = resolve_dify_schema_refs(simple_schema)
+        assert isinstance(resolved, dict)
 
         # Should be identical to input
         assert resolved == simple_schema
@@ -135,10 +148,10 @@ class TestSchemaResolver:
         assert resolved["properties"]["items"]["items"]["type"] == "number"
         assert resolved["required"] == ["name"]
 
-    def test_recursion_depth_protection(self):
+    def test_recursion_depth_protection(self) -> None:
         """Test that excessive recursion depth is prevented"""
         # Create a moderately nested structure
-        deep_schema = {"$ref": "https://dify.ai/schemas/v1/qa_structure.json"}
+        deep_schema: dict[str, object] = {"$ref": "https://dify.ai/schemas/v1/qa_structure.json"}
 
         # Wrap it in fewer layers to make the test more reasonable
         for _ in range(2):
@@ -146,6 +159,7 @@ class TestSchemaResolver:
 
         # Should handle normal cases fine with reasonable depth
         resolved = resolve_dify_schema_refs(deep_schema, max_depth=25)
+        assert isinstance(resolved, dict)
         assert resolved is not None
         assert resolved["type"] == "object"
 
@@ -154,7 +168,7 @@ class TestSchemaResolver:
             resolve_dify_schema_refs(deep_schema, max_depth=5)
         assert exc_info.value.max_depth == 5
 
-    def test_circular_reference_detection(self):
+    def test_circular_reference_detection(self) -> None:
         """Test that circular references are detected and handled"""
         # Mock registry with circular reference
         mock_registry = MagicMock()
@@ -165,11 +179,12 @@ class TestSchemaResolver:
 
         schema = {"$ref": "https://dify.ai/schemas/v1/circular.json"}
         resolved = resolve_dify_schema_refs(schema, registry=mock_registry)
+        assert isinstance(resolved, dict)
 
         # Should mark circular reference
         assert "$circular_ref" in resolved
 
-    def test_schema_not_found_handling(self):
+    def test_schema_not_found_handling(self) -> None:
         """Test handling of missing schemas"""
         # Mock registry that returns None for unknown schemas
         mock_registry = MagicMock()
@@ -177,19 +192,20 @@ class TestSchemaResolver:
 
         schema = {"$ref": "https://dify.ai/schemas/v1/unknown.json"}
         resolved = resolve_dify_schema_refs(schema, registry=mock_registry)
+        assert isinstance(resolved, dict)
 
         # Should keep the original $ref when schema not found
         assert resolved["$ref"] == "https://dify.ai/schemas/v1/unknown.json"
 
-    def test_primitive_types_unchanged(self):
+    def test_primitive_types_unchanged(self) -> None:
         """Test that primitive types are returned unchanged"""
         assert resolve_dify_schema_refs("string") == "string"
         assert resolve_dify_schema_refs(123) == 123
         assert resolve_dify_schema_refs(True) is True
         assert resolve_dify_schema_refs(None) is None
-        assert resolve_dify_schema_refs(3.14) == 3.14
+        assert resolve_dify_schema_refs(float("3.14")) == float("3.14")
 
-    def test_cache_functionality(self):
+    def test_cache_functionality(self) -> None:
         """Test that caching works correctly"""
         schema = {"$ref": "https://dify.ai/schemas/v1/file.json"}
 
@@ -215,16 +231,16 @@ class TestSchemaResolver:
         resolved3 = resolve_dify_schema_refs(schema)
         assert resolved3 == resolved1
 
-    def test_thread_safety(self):
+    def test_thread_safety(self) -> None:
         """Test that the resolver is thread-safe"""
         schema = {
             "type": "object",
             "properties": {f"prop_{i}": {"$ref": "https://dify.ai/schemas/v1/file.json"} for i in range(10)},
         }
 
-        results = []
+        results: list[object] = []
 
-        def resolve_in_thread():
+        def resolve_in_thread() -> bool:
             try:
                 result = resolve_dify_schema_refs(schema)
                 results.append(result)
@@ -243,7 +259,7 @@ class TestSchemaResolver:
         first_result = results[0]
         assert all(r == first_result for r in results if not isinstance(r, Exception))
 
-    def test_mixed_nested_structures(self):
+    def test_mixed_nested_structures(self) -> None:
         """Test resolving refs in complex mixed structures"""
         complex_schema = {
             "type": "object",
@@ -268,6 +284,7 @@ class TestSchemaResolver:
         }
 
         resolved = resolve_dify_schema_refs(complex_schema, max_depth=20)
+        assert isinstance(resolved, dict)
 
         # Check structure is preserved
         assert resolved["type"] == "object"
@@ -284,7 +301,7 @@ class TestSchemaResolver:
 class TestUtilityFunctions:
     """Test utility functions"""
 
-    def test_is_dify_schema_ref(self):
+    def test_is_dify_schema_ref(self) -> None:
         """Test _is_dify_schema_ref function"""
         # Valid Dify refs
         assert _is_dify_schema_ref("https://dify.ai/schemas/v1/file.json")
@@ -300,7 +317,7 @@ class TestUtilityFunctions:
         assert not _is_dify_schema_ref(123)
         assert not _is_dify_schema_ref(["list"])
 
-    def test_has_dify_refs(self):
+    def test_has_dify_refs(self) -> None:
         """Test _has_dify_refs function"""
         # Schemas with Dify refs
         assert _has_dify_refs({"$ref": "https://dify.ai/schemas/v1/file.json"})
@@ -339,7 +356,7 @@ class TestUtilityFunctions:
         assert not _has_dify_refs(True)
         assert not _has_dify_refs(None)
 
-    def test_has_dify_refs_hybrid_vs_recursive(self):
+    def test_has_dify_refs_hybrid_vs_recursive(self) -> None:
         """Test that hybrid and recursive detection give same results"""
         test_schemas = [
             # No refs
@@ -373,7 +390,7 @@ class TestUtilityFunctions:
             123,
             True,
             None,
-            [],
+            list[object](),
         ]
 
         for schema in test_schemas:
@@ -382,7 +399,7 @@ class TestUtilityFunctions:
 
             assert hybrid_result == recursive_result, f"Mismatch for schema: {schema}"
 
-    def test_parse_dify_schema_uri(self):
+    def test_parse_dify_schema_uri(self) -> None:
         """Test parse_dify_schema_uri function"""
         # Valid URIs
         assert parse_dify_schema_uri("https://dify.ai/schemas/v1/file.json") == ("v1", "file")
@@ -394,7 +411,7 @@ class TestUtilityFunctions:
         assert parse_dify_schema_uri("invalid") == ("", "")
         assert parse_dify_schema_uri("") == ("", "")
 
-    def test_remove_metadata_fields(self):
+    def test_remove_metadata_fields(self) -> None:
         """Test _remove_metadata_fields function"""
         schema = {
             "$id": "should be removed",
@@ -402,7 +419,7 @@ class TestUtilityFunctions:
             "version": "should be removed",
             "type": "object",
             "title": "should remain",
-            "properties": {},
+            "properties": dict[str, object](),
         }
 
         cleaned = _remove_metadata_fields(schema)
@@ -421,7 +438,7 @@ class TestUtilityFunctions:
 class TestSchemaResolverClass:
     """Test SchemaResolver class specifically"""
 
-    def test_resolver_initialization(self):
+    def test_resolver_initialization(self) -> None:
         """Test resolver initialization"""
         # Default initialization
         resolver = SchemaResolver()
@@ -434,7 +451,7 @@ class TestSchemaResolverClass:
         assert resolver.max_depth == 5
         assert resolver.registry is custom_registry
 
-    def test_cache_sharing(self):
+    def test_cache_sharing(self) -> None:
         """Test that cache is shared between resolver instances"""
         SchemaResolver.clear_cache()
 
@@ -453,7 +470,7 @@ class TestSchemaResolverClass:
 
         assert result1 == result2
 
-    def test_resolver_with_list_schema(self):
+    def test_resolver_with_list_schema(self) -> None:
         """Test resolver with list as root schema"""
         list_schema = [
             {"$ref": "https://dify.ai/schemas/v1/file.json"},
@@ -472,7 +489,7 @@ class TestSchemaResolverClass:
         assert resolved[2]["type"] == "object"
         assert resolved[2]["title"] == "Q&A Structure"
 
-    def test_cache_performance(self):
+    def test_cache_performance(self) -> None:
         """Test that repeated references share cached schema lookups."""
         SchemaResolver.clear_cache()
 
@@ -496,7 +513,7 @@ class TestSchemaResolverClass:
         assert result1 == result2
         mock_get.assert_called_once_with("https://dify.ai/schemas/v1/file.json")
 
-    def test_fast_path_performance_no_refs(self):
+    def test_fast_path_performance_no_refs(self) -> None:
         """Test that schemas without $refs use fast path and avoid deep copying"""
         # Create a moderately complex schema without any $refs (typical plugin output_schema)
         no_refs_schema = {
@@ -542,7 +559,7 @@ class TestSchemaResolverClass:
         for _ in range(10):
             SchemaResolver.clear_cache()
             start = time.perf_counter()
-            result_slow = resolve_dify_schema_refs(with_refs_schema, max_depth=50)
+            resolve_dify_schema_refs(with_refs_schema, max_depth=50)
             elapsed = time.perf_counter() - start
             slow_times.append(elapsed)
 
@@ -558,7 +575,7 @@ class TestSchemaResolverClass:
         # The main benefit is avoiding deep copy and BFS, not necessarily being 5x faster
         assert avg_fast_time < avg_slow_time * 2  # Should not be more than 2x slower
 
-    def test_batch_processing_performance(self):
+    def test_batch_processing_performance(self) -> None:
         """Test performance improvement for batch processing of schemas without refs"""
         # Simulate the plugin tool scenario: many schemas, most without refs
         schemas_without_refs = [
@@ -575,23 +592,17 @@ class TestSchemaResolverClass:
         batch_time = time.perf_counter() - start
 
         # Verify all results are identical to inputs (fast path used)
-        for original, result in zip(schemas_without_refs, results):
+        for original, result in zip(schemas_without_refs, results, strict=False):
             assert result is original
 
         # Should be very fast - each schema should take < 0.001 seconds on average
         avg_time_per_schema = batch_time / len(schemas_without_refs)
         assert avg_time_per_schema < 0.001
 
-    def test_has_dify_refs_performance(self):
+    def test_has_dify_refs_performance(self) -> None:
         """Test that _has_dify_refs is fast for large schemas without refs"""
         # Create a very large schema without refs
-        large_schema = {"type": "object", "properties": {}}
-
-        # Add many nested properties
-        current = large_schema
-        for i in range(100):
-            current["properties"][f"level_{i}"] = {"type": "object", "properties": {}}
-            current = current["properties"][f"level_{i}"]
+        large_schema = _nested_schema(depth=100)
 
         # _has_dify_refs should be fast even for large schemas
         times = []
@@ -607,7 +618,7 @@ class TestSchemaResolverClass:
         assert not has_refs
         assert avg_time < 0.01  # Should complete in less than 10ms
 
-    def test_hybrid_vs_recursive_performance(self):
+    def test_hybrid_vs_recursive_performance(self) -> None:
         """Test performance comparison between hybrid and recursive detection"""
         # Create test schemas of different types and sizes
         test_cases = [
@@ -637,7 +648,7 @@ class TestSchemaResolverClass:
                 "expected": False,
             },
             # Case 3: Large schema without refs
-            {"name": "large_no_refs", "schema": {"type": "object", "properties": {}}, "expected": False},
+            {"name": "large_no_refs", "schema": _nested_schema(depth=50), "expected": False},
             # Case 4: Schema with Dify refs
             {
                 "name": "with_dify_refs",
@@ -660,12 +671,6 @@ class TestSchemaResolverClass:
                 "expected": False,
             },
         ]
-
-        # Add deep nesting to large schema
-        current = test_cases[2]["schema"]
-        for i in range(50):
-            current["properties"][f"level_{i}"] = {"type": "object", "properties": {}}
-            current = current["properties"][f"level_{i}"]
 
         # Performance comparison
         for test_case in test_cases:
@@ -710,7 +715,7 @@ class TestSchemaResolverClass:
                 # so allow a small absolute noise budget on top of the relative limit.
                 assert avg_hybrid < (avg_recursive * relative_slowdown_limit) + absolute_noise_budget_seconds
 
-    def test_string_matching_edge_cases(self):
+    def test_string_matching_edge_cases(self) -> None:
         """Test edge cases for string-based detection"""
         # Case 1: False positive potential - $ref in description
         schema_false_positive = {

@@ -423,7 +423,7 @@ const datasetHasKnowledgeSegment = async (
 ) => {
   const documents = await client.datasets.byDatasetId.documents.get({
     params: { dataset_id: datasetId },
-    query: { limit: '100', page: '1' },
+    query: { limit: 100, page: 1 },
   })
   for (const document of documents.data) {
     const body = await client.datasets.byDatasetId.documents.byDocumentId.segments.get({

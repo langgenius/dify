@@ -17,7 +17,7 @@ class ConcreteDatasourcePlugin(DatasourcePlugin):
 
 
 class TestDatasourcePlugin:
-    def test_init(self):
+    def test_init(self) -> None:
         # Arrange
         entity = datasource_entity("test_datasource")
         runtime = DatasourceRuntime(tenant_id="tenant-1")
@@ -31,7 +31,7 @@ class TestDatasourcePlugin:
         assert plugin.runtime == runtime
         assert plugin.icon == icon
 
-    def test_datasource_provider_type(self):
+    def test_datasource_provider_type(self) -> None:
         # Arrange
         entity = datasource_entity("test_datasource")
         runtime = DatasourceRuntime(tenant_id="tenant-1")
@@ -47,7 +47,7 @@ class TestDatasourcePlugin:
         assert provider_type == DatasourceProviderType.LOCAL_FILE
         assert base_provider_type == DatasourceProviderType.LOCAL_FILE
 
-    def test_fork_datasource_runtime(self):
+    def test_fork_datasource_runtime(self) -> None:
         # Arrange
         entity = datasource_entity("test_datasource")
 
@@ -69,7 +69,7 @@ class TestDatasourcePlugin:
         assert plugin.runtime is runtime
         assert plugin.runtime.credentials == {}
 
-    def test_get_icon_url(self, config_overrides: Callable[..., None]):
+    def test_get_icon_url(self, config_overrides: Callable[..., None]) -> None:
         config_overrides(CONSOLE_API_URL="https://api.dify.ai")
         # Arrange
         entity = datasource_entity("test_datasource")

@@ -95,6 +95,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
   const videoRef = useRef<HTMLVideoElement>(null)
   const progressRef = useRef<HTMLDivElement>(null)
   const volumeRef = useRef<HTMLDivElement>(null)
+  const volumeDragCleanupRef = useRef<(() => void) | null>(null)
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [isSmallSize, setIsSmallSize] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -136,6 +137,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
   useEffect(() => {
     return () => {
       if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
+      volumeDragCleanupRef.current?.()
     }
   }, [])
 
@@ -151,7 +153,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
     /* v8 ignore next -- click handler can race with unmount in tests/runtime; guard prevents calling methods on a detached video node. @preserve */
     if (video) {
       if (isPlaying) video.pause()
-      else video.play().catch((error) => console.error('Error playing video:', error))
+      else
+        video.play().catch((error) => {
+          setIsPlaying(false)
+          console.error('Error playing video:', error)
+        })
       setIsPlaying(!isPlaying)
     }
   }, [isPlaying])
@@ -163,8 +169,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
       const newMutedState = !video.muted
       video.muted = newMutedState
       setIsMuted(newMutedState)
-      setVolume(newMutedState ? 0 : video.volume > 0 ? video.volume : 1)
-      video.volume = newMutedState ? 0 : video.volume > 0 ? video.volume : 1
+      if (!newMutedState && video.volume === 0) video.volume = 1
+      setVolume(newMutedState ? 0 : video.volume)
     }
   }, [])
 
@@ -271,6 +277,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
       const newVolume = (e.clientX - rect.left) / rect.width
       const clampedVolume = Math.max(0, Math.min(1, newVolume))
       video.volume = clampedVolume
+      video.muted = clampedVolume === 0
       setVolume(clampedVolume)
       setIsMuted(clampedVolume === 0)
     }
@@ -339,6 +346,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
               <button
                 type="button"
                 aria-label={toggleMuteLabel}
+                aria-pressed={isMuted}
                 className={styles.muteButton}
                 onClick={toggleMute}
               >
@@ -351,13 +359,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
                     className={styles.volumeSlider}
                     onClick={handleVolumeChange}
                     onMouseDown={(e) => {
+                      volumeDragCleanupRef.current?.()
                       handleVolumeChange(e)
                       const handleMouseMove = (e: MouseEvent) =>
                         handleVolumeChange(e as unknown as React.MouseEvent<HTMLDivElement>)
                       const handleMouseUp = () => {
                         document.removeEventListener('mousemove', handleMouseMove)
                         document.removeEventListener('mouseup', handleMouseUp)
+                        volumeDragCleanupRef.current = null
                       }
+                      volumeDragCleanupRef.current = handleMouseUp
                       document.addEventListener('mousemove', handleMouseMove)
                       document.addEventListener('mouseup', handleMouseUp)
                     }}

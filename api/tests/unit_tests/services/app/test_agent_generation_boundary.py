@@ -1,4 +1,4 @@
-"""Public Agent generate/resume calls use only the injected database and release it before I/O."""
+"""Public Agent generation uses only the injected database and releases it before I/O."""
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -27,7 +27,6 @@ from graphon.model_runtime.entities.message_entities import ImagePromptMessageCo
 from models.agent import AgentConfigDraft
 from models.agent_config_entities import AgentSoulConfig
 from models.annotation_reply import AnnotationReplies, AnnotationReply
-from models.human_input_contracts import HumanInputFormFactory
 from models.model import Account, App, AppMode, Conversation, EndUser, Message
 from models.tool_runtime_contracts import WorkflowToolQueries
 from repositories.agent.app_execution_repository import AgentAppExecutionRepository
@@ -142,12 +141,11 @@ class BoundaryGenerator(AgentAppGenerator):
 
 @pytest.mark.usefixtures("unbound_session_factory")
 @pytest.mark.parametrize("draft_type", [None, "debug_build"])
-def test_generate_and_resume_close_config_and_message_transactions(
+def test_generate_closes_config_and_message_transactions(
     agent_sessions: sessionmaker[Session],
     app: Flask,
     app_records: AppGenerationRepository,
     annotation_replies: AnnotationReplies,
-    human_forms: HumanInputFormFactory,
     tool_providers: ToolProviders,
     workflow_queries: WorkflowToolQueries,
     monkeypatch: pytest.MonkeyPatch,
@@ -179,7 +177,6 @@ def test_generate_and_resume_close_config_and_message_transactions(
     generator = BoundaryGenerator(
         tool_providers=tool_providers,
         agent_configs=AgentAppExecutionRepository(sessions),
-        forms=human_forms,
         annotations=annotation_replies,
         records=app_records,
         workflow_queries=workflow_queries,
@@ -203,53 +200,8 @@ def test_generate_and_resume_close_config_and_message_transactions(
         assert first["agent_soul"].prompt.system_prompt == ("build" if draft_type else "Published")
         with sessions.begin() as session:
             assert session.get(AgentConfigDraft, first["agent_config_snapshot_id"]) is not None
-            conversation = session.scalar(select(Conversation))
-            assert conversation is not None
-            conversation_id = conversation.id
-            if draft_type:
-                from models.agent import (
-                    AgentConfigVersionKind,
-                    AgentWorkspace,
-                    AgentWorkspaceBinding,
-                    AgentWorkspaceOwnerType,
-                )
-
-                workspace = AgentWorkspace(
-                    id="build-workspace",
-                    tenant_id="tenant",
-                    app_id="app",
-                    owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
-                    owner_id="build",
-                    owner_scope_key="root",
-                    backend_workspace_ref="workspace",
-                )
-                binding = AgentWorkspaceBinding(
-                    id="build-binding",
-                    tenant_id="tenant",
-                    app_id="app",
-                    workspace_id=workspace.id,
-                    agent_id="agent",
-                    agent_config_version_id="build",
-                    agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
-                    backend_binding_ref="binding",
-                    pending_form_id="form",
-                )
-                session.add_all([workspace, binding])
-                draft = session.get(AgentConfigDraft, "build")
-                assert draft is not None
-                draft.agent_workspace_binding_id = binding.id
-        generator.resume_after_form_submission(
-            app_model=app_model,
-            user=user,
-            conversation_id=conversation_id,
-            form_id="form",
-            invoke_from=InvokeFrom.DEBUGGER,
-        )
-    assert len(backend.calls) == 2
-    resumed = backend.calls[1]
-    assert resumed["agent_config_snapshot_id"] == first["agent_config_snapshot_id"]
-    assert resumed["session_scope_snapshot_id"] == first["agent_config_snapshot_id"]
-    assert resumed["query"] == "original question"
+    assert first["session_scope_snapshot_id"] == first["agent_config_snapshot_id"]
+    assert first["query"] == "original question"
     assert_released()
     with sessions() as session:
-        assert len(session.scalars(select(Message)).all()) == 2
+        assert len(session.scalars(select(Message)).all()) == 1

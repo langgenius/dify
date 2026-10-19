@@ -293,7 +293,7 @@ def test_access_denied_preserves_error_body_and_never_calls_handler(harness: _Ha
             },
             ["setup"],
         ),
-        ("login", 401, {"code": "unauthorized", "message": "Unauthorized."}, ["setup"]),
+        ("login", 401, {"code": "unauthorized", "message": "Unauthorized.", "status": 401}, ["setup"]),
         (
             "initialization",
             400,
