@@ -12,7 +12,7 @@ import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,7 +23,7 @@ import { LICENSE_LINK } from '@/constants/link'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { encryptPassword as encodePassword } from '@/utils/encryption'
 
 const accountFormSchema = zPostSetupBody.pick({ email: true, name: true, password: true }).extend({
@@ -39,58 +39,64 @@ const InstallForm = () => {
   const pageTitle = t(($) => $.setAdminAccount, { ns: 'login' })
   useDocumentTitle(pageTitle)
   const { push, replace } = useRouter()
-  const queryClient = useQueryClient()
   const [showPassword, setShowPassword] = React.useState(false)
-  const [loading, setLoading] = React.useState(true)
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const setupQuery = useQuery(consoleQuery.setup.get.queryOptions())
+  const setupStatus = setupQuery.data
+  // Bootstrap redirects must use a status checked on this visit.
+  const isSetupChecked = setupQuery.isSuccess && setupQuery.isFetchedAfterMount
+  const initQuery = useQuery(
+    consoleQuery.init.get.queryOptions({
+      enabled: isSetupChecked && setupStatus?.step === 'not_started',
+    }),
+  )
+  const initStatus = initQuery.data
+  const isInitChecked = initQuery.isSuccess && initQuery.isFetchedAfterMount
+  const { mutateAsync: login } = useMutation(consoleQuery.login.post.mutationOptions())
+  const {
+    mutate: setup,
+    isPending: isSubmitting,
+    isSuccess: isSetupComplete,
+  } = useMutation(
+    consoleQuery.setup.post.mutationOptions({
+      onSuccess: async (_data, { body }) => {
+        try {
+          const loginRes = await login({
+            body: { email: body.email, password: encodePassword(body.password) },
+          })
+          replace(loginRes.result === 'success' ? '/' : '/signin')
+        } catch {
+          // The account exists; let the user sign in if automatic login fails.
+          replace('/signin')
+        }
+      },
+    }),
+  )
 
-  const handleSubmit = async (value: AccountFormValues) => {
+  const handleSubmit = (value: AccountFormValues) => {
     if (isSubmitting) return
-
-    setIsSubmitting(true)
-    try {
-      // First, setup the admin account
-      await consoleClient.setup.post({
-        body: {
-          ...value,
-          language: i18n.language,
-        },
-      })
-
-      // Then, automatically login with the same credentials
-      const loginRes = await consoleClient.login.post({
-        body: {
-          email: value.email,
-          password: encodePassword(value.password),
-        },
-      })
-
-      // Store tokens and redirect if login successful
-      if (loginRes.result === 'success') {
-        await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
-        replace('/')
-      } else {
-        // Fallback to signin page if auto-login fails
-        replace('/signin')
-      }
-    } finally {
-      setIsSubmitting(false)
-    }
+    setup({ body: { ...value, language: i18n.language } })
   }
 
   useEffect(() => {
-    consoleClient.setup.get().then((res) => {
-      if (res.step === 'finished') {
-        push('/signin')
-      } else {
-        consoleClient.init.get().then((res) => {
-          if (res.status === 'not_started') push('/init')
-        })
-      }
-      setLoading(false)
-    })
-  }, [push])
+    if (!isSetupChecked || isSubmitting || isSetupComplete) return
 
+    if (setupStatus?.step === 'finished') push('/signin')
+    else if (isInitChecked && initStatus?.status === 'not_started') push('/init')
+  }, [
+    setupStatus?.step,
+    initStatus?.status,
+    isSetupChecked,
+    isInitChecked,
+    isSubmitting,
+    isSetupComplete,
+    push,
+  ])
+
+  const loading =
+    !isSetupChecked ||
+    setupStatus?.step !== 'not_started' ||
+    !isInitChecked ||
+    initStatus?.status !== 'finished'
   return loading ? (
     <LoadingPlaceholder />
   ) : (
@@ -103,7 +109,7 @@ const InstallForm = () => {
       </div>
       <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
         <div className="relative">
-          <Form<AccountFormValues> onFormSubmit={(value) => void handleSubmit(value)}>
+          <Form<AccountFormValues> onFormSubmit={handleSubmit}>
             <Field
               name="email"
               validate={(value) =>

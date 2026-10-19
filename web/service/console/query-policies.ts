@@ -16,6 +16,36 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
     path: ['console'],
     experimental_defaults: {
+      setup: {
+        get: { queryOptions: { staleTime: 0, retry: false } },
+        post: {
+          mutationOptions: {
+            onSettled: (_data, error, _variables, _result, context) => {
+              if (error) return
+
+              // Do not redirect an active setup form before its automatic login finishes.
+              return context.client.invalidateQueries({
+                queryKey: consoleQuery.setup.get.key(),
+                refetchType: 'none',
+              })
+            },
+          },
+        },
+      },
+      init: { get: { queryOptions: { staleTime: 0, retry: false } } },
+      login: {
+        post: {
+          mutationOptions: {
+            onSettled: (data, _error, _variables, _result, context) => {
+              if (data?.result !== 'success') return
+
+              return context.client.resetQueries({
+                queryKey: consoleQuery.account.profile.get.key(),
+              })
+            },
+          },
+        },
+      },
       workflowRunArchives: {
         byYear: {
           byMonth: {
