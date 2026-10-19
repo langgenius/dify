@@ -77,6 +77,13 @@ class TestTidbOnQdrantVectorFullTextSearch:
         assert [doc.metadata["doc_id"] for doc in documents] == ["1", "3"]
         assert vector._client.scroll.call_count == 2
 
+    def test_overlapping_keyword_matches_are_deduplicated(self, vector, points):
+        vector._client.scroll.side_effect = [([points[0], points[1]], None), ([points[0], points[2]], None)]
+
+        documents = vector.search_by_full_text("common rare", top_k=3)
+
+        assert [doc.metadata["doc_id"] for doc in documents] == ["1", "3", "2"]
+
     def test_no_match_does_not_fall_back_to_unfiltered_scroll(self, vector):
         vector._client.scroll.return_value = ([], None)
 

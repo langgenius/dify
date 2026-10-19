@@ -316,6 +316,24 @@ def test_qdrant_full_text_search_does_not_starve_later_keywords(qdrant_module):
     assert vector._client.scroll.call_count == 2
 
 
+def test_qdrant_full_text_search_deduplicates_overlapping_keyword_matches(qdrant_module):
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+    first_match = qdrant_module.rest.PointStruct(
+        id="p1", payload={"page_content": "common rare", "metadata": {"doc_id": "1"}}, vector=[0.1]
+    )
+    second_match = qdrant_module.rest.PointStruct(
+        id="p2", payload={"page_content": "common", "metadata": {"doc_id": "2"}}, vector=[0.2]
+    )
+    later_match = qdrant_module.rest.PointStruct(
+        id="p3", payload={"page_content": "rare", "metadata": {"doc_id": "3"}}, vector=[0.3]
+    )
+    vector._client.scroll.side_effect = [([first_match, second_match], None), ([first_match, later_match], None)]
+
+    docs = vector.search_by_full_text("common rare", top_k=3)
+
+    assert [doc.metadata["doc_id"] for doc in docs] == ["1", "3", "2"]
+
+
 @pytest.mark.parametrize("top_k", [0, -1])
 def test_qdrant_full_text_search_skips_nonpositive_top_k(qdrant_module, top_k):
     vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
