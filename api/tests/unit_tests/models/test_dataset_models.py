@@ -1,5 +1,3 @@
-from repositories.knowledge.keyword_table_repository import load_keyword_table
-
 """
 Comprehensive unit tests for Dataset models.
 
@@ -77,6 +75,7 @@ from repositories.knowledge.dataset_read_repository import (
     get_segment_dataset,
     get_segment_document,
 )
+from repositories.knowledge.keyword_table_repository import load_keyword_table
 from repositories.knowledge.segment_read_adapter import get_segment_attachments
 from services.knowledge.dataset_read_service import get_dataset_queries
 from tests.unit_tests.config_override import apply_config_overrides

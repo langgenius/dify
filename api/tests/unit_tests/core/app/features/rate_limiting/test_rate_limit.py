@@ -373,7 +373,7 @@ class TestRateLimitGenerator:
 
         wrapped_gen = rate_limit.generate(generator, request_id)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Test error"):
             list(wrapped_gen)
 
         redis_patch.hdel.assert_called_once_with("dify:rate_limit:test_client:active_requests", request_id)

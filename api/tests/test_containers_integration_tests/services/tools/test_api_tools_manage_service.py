@@ -1,5 +1,6 @@
 import inspect
 import json
+import re
 from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
@@ -193,7 +194,7 @@ class TestApiToolManageService:
         invalid_schema = "invalid json schema"
 
         # Act & Assert: Verify proper error handling
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="invalid schema") as exc_info:
             ApiToolManageService.parser_api_schema(invalid_schema)
 
         assert "invalid schema" in str(exc_info.value)
@@ -216,7 +217,7 @@ class TestApiToolManageService:
         malformed_schema = '{"openapi": "3.0.0", "info": {"title": "Test", "version": "1.0.0"}, "paths": {}}'
 
         # Act & Assert: Verify proper error handling
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="invalid schema") as exc_info:
             ApiToolManageService.parser_api_schema(malformed_schema)
 
         assert "invalid schema" in str(exc_info.value)
@@ -301,7 +302,7 @@ class TestApiToolManageService:
         invalid_schema = "invalid schema content"
 
         # Act & Assert: Verify proper error handling
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="invalid schema") as exc_info:
             ApiToolManageService.convert_schema_to_tool_bundles(invalid_schema)
 
         assert "invalid schema" in str(exc_info.value)
@@ -421,7 +422,7 @@ class TestApiToolManageService:
         )
 
         # Act & Assert: Try to create duplicate provider
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match=re.escape(f"provider {provider_name} already exists")) as exc_info:
             ApiToolManageService.create_api_tool_provider(
                 user_id=account.id,
                 tenant_id=tenant.id,
@@ -497,7 +498,7 @@ class TestApiToolManageService:
         labels = ["test"]
 
         # Act & Assert: Try to create provider with missing auth type
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="auth_type is required") as exc_info:
             ApiToolManageService.create_api_tool_provider(
                 user_id=account.id,
                 tenant_id=tenant.id,

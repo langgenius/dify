@@ -975,7 +975,7 @@ class TestWorkflowAppLogQueryService:
         assert all(log.created_by_role == CreatorUserRole.ACCOUNT for log in result_with_new_email["data"])
 
         # Old email unbound, is unexpected input, should raise ValueError
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Account not found") as exc_info:
             service.get_paginate_workflow_app_logs(
                 session=db_session_with_containers, app_model=app, created_by_account=original_email, page=1, limit=20
             )
@@ -995,7 +995,7 @@ class TestWorkflowAppLogQueryService:
         assert result_no_session["total"] == 0
 
         # Test filtering by non-existent account email, is unexpected input, should raise ValueError
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Account not found") as exc_info:
             service.get_paginate_workflow_app_logs(
                 session=db_session_with_containers,
                 app_model=app,
@@ -1249,7 +1249,7 @@ class TestWorkflowAppLogQueryService:
         assert len(result_no_session["data"]) == 0
 
         # Test with account email that doesn't exist
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Account not found") as exc_info:
             service.get_paginate_workflow_app_logs(
                 session=db_session_with_containers,
                 app_model=app,

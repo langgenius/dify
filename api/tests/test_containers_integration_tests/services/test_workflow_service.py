@@ -1618,7 +1618,7 @@ class TestWorkflowService:
 
         # Act
         # Since start nodes are not supported in run_free_node, we expect an error
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(Exception, match="Node type start not supported") as exc_info:
             workflow_service.run_free_workflow_node(
                 node_data=node_data, tenant_id=tenant_id, user_id=user_id, node_id=node_id, user_inputs=user_inputs
             )

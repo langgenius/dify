@@ -58,11 +58,9 @@ select = [
 ]
 
 ignore = [
-    "E402",    # module-import-not-at-top-of-file
     "B901",    # allow return in yield
     "B904",    # raise-without-from-inside-except
     "N815",    # mixed-case-variable-in-class-scope
-    "PT011",   # pytest-raises-too-broad
     "SIM102",  # collapsible-if
     "SIM117",  # multiple-with-statements
 ]

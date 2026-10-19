@@ -259,7 +259,7 @@ class TestModelLoadBalancingService:
 
         # Act & Assert: Verify proper error handling
         service = ModelLoadBalancingService()
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Provider nonexistent_provider does not exist\\.") as exc_info:
             service.enable_model_load_balancing(
                 tenant_id=tenant.id, provider="nonexistent_provider", model="gpt-3.5-turbo", model_type="llm"
             )
@@ -382,7 +382,7 @@ class TestModelLoadBalancingService:
 
         # Act & Assert: Verify proper error handling
         service = ModelLoadBalancingService()
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Provider nonexistent_provider does not exist\\.") as exc_info:
             service.get_load_balancing_configs(
                 tenant_id=tenant.id,
                 provider="nonexistent_provider",

@@ -164,7 +164,7 @@ def _dummy_preserve[**P](*args: P.args, **kwargs: P.kwargs):
 def test_generate_dataset_missing(generator, sqlite_session: Session):
     pipeline = _build_pipeline()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Pipeline dataset is required"):
         generator.generate(
             session=sqlite_session,
             pipeline=pipeline,
@@ -443,7 +443,7 @@ def test_generate_raises_when_workflow_not_found(generator, mocker: MockerFixtur
 
     session = sqlite_session
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Workflow not found: wf"):
         generator._generate(
             session=session,
             flask_app=flask_app,
@@ -517,12 +517,12 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture, sq
 
 
 def test_single_iteration_generate_validates_inputs(generator, sqlite_session: Session):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="node_id is required"):
         generator.single_iteration_generate(
             _build_pipeline(), _build_workflow(), "", _build_user(), {}, session=sqlite_session
         )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="inputs is required"):
         generator.single_iteration_generate(
             _build_pipeline(),
             _build_workflow(),
@@ -536,7 +536,7 @@ def test_single_iteration_generate_validates_inputs(generator, sqlite_session: S
 def test_single_iteration_generate_dataset_required(generator, sqlite_session: Session):
     pipeline = _build_pipeline()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Pipeline dataset is required"):
         generator.single_iteration_generate(
             pipeline,
             _build_workflow(),
@@ -684,7 +684,7 @@ def test_build_document_supports_online_drive_datasource_type(generator):
 
 
 def test_build_document_invalid_datasource_type(generator):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unsupported datasource type: invalid"):
         generator._build_document(
             tenant_id="tenant",
             dataset_id="ds",
@@ -715,7 +715,7 @@ def test_format_datasource_info_list_non_online_drive(generator):
 def test_format_datasource_info_list_missing_node_data(generator):
     workflow = _build_workflow()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Datasource node data not found"):
         generator._format_datasource_info_list(
             DatasourceProviderType.ONLINE_DRIVE,
             [],

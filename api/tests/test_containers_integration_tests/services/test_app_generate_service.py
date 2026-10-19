@@ -680,7 +680,7 @@ class TestAppGenerateService:
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
 
         # Execute the method under test and expect ValueError
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Workflow not initialized") as exc_info:
             AppGenerateService.generate(
                 app_model=app,
                 user=account,
@@ -711,7 +711,7 @@ class TestAppGenerateService:
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
 
         # Execute the method under test and expect ValueError
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Workflow not published") as exc_info:
             AppGenerateService.generate(
                 app_model=app,
                 user=account,
@@ -803,7 +803,7 @@ class TestAppGenerateService:
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}}
 
         # Execute the method under test and expect ValueError
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Invalid app mode") as exc_info:
             AppGenerateService.generate_single_iteration(
                 app_model=app,
                 user=account,
@@ -893,7 +893,7 @@ class TestAppGenerateService:
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}}
 
         # Execute the method under test and expect ValueError
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Invalid app mode") as exc_info:
             AppGenerateService.generate_single_loop(
                 app_model=app,
                 user=account,
@@ -1058,7 +1058,7 @@ class TestAppGenerateService:
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
 
         # Execute the method under test and expect exception
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(Exception, match="Test exception") as exc_info:
             AppGenerateService.generate(
                 app_model=app,
                 user=account,
