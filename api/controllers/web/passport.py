@@ -8,11 +8,10 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
-from controllers.web.wraps import extract_web_login_token
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response
-from libs.token import extract_webapp_passport
+from libs.token import extract_access_token, extract_webapp_access_token, extract_webapp_passport
 from services.entities.passport_entities import WebPassportIdentity, WebPassportRequest
 from services.web_passport_service import (
     WebPassportAccessDeniedError,
@@ -27,7 +26,7 @@ class PassportQuery(BaseModel):
     user_id: str | None = Field(default=None, description="End user session ID")
     identity: WebPassportIdentity | None = Field(
         default=None,
-        description="Explicitly exchange the Cloud Account login for an App Passport. "
+        description="Explicitly exchange the Account login for an App Passport when enabled by configuration. "
         "Omit to preserve the existing App identity independently of Account login.",
     )
 
@@ -66,7 +65,11 @@ class PassportResource(Resource):
         passport_request = WebPassportRequest(
             app_code=app_code,
             user_session_id=query.user_id,
-            access_token=extract_web_login_token(),
+            access_token=(
+                extract_access_token(request)
+                if query.identity == WebPassportIdentity.ACCOUNT
+                else extract_webapp_access_token(request)
+            ),
             app_passport=extract_webapp_passport(app_code, request),
             identity=query.identity,
         )

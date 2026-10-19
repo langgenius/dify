@@ -59,7 +59,7 @@ def test_external_sso_does_not_infer_an_account_from_its_subject() -> None:
 
 
 @pytest.mark.parametrize(("console", "webapp"), [(False, False), (False, True)])
-def test_console_login_is_not_implicitly_enabled_in_other_editions(console: bool, webapp: bool) -> None:
+def test_console_login_requires_feature_enablement(console: bool, webapp: bool) -> None:
     service = WebIdentityService(accounts=WebAccounts(), allow_console_login=console, allow_webapp_login=webapp)
     with pytest.raises(WebIdentityError):
         service.resolve_login(account_claims())

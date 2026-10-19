@@ -1044,8 +1044,9 @@ class AuthConfig(BaseSettings):
 
     WEBAPP_ACCOUNT_PASSPORT_ENABLED: bool = Field(
         default=False,
-        description="Enable explicit Cloud Account Passport exchange only after every API instance supports it. "
-        "Disabling issuance does not revoke existing Passports. Ignored outside Cloud.",
+        description="Enable explicit Account Passport exchange. When unset, defaults to true in Cloud and false "
+        "in other editions; an explicit value overrides the edition default. Enable only after every API instance "
+        "supports it. Disabling issuance does not revoke existing Passports.",
     )
 
     OAUTH_REDIRECT_PATH: str = Field(

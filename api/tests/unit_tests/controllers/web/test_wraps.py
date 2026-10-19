@@ -7,9 +7,37 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
+from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN
 from core.logging.context import clear_request_context, get_identity_context
+from enums import DeploymentEdition
 from models import App, EndUser
+from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.web_identity_fakes import web_identities
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("enabled", [True, False])
+def test_login_status_cookie_selection_uses_feature_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    enabled: bool,
+) -> None:
+    from controllers.web.wraps import extract_web_login_token
+
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=edition,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled,
+        CONSOLE_WEB_URL="http://localhost",
+        CONSOLE_API_URL="http://localhost",
+    )
+    with Flask(__name__).test_request_context(
+        "/login/status",
+        headers={
+            "Cookie": f"{COOKIE_NAME_ACCESS_TOKEN}=account-login; {COOKIE_NAME_WEBAPP_ACCESS_TOKEN}=web-login",
+        },
+    ):
+        assert extract_web_login_token() == ("account-login" if enabled else "web-login")
 
 
 @pytest.fixture(autouse=True)

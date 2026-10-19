@@ -152,15 +152,18 @@ def test_guest_recovery_requires_passport_not_public_session_id(
     assert signer.verify(recovered)["end_user_id"] == first_id
 
 
-def test_cloud_passport_reuses_account_cookie_without_workspace_context(
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+def test_enabled_passport_reuses_account_cookie_in_any_edition(
     app: Flask,
     identity_flow: tuple[PassportService, WebAccounts],
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
 ) -> None:
     apply_config_overrides(
         monkeypatch,
-        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        DEPLOYMENT_EDITION=edition,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
         CONSOLE_WEB_URL="http://localhost",
         CONSOLE_API_URL="http://localhost",
     )

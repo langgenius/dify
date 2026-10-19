@@ -18,7 +18,6 @@ from controllers.web.error import (
 )
 from core.db.session_factory import session_factory
 from core.logging.context import set_identity_context
-from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from libs.passport import PassportService
 from libs.token import extract_console_cookie_token, extract_webapp_access_token, extract_webapp_passport
@@ -63,7 +62,7 @@ def resolve_web_app_id(app_code: str) -> str:
 
 
 def extract_web_login_token() -> str | None:
-    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+    if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED:
         return extract_console_cookie_token(request) or extract_webapp_access_token(request)
     return extract_webapp_access_token(request)
 

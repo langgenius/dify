@@ -481,7 +481,7 @@ def build_application_services(
     passwords = DefaultAccountPasswordHasher()
     web_identity = WebIdentityService(
         accounts=accounts,
-        allow_console_login=deployment_edition == DeploymentEdition.CLOUD,
+        allow_console_login=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
         allow_webapp_login=deployment_edition == DeploymentEdition.ENTERPRISE,
     )
     web_app_sessions = PassportWebAppSessionGateway(
@@ -719,9 +719,7 @@ def build_application_services(
             tokens=PassportTokenGateway(passport=PassportService()),
             identities=web_identity,
             app_sessions=web_app_sessions,
-            account_passports_enabled=(
-                deployment_edition == DeploymentEdition.CLOUD and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
-            ),
+            account_passports_enabled=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
             now=lambda: datetime.now(UTC),
             access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
         ),

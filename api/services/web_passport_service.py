@@ -127,7 +127,7 @@ class WebPassportService:
             if login_claims is None:
                 raise WebPassportAuthenticationRequiredError("Account login required.")
             if login_claims.token_source is not None or login_claims.account_id is None:
-                raise WebPassportUnauthorizedError("Cloud Account login required.")
+                raise WebPassportUnauthorizedError("Account login required.")
             if auth_type == WebAppAuthType.EXTERNAL:
                 raise WebPassportAuthenticationRequiredError("Please login as external user.")
             if auth_type == WebAppAuthType.INTERNAL and not self._auth.is_account_allowed(

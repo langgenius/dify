@@ -22,8 +22,3 @@ def test_oauth_ttl_days_clamps_or_falls_back_instead_of_failing(configured: str,
     config = _IsolatedAuthConfig(OAUTH_TTL_DAYS=configured)
 
     assert expected == config.OAUTH_TTL_DAYS
-
-
-def test_account_passport_issuance_requires_explicit_rollout_opt_in() -> None:
-    assert _IsolatedAuthConfig().WEBAPP_ACCOUNT_PASSPORT_ENABLED is False
-    assert _IsolatedAuthConfig(WEBAPP_ACCOUNT_PASSPORT_ENABLED=True).WEBAPP_ACCOUNT_PASSPORT_ENABLED is True

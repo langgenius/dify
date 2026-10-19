@@ -635,7 +635,7 @@ Get authentication passport for web application access
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| identity | query | Explicitly exchange the Cloud Account login for an App Passport. Omit to preserve the existing App identity independently of Account login. | No | string, <br>**Available values:** "account" |
+| identity | query | Explicitly exchange the Account login for an App Passport when enabled by configuration. Omit to preserve the existing App identity independently of Account login. | No | string, <br>**Available values:** "account" |
 | user_id | query | End user session ID | No | string |
 
 #### Responses
@@ -1670,7 +1670,7 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| identity | [WebPassportIdentity](#webpassportidentity) | Explicitly exchange the Cloud Account login for an App Passport. Omit to preserve the existing App identity independently of Account login. | No |
+| identity | [WebPassportIdentity](#webpassportidentity) | Explicitly exchange the Account login for an App Passport when enabled by configuration. Omit to preserve the existing App identity independently of Account login. | No |
 | user_id | string | End user session ID | No |
 
 #### PasswordMismatchError
