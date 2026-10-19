@@ -41,6 +41,9 @@ class _StreamContext:
     def iter_lines(self):
         return self._lines
 
+    def raise_for_status(self) -> None:
+        return None
+
 
 class TestBasePluginClientImpl:
     def test_inject_trace_headers(self, mocker: MockerFixture, config_overrides: Callable[..., None]):

@@ -1,5 +1,6 @@
 import json
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator, Iterator
+from contextlib import contextmanager
 from typing import override
 from unittest.mock import patch
 
@@ -8,7 +9,6 @@ import pytest
 
 from clients.plugin.auth import PluginCredentialAuthClient
 from clients.plugin.auth_entities import CredentialCheckResult, OAuthRevokeResult
-from clients.plugin.http_client import get_client
 from core.plugin.entities.plugin_daemon import CredentialType, PluginToolProviderEntity
 from core.plugin.impl.tool import PluginToolManager
 
@@ -21,6 +21,15 @@ def _frame(data: object, *, code: int = 0, message: str = "") -> str:
 
 def _result(status: str, *, reason_code: str | None = None, retryable: bool = False) -> dict[str, object]:
     return {"status": status, "reason_code": reason_code, "retryable": retryable}
+
+
+@contextmanager
+def _daemon(handler: Callable[[httpx.Request], httpx.Response]) -> Generator[None]:
+    with (
+        httpx.Client(transport=httpx.MockTransport(handler)) as http_client,
+        patch("core.plugin.impl.base._httpx_client", http_client),
+    ):
+        yield
 
 
 def _check(
@@ -57,10 +66,7 @@ def test_shared_client_preserves_legacy_and_detailed_requests() -> None:
         payload = _result("valid") if data.get("result_format") == "detailed" else {"result": True}
         return httpx.Response(200, text=_frame(payload))
 
-    with (
-        httpx.Client(transport=httpx.MockTransport(respond)) as http_client,
-        patch.object(get_client(), "stream", http_client.stream),
-    ):
+    with _daemon(respond):
         assert PluginToolManager().validate_provider_credentials("tenant-1", "user-1", "org/plugin/provider", {})
         assert _check(PluginCredentialAuthClient()).status == "valid"
     assert formats == [None, "detailed"]
@@ -68,18 +74,16 @@ def test_shared_client_preserves_legacy_and_detailed_requests() -> None:
 
 @pytest.mark.parametrize("legacy_result", [True, False, 1, "true"])
 def test_new_api_accepts_only_explicit_legacy_success(legacy_result: object) -> None:
-    with httpx.Client(
-        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=_frame({"result": legacy_result})))
-    ) as http_client:
-        result = _check(PluginCredentialAuthClient(http_client=http_client))
+    with _daemon(lambda _: httpx.Response(200, text=_frame({"result": legacy_result}))):
+        result = _check(PluginCredentialAuthClient())
     assert result.status == ("valid" if legacy_result is True else "temporarily_unavailable")
     assert result.reason_code == (None if legacy_result is True else "protocol_error")
     assert result.retryable is False
 
 
 def test_missing_revoke_endpoint_is_not_plugin_unsupported() -> None:
-    with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(404))) as http_client:
-        result = _revoke(PluginCredentialAuthClient(http_client=http_client))
+    with _daemon(lambda _: httpx.Response(404)):
+        result = _revoke(PluginCredentialAuthClient())
     assert result.status == "failed"
     assert result.retryable is False
 
@@ -97,8 +101,8 @@ def test_check_request_and_api_timestamp(
         return httpx.Response(200, text=": keepalive\n\n" + _frame(_result("valid")))
 
     monkeypatch.setattr("clients.plugin.auth.time.time", lambda: 1792141200.9)
-    with httpx.Client(transport=httpx.MockTransport(respond)) as http_client:
-        result = _check(PluginCredentialAuthClient(http_client=http_client), credential_type)
+    with _daemon(respond):
+        result = _check(PluginCredentialAuthClient(), credential_type)
 
     assert result.model_dump() == {**_result("valid"), "checked_at": 1792141200}
     assert len(requests) == 1
@@ -131,8 +135,8 @@ def test_revoke_request_uses_original_oauth_client() -> None:
         }
         return httpx.Response(200, text=_frame(_result("revoked")))
 
-    with httpx.Client(transport=httpx.MockTransport(respond)) as http_client:
-        assert _revoke(PluginCredentialAuthClient(http_client=http_client)).status == "revoked"
+    with _daemon(respond):
+        assert _revoke(PluginCredentialAuthClient()).status == "revoked"
 
 
 @pytest.mark.parametrize(
@@ -147,10 +151,8 @@ def test_revoke_request_uses_original_oauth_client() -> None:
     ],
 )
 def test_detailed_results_are_preserved(operation: Operation, payload: dict[str, object]) -> None:
-    with httpx.Client(
-        transport=httpx.MockTransport(lambda _: httpx.Response(200, text=_frame(payload)))
-    ) as http_client:
-        result = operation(PluginCredentialAuthClient(http_client=http_client))
+    with _daemon(lambda _: httpx.Response(200, text=_frame(payload))):
+        result = operation(PluginCredentialAuthClient())
     assert result.model_dump(exclude={"checked_at"}) == payload
 
 
@@ -166,8 +168,8 @@ def test_detailed_results_are_preserved(operation: Operation, payload: dict[str,
     ],
 )
 def test_malformed_checks_do_not_invalidate_credentials(body: str, caplog: pytest.LogCaptureFixture) -> None:
-    with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, text=body))) as http_client:
-        result = _check(PluginCredentialAuthClient(http_client=http_client))
+    with _daemon(lambda _: httpx.Response(200, text=body)):
+        result = _check(PluginCredentialAuthClient())
     assert result.status == "temporarily_unavailable"
     assert result.reason_code == "protocol_error"
     assert result.retryable is False
@@ -184,8 +186,8 @@ def test_error_after_success_is_not_accepted(
 ) -> None:
     error = json.dumps({"error_type": "PluginInvokeError", "message": SECRET})
     body = _frame(success) + _frame(None, code=-500, message=error)
-    with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, text=body))) as http_client:
-        result = operation(PluginCredentialAuthClient(http_client=http_client))
+    with _daemon(lambda _: httpx.Response(200, text=body)):
+        result = operation(PluginCredentialAuthClient())
     assert result.status == ("temporarily_unavailable" if operation is _check else "failed")
     assert result.reason_code == "protocol_error"
     assert result.retryable is False
@@ -202,8 +204,8 @@ def test_http_errors_are_not_credential_errors(operation: Operation, status_code
         requests.append(request)
         return httpx.Response(status_code, text=SECRET)
 
-    with httpx.Client(transport=httpx.MockTransport(respond)) as http_client:
-        result = operation(PluginCredentialAuthClient(http_client=http_client))
+    with _daemon(respond):
+        result = operation(PluginCredentialAuthClient())
     assert result.status == ("temporarily_unavailable" if operation is _check or retryable else "failed")
     assert result.reason_code == "daemon_unavailable"
     assert result.retryable is retryable
@@ -218,10 +220,8 @@ def test_stream_failure_after_success_is_not_accepted(exception: Exception, capl
             yield _frame({"result": True}).encode()
             raise exception
 
-    with httpx.Client(
-        transport=httpx.MockTransport(lambda _: httpx.Response(200, stream=InterruptedStream()))
-    ) as http_client:
-        result = _check(PluginCredentialAuthClient(http_client=http_client))
+    with _daemon(lambda _: httpx.Response(200, stream=InterruptedStream())):
+        result = _check(PluginCredentialAuthClient())
     assert result.status == "temporarily_unavailable"
     assert result.retryable is isinstance(exception, httpx.TransportError)
     assert SECRET not in result.model_dump_json()
@@ -232,9 +232,9 @@ def test_unauthorized_type_does_not_dispatch() -> None:
     def respond(_: httpx.Request) -> httpx.Response:
         pytest.fail("Invalid credential type must not dispatch")
 
-    with httpx.Client(transport=httpx.MockTransport(respond)) as http_client:
+    with _daemon(respond):
         with pytest.raises(ValueError, match="require API key or OAuth2"):
-            _check(PluginCredentialAuthClient(http_client=http_client), CredentialType.UNAUTHORIZED)
+            _check(PluginCredentialAuthClient(), CredentialType.UNAUTHORIZED)
 
 
 @pytest.mark.parametrize("enabled", [False, True])

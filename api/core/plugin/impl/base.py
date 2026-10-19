@@ -11,8 +11,8 @@ import httpx
 from pydantic import BaseModel
 from yarl import URL
 
-from clients.plugin.http_client import get_client
 from configs import dify_config
+from core.helper.http_client_pooling import get_pooled_http_client
 from core.plugin.endpoint.exc import EndpointSetupFailedError
 from core.plugin.entities.plugin_daemon import (
     PluginDaemonBasicResponse,
@@ -72,7 +72,10 @@ logger = logging.getLogger(__name__)
 PLUGIN_DAEMON_MAX_PATH_LENGTH = 4096
 PLUGIN_DAEMON_MAX_PATH_DECODE_DEPTH = 8
 
-_httpx_client: httpx.Client = get_client()
+_httpx_client: httpx.Client = get_pooled_http_client(
+    "plugin_daemon",
+    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100), trust_env=False),
+)
 
 
 @contextmanager
@@ -242,18 +245,22 @@ class BasePluginClient:
 
         try:
             with _httpx_client.stream(**stream_kwargs) as response:
+                response.raise_for_status()
                 for raw_line in response.iter_lines():
                     if not raw_line:
                         continue
                     line = raw_line.decode("utf-8") if isinstance(raw_line, bytes) else raw_line
                     line = line.strip()
+                    if line.startswith(":"):
+                        continue
                     if line.startswith("data:"):
                         line = line[5:].strip()
                     if line:
                         yield line
-        except httpx.RequestError:
-            logger.exception("Stream request to Plugin Daemon Service failed")
-            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
+        except httpx.RequestError as exc:
+            # Transport exceptions can include credentials in their text.
+            logger.exception("Stream request to Plugin Daemon Service failed: %s", type(exc).__name__, exc_info=False)
+            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed") from exc
 
     def _stream_request_with_model[T: BaseModel | dict[str, Any] | list[Any] | bool | str](
         self,
@@ -377,7 +384,8 @@ class BasePluginClient:
                     except Exception as e:
                         raise PluginDaemonInnerError(code=rep.code, message=rep.message) from e
 
-                    logger.error("Error in stream response for plugin %s", rep.__dict__)
+                    # Plugin error text can contain credentials.
+                    logger.error("Error in plugin daemon stream response: code=%s", rep.code)
                     self._handle_plugin_daemon_error(error.error_type, error.message)
                 raise ValueError(f"plugin daemon: {rep.message}, code: {rep.code}")
             if rep.data is None:

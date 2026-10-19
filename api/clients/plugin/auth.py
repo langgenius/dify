@@ -12,6 +12,7 @@ value so local cleanup can continue.
 
 import time
 from collections.abc import Mapping
+from contextlib import closing
 from typing import Any
 
 import httpx
@@ -22,16 +23,12 @@ from clients.plugin.auth_entities import (
     CredentialCheckResult,
     OAuthRevokeResult,
 )
-from clients.plugin.http_client import get_client
-from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonBasicResponse
-from core.plugin.impl.base import BasePluginClient
+from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonInnerError
+from core.plugin.impl.base import BasePluginClient, use_plugin_daemon_request_timeout
 from models.provider_ids import ToolProviderID
 
 
 class PluginCredentialAuthClient(BasePluginClient):
-    def __init__(self, *, http_client: httpx.Client | None = None) -> None:
-        self._http_client = http_client or get_client()
-
     def check_provider_credentials(
         self,
         *,
@@ -105,32 +102,24 @@ class PluginCredentialAuthClient(BasePluginClient):
         response_type: type[T],
     ) -> T:
         try:
-            url, headers, body, _, _ = self._prepare_request(
-                f"plugin/{tenant_id}/dispatch/{operation}",
-                {"X-Plugin-ID": provider_id.plugin_id, "Content-Type": "application/json"},
-                {"user_id": user_id, "data": {"provider": provider_id.provider_name, **data}},
-                None,
-                None,
-            )
-            assert isinstance(body, str)
-            # Reuse daemon authentication and tracing, but keep raw errors out of
-            # the generic transport's exception logs as well as its SSE parser.
-            with self._http_client.stream("POST", url, headers=headers, content=body, timeout=10) as response:
-                response.raise_for_status()
+            with (
+                use_plugin_daemon_request_timeout(10),
+                closing(
+                    self._request_with_plugin_daemon_response_stream(
+                        "POST",
+                        f"plugin/{tenant_id}/dispatch/{operation}",
+                        dict[str, object],
+                        headers={"X-Plugin-ID": provider_id.plugin_id, "Content-Type": "application/json"},
+                        data={"user_id": user_id, "data": {"provider": provider_id.provider_name, **data}},
+                    )
+                ) as response,
+            ):
                 result: T | None = None
-                for line in response.iter_lines():
-                    line = line.strip()
-                    if not line or line.startswith(":"):
-                        continue
-                    if line.startswith("data:"):
-                        line = line[5:].strip()
-                    envelope = PluginDaemonBasicResponse[dict[str, object]].model_validate_json(line)
-                    if envelope.code != 0 or result is not None:
+                for payload in response:
+                    if result is not None:
                         raise ValueError("Expected exactly one successful authentication result")
-                    payload = envelope.data
                     if (
                         response_type is CredentialCheckResponse
-                        and payload is not None
                         and payload.keys() == {"result"}
                         and payload["result"] is True
                     ):
@@ -143,8 +132,9 @@ class PluginCredentialAuthClient(BasePluginClient):
         except httpx.HTTPStatusError as exc:
             reason_code: AuthReasonCode = "daemon_unavailable"
             retryable = exc.response.status_code == 429 or exc.response.status_code >= 500
-        except httpx.TransportError:
-            reason_code, retryable = "daemon_unavailable", True
+        except PluginDaemonInnerError as exc:
+            reason_code = "daemon_unavailable"
+            retryable = isinstance(exc.__cause__, httpx.TransportError)
         except (ValueError, TypeError):
             reason_code, retryable = "protocol_error", False
         except Exception:
