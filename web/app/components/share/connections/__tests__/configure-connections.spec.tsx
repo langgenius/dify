@@ -392,7 +392,7 @@ describe('ConfigureConnections', () => {
     })
     expect(select).toHaveAttribute('aria-disabled', 'true')
     expect(connect).toBeDisabled()
-    expect(addApiKey).toBeDisabled()
+    expect(addApiKey).toHaveAttribute('aria-disabled', 'true')
     await user.click(select)
     await user.click(connect)
     await user.click(addApiKey)
@@ -418,7 +418,7 @@ describe('ConfigureConnections', () => {
     ).not.toBeInTheDocument()
     expect(select).not.toHaveAttribute('aria-disabled', 'true')
     expect(connect).toBeEnabled()
-    expect(addApiKey).toBeEnabled()
+    expect(addApiKey).not.toHaveAttribute('aria-disabled', 'true')
     await user.click(addApiKey)
     expect(onConnect).not.toHaveBeenCalled()
     const addDialog = await screen.findByRole('dialog', {

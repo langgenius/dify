@@ -149,6 +149,7 @@ function ServiceItem({
             {canApiKey && (
               <Button
                 ref={addApiKeyTriggerRef}
+                focusableWhenDisabled
                 disabled={disabled}
                 variant="secondary-accent"
                 aria-describedby={`${nameId} ${descriptionId}`}

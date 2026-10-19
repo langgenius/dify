@@ -43,6 +43,39 @@ const services: readonly RequiredConnectionService[] = [
 ]
 
 describe('RequiredServices', () => {
+  it.each(['cancel', 'escape'] as const)(
+    'restores focus to a disabled empty-service Add trigger after %s without allowing activation',
+    async (dismissal) => {
+      const user = userEvent.setup()
+      const onConnect = vi.fn()
+      const onConnectionChange = vi.fn()
+      const props = {
+        services: services.filter((service) => service.id === 'notion'),
+        onConnect,
+        onConnectionChange,
+      }
+      const { rerender } = render(<RequiredServices {...props} />)
+      const trigger = screen.getByRole('button', { name: 'share.connections.setup.addApiKey' })
+      await user.click(trigger)
+      const dialog = await screen.findByRole('dialog', {
+        name: 'share.connections.setup.addApiKey',
+      })
+
+      rerender(<RequiredServices {...props} disabled />)
+      if (dismissal === 'escape') await user.keyboard('{Escape}')
+      else await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+      await waitFor(() => expect(dialog).not.toBeInTheDocument())
+      await waitFor(() => expect(trigger).toHaveFocus())
+      expect(trigger).toHaveAttribute('aria-disabled', 'true')
+
+      await user.click(trigger)
+      await user.keyboard('{Enter}')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(onConnect).not.toHaveBeenCalled()
+      expect(onConnectionChange).not.toHaveBeenCalled()
+    },
+  )
+
   it('creates and selects a key for an empty service only after saving a complete draft', async () => {
     const user = userEvent.setup()
     const onConnect = vi.fn()
