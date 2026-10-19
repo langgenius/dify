@@ -308,6 +308,10 @@ await consoleClient.agent.byAgentId.traceConfig.post({
 | `aliyun` | `app_name`, `license_key`, `endpoint` |
 | `tencent` | `token`, `endpoint`, `service_name` |
 
+阿里云表单的 `endpoint` 填 HTTP(S) 接入基址，可保留部署的路径前缀；不能直接填含 `adapt_.../api/otlp/traces` 或 `adapt_.../api/v1/traces` 的完整接入点。控制台的 Trace 接入点需拆成基址和 `license_key`，不要使用 Metric 接入点。LicenseKey 是原始不透明字符串，不提前 URL 解码；后端保留路径段中的 `@`，并编码其余需要转义的字符。`app_name` 用作 `service.name`，空值使用 `dify_app`。
+
+阿里云 POST/PATCH 使用请求级凭据，经既有 SSRF 边界发送仅含资源和服务名的 OTLP 请求，严格不含 span 或业务 trace；配置校验仅认可已实测的 HTTP 200、正文精确为 `"success"` 的响应，空 200 不作为凭据有效的证明。GET 与 exporter 构造器只在本地处理配置。正式投递使用相同 HTTP 出口，兼容该精确响应及标准 OTLP ACK；未知 ACK 与部分接收按结果不确定处理，不自动重送整棵 trace。凭据位于请求路径，HTTP 请求期间的动态日志与异常细节会被隐藏。保存成功只证明本次接入校验成功，平台索引和业务 span 仍需按运行记录验收；不提供原生费用或项目、trace、span 深链。当前账号验证针对 ARMS 公网 HTTP 接入点；`*.log.aliyuncs.com` 的 SLS 路径分支仅有离线覆盖，尚未完成真实账号端到端验收。
+
 Weave Cloud 的 `host` 为 `https://api.wandb.ai`，`endpoint` 为 `https://trace.wandb.ai`。先在供应商创建项目，再填写明确的 `entity` 与项目裸名称；若不填写 `entity`，可填写 `entity/project`，或由当前凭据解析默认 entity，验证成功后服务端会保存解析结果。不能同时提供 `entity` 和带 entity 前缀的 `project`。
 
 Weave 的 POST/PATCH 只读校验账户、项目可写权限和 trace 查询端点，不隐式创建项目、不调用全局 SDK login/init。GET 不访问供应商。保存成功后持久化规范化的 entity/project 与项目链接；PATCH 保留未编辑密钥的实际脱敏回显值。校验通过不等于后续 ingestion 一定成功，继续按运行状态判断。

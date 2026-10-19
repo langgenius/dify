@@ -80,6 +80,16 @@ def _check_response(response: Any, provider: str) -> None:
         raise TraceExportUncertainError(f"{provider} partially accepted the trace; reconciliation is required")
 
 
+def is_aliyun_http_success_ack(status_code: int, content: bytes) -> bool:
+    """Recognize the exact ACK observed from Aliyun's HTTP Trace collector.
+
+    This literal response is an observed compatibility behavior, not the
+    documented OTLP ExportTraceServiceResponse. Do not normalize other bodies
+    or accept it for another status or provider.
+    """
+    return status_code == 200 and content == b'"success"'
+
+
 def _langfuse_enqueue_ack(body: object) -> bool:
     """Recognize Langfuse's queue acknowledgement without exposing its auth data.
 
@@ -131,6 +141,8 @@ def export_http(provider: str, url: str, headers: Mapping[str, str], payload: An
         headers={"Content-Type": "application/x-protobuf", "Accept": "application/x-protobuf", **headers},
         content=payload.SerializeToString(),
     )
+    if provider == "aliyun" and is_aliyun_http_success_ack(response.status_code, response.content):
+        return
     result = ExportTraceServiceResponse()
     if response.content:
         try:
