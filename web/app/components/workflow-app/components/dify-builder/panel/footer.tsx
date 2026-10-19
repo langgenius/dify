@@ -111,6 +111,10 @@ export const DifyBuilderPanelFooter = ({
 
   return (
     <footer className="relative z-10 shrink-0 pb-2">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-full h-6 bg-linear-to-t from-background-gradient-bg-fill-chat-bg-2 to-transparent"
+      />
       {error && (
         <div
           role="alert"
