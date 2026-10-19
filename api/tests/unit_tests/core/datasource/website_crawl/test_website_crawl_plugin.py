@@ -5,6 +5,7 @@ import pytest
 
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
+    DatasourceEntity,
     DatasourceProviderType,
     WebsiteCrawlMessage,
 )
@@ -14,19 +15,19 @@ from tests.unit_tests.core.datasource.factories import datasource_entity
 
 class TestWebsiteCrawlDatasourcePlugin:
     @pytest.fixture
-    def entity(self):
+    def entity(self) -> DatasourceEntity:
         entity = datasource_entity("test_name")
         entity.identity.provider = "test-provider"
         entity.identity.name = "test-name"
         return entity
 
     @pytest.fixture
-    def runtime(self):
+    def runtime(self) -> DatasourceRuntime:
         runtime = DatasourceRuntime(tenant_id="test_tenant")
         runtime.credentials = {"api_key": "test-key"}
         return runtime
 
-    def test_init(self, entity, runtime):
+    def test_init(self, entity: DatasourceEntity, runtime: DatasourceRuntime) -> None:
         # Arrange
         tenant_id = "test-tenant-id"
         icon = "test-icon"
@@ -48,7 +49,7 @@ class TestWebsiteCrawlDatasourcePlugin:
         assert plugin.runtime == runtime
         assert plugin.icon == icon
 
-    def test_datasource_provider_type(self, entity, runtime):
+    def test_datasource_provider_type(self, entity: DatasourceEntity, runtime: DatasourceRuntime) -> None:
         # Arrange
         plugin = WebsiteCrawlDatasourcePlugin(
             entity=entity, runtime=runtime, tenant_id="test", icon="test", plugin_unique_identifier="test"
@@ -57,7 +58,7 @@ class TestWebsiteCrawlDatasourcePlugin:
         # Act & Assert
         assert plugin.datasource_provider_type() == DatasourceProviderType.WEBSITE_CRAWL
 
-    def test_get_website_crawl(self, entity, runtime):
+    def test_get_website_crawl(self, entity: DatasourceEntity, runtime: DatasourceRuntime) -> None:
         # Arrange
         plugin = WebsiteCrawlDatasourcePlugin(
             entity=entity,

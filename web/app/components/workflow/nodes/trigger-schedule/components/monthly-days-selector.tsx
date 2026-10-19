@@ -1,14 +1,20 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Toggle } from '@langgenius/dify-ui/toggle'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
+const dayToggleClassName =
+  'rounded-lg border border-divider-subtle bg-components-option-card-option-bg py-1 text-xs text-text-tertiary outline-state-accent-solid transition-colors hover:border-divider-regular hover:text-text-secondary focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid data-pressed:border-util-colors-blue-brand-blue-brand-600 data-pressed:text-text-secondary data-pressed:hover:border-util-colors-blue-brand-blue-brand-600'
+
 type MonthlyDaysSelectorProps = {
+  disabled?: boolean
   selectedDays: (number | 'last')[]
   onChange: (days: (number | 'last')[]) => void
 }
 
-const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProps) => {
+const MonthlyDaysSelector = ({ selectedDays, onChange, disabled }: MonthlyDaysSelectorProps) => {
   const lastDayLabelId = React.useId()
 
   const { t } = useTranslation(['workflowIntegrations'])
@@ -42,26 +48,20 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
           <div key={rowIndex} className="grid grid-cols-7 gap-1.5">
             {row.map((day) =>
               day === 'last' ? (
-                <div
-                  key={day}
-                  className={`col-span-2 flex min-w-0 items-center rounded-lg border bg-components-option-card-option-bg text-xs transition-colors ${
-                    isDaySelected(day)
-                      ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
-                      : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
-                  }`}
-                >
-                  <button
+                <div key={day} className="relative col-span-2 min-w-0">
+                  <Toggle
+                    disabled={disabled}
                     id={lastDayLabelId}
-                    type="button"
-                    onClick={() => handleDayClick(day)}
-                    className="min-w-0 flex-1 py-1"
+                    pressed={isDaySelected(day)}
+                    onPressedChange={() => handleDayClick(day)}
+                    className={cn(dayToggleClassName, 'w-full pe-4')}
                   >
                     {t(($) => $['nodes.triggerSchedule.lastDay'], { ns: 'workflowIntegrations' })}
-                  </button>
+                  </Toggle>
                   <Infotip>
                     <InfotipTrigger
                       aria-labelledby={lastDayLabelId}
-                      className="mr-1 size-3"
+                      className="absolute inset-e-1 top-1/2 size-3 -translate-y-1/2"
                       iconSize="small"
                     />
                     <InfotipContent aria-labelledby={lastDayLabelId}>
@@ -72,18 +72,15 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
                   </Infotip>
                 </div>
               ) : (
-                <button
+                <Toggle
+                  disabled={disabled}
                   key={day}
-                  type="button"
-                  onClick={() => handleDayClick(day)}
-                  className={`rounded-lg border bg-components-option-card-option-bg py-1 text-xs transition-colors ${
-                    isDaySelected(day)
-                      ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
-                      : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
-                  }`}
+                  pressed={isDaySelected(day)}
+                  onPressedChange={() => handleDayClick(day)}
+                  className={dayToggleClassName}
                 >
                   {day}
-                </button>
+                </Toggle>
               ),
             )}
             {/* Fill empty cells in the last row (Last day takes 2 cols, so need 1 less) */}

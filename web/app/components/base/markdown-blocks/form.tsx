@@ -1,5 +1,6 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import {
@@ -237,7 +238,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
   }, [elementChildren, formValues])
 
   const onSubmit = useCallback(
-    (e: React.FormEvent<HTMLFormElement>) => {
+    async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
       e.stopPropagation()
       if (isSubmitting) return
@@ -246,12 +247,12 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
         const format = str(typedNode.properties.dataFormat) || DATA_FORMAT.TEXT
         const result = getFormOutput()
         if (format === DATA_FORMAT.JSON) {
-          onSend?.(JSON.stringify(result))
+          await onSend?.(JSON.stringify(result))
         } else {
           const textResult = Object.entries(result)
             .map(([key, value]) => `${key}: ${value}`)
             .join('\n')
-          onSend?.(textResult)
+          await onSend?.(textResult)
         }
       } catch {
         setIsSubmitting(false)
@@ -276,7 +277,12 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             <label
               key={key}
               htmlFor={`${formId}-${getLabelTarget(child)}`}
-              className="my-2 system-md-semibold text-text-secondary"
+              className={cn(
+                'my-2 system-md-semibold text-text-secondary',
+                target &&
+                  str(target.properties.type) === SUPPORTED_TYPES.CHECKBOX &&
+                  'cursor-pointer',
+              )}
             >
               {getTextContent(child)}
             </label>
@@ -405,7 +411,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             return (
               <Select
                 key={key}
-                defaultValue={formValues[name] as string | undefined}
+                value={(formValues[name] as string | undefined) ?? null}
                 onValueChange={(val) => {
                   if (val != null) updateValue(name, val)
                 }}

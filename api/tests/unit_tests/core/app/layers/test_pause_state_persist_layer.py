@@ -254,6 +254,11 @@ class TestPauseStatePersistenceLayer:
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
     ):
         generate_entity = self._create_generate_entity(workflow_execution_id="run-123")
+        clock = [10.0]
+        monkeypatch.setattr("repositories.entities.workflow_execution.perf_counter", lambda: clock[0])
+        generate_entity.workflow_execution_timing.elapsed_time = 5.0
+        generate_entity.workflow_execution_timing.start()
+        clock[0] = 12.0
         layer = PauseStatePersistenceLayer(
             session_factory=sqlite_session_factory,
             state_owner_user_id="owner-123",
@@ -285,6 +290,8 @@ class TestPauseStatePersistenceLayer:
         assert call_kwargs["state_owner_user_id"] == "owner-123"
         serialized_state = call_kwargs["state"]
         resumption_context = WorkflowResumptionContext.loads(serialized_state)
+        assert resumption_context.elapsed_time == 7.0
+        assert resumption_context.get_generate_entity().workflow_execution_timing.elapsed_time == 7.0
         assert resumption_context.serialized_graph_runtime_state == expected_state
         assert resumption_context.get_generate_entity().model_dump() == generate_entity.model_dump()
         pause_reasons = call_kwargs["pause_reasons"]
@@ -553,3 +560,14 @@ def test_get_response_stream_filter_defaults_when_state_missing() -> None:
     restored = context.get_response_stream_filter()
 
     assert isinstance(restored, ResponseStreamFilter)
+
+
+def test_resumption_context_defaults_elapsed_time_for_legacy_snapshots() -> None:
+    context = _build_workflow_generate_entity_for_roundtrip()
+    payload = context.model_dump()
+    payload.pop("elapsed_time")
+
+    restored = WorkflowResumptionContext.loads(json.dumps(payload))
+
+    assert restored.elapsed_time == 0.0
+    assert restored.get_generate_entity().workflow_execution_timing.elapsed_time == 0.0

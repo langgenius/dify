@@ -3,15 +3,15 @@ import type { FC } from 'react'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Event } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
-import TriggerFormItem from './item'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
+import { TriggerFormItem } from './item'
 
 type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema[]
-  value: PluginTriggerVarInputs
-  onChange: (value: PluginTriggerVarInputs) => void
+  value: ResourceVarInputs
+  onChange: (value: ResourceVarInputs) => void
   onOpen?: (index: number) => void
   currentEvent?: Event
   currentProvider?: TriggerWithProvider

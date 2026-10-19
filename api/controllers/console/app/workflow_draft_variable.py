@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.app.workflow_variable_admission import console_variable_admission
 from controllers.console.wraps import (
     RBACPermission,
@@ -22,6 +23,7 @@ from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableResponse,
     WorkflowDraftVariableWithoutValueResponse,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.workflow.contracts import WorkflowOwner
@@ -137,6 +139,7 @@ register_response_schema_models(
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables")
 class WorkflowVariableCollectionApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc(params=query_params_from_model(WorkflowDraftVariableListQuery))
     @console_ns.doc("get_workflow_variables")
     @console_ns.doc(description="Get draft workflow variables")
@@ -327,6 +330,7 @@ class SystemVariableCollectionApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/environment-variables")
 class EnvironmentVariableCollectionApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc("get_environment_variables", summary="Get environment variables")
     @console_ns.doc(description="Get environment variables for workflow")
     @console_ns.doc(params={"app_id": "Application ID"})

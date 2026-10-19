@@ -160,9 +160,9 @@ class TestCleanDatasetTask:
             index_struct='{"type": "paragraph"}',
             collection_binding_id=str(uuid.uuid4()),
             created_by=account.id,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
         )
+        dataset.created_at = datetime.now()
+        dataset.updated_at = datetime.now()
 
         db_session_with_containers.add(dataset)
         db_session_with_containers.commit()
@@ -364,7 +364,7 @@ class TestCleanDatasetTask:
 
         # Create multiple documents
         documents = []
-        for i in range(3):
+        for _i in range(3):
             document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
             documents.append(document)
 
@@ -480,7 +480,7 @@ class TestCleanDatasetTask:
 
         # Create a document and segment
         document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-        segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
+        self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
 
         # Execute the task with invalid doc_form values
         test_cases = [None, "", "   ", "\t\n"]
@@ -516,7 +516,7 @@ class TestCleanDatasetTask:
 
             # Recreate data for next test case
             document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-            segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
+            self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
 
         # Verify that IndexProcessorFactory was called with default type
         mock_factory = mock_external_service_dependencies["index_processor_factory"]
@@ -540,7 +540,7 @@ class TestCleanDatasetTask:
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
         document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-        segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
+        self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
 
         # Mock IndexProcessorFactory to raise an exception
         mock_index_processor = mock_external_service_dependencies["index_processor"]
@@ -693,12 +693,12 @@ class TestCleanDatasetTask:
         upload_file_ids = []
 
         # Create 50 documents with segments and upload files
-        for i in range(50):
+        for _i in range(50):
             document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
             documents.append(document)
 
             # Create 3 segments per document
-            for j in range(3):
+            for _j in range(3):
                 segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
                 segments.append(segment)
 
@@ -826,7 +826,7 @@ class TestCleanDatasetTask:
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
         document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-        segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
+        self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
         upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
 
         # Update document with file reference
@@ -906,9 +906,9 @@ class TestCleanDatasetTask:
             index_struct='{"type": "paragraph", "max_length": 10000}',
             collection_binding_id=str(uuid.uuid4()),
             created_by=account.id,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
         )
+        dataset.created_at = datetime.now()
+        dataset.updated_at = datetime.now()
 
         db_session_with_containers.add(dataset)
         db_session_with_containers.commit()

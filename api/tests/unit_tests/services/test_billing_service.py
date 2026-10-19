@@ -155,7 +155,7 @@ class TestBillingServiceSendRequest:
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Invalid arguments\\.") as exc_info:
             BillingService._send_request("PUT", "/test", json={"key": "value"})
         assert "Invalid arguments." in str(exc_info.value)
 
@@ -176,30 +176,6 @@ class TestBillingServiceSendRequest:
         assert result == expected_response
         call_args = mock_httpx_request.call_args
         assert call_args[0][0] == method
-
-    def test_new_agent_beta_ensure_uses_secret_authenticated_v1_base(self, mock_httpx_request, mock_billing_config):
-        mock_response = MagicMock()
-        mock_response.status_code = httpx.codes.OK
-        mock_response.json.return_value = {"status": "issued"}
-        mock_httpx_request.return_value = mock_response
-
-        BillingService.ensure_new_agent_beta_revision("revision-1")
-
-        call_args = mock_httpx_request.call_args
-        assert call_args.args == (
-            "POST",
-            "https://billing-api.example.com/new-agent-beta/revisions/revision-1/ensure",
-        )
-        assert call_args.kwargs["headers"]["Billing-Api-Secret-Key"] == "test-secret-key"
-
-    def test_new_agent_beta_ensure_requires_json_response(self, mock_httpx_request, mock_billing_config):
-        mock_response = MagicMock()
-        mock_response.status_code = httpx.codes.OK
-        mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
-        mock_httpx_request.return_value = mock_response
-
-        with pytest.raises(json.JSONDecodeError):
-            BillingService.ensure_new_agent_beta_revision("revision-1")
 
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
@@ -239,7 +215,13 @@ class TestBillingServiceSendRequest:
 
         # Act & Assert
         with caplog.at_level(logging.ERROR, logger="services.billing_service"):
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(
+                ValueError,
+                match=(
+                    "Unable to process delete request https://billing\\-api\\.example\\.com"
+                    "/test\\. Please try again later or contact support\\."
+                ),
+            ) as exc_info:
                 BillingService._send_request("DELETE", "/test", json={"key": "value"})
             assert "Unable to process delete request" in str(exc_info.value)
             assert "DELETE response" in caplog.text
@@ -283,7 +265,13 @@ class TestBillingServiceSendRequest:
 
         # Act & Assert
         with caplog.at_level(logging.ERROR, logger="services.billing_service"):
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(
+                ValueError,
+                match=(
+                    "Unable to process delete request https://billing\\-api\\.example\\.com"
+                    "/test\\. Please try again later or contact support\\."
+                ),
+            ) as exc_info:
                 BillingService._send_request("DELETE", "/test", json={"key": "value"})
             assert "Unable to process delete request" in str(exc_info.value)
             assert "DELETE response" in caplog.text

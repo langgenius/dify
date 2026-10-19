@@ -37,36 +37,39 @@ function TestDropdown({
 }
 
 describe('useStepByStepTourControlledDropdown', () => {
-  it('keeps ordinary dropdown toggle behavior when no tour controls it', () => {
+  it('keeps ordinary dropdown toggle behavior when no tour controls it', async () => {
+    const user = userEvent.setup()
     render(<TestDropdown />)
 
     expect(screen.getByText('Menu is closed and uncontrolled')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Toggle menu' }))
+    await user.click(screen.getByRole('button', { name: 'Toggle menu' }))
 
     expect(screen.getByText('Menu is open and uncontrolled')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Toggle menu' }))
+    await user.click(screen.getByRole('button', { name: 'Toggle menu' }))
 
     expect(screen.getByText('Menu is closed and uncontrolled')).toBeInTheDocument()
   })
 
-  it('opens for a tour step without locking the dropdown open', () => {
+  it('opens for a tour step without locking the dropdown open', async () => {
+    const user = userEvent.setup()
     render(<TestDropdown controlledOpen />)
 
     expect(screen.getByText('Menu is open and controlled')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Toggle menu' }))
+    await user.click(screen.getByRole('button', { name: 'Toggle menu' }))
 
     expect(screen.getByText('Menu is closed and uncontrolled')).toBeInTheDocument()
   })
 
-  it('can keep a tour-opened dropdown locked until the tour leaves the step', () => {
+  it('can keep a tour-opened dropdown locked until the tour leaves the step', async () => {
+    const user = userEvent.setup()
     render(<TestDropdown controlledOpen allowTriggerCloseWhileControlled={false} />)
 
     expect(screen.getByText('Menu is open and controlled')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Toggle menu' }))
+    await user.click(screen.getByRole('button', { name: 'Toggle menu' }))
 
     expect(screen.getByText('Menu is open and controlled')).toBeInTheDocument()
   })
@@ -103,17 +106,20 @@ describe('getStepByStepTourDropdownMenuContentProps', () => {
       </DropdownMenu>,
     )
     document.addEventListener('click', onBackgroundClick)
+    try {
+      // Exercise capture-phase rejection even if a click is dispatched to the presentation-only menu.
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Delete', hidden: true }))
 
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete', hidden: true }))
-
-    expect(onAction).not.toHaveBeenCalled()
-    expect(onBackgroundClick).not.toHaveBeenCalled()
-    expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
-    expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute(
-      'data-step-by-step-tour-highlight-part',
-      'tour-menu',
-    )
-    document.removeEventListener('click', onBackgroundClick)
+      expect(onAction).not.toHaveBeenCalled()
+      expect(onBackgroundClick).not.toHaveBeenCalled()
+      expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
+      expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute(
+        'data-step-by-step-tour-highlight-part',
+        'tour-menu',
+      )
+    } finally {
+      document.removeEventListener('click', onBackgroundClick)
+    }
   })
 
   it('leaves interactive menus clickable without bubbling through', async () => {
@@ -135,15 +141,17 @@ describe('getStepByStepTourDropdownMenuContentProps', () => {
       </DropdownMenu>,
     )
     document.addEventListener('click', onBackgroundClick)
+    try {
+      await user.click(screen.getByRole('menuitem', { name: 'Create' }))
 
-    await user.click(screen.getByRole('menuitem', { name: 'Create' }))
-
-    expect(onAction).toHaveBeenCalledTimes(1)
-    expect(onBackgroundClick).not.toHaveBeenCalled()
-    expect(screen.getByRole('menu')).toHaveAttribute(
-      'data-step-by-step-tour-highlight-part',
-      'tour-menu',
-    )
-    document.removeEventListener('click', onBackgroundClick)
+      expect(onAction).toHaveBeenCalledTimes(1)
+      expect(onBackgroundClick).not.toHaveBeenCalled()
+      expect(screen.getByRole('menu')).toHaveAttribute(
+        'data-step-by-step-tour-highlight-part',
+        'tour-menu',
+      )
+    } finally {
+      document.removeEventListener('click', onBackgroundClick)
+    }
   })
 })

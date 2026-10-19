@@ -11,16 +11,9 @@ from configs import dify_config
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.common.session import with_session
-from fields.base import ResponseModel
-from libs.helper import dump_response
-from libs.login import login_required
-from models.enums import AppTriggerStatus
-from models.model import App, AppMode
-from models.trigger import AppTrigger, WorkflowWebhookTrigger
-
-from .. import console_ns
-from ..app.wraps import get_app_model
-from ..wraps import (
+from controllers.console import console_ns
+from controllers.console.app.wraps import get_app_model
+from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
     edit_permission_required,
@@ -29,11 +22,17 @@ from ..wraps import (
     setup_required,
     with_current_tenant_id,
 )
+from fields.base import ResponseModel
+from libs.helper import dump_response
+from libs.login import login_required
+from models.enums import AppTriggerStatus
+from models.model import App, AppMode
+from models.trigger import AppTrigger, WorkflowWebhookTrigger
 
 logger = logging.getLogger(__name__)
 
 
-class Parser(BaseModel):
+class WebhookTriggerQuery(BaseModel):
     node_id: str
 
 
@@ -83,7 +82,7 @@ class WebhookTriggerResponse(ResponseModel):
 
 register_schema_models(
     console_ns,
-    Parser,
+    WebhookTriggerQuery,
     ParserEnable,
     WorkflowTriggerResponse,
     WorkflowTriggerListResponse,
@@ -95,7 +94,7 @@ register_schema_models(
 class WebhookTriggerApi(Resource):
     """Webhook Trigger API"""
 
-    @console_ns.doc(params=query_params_from_model(Parser))
+    @console_ns.doc(params=query_params_from_model(WebhookTriggerQuery))
     @setup_required
     @login_required
     @account_initialization_required
@@ -103,8 +102,8 @@ class WebhookTriggerApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session(write=False)
     @get_app_model(mode=AppMode.WORKFLOW)
-    @model_validate(Parser)
-    def get(self, req_data: Parser, session: Session, app_model: App):
+    @model_validate(WebhookTriggerQuery)
+    def get(self, req_data: WebhookTriggerQuery, session: Session, app_model: App):
         """Get webhook trigger for a node"""
 
         node_id = req_data.node_id

@@ -149,11 +149,17 @@ def _persist_human_input_form(
 
 
 def _build_service_api_pause_converter(*, workflow_contexts, tool_providers) -> WorkflowResponseConverter:
-    application_generate_entity = SimpleNamespace(
+    application_generate_entity = WorkflowAppGenerateEntity(
+        task_id="task",
+        workflow_execution_id="run-id",
+        user_id="user",
+        stream=True,
         inputs={},
         files=[],
         invoke_from=InvokeFrom.SERVICE_API,
-        app_config=SimpleNamespace(app_id="app-id", tenant_id="tenant-id"),
+        app_config=WorkflowUIBasedAppConfig(
+            app_id="app-id", tenant_id="tenant-id", workflow_id="workflow-id", app_mode=AppMode.WORKFLOW
+        ),
     )
     system_variables = build_system_variables(
         user_id="user",
