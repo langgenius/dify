@@ -8,9 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Barrier
-from types import SimpleNamespace
 from typing import TypedDict, Unpack
-from unittest.mock import MagicMock
 
 import httpx
 import pytest
@@ -19,13 +17,19 @@ import weave
 from dify_trace_weave.config import WeaveConfig
 from dify_trace_weave.entities.weave_trace_entity import WeaveTraceModel
 from dify_trace_weave.weave_trace import WeaveDataTrace
+from sqlalchemy.orm import Session
 from weave.trace_server.trace_server_interface import CallEndReq, CallStartReq, TraceStatus
 
 from core.helper import ssrf_proxy
 from core.ops.entities.trace_entity import WorkflowTraceInfo
 from core.ops.exceptions import RetryableTraceDispatchError
-from graphon.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from models.account import TenantAccountJoin, TenantAccountRole
+from models.enums import CreatorUserRole
+from models.model import AppMode
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.tracing.provider_dispatch import TraceExportRejectedError, TraceExportUncertainError
+from tests.unit_tests.model_factories import make_account, make_app, make_tenant
 
 START = datetime(2026, 10, 19, tzinfo=UTC)
 
@@ -111,48 +115,59 @@ def test_constructor_and_presentation_have_no_login_network_files_or_background_
     assert dict(os.environ) == before
 
 
+@pytest.mark.usefixtures("agent_runtime_app")
 def test_workflow_emits_four_real_sdk_calls_with_original_ids_payload_and_status(
-    monkeypatch: pytest.MonkeyPatch, wire: list[tuple[str, RequestOptions, dict[str, object]]]
+    sqlite_session: Session,
+    wire: list[tuple[str, RequestOptions, dict[str, object]]],
 ) -> None:
-    adapter = WeaveDataTrace(config())
+    # The normal Flask/SQLite fixtures bind the actual service-account lookup and
+    # production repository to persisted rows. Only outbound HTTP is substituted.
+    tenant = make_tenant(tenant_id="tenant")
+    account = make_account(account_id="owner", tenant=tenant)
+    app = make_app(app_id="app", tenant_id=tenant.id, mode=AppMode.WORKFLOW, created_by=account.id)
+    membership = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.OWNER)
+    sqlite_session.add_all([tenant, account, app, membership])
     nodes = [
-        SimpleNamespace(
+        WorkflowNodeExecutionModel(
             id=f"node-{i}",
+            tenant_id=tenant.id,
+            app_id=app.id,
+            workflow_id="workflow",
+            workflow_run_id="legacy-run",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            index=i,
+            node_id=f"node-{i}",
             title=title,
             node_type=kind,
-            status="succeeded",
-            inputs={"synthetic": True},
-            outputs={"answer": "ok"},
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            created_by=account.id,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            inputs=json.dumps({"synthetic": True}),
+            outputs=json.dumps({"answer": "ok"}),
             created_at=START + timedelta(milliseconds=i),
+            finished_at=START + timedelta(milliseconds=i + 100),
             elapsed_time=0.1,
-            process_data=(
+            process_data=json.dumps(
                 {
                     "prompts": [{"role": "user", "text": "hello"}],
                     "model_mode": "chat",
                     "model_provider": "test",
                     "model_name": "test-model",
                 }
-                if i == 1
-                else None
-            ),
-            metadata=(
-                {"total_tokens": 32, "prompt_tokens": 26, "completion_tokens": 6, "total_price": "0.0000098"}
-                if i == 1
-                else {}
+            )
+            if i == 1
+            else None,
+            execution_metadata=json.dumps(
+                {"total_tokens": 32, "total_price": "0.0000098", "currency": "USD"} if i == 1 else {}
             ),
         )
         for i, (title, kind) in enumerate(
             [("Start", BuiltinNodeTypes.START), ("LLM", BuiltinNodeTypes.LLM), ("End", BuiltinNodeTypes.END)]
         )
     ]
-    repo = MagicMock()
-    repo.get_by_workflow_execution.return_value = nodes
-    factory = MagicMock()
-    factory.create_workflow_node_execution_repository.return_value = repo
-    monkeypatch.setattr("dify_trace_weave.weave_trace.DifyCoreRepositoryFactory", factory)
-    monkeypatch.setattr("dify_trace_weave.weave_trace.sessionmaker", MagicMock())
-    monkeypatch.setattr("dify_trace_weave.weave_trace.db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(adapter, "get_service_account_with_tenant", lambda _app: MagicMock())
+    sqlite_session.add_all(nodes)
+    sqlite_session.commit()
+    adapter = WeaveDataTrace(config())
     info = WorkflowTraceInfo(
         query="hello",
         workflow_id="workflow",
@@ -193,7 +208,6 @@ def test_workflow_emits_four_real_sdk_calls_with_original_ids_payload_and_status
     assert all("usage" not in e.summary for e in ends)  # Do not invent native aggregation for the old mapper.
     assert all(options["auth"] == ("api", "fixture-key") and options["max_retries"] == 0 for _, options, _ in wire)
     assert adapter.calls == {}
-    repo.get_by_workflow_execution.assert_called_once_with(workflow_execution_id="legacy-run")
 
 
 def test_interleaved_instances_resolve_only_their_own_credentials_and_targets(monkeypatch: pytest.MonkeyPatch) -> None:
