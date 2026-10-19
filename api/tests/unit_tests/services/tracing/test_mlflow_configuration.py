@@ -18,6 +18,7 @@ from dify_trace_mlflow.oss_configuration import (
     project_url,
     verify_configuration,
 )
+from pydantic import ValidationError
 
 from core.helper import ssrf_proxy
 from tests.unit_tests.services.tracing.test_databricks_configuration import ExperimentAPI, response
@@ -175,14 +176,14 @@ def test_concurrent_destinations_keep_experiment_and_auth_together(experiment_ap
     ],
 )
 def test_ambiguous_destinations_fail_before_request(experiment_api: ExperimentAPI, uri: str) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises((MLflowConfigurationError, ValidationError)):
         verify_configuration(normalize_configuration({"tracking_uri": uri, "experiment_id": "12"}))
     assert experiment_api.calls == []
 
 
 @pytest.mark.parametrize("experiment", ["", "-1", "1.5", "１２", "abc"])
 def test_experiment_ids_are_ascii_integer_identifiers(experiment_api: ExperimentAPI, experiment: str) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises((MLflowConfigurationError, ValidationError)):
         normalize_configuration({"tracking_uri": "https://server.test", "experiment_id": experiment})
     assert experiment_api.calls == []
 
