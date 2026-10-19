@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants.resource_access_token import ResourceAccessTokenManagedBy
 from extensions.application_services.resource_access_token import build_resource_access_token_service
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -18,6 +19,9 @@ from models.resource_access_token import (
     ResourceAccessTokenResourceType,
 )
 from services.auth.resource_access_token_contracts import (
+    ResourceAccessTokenForbiddenError,
+    ResourceAccessTokenInvalidError,
+    ResourceAccessTokenNotFoundError,
     ResourceAccessTokenResource,
 )
 from services.resource_access_token_service import ResourceAccessTokenService
@@ -402,3 +406,88 @@ def test_cleanup_cannot_delete_another_workspaces_token(
         )
     assert sqlite_session.get(ResourceAccessToken, created.token_id) is not None
     assert sqlite_session.get(ResourceAccessTokenRelation, created.rows[0].relation_id) is not None
+
+
+def test_appdeploy_token_binds_api_disabled_knowledge_and_stays_hidden(
+    sqlite_session: Session, service: ResourceAccessTokenService
+) -> None:
+    tenant, owner = _workspace(sqlite_session)
+    dataset = _dataset(sqlite_session, tenant.id, owner.id)
+    dataset.enable_api = False
+    sqlite_session.commit()
+    context = RequestContext("test", None, owner.id, tenant.id)
+    knowledge = (ResourceAccessTokenResource(ResourceAccessTokenResourceType.KNOWLEDGE, dataset.id),)
+    with pytest.raises(ResourceAccessTokenForbiddenError):
+        service.create(context, name="Console", resources=knowledge)
+
+    created = service.create_for_enterprise(
+        tenant_id=tenant.id,
+        managed_by=ResourceAccessTokenManagedBy.APPDEPLOY,
+        name="appdeploy",
+        created_by=None,
+        resources=knowledge,
+    )
+
+    stored = sqlite_session.get(ResourceAccessToken, created.token_id)
+    assert stored is not None
+    assert stored.created_by is None
+    assert service.list_rows(context, page=1, limit=20) == ()
+    assert service.count_rows(context) == 0
+    with pytest.raises(ResourceAccessTokenNotFoundError):
+        service.update(context, token_id=created.token_id, name="Renamed", resources=None)
+    with pytest.raises(ResourceAccessTokenNotFoundError):
+        service.delete_relation(context, token_id=created.token_id, relation_id=created.rows[0].relation_id)
+    with pytest.raises(ResourceAccessTokenInvalidError):
+        service.resolve_tenant_for_dataset_service_api(token=created.token, dataset_id=dataset.id)
+
+
+def test_enterprise_user_token_requires_a_workspace_member_and_is_visible(
+    sqlite_session: Session, service: ResourceAccessTokenService
+) -> None:
+    tenant, owner = _workspace(sqlite_session)
+    _, outsider = _workspace(sqlite_session)
+    app = _app(sqlite_session, tenant.id)
+    resources = (ResourceAccessTokenResource(ResourceAccessTokenResourceType.APP, app.id),)
+
+    with pytest.raises(ResourceAccessTokenNotFoundError):
+        service.create_for_enterprise(
+            tenant_id=tenant.id,
+            managed_by=ResourceAccessTokenManagedBy.USER,
+            name="CI",
+            created_by=outsider.id,
+            resources=resources,
+        )
+    assert sqlite_session.scalars(select(ResourceAccessToken)).all() == []
+
+    created = service.create_for_enterprise(
+        tenant_id=tenant.id,
+        managed_by=ResourceAccessTokenManagedBy.USER,
+        name="CI",
+        created_by=owner.id,
+        resources=resources,
+    )
+    rows = service.list_rows(RequestContext("test", None, owner.id, tenant.id), page=1, limit=20)
+    assert [row.token_id for row in rows] == [created.token_id]
+
+
+def test_enterprise_delete_removes_any_token_in_its_workspace_and_tolerates_missing(
+    sqlite_session: Session, service: ResourceAccessTokenService
+) -> None:
+    tenant, owner = _workspace(sqlite_session)
+    dataset = _dataset(sqlite_session, tenant.id, owner.id)
+    created = service.create_for_enterprise(
+        tenant_id=tenant.id,
+        managed_by=ResourceAccessTokenManagedBy.APPDEPLOY,
+        name="appdeploy",
+        created_by=None,
+        resources=(ResourceAccessTokenResource(ResourceAccessTokenResourceType.KNOWLEDGE, dataset.id),),
+    )
+
+    service.delete_for_enterprise(tenant_id=str(uuid4()), token_id=created.token_id)
+    assert sqlite_session.get(ResourceAccessToken, created.token_id) is not None
+
+    service.delete_for_enterprise(tenant_id=tenant.id, token_id=created.token_id)
+    service.delete_for_enterprise(tenant_id=tenant.id, token_id=created.token_id)
+    sqlite_session.expire_all()
+    assert sqlite_session.get(ResourceAccessToken, created.token_id) is None
+    assert sqlite_session.scalars(select(ResourceAccessTokenRelation)).all() == []

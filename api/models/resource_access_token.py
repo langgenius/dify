@@ -7,7 +7,7 @@ import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from constants.resource_access_token import ResourceAccessTokenResourceType
+from constants.resource_access_token import ResourceAccessTokenManagedBy, ResourceAccessTokenResourceType
 from libs.datetime_utils import naive_utc_now
 
 from .base import Base
@@ -28,7 +28,14 @@ class ResourceAccessToken(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     track_id: Mapped[str] = mapped_column(String(32), nullable=False)
     token: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # None when no account created the token, as for AppDeploy-managed tokens.
+    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    managed_by: Mapped[ResourceAccessTokenManagedBy] = mapped_column(
+        EnumText(ResourceAccessTokenManagedBy, length=16),
+        nullable=False,
+        default=ResourceAccessTokenManagedBy.USER,
+        server_default=sa.text("'user'"),
+    )
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

@@ -932,6 +932,7 @@ class AppDslService:
         version_id: uuid.UUID | None = None,
         resource_exporter: AgentPackageResourceExporter | None = None,
         preserve_agent_bindings: bool = False,
+        plain_dataset_ids: bool = False,
     ) -> AppDslExportData:
         """Load App and Site data, optionally retaining roster references for duplication."""
         app_mode = AppMode.value_of(app_model.mode)
@@ -956,6 +957,7 @@ class AppDslService:
                     session=session,
                     resource_exporter=resource_exporter,
                     preserve_agent_bindings=preserve_agent_bindings,
+                    plain_dataset_ids=plain_dataset_ids,
                 )
             else:
                 dependencies = cls._append_model_config_export_data(export_data, app_model, session=session)
@@ -1001,12 +1003,14 @@ class AppDslService:
         workflow_id: str | None = None,
         resource_exporter: AgentPackageResourceExporter | None = None,
         preserve_agent_bindings: bool = False,
+        plain_dataset_ids: bool = False,
     ) -> list[str]:
         """
         Append workflow export data
         :param export_data: export data
         :param app_model: App instance
         :param workflow_id: Optional published workflow version to export
+        :param plain_dataset_ids: Keep knowledge-retrieval dataset IDs unencrypted for trusted callers
         """
         workflow = cls._load_export_workflow(app_model, workflow_id=workflow_id, session=session)
         workflow_dict = workflow.to_dict(include_secret=include_secret)
@@ -1053,7 +1057,7 @@ class AppDslService:
             if not node_data:
                 continue
             data_type = node_data.get("type", "")
-            if data_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
+            if data_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL and not plain_dataset_ids:
                 dataset_ids = node_data.get("dataset_ids", [])
                 node_data["dataset_ids"] = [
                     cls.encrypt_dataset_id(dataset_id=dataset_id, tenant_id=app_model.tenant_id)

@@ -42,10 +42,13 @@ class InnerAppDSLImportPayload(BaseModel):
 class EnterpriseAppDSLExportQuery(BaseModel):
     include_secret: bool = Field(default=False, description="Whether to include secret values in the exported DSL")
     workflow_id: UUID | None = Field(default=None, description="Published workflow version ID to export")
+    plain_dataset_ids: bool = Field(
+        default=False, description="Export knowledge-retrieval dataset IDs without tenant encryption"
+    )
 
-    @field_validator("include_secret", mode="before")
+    @field_validator("include_secret", "plain_dataset_ids", mode="before")
     @classmethod
-    def parse_include_secret(cls, value: object) -> bool:
+    def parse_bool_flag(cls, value: object) -> bool:
         if isinstance(value, str):
             return value.lower() == "true"
         return bool(value)
@@ -151,7 +154,12 @@ class EnterpriseAppDSLExport(Resource):
 
         try:
             data = application_services().apps.exports.export_for_inner(
-                app_id, AppExportOptions(include_secret=query.include_secret, workflow_id=workflow_id)
+                app_id,
+                AppExportOptions(
+                    include_secret=query.include_secret,
+                    workflow_id=workflow_id,
+                    plain_dataset_ids=query.plain_dataset_ids,
+                ),
             )
         except AppDiscoveryNotFoundError:
             return dump_response(SimpleMessageResponse, {"message": "app not found"}), HTTPStatus.NOT_FOUND

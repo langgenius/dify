@@ -26,6 +26,8 @@ EXPECTED_ENTERPRISE_OPERATION_IDS = {
     "enterprise_app_dsl_export",
     "enterprise_app_dsl_import",
     "enterprise_app_list",
+    "enterprise_create_access_token",
+    "enterprise_delete_access_token",
     "enterprise_mint_file_grant",
     "enterprise_runtime_credentials_resolve",
     "join_enterprise_workspace_member",

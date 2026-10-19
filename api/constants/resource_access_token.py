@@ -8,3 +8,10 @@ TOKEN_PREFIX = "sk-"
 class ResourceAccessTokenResourceType(StrEnum):
     APP = "app"
     KNOWLEDGE = "knowledge"
+
+
+class ResourceAccessTokenManagedBy(StrEnum):
+    """Who owns a token's lifecycle; only user tokens are visible to workspace members."""
+
+    USER = "user"
+    APPDEPLOY = "appdeploy"
