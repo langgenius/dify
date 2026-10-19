@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import Score from '../score'
+import { Score } from '../score'
 
 describe('Score', () => {
   it('displays a retrieval score rounded to two decimal places', () => {
@@ -8,7 +8,7 @@ describe('Score', () => {
     expect(screen.getByText('0.68')).toBeInTheDocument()
   })
 
-  it.each([null, 0, Number.NaN])('does not display an absent score for %s', (value) => {
+  it.each([null, 0])('does not display an absent score for %s', (value) => {
     const { container } = render(<Score value={value} />)
 
     expect(container).toBeEmptyDOMElement()

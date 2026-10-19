@@ -205,7 +205,7 @@ def test_errors_keep_http_contract(keys_app: KeysApp, error: Exception, status: 
     assert response.json is not None
     assert response.json["message"].startswith(message)
     if isinstance(error, ApiKeyLimitExceededError):
-        assert response.json["custom"] == "max_keys_exceeded"
+        assert response.json["code"] == "max_keys_exceeded"
 
 
 @pytest.mark.parametrize(
@@ -322,5 +322,5 @@ def test_both_http_routes_enforce_the_same_key_limit(persisted_keys_app: KeysApp
         response = client.post(path)
         assert response.status_code == 400
         assert response.json is not None
-        assert response.json["custom"] == "max_keys_exceeded"
+        assert response.json["code"] == "max_keys_exceeded"
     assert len(sqlite_session.scalars(select(ApiToken)).all()) == 10

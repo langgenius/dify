@@ -4,26 +4,12 @@ import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from '../../constants'
 import { useSnippetsQueryState } from '../use-snippets-query-state'
 
 const renderWithAdapter = (searchParams = '') => {
-  // oxlint-disable-next-line eslint-react/use-state -- renderHook executes a custom hook, not React.useState
   return renderHookWithNuqs(() => useSnippetsQueryState(), { searchParams })
 }
 
 describe('useSnippetsQueryState', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  it('should expose snippets list query state actions', () => {
-    const { result } = renderWithAdapter()
-
-    expect(result.current.query).toEqual({
-      tagIDs: [],
-      keywords: '',
-      creatorIDs: [],
-    })
-    expect(typeof result.current.setKeywords).toBe('function')
-    expect(typeof result.current.setTagIDs).toBe('function')
-    expect(typeof result.current.setCreatorIDs).toBe('function')
   })
 
   it('should parse URL filters without creator state', () => {
@@ -38,6 +24,7 @@ describe('useSnippetsQueryState', () => {
 
   it('should update tag IDs URL state', async () => {
     const { result, onUrlUpdate } = renderWithAdapter()
+    expect(result.current.query).toEqual({ tagIDs: [], keywords: '', creatorIDs: [] })
 
     act(() => {
       result.current.setTagIDs(['tag1', 'tag2'])

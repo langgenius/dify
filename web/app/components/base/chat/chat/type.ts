@@ -16,8 +16,8 @@ export type FeedbackType = {
   content?: string | null
 }
 
-export type FeedbackFunc = (messageId: string, feedback: FeedbackType) => Promise<any>
-export type SubmitAnnotationFunc = (messageId: string, content: string) => Promise<any>
+export type FeedbackFunc = (messageId: string, feedback: FeedbackType) => Promise<void>
+export type SubmitAnnotationFunc = (messageId: string, content: string) => Promise<unknown>
 
 export type ToolInfoInThought = {
   name: string
@@ -134,7 +134,7 @@ export type IChatItem = {
   extra_contents?: ExtraContent[]
 }
 
-export type Metadata = {
+type Metadata = {
   retriever_resources?: CitationItem[]
   annotation_reply: {
     id: string

@@ -4,29 +4,19 @@ import userEvent from '@testing-library/user-event'
 import Thought from '../index'
 
 describe('Thought', () => {
-  const createThought = (overrides?: Partial<ThoughtItem>): ThoughtItem =>
-    ({
-      id: 'test-id',
-      tool: 'test-tool',
-      tool_input: 'test input',
-      observation: 'test output',
-      ...overrides,
-    }) as ThoughtItem
-
-  beforeEach(() => {
-    vi.clearAllMocks()
+  const createThought = (overrides?: Partial<ThoughtItem>): ThoughtItem => ({
+    id: 'test-id',
+    thought: '',
+    message_id: 'message-1',
+    conversation_id: 'conversation-1',
+    position: 0,
+    tool: 'test-tool',
+    tool_input: 'test input',
+    observation: 'test output',
+    ...overrides,
   })
 
   describe('Rendering', () => {
-    it('should render single tool thought in collapsed state', () => {
-      const thought = createThought()
-
-      render(<Thought thought={thought} isFinished={true} />)
-
-      expect(screen.getByText(/used/i))!.toBeInTheDocument()
-      expect(screen.getByText('test-tool'))!.toBeInTheDocument()
-    })
-
     it('should render multiple tool thoughts from JSON array', () => {
       const thought = createThought({
         tool: JSON.stringify(['tool1', 'tool2']),
@@ -53,53 +43,14 @@ describe('Thought', () => {
       expect(screen.queryByText('test input data')).not.toBeInTheDocument()
       expect(screen.queryByText('test output data')).not.toBeInTheDocument()
 
-      await user.click(screen.getByText(/used/i))
+      await user.click(screen.getByRole('button', { name: /used/i }))
 
       expect(screen.getByText('test input data'))!.toBeInTheDocument()
       expect(screen.getByText('test output data'))!.toBeInTheDocument()
     })
   })
 
-  describe('Props', () => {
-    it('should show finished state with correct text', () => {
-      const thought = createThought()
-
-      render(<Thought thought={thought} isFinished={true} />)
-
-      expect(screen.getByText(/used/i))!.toBeInTheDocument()
-    })
-
-    it('should show in-progress state with correct text', () => {
-      const thought = createThought()
-
-      render(<Thought thought={thought} isFinished={false} />)
-
-      expect(screen.getByText(/using/i))!.toBeInTheDocument()
-    })
-  })
-
   describe('Tool labels', () => {
-    it('should use tool name when no labels provided', () => {
-      const thought = createThought({
-        tool: 'custom-tool',
-      })
-
-      render(<Thought thought={thought} isFinished={true} />)
-
-      expect(screen.getByText('custom-tool'))!.toBeInTheDocument()
-    })
-
-    it('should fallback to tool name when tool_labels is undefined', () => {
-      const thought = createThought({
-        tool: 'fallback-tool',
-        tool_labels: undefined,
-      })
-
-      render(<Thought thought={thought} isFinished={true} />)
-
-      expect(screen.getByText('fallback-tool'))!.toBeInTheDocument()
-    })
-
     it('should fallback to tool name when toolName property is missing', () => {
       const thought = createThought({
         tool: 'another-tool',
@@ -109,22 +60,6 @@ describe('Thought', () => {
       render(<Thought thought={thought} isFinished={true} />)
 
       expect(screen.getByText('another-tool'))!.toBeInTheDocument()
-    })
-
-    it('should fallback to tool name when language property is missing', () => {
-      const thought = createThought({
-        tool: 'test-tool',
-        tool_labels: {
-          toolName: {
-            en_US: 'English Label',
-            zh_Hans: '中文标签',
-          },
-        },
-      })
-
-      render(<Thought thought={thought} isFinished={true} />)
-
-      expect(screen.getByText('test-tool'))!.toBeInTheDocument()
     })
 
     it('should show knowledge label for dataset tools', () => {
@@ -168,7 +103,7 @@ describe('Thought', () => {
 
       render(<Thought thought={thought} isFinished={true} />)
 
-      await user.click(screen.getByText(/used/i))
+      await user.click(screen.getByRole('button', { name: /used/i }))
 
       expect(screen.getByText('invalid-json-{'))!.toBeInTheDocument()
     })
@@ -182,7 +117,7 @@ describe('Thought', () => {
 
       render(<Thought thought={thought} isFinished={true} />)
 
-      await user.click(screen.getByText(/used/i))
+      await user.click(screen.getByRole('button', { name: /used/i }))
 
       expect(screen.getByText('invalid-json-['))!.toBeInTheDocument()
     })
@@ -197,12 +132,13 @@ describe('Thought', () => {
 
       render(<Thought thought={thought} isFinished={true} />)
 
-      const toolSections = screen.getAllByText(/used/i)
+      const toolSections = screen.getAllByRole('button', { name: /used/i })
       expect(toolSections).toHaveLength(3)
 
       await user.click(toolSections[0]!)
       expect(screen.getByText('input1'))!.toBeInTheDocument()
       expect(screen.getByText('output1'))!.toBeInTheDocument()
+      expect(screen.queryByText('input2')).not.toBeInTheDocument()
 
       await user.click(toolSections[1]!)
       expect(screen.getByText('input2'))!.toBeInTheDocument()
@@ -211,22 +147,6 @@ describe('Thought', () => {
       await user.click(toolSections[2]!)
       expect(screen.getByText('input3'))!.toBeInTheDocument()
       expect(screen.getByText('output3'))!.toBeInTheDocument()
-    })
-
-    it('should use original value when isValueArray is false', async () => {
-      const user = userEvent.setup()
-      const thought = createThought({
-        tool: 'single-tool',
-        tool_input: 'regular input',
-        observation: 'regular output',
-      })
-
-      render(<Thought thought={thought} isFinished={true} />)
-
-      await user.click(screen.getByText(/used/i))
-
-      expect(screen.getByText('regular input'))!.toBeInTheDocument()
-      expect(screen.getByText('regular output'))!.toBeInTheDocument()
     })
   })
 
@@ -242,48 +162,15 @@ describe('Thought', () => {
 
       expect(screen.queryByText('test input')).not.toBeInTheDocument()
 
-      await user.click(screen.getByText(/used/i))
+      await user.click(screen.getByRole('button', { name: /used/i }))
       expect(screen.getByText('test input'))!.toBeInTheDocument()
 
-      await user.click(screen.getByText(/used/i))
+      await user.click(screen.getByRole('button', { name: /used/i }))
       expect(screen.queryByText('test input')).not.toBeInTheDocument()
-    })
-
-    it('should expand multiple tools independently', async () => {
-      const user = userEvent.setup()
-      const thought = createThought({
-        tool: JSON.stringify(['tool1', 'tool2']),
-        tool_input: JSON.stringify(['input1', 'input2']),
-        observation: JSON.stringify(['output1', 'output2']),
-      })
-
-      render(<Thought thought={thought} isFinished={true} />)
-
-      const toolHeaders = screen.getAllByText(/used/i)
-
-      await user.click(toolHeaders[0]!)
-      expect(screen.getByText('input1'))!.toBeInTheDocument()
-      expect(screen.queryByText('input2')).not.toBeInTheDocument()
-
-      await user.click(toolHeaders[1]!)
-      expect(screen.getByText('input1'))!.toBeInTheDocument()
-      expect(screen.getByText('input2'))!.toBeInTheDocument()
     })
   })
 
   describe('Multiple tools with labels', () => {
-    it('should render multiple tools with dataset prefix', () => {
-      const thought = createThought({
-        tool: JSON.stringify(['dataset_123', 'dataset_456']),
-        tool_input: JSON.stringify(['input1', 'input2']),
-        observation: JSON.stringify(['output1', 'output2']),
-      })
-
-      render(<Thought thought={thought} isFinished={true} />)
-
-      expect(screen.getAllByText(/knowledge/i)).toHaveLength(2)
-    })
-
     it('should handle mixed dataset and regular tools', () => {
       const thought = createThought({
         tool: JSON.stringify(['dataset_123', 'regular-tool']),
@@ -298,49 +185,39 @@ describe('Thought', () => {
     })
   })
 
-  describe('Edge cases', () => {
-    it('should handle empty tool_input', async () => {
-      const user = userEvent.setup()
-      const thought = createThought({
-        tool_input: '',
-        observation: 'output',
-      })
+  it('uses each tool’s translated label and falls back to its name when missing', () => {
+    render(
+      <Thought
+        thought={createThought({
+          tool: JSON.stringify(['search', 'weather', 'unlabelled']),
+          tool_labels: {
+            search: { en_US: 'Search documents', zh_Hans: '搜索文档' },
+            weather: { en_US: 'Weather forecast', zh_Hans: '天气预报' },
+          },
+        })}
+        isFinished
+      />,
+    )
+    expect(screen.getByRole('button', { name: /Search documents/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Weather forecast/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /unlabelled/ })).toBeInTheDocument()
+  })
 
-      render(<Thought thought={thought} isFinished={true} />)
-
-      await user.click(screen.getByText(/used/i))
-
-      expect(screen.getByText(/requestTitle/i))!.toBeInTheDocument()
-    })
-
-    it('should handle empty observation', async () => {
-      const user = userEvent.setup()
-      const thought = createThought({
-        tool_input: 'input',
-        observation: '',
-      })
-
-      render(<Thought thought={thought} isFinished={true} />)
-
-      await user.click(screen.getByText(/used/i))
-
-      expect(screen.getByText(/responseTitle/i))!.toBeInTheDocument()
-    })
-
-    it('should handle JSON array with undefined elements', async () => {
-      const user = userEvent.setup()
-      const thought = createThought({
-        tool: JSON.stringify(['tool1', 'tool2']),
-        tool_input: JSON.stringify(['input1']),
-        observation: JSON.stringify(['output1']),
-      })
-
-      render(<Thought thought={thought} isFinished={true} />)
-
-      const toolHeaders = screen.getAllByText(/used/i)
-      await user.click(toolHeaders[1]!)
-
-      expect(screen.getByText('tool2'))!.toBeInTheDocument()
-    })
+  it('shows an empty response for a tool whose result has not arrived', async () => {
+    render(
+      <Thought
+        thought={createThought({
+          tool: JSON.stringify(['first', 'pending']),
+          tool_input: JSON.stringify(['first input', 'pending input']),
+          observation: JSON.stringify(['first output']),
+        })}
+        isFinished={false}
+      />,
+    )
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /using.*pending/ }))
+    expect(screen.getByText('pending input')).toBeInTheDocument()
+    expect(screen.queryByText('first output')).not.toBeInTheDocument()
+    expect(screen.getByText(/responseTitle/)).toBeInTheDocument()
   })
 })

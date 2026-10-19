@@ -2,6 +2,7 @@
 
 import secrets
 import uuid
+from contextlib import AbstractContextManager
 from typing import override
 
 from pydantic import TypeAdapter, ValidationError
@@ -232,12 +233,8 @@ class RateLimiterForgotPasswordSendLimiter(ForgotPasswordSendLimiter):
         )
 
     @override
-    def is_limited(self, email: str) -> bool:
-        return self._rate_limiter.is_rate_limited(email)
-
-    @override
-    def record(self, email: str) -> None:
-        self._rate_limiter.increment_rate_limit(email)
+    def reserve(self, email: str) -> AbstractContextManager[bool]:
+        return self._rate_limiter.reserve(email)
 
     @property
     @override

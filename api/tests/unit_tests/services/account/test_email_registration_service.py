@@ -103,7 +103,6 @@ def test_send_code_normalizes_new_account_email_and_language(
     service: AccountEmailRegistrationService,
     boundaries: dict[str, MagicMock],
 ) -> None:
-
     service.send_code(
         remote_ip="127.0.0.1",
         requested_email="New@Example.com",
@@ -260,7 +259,6 @@ def test_register_rejects_password_mismatch_before_reading_token(
     service: AccountEmailRegistrationService,
     boundaries: dict[str, MagicMock],
 ) -> None:
-
     with pytest.raises(EmailRegistrationPasswordMismatchError):
         service.register(
             remote_ip="127.0.0.1",

@@ -57,7 +57,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_INNER_API_KEY` | empty | API key sent to Dify API inner plugin endpoints. Set this to Dify API `INNER_API_KEY_FOR_PLUGIN` (Docker: `PLUGIN_DIFY_INNER_API_KEY`). |
 | `DIFY_AGENT_RUNTIME_BACKEND` | `local` | Selects one coherent `local`, `enterprise`, `e2b`, or `openshell` Home Snapshot + Execution Binding backend profile. |
 | `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` | empty | Local shellctl data-plane URL. With the default Local selection, leaving it empty disables `dify.runtime` and resource endpoints. |
-| `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` | empty | Optional bearer token sent to Local shellctl. |
+| `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` | empty | Required nonblank bearer token when the Local endpoint is configured; must match shellctl's `SHELLCTL_AUTH_TOKEN`. |
 | `DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT` | `/home/dify` | Root directory, on the Local shellctl filesystem, for per-Binding materialized Homes. |
 | `DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT` | `/workspace` | Root directory, on the Local shellctl filesystem, for mutable Workspaces. |
 | `DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT` | `/home/dify/.snapshots` | Root directory, on the Local shellctl filesystem, for immutable Home Snapshots. |
@@ -183,6 +183,25 @@ must use `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` and
 `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN`. There is no compatibility setting for
 the removed shell-provider selector.
 
+Local shellctl deployments must start with `shellctl serve --require-auth-token`
+and set `SHELLCTL_AUTH_TOKEN` to the same secret as the Agent Backend. Compose's
+`local_sandbox` command enables this check; missing, empty, or whitespace-only
+tokens fail before service initialization. E2B and Enterprise retain their
+existing token requirements, and an unset Local endpoint still disables runtime.
+
+For Compose, set `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` in a shared interpolation
+source: the invoking shell, `docker/.env`, or a Compose `--env-file`. This supplies
+the same secret to Agent Backend and shellctl. Setting it only in a service env
+file is insufficient: Compose's explicit `environment` values override that
+file, including with an empty interpolated value. The legacy token alias remains
+accepted. Deploy this change with a rebuilt runtime image containing
+`--require-auth-token`; the previously published `1.17.1` image does not support
+the new flag.
+
+When shellctl path isolation is enabled, any Landlock setup error aborts the job
+with exit code `125` before its user script executes. Deployments may explicitly
+set `SHELLCTL_ENABLE_PATH_ISOLATION=false` to disable shellctl path isolation.
+
 The backend selection is deployment-private. Shell-enabled run requests use an
 Execution Context, `dify.runtime`, and `dify.shell` graph. Runtime config carries
 only the opaque `backend_binding_ref` resolved by Dify API. See
@@ -283,6 +302,29 @@ provider `RuntimeError` observed first becomes a tool observation. In contrast,
 run-deadline cancellation propagates through the Shell boundary; only the Dify
 Agent run deadline owns the terminal `agent_run_limit_exceeded` failure.
 
+The E2B backend uses SDK 2.55.1 or later with three control-plane retries.
+The SDK retries `502` only for replayable operations, including when the response
+has `Retry-After`; a gateway can return `502` after a resource was already created.
+Sandbox and snapshot creation therefore surface `502` without replaying the
+request. The SDK still retries `503`, `429` with `Retry-After`, and safely
+replayable network failures. Backend adapters invoke each SDK operation once;
+exhausted retries and timeouts do not start a second SDK request budget.
+Resource creation and snapshot creation are also not replayed after an ambiguous
+post-write network failure. See the [SDK replay policy](https://github.com/e2b-dev/E2B/pull/1924).
+
+This policy covers E2B lifecycle API calls. Shell commands and normal file
+operations use the separate shellctl client, and usage collection uses its own
+HTTP client. Neither inherits the E2B SDK retry or connection-pool settings.
+
+The backend explicitly requests `mode="full"` for timeout pauses, explicit
+pauses, and Home Snapshots, preserving both filesystem and memory state. Binding
+acquisition uses `on_resume="restore"`; `connect` does not accept a snapshot
+mode. These settings preserve the existing full-memory restore intent while
+replacing the deprecated `keep_memory` option. They do not override platform
+fallbacks: E2B may save only the filesystem if a timeout pause is continuously
+refused because a previous snapshot is still being finalized. See the
+[E2B persistence contract](https://docs.e2b.dev/sandbox/persistence).
+
 ## OpenShell backend
 
 See the [OpenShell Runtime Backend guide](openshell.md) for its configuration
@@ -345,12 +387,14 @@ Each run explicitly limits Pydantic AI to 500 model-request steps. Tool calls do
 not have a separate count limit, but every model request used to continue the
 tool loop consumes one of those steps.
 
-`DIFY_AGENT_RUN_TIMEOUT_SECONDS` additionally applies a wall-clock deadline only
-around Pydantic AI's `agent.run(...)`, including its model/tool loop and event
-handler. It does not include compositor entry, RuntimeLease acquisition, tool
-preparation, session snapshot generation, or resource exit. Expiry cancels the
-active run task, allows the compositor to release resources, and finalizes the
-run as failed with `error_type: "agent_run_limit_exceeded"`.
+`DIFY_AGENT_RUN_TIMEOUT_SECONDS` additionally applies a wall-clock deadline around
+native Pydantic AI's `agent.run(...)`. This includes capability entry, RuntimeLease
+acquisition, dynamic tool preparation, the model/tool loop, and the event handler.
+Request validation and agent assembly happen before this deadline. Expiry cancels
+the native run; capability scopes unwind and release resources before the runner
+generates the session snapshot and finalizes the run as failed with
+`error_type: "agent_run_limit_exceeded"`. History persistence, snapshot generation,
+and terminal finalization occur after native execution.
 
 During FastAPI shutdown the scheduler rejects new runs, waits up to
 `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` for active tasks, then cancels remaining tasks
@@ -387,33 +431,29 @@ terminal event type.
 
 ## Run inputs and session snapshots
 
-The API does not accept a top-level `user_prompt`. Submit a `RunComposition`
-whose Agenton layers provide user input. With the MVP provider set, use
-`plain.prompt` and its `config.user` field:
+Submit a `RunComposition` with registered module names and JSON Config. The
+`llm` model module is required and references an `execution_context` module.
+Prompt modules contribute instructions and `config.user` input:
 
 ```json
 {
   "composition": {
-    "schema_version": 1,
+    "schema_version": 2,
     "layers": [
-      {
-        "name": "prompt",
-        "type": "plain.prompt",
-        "config": {
-          "prefix": "You are concise.",
-          "user": "Summarize the current state."
-        }
-      }
+      {"name": "prompt", "config": {"prefix": "You are concise.", "user": "Summarize the current state."}},
+      {"name": "execution_context", "config": {"tenant_id": "tenant-id", "agent_mode": "agent_app", "invoke_from": "web-app"}},
+      {"name": "llm", "config": {"plugin_id": "langgenius/openai", "model_provider": "openai", "model": "gpt-4o-mini"}}
     ]
   }
 }
 ```
 
 `config.user` can be a string or a list of strings. Empty or whitespace-only
-effective prompts are rejected during create-run validation before the run is
-persisted or scheduled.
+effective prompts and module configuration are validated by the runner before
+resource acquisition or model I/O. HTTP create-run parses the wire shape, persists
+the run and schedules execution; configuration errors produce `run_failed`.
 
-Agent App callers can use the `dify.user_prompt` layer to send text and images
+Agent App callers can use the `agent_app_user_prompt` module to send text and images
 in the same model turn. Each image must provide exactly one transport: an
 HTTP(S) `url` or unprefixed Base64 data in `base64_data`. The image is passed as
 structured multimodal content; it is not interpolated into `config.text`.
@@ -421,7 +461,6 @@ structured multimodal content; it is not interpolated into `config.text`.
 ```json
 {
   "name": "agent_app_user_prompt",
-  "type": "dify.user_prompt",
   "config": {
     "text": "Describe this image.",
     "files": [
@@ -451,17 +490,23 @@ is presented, independently of its file `type` (`image`, `document`, `audio`,
   `transfer_method: "remote_url"` with `url`, or a `local_file`, `tool_file`, or
   `datasource_file` transfer method with a canonical `reference`.
 
-The layer appends sandbox file-download instructions for download attachments
+The module appends sandbox file-download instructions for download attachments
 and adds multimodal attachments as structured model content. Callers keep
 `config.text` as the original user text. Omitting `config.files` is equivalent
 to an empty list.
 
-The optional Pydantic AI history layer uses the reserved name `history` and
-persists captured messages in session snapshots for later resume. Resume from a
-terminal event's `session_snapshot` using the same layer composition, names, and
-order. Success always contains a snapshot. Failure and cancellation contain one
-only when compositor entry succeeded and layer exit completed; otherwise callers
-should retain their previous snapshot.
+The optional history module uses the reserved name `history`. It persists captured
+messages, including failure and cancellation history, with current instructions
+removed. Snapshots have `schema_version: 2` and a `layers` JSON dict containing only
+State. Submit current Config on each turn along with the previous snapshot. Modules
+can be added or removed between turns; retained state is matched by name.
+
+Known v1 snapshots are converted once at read time without restoring legacy
+instances or lifecycle. Native resource scopes always release leases and clear
+tracked shell jobs at run exit. Success always contains the resulting snapshot;
+failure and cancellation contain one when validated run data was available and
+cleanup produced a snapshot. Callers retain the previous snapshot when none is
+returned. Product Workspace retirement remains owned by the API.
 
 ## Observing runs
 
@@ -493,12 +538,10 @@ end with `run_cancelled`. Each run can append at most one of these terminal
 events. Event envelopes retain `id`, `run_id`, `type`, `data`, and `created_at`;
 `data` is typed per event type,
 including Pydantic AI's `AgentStreamEvent` payload for `pydantic_ai_event` and a
-terminal event may contain a `CompositorSessionSnapshot` for resumption.
+terminal event may contain a `SessionSnapshot` for resumption.
 `run_succeeded` always contains it; `run_failed` and `run_cancelled` contain it
-only when compositor entry succeeded, layer exit completed, and a post-exit
-snapshot was actually produced. A successful run has exactly one active result branch: JSON-safe
-`output` for final answers, or `deferred_tool_call` when a layer such as
-`dify.ask_human` ends the current agent run with an external deferred tool call.
+when the runner produced State after native capability cleanup. A successful run
+contains JSON-safe `output`, which may be null.
 Failed event payloads contain the diagnostic `error`, optional source-specific
 `reason`, optional stable `error_type`, and optional `session_snapshot`.
 Cancelled payloads likewise may contain `session_snapshot`. Pydantic AI request/step budget
@@ -520,5 +563,5 @@ The repository includes simple consumers that print observed output/events:
 - `dify-agent/examples/dify_agent/dify_agent_examples/run_server_sse_consumer.py`
   consumes raw SSE frames for an existing run id.
 
-The create-run examples submit Dify plugin model layers, so they require Redis,
+The create-run examples submit Dify plugin model modules, so they require Redis,
 the Agent server, Dify API gateway settings, and a configured model provider in Dify.

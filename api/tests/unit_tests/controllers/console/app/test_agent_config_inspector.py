@@ -32,6 +32,7 @@ from controllers.console.app.agent_config_inspector import (
 from models.account import Account
 from models.model import App, AppMode
 from services.agent_config_service import AgentConfigServiceError
+from tests.unit_tests.controllers.error_body import raised_error
 
 _MOD = "controllers.console.app.agent_config_inspector"
 app = Flask(__name__)
@@ -256,7 +257,9 @@ def test_file_preview_api_passes_through_and_maps_errors(unbound_session: Sessio
             config_service.return_value.preview_file.side_effect = AgentConfigServiceError(
                 "config_file_not_found", "missing", status_code=404
             )
-            body, status = raw(AgentConfigFilePreviewApi(), unbound_session, _USER, _APP, "missing.txt")
+            body, status = raised_error(
+                lambda: raw(AgentConfigFilePreviewApi(), unbound_session, _USER, _APP, "missing.txt")
+            )
     assert status == 404
     assert body["code"] == "config_file_not_found"
 
@@ -427,8 +430,10 @@ def test_skill_file_download_by_agent_validates_member_path(unbound_session: Ses
             config_service.return_value.resolve_skill_file_member_path.side_effect = AgentConfigServiceError(
                 "config_skill_file_not_found", "missing", status_code=404
             )
-            body, status = raw(
-                AgentConfigSkillFileDownloadByAgentApi(), unbound_session, "tenant-1", _USER, "agent-1", "alpha"
+            body, status = raised_error(
+                lambda: raw(
+                    AgentConfigSkillFileDownloadByAgentApi(), unbound_session, "tenant-1", _USER, "agent-1", "alpha"
+                )
             )
     assert status == 404
     assert body["code"] == "config_skill_file_not_found"
@@ -472,7 +477,9 @@ def test_skill_file_download_api_propagates_member_lookup_404s(unbound_session: 
             config_service.return_value.resolve_skill_file_member_path.side_effect = AgentConfigServiceError(
                 "config_skill_file_not_found", "missing", status_code=404
             )
-            body, status = raw(AgentConfigSkillFileDownloadApi(), unbound_session, _USER, _APP, "alpha")
+            body, status = raised_error(
+                lambda: raw(AgentConfigSkillFileDownloadApi(), unbound_session, _USER, _APP, "alpha")
+            )
     assert status == 404
     assert body["code"] == "config_skill_file_not_found"
 

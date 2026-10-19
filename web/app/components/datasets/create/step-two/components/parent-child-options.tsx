@@ -1,12 +1,9 @@
 'use client'
 
+import type { PreProcessingRule } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC, MouseEventHandler } from 'react'
 import type { ParentChildConfig } from '../hooks'
-import type {
-  ParentMode,
-  PreProcessingRule,
-  SummaryIndexSetting as SummaryIndexSettingType,
-} from '@/models/datasets'
+import type { ParentMode, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'

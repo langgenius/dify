@@ -8,14 +8,14 @@
 # env:
 #   DIFY_VERSION     Dify release tag to install difyctl from (e.g. 1.14.2). Primary key.
 #   DIFYCTL_VERSION  difyctl version pin (used only when DIFY_VERSION is unset).
-#   DIFYCTL_PREFIX   install dir (default $HOME/.local); binary -> $PREFIX/bin/difyctl
+#   DIFYCTL_PREFIX       install prefix (default $HOME/.local); binary -> $PREFIX/bin/difyctl
+#   DIFYCTL_INSTALL_DIR  the bin folder itself (wins over DIFYCTL_PREFIX); binary -> $DIR/difyctl
 #   DIFYCTL_REPO     release source repo (default langgenius/dify)
 #   GITHUB_TOKEN     GitHub token (or GH_TOKEN) to raise the API rate limit to 5000/hour.
 # requires: curl, uname, sort -V, and sha256sum or shasum.
 set -eu
 
 REPO="${DIFYCTL_REPO:-langgenius/dify}"
-PREFIX="${DIFYCTL_PREFIX:-${HOME}/.local}"
 DIFY_VERSION="${DIFY_VERSION:-}"
 DIFYCTL_VERSION="${DIFYCTL_VERSION:-}"
 GH_AUTH="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
@@ -28,6 +28,27 @@ err() { printf '%s\n' "install-cli: $*" >&2; }
 die() { err "$*"; rm -f "$FETCH_ERR_FILE"; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required"; }
 re_escape() { printf '%s' "$1" | sed 's/[][\\.^$*+?(){}|/]/\\&/g'; }
+# print_skill_hint BIN: the hint names a v2 command, so a binary without it (any v1 build) gets none.
+print_skill_hint() {
+  "$1" install skills --help >/dev/null 2>&1 || return 0
+  printf '%s\n' 'AI agents: run `difyctl install skills <skills root>` after each install or upgrade; the skill ships inside the binary.'
+}
+
+# DIFYCTL_INSTALL_DIR names the bin folder itself; DIFYCTL_PREFIX the folder above it.
+bin_dir_for() {
+    printf '%s' "${DIFYCTL_INSTALL_DIR:-${DIFYCTL_PREFIX:-${HOME}/.local}/bin}"
+}
+
+# install_binary SRC DEST: stage the copy next to DEST, then rename it over DEST, so a
+# running difyctl keeps its old file and DEST is never half written.
+install_binary() {
+    _stage="$(dirname "$2")/.difyctl.install.$$"
+    if cp "$1" "$_stage" && chmod 0755 "$_stage" && mv -f "$_stage" "$2"; then
+        return 0
+    fi
+    rm -f "$_stage"
+    die "cannot write $2"
+}
 
 detect_target() {
     case "$(uname -s)" in
@@ -219,19 +240,17 @@ main() {
         printf '%s\n' "$_sumline" | $HASH -c -
     ) || die "checksum mismatch for ${asset}"
 
-    bin_dir="${PREFIX}/bin"
+    bin_dir=$(bin_dir_for)
     mkdir -p "$bin_dir"
     target_bin="${bin_dir}/difyctl"
-    cp "${tmp}/${asset}" "$target_bin"
-    chmod +x "$target_bin"
+    install_binary "${tmp}/${asset}" "$target_bin"
 
     printf '\ndifyctl v%s installed (from Dify %s): %s\n' "$version" "$DIFY_TAG" "$target_bin"
 
     case ":${PATH}:" in
         *":${bin_dir}:"*)
-            "$target_bin" version >/dev/null 2>&1 \
-                && printf 'verify: run "difyctl version"\n' \
-                || err "binary present but failed to execute; check ${target_bin}"
+            printf 'verify: run "difyctl version"\n'
+            print_skill_hint "$target_bin"
             ;;
         *)
             printf '\n%s is not on your PATH. Add this to your shell profile:\n' "$bin_dir"

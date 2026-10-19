@@ -2,8 +2,8 @@ import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { Item as TypeSelectItem } from '@/app/components/app/configuration/config-var/config-modal/type-select'
 import type {
   FormInputItem,
-  FormInputItemDefault,
   ParagraphFormInput,
+  StringDefault,
 } from '@/app/components/workflow/nodes/human-input/types'
 import type { UploadFileSetting, ValueSelector } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -121,7 +121,7 @@ const InputField: React.FC<InputFieldProps> = ({
     )
   }, [])
   const handleDefaultValueChange = useCallback(
-    (key: keyof FormInputItemDefault) => {
+    (key: keyof StringDefault) => {
       return (value: ValueSelector | string) => {
         const nextValue = produce(paragraphPayload, (draft) => {
           if (key === 'selector') {
