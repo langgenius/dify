@@ -3,6 +3,7 @@ Unit tests for Service API wraps (authentication decorators)
 """
 
 import uuid
+from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -50,9 +51,9 @@ class _RecordingEndUserCommands:
         return self._result
 
 
+@dataclass(eq=False, repr=False)
 class _AppScopedEndUserServicesStub:
-    def __init__(self, commands: _RecordingEndUserCommands) -> None:
-        self.commands = commands
+    commands: _RecordingEndUserCommands
 
 
 class _ApplicationServicesStub:

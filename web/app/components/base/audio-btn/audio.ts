@@ -31,6 +31,7 @@ export class AudioPlayer {
   private sourceOpenListener?: () => void
   private audioMimeType = DEFAULT_AUDIO_CONTENT_TYPE
   private reader?: ReadableStreamDefaultReader<Uint8Array>
+  private audioListeners: Array<[string, EventListener]> = []
   constructor(
     streamUrl: string,
     isPublic: boolean,
@@ -49,7 +50,19 @@ export class AudioPlayer {
     this.audio = new Audio()
     this.mediaSource = null
     this.initializeMediaSource()
-    this.setCallback(callback)
+    for (const [event, notification] of [
+      ['ended', 'ended'],
+      ['pause', 'paused'],
+      ['loadeddata', 'loaded'],
+      ['play', 'play'],
+      ['timeupdate', 'timeupdate'],
+      ['canplay', 'canplay'],
+      ['error', 'error'],
+    ] as const) {
+      const listener = () => this.callback?.(notification)
+      this.audio.addEventListener(event, listener)
+      this.audioListeners.push([event, listener])
+    }
     const source = this.audioContext.createMediaElementSource(this.audio)
     source.connect(this.audioContext.destination)
   }
@@ -197,62 +210,11 @@ export class AudioPlayer {
 
   public setCallback(callback: ((event: string) => void) | null) {
     this.callback = callback
-    if (callback) {
-      this.audio.addEventListener(
-        'ended',
-        () => {
-          callback('ended')
-        },
-        false,
-      )
-      this.audio.addEventListener(
-        'pause',
-        () => {
-          callback('paused')
-        },
-        true,
-      )
-      this.audio.addEventListener(
-        'loadeddata',
-        () => {
-          callback('loaded')
-        },
-        true,
-      )
-      this.audio.addEventListener(
-        'play',
-        () => {
-          callback('play')
-        },
-        true,
-      )
-      this.audio.addEventListener(
-        'timeupdate',
-        () => {
-          callback('timeupdate')
-        },
-        true,
-      )
-      this.audio.addEventListener(
-        'canplay',
-        () => {
-          callback('canplay')
-        },
-        true,
-      )
-      this.audio.addEventListener(
-        'error',
-        () => {
-          callback('error')
-        },
-        true,
-      )
-    }
   }
 
   private async loadAudio() {
     try {
-      const audioResponse = (await textToAudioStream(
+      const audioResponse = await textToAudioStream(
         this.url,
         this.isPublic ? AppSourceType.webApp : AppSourceType.installedApp,
         {
@@ -261,7 +223,7 @@ export class AudioPlayer {
           voice: this.voice,
           text: this.msgContent,
         },
-      )) as Response
+      )
       if (this.destroyed) return
       if (audioResponse.status !== 200) {
         this.failLoad()
@@ -341,6 +303,9 @@ export class AudioPlayer {
     if (this.destroyed) return
 
     this.destroyed = true
+    for (const [event, listener] of this.audioListeners)
+      this.audio.removeEventListener(event, listener)
+    this.audioListeners = []
     this.cacheBuffers = []
     void this.reader?.cancel().catch(() => {})
     this.reader = undefined

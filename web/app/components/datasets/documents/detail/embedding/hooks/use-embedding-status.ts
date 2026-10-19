@@ -1,5 +1,4 @@
-import type { CommonResponse } from '@/models/common'
-import type { IndexingStatusResponse } from '@/models/datasets'
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { fetchIndexingStatus, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
@@ -49,7 +48,7 @@ export const useEmbeddingStatus = ({
     [datasetId, documentId],
   )
 
-  const query = useQuery<IndexingStatusResponse>({
+  const query = useQuery<DocumentStatusResponse>({
     queryKey,
     queryFn: () => fetchIndexingStatus({ datasetId: datasetId!, documentId: documentId! }),
     enabled: enabled && !!datasetId && !!documentId,
@@ -68,7 +67,10 @@ export const useEmbeddingStatus = ({
   const isCompleted = status === 'completed'
   const isPaused = status === 'paused'
   const isError = status === 'error'
-  const percent = calculatePercent(query.data?.completed_segments, query.data?.total_segments)
+  const percent = calculatePercent(
+    query.data?.completed_segments ?? undefined,
+    query.data?.total_segments ?? undefined,
+  )
 
   // Handle completion callback
   useEffect(() => {
@@ -116,7 +118,7 @@ export const usePauseIndexing = ({
   onSuccess,
   onError,
 }: UsePauseResumeOptions) => {
-  return useMutation<CommonResponse, Error>({
+  return useMutation<unknown, Error>({
     mutationKey: [NAME_SPACE, 'pause', datasetId, documentId],
     mutationFn: () => pauseDocIndexing({ datasetId: datasetId!, documentId: documentId! }),
     onSuccess,
@@ -130,7 +132,7 @@ export const useResumeIndexing = ({
   onSuccess,
   onError,
 }: UsePauseResumeOptions) => {
-  return useMutation<CommonResponse, Error>({
+  return useMutation<unknown, Error>({
     mutationKey: [NAME_SPACE, 'resume', datasetId, documentId],
     mutationFn: () => resumeDocIndexing({ datasetId: datasetId!, documentId: documentId! }),
     onSuccess,

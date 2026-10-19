@@ -17,10 +17,20 @@ const { getSettings, saveSettings } = vi.hoisted(() => ({
   saveSettings: vi.fn(),
 }))
 
+// The console client sends through `request`; adapt it back to path + params/body calls.
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
-  get: getSettings,
-  post: saveSettings,
+  request: async (url: string, _init: RequestInit, options: { request?: Request }) => {
+    const { pathname, searchParams } = new URL(url)
+    const path = pathname.replace('/console/api', '')
+    const data =
+      options.request?.method === 'POST'
+        ? await saveSettings(path, { body: await options.request.json() })
+        : await getSettings(path, { params: Object.fromEntries(searchParams) })
+    return new Response(JSON.stringify(data ?? {}), {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  },
 }))
 
 const savedConfig: AutoUpdateConfig = {
@@ -77,7 +87,7 @@ const strategy = (value: 'disabled' | 'fixOnly' | 'latest') =>
   screen.getByRole('radio', { name: `plugin.autoUpdate.strategy.${value}.name` })
 
 beforeEach(() => {
-  vi.clearAllMocks()
+  vi.resetAllMocks()
   getSettings.mockImplementation(
     async (_url, { params }: { params: { category: PluginCategoryEnum } }) => ({
       category: params.category,

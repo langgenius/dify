@@ -13,29 +13,16 @@ vi.mock('@/app/notifications', () => ({
   toast: { error: mocks.toastError },
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    agent: {
-      byAgentId: {
-        buildDraft: {
-          get: {
-            queryOptions: ({ context }: { context?: { silent?: boolean } }) => ({
-              queryKey: ['agent', 'agent-1', 'build-draft'],
-              queryFn: async () => {
-                try {
-                  return await mocks.request()
-                } catch (error) {
-                  if (!context?.silent) mocks.toastError('Request failed')
-                  throw error
-                }
-              },
-            }),
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.buildDraft.get': mocks.request,
+    }),
+  }
+})
 
 function setup() {
   const queryClient = new QueryClient({
@@ -71,6 +58,7 @@ describe('build draft refresh errors', () => {
     mocks.request.mockResolvedValueOnce({ draft: { id: 'build-draft-1' } })
     const { result, setSoulSourceOverride } = setup()
     await waitFor(() => expect(result.current.isActive).toBe(true))
+    expect(mocks.request).toHaveBeenCalledExactlyOnceWith({ params: { agent_id: 'agent-1' } })
 
     const notFound = createHttpError(new Response(null, { status: 404 }))
     mocks.request.mockRejectedValueOnce(notFound)
@@ -88,6 +76,7 @@ describe('build draft refresh errors', () => {
     mocks.request.mockResolvedValueOnce({ draft: { id: 'build-draft-1' } })
     const { result, setSoulSourceOverride } = setup()
     await waitFor(() => expect(result.current.isActive).toBe(true))
+    expect(mocks.request).toHaveBeenCalledExactlyOnceWith({ params: { agent_id: 'agent-1' } })
 
     const serverError = createHttpError(new Response(null, { status: 500 }))
     mocks.request.mockRejectedValueOnce(serverError)
@@ -96,7 +85,7 @@ describe('build draft refresh errors', () => {
       expect(refreshed.error).toBe(serverError)
     })
 
-    expect(mocks.toastError).toHaveBeenCalledTimes(1)
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('common.api.actionFailed')
     expect(setSoulSourceOverride).not.toHaveBeenCalled()
   })
 })

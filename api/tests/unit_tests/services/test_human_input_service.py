@@ -449,7 +449,6 @@ def test_submit_form_by_token_missing_inputs(
     sample_form_record: HumanInputFormRecord,
     unbound_session_factory: sessionmaker[Session],
 ) -> None:
-
     definition_with_input = FormDefinition(
         form_content="hello",
         inputs=[ParagraphInputConfig(output_variable_name="content")],

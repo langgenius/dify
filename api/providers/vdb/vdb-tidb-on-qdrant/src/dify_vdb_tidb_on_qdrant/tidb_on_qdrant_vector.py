@@ -8,9 +8,6 @@ from typing import TYPE_CHECKING, Any, override
 
 import httpx
 import qdrant_client
-from sqlalchemy.orm import Session
-
-logger = logging.getLogger(__name__)
 from flask import current_app
 from httpx import DigestAuth
 from pydantic import BaseModel
@@ -25,6 +22,7 @@ from qdrant_client.http.models import (
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -38,6 +36,8 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
@@ -452,7 +452,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                 tidb_auth_binding = db.session.scalars(stmt).one_or_none()
                 if tidb_auth_binding:
                     logger.info("Found binding after lock: cluster_id=%s", tidb_auth_binding.cluster_id)
-                    TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
+                    tidb_on_qdrant_api_key = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
 
                 else:
                     idle_tidb_auth_binding = db.session.scalar(
@@ -470,7 +470,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                         idle_tidb_auth_binding.tenant_id = dataset.tenant_id
                         db.session.commit()
                         tidb_auth_binding = idle_tidb_auth_binding
-                        TIDB_ON_QDRANT_API_KEY = f"{idle_tidb_auth_binding.account}:{idle_tidb_auth_binding.password}"
+                        tidb_on_qdrant_api_key = f"{idle_tidb_auth_binding.account}:{idle_tidb_auth_binding.password}"
                     else:
                         logger.info("No idle clusters available, creating new cluster for tenant %s", dataset.tenant_id)
                         new_cluster = TidbService.create_tidb_serverless_cluster(
@@ -499,10 +499,10 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                         db.session.add(new_tidb_auth_binding)
                         db.session.commit()
                         tidb_auth_binding = new_tidb_auth_binding
-                        TIDB_ON_QDRANT_API_KEY = f"{new_tidb_auth_binding.account}:{new_tidb_auth_binding.password}"
+                        tidb_on_qdrant_api_key = f"{new_tidb_auth_binding.account}:{new_tidb_auth_binding.password}"
         else:
             logger.info("Existing binding found: cluster_id=%s", tidb_auth_binding.cluster_id)
-            TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
+            tidb_on_qdrant_api_key = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
 
         qdrant_url = (
             (tidb_auth_binding.qdrant_endpoint if tidb_auth_binding else None) or dify_config.TIDB_ON_QDRANT_URL or ""
@@ -529,7 +529,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
             group_id=dataset.id,
             config=TidbOnQdrantConfig(
                 endpoint=qdrant_url,
-                api_key=TIDB_ON_QDRANT_API_KEY,
+                api_key=tidb_on_qdrant_api_key,
                 root_path=str(config.root_path),
                 timeout=dify_config.TIDB_ON_QDRANT_CLIENT_TIMEOUT,
                 grpc_port=dify_config.TIDB_ON_QDRANT_GRPC_PORT,

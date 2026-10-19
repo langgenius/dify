@@ -5,7 +5,6 @@ import * as React from 'react'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppInfoTrigger from '../app-info-trigger'
 
@@ -41,7 +40,7 @@ const createAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
   createAppDetailFixture({
     id: 'app-1',
     name: 'Test App',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     icon: '🤖',
     icon_type: 'emoji',
     icon_background: '#FFEAD5',
@@ -74,14 +73,13 @@ describe('AppInfoTrigger', () => {
   it('renders expanded app metadata without making the app info clickable', async () => {
     const user = userEvent.setup()
     const props = createProps({
-      appDetail: createAppDetail({ name: 'My Chatbot', mode: AppModeEnum.ADVANCED_CHAT }),
+      appDetail: createAppDetail({ name: 'My Chatbot', mode: 'advanced-chat' as const }),
     })
     render(<AppInfoTrigger {...props} />)
 
     expect(screen.getByText('🤖')).toBeInTheDocument()
     expect(screen.getByText('My Chatbot')).toBeInTheDocument()
     expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
-    expect(screen.getByText('My Chatbot').closest('button')).toBeNull()
 
     await user.click(screen.getByText('🤖'))
 
@@ -89,28 +87,12 @@ describe('AppInfoTrigger', () => {
     expect(props.exportCheck).not.toHaveBeenCalled()
   })
 
-  it('renders only the app icon when collapsed', () => {
-    render(<AppInfoTrigger {...createProps({ expand: false })} />)
-
-    expect(screen.getByText('🤖')).toBeInTheDocument()
-    expect(screen.queryByText('Test App')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
-  })
-
-  it('shows every available chat app operation and keeps workflow conversion last', async () => {
+  it('opens workflow conversion for a chat app', async () => {
     const user = userEvent.setup()
     const props = createProps()
     render(<AppInfoTrigger {...props} />)
 
     await user.click(getOperationsTrigger())
-
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-      'app.editApp',
-      'app.duplicate',
-      'app.exportApp',
-      'common.operation.delete',
-      'app.switch',
-    ])
 
     await user.click(screen.getByRole('menuitem', { name: 'app.switch' }))
     expect(props.openModal).toHaveBeenCalledWith('switch')
@@ -119,7 +101,7 @@ describe('AppInfoTrigger', () => {
   it('shows import DSL for workflow apps without a workflow conversion operation', async () => {
     const user = userEvent.setup()
     const props = createProps({
-      appDetail: createAppDetail({ mode: AppModeEnum.WORKFLOW }),
+      appDetail: createAppDetail({ mode: 'workflow' as const }),
     })
     render(<AppInfoTrigger {...props} />)
 

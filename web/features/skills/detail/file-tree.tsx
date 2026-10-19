@@ -27,6 +27,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -1567,22 +1568,18 @@ export function FileTree({
             open={!!deleteNode}
             onOpenChange={(open) => !open && setDeleteNode(undefined)}
           >
-            <AlertDialogContent className="p-6">
-              <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-                {t(($) => $['skillManagement.detail.deleteFileConfirm'])}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
-                {deleteNode?.path}
-              </AlertDialogDescription>
-              <AlertDialogFooter className="p-0 pt-6">
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {t(($) => $['skillManagement.detail.deleteFileConfirm'])}
+                </AlertDialogTitle>
+                <AlertDialogDescription>{deleteNode?.path}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
                 <AlertDialogCancelButton disabled={fileMutation.isPending}>
                   {tCommon(($) => $['operation.cancel'])}
                 </AlertDialogCancelButton>
-                <AlertDialogConfirmButton
-                  tone="destructive"
-                  loading={fileMutation.isPending}
-                  onClick={handleDelete}
-                >
+                <AlertDialogConfirmButton loading={fileMutation.isPending} onClick={handleDelete}>
                   {tCommon(($) => $['operation.delete'])}
                 </AlertDialogConfirmButton>
               </AlertDialogFooter>

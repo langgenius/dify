@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import Mock
@@ -10,6 +11,7 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from models import Account, App, AppMode
@@ -20,8 +22,9 @@ from services.agent.dsl_entities import AgentPackage
 from services.app_dsl_service import AppDslService, PendingData
 from services.entities.dsl_entities import ImportStatus
 from services.entities.site_dsl import SiteDsl
-from services.errors.app import WorkflowNotFoundError
+from services.errors.app import DraftChangedError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
+from services.workflow.graph_diff import draft_token
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_workflow
 
@@ -430,7 +433,14 @@ def test_pending_import_owner_access(
     ],
 )
 def test_pending_import_owner_is_required(payload: str) -> None:
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:1 validation error for PendingData\\\naccount_id|1 validation "
+            "error for PendingData\\\ntenant_id|2 validation errors for "
+            "PendingData\\\ntenant_id)"
+        ),
+    ) as exc_info:
         PendingData.model_validate_json(payload)
 
     assert "secret-token-123" not in str(exc_info.value)
@@ -1057,13 +1067,182 @@ def test_missing_app_section_names_the_keys_that_were_present(
     assert not unbound_session.in_transaction()
 
 
+@dataclass
+class _DraftWorkflowService:
+    draft: Workflow | None
+    lookups: list[str] = field(default_factory=list)
+    synced_hashes: list[str | None] = field(default_factory=list)
+
+    def _draft_of(self, app_model: App) -> Workflow | None:
+        return self.draft if self.draft is not None and self.draft.app_id == app_model.id else None
+
+    def get_draft_workflow(self, app_model: App, **_: object) -> Workflow | None:
+        self.lookups.append("read")
+        return self._draft_of(app_model)
+
+    def get_draft_workflow_for_update(self, app_model: App, **_: object) -> Workflow | None:
+        self.lookups.append("locked")
+        return self._draft_of(app_model)
+
+    def sync_draft_workflow(self, *, graph: dict[str, object], unique_hash: str | None, **_: object) -> Workflow:
+        self.synced_hashes.append(unique_hash)
+        return _workflow(graph=graph)
+
+
+def _workflow_draft(app: App) -> Workflow:
+    return make_workflow(tenant_id=app.tenant_id, app_id=app.id, graph={"nodes": [], "edges": []})
+
+
+def _guarded_overwrite(
+    monkeypatch: pytest.MonkeyPatch, session: Session, *, draft: Workflow | None
+) -> tuple[AppDslService, _DraftWorkflowService, Callable[[str], App]]:
+    service = AppDslService(session=session)
+    workflow_service = _DraftWorkflowService(draft=draft)
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", lambda: workflow_service)
+    app = _app(mode=AppMode.WORKFLOW)
+
+    def overwrite(draft_hash: str) -> App:
+        return service._create_or_update_app(
+            app=app,
+            data={"app": {"mode": AppMode.WORKFLOW.value}, "workflow": {"graph": {"nodes": [], "edges": []}}},
+            account=_account(),
+            draft_hash=draft_hash,
+        )
+
+    return service, workflow_service, overwrite
+
+
+def test_guarded_overwrite_saves_against_the_locked_draft_it_matched(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    draft = _workflow_draft(_app(mode=AppMode.WORKFLOW))
+    _, workflow_service, overwrite = _guarded_overwrite(monkeypatch, unbound_session, draft=draft)
+
+    overwrite(draft_token(draft))
+
+    assert workflow_service.lookups == ["locked"]
+    assert workflow_service.synced_hashes == [draft.unique_hash]
+
+
+@pytest.mark.parametrize("draft_exists", [True, False], ids=["draft-changed", "draft-gone"])
+def test_guarded_overwrite_refuses_a_draft_that_no_longer_matches(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session, draft_exists: bool
+) -> None:
+    draft = _workflow_draft(_app(mode=AppMode.WORKFLOW)) if draft_exists else None
+    _, workflow_service, overwrite = _guarded_overwrite(monkeypatch, unbound_session, draft=draft)
+
+    with pytest.raises(DraftChangedError):
+        overwrite("exported")
+
+    assert workflow_service.synced_hashes == []
+
+
+def test_refused_overwrite_leaves_the_app_and_cached_dependencies_alone(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    app = _app(mode=AppMode.WORKFLOW)
+    service, workflow_service, _ = _guarded_overwrite(monkeypatch, unbound_session, draft=_workflow_draft(app))
+    cached: list[str] = []
+    monkeypatch.setattr("services.app_dsl_service.redis_client.setex", lambda key, _expiry, _value: cached.append(key))
+    dependency = PluginDependency(
+        type=PluginDependencyType.Package,
+        value=PluginDependency.Package(plugin_unique_identifier="langgenius/openai:1.0.0@abc"),
+    )
+
+    with pytest.raises(DraftChangedError):
+        service._create_or_update_app(
+            app=app,
+            data={"app": {"mode": AppMode.WORKFLOW.value, "name": "After"}, "workflow": {"graph": {}}},
+            account=_account(),
+            dependencies=[dependency],
+            draft_hash="exported",
+        )
+
+    assert cached == []
+    assert app.name == "Existing app"
+    assert workflow_service.synced_hashes == []
+
+
+def _refuse_changed_draft(forwarded: list[str | None]) -> Callable[..., App]:
+    def create_or_update_app(*, draft_hash: str | None = None, **_: object) -> App:
+        forwarded.append(draft_hash)
+        raise DraftChangedError()
+
+    return create_or_update_app
+
+
+def test_import_app_reraises_a_changed_draft_and_keeps_the_hash_for_the_confirm(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    pending_imports: dict[str, str] = {}
+    monkeypatch.setattr(
+        "services.app_dsl_service.redis_client.setex",
+        lambda key, _expiry, value: pending_imports.__setitem__(key, value),
+    )
+    service = AppDslService(session=unbound_session)
+    forwarded: list[str | None] = []
+    monkeypatch.setattr(service, "_create_or_update_app", _refuse_changed_draft(forwarded))
+
+    with pytest.raises(DraftChangedError):
+        service.import_app(
+            account=_account(),
+            import_mode="yaml-content",
+            yaml_content=yaml.safe_dump(
+                {"version": CURRENT_APP_DSL_VERSION, "kind": "app", "app": {"name": "Imported", "mode": "chat"}}
+            ),
+            draft_hash="exported",
+        )
+    assert forwarded == ["exported"]
+
+    pending = service.import_app(
+        account=_account(),
+        import_mode="yaml-content",
+        yaml_content="version: 99.0.0\nkind: app\napp: {name: Test, mode: workflow}\n",
+        draft_hash="exported",
+    )
+    assert pending.status == ImportStatus.PENDING
+    stored = PendingData.model_validate_json(pending_imports[f"app_import_info:{pending.id}"])
+    assert stored.draft_hash == "exported"
+
+
+def test_confirm_import_checks_the_pending_draft_hash(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    pending = PendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        import_mode="yaml-content",
+        yaml_content=yaml.safe_dump(
+            {"version": CURRENT_APP_DSL_VERSION, "kind": "app", "app": {"name": "Imported", "mode": "chat"}}
+        ),
+        draft_hash="exported",
+    )
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", lambda _key: pending.model_dump_json())
+    deleted: list[str] = []
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", deleted.append)
+    service = AppDslService(unbound_session)
+    forwarded: list[str | None] = []
+    monkeypatch.setattr(service, "_create_or_update_app", _refuse_changed_draft(forwarded))
+
+    with pytest.raises(DraftChangedError):
+        service.confirm_import(import_id="pending-import", account=_account())
+
+    assert forwarded == ["exported"]
+    assert deleted == []
+
+
+def test_pending_data_without_a_draft_hash_still_reads() -> None:
+    older = PendingData.model_validate_json(_PENDING_DATA_JSON).model_dump_json(exclude={"draft_hash"})
+    assert PendingData.model_validate_json(older).draft_hash is None
+
+
 @pytest.mark.parametrize("confirmed", [False, True])
 @pytest.mark.parametrize("overwrite", [False, True])
 def test_import_creation_marker_tracks_persisted_app(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, confirmed: bool, overwrite: bool
 ) -> None:
     account = _account(account_id=_CALLER_ID, tenant_id=_TENANT_ID)
-    target = _persist_overwrite_target(sqlite_session) if overwrite else None
+    _persist_overwrite_target(sqlite_session) if overwrite else None
     data = yaml.safe_dump(
         {
             "version": CURRENT_APP_DSL_VERSION,

@@ -650,7 +650,7 @@ class TestCreateSegmentToIndexTask:
         dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
 
         segments = []
-        for i in range(3):
+        for _i in range(3):
             segment = self._create_test_segment(
                 db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
             )
@@ -745,7 +745,7 @@ class TestCreateSegmentToIndexTask:
         # Mock Redis to raise exception in finally block
         with patch.object(redis_client, "delete", side_effect=Exception("Redis connection failed"), autospec=True):
             # Act: Execute the task - Redis failure should not prevent completion
-            with pytest.raises(Exception) as exc_info:
+            with pytest.raises(Exception, match="Redis connection failed") as exc_info:
                 create_segment_to_index_task(segment.id)
 
             # Verify the exception contains the expected Redis error message
@@ -1087,7 +1087,7 @@ class TestCreateSegmentToIndexTask:
 
         # Create multiple segments with different characteristics
         segments = []
-        for i in range(5):
+        for _i in range(5):
             segment = self._create_test_segment(
                 db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
             )

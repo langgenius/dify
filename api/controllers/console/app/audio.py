@@ -9,6 +9,7 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import HTTPException, InternalServerError
 
 import services
+from controllers.common.fields import AudioTranscriptResponse
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -77,10 +78,6 @@ class TextToSpeechPayload(BaseModel):
 
 class TextToSpeechVoiceQuery(BaseModel):
     language: str = Field(..., description="Language code")
-
-
-class AudioTranscriptResponse(ResponseModel):
-    text: str = Field(description="Transcribed text from audio")
 
 
 class AgentAudioTranscriptFormPayload(BaseModel):
@@ -443,7 +440,7 @@ def _get_text_to_speech_voices(*, tenant_id: str, language: str):
         raise CompletionRequestError(e.description)
     except ValueError as e:
         raise e
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to handle get request to TextModesApi")
         raise InternalServerError()
 

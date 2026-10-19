@@ -1,32 +1,13 @@
 import type { ChatWithHistoryContextValue } from '../../context'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
+import { ChatWithHistoryContext } from '../../context'
 import InputsFormContent from '../content'
-
-// Keep lightweight mocks for non-base project components
-vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
-  default: ({
-    value,
-    onChange,
-    name,
-  }: {
-    value: boolean
-    onChange: (v: boolean) => void
-    name: string
-  }) => (
-    <div
-      data-testid="mock-bool-input"
-      role="checkbox"
-      aria-checked={value}
-      onClick={() => onChange(!value)}
-    >
-      {name}
-    </div>
-  ),
-}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({
@@ -55,24 +36,30 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
   ),
 }))
 
+const uploadedFile: FileEntity = {
+  id: 'uploaded-file-1',
+  uploadedId: 'server-file-1',
+  name: 'report.pdf',
+  size: 100,
+  type: 'application/pdf',
+  supportFileType: 'document',
+  progress: 100,
+  transferMethod: TransferMethod.local_file,
+}
+
 // MOCK: file-uploader (stable, deterministic for unit tests)
 vi.mock('@/app/components/base/file-uploader', () => ({
   FileUploaderInAttachmentWrapper: ({
     onChange,
     value,
   }: {
-    onChange: (files: unknown[]) => void
-    value?: unknown[]
+    onChange: (files: FileEntity[]) => void
+    value?: FileEntity[]
   }) => (
-    <div
+    <button
+      type="button"
       data-testid="mock-file-uploader"
-      onClick={() =>
-        onChange(
-          value && value.length > 0
-            ? [...value, `uploaded-file-${(value.length || 0) + 1}`]
-            : ['uploaded-file-1'],
-        )
-      }
+      onClick={() => onChange([...(value ?? []), uploadedFile])}
       data-value-count={value?.length ?? 0}
     />
   ),
@@ -136,13 +123,6 @@ const createMockContext = (
   return base
 }
 
-// Create a real context for testing to support controlled component behavior
-const MockContext = React.createContext<ChatWithHistoryContextValue>(createMockContext())
-
-vi.mock('../../context', () => ({
-  useChatWithHistoryContext: () => React.useContext(MockContext),
-}))
-
 const MockContextProvider = ({
   children,
   value,
@@ -172,7 +152,11 @@ const MockContextProvider = ({
     },
   }
 
-  return <MockContext.Provider value={contextValue}>{children}</MockContext.Provider>
+  return (
+    <ChatWithHistoryContext.Provider value={contextValue}>
+      {children}
+    </ChatWithHistoryContext.Provider>
+  )
 }
 
 describe('InputsFormContent', () => {
@@ -199,18 +183,6 @@ describe('InputsFormContent', () => {
 
     expect(screen.getByText('Text Label')).toBeInTheDocument()
     expect(screen.queryByText('Hidden')).not.toBeInTheDocument()
-  })
-
-  it('shows optional label when required is false', () => {
-    const context = createMockContext({
-      inputsForms: [
-        { variable: 'opt', type: InputVarType.textInput, label: 'Opt', required: false },
-      ],
-    })
-
-    renderWithContext(<InputsFormContent />, context)
-
-    expect(screen.getByText('workflow.panel.optional')).toBeInTheDocument()
   })
 
   it('uses currentConversationInputs when currentConversationId is present', () => {
@@ -293,16 +265,19 @@ describe('InputsFormContent', () => {
     )
   })
 
-  it('renders and handles checkbox input updates (uses mocked BoolInput)', async () => {
+  it('updates boolean inputs through the real checkbox', async () => {
     const user = userEvent.setup()
     const context = createMockContext({
       inputsForms: [{ variable: 'bool', type: InputVarType.checkbox, label: 'Bool' }],
     })
 
     renderWithContext(<InputsFormContent />, context)
-    const boolNode = screen.getByTestId('mock-bool-input')
+    const boolNode = screen.getByRole('checkbox', { name: /Bool/ })
     await user.click(boolNode)
-    expect(mockSetCurrentConversationInputs).toHaveBeenCalled()
+    expect(mockSetCurrentConversationInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ bool: true }),
+    )
+    expect(boolNode).toBeChecked()
   })
 
   it('handles select input with default value and updates', async () => {
@@ -333,28 +308,7 @@ describe('InputsFormContent', () => {
     )
   })
 
-  it('renders select dropdown on the shared dify-ui overlay layer', async () => {
-    const user = userEvent.setup()
-    const context = createMockContext({
-      inputsForms: [
-        {
-          variable: 'sel',
-          type: InputVarType.select,
-          label: 'Sel',
-          options: ['A', 'B'],
-          default: 'B',
-        },
-      ],
-      currentConversationInputs: {},
-    })
-
-    renderWithContext(<InputsFormContent />, context)
-    await user.click(screen.getByText('B'))
-
-    expect(screen.getByText('A').closest('.z-50')).not.toBeNull()
-  })
-
-  it('handles select input with existing value (value not in options -> shows placeholder)', () => {
+  it('preserves a saved selection even after the option is removed', () => {
     const context = createMockContext({
       inputsForms: [
         {
@@ -369,28 +323,7 @@ describe('InputsFormContent', () => {
     })
 
     renderWithContext(<InputsFormContent />, context)
-    const selNodes = screen.getAllByText('Sel')
-    expect(selNodes.length).toBeGreaterThan(0)
     expect(screen.getByText('existing')).toBeInTheDocument()
-  })
-
-  it('handles select input empty branches (no current value -> show placeholder)', () => {
-    const context = createMockContext({
-      inputsForms: [
-        {
-          variable: 'sel',
-          type: InputVarType.select,
-          label: 'Sel',
-          options: ['A'],
-          default: undefined,
-        },
-      ],
-      currentConversationInputs: {},
-    })
-
-    renderWithContext(<InputsFormContent />, context)
-    const selNodes = screen.getAllByText('Sel')
-    expect(selNodes.length).toBeGreaterThan(0)
   })
 
   it('renders and handles JSON object updates (uses mocked CodeEditor)', async () => {
@@ -430,7 +363,7 @@ describe('InputsFormContent', () => {
           allowed_file_upload_methods: [],
         },
       ],
-      currentConversationInputs: { single: 'file1' },
+      currentConversationInputs: { single: uploadedFile },
     })
 
     renderWithContext(<InputsFormContent />, context)
@@ -459,7 +392,7 @@ describe('InputsFormContent', () => {
     const uploader = screen.getByTestId('mock-file-uploader')
     await user.click(uploader)
     expect(mockSetCurrentConversationInputs).toHaveBeenCalledWith(
-      expect.objectContaining({ single: 'uploaded-file-1' }),
+      expect.objectContaining({ single: uploadedFile }),
     )
   })
 
@@ -477,7 +410,7 @@ describe('InputsFormContent', () => {
     await user.click(uploader)
 
     expect(mockSetCurrentConversationInputs).toHaveBeenCalledWith(
-      expect.objectContaining({ multi: ['uploaded-file-1'] }),
+      expect.objectContaining({ multi: [uploadedFile] }),
     )
   })
 

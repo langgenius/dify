@@ -2,25 +2,9 @@ import type { BannerResponse } from '@dify/contracts/api/console/explore/types.g
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Banner } from '@/features/home/banner/banner'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useSuspenseQuery: () => ({ data: { id: 'account-123' } }),
-  }
-})
-
-vi.mock('@/features/account-profile/client', () => ({
-  userProfileQueryOptions: () => ({}),
-}))
-
-vi.mock('#i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('#i18n')>()),
-  useLocale: () => 'en-US',
-}))
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
@@ -56,14 +40,15 @@ const banners: BannerResponse[] = [
 ]
 
 async function renderBanner() {
+  const { wrapper: Wrapper } = createConsoleQueryWrapper({ accountProfile: { id: 'account-123' } })
   return render(
-    <>
+    <Wrapper>
       <button type="button">Before carousel</button>
       <div style={{ width: 300 }}>
         <Banner banners={banners} />
       </div>
       <button type="button">After carousel</button>
-    </>,
+    </Wrapper>,
   )
 }
 
