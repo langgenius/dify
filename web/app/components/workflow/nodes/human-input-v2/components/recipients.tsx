@@ -557,7 +557,26 @@ const RecipientsContent = ({
                   }
                 }}
                 onKeyDown={(event) => {
-                  if (event.nativeEvent.isComposing) return
+                  if (readonly || event.nativeEvent.isComposing) return
+                  if (
+                    event.key === 'Backspace' &&
+                    !event.altKey &&
+                    !event.ctrlKey &&
+                    !event.metaKey &&
+                    !event.shiftKey &&
+                    emailDraft === '' &&
+                    value.length > 0
+                  ) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    if (event.repeat) return
+                    const lastIndex = value.length - 1
+                    if (editor?.index === lastIndex) closeEditor()
+                    onChange(removeRecipient(value, lastIndex))
+                    setSearchFromInput(true)
+                    setOpen(false)
+                    return
+                  }
                   if (event.key === '/' && !emailDraft.trim()) {
                     event.preventDefault()
                     variableTriggerRef.current?.click()
