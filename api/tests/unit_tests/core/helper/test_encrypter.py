@@ -80,7 +80,7 @@ class TestEncryptToken:
 
     def test_tenant_not_found(self):
         """Test error when tenant doesn't exist"""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Tenant with id invalid\\-tenant not found") as exc_info:
             encrypt_token("invalid-tenant", "test_token")
 
         assert "Tenant with id invalid-tenant not found" in str(exc_info.value)

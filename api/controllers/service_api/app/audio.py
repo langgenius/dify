@@ -152,7 +152,7 @@ class AudioApi(Resource):
             raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logger.exception("internal server error.")
             raise InternalServerError() from e
 
@@ -244,6 +244,6 @@ class TextApi(Resource):
             raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logger.exception("internal server error.")
             raise InternalServerError() from e

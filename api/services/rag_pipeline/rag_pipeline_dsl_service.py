@@ -295,7 +295,7 @@ class RagPipelineDslService:
                         names = [dataset.name for dataset in datasets]
                         generate_name = generate_incremental_name(names, name)
                         dataset = Dataset(
-                            tenant_id=account.current_tenant_id,
+                            tenant_id=cast(str, account.current_tenant_id),
                             name=generate_name,
                             description=description,
                             icon_info={
@@ -440,7 +440,7 @@ class RagPipelineDslService:
                     if not dataset:
                         dataset_created = True
                         dataset = Dataset(
-                            tenant_id=account.current_tenant_id,
+                            tenant_id=cast(str, account.current_tenant_id),
                             name=name,
                             description=description,
                             icon_info={

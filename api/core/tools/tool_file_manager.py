@@ -18,6 +18,9 @@ from core.file import remote_fetcher
 from core.workflow.file_reference import build_file_reference
 from extensions.ext_storage import storage
 from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
+
+# init tool_file_parser
+from graphon.file.tool_file_parser import set_tool_file_manager_factory
 from models.model import MessageFile
 from models.tools import ToolFile
 
@@ -212,10 +215,6 @@ class ToolFileManager:
         stream = storage.load_stream(tool_file.file_key)
 
         return stream, self._build_graph_file_reference(tool_file)
-
-
-# init tool_file_parser
-from graphon.file.tool_file_parser import set_tool_file_manager_factory
 
 
 def _factory() -> ToolFileManager:

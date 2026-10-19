@@ -205,7 +205,7 @@ class CompletionMessageApi(Resource):
             raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logger.exception("internal server error.")
             raise InternalServerError() from e
 
@@ -222,7 +222,6 @@ class CompletionMessageStopApi(Resource):
     @with_current_user_id
     @get_app_model(mode=AppMode.COMPLETION)
     def post(self, current_user_id: str, app_model: App, task_id: str):
-
         AppTaskService.stop_task(
             task_id=task_id,
             invoke_from=InvokeFrom.DEBUGGER,
@@ -589,7 +588,7 @@ def _generate_chat_message(
         raise CompletionRequestError(e.description) from e
     except ValueError as e:
         raise e
-    except Exception as e:
+    except Exception:
         logger.exception("internal server error.")
         raise InternalServerError() from e
 

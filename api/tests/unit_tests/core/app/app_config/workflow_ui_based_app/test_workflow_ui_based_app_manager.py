@@ -104,7 +104,7 @@ class TestWorkflowVariablesConfigManagerConvert:
         mock_variable_entity.model_validate.side_effect = ValueError("validation error")
 
         # Act & Assert
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="validation error"):
             WorkflowVariablesConfigManager.convert(mock_workflow)
 
     def test_convert_normalizes_json_schema_string_to_dict(self, mock_workflow: Workflow) -> None:
