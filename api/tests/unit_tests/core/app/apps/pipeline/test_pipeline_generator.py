@@ -628,7 +628,7 @@ def test_single_loop_generate_success(
 
 
 def test_handle_response_value_error_triggers_generate_task_stopped(generator, mocker: MockerFixture):
-    pipeline = _build_pipeline()
+    _build_pipeline()
     workflow = _build_workflow()
     app_entity = FakeRagPipelineGenerateEntity(task_id="t")
 

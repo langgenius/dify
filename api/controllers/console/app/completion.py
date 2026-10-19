@@ -205,7 +205,7 @@ class CompletionMessageApi(Resource):
             raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()
 
@@ -588,7 +588,7 @@ def _generate_chat_message(
         raise CompletionRequestError(e.description)
     except ValueError as e:
         raise e
-    except Exception as e:
+    except Exception:
         logger.exception("internal server error.")
         raise InternalServerError()
 

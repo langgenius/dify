@@ -131,7 +131,7 @@ class TestRateLimit:
             }
         )
 
-        rate_limit = RateLimit("test_client", 5)
+        RateLimit("test_client", 5)
 
         expected_max_key = "dify:rate_limit:test_client:max_active_requests"
         redis_patch.setex.assert_called_with(expected_max_key, timedelta(days=1), 5)
@@ -565,7 +565,6 @@ class TestRateLimitConcurrency:
         import threading
 
         lock = threading.Lock()
-        data = {}
         hashes = {}
 
         def mock_hlen(key):

@@ -234,7 +234,7 @@ class TestWorkflowService:
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, fake)
         app = self._create_test_app(db_session_with_containers, fake)
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        self._create_test_workflow(db_session_with_containers, app, account, fake)
 
         workflow_service = WorkflowService()
 
@@ -820,9 +820,8 @@ class TestWorkflowService:
         app = self._create_test_app(db_session_with_containers, fake)
 
         # Create existing draft workflow
-        existing_workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        self._create_test_workflow(db_session_with_containers, app, account, fake)
         # Get the actual hash that was generated
-        original_hash = existing_workflow.unique_hash
 
         new_graph = {
             "nodes": [
@@ -1391,7 +1390,6 @@ class TestWorkflowService:
         account = self._create_test_account(db_session_with_containers, fake)
         app = self._create_test_app(db_session_with_containers, fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
-        original_name = workflow.marked_name
 
         db_session_with_containers.commit()
 
