@@ -891,8 +891,8 @@ class ToolManager:
                 provider = mcp_service.get_provider_by_persisted_reference(
                     id_or_server_identifier=provider_id, tenant_id=tenant_id
                 )
-            except ValueError:
-                raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
+            except ValueError as caught_error:
+                raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found") from caught_error
 
         controller = MCPToolProviderController.from_db(provider)
 
@@ -1044,8 +1044,8 @@ class ToolManager:
                         id_or_server_identifier=provider_id, tenant_id=tenant_id
                     )
                     return cast(EmojiIconDict | str, mcp_provider.provider_icon)
-                except ValueError:
-                    raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
+                except ValueError as caught_error:
+                    raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found") from caught_error
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 

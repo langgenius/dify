@@ -311,7 +311,7 @@ class WorkflowEntry:
                 node.node_type,
                 node.version(),
             )
-            raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
+            raise WorkflowNodeRunFailedError(node=node, err_msg=str(e)) from e
         return node, generator
 
     @staticmethod
@@ -452,7 +452,7 @@ class WorkflowEntry:
                 node.node_type,
                 node.version(),
             )
-            raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
+            raise WorkflowNodeRunFailedError(node=node, err_msg=str(e)) from e
 
     @staticmethod
     def handle_special_values(value: Mapping[str, Any] | None) -> Mapping[str, Any] | None:

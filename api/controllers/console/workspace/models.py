@@ -427,7 +427,7 @@ class ModelProviderModelCredentialApi(Resource):
                 req_data.model,
                 req_data.model_type,
             )
-            raise ValueError(str(ex))
+            raise ValueError(str(ex)) from ex
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 201
 
@@ -454,7 +454,7 @@ class ModelProviderModelCredentialApi(Resource):
                 credential_name=req_data.name,
             )
         except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+            raise ValueError(str(ex)) from ex
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 

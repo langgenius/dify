@@ -145,8 +145,10 @@ class AppGenerateService:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             try:
                 quota_charge = QuotaService.reserve(QuotaType.WORKFLOW, app_model.tenant_id)
-            except QuotaExceededError:
-                raise InvokeRateLimitError(f"Workflow execution quota limit reached for tenant {app_model.tenant_id}")
+            except QuotaExceededError as caught_error:
+                raise InvokeRateLimitError(
+                    f"Workflow execution quota limit reached for tenant {app_model.tenant_id}"
+                ) from caught_error
 
         # app level rate limiter
         max_active_request = cls._get_max_active_requests(app_model)
@@ -523,8 +525,8 @@ class AppGenerateService:
         if workflow_id:
             try:
                 _ = uuid.UUID(workflow_id)
-            except ValueError:
-                raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ")
+            except ValueError as caught_error:
+                raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ") from caught_error
             workflow = workflow_service.get_published_workflow_by_id(
                 app_model=app_model, workflow_id=workflow_id, session=session
             )

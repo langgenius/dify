@@ -99,41 +99,41 @@ def _translate_service_errors() -> Generator[None]:
     try:
         yield
     except WorkflowNotFoundError as ex:
-        raise NotFound(str(ex))
+        raise NotFound(str(ex)) from ex
     except (IsDraftWorkflowError, WorkflowIdFormatError) as ex:
-        raise BadRequest(str(ex))
-    except TriggerWorkflowServiceModeUnavailableServiceError:
-        raise TriggerWorkflowServiceModeUnavailableError()
-    except services.errors.conversation.ConversationNotExistsError:
-        raise NotFound("Conversation Not Exists.")
-    except services.errors.conversation.ConversationCompletedError:
-        raise ConversationCompletedError()
-    except services.errors.app_model_config.AppModelConfigBrokenError:
+        raise BadRequest(str(ex)) from ex
+    except TriggerWorkflowServiceModeUnavailableServiceError as caught_error:
+        raise TriggerWorkflowServiceModeUnavailableError() from caught_error
+    except services.errors.conversation.ConversationNotExistsError as caught_error:
+        raise NotFound("Conversation Not Exists.") from caught_error
+    except services.errors.conversation.ConversationCompletedError as caught_error:
+        raise ConversationCompletedError() from caught_error
+    except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
         logger.exception("App model config broken.")
-        raise AppUnavailableError()
+        raise AppUnavailableError() from caught_error
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
-    except QuotaExceededError:
-        raise ProviderQuotaExceededError()
-    except ModelCurrentlyNotSupportError:
-        raise ProviderModelCurrentlyNotSupportError()
-    except AppInvokeQuotaExceededError:
+        raise ProviderNotInitializeError(ex.description) from ex
+    except QuotaExceededError as caught_error:
+        raise ProviderQuotaExceededError() from caught_error
+    except ModelCurrentlyNotSupportError as caught_error:
+        raise ProviderModelCurrentlyNotSupportError() from caught_error
+    except AppInvokeQuotaExceededError as caught_error:
         # App concurrency limit. Without this it falls through to the bare `except Exception`
         # below and surfaces as a 500. Render as the canonical 429 (code "too_many_requests");
         # the source message is dropped since it carries internal detail (client_id / limits).
-        raise TooManyRequests()
+        raise TooManyRequests() from caught_error
     except InvokeRateLimitError as ex:
-        raise InvokeRateLimitHttpError(ex.description)
+        raise InvokeRateLimitHttpError(ex.description) from ex
     except InvokeError as e:
-        raise CompletionRequestError(e.description)
-    except ValueError:
+        raise CompletionRequestError(e.description) from e
+    except ValueError as caught_error:
         logger.warning("run input refused by the service.", exc_info=True)
-        raise BadRequest(_INVALID_RUN_INPUT)
+        raise BadRequest(_INVALID_RUN_INPUT) from caught_error
     except HTTPException:
         raise
-    except Exception:
+    except Exception as caught_error:
         logger.exception("internal server error.")
-        raise InternalServerError()
+        raise InternalServerError() from caught_error
 
 
 _RUN_GUARDS: Final = (

@@ -876,7 +876,7 @@ class WorkflowService:
             if isinstance(e, ValueError):
                 raise e
             else:
-                raise ValueError(f"Node {node_id} ({node_type}): {str(e)}")
+                raise ValueError(f"Node {node_id} ({node_type}): {str(e)}") from e
 
     def _validate_llm_model_config(self, tenant_id: str, provider: str, model_name: str) -> None:
         """
@@ -929,7 +929,7 @@ class WorkflowService:
         except Exception as e:
             raise ValueError(
                 f"Failed to validate LLM model configuration (provider: {provider}, model: {model_name}): {str(e)}"
-            )
+            ) from e
 
     def _check_default_tool_credential(self, tenant_id: str, provider: str, *, session: Session) -> None:
         """
@@ -972,7 +972,7 @@ class WorkflowService:
             )
 
         except Exception as e:
-            raise ValueError(f"Failed to validate default credential for tool provider {provider}: {str(e)}")
+            raise ValueError(f"Failed to validate default credential for tool provider {provider}: {str(e)}") from e
 
     def _validate_load_balancing_credentials(
         self, tenant_id: str, node_data: Mapping[str, Any], node_id: str, *, session: Session
@@ -1007,7 +1007,7 @@ class WorkflowService:
                             config["credential_id"], provider, PluginCredentialType.MODEL
                         )
             except Exception as e:
-                raise ValueError(f"Invalid load balancing credentials for {provider}/{model_name}: {str(e)}")
+                raise ValueError(f"Invalid load balancing credentials for {provider}/{model_name}: {str(e)}") from e
 
     def _is_load_balancing_enabled(self, tenant_id: str, provider: str, model_name: str) -> bool:
         """
@@ -1862,7 +1862,7 @@ class WorkflowService:
         try:
             HumanInputNodeData.model_validate(adapt_human_input_node_data_for_graph(node_data))
         except Exception as e:
-            raise ValueError(f"Invalid HumanInput node data: {str(e)}")
+            raise ValueError(f"Invalid HumanInput node data: {str(e)}") from e
 
     def update_workflow(
         self,
