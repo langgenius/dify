@@ -834,7 +834,7 @@ class TestMCPServerEndpoints:
 
 class TestErrorHandling:
     def test_annotation_list_query_validation(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for AnnotationListQuery\\\npage"):
             annotation_module.AnnotationListQuery(page=0)
 
 

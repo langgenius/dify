@@ -115,7 +115,7 @@ class TestTraceSpanWithMemoryExporter:
         def test_func() -> None:
             raise ValueError("test error")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="test error"):
             test_func()
 
         spans = memory_span_exporter.get_finished_spans()

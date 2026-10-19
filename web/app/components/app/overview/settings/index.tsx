@@ -585,7 +585,7 @@ function SettingsForm({
                     href="https://dify.ai/privacy"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-text-accent"
+                    className="text-text-accent underline"
                   />
                 ),
               }}
