@@ -59,6 +59,7 @@ from core.plugin.entities.plugin_daemon import (
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.endpoint import PluginEndpointClient
+from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.plugin import PluginInstaller
 from enums import DeploymentEdition
@@ -1069,7 +1070,7 @@ class PluginService:
             manager.fetch_plugin_manifest(tenant_id, new_plugin_unique_identifier)
         except Exception:
             # plugin not downloaded yet, download and upload pkg
-            pkg = download_plugin_pkg(new_plugin_unique_identifier)
+            pkg = PluginService._download_plugin_pkg(new_plugin_unique_identifier)
             response = manager.upload_pkg(
                 tenant_id,
                 pkg,
@@ -1144,6 +1145,16 @@ class PluginService:
         return response
 
     @staticmethod
+    def _download_plugin_pkg(plugin_unique_identifier: str) -> bytes:
+        """Download a marketplace package, surfacing HTTP failures as client errors."""
+        try:
+            return download_plugin_pkg(plugin_unique_identifier)
+        except ValueError as e:
+            # download_with_size_limit() rejects 4xx/5xx responses. Let the controller translate
+            # the status to the console instead of reporting a generic plugin operation failure.
+            raise PluginDaemonClientSideError(str(e)) from e
+
+    @staticmethod
     def upload_pkg_from_github(
         tenant_id: str, repo: str, version: str, package: str, verify_signature: bool = False
     ) -> PluginDecodeResponse:
@@ -1152,9 +1163,13 @@ class PluginService:
         returns plugin_unique_identifier
         """
         PluginService._check_marketplace_only_permission()
-        pkg = download_with_size_limit(
-            f"https://github.com/{repo}/releases/download/{version}/{package}", dify_config.PLUGIN_MAX_PACKAGE_SIZE
-        )
+        try:
+            pkg = download_with_size_limit(
+                f"https://github.com/{repo}/releases/download/{version}/{package}",
+                dify_config.PLUGIN_MAX_PACKAGE_SIZE,
+            )
+        except ValueError as e:
+            raise PluginDaemonClientSideError(str(e)) from e
         permission = PluginService._get_plugin_installation_permission()
 
         manager = PluginInstaller()
@@ -1241,7 +1256,7 @@ class PluginService:
         try:
             declaration = manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
         except Exception:
-            pkg = download_plugin_pkg(plugin_unique_identifier)
+            pkg = PluginService._download_plugin_pkg(plugin_unique_identifier)
             response = manager.upload_pkg(
                 tenant_id,
                 pkg,
@@ -1275,7 +1290,7 @@ class PluginService:
                 manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
             except Exception:
                 # plugin not downloaded yet, download and upload pkg
-                pkg = download_plugin_pkg(plugin_unique_identifier)
+                pkg = PluginService._download_plugin_pkg(plugin_unique_identifier)
                 response = manager.upload_pkg(
                     tenant_id,
                     pkg,
