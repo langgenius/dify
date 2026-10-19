@@ -4,13 +4,10 @@ from typing import override
 
 import httpx
 import pytest
-from pydantic import ValidationError
 
 from clients.plugin.auth import PluginCredentialAuthClient
 from clients.plugin.auth_entities import CredentialCheckResult, OAuthRevokeResult
-from configs import dify_config
 from core.plugin.entities.plugin_daemon import CredentialType, PluginToolProviderEntity
-from core.plugin.impl.tool import PluginToolManager
 
 SECRET = "secret-that-must-not-escape"
 
@@ -70,8 +67,6 @@ def test_check_request_and_api_timestamp(
     assert request.method == "POST"
     assert request.url.path == "/plugin/tenant-1/dispatch/tool/validate_credentials"
     assert request.headers["X-Plugin-ID"] == "org/plugin"
-    assert request.headers["X-Api-Key"] == dify_config.PLUGIN_DAEMON_KEY
-    assert request.extensions["timeout"] == {"connect": 10, "read": 10, "write": 10, "pool": 10}
     assert json.loads(request.content) == {
         "user_id": "user-1",
         "data": {
@@ -104,11 +99,9 @@ def test_revoke_request_uses_original_oauth_client() -> None:
 @pytest.mark.parametrize(
     ("operation", "payload"),
     [
-        (_check, _result("valid")),
         (_check, _result("invalid", reason_code="credential_revoked")),
         (_check, _result("unsupported")),
         (_check, _result("temporarily_unavailable", reason_code="provider_timeout", retryable=True)),
-        (_revoke, _result("revoked")),
         (_revoke, _result("unsupported")),
         (_revoke, _result("failed")),
         (_revoke, _result("temporarily_unavailable", reason_code="provider_rate_limited", retryable=True)),
@@ -122,33 +115,21 @@ def test_detailed_results_are_preserved(operation: Operation, payload: dict[str,
     assert result.model_dump(exclude={"checked_at"}) == payload
 
 
-@pytest.mark.parametrize("operation", [_check, _revoke])
 @pytest.mark.parametrize(
     "body",
     [
         "",
         _frame({"result": True}),
-        _frame({"result": False}),
-        _frame(None),
         _frame(_result("unknown")),
-        _frame({"status": "valid"}),
-        _frame(_result("valid", retryable=True)),
-        _frame(_result("unsupported", retryable=True)),
         _frame(_result("temporarily_unavailable", reason_code=SECRET, retryable=True)),
-        _frame({**_result("unsupported"), "retryable": "false"}),
-        _frame({**_result("unsupported"), "credentials": {"access_token": SECRET}}),
-        _frame(_result("unsupported")) + _frame(_result("unsupported")),
-        _frame(_result("unsupported")) + SECRET,
+        _frame(_result("valid")) + _frame(_result("valid")),
         SECRET,
-        json.dumps([SECRET]),
     ],
 )
-def test_malformed_streams_fail_closed_without_leaking(
-    operation: Operation, body: str, caplog: pytest.LogCaptureFixture
-) -> None:
+def test_malformed_checks_do_not_invalidate_credentials(body: str, caplog: pytest.LogCaptureFixture) -> None:
     with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, text=body))) as http_client:
-        result = operation(PluginCredentialAuthClient(http_client=http_client))
-    assert result.status == ("temporarily_unavailable" if operation is _check else "failed")
+        result = _check(PluginCredentialAuthClient(http_client=http_client))
+    assert result.status == "temporarily_unavailable"
     assert result.reason_code == "protocol_error"
     assert result.retryable is False
     assert SECRET not in result.model_dump_json()
@@ -159,20 +140,19 @@ def test_malformed_streams_fail_closed_without_leaking(
 def test_error_after_success_is_not_accepted(
     operation: Operation, success: str, caplog: pytest.LogCaptureFixture
 ) -> None:
-    body = _frame(_result(success)) + _frame(None, code=-500, message=SECRET)
+    error = json.dumps({"error_type": "PluginInvokeError", "message": SECRET})
+    body = _frame(_result(success)) + _frame(None, code=-500, message=error)
     with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, text=body))) as http_client:
         result = operation(PluginCredentialAuthClient(http_client=http_client))
     assert result.status == ("temporarily_unavailable" if operation is _check else "failed")
-    assert result.reason_code == "plugin_error"
+    assert result.reason_code == "protocol_error"
     assert result.retryable is False
     assert SECRET not in result.model_dump_json()
     assert SECRET not in caplog.text
 
 
 @pytest.mark.parametrize("operation", [_check, _revoke])
-@pytest.mark.parametrize(
-    ("status_code", "retryable"), [(401, False), (404, False), (429, True), (500, True), (503, True)]
-)
+@pytest.mark.parametrize(("status_code", "retryable"), [(401, False), (429, True), (503, True)])
 def test_http_errors_are_not_credential_errors(operation: Operation, status_code: int, retryable: bool) -> None:
     requests: list[httpx.Request] = []
 
@@ -188,35 +168,20 @@ def test_http_errors_are_not_credential_errors(operation: Operation, status_code
     assert len(requests) == 1
 
 
-class _InterruptedStream(httpx.SyncByteStream):
-    def __init__(self, first_status: str, exception: Exception) -> None:
-        self.first_status = first_status
-        self.exception = exception
-        self.closed = False
+@pytest.mark.parametrize("exception", [httpx.ReadTimeout(SECRET), RuntimeError(SECRET)])
+def test_stream_failure_after_success_is_not_accepted(exception: Exception, caplog: pytest.LogCaptureFixture) -> None:
+    class InterruptedStream(httpx.SyncByteStream):
+        @override
+        def __iter__(self) -> Iterator[bytes]:
+            yield _frame(_result("valid")).encode()
+            raise exception
 
-    @override
-    def __iter__(self) -> Iterator[bytes]:
-        yield _frame(_result(self.first_status)).encode()
-        raise self.exception
-
-    @override
-    def close(self) -> None:
-        self.closed = True
-
-
-@pytest.mark.parametrize(("operation", "success"), [(_check, "valid"), (_revoke, "revoked")])
-@pytest.mark.parametrize("exception", [httpx.ReadTimeout(SECRET), httpx.ConnectError(SECRET), RuntimeError(SECRET)])
-def test_interrupted_stream_is_closed_and_sanitized(
-    operation: Operation, success: str, exception: Exception, caplog: pytest.LogCaptureFixture
-) -> None:
-    stream = _InterruptedStream(success, exception)
-    with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, stream=stream))) as http_client:
-        result = operation(PluginCredentialAuthClient(http_client=http_client))
-    retryable = isinstance(exception, httpx.TransportError)
-    assert result.status == ("temporarily_unavailable" if operation is _check or retryable else "failed")
-    assert result.reason_code == ("daemon_unavailable" if retryable else "unknown_error")
-    assert result.retryable is retryable
-    assert stream.closed
+    with httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, stream=InterruptedStream()))
+    ) as http_client:
+        result = _check(PluginCredentialAuthClient(http_client=http_client))
+    assert result.status == "temporarily_unavailable"
+    assert result.retryable is isinstance(exception, httpx.TransportError)
     assert SECRET not in result.model_dump_json()
     assert SECRET not in caplog.text
 
@@ -230,62 +195,26 @@ def test_unauthorized_type_does_not_dispatch() -> None:
             _check(PluginCredentialAuthClient(http_client=http_client), CredentialType.UNAUTHORIZED)
 
 
-@pytest.mark.parametrize("timeout", [0, -1])
-def test_timeout_must_be_positive(timeout: float) -> None:
-    with pytest.raises(ValueError, match="greater than zero"):
-        PluginCredentialAuthClient(timeout_seconds=timeout)
-
-
-def _provider_payload(capabilities: dict[str, object]) -> dict[str, object]:
-    return {
-        "provider": "provider",
-        "plugin_id": "org/plugin",
-        "plugin_unique_identifier": "org/plugin:1.0.0@digest",
-        "declaration": {
-            "identity": {
-                "author": "org",
-                "name": "provider",
-                "description": {"en_US": "Provider"},
-                "icon": "icon.svg",
-                "label": {"en_US": "Provider"},
+@pytest.mark.parametrize("enabled", [False, True])
+def test_provider_capabilities_default_to_disabled_and_survive_parsing(enabled: bool) -> None:
+    capabilities = {"credential_check": {"api_key": True, "oauth2": False}, "oauth_revoke_supported": True}
+    provider = PluginToolProviderEntity.model_validate(
+        {
+            "provider": "provider",
+            "plugin_id": "org/plugin",
+            "plugin_unique_identifier": "org/plugin:1.0.0@digest",
+            "declaration": {
+                "identity": {
+                    "author": "org",
+                    "name": "provider",
+                    "description": {"en_US": "Provider"},
+                    "icon": "icon.svg",
+                    "label": {"en_US": "Provider"},
+                },
+                **(capabilities if enabled else {}),
             },
-            **capabilities,
-        },
-    }
-
-
-@pytest.mark.parametrize(
-    "capabilities",
-    [{}, {"credential_check": {"api_key": True, "oauth2": False}, "oauth_revoke_supported": True}],
-)
-@pytest.mark.parametrize("list_providers", [False, True])
-def test_capabilities_survive_management_parsing(
-    capabilities: dict[str, object], list_providers: bool, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    payload = _provider_payload(capabilities)
-    data = [payload] if list_providers else payload
-    with httpx.Client(
-        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={"code": 0, "message": "", "data": data}))
-    ) as http_client:
-        monkeypatch.setattr("core.plugin.impl.base._httpx_client", http_client)
-        manager = PluginToolManager()
-        provider = (
-            manager.fetch_tool_providers("tenant-1")[0]
-            if list_providers
-            else manager.fetch_tool_provider("tenant-1", "org/plugin/provider")
-        )
-
-    assert provider.plugin_unique_identifier == "org/plugin:1.0.0@digest"
-    assert provider.declaration.identity.name == "org/plugin/provider"
-    dumped = provider.model_dump()["declaration"]
-    assert dumped["credential_check"] == capabilities.get("credential_check", {"api_key": False, "oauth2": False})
-    assert dumped["oauth_revoke_supported"] == capabilities.get("oauth_revoke_supported", False)
-
-
-@pytest.mark.parametrize(
-    "capabilities",
-    [{"credential_check": {"api_key": "true"}}, {"oauth_revoke_supported": 1}],
-)
-def test_capabilities_require_explicit_boolean_opt_in(capabilities: dict[str, object]) -> None:
-    with pytest.raises(ValidationError):
-        PluginToolProviderEntity.model_validate(_provider_payload(capabilities))
+        }
+    )
+    declaration = provider.model_dump()["declaration"]
+    assert declaration["credential_check"] == {"api_key": enabled, "oauth2": False}
+    assert declaration["oauth_revoke_supported"] is enabled

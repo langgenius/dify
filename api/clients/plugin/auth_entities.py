@@ -4,19 +4,14 @@ Capabilities are opt-in per provider and installed plugin version. Neither an
 OAuth schema nor the legacy boolean validator proves detailed check support.
 """
 
-from typing import Literal, Self
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
+from pydantic import BaseModel, ConfigDict, StrictBool
 
 
 class CredentialCheckCapabilities(BaseModel):
     api_key: StrictBool = False
     oauth2: StrictBool = False
-
-
-class ProviderAuthCapabilities(BaseModel):
-    credential_check: CredentialCheckCapabilities = Field(default_factory=CredentialCheckCapabilities)
-    oauth_revoke_supported: StrictBool = False
 
 
 AuthReasonCode = Literal[
@@ -36,33 +31,22 @@ AuthReasonCode = Literal[
 ]
 
 
-class _AuthResult(BaseModel):
+class CredentialCheckResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
 
     # None means the provider supplied no more specific reason.
     reason_code: AuthReasonCode | None
     retryable: StrictBool
-
-
-class CredentialCheckResponse(_AuthResult):
     status: Literal["valid", "invalid", "temporarily_unavailable", "unsupported"]
-
-    @model_validator(mode="after")
-    def validate_retryable(self) -> Self:
-        if self.retryable and self.status != "temporarily_unavailable":
-            raise ValueError("Only temporarily unavailable checks can be retried")
-        return self
 
 
 class CredentialCheckResult(CredentialCheckResponse):
     checked_at: int
 
 
-class OAuthRevokeResult(_AuthResult):
-    status: Literal["revoked", "unsupported", "temporarily_unavailable", "failed"]
+class OAuthRevokeResult(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
 
-    @model_validator(mode="after")
-    def validate_retryable(self) -> Self:
-        if self.retryable and self.status != "temporarily_unavailable":
-            raise ValueError("Only temporarily unavailable revocations can be retried")
-        return self
+    reason_code: AuthReasonCode | None
+    retryable: StrictBool
+    status: Literal["revoked", "unsupported", "temporarily_unavailable", "failed"]

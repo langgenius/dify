@@ -10,7 +10,6 @@ from collections.abc import Mapping
 from typing import Any
 
 import httpx
-from pydantic import BaseModel, StrictInt
 
 from clients.plugin.auth_entities import (
     AuthReasonCode,
@@ -19,30 +18,15 @@ from clients.plugin.auth_entities import (
     OAuthRevokeResult,
 )
 from core.helper.http_client_pooling import get_pooled_http_client
-from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonBasicResponse
 from core.plugin.impl.base import BasePluginClient
 from models.provider_ids import ToolProviderID
 
 
-class _AuthEnvelope(BaseModel):
-    code: StrictInt
-    data: object = None
-
-
-class _AuthDispatchError(Exception):
-    def __init__(self, reason_code: AuthReasonCode, *, retryable: bool) -> None:
-        super().__init__(reason_code)
-        self.reason_code = reason_code
-        self.retryable = retryable
-
-
 class PluginCredentialAuthClient(BasePluginClient):
-    def __init__(self, *, timeout_seconds: float = 10, http_client: httpx.Client | None = None) -> None:
-        if timeout_seconds <= 0:
-            raise ValueError("timeout_seconds must be greater than zero")
-        self._timeout_seconds = timeout_seconds
+    def __init__(self, *, http_client: httpx.Client | None = None) -> None:
         self._http_client = http_client or get_pooled_http_client(
-            "plugin_credential_auth",
+            "plugin_daemon",
             lambda: httpx.Client(
                 limits=httpx.Limits(max_keepalive_connections=50, max_connections=100), trust_env=False
             ),
@@ -67,23 +51,18 @@ class PluginCredentialAuthClient(BasePluginClient):
                 raise ValueError("Detailed checks require API key or OAuth2 credentials")
 
         provider_id = ToolProviderID(provider)
-        try:
-            result = self._dispatch(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                provider_id=provider_id,
-                operation="tool/validate_credentials",
-                data={
-                    "credentials": dict(credentials),
-                    "credential_type": wire_credential_type,
-                    "result_format": "detailed",
-                },
-                response_type=CredentialCheckResponse,
-            )
-        except _AuthDispatchError as exc:
-            result = CredentialCheckResponse(
-                status="temporarily_unavailable", reason_code=exc.reason_code, retryable=exc.retryable
-            )
+        result = self._dispatch(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            provider_id=provider_id,
+            operation="tool/validate_credentials",
+            data={
+                "credentials": dict(credentials),
+                "credential_type": wire_credential_type,
+                "result_format": "detailed",
+            },
+            response_type=CredentialCheckResponse,
+        )
         return CredentialCheckResult(
             status=result.status,
             reason_code=result.reason_code,
@@ -106,21 +85,14 @@ class PluginCredentialAuthClient(BasePluginClient):
         grant. App unbinding must not call this operation.
         """
         provider_id = ToolProviderID(provider)
-        try:
-            return self._dispatch(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                provider_id=provider_id,
-                operation="oauth/revoke_credentials",
-                data={"system_credentials": dict(system_credentials), "credentials": dict(credentials)},
-                response_type=OAuthRevokeResult,
-            )
-        except _AuthDispatchError as exc:
-            return OAuthRevokeResult(
-                status="temporarily_unavailable" if exc.retryable else "failed",
-                reason_code=exc.reason_code,
-                retryable=exc.retryable,
-            )
+        return self._dispatch(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            provider_id=provider_id,
+            operation="oauth/revoke_credentials",
+            data={"system_credentials": dict(system_credentials), "credentials": dict(credentials)},
+            response_type=OAuthRevokeResult,
+        )
 
     def _dispatch[T: CredentialCheckResponse | OAuthRevokeResult](
         self,
@@ -143,9 +115,7 @@ class PluginCredentialAuthClient(BasePluginClient):
             assert isinstance(body, str)
             # Reuse daemon authentication and tracing, but keep raw errors out of
             # the generic transport's exception logs as well as its SSE parser.
-            with self._http_client.stream(
-                "POST", url, headers=headers, content=body, timeout=self._timeout_seconds
-            ) as response:
+            with self._http_client.stream("POST", url, headers=headers, content=body, timeout=10) as response:
                 response.raise_for_status()
                 result: T | None = None
                 for line in response.iter_lines():
@@ -154,24 +124,30 @@ class PluginCredentialAuthClient(BasePluginClient):
                         continue
                     if line.startswith("data:"):
                         line = line[5:].strip()
-                    envelope = _AuthEnvelope.model_validate_json(line)
-                    if envelope.code != 0:
-                        raise _AuthDispatchError("plugin_error", retryable=False)
-                    if result is not None:
-                        raise _AuthDispatchError("protocol_error", retryable=False)
+                    envelope = PluginDaemonBasicResponse[dict[str, object]].model_validate_json(line)
+                    if envelope.code != 0 or result is not None:
+                        raise ValueError("Expected exactly one successful authentication result")
                     result = response_type.model_validate(envelope.data)
                 if result is None:
-                    raise _AuthDispatchError("protocol_error", retryable=False)
+                    raise ValueError("Expected exactly one authentication result")
                 # Consume EOF before accepting success: a later error invalidates it.
                 return result
-        except _AuthDispatchError:
-            raise
         except httpx.HTTPStatusError as exc:
+            reason_code: AuthReasonCode = "daemon_unavailable"
             retryable = exc.response.status_code == 429 or exc.response.status_code >= 500
-            raise _AuthDispatchError("daemon_unavailable", retryable=retryable) from None
         except httpx.TransportError:
-            raise _AuthDispatchError("daemon_unavailable", retryable=True) from None
+            reason_code, retryable = "daemon_unavailable", True
         except (ValueError, TypeError):
-            raise _AuthDispatchError("protocol_error", retryable=False) from None
+            reason_code, retryable = "protocol_error", False
         except Exception:
-            raise _AuthDispatchError("unknown_error", retryable=False) from None
+            reason_code, retryable = "unknown_error", False
+
+        return response_type.model_validate(
+            {
+                "status": "failed"
+                if response_type is OAuthRevokeResult and not retryable
+                else "temporarily_unavailable",
+                "reason_code": reason_code,
+                "retryable": retryable,
+            }
+        )
