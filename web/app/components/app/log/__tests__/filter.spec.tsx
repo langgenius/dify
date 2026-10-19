@@ -170,11 +170,12 @@ it('omits chat sorting for completion logs', () => {
 })
 
 it.each(['loading', 'unavailable'] as const)(
-  'does not expose filters while annotations are %s',
+  'keeps filters visible while annotations are %s',
   (state) => {
     mockAnnotationsCountLoading = state === 'loading'
     mockAnnotationsCountData = null
     render(<ControlledFilter />)
-    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+    expect(screen.getByRole('searchbox')).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: 'appLog.filter.annotation.all' })).toBeDisabled()
   },
 )
