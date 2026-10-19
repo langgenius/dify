@@ -117,11 +117,26 @@ const imIdentityAvatarColors = [
   'bg-components-icon-bg-midnight-solid',
 ] as const
 
+type IMIdentityOption = Pick<
+  ContactIMIdentity,
+  'id' | 'display_name' | 'email' | 'provider_user_id'
+>
+
+function getBoundIMIdentity(contact: ContactView, binding?: ContactIMBinding) {
+  if (!binding) return undefined
+  return contact.im_binding_details?.find(
+    (detail) =>
+      detail.id === binding.id &&
+      detail.provider === binding.provider &&
+      detail.scope === binding.scope,
+  )?.identity
+}
+
 function IMIdentityAvatar({
   identity,
   size = 'sm',
 }: {
-  identity: ContactIMIdentity
+  identity: IMIdentityOption
   size?: 'xs' | 'sm'
 }) {
   const name = identity.display_name || identity.email || identity.provider_user_id
@@ -171,19 +186,29 @@ function ContactIMBindingEditor({
 }) {
   const { t } = useTranslation(['contacts'])
   const providerLabel = getContactChannelLabel(provider)
+  const boundIdentity = getBoundIMIdentity(contact, binding)
+  const organizationIdentity = binding?.scope === 'organization' ? boundIdentity : undefined
   const [mode, setMode] = useState(binding?.scope === 'workspace' ? 'workspace' : 'organization')
   const [search, setSearch] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
-  const [identity, setIdentity] = useState<ContactIMIdentity | null>(null)
+  const [identity, setIdentity] = useState<IMIdentityOption | null>(() =>
+    binding?.scope === 'workspace' ? (boundIdentity ?? null) : null,
+  )
   const identities = useContactIMIdentities(search)
   const options = [
-    ...new Map(
-      (identities.data?.pages.flatMap((page) => page.data) ?? [])
-        .filter((identity) => identity.provider === provider)
-        .map((identity) => [identity.id, identity]),
+    ...new Map<string, IMIdentityOption>(
+      [
+        ...(identity && !search.trim() ? [identity] : []),
+        ...(identities.data?.pages.flatMap((page) => page.data) ?? []).filter(
+          (identity) => identity.provider === provider,
+        ),
+      ].map((identity) => [identity.id, identity]),
     ).values(),
   ]
-  const canSave = mode === 'workspace' ? identity !== null : binding?.scope === 'workspace'
+  const canSave =
+    mode === 'workspace'
+      ? identity !== null && (binding?.scope !== 'workspace' || identity.id !== boundIdentity?.id)
+      : binding?.scope === 'workspace'
   return (
     <form
       onSubmit={(event) => {
@@ -233,11 +258,24 @@ function ContactIMBindingEditor({
               <Radio value="organization" />
               {t(($) => $['imBinding.organizationMode'])}
             </label>
-            <div className="ml-6 flex h-9 items-center rounded-lg bg-components-input-bg-normal px-2.5 system-xs-regular text-text-tertiary">
-              {/* The binding projection has no identity ID or organization fallback. Never infer it from matching emails. */}
-              {binding
-                ? t(($) => $['imBinding.organizationUnavailable'])
-                : t(($) => $['imBinding.noOrganizationBinding'])}
+            <div className="ml-6 flex h-9 items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2.5 system-xs-regular text-text-tertiary">
+              {organizationIdentity ? (
+                <>
+                  <IMIdentityAvatar identity={organizationIdentity} size="xs" />
+                  <span className="truncate text-text-secondary">
+                    {organizationIdentity.display_name ||
+                      organizationIdentity.email ||
+                      organizationIdentity.provider_user_id}
+                  </span>
+                  {organizationIdentity.display_name && (
+                    <span className="truncate">{organizationIdentity.email}</span>
+                  )}
+                </>
+              ) : binding ? (
+                t(($) => $['imBinding.organizationUnavailable'])
+              ) : (
+                t(($) => $['imBinding.noOrganizationBinding'])
+              )}
             </div>
           </div>
           <div className="space-y-1.5">
@@ -341,7 +379,7 @@ function ContactIMBindingEditor({
                             {t(($) => $['imBinding.empty'])}
                           </p>
                         )}
-                        <ComboboxList<ContactIMIdentity>>
+                        <ComboboxList<IMIdentityOption>>
                           {(option) => (
                             <ComboboxItem
                               key={option.id}
@@ -458,6 +496,7 @@ function ContactIMChannels({
         {providers.map((provider) => {
           const label = getContactChannelLabel(provider)
           const binding = bindings.find((item) => item.provider === provider)
+          const identity = getBoundIMIdentity(contact, binding)
           const unbound = provider !== 'email' && !binding
           const changeLabel = t(($) => $['imBinding.changeTitle'], { provider: label })
           return (
@@ -485,7 +524,9 @@ function ContactIMChannels({
                 ) : (
                   <>
                     <span className="truncate system-xs-regular text-text-tertiary">
-                      {t(($) => $['imBinding.identityUnavailable'])}
+                      {identity
+                        ? identity.display_name || identity.email || identity.provider_user_id
+                        : t(($) => $['imBinding.identityUnavailable'])}
                     </span>
                     {binding?.scope === 'workspace' && (
                       <span className="shrink-0 rounded-[5px] px-1 system-2xs-medium-uppercase text-text-tertiary inset-ring-1 inset-ring-divider-deep">
