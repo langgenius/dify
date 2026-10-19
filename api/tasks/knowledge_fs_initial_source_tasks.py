@@ -54,16 +54,16 @@ def _run_initial_source_task(
                     "payload": payload,
                     "workflow_id": exc.workflow_id,
                 },
-            )
-        raise task.retry(exc=exc)
+            ) from exc
+        raise task.retry(exc=exc) from exc
     except KnowledgeFSProductResourceNotFoundError:
         raise
     except KnowledgeFSProductRequestRejectedError as exc:
         if exc.status_code == 429:
-            raise task.retry(exc=exc)
+            raise task.retry(exc=exc) from exc
         raise
     except KnowledgeFSProductRemoteError as exc:
-        raise task.retry(exc=exc)
+        raise task.retry(exc=exc) from exc
 
 
 @shared_task(bind=True, queue="knowledge_fs_lifecycle", max_retries=180, default_retry_delay=2)
@@ -122,12 +122,12 @@ def import_initial_website_source(
                     "payload": payload,
                     "workflow_id": exc.workflow_id,
                 },
-            )
-        raise self.retry(exc=exc)
+            ) from exc
+        raise self.retry(exc=exc) from exc
     except KnowledgeFSProductResourceNotFoundError:
         raise
     except KnowledgeFSProductRemoteError as exc:
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 __all__ = [

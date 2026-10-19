@@ -168,11 +168,11 @@ def finalize_source_import(
             workflow_id=workflow_id,
         )
     except (KnowledgeFSSourceImportNotReadyError, KnowledgeFSProductRemoteError) as exc:
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
     except KnowledgeFSProductRequestRejectedError as exc:
         if exc.status_code != 409:
             raise
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 __all__ = ["finalize_source_import", "finalize_source_import_once"]

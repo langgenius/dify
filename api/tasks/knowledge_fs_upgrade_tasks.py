@@ -38,7 +38,7 @@ def run_knowledge_fs_upgrade(self, *, job_id: str) -> None:
                 extra={"upgrade_job_id": job_id},
             )
             raise
-        raise self.retry(exc=error)
+        raise self.retry(exc=error) from error
     except Exception as error:
         runner.fail(job_id=job_id, error=error)
         logger.exception("KnowledgeFS Dataset upgrade failed", extra={"upgrade_job_id": job_id})
@@ -67,7 +67,7 @@ def reconcile_knowledge_fs_upgrade_documents(self, *, job_id: str) -> None:
             extra={"upgrade_job_id": job_id},
             exc_info=True,
         )
-        raise self.retry(exc=error)
+        raise self.retry(exc=error) from error
     if remaining:
         raise self.retry(exc=KnowledgeFSUpgradeNotReadyError(f"{remaining} migrated documents are not visible yet"))
 

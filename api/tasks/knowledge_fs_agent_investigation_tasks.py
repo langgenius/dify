@@ -37,7 +37,7 @@ def capture_agent_knowledge_investigation_task(self, *, report: dict, control_sp
             logger.warning("Agent knowledge investigation rejected", extra=context)
             return
         logger.warning("Agent knowledge investigation retry scheduled", extra=context)
-        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries)) from exc
     except Exception as exc:
         logger.warning("Agent knowledge investigation retry scheduled", extra=context)
-        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries))
+        raise self.retry(exc=exc, countdown=30 * (2**self.request.retries)) from exc
