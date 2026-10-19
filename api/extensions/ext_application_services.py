@@ -718,7 +718,6 @@ def build_application_services(
             ),
             tokens=PassportTokenGateway(passport=PassportService()),
             identities=web_identity,
-            app_sessions=web_app_sessions,
             account_passports_enabled=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
             now=lambda: datetime.now(UTC),
             access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,

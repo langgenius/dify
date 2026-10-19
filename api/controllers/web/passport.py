@@ -1,21 +1,19 @@
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from werkzeug.exceptions import NotFound, ServiceUnavailable, Unauthorized
+from werkzeug.exceptions import NotFound, Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
-from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
+from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response
-from libs.token import extract_access_token, extract_webapp_access_token, extract_webapp_passport
-from services.entities.passport_entities import WebPassportIdentity, WebPassportRequest
+from libs.token import extract_webapp_access_token
+from services.entities.passport_entities import WebPassportRequest
 from services.web_passport_service import (
-    WebPassportAccessDeniedError,
-    WebPassportAccountExchangeDisabledError,
     WebPassportAuthenticationRequiredError,
     WebPassportNotFoundError,
     WebPassportUnauthorizedError,
@@ -24,11 +22,6 @@ from services.web_passport_service import (
 
 class PassportQuery(BaseModel):
     user_id: str | None = Field(default=None, description="End user session ID")
-    identity: WebPassportIdentity | None = Field(
-        default=None,
-        description="Explicitly exchange the Account login for an App Passport when enabled by configuration. "
-        "Omit to preserve the existing App identity independently of Account login.",
-    )
 
 
 register_schema_models(web_ns, PassportQuery)
@@ -65,22 +58,12 @@ class PassportResource(Resource):
         passport_request = WebPassportRequest(
             app_code=app_code,
             user_session_id=query.user_id,
-            access_token=(
-                extract_access_token(request)
-                if query.identity == WebPassportIdentity.ACCOUNT
-                else extract_webapp_access_token(request)
-            ),
-            app_passport=extract_webapp_passport(app_code, request),
-            identity=query.identity,
+            access_token=extract_webapp_access_token(request),
         )
         try:
             result = application_services().web_passport.issue(passport_request)
         except WebPassportAuthenticationRequiredError as exc:
             raise WebAppAuthRequiredError(str(exc)) from exc
-        except WebPassportAccessDeniedError as exc:
-            raise WebAppAuthAccessDeniedError(str(exc)) from exc
-        except WebPassportAccountExchangeDisabledError as exc:
-            raise ServiceUnavailable(str(exc)) from exc
         except WebPassportUnauthorizedError as exc:
             raise Unauthorized(str(exc)) from exc
         except WebPassportNotFoundError as exc:

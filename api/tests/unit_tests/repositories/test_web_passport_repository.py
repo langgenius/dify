@@ -305,7 +305,7 @@ def test_anonymous_and_service_api_session_hints_cannot_select_account_users(
         )
         == []
     )
-    assert repository.restore_guest_end_user(app, stored.id).end_user is None
+    assert repository.resolve_authenticated_end_user(app, end_user_id=stored.id, session_id=None).end_user is None
     anonymous = repository.resolve_standard_end_user(app, stored.session_id)
     assert anonymous.end_user is not None
     assert anonymous.end_user.id != stored.id

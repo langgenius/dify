@@ -10,11 +10,9 @@ from services.entities.passport_entities import (
     WebAppLoginClaims,
     WebAppRecord,
     WebPassportEndUserResolution,
-    WebPassportIdentity,
     WebPassportRequest,
     WebPassportResult,
 )
-from services.web_authentication_service import WebAppSessionGateway
 from services.web_identity_service import WebIdentityError, WebIdentityService
 
 
@@ -53,8 +51,6 @@ class WebPassportRepository(Protocol):
 
     def resolve_account_end_user(self, app: WebAppRecord, account_id: str) -> WebPassportEndUserResolution: ...
 
-    def restore_guest_end_user(self, app: WebAppRecord, end_user_id: str) -> WebPassportEndUserResolution: ...
-
     def resolve_authenticated_end_user(
         self,
         app: WebAppRecord,
@@ -86,7 +82,6 @@ class WebPassportService:
         auth: WebPassportAuthGateway,
         tokens: WebPassportTokenGateway,
         identities: WebIdentityService,
-        app_sessions: WebAppSessionGateway,
         account_passports_enabled: bool,
         now: Callable[[], datetime],
         access_token_expire_minutes: int,
@@ -95,7 +90,6 @@ class WebPassportService:
         self._auth = auth
         self._tokens = tokens
         self._identities = identities
-        self._app_sessions = app_sessions
         self._account_passports_enabled = account_passports_enabled
         self._now = now
         self._access_token_expire_minutes = access_token_expire_minutes
@@ -105,49 +99,20 @@ class WebPassportService:
         if app is None:
             raise WebPassportNotFoundError()
 
-        if request.identity == WebPassportIdentity.ACCOUNT and not self._account_passports_enabled:
-            raise WebPassportAccountExchangeDisabledError("Account Passport exchange is not enabled.")
-
-        auth_type = WebAppAuthType.PUBLIC
         if self._auth.is_webapp_auth_enabled():
+            login_claims = self._decode_login_token(request.access_token)
+            if login_claims is not None and login_claims.token_source != "webapp_login_token":
+                raise WebPassportUnauthorizedError("Invalid web app login token source.")
             auth_type = self._auth.get_app_auth_type(app.app_id)
+            if auth_type != WebAppAuthType.PUBLIC:
+                if login_claims is None:
+                    raise WebPassportAuthenticationRequiredError("Web app authentication required.")
+                self._require_active_web_app(app)
+                return self._exchange_enterprise_token(app, login_claims, auth_type)
 
-        if request.identity is None and request.app_passport:
-            # Verification remains enabled during issuance rollback. Never renew or replace
-            # a valid identity based on a different, incidental Account cookie.
-            if self._app_sessions.verify(token=request.app_passport, app_code=app.app_code, user_id=None):
-                return WebPassportResult(access_token=request.app_passport)
-            if auth_type == WebAppAuthType.PUBLIC:
-                raise WebPassportUnauthorizedError("Invalid App Passport.")
-            # A private EE App can still exchange its existing SSO login after its
-            # previous Passport expires, using the original session-based mapping.
-
-        if request.identity == WebPassportIdentity.ACCOUNT:
-            login_claims = self._decode_login_token(request.access_token)
-            if login_claims is None:
-                raise WebPassportAuthenticationRequiredError("Account login required.")
-            if login_claims.token_source is not None or login_claims.account_id is None:
-                raise WebPassportUnauthorizedError("Account login required.")
-            if auth_type == WebAppAuthType.EXTERNAL:
-                raise WebPassportAuthenticationRequiredError("Please login as external user.")
-            if auth_type == WebAppAuthType.INTERNAL and not self._auth.is_account_allowed(
-                app.app_id, login_claims.account_id
-            ):
-                raise WebPassportAccessDeniedError("Account cannot access this web app.")
-            return self._exchange_account_token(app, login_claims)
-
-        if auth_type != WebAppAuthType.PUBLIC:
-            login_claims = self._decode_login_token(request.access_token)
-            if login_claims is None:
-                raise WebPassportAuthenticationRequiredError("Web app authentication required.")
-            self._require_active_web_app(app)
-            # EE internal and external SSO retain their existing session-based mappings.
-            return self._exchange_enterprise_token(app, login_claims, auth_type)
-
-        # Keep legacy Guest issuance during the reader-only deployment. Once the
-        # Account capability is enabled, public session hints cannot restore a Guest.
-        session_hint = None if self._account_passports_enabled else request.user_session_id
-        end_user = self._resolve_standard_user(app, session_hint)
+        # Preserve legacy anonymous restoration independently of Account capability.
+        # Account-linked rows are excluded by the repository, not selected by user hints.
+        end_user = self._resolve_standard_user(app, request.user_session_id)
         token = self._tokens.issue(
             {
                 "iss": app.app_id,
@@ -158,6 +123,32 @@ class WebPassportService:
             }
         )
         return WebPassportResult(access_token=token)
+
+    def issue_for_account(self, *, app_code: str, access_token: str) -> WebPassportResult:
+        """Internal Account issuance for the future identity-binding flow.
+
+        The legacy HTTP Passport endpoint does not call this method. Account and
+        App identities remain independent until a binding flow explicitly chooses
+        the Account identity; no Guest record or history is modified here.
+        """
+        if not self._account_passports_enabled:
+            raise WebPassportAccountExchangeDisabledError("Account Passport exchange is not enabled.")
+        app = self._passports.get_active_web_app(app_code)
+        if app is None:
+            raise WebPassportNotFoundError()
+        claims = self._decode_login_token(access_token)
+        if claims is None:
+            raise WebPassportAuthenticationRequiredError("Account login required.")
+        if claims.token_source is not None or claims.account_id is None:
+            raise WebPassportUnauthorizedError("Account login required.")
+        auth_type = (
+            self._auth.get_app_auth_type(app.app_id) if self._auth.is_webapp_auth_enabled() else WebAppAuthType.PUBLIC
+        )
+        if auth_type == WebAppAuthType.EXTERNAL:
+            raise WebPassportAuthenticationRequiredError("Please login as external user.")
+        if auth_type == WebAppAuthType.INTERNAL and not self._auth.is_account_allowed(app.app_id, claims.account_id):
+            raise WebPassportAccessDeniedError("Account cannot access this web app.")
+        return self._exchange_account_token(app, claims)
 
     def _decode_login_token(self, token: str | None) -> WebAppLoginClaims | None:
         if not token:

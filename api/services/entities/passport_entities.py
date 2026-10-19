@@ -1,7 +1,6 @@
 """Framework-neutral data contracts for web passport issuance."""
 
 from dataclasses import dataclass
-from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict
 
@@ -25,17 +24,11 @@ class WebPassportEndUserResolution:
     end_user: EndUserRecord | None
 
 
-class WebPassportIdentity(StrEnum):
-    ACCOUNT = "account"
-
-
 @dataclass(frozen=True, slots=True)
 class WebPassportRequest:
     app_code: str
     user_session_id: str | None
     access_token: str | None
-    app_passport: str | None
-    identity: WebPassportIdentity | None
 
 
 @dataclass(frozen=True, slots=True)

@@ -5,16 +5,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import NotFound, ServiceUnavailable, Unauthorized
+from werkzeug.exceptions import NotFound, Unauthorized
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN
-from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
-from controllers.web.passport import PassportResource
+from controllers.web.error import WebAppAuthRequiredError
+from controllers.web.passport import PassportQuery, PassportResource
 from enums import DeploymentEdition
-from services.entities.passport_entities import WebPassportIdentity, WebPassportRequest, WebPassportResult
+from services.entities.passport_entities import WebPassportRequest, WebPassportResult
 from services.web_passport_service import (
-    WebPassportAccessDeniedError,
-    WebPassportAccountExchangeDisabledError,
     WebPassportAuthenticationRequiredError,
     WebPassportNotFoundError,
     WebPassportUnauthorizedError,
@@ -43,8 +41,6 @@ def test_passport_resource_parses_input_and_serializes_result(app: Flask) -> Non
             app_code="app-code",
             user_session_id="session-1",
             access_token="login-token",
-            app_passport=None,
-            identity=None,
         )
     )
 
@@ -54,16 +50,16 @@ def test_passport_resource_requires_app_code(app: Flask) -> None:
         PassportResource().get()
 
 
-@pytest.mark.parametrize("identity", [None, "account"])
-def test_explicit_exchange_selects_account_cookie_without_changing_legacy_web_login(
+@pytest.mark.parametrize("enabled", [True, False])
+def test_existing_passport_endpoint_keeps_web_login_and_does_not_select_account_cookie(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
-    identity: str | None,
+    enabled: bool,
 ) -> None:
     apply_config_overrides(
         monkeypatch,
         DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE,
-        WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled,
         CONSOLE_WEB_URL="http://localhost",
         CONSOLE_API_URL="http://localhost",
     )
@@ -71,7 +67,7 @@ def test_explicit_exchange_selects_account_cookie_without_changing_legacy_web_lo
     service.issue.return_value = WebPassportResult(access_token="passport")
     with (
         app.test_request_context(
-            "/passport?identity=account" if identity else "/passport",
+            "/passport",
             headers={
                 "X-App-Code": "app-code",
                 "Cookie": f"{COOKIE_NAME_ACCESS_TOKEN}=account-login; {COOKIE_NAME_WEBAPP_ACCESS_TOKEN}=ee-login",
@@ -80,28 +76,12 @@ def test_explicit_exchange_selects_account_cookie_without_changing_legacy_web_lo
         patch("controllers.web.passport.application_services", return_value=SimpleNamespace(web_passport=service)),
     ):
         PassportResource().get()
-    assert service.issue.call_args.args[0].access_token == ("account-login" if identity else "ee-login")
+    assert service.issue.call_args.args[0].access_token == "ee-login"
+    service.issue_for_account.assert_not_called()
 
 
-def test_passport_resource_parses_explicit_account_exchange_without_discarding_app_passport(app: Flask) -> None:
-    service = MagicMock()
-    service.issue.return_value = WebPassportResult(access_token="account-passport")
-    with (
-        app.test_request_context("/passport?identity=account", headers={"X-App-Code": "app-code"}),
-        patch("controllers.web.passport.application_services", return_value=SimpleNamespace(web_passport=service)),
-        patch("controllers.web.passport.extract_access_token", return_value="account-login"),
-        patch("controllers.web.passport.extract_webapp_passport", return_value="guest-passport"),
-    ):
-        assert PassportResource().get() == {"access_token": "account-passport"}
-    service.issue.assert_called_once_with(
-        WebPassportRequest(
-            app_code="app-code",
-            user_session_id=None,
-            access_token="account-login",
-            app_passport="guest-passport",
-            identity=WebPassportIdentity.ACCOUNT,
-        )
-    )
+def test_passport_query_keeps_its_existing_contract() -> None:
+    assert set(PassportQuery.model_fields) == {"user_id"}
 
 
 @pytest.mark.parametrize(
@@ -109,9 +89,7 @@ def test_passport_resource_parses_explicit_account_exchange_without_discarding_a
     [
         (WebPassportAuthenticationRequiredError("login required"), WebAppAuthRequiredError),
         (WebPassportUnauthorizedError("bad token"), Unauthorized),
-        (WebPassportAccessDeniedError("access denied"), WebAppAuthAccessDeniedError),
         (WebPassportNotFoundError(), NotFound),
-        (WebPassportAccountExchangeDisabledError("disabled"), ServiceUnavailable),
     ],
 )
 def test_passport_resource_translates_application_errors(

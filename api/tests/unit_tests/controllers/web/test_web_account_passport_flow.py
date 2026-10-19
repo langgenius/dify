@@ -6,7 +6,7 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import ServiceUnavailable, Unauthorized
+from werkzeug.exceptions import Unauthorized
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, HEADER_NAME_PASSPORT
 from controllers.web import passport, wraps
@@ -19,7 +19,7 @@ from repositories.webapp_access_query_repository import WebAppAccessQueryReposit
 from services.web_authentication_adapters import PassportWebAppSessionGateway
 from services.web_identity_service import WebIdentityService
 from services.web_passport_gateways import DeploymentWebPassportAuthGateway, PassportTokenGateway
-from services.web_passport_service import WebPassportService
+from services.web_passport_service import WebPassportAccountExchangeDisabledError, WebPassportService
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, WebAccounts
 
@@ -80,7 +80,6 @@ def identity_flow(
             ),
             tokens=PassportTokenGateway(passport=signer),
             identities=identity,
-            app_sessions=sessions,
             account_passports_enabled=enabled,
             now=lambda: datetime.now(UTC),
             access_token_expire_minutes=60,
@@ -98,23 +97,17 @@ def identity_flow(
     return signer, accounts
 
 
-def test_signed_passports_are_redacted_app_scoped_and_reuse_mapping(
-    app: Flask, identity_flow: tuple[PassportService, WebAccounts]
+def test_internal_account_passports_are_redacted_app_scoped_and_reuse_mapping(
+    app: Flask,
+    identity_flow: tuple[PassportService, WebAccounts],
 ) -> None:
     signer, accounts = identity_flow
+    services = cast(SimpleNamespace, passport.application_services())
     login = signer.issue({"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000})
     tokens: list[str] = []
     end_user_ids: list[str] = []
     for code in ("app-a", "app-b", "app-a"):
-        with app.test_request_context(
-            "/passport?identity=account&user_id=public-hint",
-            headers={
-                "X-App-Code": code,
-                "Authorization": f"Bearer {login}",
-            },
-        ):
-            result = passport.PassportResource().get()
-        token = result["access_token"]
+        token = services.web_passport.issue_for_account(app_code=code, access_token=login).access_token
         claims = signer.verify(token)
         assert "account_id" not in claims
         assert "user_id" not in claims
@@ -135,103 +128,85 @@ def test_signed_passports_are_redacted_app_scoped_and_reuse_mapping(
             wraps.decode_jwt_token()
 
 
-def test_guest_recovery_requires_passport_not_public_session_id(
-    app: Flask, identity_flow: tuple[PassportService, WebAccounts], sqlite_session: Session
-) -> None:
-    signer, _ = identity_flow
-    with app.test_request_context("/passport", headers={"X-App-Code": "app-a"}):
-        first = passport.PassportResource().get()["access_token"]
-    first_id = signer.verify(first)["end_user_id"]
-    user = sqlite_session.get(EndUser, first_id)
-    assert user is not None
-    with app.test_request_context(f"/passport?user_id={user.session_id}", headers={"X-App-Code": "app-a"}):
-        second = passport.PassportResource().get()["access_token"]
-    assert signer.verify(second)["end_user_id"] != first_id
-    with app.test_request_context("/passport", headers={"X-App-Code": "app-a", HEADER_NAME_PASSPORT: first}):
-        recovered = passport.PassportResource().get()["access_token"]
-    assert signer.verify(recovered)["end_user_id"] == first_id
-
-
+@pytest.mark.parametrize("enabled", [True, False])
+@pytest.mark.parametrize("old_passport", [None, "invalid-passport"])
 @pytest.mark.parametrize("edition", list(DeploymentEdition))
-def test_enabled_passport_reuses_account_cookie_in_any_edition(
+def test_public_passport_keeps_user_id_restoration_with_account_cookie_and_missing_or_invalid_passport(
     app: Flask,
     identity_flow: tuple[PassportService, WebAccounts],
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
+    enabled: bool,
+    old_passport: str | None,
     edition: DeploymentEdition,
 ) -> None:
+    signer, _ = identity_flow
+    services = cast(SimpleNamespace, passport.application_services())
+    if not enabled:
+        monkeypatch.setattr(services, "web_passport", services.reader_only_passport)
     apply_config_overrides(
         monkeypatch,
         DEPLOYMENT_EDITION=edition,
-        WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled,
         CONSOLE_WEB_URL="http://localhost",
         CONSOLE_API_URL="http://localhost",
     )
-    signer, _ = identity_flow
-    login = signer.issue({"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000})
-    with app.test_request_context(
-        "/passport?identity=account",
-        headers={
-            "X-App-Code": "app-a",
-            "Cookie": f"{COOKIE_NAME_ACCESS_TOKEN}={login}",
-        },
-    ):
-        token = passport.PassportResource().get()["access_token"]
-    user = sqlite_session.get(EndUser, signer.verify(token)["end_user_id"])
+    with app.test_request_context("/passport?user_id=legacy-session", headers={"X-App-Code": "app-a"}):
+        first = passport.PassportResource().get()["access_token"]
+    first_id = signer.verify(first)["end_user_id"]
+    user = sqlite_session.get(EndUser, first_id)
     assert user is not None
-    assert user.account_id == ACCOUNT_ID
+    user.name = "Existing visitor"
+    sqlite_session.commit()
+    login = signer.issue({"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000})
+    headers = {"X-App-Code": "app-a", "Cookie": f"{COOKIE_NAME_ACCESS_TOKEN}={login}"}
+    if old_passport:
+        headers[HEADER_NAME_PASSPORT] = old_passport
+    with app.test_request_context("/passport?user_id=legacy-session", headers=headers):
+        recovered = passport.PassportResource().get()["access_token"]
+    assert signer.verify(recovered)["end_user_id"] == first_id
+    sqlite_session.refresh(user)
+    assert user.account_id is None
+    assert user.name == "Existing visitor"
+    assert user.session_id == "legacy-session"
 
 
 @pytest.mark.parametrize("login_account", [ACCOUNT_ID, "8a3e045b-9051-4e12-8431-93786413c002", None])
-@pytest.mark.parametrize("account_passport", [True, False])
-def test_passport_preserves_identity_across_account_login_changes_and_issuance_rollback(
+def test_issued_account_passport_survives_login_changes_and_issuance_rollback(
     app: Flask,
     identity_flow: tuple[PassportService, WebAccounts],
     monkeypatch: pytest.MonkeyPatch,
     login_account: str | None,
-    account_passport: bool,
 ) -> None:
     signer, _ = identity_flow
-    initial_login = signer.issue({"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000})
-    with app.test_request_context(
-        "/passport?identity=account" if account_passport else "/passport",
-        headers={"X-App-Code": "app-a", "Authorization": f"Bearer {initial_login}"},
-    ):
-        original = passport.PassportResource().get()["access_token"]
     services = cast(SimpleNamespace, passport.application_services())
-    compatible_reader = services.reader_only_passport
-    monkeypatch.setattr(services, "web_passport", compatible_reader)
+    initial_login = signer.issue({"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000})
+    original = services.web_passport.issue_for_account(app_code="app-a", access_token=initial_login).access_token
+    monkeypatch.setattr(services, "web_passport", services.reader_only_passport)
     headers = {"X-App-Code": "app-a", HEADER_NAME_PASSPORT: original}
     if login_account:
         unrelated_login = signer.issue({"sub": "Console API Passport", "user_id": login_account, "exp": 2_000_000_000})
         headers["Authorization"] = f"Bearer {unrelated_login}"
-    with app.test_request_context("/passport", headers=headers):
-        assert passport.PassportResource().get()["access_token"] == original
+    with app.test_request_context("/conversations", headers=headers):
         assert services.app_sessions.verify(token=original, app_code="app-a", user_id=None)
         _, user = wraps.decode_jwt_token()
-        assert user.account_id == (ACCOUNT_ID if account_passport else None)
-    with app.test_request_context("/passport?identity=account", headers=headers):
-        with pytest.raises(ServiceUnavailable, match="not enabled"):
-            passport.PassportResource().get()
+        assert user.account_id == ACCOUNT_ID
+    with pytest.raises(WebPassportAccountExchangeDisabledError):
+        services.web_passport.issue_for_account(app_code="app-a", access_token=initial_login)
 
 
-def test_explicit_exchange_does_not_mutate_existing_guest(
-    app: Flask, identity_flow: tuple[PassportService, WebAccounts], sqlite_session: Session
+def test_internal_account_issuance_does_not_bind_existing_guest(
+    app: Flask,
+    identity_flow: tuple[PassportService, WebAccounts],
+    sqlite_session: Session,
 ) -> None:
     signer, _ = identity_flow
-    with app.test_request_context("/passport", headers={"X-App-Code": "app-a"}):
+    services = cast(SimpleNamespace, passport.application_services())
+    with app.test_request_context("/passport?user_id=legacy-session", headers={"X-App-Code": "app-a"}):
         guest = passport.PassportResource().get()["access_token"]
     guest_id = signer.verify(guest)["end_user_id"]
     login = signer.issue({"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000})
-    with app.test_request_context(
-        "/passport?identity=account",
-        headers={
-            "X-App-Code": "app-a",
-            HEADER_NAME_PASSPORT: guest,
-            "Authorization": f"Bearer {login}",
-        },
-    ):
-        account = passport.PassportResource().get()["access_token"]
+    account = services.web_passport.issue_for_account(app_code="app-a", access_token=login).access_token
     assert signer.verify(account)["end_user_id"] != guest_id
     stored = sqlite_session.get(EndUser, guest_id)
     assert stored is not None

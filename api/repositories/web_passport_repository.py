@@ -111,14 +111,6 @@ class WebPassportRepository:
                         raise
             return WebPassportEndUserResolution(app_active=True, end_user=EndUserRecord(id=end_user_id))
 
-    def restore_guest_end_user(self, app: WebAppRecord, end_user_id: str) -> WebPassportEndUserResolution:
-        with self._session_factory() as session:
-            if not self._is_web_app_active(session, app):
-                return WebPassportEndUserResolution(app_active=False, end_user=None)
-            return WebPassportEndUserResolution(
-                app_active=True, end_user=self._find_end_user_by_id(session, app, end_user_id)
-            )
-
     @staticmethod
     def _active_web_app_stmt(app_code: str):
         return (

@@ -1905,7 +1905,6 @@ def test_account_passport_exchange_is_controlled_by_configuration_in_every_editi
     from libs.passport import PassportService
     from models.model import EndUser
     from services.enterprise.enterprise_service import WebAppSettings
-    from services.entities.passport_entities import WebPassportIdentity, WebPassportRequest
     from services.web_passport_service import WebPassportAccountExchangeDisabledError
     from tests.unit_tests.config_override import apply_config_overrides
 
@@ -1941,20 +1940,13 @@ def test_account_passport_exchange_is_controlled_by_configuration_in_every_editi
         redis=_redis(),
     )
     token = PassportService().issue({"sub": "Console API Passport", "user_id": account.id, "exp": 2_000_000_000})
-    request = WebPassportRequest(
-        app_code="rollout-code",
-        user_session_id=None,
-        access_token=token,
-        app_passport=None,
-        identity=WebPassportIdentity.ACCOUNT,
-    )
     if not enabled:
         with pytest.raises(WebPassportAccountExchangeDisabledError):
-            services.web_passport.issue(request)
+            services.web_passport.issue_for_account(app_code="rollout-code", access_token=token)
         assert sqlite_session.scalar(select(EndUser.id).where(EndUser.account_id == account.id)) is None
         return
 
-    result = services.web_passport.issue(request)
+    result = services.web_passport.issue_for_account(app_code="rollout-code", access_token=token)
     claims = PassportService().verify(result.access_token)
     stored = sqlite_session.get(EndUser, claims["end_user_id"])
     assert stored is not None
@@ -1975,15 +1967,5 @@ def test_account_passport_exchange_is_controlled_by_configuration_in_every_editi
         access_token=None,
         app_session_token=result.access_token,
     ).app_logged_in
-    assert (
-        reader.web_passport.issue(
-            WebPassportRequest(
-                app_code="rollout-code",
-                user_session_id=None,
-                access_token=None,
-                app_passport=result.access_token,
-                identity=None,
-            )
-        ).access_token
-        == result.access_token
-    )
+    with pytest.raises(WebPassportAccountExchangeDisabledError):
+        reader.web_passport.issue_for_account(app_code="rollout-code", access_token=token)
