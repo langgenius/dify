@@ -41,6 +41,8 @@ class ConsoleAuthWorkspaceQuery(Protocol):
 class ConsoleAuthInvitationGateway(Protocol):
     def resolve(self, *, email: str, token: str) -> LoginInvitation | None: ...
 
+    def ensure_membership(self, *, account_id: str, email: str, token: str) -> bool: ...
+
 
 class ConsoleAuthPolicyGateway(Protocol):
     def get_email_freeze_type(self, email: str) -> str | None: ...
@@ -106,6 +108,7 @@ class EmailCodeGateway(Protocol):
         normalized_email: str,
         recipient_email: str,
         language: str,
+        registration_allowed: bool,
     ) -> str: ...
 
     def verify(self, *, normalized_email: str, code: str, token: str) -> EmailCodeChallengeStatus: ...
@@ -199,9 +202,12 @@ class ConsoleAuthenticationService:
             self._invalid_credentials(normalized_email, command.ip_address)
 
         if not self._workspaces.has_active_for_account(account.id):
-            if self._policies.is_workspace_creation_allowed() and not self._policies.has_workspace_capacity():
-                raise account_errors.LoginWorkspaceLimitError
-            return PasswordLoginResult(tokens=None, workspace_found=False)
+            if invitation_token is not None:
+                self._invitations.ensure_membership(account_id=account.id, email=command.email, token=invitation_token)
+            if not self._workspaces.has_active_for_account(account.id):
+                if self._policies.is_workspace_creation_allowed() and not self._policies.has_workspace_capacity():
+                    raise account_errors.LoginWorkspaceLimitError
+                return PasswordLoginResult(tokens=None, workspace_found=False)
 
         tokens = self._issue_session(
             account_id=account.id,
@@ -240,14 +246,12 @@ class ConsoleAuthenticationService:
         self._ensure_email_eligible(normalized_email, command.ip_address)
         account = self._preferred_account(command.email)
         self._ensure_account_not_banned(account, normalized_email, command.ip_address)
-        if account is None and not self._policies.is_registration_allowed():
-            raise account_errors.AccountNotFoundError
-
         return self._email_codes.send(
             account_id=account.id if account is not None else None,
             normalized_email=normalized_email,
             recipient_email=account.email if account is not None else normalized_email,
             language=self._email_language(command.language),
+            registration_allowed=account is not None or self._policies.is_registration_allowed(),
         )
 
     def login_with_email_code(self, command: EmailCodeLoginCommand) -> AccountSessionTokens:

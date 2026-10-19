@@ -20,10 +20,10 @@ class FileChunk:
 
 
 def merge_blob_chunks[T: ToolInvokeMessage | AgentInvokeMessage](
-    response: Generator[T, None, None],
+    response: Generator[T],
     max_file_size: int = 30 * 1024 * 1024,
     max_chunk_size: int = 8192,
-) -> Generator[T, None, None]:
+) -> Generator[T]:
     """
     Merge streaming blob chunks into complete blob messages.
 

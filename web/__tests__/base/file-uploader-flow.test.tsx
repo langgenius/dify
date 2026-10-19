@@ -96,7 +96,9 @@ describe('Base File Uploader Flow', () => {
 
     const { unmount } = renderChatInput(fileConfig)
 
-    const activeTrigger = screen.getByRole('button')
+    const activeTrigger = screen.getByRole('button', {
+      name: 'common.fileUploader.uploadFromComputer',
+    })
     expect(activeTrigger).toBeEnabled()
 
     await user.click(activeTrigger)
@@ -108,6 +110,8 @@ describe('Base File Uploader Flow', () => {
     unmount()
     renderChatInput(fileConfig, true)
 
-    expect(screen.getByRole('button')).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'common.fileUploader.uploadFromComputer' }),
+    ).toBeDisabled()
   })
 })

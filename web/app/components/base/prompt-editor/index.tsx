@@ -94,7 +94,7 @@ type PromptEditorAriaProps = Pick<
   'aria-controls' | 'aria-haspopup' | 'aria-label' | 'aria-labelledby'
 >
 
-export type PromptEditorProps = PromptEditorAriaProps & {
+type PromptEditorProps = PromptEditorAriaProps & {
   instanceId?: string
   children?: React.ReactNode
   compact?: boolean

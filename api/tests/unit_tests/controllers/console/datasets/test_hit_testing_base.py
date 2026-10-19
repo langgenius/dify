@@ -150,7 +150,7 @@ class TestParseArgs:
     def test_parse_args_invalid(self):
         payload = {"query": "x" * 300}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for HitTestingPayload\\\nquery"):
             DatasetsHitTestingBase.parse_args(payload)
 
     def test_parse_args_ignores_unknown_fields_for_compatibility(self):

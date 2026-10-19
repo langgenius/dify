@@ -7,7 +7,7 @@ from unittest.mock import Mock, create_autospec
 
 import pytest
 from sqlalchemy import inspect
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -18,7 +18,6 @@ from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowType
-from repositories.agent.runtime_repository import WorkflowAgentBindingResolver
 from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 from services.workflow.execution.ports import WorkflowRuntime
 
@@ -528,7 +527,7 @@ class TestWorkflowAppGeneratorResume:
             workflow_execution_id="run-id",
             call_depth=0,
         )
-        DummyTraceQueueManager = type(
+        dummy_trace_queue_manager = type(
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
             {
@@ -539,7 +538,7 @@ class TestWorkflowAppGeneratorResume:
         )
         monkeypatch.setattr(
             "services.workflow.execution.adapters.workflow.app_generator.TraceQueueManager",
-            DummyTraceQueueManager,
+            dummy_trace_queue_manager,
         )
         captured_entity: WorkflowAppGenerateEntity | None = None
 
@@ -563,7 +562,7 @@ class TestWorkflowAppGeneratorResume:
         assert result.ok is True
         assert captured_entity is not None
         trace_manager = captured_entity.trace_manager
-        assert isinstance(trace_manager, DummyTraceQueueManager)
+        assert isinstance(trace_manager, dummy_trace_queue_manager)
         assert trace_manager.app_id == APP_ID
         assert trace_manager.user_id == "session-id"
 
@@ -625,7 +624,6 @@ class TestWorkflowAppGeneratorWorker:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        resolver = WorkflowAgentBindingResolver(sessionmaker(bind=sqlite_session.get_bind()))
         generator = WorkflowAppGenerator(runtime=workflow_runtime)
         _persist_app(sqlite_session)
         workflow = _persist_workflow(sqlite_session)

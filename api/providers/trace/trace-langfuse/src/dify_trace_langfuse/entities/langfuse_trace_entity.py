@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Union
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -62,10 +62,10 @@ class LangfuseTrace(BaseModel):
         default=None,
         description="Identifier of the trace. Useful for sorting/filtering in the UI.",
     )
-    input: Union[str, dict[str, Any], list, None] | None = Field(
+    input: str | dict[str, Any] | list | None | None = Field(
         default=None, description="The input of the trace. Can be any JSON object."
     )
-    output: Union[str, dict[str, Any], list, None] | None = Field(
+    output: str | dict[str, Any] | list | None | None = Field(
         default=None, description="The output of the trace. Can be any JSON object."
     )
     metadata: dict[str, Any] | None = Field(
@@ -157,10 +157,10 @@ class LangfuseSpan(BaseModel):
         description="The status message of the span. Additional field for context of the event. E.g. the error "
         "message of an error event.",
     )
-    input: Union[str, Mapping[str, Any], list, None] | None = Field(
+    input: str | Mapping[str, Any] | list | None | None = Field(
         default=None, description="The input of the span. Can be any JSON object."
     )
-    output: Union[str, Mapping[str, Any], list, None] | None = Field(
+    output: str | Mapping[str, Any] | list | None | None = Field(
         default=None, description="The output of the span. Can be any JSON object."
     )
     version: str | None = Field(

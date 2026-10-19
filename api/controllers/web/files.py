@@ -14,6 +14,7 @@ from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from models.model import App, EndUser
 
@@ -22,6 +23,14 @@ register_response_schema_models(web_ns, FileResponse)
 
 @web_ns.route("/files/upload")
 class FileApi(WebApiResource):
+    @error_responses(
+        BlockedFileExtensionError,
+        FilenameNotExistsError,
+        FileTooLargeError,
+        NoFileUploadedError,
+        TooManyFilesError,
+        UnsupportedFileTypeError,
+    )
     @web_ns.doc("upload_file")
     @web_ns.doc(description="Upload a file for use in web applications")
     @web_ns.doc(

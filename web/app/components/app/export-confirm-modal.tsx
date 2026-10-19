@@ -2,11 +2,13 @@
 import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -19,14 +21,16 @@ type AppExportConfirmModalProps = {
   envList: Pick<EnvironmentVariableItemResponse, 'name' | 'value'>[]
   onConfirm: (includeSecret: boolean) => Promise<boolean>
   isExporting: boolean
+  errorMessage?: string
   onClose: () => void
 }
 
-export const AppExportConfirmContent = ({
+const AppExportConfirmContent = ({
   envList,
   onConfirm,
   onClose,
   isExporting,
+  errorMessage,
 }: AppExportConfirmModalProps) => {
   const { t } = useTranslation(['app', 'workflow', 'common'])
 
@@ -40,14 +44,14 @@ export const AppExportConfirmContent = ({
   }, [exportSecrets, isExporting, onClose, onConfirm])
 
   return (
-    <AlertDialogContent className="w-120">
-      <div className="px-6 pt-6">
-        <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['exportSecret.title'], { ns: 'app' })}
-        </AlertDialogTitle>
-        <AlertDialogDescription className="mt-2 mb-6 system-sm-regular text-text-secondary">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{t(($) => $['exportSecret.title'], { ns: 'app' })}</AlertDialogTitle>
+        <AlertDialogDescription>
           {t(($) => $['exportSecret.description'], { ns: 'app' })}
         </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogBody>
         <div className="relative">
           <table className="w-full border-separate border-spacing-0 rounded-lg border border-divider-regular shadow-xs">
             <thead className="system-xs-medium-uppercase text-text-tertiary">
@@ -117,7 +121,12 @@ export const AppExportConfirmContent = ({
             {t(($) => $['env.export.checkbox'], { ns: 'workflow' })}
           </span>
         </label>
-      </div>
+        {errorMessage && (
+          <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
+            {errorMessage}
+          </p>
+        )}
+      </AlertDialogBody>
       <AlertDialogFooter>
         <AlertDialogCancelButton disabled={isExporting}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}

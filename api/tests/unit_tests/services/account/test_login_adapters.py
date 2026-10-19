@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import override
@@ -15,17 +16,33 @@ from extensions.ext_redis import RedisClientWrapper
 from libs.helper import RateLimiter
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from repositories.account.repository import SQLAlchemyAccountRepository
+from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from services import account_errors
 from services.account import login_adapters as adapters
+from services.account.adapters import (
+    BillingAccountActivationEligibility,
+    BillingWorkspaceMembershipCache,
+    DeploymentWorkspaceInvitePolicy,
+    RBACWorkspaceMemberAccessSync,
+    RedisInvitationTokenStore,
+)
+from services.account_activation_service import AccountActivationService
 from services.email_code_login_challenge import (
     EmailCodeLoginChallengeResult,
     EmailCodeLoginChallengeStatus,
     EmailCodeLoginChallengeUnavailableError,
 )
+from services.entities.account_activation_entities import InvitationToken
 from services.entities.account_entities import AccountSessionTokens
-from services.entities.account_login_entities import EmailCodeChallengeStatus, RefreshAccountStatus
+from services.entities.account_login_entities import (
+    EmailCodeChallengeStatus,
+    PasswordLoginCommand,
+    RefreshAccountStatus,
+)
 from services.turnstile_service import TurnstileChallengeRejectedError, TurnstileUpstreamError
 from tests.unit_tests.account_domain import AccountDomain
+from tests.unit_tests.services.account.test_login_service import Dependencies
 
 
 class FakeRateLimiter(RateLimiter):
@@ -42,6 +59,13 @@ class FakeRateLimiter(RateLimiter):
     def increment_rate_limit(self, email: str) -> None:
         self.recorded.append(email)
 
+    @override
+    @contextmanager
+    def reserve(self, email: str) -> Generator[bool]:
+        yield not self.limited
+        if not self.limited:
+            self.recorded.append(email)
+
 
 @dataclass
 class FakeTask:
@@ -57,6 +81,134 @@ def _persist_account(session: Session) -> Account:
     session.add(account)
     session.commit()
     return account
+
+
+def test_invitation_gateway_restores_editor_membership_without_revoking_token(
+    sqlite_session_factory: sessionmaker[Session],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = (
+        b'{"account_id":"account-1","email":"user@example.com","workspace_id":"workspace-1",'
+        b'"role":"editor","requires_setup":false}'
+    )
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="User", email="user@example.com", status=AccountStatus.ACTIVE)
+        account.id = "account-1"
+        tenant = Tenant(name="Workspace")
+        tenant.id = "workspace-1"
+        session.add_all([account, tenant])
+    tokens = RedisInvitationTokenStore(redis=redis)
+    accounts = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+    activation = AccountActivationService(
+        tokens=tokens,
+        accounts=accounts,
+        workspace_policy=DeploymentWorkspaceInvitePolicy(),
+        eligibility=BillingAccountActivationEligibility(enabled=False),
+        membership_cache=BillingWorkspaceMembershipCache(enabled=False),
+        member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
+    )
+    gateway = adapters.AccountActivationConsoleAuthInvitationGateway(
+        tokens=tokens,
+        accounts=accounts,
+        activation=activation,
+    )
+
+    commands.side_effect = lambda command, *_args, **_kwargs: (
+        3600 if command == "PTTL" else b"OK" if command == "SET" else commands.return_value
+    )
+    assert gateway.ensure_membership(account_id="different-account", email="user@example.com", token="token-1") is False
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(TenantAccountJoin)) is None
+    assert gateway.ensure_membership(account_id="account-1", email="user@example.com", token="token-1") is True
+
+    with sqlite_session_factory() as session:
+        persisted = session.get(Account, "account-1")
+        membership = session.scalar(select(TenantAccountJoin))
+        assert persisted is not None
+        assert persisted.id == "account-1"
+        assert persisted.status == AccountStatus.ACTIVE
+        assert persisted.name == "User"
+        assert membership is not None
+        assert membership.role == TenantAccountRole.EDITOR
+        assert membership.current is True
+    assert not any(command.args and command.args[0] == "DEL" for command in commands.call_args_list)
+
+
+def test_login_restores_membership_when_invitation_is_stored_under_prefixed_key(
+    sqlite_session_factory: sessionmaker[Session],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    config_overrides: Callable[..., None],
+) -> None:
+    redis, commands = redis_transport
+    config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+    stored: dict[str, object] = {}
+
+    def execute(command: object, *args: object, **_kwargs: object) -> object:
+        operation, key = str(command).upper(), str(args[0])
+        if operation == "SETEX":
+            stored[key] = args[2]
+            return True
+        if operation == "GET":
+            return stored.get(key)
+        if operation == "PTTL":
+            return 3600 if key in stored else -2
+        if operation == "SET" and "NX" in args and key not in stored:
+            stored[key] = b"1"
+            return True
+        return None
+
+    commands.side_effect = execute
+    with sqlite_session_factory.begin() as session:
+        account = Account(
+            name="User",
+            email="user@example.com",
+            status=AccountStatus.ACTIVE,
+            password="hash",
+            password_salt="salt",
+        )
+        account.id = "account-1"
+        workspace = Tenant(name="Workspace")
+        workspace.id = "workspace-1"
+        session.add_all([account, workspace])
+    tokens = RedisInvitationTokenStore(redis=redis)
+    token = tokens.create(
+        InvitationToken(
+            account_id="account-1",
+            email="user@example.com",
+            workspace_id="workspace-1",
+            role="editor",
+            requires_setup=False,
+        )
+    )
+    activation_accounts = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+    gateway = adapters.AccountActivationConsoleAuthInvitationGateway(
+        tokens=tokens,
+        accounts=activation_accounts,
+        activation=AccountActivationService(
+            tokens=tokens,
+            accounts=activation_accounts,
+            workspace_policy=DeploymentWorkspaceInvitePolicy(),
+            eligibility=BillingAccountActivationEligibility(enabled=False),
+            membership_cache=BillingWorkspaceMembershipCache(enabled=False),
+            member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
+        ),
+    )
+    dependencies = Dependencies()
+    dependencies.accounts = SQLAlchemyAccountRepository(sqlite_session_factory)  # type: ignore[assignment]
+    dependencies.workspaces = WorkspaceRepository(sqlite_session_factory)  # type: ignore[assignment]
+    dependencies.invitations = gateway  # type: ignore[assignment]
+    result = dependencies.service().login_with_password(
+        PasswordLoginCommand(email="user@example.com", password="password", invite_token=token, ip_address="127.0.0.1")
+    )
+
+    assert f"enterprise-a:member_invite:token:{token}" in stored
+    assert result.workspace_found is True
+    assert result.tokens == AccountSessionTokens(access_token="access", refresh_token="refresh", csrf_token="csrf")
+    with sqlite_session_factory() as session:
+        membership = session.scalar(select(TenantAccountJoin))
+        assert membership is not None
+        assert membership.role == TenantAccountRole.EDITOR
 
 
 def test_security_gateway_owns_login_failure_state(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
@@ -316,7 +468,11 @@ def test_provisioning_rejects_equivalent_normalized_email(
         )
 
 
-def test_email_code_gateway_sends_and_maps_shared_challenge_status(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("account_id", [None, "account-1"])
+@pytest.mark.parametrize("registration_allowed", [False, True])
+def test_email_code_gateway_sends_and_maps_shared_challenge_status(
+    monkeypatch: pytest.MonkeyPatch, account_id: str | None, registration_allowed: bool
+) -> None:
     limiter = FakeRateLimiter()
     task = FakeTask()
     created: list[tuple[str | None, str, str]] = []
@@ -336,16 +492,20 @@ def test_email_code_gateway_sends_and_maps_shared_challenge_status(monkeypatch: 
     gateway = adapters.RedisEmailCodeGateway(rate_limiter=limiter)
 
     token = gateway.send(
-        account_id="account-1",
+        account_id=account_id,
         normalized_email="User@Example.COM",
         recipient_email="Historical@Example.COM",
         language="en-US",
+        registration_allowed=registration_allowed,
     )
 
     assert token == "challenge-token"
     assert created[0][1] == "user@example.com"
     assert len(created[0][2]) == 6
-    assert task.calls[0]["to"] == "Historical@Example.COM"
+    if account_id is not None or registration_allowed:
+        assert task.calls[0]["to"] == "Historical@Example.COM"
+    else:
+        assert task.calls == []
     assert limiter.recorded == ["user@example.com"]
     assert (
         gateway.verify(normalized_email="User@Example.COM", code="123456", token="challenge-token")
@@ -370,6 +530,7 @@ def test_email_code_gateway_maps_challenge_store_outage(
                 normalized_email="user@example.com",
                 recipient_email="user@example.com",
                 language="en-US",
+                registration_allowed=False,
             )
 
     record = caplog.records[-1]
@@ -431,6 +592,7 @@ def test_email_gateways_raise_framework_neutral_rate_limit_errors() -> None:
             normalized_email="user@example.com",
             recipient_email="user@example.com",
             language="en-US",
+            registration_allowed=False,
         )
     with pytest.raises(account_errors.ResetPasswordEmailRateLimitError) as reset_error:
         adapters.RedisResetPasswordEmailGateway(rate_limiter=FakeRateLimiter(limited=True, time_window=60)).send(
@@ -442,3 +604,35 @@ def test_email_gateways_raise_framework_neutral_rate_limit_errors() -> None:
 
     assert email_code_error.value.retry_after_minutes == 5
     assert reset_error.value.retry_after_minutes == 1
+
+
+@pytest.mark.parametrize("account_id", [None, "account-1"])
+@pytest.mark.parametrize("failure_stage", ["token", "notification"])
+def test_reset_password_gateway_releases_reservation_after_failure(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
+    account_id: str | None,
+    failure_stage: str,
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = 1
+    limiter = RateLimiter(prefix="reset", max_attempts=1, time_window=60, redis_client=redis)
+    gateway = adapters.RedisResetPasswordEmailGateway(rate_limiter=limiter)
+
+    def generate_token(**_kwargs: object) -> str:
+        if failure_stage == "token":
+            raise RuntimeError("temporary failure")
+        return "token"
+
+    def queue_mail(**_kwargs: object) -> None:
+        raise RuntimeError("temporary failure")
+
+    monkeypatch.setattr(adapters.TokenManager, "generate_token", generate_token)
+    monkeypatch.setattr(adapters.send_reset_password_mail_task, "delay", queue_mail)
+    monkeypatch.setattr(adapters.send_reset_password_mail_task_when_account_not_exist, "delay", queue_mail)
+
+    with pytest.raises(RuntimeError, match="temporary failure"):
+        gateway.send(account_id=account_id, email="user@example.com", language="en-US", registration_allowed=True)
+
+    assert commands.call_args_list[0].args[0] == "EVALSHA"
+    assert commands.call_args_list[-1].args[:2] == ("ZREM", "reset:user@example.com")

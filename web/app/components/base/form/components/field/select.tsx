@@ -70,7 +70,7 @@ const SelectField = ({
           onChange?.(next)
         }}
       >
-        <SelectTrigger id={field.name} className="px-2">
+        <SelectTrigger id={field.name}>
           <SelectValue<string> placeholder={placeholderText}>
             {(nextValue) => getDisplayLabel(nextValue, options, placeholderText)}
           </SelectValue>
