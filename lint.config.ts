@@ -31,10 +31,19 @@ export const stylingContractRules = {
         },
         {
           pattern: '^(Dialog|AlertDialog)Content$',
-          allow: ['w-*', 'min-w-*', 'max-w-*', 'h-*', 'min-h-*', 'max-h-*', 'overflow-hidden'],
+          allow: [
+            'w-*',
+            'min-w-*',
+            'max-w-*',
+            'h-*',
+            'min-h-*',
+            'max-h-*',
+            'overflow-hidden',
+            'transition-none',
+          ],
           deny: ['max-w-none', 'max-h-none', 'w-screen', 'h-screen'],
           message:
-            '"{{className}}" is outside the {{component}} styling contract. The surface owns position, chrome and scrolling, and its parts own spacing; callers may only size it within the viewport. Compose DialogPortal, DialogBackdrop and DialogPopup for a custom surface.',
+            '"{{className}}" is outside the {{component}} styling contract. The surface owns position, chrome and scrolling, and its parts own spacing; callers may size it within the viewport or disable transitions. Compose DialogPortal, DialogBackdrop and DialogPopup for a custom surface.',
         },
         {
           pattern: '^DialogPopup$',
