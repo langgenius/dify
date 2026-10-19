@@ -6,7 +6,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.fields import BinaryFileResponse
-from controllers.common.file_response import enforce_download_for_html, requested_byte_range
+from controllers.common.file_response import enforce_download_for_html, requested_byte_range, slice_content_for_range
 from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_model
 from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
@@ -145,18 +145,16 @@ class FilePreviewApi(Resource):
             response.headers["Accept-Ranges"] = "bytes"
             return response
         if byte_range:
-            content = preview.content if isinstance(preview.content, bytes) else b"".join(preview.content)
             start, end = byte_range
-            part = content[start : end + 1]
             response = Response(
-                part,
+                slice_content_for_range(preview.content, start, end),
                 status=206,
                 mimetype=file.mime_type,
                 direct_passthrough=True,
                 headers={},
             )
             response.headers["Content-Range"] = f"bytes {start}-{end}/{file.size}"
-            response.headers["Content-Length"] = str(len(part))
+            response.headers["Content-Length"] = str(end - start + 1)
             response.headers["Accept-Ranges"] = "bytes"
         else:
             response = Response(
