@@ -17,6 +17,10 @@ import { getCurrentProviderAndModel } from '../hooks'
 import { ModelSelectorTrigger } from './model-selector-trigger'
 import Popup from './popup'
 
+// The popup scrolls within --available-height, so keep it above or below the
+// trigger instead of letting a tall list fall back beside it.
+const MODEL_SELECTOR_COLLISION_AVOIDANCE = { fallbackAxisSide: 'none' } as const
+
 const getModelProviderPluginId = (provider: string) => {
   const [organization, pluginName] = provider.split('/').filter(Boolean)
 
@@ -178,6 +182,7 @@ function ModelSelectorRoot({
       />
       <PopoverContent
         placement="bottom-start"
+        collisionAvoidance={MODEL_SELECTOR_COLLISION_AVOIDANCE}
         className={cn(
           'flex max-h-[min(624px,var(--available-height,624px))] w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
           popupClassName,
