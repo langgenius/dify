@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound
 
 from controllers.common.errors import UnsupportedFileTypeError
-from controllers.common.file_response import enforce_download_for_html, requested_byte_range
+from controllers.common.file_response import enforce_download_for_html, requested_byte_range, slice_content_for_range
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.files import files_ns
@@ -139,8 +139,9 @@ class FilePreviewApi(Resource):
             return response
         if byte_range is not None:
             start, end = byte_range
-            content = delivery.content if isinstance(delivery.content, bytes) else b"".join(delivery.content)
-            response = Response(content[start : end + 1], status=206, mimetype=file.mime_type, headers={})
+            response = Response(
+                slice_content_for_range(delivery.content, start, end), status=206, mimetype=file.mime_type, headers={}
+            )
             response.headers["Content-Range"] = f"bytes {start}-{end}/{file.size}"
             response.headers["Accept-Ranges"] = "bytes"
             response.headers["Content-Length"] = str(end - start + 1)
