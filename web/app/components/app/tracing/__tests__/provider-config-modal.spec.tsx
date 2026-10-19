@@ -248,7 +248,6 @@ describe('ProviderConfigModal', () => {
     )
   })
 
-
   describe('Saving', () => {
     it('submits a new config with Enter and chooses the provider', async () => {
       const user = userEvent.setup()
@@ -293,7 +292,7 @@ describe('ProviderConfigModal', () => {
           mlflow: ['app.tracing.configProvider.experimentId', 'experiment_id', '456'],
           databricks: ['app.tracing.configProvider.experimentId', 'experiment_id', '456'],
           tencent: ['Service Name', 'service_name', 'new-service'],
-        } satisfies Record<TracingProvider, [string, string, string]>
+        } satisfies Record<ConfigurableTracingProvider, [string, string, string]>
         const [label, key, value] = edits[provider]
         const input = screen.getByRole('textbox', { name: label })
         await user.clear(input)
