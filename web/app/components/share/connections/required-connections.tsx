@@ -7,7 +7,7 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Link from '@/next/link'
-import { usePathname, useSearchParams } from '@/next/navigation'
+import useSignInUrl from '../use-sign-in-url'
 
 export type RequiredConnection = {
   id: string
@@ -24,11 +24,7 @@ type Props = {
 export default function RequiredConnections({ connections, className }: Props) {
   const { t } = useTranslation(['share'])
   const titleId = useId()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const query = searchParams.toString()
-  const currentPath = query ? `${pathname}?${query}` : pathname
-  const signInParams = new URLSearchParams({ redirect_url: currentPath })
+  const signInUrl = useSignInUrl()
 
   if (connections.length === 0) return null
 
@@ -72,7 +68,7 @@ export default function RequiredConnections({ connections, className }: Props) {
         </ul>
       </div>
       <Link
-        href={`/signin?${signInParams.toString()}`}
+        href={signInUrl}
         className={cn(
           buttonVariants({ variant: 'primary', size: 'large' }),
           'h-auto min-h-9 w-36 max-w-full py-2 text-center whitespace-normal',

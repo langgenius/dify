@@ -4067,6 +4067,7 @@ export default interface Resources {
     tracing: 'TRACING'
   }
   share: {
+    'auth.signIn': 'Sign in'
     'chat.chatFormTip': 'Chat settings cannot be modified after the chat has started.'
     'chat.chatSettingsTitle': 'New chat setup'
     'chat.collapse': 'Collapse'

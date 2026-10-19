@@ -1,4 +1,5 @@
 {
+  "auth.signIn": "Zaloguj się",
   "chat.chatFormTip": "Ustawienia czatu nie mogą być modyfikowane po rozpoczęciu czatu.",
   "chat.chatSettingsTitle": "Nowa konfiguracja czatu",
   "chat.collapse": "Zwiń",

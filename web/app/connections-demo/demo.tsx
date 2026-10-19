@@ -6,6 +6,7 @@ import type { RequiredConnectionService } from '@/app/components/share/connectio
 import { useState } from 'react'
 import RequiredConnectionSetup from '@/app/components/share/connections/required-connection-setup'
 import RequiredConnections from '@/app/components/share/connections/required-connections'
+import SignIn from '@/app/components/share/sign-in'
 import ConfigureConnectionsDemo from './configure-connections-demo'
 
 const demoConnections: readonly RequiredConnection[] = [
@@ -171,6 +172,8 @@ export default function ConnectionsDemo() {
         />
         <hr className="w-full border-0 border-t-2 border-divider-deep" />
         <ConfigureConnectionsDemo />
+        <hr className="w-full border-0 border-t-2 border-divider-deep" />
+        <SignIn className="self-start" />
       </div>
     </main>
   )

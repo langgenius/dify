@@ -1,4 +1,5 @@
 {
+  "auth.signIn": "Accedi",
   "chat.chatFormTip": "Le impostazioni della chat non possono essere modificate dopo che la chat è iniziata.",
   "chat.chatSettingsTitle": "Nuova configurazione della chat",
   "chat.collapse": "Riduci",
