@@ -6,7 +6,6 @@ including edge cases, error conditions, and different ArrayValidation strategies
 """
 
 from dataclasses import dataclass
-from typing import Any
 
 import pytest
 
@@ -52,11 +51,11 @@ class ValidationTestCase:
     """Test case data structure for validation tests."""
 
     segment_type: SegmentType
-    value: Any
+    value: object
     expected: bool
     description: str
 
-    def get_id(self):
+    def get_id(self) -> str:
         return self.description
 
 
@@ -65,12 +64,12 @@ class ArrayValidationTestCase:
     """Test case data structure for array validation tests."""
 
     segment_type: SegmentType
-    value: Any
+    value: object
     array_validation: ArrayValidation
     expected: bool
     description: str
 
-    def get_id(self):
+    def get_id(self) -> str:
         return self.description
 
 
@@ -98,8 +97,8 @@ def get_number_cases() -> list[ValidationTestCase]:
         ValidationTestCase(SegmentType.NUMBER, 42, True, "Positive integer"),
         ValidationTestCase(SegmentType.NUMBER, -42, True, "Negative integer"),
         ValidationTestCase(SegmentType.NUMBER, 0, True, "Zero integer"),
-        ValidationTestCase(SegmentType.NUMBER, 3.14, True, "Positive float"),
-        ValidationTestCase(SegmentType.NUMBER, -3.14, True, "Negative float"),
+        ValidationTestCase(SegmentType.NUMBER, float("3.14"), True, "Positive float"),
+        ValidationTestCase(SegmentType.NUMBER, -float("3.14"), True, "Negative float"),
         ValidationTestCase(SegmentType.NUMBER, 0.0, True, "Zero float"),
         ValidationTestCase(SegmentType.NUMBER, float("inf"), True, "Positive infinity"),
         ValidationTestCase(SegmentType.NUMBER, float("-inf"), True, "Negative infinity"),
@@ -123,7 +122,7 @@ def get_string_cases() -> list[ValidationTestCase]:
         ValidationTestCase(SegmentType.STRING, "line1\nline2", True, "Multiline string"),
         # invalid values
         ValidationTestCase(SegmentType.STRING, 123, False, "Integer"),
-        ValidationTestCase(SegmentType.STRING, 3.14, False, "Float"),
+        ValidationTestCase(SegmentType.STRING, float("3.14"), False, "Float"),
         ValidationTestCase(SegmentType.STRING, True, False, "Boolean"),
         ValidationTestCase(SegmentType.STRING, None, False, "None value"),
         ValidationTestCase(SegmentType.STRING, [], False, "Empty list"),
@@ -144,7 +143,7 @@ def get_object_cases() -> list[ValidationTestCase]:
         # invalid cases
         ValidationTestCase(SegmentType.OBJECT, "not a dict", False, "String"),
         ValidationTestCase(SegmentType.OBJECT, 123, False, "Integer"),
-        ValidationTestCase(SegmentType.OBJECT, 3.14, False, "Float"),
+        ValidationTestCase(SegmentType.OBJECT, float("3.14"), False, "Float"),
         ValidationTestCase(SegmentType.OBJECT, True, False, "Boolean"),
         ValidationTestCase(SegmentType.OBJECT, None, False, "None value"),
         ValidationTestCase(SegmentType.OBJECT, [], False, "Empty list"),
@@ -162,7 +161,7 @@ def get_secret_cases() -> list[ValidationTestCase]:
         ValidationTestCase(SegmentType.SECRET, "very_long_secret_key_with_special_chars!@#", True, "Complex secret"),
         # invalid cases
         ValidationTestCase(SegmentType.SECRET, 123, False, "Integer"),
-        ValidationTestCase(SegmentType.SECRET, 3.14, False, "Float"),
+        ValidationTestCase(SegmentType.SECRET, float("3.14"), False, "Float"),
         ValidationTestCase(SegmentType.SECRET, True, False, "Boolean"),
         ValidationTestCase(SegmentType.SECRET, None, False, "None value"),
         ValidationTestCase(SegmentType.SECRET, [], False, "Empty list"),
@@ -255,21 +254,21 @@ def get_array_any_validation_cases() -> list[ArrayValidationTestCase]:
     return [
         ArrayValidationTestCase(
             SegmentType.ARRAY_ANY,
-            [1, "string", 3.14, {"key": "value"}, True],
+            [1, "string", float("3.14"), {"key": "value"}, True],
             ArrayValidation.NONE,
             True,
             "Mixed types with NONE validation",
         ),
         ArrayValidationTestCase(
             SegmentType.ARRAY_ANY,
-            [1, "string", 3.14, {"key": "value"}, True],
+            [1, "string", float("3.14"), {"key": "value"}, True],
             ArrayValidation.FIRST,
             True,
             "Mixed types with FIRST validation",
         ),
         ArrayValidationTestCase(
             SegmentType.ARRAY_ANY,
-            [1, "string", 3.14, {"key": "value"}, True],
+            [1, "string", float("3.14"), {"key": "value"}, True],
             ArrayValidation.ALL,
             True,
             "Mixed types with ALL validation",
@@ -367,7 +366,11 @@ def get_array_number_validation_cases() -> list[ArrayValidationTestCase]:
             SegmentType.ARRAY_NUMBER, ["not a number", 42], ArrayValidation.FIRST, False, "First invalid"
         ),
         ArrayValidationTestCase(
-            SegmentType.ARRAY_NUMBER, [3.14, 2.71, 1.41], ArrayValidation.FIRST, True, "All valid floats"
+            SegmentType.ARRAY_NUMBER,
+            [float("3.14"), float("2.71"), 1.41],
+            ArrayValidation.FIRST,
+            True,
+            "All valid floats",
         ),
         # ALL strategy
         ArrayValidationTestCase(
@@ -498,39 +501,39 @@ class TestSegmentTypeIsValid:
     """Test suite for SegmentType.is_valid method covering all non-array types."""
 
     @pytest.mark.parametrize("case", get_boolean_cases(), ids=lambda case: case.description)
-    def test_boolean_validation(self, case):
+    def test_boolean_validation(self, case: ValidationTestCase) -> None:
         assert case.segment_type.is_valid(case.value) == case.expected
 
     @pytest.mark.parametrize("case", get_number_cases(), ids=lambda case: case.description)
-    def test_number_validation(self, case: ValidationTestCase):
+    def test_number_validation(self, case: ValidationTestCase) -> None:
         assert case.segment_type.is_valid(case.value) == case.expected
 
     @pytest.mark.parametrize("case", get_string_cases(), ids=lambda case: case.description)
-    def test_string_validation(self, case):
+    def test_string_validation(self, case: ValidationTestCase) -> None:
         assert case.segment_type.is_valid(case.value) == case.expected
 
     @pytest.mark.parametrize("case", get_object_cases(), ids=lambda case: case.description)
-    def test_object_validation(self, case):
+    def test_object_validation(self, case: ValidationTestCase) -> None:
         assert case.segment_type.is_valid(case.value) == case.expected
 
     @pytest.mark.parametrize("case", get_secret_cases(), ids=lambda case: case.description)
-    def test_secret_validation(self, case):
+    def test_secret_validation(self, case: ValidationTestCase) -> None:
         assert case.segment_type.is_valid(case.value) == case.expected
 
     @pytest.mark.parametrize("case", get_file_cases(), ids=lambda case: case.description)
-    def test_file_validation(self, case):
+    def test_file_validation(self, case: ValidationTestCase) -> None:
         assert case.segment_type.is_valid(case.value) == case.expected
 
     @pytest.mark.parametrize("case", get_none_cases(), ids=lambda case: case.description)
-    def test_none_validation_valid_cases(self, case):
+    def test_none_validation_valid_cases(self, case: ValidationTestCase) -> None:
         assert case.segment_type.is_valid(case.value) == case.expected
 
     @pytest.mark.parametrize("case", get_group_cases(), ids=lambda case: case.description)
-    def test_group_validation(self, case):
+    def test_group_validation(self, case: ValidationTestCase) -> None:
         """Test GROUP type validation with various inputs."""
         assert case.segment_type.is_valid(case.value) == case.expected
 
-    def test_group_validation_edge_cases(self):
+    def test_group_validation_edge_cases(self) -> None:
         """Test GROUP validation edge cases."""
         test_file = create_test_file()
 
@@ -550,7 +553,7 @@ class TestSegmentTypeIsValid:
         large_group = SegmentGroup(value=large_segment_list)
         assert SegmentType.GROUP.is_valid(large_group) is True
 
-    def test_no_truly_unsupported_segment_types_exist(self):
+    def test_no_truly_unsupported_segment_types_exist(self) -> None:
         """Test that all SegmentType enum values are properly handled in is_valid method.
 
         This test ensures there are no SegmentType values that would raise AssertionError.
@@ -561,13 +564,13 @@ class TestSegmentTypeIsValid:
 
         for segment_type in all_segment_types:
             # Create a valid test value for each type
-            test_value: Any = None
+            test_value: object = None
             if segment_type == SegmentType.STRING:
                 test_value = "test"
             elif segment_type in {SegmentType.NUMBER, SegmentType.INTEGER}:
                 test_value = 42
             elif segment_type == SegmentType.FLOAT:
-                test_value = 3.14
+                test_value = float("3.14")
             elif segment_type == SegmentType.BOOLEAN:
                 test_value = True
             elif segment_type == SegmentType.OBJECT:
@@ -581,7 +584,7 @@ class TestSegmentTypeIsValid:
             elif segment_type == SegmentType.GROUP:
                 test_value = SegmentGroup(value=[StringSegment(value="test")])
             elif segment_type.is_array_type():
-                test_value = []  # Empty array is valid for all array types
+                test_value = list[object]()  # Empty array is valid for all array types
             else:
                 # If we get here, there's a segment type we don't know how to test
                 # This should prompt us to add validation logic
@@ -601,7 +604,7 @@ class TestSegmentTypeIsValid:
 class TestSegmentTypeArrayValidation:
     """Test suite for SegmentType._validate_array method and array type validation."""
 
-    def test_array_validation_non_list_values(self):
+    def test_array_validation_non_list_values(self) -> None:
         """Test that non-list values return False for all array types."""
         array_types = [
             SegmentType.ARRAY_ANY,
@@ -615,7 +618,7 @@ class TestSegmentTypeArrayValidation:
         non_list_values = [
             "not a list",
             123,
-            3.14,
+            float("3.14"),
             True,
             None,
             {"key": "value"},
@@ -626,7 +629,7 @@ class TestSegmentTypeArrayValidation:
             for value in non_list_values:
                 assert array_type.is_valid(value) is False, f"{array_type} should reject {type(value).__name__}"
 
-    def test_empty_array_validation(self):
+    def test_empty_array_validation(self) -> None:
         """Test that empty arrays are valid for all array types regardless of validation strategy."""
         array_types = [
             SegmentType.ARRAY_ANY,
@@ -646,46 +649,46 @@ class TestSegmentTypeArrayValidation:
                 )
 
     @pytest.mark.parametrize("case", get_array_any_validation_cases(), ids=lambda case: case.description)
-    def test_array_any_validation(self, case):
+    def test_array_any_validation(self, case: ArrayValidationTestCase) -> None:
         """Test ARRAY_ANY validation accepts any list regardless of content."""
         assert case.segment_type.is_valid(case.value, case.array_validation) == case.expected
 
     @pytest.mark.parametrize("case", get_array_string_validation_none_cases(), ids=lambda case: case.description)
-    def test_array_string_validation_with_none_strategy(self, case):
+    def test_array_string_validation_with_none_strategy(self, case: ArrayValidationTestCase) -> None:
         """Test ARRAY_STRING validation with NONE strategy (no element validation)."""
         assert case.segment_type.is_valid(case.value, case.array_validation) == case.expected
 
     @pytest.mark.parametrize("case", get_array_string_validation_first_cases(), ids=lambda case: case.description)
-    def test_array_string_validation_with_first_strategy(self, case):
+    def test_array_string_validation_with_first_strategy(self, case: ArrayValidationTestCase) -> None:
         """Test ARRAY_STRING validation with FIRST strategy (validate first element only)."""
         assert case.segment_type.is_valid(case.value, case.array_validation) == case.expected
 
     @pytest.mark.parametrize("case", get_array_string_validation_all_cases(), ids=lambda case: case.description)
-    def test_array_string_validation_with_all_strategy(self, case):
+    def test_array_string_validation_with_all_strategy(self, case: ArrayValidationTestCase) -> None:
         """Test ARRAY_STRING validation with ALL strategy (validate all elements)."""
         assert case.segment_type.is_valid(case.value, case.array_validation) == case.expected
 
     @pytest.mark.parametrize("case", get_array_number_validation_cases(), ids=lambda case: case.description)
-    def test_array_number_validation_with_different_strategies(self, case):
+    def test_array_number_validation_with_different_strategies(self, case: ArrayValidationTestCase) -> None:
         """Test ARRAY_NUMBER validation with different validation strategies."""
         assert case.segment_type.is_valid(case.value, case.array_validation) == case.expected
 
     @pytest.mark.parametrize("case", get_array_object_validation_cases(), ids=lambda case: case.description)
-    def test_array_object_validation_with_different_strategies(self, case):
+    def test_array_object_validation_with_different_strategies(self, case: ArrayValidationTestCase) -> None:
         """Test ARRAY_OBJECT validation with different validation strategies."""
         assert case.segment_type.is_valid(case.value, case.array_validation) == case.expected
 
     @pytest.mark.parametrize("case", get_array_file_validation_cases(), ids=lambda case: case.description)
-    def test_array_file_validation_with_different_strategies(self, case):
+    def test_array_file_validation_with_different_strategies(self, case: ArrayValidationTestCase) -> None:
         """Test ARRAY_FILE validation with different validation strategies."""
         assert case.segment_type.is_valid(case.value, case.array_validation) == case.expected
 
     @pytest.mark.parametrize("case", get_array_boolean_validation_cases(), ids=lambda case: case.description)
-    def test_array_boolean_validation_with_different_strategies(self, case):
+    def test_array_boolean_validation_with_different_strategies(self, case: ArrayValidationTestCase) -> None:
         """Test ARRAY_BOOLEAN validation with different validation strategies."""
         assert case.segment_type.is_valid(case.value, case.array_validation) == case.expected
 
-    def test_default_array_validation_strategy(self):
+    def test_default_array_validation_strategy(self) -> None:
         """Test that default array validation strategy is FIRST."""
         # When no array_validation parameter is provided, it should default to FIRST
         assert SegmentType.ARRAY_STRING.is_valid(["valid", 123]) is False  # First element valid
@@ -694,7 +697,7 @@ class TestSegmentTypeArrayValidation:
         assert SegmentType.ARRAY_NUMBER.is_valid([42, "invalid"]) is False  # First element valid
         assert SegmentType.ARRAY_NUMBER.is_valid(["invalid", 42]) is False  # First element invalid
 
-    def test_array_validation_edge_cases(self):
+    def test_array_validation_edge_cases(self) -> None:
         """Test edge cases for array validation."""
         # Test with nested arrays (should be invalid for specific array types)
         nested_array = [["nested", "array"], ["another", "nested"]]
@@ -715,7 +718,7 @@ class TestSegmentTypeArrayValidation:
 class TestSegmentTypeValidationIntegration:
     """Integration tests for SegmentType validation covering interactions between methods."""
 
-    def test_non_array_types_ignore_array_validation_parameter(self):
+    def test_non_array_types_ignore_array_validation_parameter(self) -> None:
         """Test that non-array types ignore the array_validation parameter."""
         non_array_types = [
             SegmentType.STRING,
@@ -730,7 +733,7 @@ class TestSegmentTypeValidationIntegration:
 
         for segment_type in non_array_types:
             # Create appropriate valid value for each type
-            valid_value: Any
+            valid_value: object
             if segment_type == SegmentType.STRING:
                 valid_value = "test"
             elif segment_type == SegmentType.NUMBER:
@@ -755,11 +758,11 @@ class TestSegmentTypeValidationIntegration:
             result_first = segment_type.is_valid(valid_value, ArrayValidation.FIRST)
             result_all = segment_type.is_valid(valid_value, ArrayValidation.ALL)
 
-            assert result_none == result_first == result_all == True, (
+            assert result_none == result_first == result_all is True, (
                 f"{segment_type} should ignore array_validation parameter"
             )
 
-    def test_comprehensive_type_coverage(self):
+    def test_comprehensive_type_coverage(self) -> None:
         """Test that all SegmentType enum values are covered in validation tests."""
         all_segment_types = set(SegmentType)
 
@@ -816,7 +819,7 @@ class TestSegmentTypeValidationIntegration:
                 elif segment_type == SegmentType.GROUP:
                     assert segment_type.is_valid(SegmentGroup(value=[StringSegment(value="test")])) is True
 
-    def test_boolean_vs_integer_type_distinction(self):
+    def test_boolean_vs_integer_type_distinction(self) -> None:
         """Test the important distinction between boolean and integer types in validation."""
         # This tests the comment in the code about bool being a subclass of int
 
@@ -828,11 +831,11 @@ class TestSegmentTypeValidationIntegration:
 
         # Number type should accept both integers and floats, including booleans (since bool is subclass of int)
         assert SegmentType.NUMBER.is_valid(42) is True
-        assert SegmentType.NUMBER.is_valid(3.14) is True
+        assert SegmentType.NUMBER.is_valid(float("3.14")) is True
         assert SegmentType.NUMBER.is_valid(True) is True  # bool is subclass of int
         assert SegmentType.NUMBER.is_valid(False) is True  # bool is subclass of int
 
-    def test_array_validation_recursive_behavior(self):
+    def test_array_validation_recursive_behavior(self) -> None:
         """Test that array validation correctly handles recursive validation calls."""
         # When validating array elements, _validate_array calls is_valid recursively
         # with ArrayValidation.NONE to avoid infinite recursion

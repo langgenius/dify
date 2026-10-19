@@ -2,7 +2,7 @@
 
 import contextvars
 import threading
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -176,10 +176,8 @@ class TestExecutionContext:
                             return
             except Exception as exc:
                 errors.append(exc)
-                try:
+                with suppress(Exception):
                     barrier.abort()
-                except Exception:
-                    pass
 
         t1 = threading.Thread(target=worker)
         t2 = threading.Thread(target=worker)

@@ -15,6 +15,7 @@ from controllers.console.auth.error import (
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from controllers.console.wraps import email_password_login_enabled, model_validate, setup_required
 from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, extract_remote_ip
 from services import account_errors
 from services.entities.auth_entities import (
@@ -52,6 +53,7 @@ register_schema_models(
 
 @console_ns.route("/forgot-password")
 class ForgotPasswordSendEmailApi(Resource):
+    @error_responses(EmailSendIpLimitError, PasswordResetRateLimitExceededError)
     @console_ns.doc("send_forgot_password_email")
     @console_ns.doc(description="Send password reset email")
     @console_ns.expect(console_ns.models[ForgotPasswordSendPayload.__name__])
@@ -83,6 +85,7 @@ class ForgotPasswordSendEmailApi(Resource):
 
 @console_ns.route("/forgot-password/validity")
 class ForgotPasswordCheckApi(Resource):
+    @error_responses(EmailCodeError, EmailPasswordResetLimitError, InvalidEmailError, InvalidTokenError)
     @console_ns.doc("check_forgot_password_code")
     @console_ns.doc(description="Verify password reset code")
     @console_ns.expect(console_ns.models[ForgotPasswordCheckPayload.__name__])
@@ -119,6 +122,7 @@ class ForgotPasswordCheckApi(Resource):
 
 @console_ns.route("/forgot-password/resets")
 class ForgotPasswordResetApi(Resource):
+    @error_responses(AccountNotFound, InvalidTokenError, PasswordMismatchError)
     @console_ns.doc("reset_password")
     @console_ns.doc(description="Reset password with verification token")
     @console_ns.expect(console_ns.models[ForgotPasswordResetPayload.__name__])

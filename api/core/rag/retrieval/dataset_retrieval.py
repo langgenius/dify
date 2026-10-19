@@ -7,7 +7,7 @@ import time
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
 from functools import partial
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from flask import Flask, current_app
 from opentelemetry.trace import get_current_span
@@ -96,6 +96,7 @@ from models.dataset import Document as DatasetDocument
 from models.dataset import Document as DocumentModel
 from models.enums import CreatorUserRole, DatasetQuerySource
 from repositories.knowledge.dataset_read_repository import get_dataset_available_document_count
+from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
 from repositories.knowledge.segment_read_adapter import sign_segment_content
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
 from services.feature_service import FeatureService
@@ -319,9 +320,12 @@ class DatasetRetrieval:
                 dataset_ids = [i.segment.dataset_id for i in records]
                 document_ids = [i.segment.document_id for i in records]
                 datasets = retrieval_session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
-                documents = retrieval_session.scalars(
-                    select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))
-                ).all()
+                documents = get_retrieval_source_documents(
+                    tenant_id=request.tenant_id,
+                    dataset_ids=available_datasets_ids,
+                    document_ids=document_ids,
+                    session=retrieval_session,
+                )
 
                 dataset_map = {i.id: i for i in datasets}
                 document_map = {i.id: i for i in documents}
@@ -468,10 +472,7 @@ class DatasetRetrieval:
                 planning_strategy = PlanningStrategy.ROUTER
         available_datasets = self._get_available_datasets(tenant_id, dataset_ids)
 
-        if inputs:
-            inputs = {key: str(value) for key, value in inputs.items()}
-        else:
-            inputs = {}
+        inputs = {key: str(value) for key, value in inputs.items()} if inputs else {}
         available_datasets_ids = [dataset.id for dataset in available_datasets]
         metadata_filter_document_ids, metadata_condition = self.get_metadata_filter_condition(
             session,
@@ -564,10 +565,7 @@ class DatasetRetrieval:
                         segment_content = sign_segment_content(segment, session=session)
 
                     # If summary exists, prepend it to the content
-                    if record.summary:
-                        final_content = f"{record.summary}\n{segment_content}"
-                    else:
-                        final_content = segment_content
+                    final_content = f"{record.summary}\n{segment_content}" if record.summary else segment_content
 
                     document_context_list.append(
                         DocumentContext(
@@ -599,8 +597,8 @@ class DatasetRetrieval:
                     document_ids = [record.segment.document_id for record in authorized_records]
                     dataset_document_stmt = select(DatasetDocument).where(
                         DatasetDocument.id.in_(document_ids),
-                        DatasetDocument.enabled == True,
-                        DatasetDocument.archived == False,
+                        DatasetDocument.enabled.is_(True),
+                        DatasetDocument.archived.is_(False),
                     )
                     documents = session.execute(dataset_document_stmt).scalars().all()  # type: ignore
                     dataset_stmt = select(Dataset).where(
@@ -1487,7 +1485,7 @@ class DatasetRetrieval:
             similarity = cosine_similarity(query_tfidf, document_tfidf)
             similarities.append(similarity)
 
-        for document, score in zip(documents, similarities):
+        for document, score in zip(documents, similarities, strict=False):
             # format document
             if document.metadata is not None:
                 document.metadata["score"] = score
@@ -1525,8 +1523,8 @@ class DatasetRetrieval:
         document_query = select(DatasetDocument).where(
             DatasetDocument.dataset_id.in_(dataset_ids),
             DatasetDocument.indexing_status == "completed",
-            DatasetDocument.enabled == True,
-            DatasetDocument.archived == False,
+            DatasetDocument.enabled.is_(True),
+            DatasetDocument.archived.is_(False),
         )
         filters = []  # type: ignore
         metadata_condition = None
@@ -1645,7 +1643,7 @@ class DatasetRetrieval:
         try:
             # handle invoke result
             invoke_result = cast(
-                Generator[LLMResult, None, None],
+                Generator[LLMResult],
                 model_instance.invoke_llm(
                     prompt_messages=prompt_messages,
                     model_parameters=model_config.parameters,
@@ -1826,7 +1824,7 @@ class DatasetRetrieval:
         model_mode = ModelMode(mode)
         input_text = query
 
-        prompt_template: Union[CompletionModelPromptTemplate, list[ChatModelMessage]]
+        prompt_template: CompletionModelPromptTemplate | list[ChatModelMessage]
         if model_mode == ModelMode.CHAT:
             prompt_template = []
             system_prompt_messages = ChatModelMessage(role=PromptMessageRole.SYSTEM, text=METADATA_FILTER_SYSTEM_PROMPT)
@@ -2084,8 +2082,8 @@ class DatasetRetrieval:
                 select(DocumentModel.dataset_id, func.count(DocumentModel.id).label("available_document_count"))
                 .where(
                     DocumentModel.indexing_status == "completed",
-                    DocumentModel.enabled == True,
-                    DocumentModel.archived == False,
+                    DocumentModel.enabled.is_(True),
+                    DocumentModel.archived.is_(False),
                     DocumentModel.dataset_id.in_(dataset_ids),
                 )
                 .group_by(DocumentModel.dataset_id)

@@ -183,7 +183,7 @@ def test_page_keeps_cursor_order_and_detaches_complete_message_data(
     assert thought.created_at == earlier.created_at
 
 
-def test_empty_conversation_and_strict_timestamp_ties_preserve_legacy_page_behavior(
+def test_empty_conversation_and_timestamp_ties_preserve_all_pages(
     sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef
 ) -> None:
     repository = SQLAlchemyInstalledAppMessageRepository(session_factory=sqlite_session_factory)
@@ -192,20 +192,22 @@ def test_empty_conversation_and_strict_timestamp_ties_preserve_legacy_page_behav
     ) == MessagePage(limit=20, has_more=False, data=())
     with sqlite_session_factory.begin() as session:
         conversation = _conversation(session, installation)
-        _message(session, conversation)
-        _message(session, conversation)
-    page = repository.get_page(
+        messages = [_message(session, conversation), _message(session, conversation)]
+    first = repository.get_page(
         installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id, first_id=None, limit=1
     )
-    assert page.has_more is True
-    assert len(page.data) == 1
-    assert repository.get_page(
+    second = repository.get_page(
         installed_app=installation,
         account_id=_ACCOUNT_ID,
         conversation_id=conversation.id,
-        first_id=page.data[0].id,
+        first_id=first.data[0].id,
         limit=1,
-    ) == MessagePage(limit=1, has_more=False, data=())
+    )
+    assert first.has_more is True
+    assert second.has_more is False
+    assert [item.id for item in (*first.data, *second.data)] == sorted(
+        (message.id for message in messages), reverse=True
+    )
 
 
 @pytest.mark.parametrize("mismatch", ["app_id", "from_account_id", "from_source", "from_end_user_id", "is_deleted"])

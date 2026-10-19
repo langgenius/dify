@@ -8,7 +8,7 @@ service branch that owns the behavior under test.
 from __future__ import annotations
 
 import json
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from types import SimpleNamespace
 from typing import Any
@@ -669,6 +669,7 @@ def test_import_pending_version_stores_redis(monkeypatch: pytest.MonkeyPatch, se
         account=_account(), import_mode=ImportMode.YAML_CONTENT.value, yaml_content=_valid_dsl(version="1.0.0")
     )
     assert result.status == ImportStatus.PENDING
+    assert result.dataset_created is False
     assert setex.call_args.args[0] == f"app_import_info:{result.id}"
     pending = RagPipelinePendingData.model_validate_json(setex.call_args.args[2])
     assert pending.tenant_id == "tenant-1"
@@ -1048,3 +1049,83 @@ def test_create_dataset_name_is_tenant_scoped_and_ignores_template_rows(
                 permission="only_me",
             ),
         )
+
+
+@pytest.mark.parametrize("confirm", [False, True])
+@pytest.mark.parametrize("existing", ["none", "pipeline", "dataset"])
+def test_import_reports_actual_dataset_creation(
+    monkeypatch: pytest.MonkeyPatch,
+    service: RagPipelineDslService,
+    sqlite_session: Session,
+    confirm: bool,
+    existing: str,
+) -> None:
+    pipeline_id = None
+    if existing != "none":
+        pipeline = _pipeline(sqlite_session)
+        if existing == "dataset":
+            _dataset(sqlite_session, pipeline)
+        _workflow(sqlite_session, pipeline)
+        pipeline_id = pipeline.id
+    monkeypatch.setattr(module.KnowledgeConfiguration, "model_validate", Mock(return_value=_knowledge_configuration()))
+    if confirm:
+        pending = RagPipelinePendingData(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            import_mode=ImportMode.YAML_CONTENT.value,
+            yaml_content=_valid_dsl(),
+            pipeline_id=pipeline_id,
+        )
+        monkeypatch.setattr(module.redis_client, "get", Mock(return_value=pending.model_dump_json()))
+        monkeypatch.setattr(module.redis_client, "delete", Mock())
+        result = service.confirm_import(import_id="import-1", account=_account())
+    else:
+        result = service.import_rag_pipeline(
+            account=_account(),
+            import_mode=ImportMode.YAML_CONTENT.value,
+            yaml_content=_valid_dsl(),
+            pipeline_id=pipeline_id,
+        )
+    assert result.status == ImportStatus.COMPLETED
+    assert result.dataset_created is (existing != "dataset")
+    assert "dataset_created" not in result.model_dump()
+    assert "dataset_created" not in json.loads(result.model_dump_json())
+    assert sqlite_session.in_transaction()
+
+
+@pytest.mark.parametrize("confirm", [False, True])
+def test_failed_import_does_not_report_created_dataset(
+    monkeypatch: pytest.MonkeyPatch,
+    service: RagPipelineDslService,
+    sqlite_session: Session,
+    confirm: bool,
+) -> None:
+    monkeypatch.setattr(module.KnowledgeConfiguration, "model_validate", Mock(return_value=_knowledge_configuration()))
+    flush = sqlite_session.flush
+
+    def fail_after_dataset_flush(objects: Sequence[object] | None = None) -> None:
+        created_dataset = any(isinstance(obj, Dataset) for obj in sqlite_session.new)
+        flush(objects)
+        if created_dataset:
+            raise RuntimeError("dataset flush failed")
+
+    monkeypatch.setattr(sqlite_session, "flush", fail_after_dataset_flush)
+    if confirm:
+        pending = RagPipelinePendingData(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            import_mode=ImportMode.YAML_CONTENT.value,
+            yaml_content=_valid_dsl(),
+            pipeline_id=None,
+        )
+        monkeypatch.setattr(module.redis_client, "get", Mock(return_value=pending.model_dump_json()))
+        result = service.confirm_import(import_id="import-1", account=_account())
+    else:
+        result = service.import_rag_pipeline(
+            account=_account(),
+            import_mode=ImportMode.YAML_CONTENT.value,
+            yaml_content=_valid_dsl(),
+        )
+    assert result.status == ImportStatus.FAILED
+    assert result.error == "dataset flush failed"
+    assert result.dataset_created is False

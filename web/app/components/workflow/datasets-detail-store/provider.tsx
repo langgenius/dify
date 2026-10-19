@@ -23,7 +23,6 @@ const DatasetsDetailProvider: FC<DatasetsDetailProviderProps> = ({ nodes, childr
   const updateDatasetsDetail = useCallback(
     async (datasetIds: string[]) => {
       const { data: datasetsDetail } = await fetchDatasets({
-        url: '/datasets',
         params: { page: 1, ids: datasetIds },
       })
       if (datasetsDetail && datasetsDetail.length > 0)

@@ -37,6 +37,9 @@ from controllers.common.errors import (
 from controllers.common.errors import (
     FileTooLargeError as FileTooLargeHTTPError,
 )
+from controllers.common.errors import (
+    UnsupportedFileTypeError as UnsupportedFileTypeHTTPError,
+)
 from controllers.service_api.dataset.error import PipelineRunError
 from controllers.service_api.dataset.rag_pipeline import rag_pipeline_workflow as workflow_module
 from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
@@ -381,7 +384,7 @@ class TestPipelineRunApiEntity:
 
     def test_entity_missing_required_field(self):
         """Test entity raises on missing required field."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="4 validation errors for PipelineRunApiEntity\\\ndatasource_info_list"):
             PipelineRunApiEntity.model_validate(
                 {
                     "inputs": {},
@@ -795,6 +798,39 @@ class TestFileUploadApiPost:
         assert exc_info.value.code == 413
         assert exc_info.value.error_code == "file_too_large"
         mock_get_limit.assert_called_once_with("tenant-1")
+
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.FileService")
+    @patch(
+        "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
+        new_callable=lambda: Account(name="Upload User", email="upload@example.com"),
+    )
+    def test_upload_unsupported_file_type_returns_http_415(
+        self, current_account, mock_file_svc_cls, app: Flask, sqlite_engine
+    ):
+        # Regression: the service error once shadowed the HTTP error of the same name,
+        # so this surfaced as a 400 `invalid_param` instead of the documented 415.
+        mock_file_svc_cls.return_value.upload_file.side_effect = UnsupportedFileTypeError()
+        file_data = FileStorage(
+            stream=io.BytesIO(b"binary"),
+            filename="doc.exe",
+            content_type="application/octet-stream",
+        )
+
+        with (
+            patch.object(workflow_module, "db", SimpleNamespace(engine=sqlite_engine)),
+            patch.object(workflow_module.FeatureService, "get_knowledge_file_size_limit", return_value=15),
+            app.test_request_context(
+                "/datasets/pipeline/file-upload",
+                method="POST",
+                content_type="multipart/form-data",
+                data={"file": file_data},
+            ),
+        ):
+            with pytest.raises(UnsupportedFileTypeHTTPError) as exc_info:
+                KnowledgebasePipelineFileUploadApi().post(tenant_id="tenant-1")
+
+        assert exc_info.value.code == 415
+        assert exc_info.value.error_code == "unsupported_file_type"
 
     def test_upload_no_file(self, app: Flask):
         """Test error when no file is uploaded."""

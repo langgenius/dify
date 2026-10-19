@@ -25,7 +25,7 @@ type AgentDetailSidebarActionAgent = AgentFormSource &
   Pick<AgentAppPartial, 'app_id' | 'permission_keys'>
 
 export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebarActionAgent }) {
-  const { t } = useTranslation(['agentRoster'])
+  const { t } = useTranslation(['agentRoster', 'agentV2'])
   const { t: tCommon } = useTranslation(['common'])
   const { t: tApp } = useTranslation(['app'])
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -46,7 +46,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
   const handleExport = () => {
     if (!capabilities.canImportExportDSL) return
     if (!agent.app_id) {
-      toast.error(tApp(($) => $.exportAppFailed))
+      toast.error(tApp(($) => $.exportFailed))
       return
     }
 
@@ -104,7 +104,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
                 aria-hidden
                 className="i-ri-file-download-line size-4 shrink-0 text-text-tertiary"
               />
-              <span>{tApp(($) => $.exportApp)}</span>
+              <span>{t(($) => $.exportAgent, { ns: 'agentV2' })}</span>
             </DropdownMenuItem>
           )}
           {capabilities.canDelete &&

@@ -64,3 +64,9 @@ class OracleOCIStorage(BaseStorage):
     @override
     def delete(self, filename: str):
         self.client.delete_object(Bucket=self.bucket_name, Key=filename)
+
+    @override
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        pages = self.client.get_paginator("list_objects_v2").paginate(Bucket=self.bucket_name, Prefix=path)
+        keys = (obj["Key"] for page in pages for obj in page.get("Contents", []))
+        return self._filter_scan_keys(keys, files, directories)

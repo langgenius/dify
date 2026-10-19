@@ -5,18 +5,15 @@ import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { definePlugin } from '@/kernel/plugin'
 import { env } from '@/plugins/env'
-import { YamlStore } from '@/store/store'
+import { io } from '@/plugins/io'
+import { localFile } from '@/store/local-file'
 import { isRecord } from '@/util/is-record'
 
 export const CONFIG_FILE_NAME = 'config.yml'
-export const CONFIG_SCHEMA_VERSION = 1
 
-export const CONFIG_SCHEMA = z
-  .object({
-    schema_version: z.literal(1).default(1),
-    http: z.object({ timeout: z.number().int().positive().default(30_000) }).prefault({}),
-  })
-  .strict()
+const CONFIG_SCHEMA = z.object({
+  http: z.object({ timeout: z.number().int().positive().default(30_000) }).prefault({}),
+})
 
 export type ConfigDoc = z.infer<typeof CONFIG_SCHEMA>
 
@@ -84,25 +81,13 @@ function parseRawValue(raw: string): unknown {
   }
 }
 
-function checkSchemaVersion(raw: unknown): void {
-  if (!isRecord(raw)) return
-  const version = raw.schema_version
-  if (typeof version === 'number' && version > CONFIG_SCHEMA_VERSION) {
-    throw new BaseError({
-      code: ErrorCode.ConfigSchemaUnsupported,
-      message: `config schema_version ${version} is newer than the supported version ${CONFIG_SCHEMA_VERSION}`,
-      hint: 'upgrade difyctl to read this config file',
-    })
-  }
-}
-
-function validateDoc(raw: unknown): ConfigDoc {
-  checkSchemaVersion(raw)
+function validateDoc(raw: unknown, path: string): ConfigDoc {
   const result = CONFIG_SCHEMA.safeParse(raw)
   if (!result.success) {
     throw new BaseError({
       code: ErrorCode.ConfigInvalidValue,
       message: result.error.issues.map((issue) => issue.message).join('; '),
+      hint: `the value was not saved to ${path}`,
     })
   }
   return result.data
@@ -110,27 +95,23 @@ function validateDoc(raw: unknown): ConfigDoc {
 
 export const config = definePlugin({
   name: 'config',
-  needs: [env],
+  needs: [env, io],
   build: async (ctx): Promise<ConfigService> => {
-    const { configDir } = await ctx.get(env)
-    const path = join(configDir, CONFIG_FILE_NAME)
-    const store = new YamlStore(path)
+    const path = join((await ctx.get(env)).configDir, CONFIG_FILE_NAME)
+    const file = localFile(path, CONFIG_SCHEMA, (await ctx.get(io)).notice)
 
     let cached: ConfigDoc | undefined
 
     async function doc(): Promise<ConfigDoc> {
-      if (cached === undefined) {
-        const raw = await store.getTyped<Record<string, unknown>>()
-        cached = validateDoc(raw ?? {})
-      }
+      if (cached === undefined) cached = (await file.read()) ?? CONFIG_SCHEMA.parse({})
       return cached
     }
 
     async function persist(mutate: (target: Record<string, unknown>) => void): Promise<void> {
       const current = structuredClone(await doc()) as Record<string, unknown>
       mutate(current)
-      const validated = validateDoc(current)
-      await store.setTyped(validated)
+      const validated = validateDoc(current, path)
+      await file.write(validated)
       cached = validated
     }
 

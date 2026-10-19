@@ -13,8 +13,11 @@ API_ROOT = Path(__file__).resolve().parents[1]
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
-from dev.generate_swagger_specs import apply_runtime_defaults
-from libs.flask_restx_compat import sort_openapi_arrays
+# Import after script path setup.
+from dev.generate_swagger_specs import apply_runtime_defaults  # noqa: E402
+
+# Import after script path setup.
+from libs.flask_restx_compat import sort_openapi_arrays  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

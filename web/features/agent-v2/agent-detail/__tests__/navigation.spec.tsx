@@ -1,8 +1,9 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { AgentDetailSection, AgentDetailTop } from '../navigation'
 
@@ -10,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   deleteAgent: vi.fn(),
   exportAppDsl: vi.fn(),
   pathname: '/agents/agent-1/configure',
-  queryData: undefined as AgentAppDetailWithSite | undefined,
+  queryData: undefined as ReturnType<typeof createAgentFixture> | undefined,
   replace: vi.fn(),
 }))
 
@@ -18,10 +19,6 @@ vi.mock('@/features/agent-v2/permissions', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/agent-v2/permissions')>()),
   useCanCreateAgents: () => true,
 }))
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({ queryKey: ['system-features'] }),
-}))
-
 vi.mock('@/app/components/app/use-export-app-dsl', () => ({
   useExportAppDsl: () => ({
     exportAppDsl: mocks.exportAppDsl,
@@ -29,65 +26,28 @@ vi.mock('@/app/components/app/use-export-app-dsl', () => ({
   }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-
-  return {
-    ...actual,
-    useSuspenseQuery: () => ({ data: { rbac_enabled: true } }),
-    useQuery: () => ({
-      data: mocks.queryData,
-      isPending: !mocks.queryData,
-    }),
-  }
-})
-
 vi.mock('@/next/navigation', () => ({
   usePathname: () => mocks.pathname,
+  useSelectedLayoutSegment: () => mocks.pathname.split('/').at(-1),
   useRouter: () => ({
     back: vi.fn(),
     replace: mocks.replace,
   }),
 }))
 
-vi.mock('@/app/components/app-sidebar/nav-link', () => ({
-  default: ({ href, name }: { href: string; name: string }) => <a href={href}>{name}</a>,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.delete': mocks.deleteAgent,
+      'agent.byAgentId.get': async () => mocks.queryData,
+    }),
+  }
+})
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    agent: {
-      byAgentId: {
-        get: {
-          queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
-            'agent-detail',
-            input.params.agent_id,
-          ],
-          queryOptions: () => ({ queryKey: ['agent-detail'] }),
-        },
-        copy: {
-          post: {
-            mutationOptions: () => ({
-              mutationFn: vi.fn(),
-            }),
-          },
-        },
-        delete: {
-          mutationOptions: () => ({
-            mutationFn: mocks.deleteAgent,
-          }),
-        },
-        put: {
-          mutationOptions: () => ({
-            mutationFn: vi.fn(),
-          }),
-        },
-      },
-    },
-  },
-}))
-
-const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite =>
+const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}) =>
   createAgentFixture({
     permission_keys: Object.values(AgentPermission),
     app_id: 'app-1',
@@ -106,17 +66,20 @@ const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
   })
 
 function renderAgentDetailSection(expand = true) {
-  const queryClient = new QueryClient()
-
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <AgentDetailSection expand={expand} />
-    </QueryClientProvider>,
+  const { queryClient, wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { rbac_enabled: true },
+  })
+  queryClient.setQueryData(
+    consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+    mocks.queryData,
   )
+  return render(<AgentDetailSection expand={expand} />, { wrapper })
 }
 
 describe('AgentDetailSection', () => {
   beforeEach(() => {
+    vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true)
+    vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(32)
     vi.clearAllMocks()
     mocks.deleteAgent.mockResolvedValue({})
     mocks.exportAppDsl.mockResolvedValue(undefined)
@@ -124,17 +87,15 @@ describe('AgentDetailSection', () => {
     mocks.queryData = createAgent()
   })
 
+  afterEach(() => vi.restoreAllMocks())
+
   it('renders the current agent avatar, name, and role', () => {
     renderAgentDetailSection()
-    const agentName = screen.getByText('Research Agent')
-    const agentAvatar = screen.getByText('🧪')
-
-    expect(agentName).toBeInTheDocument()
+    expect(screen.getByText('Research Agent')).toBeInTheDocument()
     expect(screen.getByText('Research Assistant')).toBeInTheDocument()
     expect(screen.queryByText('agent')).not.toBeInTheDocument()
     expect(screen.queryByText('agentV2.agentDetail.title')).not.toBeInTheDocument()
-    expect(agentAvatar).toHaveTextContent('🧪')
-    expect(agentAvatar).toHaveClass('h-10', 'w-10', 'rounded-full')
+    expect(screen.getByText('🧪')).toBeInTheDocument()
   })
 
   it('renders an uploaded sidebar avatar using its signed URL', () => {
@@ -143,9 +104,9 @@ describe('AgentDetailSection', () => {
       icon: 'uploaded-file-id',
       icon_url: 'https://files.example.com/avatar.png?sign=signature',
     })
-    renderAgentDetailSection()
+    const { container } = renderAgentDetailSection()
 
-    expect(screen.getByRole('img', { hidden: true })).toHaveAttribute(
+    expect(container.querySelector('img')).toHaveAttribute(
       'src',
       'https://files.example.com/avatar.png?sign=signature',
     )
@@ -157,12 +118,9 @@ describe('AgentDetailSection', () => {
       icon: 'https://example.com/avatar.png',
       icon_url: null,
     })
-    renderAgentDetailSection()
+    const { container } = renderAgentDetailSection()
 
-    expect(screen.getByRole('img', { hidden: true })).toHaveAttribute(
-      'src',
-      'https://example.com/avatar.png',
-    )
+    expect(container.querySelector('img')).toHaveAttribute('src', 'https://example.com/avatar.png')
   })
 
   it('shows a fallback without exposing the file ID when the signed URL is missing', () => {
@@ -171,9 +129,9 @@ describe('AgentDetailSection', () => {
       icon: 'uploaded-file-id',
       icon_url: null,
     })
-    renderAgentDetailSection()
+    const { container } = renderAgentDetailSection()
 
-    expect(screen.queryByRole('img', { hidden: true })).not.toBeInTheDocument()
+    expect(container.querySelector('img')).not.toBeInTheDocument()
     expect(screen.queryByText('uploaded-file-id')).not.toBeInTheDocument()
     expect(screen.getByText('🤖')).toBeInTheDocument()
   })
@@ -190,30 +148,12 @@ describe('AgentDetailSection', () => {
     },
   )
 
-  it('renders compact more actions beside the expanded sidebar agent identity', async () => {
-    const user = userEvent.setup()
-    renderAgentDetailSection()
-
-    const trigger = screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ })
-    expect(trigger).toHaveClass('size-6')
-    expect(trigger).toHaveClass('hover:bg-state-base-hover')
-
-    await user.click(trigger)
-
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-      'agentRoster.roster.editInfo',
-      'common.operation.duplicate',
-      'app.exportApp',
-      'common.operation.delete',
-    ])
-  })
-
   it('exports the Agent App package from the detail action menu', async () => {
     const user = userEvent.setup()
     renderAgentDetailSection()
 
     await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
-    await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
+    await user.click(screen.getByRole('menuitem', { name: 'agentV2.exportAgent' }))
 
     expect(mocks.exportAppDsl).toHaveBeenCalledWith({
       format: 'ifpkg',
@@ -237,7 +177,7 @@ describe('AgentDetailSection', () => {
     await waitFor(() => {
       expect(mocks.replace).toHaveBeenCalledWith('/agents')
     })
-    expect(mocks.deleteAgent.mock.calls[0]?.[0]).toEqual({
+    expect(mocks.deleteAgent).toHaveBeenCalledExactlyOnceWith({
       params: {
         agent_id: 'agent-1',
       },

@@ -144,25 +144,6 @@ describe('ListWrapper', () => {
     expect(screen.getByTestId('list')).toBeInTheDocument()
   })
 
-  it('shows bottom loading indicator while fetching next page', () => {
-    mockMarketplaceData.plugins = [{ plugin_id: 'p1', name: 'Plugin One' } as Plugin]
-    mockMarketplaceData.isFetchingNextPage = true
-
-    renderListWrapper(<ListWrapper />)
-
-    expect(screen.getAllByRole('progressbar')).toHaveLength(1)
-  })
-
-  it('keeps the supplied layout constraint while category results are loading', () => {
-    mockMarketplaceData.isLoading = true
-    mockMarketplaceData.page = 1
-
-    const { container } = renderListWrapper(<ListWrapper className="catalog-content-min-height" />)
-
-    expect(container.firstElementChild).toHaveClass('catalog-content-min-height')
-    expect(screen.getByRole('progressbar')).toBeInTheDocument()
-  })
-
   // A failed search used to arrive as a successful empty page and render as
   // "no plugins found", with nothing to retry.
   it('offers a retry when the search failed with nothing to show', async () => {

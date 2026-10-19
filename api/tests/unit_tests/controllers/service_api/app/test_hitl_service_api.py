@@ -150,11 +150,17 @@ def _persist_human_input_form(
 
 
 def _build_service_api_pause_converter() -> WorkflowResponseConverter:
-    application_generate_entity = SimpleNamespace(
+    application_generate_entity = WorkflowAppGenerateEntity(
+        task_id="task",
+        workflow_execution_id="run-id",
+        user_id="user",
+        stream=True,
         inputs={},
         files=[],
         invoke_from=InvokeFrom.SERVICE_API,
-        app_config=SimpleNamespace(app_id="app-id", tenant_id="tenant-id"),
+        app_config=WorkflowUIBasedAppConfig(
+            app_id="app-id", tenant_id="tenant-id", workflow_id="workflow-id", app_mode=AppMode.WORKFLOW
+        ),
     )
     system_variables = build_system_variables(
         user_id="user",
@@ -569,8 +575,7 @@ class TestHitlServiceApi:
         assert response.data.reasons[0]["form_id"] == "form-1"
         assert response.data.reasons[0]["expiration_time"] == 123
 
-    def test_workflow_blocking_pipeline_pause_payload_contract(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        from core.app.apps.workflow import generate_task_pipeline as workflow_pipeline_module
+    def test_workflow_blocking_pipeline_pause_payload_contract(self) -> None:
         from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 
         app_config = WorkflowUIBasedAppConfig(
@@ -602,7 +607,6 @@ class TestHitlServiceApi:
             stream=False,
             draft_var_saver_factory=lambda **kwargs: None,
         )
-        monkeypatch.setattr(workflow_pipeline_module.time, "time", lambda: 1700000000)
 
         def _gen():
             yield HumanInputRequiredResponse(

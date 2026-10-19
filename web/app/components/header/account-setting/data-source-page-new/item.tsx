@@ -1,4 +1,4 @@
-import type { DataSourceCredential } from './types'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
@@ -7,10 +7,10 @@ import { useTranslation } from 'react-i18next'
 import Operator from './operator'
 
 type ItemProps = {
-  credentialItem: DataSourceCredential
+  credentialItem: DatasourceCredentialResponse
   onAction: (
     action: string,
-    credentialItem: DataSourceCredential,
+    credentialItem: DatasourceCredentialResponse,
     renamePayload?: { credential_id: string; name: string },
   ) => void
   canUseCredential?: boolean
@@ -108,7 +108,10 @@ const Item = ({
             triggerRef={operatorTriggerRef}
             credentialItem={credentialItem}
             onAction={onAction}
-            onRename={() => setRenaming(true)}
+            onRename={() => {
+              setRenameValue(credentialItem.name)
+              setRenaming(true)
+            }}
             canUseCredential={canUseCredential}
             canManageCredential={canManageCredential}
           />
