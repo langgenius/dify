@@ -35,7 +35,7 @@ from models.workflow import (
 from repositories.agent.retirement_repository import WorkflowAgentRetirementRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.workflow.debug_reservation_repository import WorkflowDebugReservationRepository
-from repositories.workflow.definition_repository import WorkflowDefinitionRepository
+from repositories.workflow.definition_repository import WorkflowDefinitionRepository, workflow_snapshot
 from repositories.workflow.draft_variable_repository import WorkflowDraftVariableRepository
 from repositories.workflow.node_execution_repository import WorkflowNodeExecutionRepository
 from services import workflow_service as workflow_module
@@ -940,7 +940,7 @@ def test_file_config_and_access_controller_are_reused(
     runtime: tuple[WorkflowRuntimeGateway, list[RecordingSession]], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     gateway, _ = runtime
-    workflow = make_workflow()
+    workflow = workflow_snapshot(make_workflow())
     monkeypatch.setattr(module.FileUploadConfigManager, "convert", lambda *_args, **_kwargs: None)
     assert gateway._files(workflow, [{"id": "file"}]) == []
     config = object()

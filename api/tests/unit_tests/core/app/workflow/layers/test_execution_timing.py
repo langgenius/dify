@@ -25,8 +25,10 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from services.tools.provider_queries import ToolProviderIcons
 from services.workflow.execution.adapters.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
+from services.workflow.execution.ports import ExecutionContexts
 
 
 @pytest.mark.parametrize(
@@ -43,6 +45,9 @@ def test_elapsed_time_accumulates_across_pauses_and_matches_delayed_stream_respo
     sqlite_session_factory: sessionmaker[Session],
     terminal_event: GraphRunSucceededEvent | GraphRunPartialSucceededEvent | GraphRunFailedEvent | GraphRunAbortedEvent,
     status: WorkflowExecutionStatus,
+    *,
+    workflow_contexts: ExecutionContexts,
+    tool_providers: ToolProviderIcons,
 ) -> None:
     clock = [100.0]
     monkeypatch.setattr("repositories.entities.workflow_execution.perf_counter", lambda: clock[0])
@@ -119,6 +124,8 @@ def test_elapsed_time_accumulates_across_pauses_and_matches_delayed_stream_respo
             application_generate_entity=entity,
             user=account,
             system_variables=system_variables,
+            contexts=workflow_contexts,
+            tool_providers=tool_providers,
         )
         converter.workflow_start_to_stream_response(
             task_id="task-1", workflow_run_id="run-1", workflow_id="workflow-1", reason=reason

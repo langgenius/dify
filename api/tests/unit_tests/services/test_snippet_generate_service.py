@@ -278,23 +278,6 @@ def test_generate_delegates_to_workflow_generator_and_filters_stream(
     assert kwargs["call_depth"] == 0
 
 
-def test_ensure_start_node_for_worker_delegates(monkeypatch: pytest.MonkeyPatch):
-    workflow = _workflow({"nodes": [], "edges": []})
-    snippet = _snippet()
-    ensure_calls: list[tuple[Workflow, CustomizedSnippet]] = []
-
-    def ensure_start_node(_cls, current_workflow, current_snippet):
-        ensure_calls.append((current_workflow, current_snippet))
-        return current_workflow
-
-    monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", classmethod(ensure_start_node))
-
-    result = SnippetGenerateService.ensure_start_node_for_worker(workflow, snippet)
-
-    assert result is workflow
-    assert ensure_calls == [(workflow, snippet)]
-
-
 def test_run_draft_node_delegates_to_workflow_service(
     *,
     workflow_variables: WorkflowExecutionVariables,

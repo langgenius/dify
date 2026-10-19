@@ -140,7 +140,7 @@ def _workflow_record(workflow: Workflow) -> WorkflowRecord:
     updated_at = workflow.updated_at or created_at
     return WorkflowRecord(
         id=workflow.id,
-        graph=workflow.graph_dict,
+        graph=dict(workflow.graph_dict),
         features=workflow.features_dict,
         hash=workflow.unique_hash,
         version=workflow.version,

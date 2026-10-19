@@ -67,7 +67,6 @@ from models import AppMode
 from models.workflow import Workflow, WorkflowRun
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from services.workflow.contracts import DraftWorkflowMissingError, WorkflowRecord
-from services.workflow.dsl_import import stored_secret_ids
 from services.workflow.graph_check import CONTAINER_NODE_TYPES, GRAPH_MODES
 from services.workflow.graph_diff import draft_token
 from services.workflow_run_service import WorkflowRunListArgs
@@ -383,7 +382,8 @@ class AppEnvItemApi(Resource):
         if body.value == encrypter.full_mask_token() and body.value_type != EnvVariableValueType.SECRET:
             raise SecretMaskNotSecret()
         [mapping] = Workflow.normalize_environment_variable_mappings([{**body.model_dump(mode="json"), "id": env_id}])
-        if mapping["value"] == HIDDEN_VALUE and env_id not in stored_secret_ids(draft):
+        secret_ids = {variable.id for variable in draft.environment_variables if isinstance(variable, SecretVariable)}
+        if mapping["value"] == HIDDEN_VALUE and env_id not in secret_ids:
             raise SecretMaskUnknownId()
         try:
             variable = variable_factory.build_environment_variable_from_mapping(mapping)

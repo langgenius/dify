@@ -1,9 +1,10 @@
 from collections.abc import Mapping
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from models import AppMode
+from repositories.credentials.query_repository import CredentialQueryRepository
 from services.workflow.graph_check import IssueCode, IssueSeverity, check_graph, credential_check
 from services.workflow_service import WorkflowService
 
@@ -14,6 +15,11 @@ def _node(node_id: str, data: dict[str, object]) -> dict[str, object]:
 
 START = _node("start", {"type": "start", "title": "Start", "variables": []})
 END = _node("end", {"type": "end", "title": "End", "outputs": []})
+
+
+@pytest.fixture
+def credential_query(sqlite_session_factory: sessionmaker[Session]) -> CredentialQueryRepository:
+    return CredentialQueryRepository(session_factory=sqlite_session_factory)
 
 
 def _template(selector: list[str]) -> dict[str, object]:
@@ -65,9 +71,9 @@ def test_graph_without_nodes() -> None:
     ],
 )
 def test_malformed_shapes_are_graph_issues_not_errors(
-    sqlite_session: Session, graph: Mapping[str, object], loc: tuple[object, ...]
+    credential_query: CredentialQueryRepository, graph: Mapping[str, object], loc: tuple[object, ...]
 ) -> None:
-    issues = check_graph(graph, mode=AppMode.WORKFLOW, resources=credential_check("ws-1", {}, sqlite_session))
+    issues = check_graph(graph, mode=AppMode.WORKFLOW, resources=credential_check("ws-1", {}, credential_query))
     assert [(i.code, i.loc) for i in issues] == [(IssueCode.GRAPH_INVALID, loc)]
 
 
@@ -226,10 +232,10 @@ def _validate_llm_raising(monkeypatch: pytest.MonkeyPatch, error: Exception) -> 
 
 
 def test_credential_check_reports_what_publish_refuses_for_a_node(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch, credential_query: CredentialQueryRepository
 ) -> None:
     llm = _node("l", {"type": "llm", "model": {"provider": "openai", "name": "gpt-4o"}})
-    check = credential_check("ws-1", {}, sqlite_session)
+    check = credential_check("ws-1", {}, credential_query)
     calls = _validate_llm_raising(monkeypatch, ValueError("no credential"))
 
     assert check(llm) == "no credential"
@@ -237,10 +243,10 @@ def test_credential_check_reports_what_publish_refuses_for_a_node(
 
 
 def test_credential_check_wraps_unexpected_errors_with_the_node(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch, credential_query: CredentialQueryRepository
 ) -> None:
     llm = _node("l", {"type": "llm", "model": {"provider": "openai", "name": "gpt-4o"}})
-    check = credential_check("ws-1", {}, sqlite_session)
+    check = credential_check("ws-1", {}, credential_query)
     _validate_llm_raising(monkeypatch, RuntimeError("boom"))
 
     assert check(llm) == "Node l (llm): boom"
@@ -248,24 +254,24 @@ def test_credential_check_wraps_unexpected_errors_with_the_node(
 
 @pytest.mark.parametrize("node_type", ["knowledge-retrieval", "parameter-extractor", "question-classifier"])
 def test_credential_check_matches_publish_for_model_nodes_publish_skips(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, node_type: str
+    monkeypatch: pytest.MonkeyPatch, credential_query: CredentialQueryRepository, node_type: str
 ) -> None:
     """Publish lists these types with underscores, so it never checks them; the release check must agree."""
     node = _node("n", {"type": node_type, "model": {"provider": "openai", "name": "gpt-4o"}})
-    check = credential_check("ws-1", {}, sqlite_session)
+    check = credential_check("ws-1", {}, credential_query)
     calls = _validate_llm_raising(monkeypatch, ValueError("no credential"))
 
     assert check(node) is None
     assert calls == []
 
 
-def test_chatflow_starter_draft_only_lacks_a_model(sqlite_session: Session) -> None:
+def test_chatflow_starter_draft_only_lacks_a_model(credential_query: CredentialQueryRepository) -> None:
     from services.app.console_gateway import _STARTER_DRAFT_GRAPHS
 
     issues = check_graph(
         _STARTER_DRAFT_GRAPHS[AppMode.ADVANCED_CHAT],
         mode=AppMode.ADVANCED_CHAT,
-        resources=credential_check("ws-1", {}, sqlite_session),
+        resources=credential_check("ws-1", {}, credential_query),
     )
 
     assert [(i.code, i.node_id, i.message) for i in issues] == [

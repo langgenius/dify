@@ -23,7 +23,7 @@ def keep_debug_worker_alive(
     app_id: str,
     workflow_id: str,
     execution_id: str,
-) -> Generator[DebugExecutionCancellation, None, None]:
+) -> Generator[DebugExecutionCancellation]:
     def renew() -> bool:
         return reservations.renew(
             tenant_id=tenant_id, app_id=app_id, workflow_id=workflow_id, execution_id=execution_id, now=naive_utc_now()

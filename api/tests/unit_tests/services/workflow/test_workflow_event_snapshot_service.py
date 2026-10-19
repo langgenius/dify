@@ -1427,7 +1427,7 @@ def test_stream_continues_with_live_events_when_all_forms_submitted(
     monkeypatch.setattr(factory, "create_api_workflow_run_repository", lambda _sm: _PausedRunRepo(pause_entity))
     monkeypatch.setattr(factory, "create_api_workflow_node_execution_repository", lambda _sm: _EmptyNodeRepo())
     topic = _Topic(_StaticSubscription())
-    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", lambda *_args: topic)
+    monkeypatch.setattr(service_module.WorkflowEventStream, "get_response_topic", lambda *_args: topic)
     resumption_context = _build_resumption_context("task-1")
     monkeypatch.setattr(service_module, "_load_resumption_context", lambda _pause_entity: resumption_context)
     live_finished = {"event": StreamEvent.WORKFLOW_FINISHED.value, "task_id": "task-1"}

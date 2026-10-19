@@ -34,7 +34,6 @@ from controllers.openapi._models import (
 from controllers.openapi._search import matches
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import ADMIN_ROLES, WORKSPACE_READ_GUARDS, workspace_write_guards
-from core.db.session_factory import session_factory
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import ToolParameter
@@ -47,7 +46,6 @@ from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 from services.tools.tool_manager import ToolManager
-from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
 _PROVIDER_EXAMPLE: Final = "langgenius/tavily/tavily"
 _ToolProviderController = BuiltinToolProviderController | PluginToolProviderController
@@ -119,16 +117,25 @@ def _write_response(ctx: Context, provider: str, credential_id: str) -> Credenti
 
 
 def _mcp_providers(ctx: Context) -> list[ToolProviderApiEntity]:
-    with session_factory.create_session() as session:
-        return MCPToolManageService(session=session).list_providers(tenant_id=ctx.workspace.id, include_sensitive=False)
+    return MCPToolManageService.list_providers(
+        tenant_id=ctx.workspace.id,
+        include_sensitive=False,
+        tool_providers=application_services().tools.tool_providers,
+    )
 
 
 _TOOL_SOURCES: Final[dict[ToolSource, Callable[[Context], list[ToolProviderApiEntity]]]] = {
-    ToolSource.BUILTIN: lambda ctx: BuiltinToolManageService.list_builtin_tools(ctx.account.id, ctx.workspace.id),
-    ToolSource.WORKFLOW: lambda ctx: WorkflowToolManageService.list_tenant_workflow_tools(
+    ToolSource.BUILTIN: lambda ctx: BuiltinToolManageService.list_builtin_tools(
+        ctx.account.id,
+        ctx.workspace.id,
+        tool_providers=application_services().tools.tool_providers,
+    ),
+    ToolSource.WORKFLOW: lambda ctx: application_services().tools.workflows.list_tenant_workflow_tools(
         ctx.account.id, ctx.workspace.id
     ),
-    ToolSource.API: lambda ctx: ApiToolManageService.list_api_tools(ctx.workspace.id),
+    ToolSource.API: lambda ctx: ApiToolManageService.list_api_tools(
+        ctx.workspace.id, tool_providers=application_services().tools.tool_providers
+    ),
     ToolSource.MCP: _mcp_providers,
 }
 

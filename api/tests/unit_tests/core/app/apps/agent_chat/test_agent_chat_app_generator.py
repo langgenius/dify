@@ -18,10 +18,13 @@ from core.app.entities.app_invoke_entities import (
 from core.app.entities.queue_entities import QueueErrorEvent
 from core.app.file_access import get_current_file_access_scope
 from core.ops.ops_trace_manager import TraceQueueManager
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
+from models.annotation_reply import AnnotationReplies
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
+from repositories.app.generation_repository import AppGenerationRepository
 from services.app.generation.adapters.agent_chat import AgentChatAppGenerator
 from services.app.generation.adapters.agent_chat_runner import AgentChatAppRunner
 from tests.unit_tests.config_override import apply_config_overrides
@@ -69,10 +72,10 @@ def generator(
     agent_queue_manager: MessageBasedAppQueueManager,
     agent_records: tuple[Conversation, Message],
     monkeypatch: pytest.MonkeyPatch,
-    app_records,
+    app_records: AppGenerationRepository,
     *,
-    annotation_replies,
-    workflow_runtime,
+    annotation_replies: AnnotationReplies,
+    workflow_runtime: WorkflowExecutionDependencies,
 ) -> AgentChatAppGenerator:
     assert agent_runtime_app.name
     assert agent_queue_manager is not None

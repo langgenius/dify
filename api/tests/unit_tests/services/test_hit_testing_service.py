@@ -5,9 +5,10 @@ from unittest.mock import patch
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.models.document import Document
+from extensions.application_services.retrieval import build_dataset_retrieval
 from models import Account
 from models.dataset import Dataset, DatasetQuery
 from services.hit_testing_service import HitTestingService
@@ -66,7 +67,9 @@ class _FakeRetrievalRecord:
 class TestHitTestingServiceRetrieveTransaction:
     """Regression tests for https://github.com/langgenius/dify/issues/38998."""
 
-    def test_retrieve_should_not_close_caller_managed_transaction(self, sqlite_session: Session) -> None:
+    def test_retrieve_should_not_close_caller_managed_transaction(
+        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         """retrieve() must not commit the caller-managed session mid-flow.
 
         When the caller manages the session inside a ``session.begin()`` block, an
@@ -92,7 +95,15 @@ class TestHitTestingServiceRetrieveTransaction:
             mock_format.return_value = [record]
 
             with sqlite_session.begin():
-                result = HitTestingService.retrieve(dataset, query, account, None, {}, session=sqlite_session)
+                result = HitTestingService.retrieve(
+                    dataset,
+                    query,
+                    account,
+                    None,
+                    {},
+                    session=sqlite_session,
+                    retrieval=build_dataset_retrieval(sqlite_session_factory),
+                )
 
         assert result["query"]["content"] == query
         query_log = sqlite_session.scalar(select(DatasetQuery))

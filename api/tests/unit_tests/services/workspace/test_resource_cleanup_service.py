@@ -276,7 +276,7 @@ def test_direct_cleanup_does_not_resolve_a_console_login(
         _service(sqlite_session_factory).cleanup("target")
     sqlite_session.expire_all()
     assert sqlite_session.get(App, "app") is None
-    assert retirement.retire_unowned.call_args.kwargs["account_id"] is None
+    assert retirement.return_value.retire_unowned.call_args.kwargs["account_id"] is None
     user.__bool__.assert_not_called()
 
 

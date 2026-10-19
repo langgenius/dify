@@ -670,8 +670,8 @@ def test_organize_history_reuses_stable_tool_call_ids(
     )
     _persist_history(sqlite_session, message, thoughts=[thought])
 
-    first = runner.organize_agent_history([], session=sqlite_session)
-    second = runner.organize_agent_history([], session=sqlite_session)
+    first = runner.organize_agent_history([], history=runner._records.agent_history(runner._identity))
+    second = runner.organize_agent_history([], history=runner._records.agent_history(runner._identity))
 
     def tool_call_ids(messages: list[module.PromptMessage]) -> tuple[list[str], list[str]]:
         call_ids = [
