@@ -66,14 +66,14 @@ def test_shared_client_preserves_legacy_and_detailed_requests() -> None:
     assert formats == [None, "detailed"]
 
 
-@pytest.mark.parametrize("legacy_result", [True, False])
-def test_new_api_rejects_old_daemon_boolean_results(legacy_result: bool) -> None:
+@pytest.mark.parametrize("legacy_result", [True, False, 1, "true"])
+def test_new_api_accepts_only_explicit_legacy_success(legacy_result: object) -> None:
     with httpx.Client(
         transport=httpx.MockTransport(lambda _: httpx.Response(200, text=_frame({"result": legacy_result})))
     ) as http_client:
         result = _check(PluginCredentialAuthClient(http_client=http_client))
-    assert result.status == "temporarily_unavailable"
-    assert result.reason_code == "protocol_error"
+    assert result.status == ("valid" if legacy_result is True else "temporarily_unavailable")
+    assert result.reason_code == (None if legacy_result is True else "protocol_error")
     assert result.retryable is False
 
 
@@ -159,6 +159,7 @@ def test_detailed_results_are_preserved(operation: Operation, payload: dict[str,
     [
         "",
         _frame(_result("unknown")),
+        _frame({"result": True, **_result("invalid")}),
         _frame(_result("temporarily_unavailable", reason_code=SECRET, retryable=True)),
         _frame(_result("valid")) + _frame(_result("valid")),
         SECRET,
@@ -174,12 +175,15 @@ def test_malformed_checks_do_not_invalidate_credentials(body: str, caplog: pytes
     assert SECRET not in caplog.text
 
 
-@pytest.mark.parametrize(("operation", "success"), [(_check, "valid"), (_revoke, "revoked")])
+@pytest.mark.parametrize(
+    ("operation", "success"),
+    [(_check, _result("valid")), (_check, {"result": True}), (_revoke, _result("revoked"))],
+)
 def test_error_after_success_is_not_accepted(
-    operation: Operation, success: str, caplog: pytest.LogCaptureFixture
+    operation: Operation, success: dict[str, object], caplog: pytest.LogCaptureFixture
 ) -> None:
     error = json.dumps({"error_type": "PluginInvokeError", "message": SECRET})
-    body = _frame(_result(success)) + _frame(None, code=-500, message=error)
+    body = _frame(success) + _frame(None, code=-500, message=error)
     with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, text=body))) as http_client:
         result = operation(PluginCredentialAuthClient(http_client=http_client))
     assert result.status == ("temporarily_unavailable" if operation is _check else "failed")
@@ -211,7 +215,7 @@ def test_stream_failure_after_success_is_not_accepted(exception: Exception, capl
     class InterruptedStream(httpx.SyncByteStream):
         @override
         def __iter__(self) -> Iterator[bytes]:
-            yield _frame(_result("valid")).encode()
+            yield _frame({"result": True}).encode()
             raise exception
 
     with httpx.Client(

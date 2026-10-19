@@ -4,10 +4,10 @@ Callers resolve and authorize credentials before this boundary. The daemon owns
 capability checks for the dispatched plugin version; these calls never refresh
 tokens, persist Connection state, or retry provider operations automatically.
 
-API deployment does not activate these operations. Before callers enable them,
-all daemon nodes must support the detailed protocol. Legacy boolean responses
-fail the check; an absent revoke endpoint returns a failure value. Neither is
-evidence that the plugin explicitly declared the operation unsupported.
+Legacy true results preserve the existing validator's success semantics. Legacy
+false results cannot distinguish invalid credentials from other failures, so
+they do not invalidate credentials. An absent revoke endpoint returns a failure
+value so local cleanup can continue.
 """
 
 import time
@@ -41,7 +41,7 @@ class PluginCredentialAuthClient(BasePluginClient):
         credentials: Mapping[str, Any],
         credential_type: CredentialType,
     ) -> CredentialCheckResult:
-        """Check without treating legacy responses or transport failures as invalid."""
+        """Accept legacy success without interpreting legacy failure as invalid."""
         match credential_type:
             case CredentialType.API_KEY:
                 wire_credential_type = "api_key"
@@ -127,7 +127,15 @@ class PluginCredentialAuthClient(BasePluginClient):
                     envelope = PluginDaemonBasicResponse[dict[str, object]].model_validate_json(line)
                     if envelope.code != 0 or result is not None:
                         raise ValueError("Expected exactly one successful authentication result")
-                    result = response_type.model_validate(envelope.data)
+                    payload = envelope.data
+                    if (
+                        response_type is CredentialCheckResponse
+                        and payload is not None
+                        and payload.keys() == {"result"}
+                        and payload["result"] is True
+                    ):
+                        payload = {"status": "valid", "reason_code": None, "retryable": False}
+                    result = response_type.model_validate(payload)
                 if result is None:
                     raise ValueError("Expected exactly one authentication result")
                 # Consume EOF before accepting success: a later error invalidates it.
