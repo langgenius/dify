@@ -36,18 +36,26 @@ export class FileTokenStore implements TokenStore {
   }
 
   async write(host: string, email: string, bearer: string): Promise<void> {
-    const doc = (await this.file.read()) ?? { tokens: {} }
-    doc.tokens[host] = { ...doc.tokens[host], [email]: bearer }
-    await this.file.write(doc)
+    await this.file.update((doc) => {
+      const tokens = doc?.tokens ?? {}
+      return {
+        tokens: {
+          ...tokens,
+          [host]: { ...tokens[host], [email]: bearer },
+        },
+      }
+    })
   }
 
   async remove(host: string, email: string): Promise<void> {
-    const doc = await this.file.read()
-    const hostMap = doc?.tokens[host]
-    if (doc === null || hostMap === undefined || !(email in hostMap)) return
-    delete hostMap[email]
-    if (Object.keys(hostMap).length === 0) delete doc.tokens[host]
-    await this.file.write(doc)
+    await this.file.update((doc) => {
+      if (doc === null) return undefined
+      const hostMap = doc.tokens[host]
+      if (hostMap === undefined || !(email in hostMap)) return undefined
+      delete hostMap[email]
+      if (Object.keys(hostMap).length === 0) delete doc.tokens[host]
+      return doc
+    })
   }
 }
 
