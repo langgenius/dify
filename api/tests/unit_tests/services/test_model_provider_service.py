@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
@@ -111,17 +112,15 @@ def test_initialize_default_llm_preserves_existing_selection(sqlite_session: Ses
     assert (saved_default.provider_name, saved_default.model_name) == ("chosen-provider", "chosen-model")
 
 
-def test_initialize_default_llm_preserves_concurrent_selection(sqlite_session: Session, sqlite_engine: Engine) -> None:
+@pytest.mark.parametrize("selection_time", ["discovery", "insert"])
+def test_initialize_default_llm_preserves_concurrent_selection(
+    sqlite_session: Session, sqlite_engine: Engine, selection_time: str
+) -> None:
     service, manager = _create_service_with_mocked_manager()
-    manager.get_configurations.return_value.get_models.return_value = [_build_available_llm("gpt-4o-mini")]
     selected = False
 
-    def select_before_insert(
-        _connection: Any, _cursor: Any, statement: str, _parameters: Any, _context: Any, _executemany: bool
-    ) -> None:
+    def save_selection() -> None:
         nonlocal selected
-        if selected or not statement.startswith("INSERT INTO tenant_default_models"):
-            return
         selected = True
         sqlite_session.add(
             TenantDefaultModel(
@@ -133,6 +132,21 @@ def test_initialize_default_llm_preserves_concurrent_selection(sqlite_session: S
         )
         sqlite_session.commit()
 
+    def discover_models(*, model_type: ModelType, only_active: bool) -> list[ModelWithProviderEntity]:
+        assert model_type == ModelType.LLM
+        assert only_active
+        if selection_time == "discovery":
+            save_selection()
+        return [_build_available_llm("gpt-4o-mini")]
+
+    manager.get_configurations.return_value.get_models.side_effect = discover_models
+
+    def select_before_insert(
+        _connection: Any, _cursor: Any, statement: str, _parameters: Any, _context: Any, _executemany: bool
+    ) -> None:
+        if selection_time == "insert" and not selected and statement.startswith("INSERT INTO tenant_default_models"):
+            save_selection()
+
     event.listen(sqlite_engine, "before_cursor_execute", select_before_insert)
     try:
         service.initialize_default_llm("tenant-1")
@@ -143,6 +157,21 @@ def test_initialize_default_llm_preserves_concurrent_selection(sqlite_session: S
     assert selected
     assert len(defaults) == 1
     assert (defaults[0].provider_name, defaults[0].model_name) == ("chosen-provider", "chosen-model")
+
+
+def test_initialize_default_llm_propagates_database_failure(sqlite_session: Session, sqlite_engine: Engine) -> None:
+    service, manager = _create_service_with_mocked_manager()
+    manager.get_configurations.return_value.get_models.return_value = [_build_available_llm("gpt-4o-mini")]
+    with sqlite_engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TRIGGER reject_default_model BEFORE INSERT ON tenant_default_models "
+            "BEGIN SELECT RAISE(ABORT, 'default model write rejected'); END"
+        )
+
+    with pytest.raises(IntegrityError, match="default model write rejected"):
+        service.initialize_default_llm("tenant-1")
+
+    assert sqlite_session.query(TenantDefaultModel).count() == 0
 
 
 def test_available_credentials_use_injected_query_for_admin_viewer() -> None:
