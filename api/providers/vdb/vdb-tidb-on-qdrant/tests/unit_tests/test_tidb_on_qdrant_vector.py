@@ -1,4 +1,5 @@
-from unittest.mock import patch
+from typing import cast
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -72,17 +73,21 @@ class TestTidbOnQdrantVectorFullTextSearch:
     def test_later_keywords_are_not_starved_by_first_keyword(
         self, vector: TidbOnQdrantVector, points: list[rest.Record]
     ) -> None:
-        vector._client.scroll.side_effect = [([points[0], points[1]], None), ([points[2]], None)]
+        scroll = cast(MagicMock, vector._client.scroll)
+        scroll.side_effect = [([points[0], points[1]], None), ([points[2]], None)]
 
         documents = vector.search_by_full_text("common rare", top_k=2)
 
         assert [doc.metadata["doc_id"] for doc in documents] == ["1", "3"]
-        assert vector._client.scroll.call_count == 2
+        assert scroll.call_count == 2
 
     def test_overlapping_keyword_matches_are_deduplicated(
         self, vector: TidbOnQdrantVector, points: list[rest.Record]
     ) -> None:
-        vector._client.scroll.side_effect = [([points[0], points[1]], None), ([points[0], points[2]], None)]
+        cast(MagicMock, vector._client.scroll).side_effect = [
+            ([points[0], points[1]], None),
+            ([points[0], points[2]], None),
+        ]
 
         documents = vector.search_by_full_text("common rare", top_k=3)
 
@@ -91,12 +96,13 @@ class TestTidbOnQdrantVectorFullTextSearch:
     def test_stops_after_exhausting_duplicate_keyword_matches(
         self, vector: TidbOnQdrantVector, points: list[rest.Record]
     ) -> None:
-        vector._client.scroll.side_effect = [([points[0], points[1]], None), ([points[0]], None)]
+        scroll = cast(MagicMock, vector._client.scroll)
+        scroll.side_effect = [([points[0], points[1]], None), ([points[0]], None)]
 
         documents = vector.search_by_full_text("common rare", top_k=4)
 
         assert [doc.metadata["doc_id"] for doc in documents] == ["1", "2"]
-        assert vector._client.scroll.call_count == 2
+        assert scroll.call_count == 2
 
     def test_no_match_does_not_fall_back_to_unfiltered_scroll(self, vector):
         vector._client.scroll.return_value = ([], None)
