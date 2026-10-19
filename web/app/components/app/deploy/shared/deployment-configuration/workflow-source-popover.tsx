@@ -5,7 +5,6 @@ import type {
   WorkflowPath,
   WorkflowReference,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { AppIconType } from '@/types/app'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,29 +12,13 @@ import AppIcon from '@/app/components/base/app-icon'
 import Link from '@/next/link'
 import { uniqueWorkflowPaths, workflowPathKey } from './utils/workflow-path'
 
-function workflowReferenceIconType(reference: WorkflowReference): AppIconType | undefined {
-  if (reference.icon_type === 'emoji') return 'emoji'
-  if (reference.icon_type === 'image' || reference.icon_type === 'link') return 'image'
-
-  return undefined
-}
-
-function workflowReferenceImageUrl(reference: WorkflowReference) {
-  if (reference.icon_type !== 'image' && reference.icon_type !== 'link') return undefined
-
-  return reference.icon_url ?? reference.icon
-}
-
 export function WorkflowReferenceIcon({ reference }: { reference: WorkflowReference }) {
   return (
     <span aria-hidden className="shrink-0">
       <AppIcon
         size="xs"
-        iconType={workflowReferenceIconType(reference)}
-        icon={reference.icon}
-        background={reference.icon_background}
-        imageUrl={workflowReferenceImageUrl(reference)}
         className="size-5 rounded-md text-sm"
+        icon={{ ...reference, icon_url: reference.icon_url ?? reference.icon }}
       />
     </span>
   )

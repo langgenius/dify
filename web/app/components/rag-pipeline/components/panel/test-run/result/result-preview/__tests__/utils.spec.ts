@@ -6,10 +6,6 @@ vi.mock('@/config', () => ({
 }))
 
 describe('result preview utils', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should return undefined for empty outputs', () => {
     expect(formatPreviewChunks(undefined)).toBeUndefined()
     expect(formatPreviewChunks(null)).toBeUndefined()

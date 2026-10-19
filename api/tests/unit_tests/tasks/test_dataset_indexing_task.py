@@ -183,7 +183,7 @@ class TestTaskEnqueuing:
         self, tenant_id: str, dataset_id: str, document_ids: list[str], mock_redis: MagicMock
     ) -> None:
         with (
-            patch.object(DocumentIndexingTaskProxy, "features") as features,
+            patch.object(DocumentIndexingTaskProxy, "features"),
             patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", Mock()) as task,
         ):
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()

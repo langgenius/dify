@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Generator, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from threading import Thread
@@ -74,19 +75,19 @@ class _UnknownQueueEvent:
     pass
 
 
+@dataclass(eq=False, repr=False)
 class _AnnotationReply:
-    def __init__(self, content: str) -> None:
-        self.content = content
+    content: str
 
 
+@dataclass(eq=False, repr=False)
 class _ModelConfigMode:
-    def __init__(self, mode: str) -> None:
-        self.mode = mode
+    mode: str
 
 
+@dataclass(eq=False, repr=False)
 class _ProviderModelBundle:
-    def __init__(self, model_type_instance: object) -> None:
-        self.model_type_instance = model_type_instance
+    model_type_instance: object
 
 
 class _AudioPublisher:

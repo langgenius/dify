@@ -1,4 +1,5 @@
 import json
+import re
 from unittest.mock import patch
 
 import pytest
@@ -266,7 +267,9 @@ class TestWorkflowToolManageService:
 
         # Attempt to create second workflow tool with same name
         second_tool_parameters = self._create_test_workflow_tool_parameters()
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match=re.escape(f"Tool with name {first_tool_name} or app_id {app.id} already exists")
+        ) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
                 tenant_id=account.current_tenant.id,
@@ -316,7 +319,7 @@ class TestWorkflowToolManageService:
 
         # Attempt to create workflow tool with non-existent app
         tool_parameters = self._create_test_workflow_tool_parameters()
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match=re.escape(f"App {non_existent_app_id} not found")) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
                 tenant_id=account.current_tenant.id,
@@ -433,7 +436,9 @@ class TestWorkflowToolManageService:
         # Attempt to create second workflow tool with same app_id but different name
         second_tool_name = fake.word()
         second_tool_parameters = self._create_test_workflow_tool_parameters()
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match=re.escape(f"Tool with name {second_tool_name} or app_id {app.id} already exists")
+        ) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
                 tenant_id=account.current_tenant.id,
@@ -485,7 +490,7 @@ class TestWorkflowToolManageService:
 
         # Attempt to create workflow tool for app without workflow
         tool_parameters = self._create_test_workflow_tool_parameters()
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match=re.escape(f"Workflow not found for app {app.id}")) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
                 tenant_id=account.current_tenant.id,
@@ -751,7 +756,7 @@ class TestWorkflowToolManageService:
 
         # Attempt to update non-existent workflow tool
         tool_parameters = self._create_test_workflow_tool_parameters()
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match=re.escape(f"Tool {non_existent_tool_id} not found")) as exc_info:
             WorkflowToolManageService.update_workflow_tool(
                 user_id=account.id,
                 tenant_id=account.current_tenant.id,
@@ -1022,7 +1027,7 @@ class TestWorkflowToolManageService:
         )
 
         # Attempt to create workflow tool (will fail at validation stage)
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Validation failed") as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
                 tenant_id=account.current_tenant.id,
@@ -1039,7 +1044,7 @@ class TestWorkflowToolManageService:
         # Verify the tool was NOT created in database
         # This is the expected behavior (no pollution)
 
-        tool_count = (
+        (
             db_session_with_containers.query(WorkflowToolProvider)
             .where(
                 WorkflowToolProvider.tenant_id == account.current_tenant.id,
@@ -1094,7 +1099,7 @@ class TestWorkflowToolManageService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """Test listing workflow tools when none exist returns empty list."""
-        fake = Faker()
+
         app, account, workflow = self._create_test_app_and_account(
             db_session_with_containers, mock_external_service_dependencies
         )

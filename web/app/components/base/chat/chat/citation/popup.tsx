@@ -1,11 +1,12 @@
 import type { FC, MouseEvent } from 'react'
 import type { Resources } from './index'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useMutation } from '@tanstack/react-query'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-icon'
 import Link from '@/next/link'
-import { useDocumentDownload } from '@/service/knowledge/use-document'
+import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import ProgressTooltip from './progress-tooltip'
 import Tooltip from './tooltip'
@@ -20,7 +21,9 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
   const fileType =
     data.dataSourceType !== 'notion' ? /\.([^.]*)$/.exec(data.documentName)?.[1] || '' : 'notion'
 
-  const { mutateAsync: downloadDocument, isPending: isDownloading } = useDocumentDownload()
+  const { mutateAsync: downloadDocument, isPending: isDownloading } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.download.get.mutationOptions(),
+  )
 
   const handleDownloadUploadFile = async (e: MouseEvent<HTMLElement>) => {
     e.preventDefault()
@@ -31,8 +34,15 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
     const documentId = data.documentId || data.sources?.[0]?.document_id
     if (!isUploadFile || !datasetId || !documentId || isDownloading) return
 
-    const res = await downloadDocument({ datasetId, documentId })
-    if (res?.url) downloadUrl({ url: res.url, fileName: data.documentName })
+    try {
+      // Finish the requested download even if the citation unmounts while fetching its URL.
+      const res = await downloadDocument({
+        params: { dataset_id: datasetId, document_id: documentId },
+      })
+      if (res?.url) downloadUrl({ url: res.url, fileName: data.documentName })
+    } catch {
+      // The request layer reports the error; allow retry without an unhandled rejection.
+    }
   }
 
   return (
@@ -64,7 +74,8 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
               <FileIcon type={fileType} className="mr-1 size-4 shrink-0" />
               <div className="truncate system-xs-medium text-text-tertiary">
                 {(data.dataSourceType === 'upload_file' || data.dataSourceType === 'file') &&
-                !!data.sources?.[0]?.dataset_id ? (
+                !!data.sources?.[0]?.dataset_id &&
+                !!(data.documentId || data.sources?.[0]?.document_id) ? (
                   <button
                     type="button"
                     className="cursor-pointer truncate border-none bg-transparent p-0 text-left text-text-tertiary hover:underline"

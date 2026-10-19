@@ -18,7 +18,7 @@ def app() -> Flask:
     return app
 
 
-def test_health_returns_ok(app: Flask):
+def test_health_returns_ok(app: Flask) -> None:
     client = app.test_client()
     response = client.get("/openapi/v1/_health")
 
@@ -26,7 +26,7 @@ def test_health_returns_ok(app: Flask):
     assert response.get_json() == {"ok": True}
 
 
-def test_health_path_is_under_openapi_v1_prefix(app: Flask):
+def test_health_path_is_under_openapi_v1_prefix(app: Flask) -> None:
     client = app.test_client()
     assert client.get("/_health").status_code == 404
     assert client.get("/v1/_health").status_code == 404

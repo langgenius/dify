@@ -47,7 +47,6 @@ type MCPModalFormState = {
   url: string
   name: string
   appIcon: IconPickerValue
-  showIconPicker: boolean
   serverIdentifier: string
   timeout: number
   sseReadTimeout: number
@@ -63,7 +62,6 @@ type MCPModalFormActions = {
   setUrl: (url: string) => void
   setName: (name: string) => void
   setAppIcon: (icon: IconPickerValue) => void
-  setShowIconPicker: (show: boolean) => void
   setServerIdentifier: (id: string) => void
   setTimeout: (timeout: number) => void
   setSseReadTimeout: (timeout: number) => void
@@ -93,7 +91,6 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
   const [url, setUrl] = useState(() => data?.server_url || '')
   const [name, setName] = useState(() => data?.name || '')
   const [appIcon, setAppIcon] = useState<IconPickerValue>(() => getIcon(data))
-  const [showIconPicker, setShowIconPicker] = useState(false)
   const [serverIdentifier, setServerIdentifier] = useState(() => data?.server_identifier || '')
   const [timeout, setMcpTimeout] = useState(() => data?.configuration?.timeout || 30)
   const [sseReadTimeout, setSseReadTimeout] = useState(
@@ -139,14 +136,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
         if (isStale()) return
 
         let errorMessage = 'Failed to fetch remote icon'
-        if (e instanceof Response) {
-          try {
-            const errorData = await e.json()
-            if (errorData?.code) errorMessage = `Upload failed: ${errorData.code}`
-          } catch {
-            // Ignore JSON parsing errors
-          }
-        } else if (e instanceof Error) {
+        if (e instanceof Error) {
           errorMessage = e.message
         }
         console.error('Failed to fetch remote icon:', e)
@@ -175,7 +165,6 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
       url,
       name,
       appIcon,
-      showIconPicker,
       serverIdentifier,
       timeout,
       sseReadTimeout,
@@ -192,7 +181,6 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
       setUrl,
       setName,
       setAppIcon,
-      setShowIconPicker,
       setServerIdentifier,
       setTimeout: setMcpTimeout,
       setSseReadTimeout,

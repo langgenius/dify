@@ -29,6 +29,7 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from core.base.tts.audio_mime import SUPPORTED_TTS_AUDIO_MIME_TYPES
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from models.model import App, EndUser
 from services.app_ref_service import AppRefService
@@ -48,6 +49,18 @@ register_response_schema_models(service_api_ns, AudioBinaryResponse, AudioTransc
 
 @service_api_ns.route("/audio-to-text")
 class AudioApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        AudioTooLargeError,
+        CompletionRequestError,
+        NoAudioUploadedError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportSpeechToTextError,
+        ProviderQuotaExceededError,
+        SpeechToTextDisabledError,
+        UnsupportedAudioTypeError,
+    )
     @service_api_ns.doc(
         summary="Convert Audio to Text",
         description=(
@@ -139,7 +152,7 @@ class AudioApi(Resource):
             raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()
 
@@ -149,6 +162,13 @@ register_schema_model(service_api_ns, TextToAudioPayload)
 
 @service_api_ns.route("/text-to-audio")
 class TextApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @service_api_ns.doc(
         summary="Convert Text to Audio",
         description="Convert text to speech.",
@@ -214,14 +234,6 @@ class TextApi(Resource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -232,6 +244,6 @@ class TextApi(Resource):
             raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import AccountPage from '../index'
 
@@ -74,6 +75,7 @@ describe('AccountPage', () => {
         }),
     )
   })
+  afterEach(() => vi.restoreAllMocks())
 
   it('updates the account name through the profile endpoint', async () => {
     const user = userEvent.setup()
@@ -93,7 +95,8 @@ describe('AccountPage', () => {
     expect(request.method).toBe('PATCH')
     await expect(request.json()).resolves.toEqual({ name: 'Alice Cooper' })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(screen.getAllByText('Alice Cooper')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeEnabled()
+    expect(screen.getAllByText('Alice Cooper')[0]).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     expect(screen.getByRole('textbox', { name: 'accountSettings.account.name' })).toHaveValue(
       'Alice Cooper',
@@ -194,7 +197,8 @@ describe('AccountPage', () => {
       refreshing.resolve(new Response(JSON.stringify(createAccountResponse('Alice Cooper')))),
     )
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(screen.getAllByText('Alice Cooper')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeEnabled()
+    expect(screen.getAllByText('Alice Cooper')[0]).toBeInTheDocument()
   })
 
   it.each([false, true])(
@@ -378,13 +382,18 @@ describe('AccountPage', () => {
   it.each(['name', 'password'])(
     'leaves a server-reported %s failure to the request layer',
     async (field) => {
-      // The request layer reports the server message and rejects with the Response.
+      // The request layer reports the server message and rejects with an ORPCError.
       const error = vi.spyOn(toast, 'error')
       const user = userEvent.setup()
       mocks.request.mockRejectedValueOnce(
-        new Response(JSON.stringify({ code: 'invalid_param', message: 'Rejected', status: 400 }), {
-          status: 400,
-        }),
+        await httpErrorFromResponse(
+          new Response(
+            JSON.stringify({ code: 'invalid_param', message: 'Rejected', status: 400 }),
+            {
+              status: 400,
+            },
+          ),
+        ),
       )
       renderPage({ isPasswordSet: true })
 

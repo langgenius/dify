@@ -57,8 +57,8 @@ def test_create_run_accepts_effectively_blank_user_prompt_list() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": ["", "   "]}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": ["", "   "]}}],
             }
         },
     )
@@ -85,8 +85,8 @@ def test_create_run_returns_running_from_scheduler() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": "hello"}}],
             }
         },
     )
@@ -168,12 +168,11 @@ def test_create_run_accepts_valid_full_plugin_graph() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
+                "schema_version": 2,
                 "layers": [
-                    {"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}},
+                    {"name": "prompt", "config": {"user": "hello"}},
                     {
                         "name": "execution-context-renamed",
-                        "type": "dify.execution_context",
                         "config": {
                             "tenant_id": "tenant-1",
                             "user_from": "account",
@@ -183,8 +182,6 @@ def test_create_run_accepts_valid_full_plugin_graph() -> None:
                     },
                     {
                         "name": DIFY_AGENT_MODEL_LAYER_ID,
-                        "type": "dify.plugin.llm",
-                        "deps": {"execution_context": "execution-context-renamed"},
                         "config": {
                             "plugin_id": "langgenius/openai",
                             "model_provider": "openai",
@@ -202,7 +199,7 @@ def test_create_run_accepts_valid_full_plugin_graph() -> None:
     assert response.json() == {"run_id": "run-1", "status": "running"}
 
 
-def test_create_run_accepts_unknown_layer_exit_signal_request() -> None:
+def test_create_run_rejects_removed_layer_exit_signal_request() -> None:
     from fastapi import FastAPI
 
     app = FastAPI()
@@ -215,15 +212,14 @@ def test_create_run_accepts_unknown_layer_exit_signal_request() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": "hello"}}],
             },
             "on_exit": {"layers": {"missing": "delete"}},
         },
     )
 
-    assert response.status_code == 202
-    assert response.json() == {"run_id": "run-1", "status": "running"}
+    assert response.status_code == 422
 
 
 def test_create_run_accepts_closed_session_snapshot_request() -> None:
@@ -239,8 +235,8 @@ def test_create_run_accepts_closed_session_snapshot_request() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": "hello"}}],
             },
             "session_snapshot": {
                 "schema_version": 1,
@@ -277,8 +273,8 @@ def test_create_run_returns_503_when_scheduler_is_stopping() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": "hello"}}],
             }
         },
     )
@@ -305,8 +301,8 @@ def test_create_run_does_not_map_infrastructure_failure_to_422() -> None:
         "/runs",
         json={
             "composition": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+                "schema_version": 2,
+                "layers": [{"name": "prompt", "config": {"user": "hello"}}],
             }
         },
     )
