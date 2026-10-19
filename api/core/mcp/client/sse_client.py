@@ -2,7 +2,7 @@ import logging
 import queue
 from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from typing import Any, final
 from urllib.parse import urljoin, urlparse
 
@@ -310,10 +310,8 @@ def sse_client(
     finally:
         # Close the SSE connection to unblock the reader thread
         if transport.event_source is not None:
-            try:
+            with suppress(RuntimeError):
                 transport.event_source.response.close()
-            except RuntimeError:
-                pass
 
         # Clean up queues
         if read_queue:

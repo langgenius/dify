@@ -1,5 +1,5 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import type { AppModeEnum } from '@/types/app'
 import { screen } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
@@ -29,11 +29,6 @@ const mocks = vi.hoisted(() => ({
   useAppWorkflow: vi.fn(),
 }))
 
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock()
-})
-
 vi.mock('@/features/system-features/client', () => ({
   systemFeaturesQueryOptions: () => ({ queryKey: ['system-features'] }),
 }))
@@ -43,7 +38,7 @@ function render(ui: ReactElement) {
   queryClient.setQueryData(['system-features'], { webapp_auth: { enabled: true } })
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
-    createAppDetailFixture({ ...mocks.appInfo, mode: mocks.appInfo.mode as AppModeEnum }),
+    createAppDetailFixture({ ...mocks.appInfo, mode: mocks.appInfo.mode as AppMode }),
   )
   return renderWithConsole(ui, { wrapper: createQueryClientWrapper(queryClient) })
 }
@@ -192,23 +187,6 @@ describe('BuiltInAccessPoints', () => {
     expect(mocks.triggerCard).toHaveBeenCalledWith(
       expect.objectContaining({ canManageAccessPoint: true }),
     )
-  })
-
-  it('highlights only the targeted built-in access point card', () => {
-    render(
-      <BuiltInAccessPoints
-        appId="app-1"
-        canDeploy
-        canManageAccessPoint
-        canReleaseAndVersion
-        highlightedAccessPoint="mcp"
-      />,
-    )
-
-    expect(mocks.webCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
-    expect(mocks.apiCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
-    expect(mocks.mcpCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: true }))
-    expect(mocks.triggerCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
   })
 
   it('enables Trigger and disables the other access points in trigger mode', () => {

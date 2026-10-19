@@ -21,7 +21,6 @@ from core.app.features.rate_limiting import RateLimit
 from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
-from core.trigger.constants import is_trigger_node_type
 from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
@@ -361,13 +360,8 @@ class AppGenerateService:
 
     @staticmethod
     def _ensure_workflow_service_mode_available(*, workflow: Workflow, invoke_from: InvokeFrom) -> None:
-        if invoke_from not in _MANUAL_WORKFLOW_INVOKE_SOURCES:
-            return
-
-        for _, node_data in workflow.walk_nodes():
-            node_type = node_data.get("type")
-            if isinstance(node_type, str) and is_trigger_node_type(node_type):
-                raise TriggerWorkflowServiceModeUnavailableError()
+        if invoke_from in _MANUAL_WORKFLOW_INVOKE_SOURCES and workflow.has_trigger_node():
+            raise TriggerWorkflowServiceModeUnavailableError()
 
     @staticmethod
     def _get_max_active_requests(app: App) -> int:

@@ -2,7 +2,7 @@ import logging
 import threading
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import AbstractContextManager, nullcontext
-from typing import TYPE_CHECKING, Any, Union, final
+from typing import TYPE_CHECKING, Any, final
 
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import set_committed_value
@@ -312,7 +312,7 @@ class BaseAppGenerator:
         return value
 
     @classmethod
-    def convert_to_event_stream(cls, generator: Union[Mapping, Generator[Mapping | str]]):
+    def convert_to_event_stream(cls, generator: Mapping | Generator[Mapping | str]):
         """
         Convert messages into event stream
         """

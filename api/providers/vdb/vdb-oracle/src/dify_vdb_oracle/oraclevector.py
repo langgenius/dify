@@ -205,8 +205,8 @@ class OracleVector(BaseVector):
         with self._get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(f"SELECT id FROM {self.table_name} WHERE id = :1", (id,))
-                return cur.fetchone() is not None
-            conn.close()
+                row = cur.fetchone()
+        return row is not None
 
     def get_by_ids(self, ids: list[str]) -> list[Document]:
         if not ids:

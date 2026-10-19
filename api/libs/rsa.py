@@ -16,7 +16,6 @@ This is enforced by the "no-direct-rsa-imports" contract in .importlinter (run v
 """
 
 import hashlib
-from typing import Union
 
 from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
@@ -44,7 +43,7 @@ def generate_key_pair(tenant_id: str) -> str:
 prefix_hybrid = b"HYBRID:"
 
 
-def encrypt(text: str, public_key: Union[str, bytes]) -> bytes:
+def encrypt(text: str, public_key: str | bytes) -> bytes:
     if isinstance(public_key, str):
         public_key = public_key.encode()
 

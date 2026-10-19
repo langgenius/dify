@@ -24,7 +24,7 @@ from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from core.logging.context import get_request_id, get_trace_id
 from extensions.ext_application_services import application_services
-from fields.app_export_fields import AppExportResponse
+from fields.app_fields import AppExportResponse
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from services.entities.app_entities import AppExportOptions

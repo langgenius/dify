@@ -187,10 +187,7 @@ class BasePluginClient:
             data if isinstance(data, (bytes, str, dict)) or data is None else None
         )
         if isinstance(data, dict):
-            if prepared_headers.get("Content-Type") == "application/json":
-                prepared_data = json.dumps(data)
-            else:
-                prepared_data = data
+            prepared_data = json.dumps(data) if prepared_headers.get("Content-Type") == "application/json" else data
 
         return str(url), prepared_headers, prepared_data, params, files
 

@@ -608,7 +608,7 @@ class ExternalApi(Api):
                 raise RuntimeError("flask-restx no longer exposes _should_use_fr_error_handler; update ExternalApi")
 
         # manual separate call on construction and init_app to ensure configs in kwargs effective
-        super().__init__(app=None, *args, **kwargs)
+        super().__init__(*args, app=None, **kwargs)
         self.init_app(app, **kwargs)
         register_external_error_handlers(self, body_formatter=error_body_formatter)
 

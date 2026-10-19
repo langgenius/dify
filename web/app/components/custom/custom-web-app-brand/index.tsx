@@ -2,6 +2,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChatPreviewCard from './components/chat-preview-card'
 import WorkflowPreviewCard from './components/workflow-preview-card'
@@ -10,6 +11,8 @@ import useWebAppBrand from './hooks/use-web-app-brand'
 const ALLOW_FILE_EXTENSIONS = ['svg', 'png']
 
 const CustomWebAppBrand = () => {
+  const brandSwitchId = useId()
+  const logoInputId = useId()
   const { t } = useTranslation(['appOverview', 'common', 'custom'])
   const {
     fileId,
@@ -33,8 +36,9 @@ const CustomWebAppBrand = () => {
   return (
     <div className="py-4">
       <div className="mb-2 flex items-center justify-between rounded-xl bg-background-section-burn p-4 system-md-medium text-text-primary">
-        {t(($) => $['webapp.removeBrand'], { ns: 'custom' })}
+        <label htmlFor={brandSwitchId}>{t(($) => $['webapp.removeBrand'], { ns: 'custom' })}</label>
         <Switch
+          id={brandSwitchId}
           size="lg"
           checked={webappBrandRemoved ?? false}
           disabled={isCustomConfigUnavailable || !canReplaceLogo || !canManageCustomBrand}
@@ -48,9 +52,9 @@ const CustomWebAppBrand = () => {
         )}
       >
         <div>
-          <div className="system-md-medium text-text-primary">
+          <label htmlFor={logoInputId} className="block system-md-medium text-text-primary">
             {t(($) => $['webapp.changeLogo'], { ns: 'custom' })}
-          </div>
+          </label>
           <div className="system-xs-regular text-text-tertiary">
             {t(($) => $['webapp.changeLogoTip'], { ns: 'custom' })}
           </div>
@@ -75,6 +79,7 @@ const CustomWebAppBrand = () => {
                 ? t(($) => $.change, { ns: 'custom' })
                 : t(($) => $.upload, { ns: 'custom' })}
               <input
+                id={logoInputId}
                 className={cn(
                   'absolute inset-0 block w-full text-[0] opacity-0',
                   uploadDisabled ? 'cursor-not-allowed' : 'cursor-pointer',

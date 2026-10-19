@@ -22,7 +22,8 @@ vi.mock('reactflow', () => ({
 
 describe('workflow preview loop interactions', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockGetNodes.mockReset()
+    mockSetNodes.mockReset()
   })
 
   it('expands the loop node when children overflow the current bounds', () => {

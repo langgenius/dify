@@ -453,7 +453,7 @@ class DatasourceProviderService:
                     DatasourceOauthTenantParamConfig.tenant_id == tenant_id,
                     DatasourceOauthTenantParamConfig.provider == datasource_provider_id.provider_name,
                     DatasourceOauthTenantParamConfig.plugin_id == datasource_provider_id.plugin_id,
-                    DatasourceOauthTenantParamConfig.enabled == True,
+                    DatasourceOauthTenantParamConfig.enabled.is_(True),
                 )
             )
             or 0
@@ -925,8 +925,9 @@ class DatasourceProviderService:
                     user=user,
                     credential_query=credential_query,
                 )
-                redirect_uri = "{}/console/api/oauth/plugin/{}/datasource/callback".format(
-                    dify_config.CONSOLE_API_URL, datasource_provider_id
+                redirect_uri = (
+                    f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/"
+                    f"{datasource_provider_id}/datasource/callback"
                 )
                 datasource_credentials.append(
                     {

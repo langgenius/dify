@@ -114,20 +114,25 @@ def build_oauth_authorization_server_metadata_discovery_urls(auth_server_url: st
     base = f"{parsed.scheme}://{parsed.netloc}"
     path = parsed.path.rstrip("/")
     # OAuth 2.0 Authorization Server Metadata at root (MCP-03-26)
-    urls.append(f"{base}/.well-known/oauth-authorization-server")
-
-    # OpenID Connect Discovery at root
-    urls.append(f"{base}/.well-known/openid-configuration")
+    urls.extend(
+        [
+            f"{base}/.well-known/oauth-authorization-server",
+            # OpenID Connect Discovery at root
+            f"{base}/.well-known/openid-configuration",
+        ]
+    )
 
     if path:
         # OpenID Connect Discovery with path insertion
-        urls.append(f"{base}/.well-known/openid-configuration{path}")
-
-        # OpenID Connect Discovery path appending
-        urls.append(f"{base}{path}/.well-known/openid-configuration")
-
-        # OAuth 2.0 Authorization Server Metadata with path insertion
-        urls.append(f"{base}/.well-known/oauth-authorization-server{path}")
+        urls.extend(
+            [
+                f"{base}/.well-known/openid-configuration{path}",
+                # OpenID Connect Discovery path appending
+                f"{base}{path}/.well-known/openid-configuration",
+                # OAuth 2.0 Authorization Server Metadata with path insertion
+                f"{base}/.well-known/oauth-authorization-server{path}",
+            ]
+        )
 
     return urls
 

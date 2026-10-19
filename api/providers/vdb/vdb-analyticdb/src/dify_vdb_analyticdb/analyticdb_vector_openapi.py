@@ -28,7 +28,7 @@ class AnalyticdbVectorOpenAPIConfig(BaseModel):
     account: str
     account_password: str
     namespace: str = "dify"
-    namespace_password: str | None = None
+    namespace_password: str
     metrics: str = "cosine"
     read_timeout: int = 60000
 
@@ -201,8 +201,6 @@ class AnalyticdbVectorOpenAPI:
             collection=self._collection_name,
             metrics=self.config.metrics,
             include_values=True,
-            vector=None,
-            content=None,
             top_k=1,
             filter=f"ref_doc_id='{id}'",
         )
@@ -220,7 +218,6 @@ class AnalyticdbVectorOpenAPI:
             namespace=self.config.namespace,
             namespace_password=self.config.namespace_password,
             collection=self._collection_name,
-            collection_data=None,
             collection_data_filter=f"ref_doc_id IN {ids_str}",
         )
         self._client.delete_collection_data(request)
@@ -234,7 +231,6 @@ class AnalyticdbVectorOpenAPI:
             namespace=self.config.namespace,
             namespace_password=self.config.namespace_password,
             collection=self._collection_name,
-            collection_data=None,
             collection_data_filter=f"metadata_ ->> '{key}' = '{value}'",
         )
         self._client.delete_collection_data(request)
@@ -258,7 +254,6 @@ class AnalyticdbVectorOpenAPI:
             include_values=kwargs.pop("include_values", True),
             metrics=self.config.metrics,
             vector=query_vector,
-            content=None,
             top_k=kwargs.get("top_k", 4),
             filter=where_clause,
         )
@@ -269,7 +264,7 @@ class AnalyticdbVectorOpenAPI:
                 metadata = parse_metadata_json(match.metadata.get("metadata_"))
                 metadata["score"] = match.score
                 doc = Document(
-                    page_content=match.metadata.get("page_content"),
+                    page_content=match.metadata["page_content"],
                     vector=match.values.value,
                     metadata=metadata,
                 )
@@ -294,7 +289,6 @@ class AnalyticdbVectorOpenAPI:
             collection=self._collection_name,
             include_values=kwargs.pop("include_values", True),
             metrics=self.config.metrics,
-            vector=None,
             content=query,
             top_k=kwargs.get("top_k", 4),
             filter=where_clause,
@@ -306,7 +300,7 @@ class AnalyticdbVectorOpenAPI:
                 metadata = parse_metadata_json(match.metadata.get("metadata_"))
                 metadata["score"] = match.score
                 doc = Document(
-                    page_content=match.metadata.get("page_content"),
+                    page_content=match.metadata["page_content"],
                     vector=match.values.value,
                     metadata=metadata,
                 )

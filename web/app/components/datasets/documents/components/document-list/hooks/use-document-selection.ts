@@ -1,8 +1,8 @@
-import type { SimpleDocumentDetail } from '@/models/datasets'
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { useCallback, useMemo } from 'react'
 import { DataSourceType } from '@/models/datasets'
 
-type LocalDoc = SimpleDocumentDetail & { percent?: number }
+type LocalDoc = DocumentWithSegmentsResponse & { percent?: number }
 
 type UseDocumentSelectionOptions = {
   documents: LocalDoc[]

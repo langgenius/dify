@@ -2,7 +2,7 @@ import json
 from collections.abc import Generator
 from dataclasses import dataclass
 from os import getenv
-from typing import Any, Union, override
+from typing import Any, override
 from urllib.parse import urlencode
 
 import httpx
@@ -26,7 +26,7 @@ API_TOOL_DEFAULT_TIMEOUT = (
 class ParsedResponse:
     """Represents a parsed HTTP response with type information"""
 
-    content: Union[str, dict]
+    content: str | dict
     is_json: bool
 
     def to_string(self) -> str:
@@ -279,7 +279,7 @@ class ApiTool(Tool):
         if files:
             headers.pop("Content-Type", None)
 
-        _METHOD_MAP = {
+        _method_map = {
             "get": ssrf_proxy.get,
             "head": ssrf_proxy.head,
             "post": ssrf_proxy.post,
@@ -288,9 +288,9 @@ class ApiTool(Tool):
             "patch": ssrf_proxy.patch,
         }
         method_lc = method.lower()
-        if method_lc not in _METHOD_MAP:
+        if method_lc not in _method_map:
             raise ValueError(f"Invalid http method {method}")
-        response: httpx.Response = _METHOD_MAP[
+        response: httpx.Response = _method_map[
             method_lc
         ](  # https://discuss.python.org/t/type-inference-for-function-return-types/42926
             url,

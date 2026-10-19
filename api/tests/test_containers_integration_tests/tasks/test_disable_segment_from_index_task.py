@@ -608,7 +608,7 @@ class TestDisableSegmentFromIndexTask:
         document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
 
         segments = []
-        for i in range(3):
+        for _i in range(3):
             segment = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
             segments.append(segment)
 

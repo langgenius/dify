@@ -73,9 +73,8 @@ class ApiExternalDataTool(ExternalDataTool):
 
         if not api_based_extension:
             raise ValueError(
-                "[External data tool] API query failed, variable: {}, error: api_based_extension_id is invalid".format(
-                    self.variable
-                )
+                f"[External data tool] API query failed, variable: {self.variable}, "
+                "error: api_based_extension_id is invalid"
             )
 
         # decrypt api_key
@@ -94,9 +93,7 @@ class ApiExternalDataTool(ExternalDataTool):
 
         if "result" not in response_json:
             raise ValueError(
-                "[External data tool] API query failed, variable: {}, error: result not found in response".format(
-                    self.variable
-                )
+                f"[External data tool] API query failed, variable: {self.variable}, error: result not found in response"
             )
 
         if not isinstance(response_json["result"], str):

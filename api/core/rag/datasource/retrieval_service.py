@@ -603,7 +603,7 @@ class RetrievalService:
 
             if index_node_ids:
                 document_segment_stmt = select(DocumentSegment).where(
-                    DocumentSegment.enabled == True,
+                    DocumentSegment.enabled.is_(True),
                     DocumentSegment.status == "completed",
                     DocumentSegment.index_node_id.in_(index_node_ids),
                 )
@@ -614,7 +614,7 @@ class RetrievalService:
 
             if segment_ids:
                 document_segment_stmt = select(DocumentSegment).where(
-                    DocumentSegment.enabled == True,
+                    DocumentSegment.enabled.is_(True),
                     DocumentSegment.status == "completed",
                     DocumentSegment.id.in_(segment_ids),
                 )
@@ -627,7 +627,7 @@ class RetrievalService:
             if summary_segment_ids:
                 summary_segment_ids_list = list(summary_segment_ids)
                 summary_segment_stmt = select(DocumentSegment).where(
-                    DocumentSegment.enabled == True,
+                    DocumentSegment.enabled.is_(True),
                     DocumentSegment.status == "completed",
                     DocumentSegment.id.in_(summary_segment_ids_list),
                 )
@@ -671,10 +671,7 @@ class RetrievalService:
                             child_chunk_details: list[ChildChunkDetail] = []
                             for child_chunk in child_chunks:
                                 child_document: Document | None = doc_to_document_map.get(child_chunk.index_node_id)
-                                if child_document:
-                                    child_score = child_document.metadata.get("score", 0.0)
-                                else:
-                                    child_score = 0.0
+                                child_score = child_document.metadata.get("score", 0.0) if child_document else 0.0
                                 child_chunk_detail: ChildChunkDetail = {
                                     "id": child_chunk.id,
                                     "content": child_chunk.content,

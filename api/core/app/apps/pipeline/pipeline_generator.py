@@ -200,7 +200,7 @@ class PipelineGenerator(BaseAppGenerator):
                     user_inputs=inputs,
                     variables=pipeline_config.rag_pipeline_variables,
                     tenant_id=pipeline.tenant_id,
-                    strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
+                    strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
                 ),
                 files=[],
                 user_id=user.id,
