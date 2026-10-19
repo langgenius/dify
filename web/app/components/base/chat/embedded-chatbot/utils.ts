@@ -1,3 +1,11 @@
 export const isDify = () => {
-  return document.referrer.includes('dify.ai')
+  try {
+    const { hostname, protocol } = new URL(document.referrer)
+    return (
+      (protocol === 'https:' || protocol === 'http:') &&
+      (hostname === 'dify.ai' || hostname.endsWith('.dify.ai'))
+    )
+  } catch {
+    return false
+  }
 }

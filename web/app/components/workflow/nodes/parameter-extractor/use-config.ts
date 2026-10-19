@@ -1,6 +1,7 @@
 import type { Memory, MoreInfo, ValueSelector, Var } from '../../types'
 import type { Param, ParameterExtractorNodeType, ReasoningModeType } from './types'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -8,13 +9,13 @@ import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { AppModeEnum } from '@/types/app'
 import { supportFunctionCall } from '@/utils/tool-call'
 import useConfigVision from '../../hooks/use-config-vision'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
+import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
 import { ChangeType, VarType } from '../../types'
 
@@ -22,7 +23,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const { deleteNodeInspectorVars, renameInspectVarName } = useInspectVarsCrud()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { handleOutVarRenameChange } = useWorkflow()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
 
   const defaultConfig = useStore((s) => s.nodesDefaultConfigs)?.[payload.type]
 
@@ -109,14 +110,14 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const model = inputs.model || {
     provider: '',
     name: '',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {
       temperature: 0.7,
     },
   }
   const modelMode = inputs.model?.mode
-  const isChatModel = modelMode === AppModeEnum.CHAT
-  const isCompletionModel = !isChatModel
+  const isChatModel = modelMode === 'chat'
+  const isCompletionModel = modelMode === 'completion'
 
   const {
     isVisionModel,
@@ -159,7 +160,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
         draft.model.mode = model.mode!
         const isModeChange = model.mode !== inputRef.current.model?.mode
         if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
-          appendDefaultPromptConfig(draft, defaultConfig, model.mode === AppModeEnum.CHAT)
+          appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
       })
       setInputs(newInputs)
       setModelChanged(true)
@@ -224,7 +225,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
 
   const hasSetBlockStatus = {
     history: false,
-    query: isChatMode ? checkHasQueryBlock(inputs.instruction) : false,
+    query: isChatflow ? checkHasQueryBlock(inputs.instruction) : false,
     context: false,
   }
 
@@ -262,7 +263,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     readOnly,
     handleInputVarChange,
     filterVar,
-    isChatMode,
+    isChatflow,
     inputs,
     isChatModel,
     isCompletionModel,

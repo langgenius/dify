@@ -28,7 +28,7 @@ def test_sendgrid_success(mock_client_cls: MagicMock):
 @patch("libs.sendgrid.sendgrid.SendGridAPIClient")
 def test_sendgrid_missing_to_raises(mock_client_cls: MagicMock):
     sg = SendGridClient(sendgrid_api_key="key", _from="noreply@example.com")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="SendGridClient: Cannot send email: recipient address is missing\\."):
         sg.send(_mail(to=""))
 
 

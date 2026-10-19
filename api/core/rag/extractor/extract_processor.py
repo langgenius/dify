@@ -96,10 +96,7 @@ class ExtractProcessor:
                     if filename_match:
                         filename = unquote(filename_match.group(1))
                         match = re.search(r"\.(\w+)$", filename)
-                        if match:
-                            suffix = "." + match.group(1)
-                        else:
-                            suffix = ""
+                        suffix = "." + match.group(1) if match else ""
             # https://stackoverflow.com/questions/26541416/generate-temporary-file-names-without-creating-actual-file-in-python#comment90414256_26541521
             # Generate a temporary filename under the created temp_dir and ensure the directory exists
             file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore

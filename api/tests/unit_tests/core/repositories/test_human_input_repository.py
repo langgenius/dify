@@ -355,7 +355,7 @@ def test_get_form_returns_entity_and_none_when_missing(repository_session: Sessi
 
     form = _persist_form(repository_session, form_id="f1")
     _persist_form(repository_session, form_id="other-tenant-form", tenant_id="other-tenant")
-    recipient = _persist_recipient(repository_session, form_id=form.id, recipient_id="r1", access_token="tok")
+    _persist_recipient(repository_session, form_id=form.id, recipient_id="r1", access_token="tok")
     repo = HumanInputFormRepositoryImpl(tenant_id="tenant", workflow_execution_id="run")
     entity = repo.get_form("node")
     assert entity is not None
@@ -419,6 +419,28 @@ def test_create_form_adds_console_and_backstage_recipients(
     }
 
 
+def test_create_runtime_form_requires_workflow_even_when_conversation_is_present() -> None:
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant", app_id="app")
+    params = FormCreateParams(
+        workflow_execution_id=None,
+        conversation_id="conversation",
+        node_id="node",
+        form_config=HumanInputNodeData(
+            title="Title",
+            delivery_methods=[],
+            form_content="hello",
+            inputs=[],
+            user_actions=[UserActionConfig(id="submit", title="Submit")],
+        ),
+        rendered_content="hello",
+        delivery_methods=[],
+        display_in_ui=True,
+        resolved_default_values={},
+    )
+    with pytest.raises(ValueError, match="requires a workflow_execution_id"):
+        repo.create_form(params)
+
+
 def test_submission_get_by_token_returns_none_when_missing_or_form_missing(repository_session: Session) -> None:
     repo = HumanInputFormSubmissionRepository()
     assert repo.get_by_token("tok") is None
@@ -434,7 +456,7 @@ def test_submission_repository_init_no_args() -> None:
 
 def test_submission_get_by_token_and_get_by_form_id_success_paths(repository_session: Session) -> None:
     form = _persist_form(repository_session, form_id="f1", workflow_run_id=None)
-    recipient = _persist_recipient(repository_session, form_id=form.id, recipient_id="r1", access_token="tok")
+    _persist_recipient(repository_session, form_id=form.id, recipient_id="r1", access_token="tok")
     repo = HumanInputFormSubmissionRepository()
     record = repo.get_by_token("tok")
     assert record is not None

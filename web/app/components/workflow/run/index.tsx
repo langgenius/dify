@@ -97,7 +97,8 @@ function RunSession({
         setRunDetail(res)
         if (getResultCallback) getResultCallback(res)
       } catch (err) {
-        if (lifetime.active && request === lifetime.detailRequest) toast.error(`${err}`)
+        if (lifetime.active && request === lifetime.detailRequest)
+          toast.error(err instanceof Error ? err.message : String(err))
       } finally {
         if (lifetime.active && request === lifetime.detailRequest) {
           lifetime.detailSettled = true
@@ -117,7 +118,8 @@ function RunSession({
         })
         if (lifetime.active && request === lifetime.tracingRequest) setList(nodeList)
       } catch (err) {
-        if (lifetime.active && request === lifetime.tracingRequest) toast.error(`${err}`)
+        if (lifetime.active && request === lifetime.tracingRequest)
+          toast.error(err instanceof Error ? err.message : String(err))
       } finally {
         if (lifetime.active && request === lifetime.tracingRequest) {
           lifetime.tracingSettled = true

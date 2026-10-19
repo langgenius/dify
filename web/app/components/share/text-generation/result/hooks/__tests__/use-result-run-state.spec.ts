@@ -46,10 +46,10 @@ describe('useResultRunState', () => {
       }),
     )
 
-    const abort = vi.fn()
+    const controller = new AbortController()
 
     act(() => {
-      result.current.abortControllerRef.current = { abort } as unknown as AbortController
+      result.current.abortControllerRef.current = controller
       result.current.setCurrentTaskId('task-1')
       result.current.setRespondingTrue()
     })
@@ -72,7 +72,7 @@ describe('useResultRunState', () => {
       AppSourceType.webApp,
       'app-1',
     )
-    expect(abort).toHaveBeenCalledTimes(1)
+    expect(controller.signal.aborted).toBe(true)
   })
 
   it('should update feedback and react to external stop control', async () => {
@@ -93,9 +93,9 @@ describe('useResultRunState', () => {
       },
     )
 
-    const abort = vi.fn()
+    const controller = new AbortController()
     act(() => {
-      result.current.abortControllerRef.current = { abort } as unknown as AbortController
+      result.current.abortControllerRef.current = controller
       result.current.setMessageId('message-1')
     })
 
@@ -128,7 +128,7 @@ describe('useResultRunState', () => {
     rerender({ controlStopResponding: 1 })
 
     await waitFor(() => {
-      expect(abort).toHaveBeenCalled()
+      expect(controller.signal.aborted).toBe(true)
       expect(result.current.currentTaskId).toBeNull()
       expect(onRunControlChange).toHaveBeenLastCalledWith(null)
     })
@@ -183,8 +183,6 @@ describe('useResultRunState', () => {
 
     act(() => {
       result.current.setCurrentTaskId('task-4')
-      result.current.setIsStopping((prev) => !prev)
-      result.current.setIsStopping((prev) => !prev)
     })
 
     await act(async () => {

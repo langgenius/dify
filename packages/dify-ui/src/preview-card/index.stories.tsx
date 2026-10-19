@@ -124,6 +124,12 @@ const PLACEMENTS: PreviewCardPlacement[] = [
   'left-start',
   'left',
   'left-end',
+  'inline-start-start',
+  'inline-start',
+  'inline-start-end',
+  'inline-end-start',
+  'inline-end',
+  'inline-end-end',
 ]
 
 function PlacementsDemo() {

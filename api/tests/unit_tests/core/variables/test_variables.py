@@ -14,25 +14,25 @@ from graphon.variables import (
 from graphon.variables.variables import VariableBase
 
 
-def test_frozen_variables():
+def test_frozen_variables() -> None:
     var = StringVariable(name="text", value="text")
     with pytest.raises(ValidationError):
-        var.value = "new value"
+        var.value = "new value"  # pyrefly: ignore[read-only]
 
     int_var = IntegerVariable(name="integer", value=42)
     with pytest.raises(ValidationError):
-        int_var.value = 100
+        int_var.value = 100  # pyrefly: ignore[read-only]
 
-    float_var = FloatVariable(name="float", value=3.14)
+    float_var = FloatVariable(name="float", value=float("3.14"))
     with pytest.raises(ValidationError):
-        float_var.value = 2.718
+        float_var.value = float("2.718")  # pyrefly: ignore[read-only]
 
     secret_var = SecretVariable(name="secret", value="secret_value")
     with pytest.raises(ValidationError):
-        secret_var.value = "new_secret_value"
+        secret_var.value = "new_secret_value"  # pyrefly: ignore[read-only]
 
 
-def test_variable_value_type_immutable():
+def test_variable_value_type_immutable() -> None:
     with pytest.raises(ValidationError):
         StringVariable(value_type=SegmentType.ARRAY_ANY, name="text", value="text")
 
@@ -43,7 +43,7 @@ def test_variable_value_type_immutable():
     with pytest.raises(ValidationError):
         IntegerVariable(value_type=SegmentType.ARRAY_ANY, name=var.name, value=var.value)
 
-    var = FloatVariable(name="float", value=3.14)
+    var = FloatVariable(name="float", value=float("3.14"))
     with pytest.raises(ValidationError):
         FloatVariable(value_type=SegmentType.ARRAY_ANY, name=var.name, value=var.value)
 
@@ -52,7 +52,7 @@ def test_variable_value_type_immutable():
         SecretVariable(value_type=SegmentType.ARRAY_ANY, name=var.name, value=var.value)
 
 
-def test_object_variable_to_object():
+def test_object_variable_to_object() -> None:
     var = ObjectVariable(
         name="object",
         value={
@@ -75,17 +75,17 @@ def test_object_variable_to_object():
     }
 
 
-def test_variable_to_object():
+def test_variable_to_object() -> None:
     var: VariableBase = StringVariable(name="text", value="text")
     assert var.to_object() == "text"
     var = IntegerVariable(name="integer", value=42)
     assert var.to_object() == 42
-    var = FloatVariable(name="float", value=3.14)
-    assert var.to_object() == 3.14
+    var = FloatVariable(name="float", value=float("3.14"))
+    assert var.to_object() == float("3.14")
     var = SecretVariable(name="secret", value="secret_value")
     assert var.to_object() == "secret_value"
 
 
-def test_array_file_variable_is_array_variable():
+def test_array_file_variable_is_array_variable() -> None:
     var = ArrayFileVariable(name="files", value=[])
     assert isinstance(var, ArrayVariable)

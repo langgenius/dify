@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from functools import wraps
+from functools import WRAPPER_ASSIGNMENTS, wraps
 
 from configs import dify_config
 from controllers.common.rbac import RBAC_CHECKS_ATTR, RBACCheck, enforce_rbac_checks
@@ -13,7 +13,8 @@ def rbac_permission_required[**P, R](*checks: RBACCheck) -> Callable[[Callable[P
         raise ValueError("rbac_permission_required requires at least one RBACCheck")
 
     def decorator(view: Callable[P, R]) -> Callable[P, R]:
-        @wraps(view, updated=())
+        # updated=() keeps rbac_checks on the layer that declares it; Swagger docs still pass through.
+        @wraps(view, assigned=(*WRAPPER_ASSIGNMENTS, "__apidoc__"), updated=())
         def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
             if not dify_config.RBAC_ENABLED:
                 return view(*args, **kwargs)

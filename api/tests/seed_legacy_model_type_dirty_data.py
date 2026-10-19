@@ -5,10 +5,6 @@ import json
 import sys
 from pathlib import Path
 
-API_PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(API_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(API_PROJECT_ROOT))
-
 import sqlalchemy as sa
 
 from tests.helpers.legacy_model_type_migration import (
@@ -17,6 +13,10 @@ from tests.helpers.legacy_model_type_migration import (
     create_minimal_legacy_model_type_schema,
     seed_legacy_model_type_dirty_data,
 )
+
+API_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(API_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(API_PROJECT_ROOT))
 
 
 def parse_args() -> argparse.Namespace:

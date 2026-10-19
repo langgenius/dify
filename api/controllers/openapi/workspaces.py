@@ -3,7 +3,8 @@
 Bearer-authed counterparts to the cookie-authed /console/api/workspaces
 endpoints. Account bearers (dfoa_) see every tenant they're a member of.
 External SSO bearers (dfoe_) have no account_id and so see an empty list —
-that matches /openapi/v1/account.
+that matches /openapi/v1/account. Resource access bearers may list only their
+own tenant, without inheriting any account membership or role.
 
 Member management declares both authorization arms; ``RBAC_ENABLED`` picks one.
 ``GET /workspaces/<workspace_id>`` deliberately declares neither: it admits any
@@ -45,7 +46,7 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceMember,
     CheckWorkspaceRole,
 )
-from controllers.openapi.auth.subjects import AccountSubject
+from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from services.account_errors import AccountNotFoundError, AccountRegisterError, SeatsLimitExceededError
@@ -56,7 +57,6 @@ from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     MemberNotInTenantError,
     RoleAlreadyAssignedError,
-    WorkspaceNotLinkedError,
 )
 from services.workspace.contracts import WorkspaceInvitation, WorkspaceMemberRecord, WorkspaceSnapshot
 
@@ -79,11 +79,15 @@ class WorkspacesApi(Resource):
         kind=Kind.LIST,
         summary="List workspaces of the current account",
         examples=(Example(title="List my workspaces, first page", input={"page": 1, "limit": 20}),),
-        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.WORKSPACE_READ)),
+        requirements=(CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), CheckScope(Scope.WORKSPACE_READ)),
         query=WorkspaceListQuery,
         returns=(200, WorkspaceListResponse, "Workspace list"),
     )
     def get(self, ctx: Context, *, query: WorkspaceListQuery):
+        if isinstance(ctx.subject, ResourceAccessSubject):
+            tenant = ctx.workspace
+            item = WorkspaceSummaryResponse(id=str(tenant.id), name=tenant.name, role="", status=tenant.status)
+            return WorkspaceListResponse.page_of([item], query=query)
         rows = application_services().workspaces.management.list_memberships(str(ctx.subject.account_id))
         return WorkspaceListResponse.page_of([_workspace_summary(row) for row in rows], query=query)
 
@@ -107,38 +111,6 @@ class WorkspaceByIdApi(Resource):
             raise NotFound("workspace not found")
 
         return _workspace_detail(row)
-
-
-@openapi_ns.route("/workspaces/<string:workspace_id>:switch")
-class WorkspaceSwitchApi(Resource):
-    """Server-side switch — equivalent to the console's POST /workspaces/switch.
-
-    CLI `difyctl use workspace <id>` calls this; it does NOT mutate
-    ``hosts.yml`` on its own. Failure here must abort the local write so
-    that ``hosts.yml`` never diverges from the server's ``current`` state.
-    """
-
-    @endpoint(
-        op="switch.workspace",
-        kind=Kind.OBJECT,
-        summary="Server-side current workspace switch (shared with the web console)",
-        examples=(Example(title="Make a workspace current on the server", input={"workspace_id": "<workspace_id>"}),),
-        internal=True,
-        requirements=(
-            CheckSubject(allowed=(AccountSubject,)),
-            CheckScope(Scope.WORKSPACE_READ),
-            CheckWorkspaceMember(),
-        ),
-        returns=(200, WorkspaceDetailResponse, "Workspace detail"),
-    )
-    def post(self, ctx: Context, workspace_id: str):
-        try:
-            workspace = application_services().workspaces.management.switch_membership(
-                str(ctx.subject.account_id), workspace_id
-            )
-        except WorkspaceNotLinkedError:
-            raise NotFound("workspace not found") from None
-        return _workspace_detail(workspace)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/members")
@@ -318,7 +290,6 @@ def _workspace_summary(tenant: WorkspaceSnapshot) -> WorkspaceSummaryResponse:
         name=tenant.name,
         role=tenant.role or "",
         status=tenant.status,
-        current=tenant.current,
     )
 
 
@@ -328,6 +299,5 @@ def _workspace_detail(tenant: WorkspaceSnapshot) -> WorkspaceDetailResponse:
         name=tenant.name,
         role=tenant.role or "",
         status=tenant.status,
-        current=tenant.current,
         created_at=tenant.created_at.isoformat() if tenant.created_at else None,
     )
