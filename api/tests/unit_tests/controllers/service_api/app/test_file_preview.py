@@ -192,6 +192,19 @@ class TestFilePreviewApi:
         assert response.status_code == 200
         assert "Content-Range" not in response.headers
 
+    def test_preview_ignores_range_when_if_range_is_present(self, app: Flask) -> None:
+        # RFC 9110 13.1.5: an unmatched If-Range precondition means the Range
+        # is ignored and the full representation is sent. These responses
+        # carry no validator, so any If-Range value is unmatched by design.
+        preview = _preview(mime_type="audio/mpeg", name="clip.mp3", extension="mp3", size=1000, content=b"x" * 1000)
+
+        with app.test_request_context("/", headers={"Range": "bytes=0-9", "If-Range": '"stale-validator"'}):
+            response = FilePreviewApi()._build_file_response(preview=preview)
+
+        assert response.status_code == 200
+        assert "Content-Range" not in response.headers
+        assert b"".join(response.response) == b"x" * 1000
+
     def test_preview_without_range_still_sends_full_body(self, app: Flask) -> None:
         preview = _preview(mime_type="audio/mpeg", name="clip.mp3", extension="mp3", size=100, content=b"x" * 100)
 
