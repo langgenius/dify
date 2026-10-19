@@ -1,6 +1,6 @@
 # Dify × KnowledgeFS integration alert runbook
 
-This runbook covers the seven integration alerts defined by the execution plan. Alert thresholds,
+This runbook covers the seven Dify × KnowledgeFS integration alerts. Alert thresholds,
 notification routing, and production dashboard links are environment-owned; the response contract
 below is repository-owned and must remain valid before a rollout.
 
