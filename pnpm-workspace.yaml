@@ -44,6 +44,8 @@ packages:
 overrides:
   '@babel/core@<=7.29.0': ^7.29.1
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
+  # axe-core 4.14 enables label-content-name-mismatch, which flags existing dify-ui stories; drop once they are fixed.
+  axe-core: 4.13.0
   canvas: ^3.2.3
   esbuild@<0.28.1: ^0.28.2
   fflate@>=0.7.0 <0.7.5: 0.7.5
@@ -69,7 +71,7 @@ overrides:
 catalog:
   '@amplitude/analytics-browser': 2.48.0
   '@amplitude/plugin-session-replay-browser': 1.36.3
-  '@axe-core/playwright': 4.14.0
+  '@axe-core/playwright': 4.13.0
   '@base-ui/react': 1.9.0
   '@base-ui/utils': 0.5.0
   '@chromatic-com/storybook': 5.5.1

@@ -171,8 +171,8 @@ catalogs:
       specifier: 1.36.3
       version: 1.36.3
     '@axe-core/playwright':
-      specifier: 4.14.0
-      version: 4.14.0
+      specifier: 4.13.0
+      version: 4.13.0
     '@base-ui/react':
       specifier: 1.9.0
       version: 1.9.0
@@ -771,6 +771,7 @@ catalogs:
 overrides:
   '@babel/core@<=7.29.0': ^7.29.1
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
+  axe-core: 4.13.0
   canvas: ^3.2.3
   esbuild@<0.28.1: ^0.28.2
   fflate@>=0.7.0 <0.7.5: 0.7.5
@@ -959,7 +960,7 @@ importers:
     devDependencies:
       '@axe-core/playwright':
         specifier: 'catalog:'
-        version: 4.14.0(playwright-core@1.64.1)
+        version: 4.13.0(playwright-core@1.64.1)
       '@cucumber/cucumber':
         specifier: 'catalog:'
         version: 13.3.0
@@ -1928,9 +1929,8 @@ packages:
   '@antfu/utils@8.1.1':
     resolution: {integrity: sha512-Mex9nXf9vR6AhcXmMrlz/HVgYYZpVGJ6YlPgwl7UnaFpnshXs6EK/oa5Gpf3CzENMjkvEx2tQtntGnb7UtSTOQ==}
 
-  '@axe-core/playwright@4.14.0':
-    resolution: {integrity: sha512-SGUhG5PIHd2eMdpgBF2PyQLOhX+qyDR2PT4cmoS4Qk2ak+jX/rrSvst9l0PGv5WTHolKpUMvVmoHpr4cZgf1RQ==}
-    engines: {node: '>=22.12.0'}
+  '@axe-core/playwright@4.13.0':
+    resolution: {integrity: sha512-6YLx+kxXu5GJceG4ozFg+33a2EMTdjYwWGloJ3sb9Kta5pp+ZNS53uxGVog5JetIY8s++P5UrtX+cri+u0VAVg==}
     peerDependencies:
       playwright-core: '>= 1.0.0'
 
@@ -5611,8 +5611,8 @@ packages:
   async@3.2.6:
     resolution: {integrity: sha512-htCUDlxyyCLMgaM3xXg0C0LW2xqfuQ6p05pCEIsXuyQ+a1koYKTuBMzRNwmybfLgvJDMd0r1LTn4+E0Ti6C2AA==}
 
-  axe-core@4.14.0:
-    resolution: {integrity: sha512-9WTZxEjsZ7b13TH8JPmbV2z8CHbl80/2hm3XPEG4JgNdQLK81IBRXmSxHfMAOkSqQeRxT/0dwNDz2GOm3zzpcQ==}
+  axe-core@4.13.0:
+    resolution: {integrity: sha512-UzGt8zg7Ny8djbYMhxl2zuEevVa7r2gJjYY5Lwr1xM7+XU2nd6CkIWFTVcCIbAP63vSz71NaVyyuSk9lHKcy0A==}
     engines: {node: '>=4'}
 
   bail@2.0.2:
@@ -9424,9 +9424,9 @@ snapshots:
 
   '@antfu/utils@8.1.1': {}
 
-  '@axe-core/playwright@4.14.0(playwright-core@1.64.1)':
+  '@axe-core/playwright@4.13.0(playwright-core@1.64.1)':
     dependencies:
-      axe-core: 4.14.0
+      axe-core: 4.13.0
       playwright-core: 1.64.1
 
   '@babel/code-frame@7.29.7':
@@ -11423,7 +11423,7 @@ snapshots:
   '@storybook/addon-a11y@10.6.2(storybook@10.6.2(@types/react@19.3.0)(react@19.3.1)(vite-plus@1.3.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(happy-dom@20.14.6)(jiti@2.7.0)(playwright@1.64.1)(tsx@4.23.13)(yaml@2.9.1)))':
     dependencies:
       '@storybook/global': 5.0.0
-      axe-core: 4.14.0
+      axe-core: 4.13.0
       storybook: 10.6.2(@types/react@19.3.0)(react@19.3.1)(vite-plus@1.3.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(happy-dom@20.14.6)(jiti@2.7.0)(playwright@1.64.1)(tsx@4.23.13)(yaml@2.9.1))
 
   '@storybook/addon-docs@10.6.2(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(storybook@10.6.2(@types/react@19.3.0)(react@19.3.1)(vite-plus@1.3.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(happy-dom@20.14.6)(jiti@2.7.0)(playwright@1.64.1)(tsx@4.23.13)(yaml@2.9.1)))':
@@ -12748,7 +12748,7 @@ snapshots:
 
   async@3.2.6: {}
 
-  axe-core@4.14.0: {}
+  axe-core@4.13.0: {}
 
   bail@2.0.2: {}
 
@@ -16956,7 +16956,7 @@ snapshots:
 time:
   '@amplitude/analytics-browser@2.48.0': '2026-10-15T20:14:47.747Z'
   '@amplitude/plugin-session-replay-browser@1.36.3': '2026-10-15T19:39:36.252Z'
-  '@axe-core/playwright@4.14.0': '2026-10-15T13:33:17.706Z'
+  '@axe-core/playwright@4.13.0': '2026-08-11T17:07:40.763Z'
   '@base-ui/react@1.9.0': '2026-10-09T08:52:43.788Z'
   '@base-ui/utils@0.5.0': '2026-10-09T08:50:42.770Z'
   '@chromatic-com/storybook@5.5.1': '2026-10-12T19:27:39.372Z'
