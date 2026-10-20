@@ -26,7 +26,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -203,15 +203,9 @@ export function ProviderConfigModal({
             {type === 'phoenix' && (
               <>
                 <Field disabled={pending} name="api_key">
-                  <FieldLabel>
-                    API Key
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
+                  <FieldLabel>API Key</FieldLabel>
                   <Input
                     ref={firstInputRef}
-                    required
                     defaultValue={payload?.api_key ?? ''}
                     placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                       ns: 'app',
@@ -331,8 +325,11 @@ export function ProviderConfigModal({
                     pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
                     required
                     defaultValue={payload?.endpoint ?? ''}
-                    placeholder="https://your-region.cls.tencentcs.com"
+                    placeholder="https://ap-guangzhou.apm.tencentcs.com:4320"
                   />
+                  <FieldDescription>
+                    {t(($) => $['tracing.tencent.endpointHelp'], { ns: 'app' })}
+                  </FieldDescription>
                   <FieldError />
                 </Field>
                 <Field disabled={pending} name="service_name">
@@ -344,9 +341,14 @@ export function ProviderConfigModal({
                   </FieldLabel>
                   <Input
                     required
+                    maxLength={63}
+                    pattern="[a-z]([a-z0-9\-]*[a-z0-9])?"
                     defaultValue={payload?.service_name ?? ''}
-                    placeholder="dify_app"
+                    placeholder="dify-app"
                   />
+                  <FieldDescription>
+                    {t(($) => $['tracing.tencent.serviceNameHelp'], { ns: 'app' })}
+                  </FieldDescription>
                   <FieldError />
                 </Field>
               </>

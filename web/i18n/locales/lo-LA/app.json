@@ -321,6 +321,8 @@
   "tracing.run.viewTrace": "ເບິ່ງການແລ່ນຄັ້ງນີ້",
   "tracing.supported": "ຮອງຮັບ",
   "tracing.tencent.description": "Tencent Application Performance Monitoring ໃຫ້ການຕິດຕາມທີ່ຄົບຖ້ວນ ແລະ ການວິເຄາະຫຼາຍມິຕິສຳລັບແອັບ LLM.",
+  "tracing.tencent.endpointHelp": "ຄັດລອກຈຸດປາຍທາງສຳລັບພາກພື້ນ ແລະ ເຄືອຂ່າຍຂອງທ່ານຈາກ Tencent Cloud LLM Observability → ແອັບ → ເຊື່ອມຕໍ່ແອັບ.",
+  "tracing.tencent.serviceNameHelp": "ສູງສຸດ 63 ຕົວອັກສອນ: ຕົວອັກສອນອັງກິດນ້ອຍ, ຕົວເລກ ແລະ ຂີດຕໍ່. ເລີ່ມດ້ວຍຕົວອັກສອນນ້ອຍ ແລະ ຈົບດ້ວຍຕົວອັກສອນ ຫຼື ຕົວເລກ.",
   "tracing.tencent.title": "Tencent APM",
   "tracing.title": "ຕິດຕາມປະສິດທິພາບແອັບ",
   "tracing.tracing": "ການຕິດຕາມ (Tracing)",
