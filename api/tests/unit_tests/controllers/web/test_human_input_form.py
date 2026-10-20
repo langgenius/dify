@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -278,10 +279,7 @@ def test_create_upload_token_returns_token_and_form_expiration(
 
     expiration_time = datetime(2099, 1, 1, tzinfo=UTC)
     _, app_model, _ = _persist_app_site(database_session)
-    form_service = MagicMock()
-    form_service.get_form_by_token.return_value = SimpleNamespace(
-        app_id=app_model.id, tenant_id=app_model.tenant_id, recipient_type=RecipientType.STANDALONE_WEB_APP
-    )
+    form_service = _FormService(_FormRef(app_id=app_model.id, tenant_id=app_model.tenant_id))
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: form_service)
     service_mock = MagicMock()
     service_mock.issue_upload_token.return_value = SimpleNamespace(
@@ -498,7 +496,7 @@ def test_submit_form_accepts_backstage_token(monkeypatch: pytest.MonkeyPatch, ap
     """POST forwards backstage submissions to the service."""
 
     _, app_model, _ = _persist_app_site(database_session)
-    form = SimpleNamespace(app_id=app_model.id, tenant_id=app_model.tenant_id, recipient_type=RecipientType.BACKSTAGE)
+    form = _FormRef(app_id=app_model.id, tenant_id=app_model.tenant_id, recipient_type=RecipientType.BACKSTAGE)
     limiter_mock = MagicMock()
     limiter_mock.is_rate_limited.return_value = False
     monkeypatch.setattr(human_input_module, "_FORM_SUBMIT_RATE_LIMITER", limiter_mock)
@@ -608,7 +606,71 @@ _UNAVAILABLE_APP_CASES = [
 ]
 
 
-def _unavailable_form(session: Session, case: str) -> SimpleNamespace:
+class _FormRef:
+    """The stored form fields that the web form endpoints read."""
+
+    def __init__(
+        self,
+        *,
+        app_id: str,
+        tenant_id: str,
+        recipient_type: RecipientType = RecipientType.STANDALONE_WEB_APP,
+    ) -> None:
+        self.id = "form-1"
+        self.app_id = app_id
+        self.tenant_id = tenant_id
+        self.recipient_type = recipient_type
+        self.expiration_time = datetime(2099, 1, 1, tzinfo=UTC)
+
+
+class _FormService:
+    """A form service that returns one form and records what the endpoint did with it."""
+
+    def __init__(self, form: _FormRef | None, *, active_error: Exception | None = None) -> None:
+        self.form = form
+        self.active_error = active_error
+        self.resolved_inputs = 0
+        self.submissions: list[dict[str, object]] = []
+
+    def get_form_by_token(self, _form_token: str) -> _FormRef | None:
+        return self.form
+
+    def ensure_form_active(self, _form: _FormRef) -> None:
+        if self.active_error is not None:
+            raise self.active_error
+
+    def resolve_form_inputs(self, _form: _FormRef) -> list[object]:
+        self.resolved_inputs += 1
+        return []
+
+    def submit_form_by_token(self, **kwargs: object) -> None:
+        self.submissions.append(kwargs)
+
+
+class _UploadTokens:
+    """An upload service that records each upload token request."""
+
+    def __init__(self) -> None:
+        self.issued: list[str] = []
+
+    def issue_upload_token(self, form_token: str) -> None:
+        self.issued.append(form_token)
+
+
+@dataclass
+class _ApplicationServices:
+    human_input_file_uploads: _UploadTokens
+
+
+class _OpenRateLimiter:
+    def is_rate_limited(self, _ip_address: str) -> bool:
+        return False
+
+    def increment_rate_limit(self, _ip_address: str) -> None:
+        return None
+
+
+def _unavailable_form(session: Session, case: str) -> _FormRef:
     tenant, app_model, _ = _persist_app_site(session, include_site=case != "site_missing")
     app_id = app_model.id
     tenant_id = app_model.tenant_id
@@ -619,38 +681,24 @@ def _unavailable_form(session: Session, case: str) -> SimpleNamespace:
         app_id = str(uuid4())
     elif case == "other_tenant":
         tenant_id = str(uuid4())
-    return SimpleNamespace(
-        id="form-1",
-        app_id=app_id,
-        tenant_id=tenant_id,
-        recipient_type=RecipientType.STANDALONE_WEB_APP,
-        expiration_time=datetime(2099, 1, 1, tzinfo=UTC),
-    )
+    return _FormRef(app_id=app_id, tenant_id=tenant_id)
 
 
 def _allow_requests(monkeypatch: pytest.MonkeyPatch) -> None:
-    limiter_mock = MagicMock()
-    limiter_mock.is_rate_limited.return_value = False
     for name in ("_FORM_ACCESS_RATE_LIMITER", "_FORM_SUBMIT_RATE_LIMITER", "_FORM_UPLOAD_TOKEN_RATE_LIMITER"):
-        monkeypatch.setattr(human_input_module, name, limiter_mock)
+        monkeypatch.setattr(human_input_module, name, _OpenRateLimiter())
     monkeypatch.setattr(human_input_module, "extract_remote_ip", lambda req: "203.0.113.10")
 
 
-def _patch_form_service(monkeypatch: pytest.MonkeyPatch, form: object) -> MagicMock:
-    service_mock = MagicMock()
-    service_mock.get_form_by_token.return_value = form
-    monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
-    return service_mock
+def _patch_form_service(monkeypatch: pytest.MonkeyPatch, service: _FormService) -> _FormService:
+    monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service)
+    return service
 
 
-def _patch_upload_service(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    upload_service = MagicMock()
-    monkeypatch.setattr(
-        human_input_module,
-        "application_services",
-        lambda: SimpleNamespace(human_input_file_uploads=upload_service),
-    )
-    return upload_service
+def _patch_upload_tokens(monkeypatch: pytest.MonkeyPatch) -> _UploadTokens:
+    uploads = _UploadTokens()
+    monkeypatch.setattr(human_input_module, "application_services", lambda: _ApplicationServices(uploads))
+    return uploads
 
 
 def _submit(app: Flask) -> None:
@@ -676,44 +724,41 @@ def _issue_upload_token(app: Flask) -> None:
 def test_get_form_rejects_unavailable_app(
     monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session, case: str, expected_error: type
 ) -> None:
-    form = _unavailable_form(database_session, case)
     _allow_requests(monkeypatch)
-    service_mock = _patch_form_service(monkeypatch, form)
+    service = _patch_form_service(monkeypatch, _FormService(_unavailable_form(database_session, case)))
 
     with pytest.raises(expected_error):
         _get(app)
 
-    service_mock.resolve_form_inputs.assert_not_called()
+    assert service.resolved_inputs == 0
 
 
 @pytest.mark.parametrize(("case", "expected_error"), _UNAVAILABLE_APP_CASES)
 def test_submit_form_rejects_unavailable_app(
     monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session, case: str, expected_error: type
 ) -> None:
-    form = _unavailable_form(database_session, case)
     _allow_requests(monkeypatch)
-    service_mock = _patch_form_service(monkeypatch, form)
+    service = _patch_form_service(monkeypatch, _FormService(_unavailable_form(database_session, case)))
 
     with pytest.raises(expected_error):
         _submit(app)
 
     # The form must stay waiting, so the workflow run does not resume.
-    service_mock.submit_form_by_token.assert_not_called()
+    assert service.submissions == []
 
 
 @pytest.mark.parametrize(("case", "expected_error"), _UNAVAILABLE_APP_CASES)
 def test_upload_token_rejects_unavailable_app(
     monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session, case: str, expected_error: type
 ) -> None:
-    form = _unavailable_form(database_session, case)
     _allow_requests(monkeypatch)
-    _patch_form_service(monkeypatch, form)
-    upload_service = _patch_upload_service(monkeypatch)
+    _patch_form_service(monkeypatch, _FormService(_unavailable_form(database_session, case)))
+    uploads = _patch_upload_tokens(monkeypatch)
 
     with pytest.raises(expected_error):
         _issue_upload_token(app)
 
-    upload_service.issue_upload_token.assert_not_called()
+    assert uploads.issued == []
 
 
 @pytest.mark.parametrize("call", [_get, _submit, _issue_upload_token], ids=["get", "submit", "upload-token"])
@@ -722,27 +767,28 @@ def test_expired_form_reports_expired_before_app_checks(
 ) -> None:
     # An expired form in an archived workspace returns 412 from every endpoint,
     # the same as the form page did before this check was shared.
-    form = _unavailable_form(database_session, "archived")
     _allow_requests(monkeypatch)
-    service_mock = _patch_form_service(monkeypatch, form)
-    service_mock.ensure_form_active.side_effect = FormExpiredError("form-1")
-    upload_service = _patch_upload_service(monkeypatch)
+    service = _patch_form_service(
+        monkeypatch,
+        _FormService(_unavailable_form(database_session, "archived"), active_error=FormExpiredError("form-1")),
+    )
+    uploads = _patch_upload_tokens(monkeypatch)
 
     with pytest.raises(FormExpiredError):
         call(app)
 
-    service_mock.submit_form_by_token.assert_not_called()
-    upload_service.issue_upload_token.assert_not_called()
+    assert service.submissions == []
+    assert uploads.issued == []
 
 
 def test_upload_token_returns_not_found_for_unknown_token(
     monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session
 ) -> None:
     _allow_requests(monkeypatch)
-    _patch_form_service(monkeypatch, None)
-    upload_service = _patch_upload_service(monkeypatch)
+    _patch_form_service(monkeypatch, _FormService(None))
+    uploads = _patch_upload_tokens(monkeypatch)
 
     with pytest.raises(NotFoundError):
         _issue_upload_token(app)
 
-    upload_service.issue_upload_token.assert_not_called()
+    assert uploads.issued == []
