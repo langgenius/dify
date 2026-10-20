@@ -387,12 +387,18 @@ class CancelFailingStreamBackendClient(FailingStreamBackendClient):
 
 
 def _drain_event_stream(node: DifyAgentNode):
-    return node._consume_event_stream(
+    stream = node._consume_event_stream(
         "run-1",
         inputs={},
         process_data={"workflow_agent_binding_id": "binding-1"},
         metadata={"agent_backend": {}},
+        stream_text=False,
     )
+    while True:
+        try:
+            next(stream)
+        except StopIteration as stop:
+            return stop.value
 
 
 def _node(
@@ -642,12 +648,15 @@ def test_agent_node_passes_execution_id_to_session_store_and_runtime_request_bui
     assert context.node_execution_id == execution_id
 
 
-def test_agent_node_records_agent_message_delta_without_text_stream(tool_providers):
+def test_agent_node_run_streams_agent_message_delta_as_text_chunks(tool_providers):
     events = list(_node(tool_providers=tool_providers, agent_backend_client=AgentMessageDeltaBackendClient())._run())
 
-    assert not any(isinstance(event, StreamChunkEvent) for event in events)
-    assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert events[:2] == [
+        StreamChunkEvent(selector=["agent-node", "text"], chunk="hello ", is_final=False),
+        StreamChunkEvent(selector=["agent-node", "text"], chunk="", is_final=True),
+    ]
+    assert len(events) == 3
+    result = cast(StreamCompletedEvent, events[2]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent"}
     agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
