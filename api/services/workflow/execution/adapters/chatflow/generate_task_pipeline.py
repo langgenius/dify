@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Callable, Generator, Mapping
 from threading import Thread
-from typing import Any, Union
+from typing import Any
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
@@ -66,10 +66,6 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import build_system_variables
-from graphon.enums import WorkflowExecutionStatus
-from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.nodes import BuiltinNodeTypes
-from graphon.runtime import GraphRuntimeState
 from models import Account, EndUser
 from models.enums import CreatorUserRole, MessageStatus
 from services.app.generation.adapters.message_cycle import MessageCycleManager
@@ -84,6 +80,11 @@ from services.app.generation.ports import (
 from services.tools.provider_queries import ToolProviderIcons
 from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 from services.workflow.execution.ports import ExecutionContexts
+
+from graphon.enums import WorkflowExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.nodes import BuiltinNodeTypes
+from graphon.runtime import RuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         queue_manager: AppQueueManager,
         conversation: ConversationSnapshot,
         message: MessageSnapshot,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         stream: bool,
         dialogue_count: int,
         draft_var_saver_factory: DraftVariableSaverFactory,
@@ -170,7 +171,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._recorded_files: list[Mapping[str, Any]] = []
         self._workflow_run_id: str = ""
         self._draft_var_saver_factory = draft_var_saver_factory
-        self._graph_runtime_state: GraphRuntimeState | None = None
+        self._graph_runtime_state: RuntimeState | None = None
         self._message_saved_on_pause = False
         self._seed_graph_runtime_state_from_queue_manager()
 
@@ -180,11 +181,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def process(
         self,
-    ) -> Union[
-        ChatbotAppBlockingResponse,
-        AdvancedChatPausedBlockingResponse,
-        Generator[ChatbotAppStreamResponse, None, None],
-    ]:
+    ) -> (
+        ChatbotAppBlockingResponse
+        | AdvancedChatPausedBlockingResponse
+        | Generator[ChatbotAppStreamResponse, None, None]
+    ):
         """
         Process generate task pipeline.
         :return:
@@ -204,7 +205,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _to_blocking_response(
         self, generator: Generator[StreamResponse, None, None]
-    ) -> Union[ChatbotAppBlockingResponse, AdvancedChatPausedBlockingResponse]:
+    ) -> ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse:
         """
         Process blocking response.
         :return:
@@ -406,6 +407,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             workflow_run_id=run_id,
             workflow_id=self._workflow_id,
             reason=event.reason,
+            node_execution_snapshots=event.node_execution_snapshots,
         )
 
         yield workflow_start_resp
@@ -469,7 +471,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _handle_node_failed_events(
         self,
-        event: Union[QueueNodeFailedEvent, QueueNodeExceptionEvent],
+        event: QueueNodeFailedEvent | QueueNodeExceptionEvent,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle various node failure events."""
@@ -489,7 +491,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         event: QueueTextChunkEvent,
         *,
         tts_publisher: AppGeneratorTTSPublisher | None = None,
-        queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
+        queue_message: WorkflowQueueMessage | MessageQueueMessage | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle text chunk events."""
@@ -676,7 +678,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         for reason in event.reasons:
             if isinstance(reason, HumanInputRequired):
                 self._persist_human_input_extra_content(form_id=reason.form_id, node_id=reason.node_id)
-        resolved_state: GraphRuntimeState | None = None
+        resolved_state: RuntimeState | None = None
         try:
             resolved_state = self._ensure_graph_runtime_initialized()
         except ValueError:
@@ -717,7 +719,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         event: QueueStopEvent,
         *,
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_runtime_state: RuntimeState | None = None,
         trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
@@ -754,7 +756,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         event: QueueAdvancedChatMessageEndEvent,
         *,
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_runtime_state: RuntimeState | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle advanced chat message end events."""
@@ -801,7 +803,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self, event: QueueHumanInputFormFilledEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
         """Handle human input form filled events."""
-        self._persist_human_input_extra_content(node_id=event.node_id)
+        self._persist_human_input_extra_content(form_id=event.form_id, node_id=event.node_id)
         yield self._workflow_response_converter.human_input_form_filled_to_stream_response(
             event=event, task_id=self._application_generate_entity.task_id
         )
@@ -814,7 +816,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             event=event, task_id=self._application_generate_entity.task_id
         )
 
-    def _persist_human_input_extra_content(self, *, node_id: str | None = None, form_id: str | None = None) -> None:
+    def _persist_human_input_extra_content(self, *, form_id: str, node_id: str | None) -> None:
         if not self._workflow_run_id or not self._message_id:
             return
 
@@ -872,7 +874,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         *,
         tts_publisher: AppGeneratorTTSPublisher | None = None,
         trace_manager: TraceQueueManager | None = None,
-        queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
+        queue_message: WorkflowQueueMessage | MessageQueueMessage | None = None,
     ) -> Generator[StreamResponse, None, None]:
         """Dispatch events using elegant pattern matching."""
         handlers = self._get_event_handlers()
@@ -967,7 +969,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._chat_records.fail_message(self._message_identity, self._base_task_pipeline._error_to_desc(err))
         return err
 
-    def _save_message(self, *, graph_runtime_state: GraphRuntimeState | None = None, paused: bool = False):
+    def _save_message(self, *, graph_runtime_state: RuntimeState | None = None, paused: bool = False):
         usage = graph_runtime_state.llm_usage if graph_runtime_state else None
         self._task_state.metadata.usage = usage or LLMUsage.empty_usage()
         if self._task_state.is_streaming_response and self._task_state.first_token_time:

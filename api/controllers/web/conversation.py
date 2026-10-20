@@ -95,8 +95,8 @@ class ConversationListApi(WebApiResource):
                     has_more=pagination.has_more,
                     data=conversations,
                 ).model_dump(mode="json")
-        except LastConversationNotExistsError:
-            raise NotFound("Last Conversation Not Exists.")
+        except LastConversationNotExistsError as caught_error:
+            raise NotFound("Last Conversation Not Exists.") from caught_error
 
 
 @web_ns.route("/conversations/<uuid:c_id>")
@@ -122,8 +122,8 @@ class ConversationApi(WebApiResource):
         conversation_id = str(c_id)
         try:
             ConversationService.delete(app_model, conversation_id, end_user, session=db.session())
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
         return "", 204
 
 
@@ -173,8 +173,8 @@ class ConversationRenameApi(WebApiResource):
                 .validate_python(ConversationResponseSource(conversation, session=session), from_attributes=True)
                 .model_dump(mode="json")
             )
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
 
 
 @web_ns.route("/conversations/<uuid:c_id>/pin")
@@ -202,8 +202,8 @@ class ConversationPinApi(WebApiResource):
 
         try:
             WebConversationService.pin(app_model, conversation_id, end_user, db.session())
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
 
         return ResultResponse(result="success").model_dump(mode="json")
 

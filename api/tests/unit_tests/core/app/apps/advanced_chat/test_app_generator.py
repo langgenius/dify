@@ -107,7 +107,9 @@ def _make_message(
 
 class TestAdvancedChatAppGeneratorValidation:
     def test_generate_requires_query(self, unbound_session: Session, *, workflow_runtime: WorkflowRuntime):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
 
         with pytest.raises(ValueError, match="query is required"):
             generator.generate(
@@ -121,7 +123,9 @@ class TestAdvancedChatAppGeneratorValidation:
             )
 
     def test_generate_requires_string_query(self, unbound_session: Session, *, workflow_runtime: WorkflowRuntime):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
 
         with pytest.raises(ValueError, match="query must be a string"):
             generator.generate(
@@ -137,7 +141,9 @@ class TestAdvancedChatAppGeneratorValidation:
     def test_single_iteration_generate_validates_args(
         self, unbound_session: Session, *, workflow_runtime: WorkflowRuntime
     ):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
 
         with pytest.raises(ValueError, match="node_id is required"):
             generator.single_iteration_generate(
@@ -160,7 +166,9 @@ class TestAdvancedChatAppGeneratorValidation:
             )
 
     def test_single_loop_generate_validates_args(self, unbound_session: Session, *, workflow_runtime: WorkflowRuntime):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
 
         with pytest.raises(ValueError, match="node_id is required"):
             generator.single_loop_generate(
@@ -203,7 +211,9 @@ class TestAdvancedChatAppGeneratorInternals:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         app_config = self._build_app_config()
 
         conversation = _make_conversation()
@@ -283,7 +293,9 @@ class TestAdvancedChatAppGeneratorInternals:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         existing_trace_manager = SimpleNamespace(app_id="existing-app", user_id="existing-user")
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",
@@ -351,7 +363,11 @@ class TestAdvancedChatAppGeneratorInternals:
             prefill_calls.append((workflow, user_id))
             return var_loader
 
-        generator = AdvancedChatAppGenerator(draft_variable_loader=load_variables, runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            draft_variable_loader=load_variables,
+            runtime=workflow_runtime,
+            execution_driver=workflow_runtime.execution_driver,
+        )
 
         def _fake_generate(**kwargs):
             captured.update(kwargs)
@@ -397,7 +413,11 @@ class TestAdvancedChatAppGeneratorInternals:
             prefill_calls.append((workflow, user_id))
             return var_loader
 
-        generator = AdvancedChatAppGenerator(draft_variable_loader=load_variables, runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            draft_variable_loader=load_variables,
+            runtime=workflow_runtime,
+            execution_driver=workflow_runtime.execution_driver,
+        )
 
         def _fake_generate(**kwargs):
             captured.update(kwargs)
@@ -428,7 +448,9 @@ class TestAdvancedChatAppGeneratorInternals:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         generator._dialogue_count = 0
         app_config = self._build_app_config()
 
@@ -469,10 +491,6 @@ class TestAdvancedChatAppGeneratorInternals:
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.MessageBasedAppQueueManager",
             lambda **kwargs: SimpleNamespace(**kwargs),
-        )
-        monkeypatch.setattr(
-            "services.workflow.execution.adapters.chatflow.app_generator.PauseStatePersistenceLayer",
-            lambda **_kwargs: "pause-layer",
         )
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.current_app",
@@ -528,7 +546,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert thread_data["started"] is True
         assert thread_data["joined"] is True
         assert thread_data["join_timeout"] == 300
-        assert "pause-layer" in thread_data["kwargs"]["graph_engine_layers"]
+        assert thread_data["kwargs"]["pause_state_config"] is pause_state_config
         assert generator._dialogue_count == 3
         get_thread_messages_length.assert_called_once_with(conversation.id)
         assert commit_count == 0
@@ -546,7 +564,9 @@ class TestAdvancedChatAppGeneratorInternals:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         generator._dialogue_count = 0
         app_config = self._build_app_config()
 
@@ -650,7 +670,9 @@ class TestAdvancedChatAppGeneratorInternals:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         generator._dialogue_count = 1
         app_config = self._build_app_config()
 
@@ -709,7 +731,9 @@ class TestAdvancedChatAppGeneratorInternals:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         generator._dialogue_count = 1
         app_config = self._build_app_config()
 
@@ -763,7 +787,9 @@ class TestAdvancedChatAppGeneratorInternals:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         generator._dialogue_count = 1
         app_config = self._build_app_config()
 
@@ -805,7 +831,7 @@ class TestAdvancedChatAppGeneratorInternals:
             def __init__(self, **kwargs):
                 assert kwargs["runtime"] is workflow_runtime
 
-            def run(self):
+            def prepare(self):
                 raise GenerateTaskStoppedError()
 
         monkeypatch.setattr(
@@ -841,7 +867,9 @@ class TestAdvancedChatAppGeneratorInternals:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         generator._dialogue_count = 1
         app_config = self._build_app_config()
 
@@ -892,7 +920,7 @@ class TestAdvancedChatAppGeneratorInternals:
             def __init__(self, **kwargs):
                 _ = kwargs
 
-            def run(self):
+            def prepare(self):
                 raise validation_error
 
         monkeypatch.setattr(
@@ -944,13 +972,15 @@ class TestAdvancedChatAppGeneratorInternals:
                 def __init__(self, **kwargs):
                     _ = kwargs
 
-                def run(self):
+                def prepare(self):
                     raise error
 
             return _Runner
 
         for raised_error in [ValueError("bad input"), RuntimeError("unexpected")]:
-            generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+            generator = AdvancedChatAppGenerator(
+                runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+            )
             generator._dialogue_count = 1
             application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
                 task_id="task",
@@ -997,7 +1027,9 @@ class TestAdvancedChatAppGeneratorInternals:
     def test_handle_response_closed_file_raises_stopped(
         self, monkeypatch: pytest.MonkeyPatch, *, workflow_runtime: WorkflowRuntime
     ):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         generator._dialogue_count = 1
 
         app_config = WorkflowUIBasedAppConfig(
@@ -1059,7 +1091,9 @@ class TestAdvancedChatAppGeneratorInternals:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         generator._dialogue_count = 1
         app_config = self._build_app_config()
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
@@ -1116,7 +1150,9 @@ class TestAdvancedChatAppGeneratorInternals:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         generator._dialogue_count = 1
 
         app_config = WorkflowUIBasedAppConfig(
@@ -1150,7 +1186,7 @@ class TestAdvancedChatAppGeneratorInternals:
             def __init__(self, **kwargs) -> None:
                 _ = kwargs
 
-            def run(self):
+            def prepare(self):
                 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 
                 raise InvokeAuthorizationError("bad key")
@@ -1192,7 +1228,9 @@ class TestAdvancedChatAppGeneratorInternals:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -1259,7 +1297,9 @@ class TestAdvancedChatAppGeneratorInternals:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -1336,7 +1376,9 @@ class TestAdvancedChatAppGeneratorResume:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",
             app_config=self._build_app_config(),
@@ -1401,7 +1443,9 @@ class TestAdvancedChatAppGeneratorResume:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        generator = AdvancedChatAppGenerator(runtime=workflow_runtime)
+        generator = AdvancedChatAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         existing_trace_manager = SimpleNamespace(app_id="existing-app", user_id="existing-user")
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",

@@ -15,7 +15,7 @@ from core.workflow.system_variables import build_system_variables
 from extensions.application_services.workflow import WorkflowExecutionDependencies
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult, StreamCompletedEvent
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -42,7 +42,11 @@ def test_node_integration_minimal_stream(
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
     )
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(
+        variable_pool=variable_pool,
+        start_at=time.perf_counter(),
+        workflow_id=graph_init_params.workflow_id,
+    )
 
     class _Mgr:
         @classmethod
@@ -74,8 +78,8 @@ def test_node_integration_minimal_stream(
     )
     if use_factory:
         factory = DifyNodeFactory(
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
             workflow_runtime=replace(workflow_runtime, datasource_credentials=load_credentials),
         )
         node = factory.create_node({"id": "n", "data": node_data.model_dump()})
@@ -84,8 +88,8 @@ def test_node_integration_minimal_stream(
         node = DatasourceNode(
             node_id="n",
             data=node_data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
             datasource_credentials=load_credentials,
         )
 

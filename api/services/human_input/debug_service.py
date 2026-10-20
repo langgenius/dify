@@ -31,6 +31,7 @@ from services.workflow.execution.adapters.human_input import (
     resolve_default_values,
 )
 from services.workflow.execution.adapters.node_runtime import apply_dify_debug_email_recipient
+from services.workflow_node_variables import get_human_input_form_variable_mapping
 
 
 class DebugDefinitions(Protocol):
@@ -114,7 +115,7 @@ class HumanInputDebugService:
         if draft.config["data"].get("type") != BuiltinNodeTypes.HUMAN_INPUT:
             raise ValueError("Node type must be human-input.")
         data = HumanInputNodeData.model_validate(adapt_human_input_node_data_for_graph(draft.config["data"]))
-        mapping = data.extract_variable_selector_to_variable_mapping(node_id)
+        mapping = get_human_input_form_variable_mapping(node_id, data)
         manual_inputs = dict(inputs)
         # The existing loader handles nesting and manual overrides consistently
         # with node execution. Repository reads finish before rendering or delivery.

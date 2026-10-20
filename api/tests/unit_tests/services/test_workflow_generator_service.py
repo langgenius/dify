@@ -29,13 +29,13 @@ from core.tools.entities.tool_entities import (
     ToolProviderIdentity,
 )
 from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.tool_manager import ToolManager
-from core.workflow.generator import WorkflowGenerator
 from extensions.ext_redis import RedisClientWrapper
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResultChunk, LLMResultChunkDelta
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+from services.tools.tool_manager import ToolManager
+from services.workflow.generation.runner import WorkflowGenerator
 from services.workflow_generator_service import WorkflowGeneratorService
 from tests.unit_tests.core.model_fixtures import make_model_config
 
