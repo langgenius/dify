@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, NaiveDatetime
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
-from core.human_input_v2.shared.values import RecipientId, TenantId
+from core.human_input_v2.shared.values import IMBindingId, RecipientId, TenantId
 
 
 class SubmissionAuthType(StrEnum):
@@ -55,6 +55,7 @@ class IMUserTargetSnapshot(BaseModel):
     im_provider: IMProvider
     im_tenant_id: str
     im_provider_user_id: str
+    im_binding_id: IMBindingId
     # Records the assessed presentation; auth_type governs submission.
     message_type: IMMessageType = Field(strict=False)
     # None until the provider confirms acceptance. Preserve the opaque value.

@@ -24,7 +24,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.db.session_factory import session_factory
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.credentials import SlackCredentials
-from core.human_input_v2.shared.values import AccountId, RecipientId, TenantId
+from core.human_input_v2.shared.values import AccountId, IMBindingId, RecipientId, TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from extensions.ext_key_provider import key_provider_manager
 from graphon.enums import WorkflowExecutionStatus
@@ -66,6 +66,7 @@ class Fixture:
     account_id: str
     tenant_id: TenantId
     channel_id: IMChannelId
+    binding_id: IMBindingId
     webhook_id: str
     provider_tenant_id: str
     provider_user_id: str
@@ -167,6 +168,7 @@ def _create_fixture(sessions: sessionmaker[Session], tenant_id: TenantId) -> Fix
             account.id,
             tenant_id,
             channel_id,
+            binding.id,
             channel.webhook_id,
             channel.provider_tenant_id,
             identity.provider_user_id,
@@ -281,6 +283,7 @@ def _verify(sessions: sessionmaker[Session], fixture: Fixture, token: str) -> No
                     im_provider=IMProvider.SLACK,
                     im_tenant_id=fixture.provider_tenant_id,
                     im_provider_user_id=fixture.provider_user_id,
+                    im_binding_id=fixture.binding_id,
                     message_type="card",
                 ),
             ),
