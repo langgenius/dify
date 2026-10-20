@@ -174,7 +174,7 @@ class WorkflowSnapshot(WorkflowBindingScope):
         try:
             node_config = next(node for node in nodes if isinstance(node, dict) and node.get("id") == node_id)
         except StopIteration:
-            raise NodeNotFoundError(node_id)
+            raise NodeNotFoundError(node_id) from None
         return node_config
 
     @staticmethod

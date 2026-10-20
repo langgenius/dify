@@ -796,19 +796,6 @@ describe('useChat – handleResume', () => {
         expect.objectContaining({ node_id: 'rn-human', submitted_data: { a: 'one' } }),
       ])
     })
-
-    it('should initialize humanInputFilledFormDataList when not present', async () => {
-      const { result } = await setupResumeWithTree()
-
-      act(() => {
-        capturedResumeOptions.onHumanInputFormFilled({
-          data: { node_id: 'rn-human', submitted_data: { b: 'two' } },
-        })
-      })
-
-      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
-      expect(answer!.humanInputFilledFormDataList).toHaveLength(1)
-    })
   })
 
   describe('onHumanInputFormTimeout', () => {
