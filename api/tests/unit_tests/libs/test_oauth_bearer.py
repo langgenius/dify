@@ -12,8 +12,9 @@ import pytest
 from redis import Redis
 from sqlalchemy.orm import Session, sessionmaker
 
-from constants.oauth_bearer import Scope, SubjectType, TokenType
-from libs.oauth_bearer import OAuthAccessTokenResolver, ResolvedRow, _TokenTypeResolver
+from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT, Scope, SubjectType, TokenType
+from extensions.ext_redis import RedisClientWrapper
+from libs.oauth_bearer import POSITIVE_TTL_SECONDS, OAuthAccessTokenResolver, ResolvedRow, _TokenTypeResolver
 from models import OAuthAccessToken
 
 
@@ -58,7 +59,9 @@ def test_for_token_classifies_by_prefix_and_refuses_the_rest(token: str, expecte
 
 @pytest.mark.parametrize("account_id", [None, uuid.UUID("12345678-1234-5678-1234-567812345678")])
 @pytest.mark.parametrize("encoding", ["str", "bytes", "bytearray"])
-def test_token_cache_round_trip(account_id: uuid.UUID | None, encoding: str) -> None:
+def test_token_cache_round_trip(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], account_id: uuid.UUID | None, encoding: str
+) -> None:
     row = _row(account_id)
     payload = json.dumps(row.to_cache())
     raw: str | bytes | bytearray = payload
@@ -66,28 +69,32 @@ def test_token_cache_round_trip(account_id: uuid.UUID | None, encoding: str) -> 
         raw = payload.encode()
     elif encoding == "bytearray":
         raw = bytearray(payload.encode())
-    redis = MagicMock()
-    redis.get.return_value = raw
+    redis, commands = redis_transport
+    commands.return_value = raw
     resolver = OAuthAccessTokenResolver(sessionmaker(), redis)
 
     assert resolver.cache_get("token-hash") == row
 
 
-def test_token_cache_accepts_legacy_entries_without_client_id() -> None:
+def test_token_cache_accepts_legacy_entries_without_client_id(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
     row = replace(_row(None), client_id=None, expires_at=None)
     payload = row.to_cache()
     del payload["client_id"]
-    redis = MagicMock()
-    redis.get.return_value = json.dumps(payload)
+    redis, commands = redis_transport
+    commands.return_value = json.dumps(payload)
     resolver = OAuthAccessTokenResolver(sessionmaker(), redis)
 
     assert resolver.cache_get("token-hash") == row
 
 
 @pytest.mark.parametrize("raw", [None, "invalid", b"invalid", bytearray(b"invalid")])
-def test_token_cache_preserves_miss_and_negative_entries(raw: str | bytes | bytearray | None) -> None:
-    redis = MagicMock()
-    redis.get.return_value = raw
+def test_token_cache_preserves_miss_and_negative_entries(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], raw: str | bytes | bytearray | None
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = raw
     resolver = OAuthAccessTokenResolver(sessionmaker(), redis)
 
     assert resolver.cache_get("token-hash") == (None if raw is None else "invalid")
@@ -97,9 +104,11 @@ def test_token_cache_preserves_miss_and_negative_entries(raw: str | bytes | byte
     "raw",
     ["not json", "null", "[]", "42", '"text"', "{}", b"\xff"],
 )
-def test_token_cache_treats_malformed_payload_as_miss(raw: str | bytes) -> None:
-    redis = MagicMock()
-    redis.get.return_value = raw
+def test_token_cache_treats_malformed_payload_as_miss(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], raw: str | bytes
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = raw
     resolver = OAuthAccessTokenResolver(sessionmaker(), redis)
 
     assert resolver.cache_get("token-hash") is None
@@ -119,17 +128,21 @@ def test_token_cache_treats_malformed_payload_as_miss(raw: str | bytes) -> None:
         ("expires_at", "not a timestamp"),
     ],
 )
-def test_token_cache_treats_invalid_fields_as_miss(field: str, value: object) -> None:
+def test_token_cache_treats_invalid_fields_as_miss(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], field: str, value: object
+) -> None:
     payload: dict[str, object] = dict(_row(None).to_cache())
     payload[field] = value
-    redis = MagicMock()
-    redis.get.return_value = json.dumps(payload)
+    redis, commands = redis_transport
+    commands.return_value = json.dumps(payload)
     resolver = OAuthAccessTokenResolver(sessionmaker(), redis)
 
     assert resolver.cache_get("token-hash") is None
 
 
-def test_token_resolver_recovers_from_malformed_cache(sqlite_session_factory: sessionmaker[Session]) -> None:
+def test_token_resolver_recovers_from_malformed_cache(
+    sqlite_session_factory: sessionmaker[Session], redis_transport: tuple[RedisClientWrapper, MagicMock]
+) -> None:
     account_id = uuid.uuid4()
     token = OAuthAccessToken(
         subject_email="who@example.com",
@@ -141,8 +154,8 @@ def test_token_resolver_recovers_from_malformed_cache(sqlite_session_factory: se
         token_hash="token-hash",
         expires_at=datetime.now(UTC) + timedelta(hours=1),
     )
-    redis = MagicMock()
-    redis.get.return_value = "[]"
+    redis, commands = redis_transport
+    commands.return_value = "[]"
 
     with sqlite_session_factory() as session:
         session.add(token)
@@ -155,5 +168,6 @@ def test_token_resolver_recovers_from_malformed_cache(sqlite_session_factory: se
         assert resolved.token_id == uuid.UUID(token.id)
         assert resolved.subject_email == token.subject_email
         assert resolved.account_id == account_id
-    redis.setex.assert_called_once()
-    assert json.loads(redis.setex.call_args.args[2]) == resolved.to_cache()
+    commands.assert_called_with(
+        "SETEX", TOKEN_CACHE_KEY_FMT.format(hash="token-hash"), POSITIVE_TTL_SECONDS, json.dumps(resolved.to_cache())
+    )
