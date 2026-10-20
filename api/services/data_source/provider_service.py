@@ -134,8 +134,6 @@ class DatasourceProviderService:
         system_credentials = self.get_oauth_client(
             tenant_id, datasource_provider_id, provider_declaration=provider_declaration
         )
-        if system_credentials is None:
-            raise ValueError("OAuth client is not configured for this datasource provider")
         try:
             refreshed_credentials = refresh_datasource_credential(
                 OAuthHandler(),
@@ -528,7 +526,7 @@ class DatasourceProviderService:
         datasource_provider_id: DatasourceProviderID,
         *,
         provider_declaration: PluginDatasourceProviderEntity | None = None,
-    ) -> PluginOAuthClientConfig | None:
+    ) -> PluginOAuthClientConfig:
         """
         get oauth client
         """
