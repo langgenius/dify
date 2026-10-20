@@ -1651,9 +1651,14 @@ export const lintConfig = {
     },
     // Apply after the existing Web overrides and preserve their unrelated restrictions.
     {
-      ...handwrittenApiScope,
+      files: ['web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
       rules: {
         'typescript/no-deprecated': 'error',
+      },
+    },
+    {
+      ...handwrittenApiScope,
+      rules: {
         'no-restricted-globals': [...defaultRestrictedGlobals, ...rawHttpGlobals],
         'no-restricted-properties': [...defaultRestrictedProperties, ...rawHttpProperties],
         'no-restricted-imports': [

@@ -158,7 +158,7 @@ Explain the concrete reason after `--`: which external contract, lifecycle, or r
 
 ### Handwritten HTTP Calls
 
-Web production code uses native Oxlint rules to discourage new handwritten requests:
+Web uses native Oxlint rules to discourage deprecated APIs and new handwritten requests:
 
 - `typescript/no-deprecated` rejects references to deprecated APIs. Legacy base/fetch
   transport entry points carry `@deprecated`; generated `consoleClient`, `consoleQuery`,
@@ -170,8 +170,10 @@ Web production code uses native Oxlint rules to discourage new handwritten reque
   (including Ky, Axios, Undici and Node http/https). Type-only imports remain allowed.
   Existing legacy-service and localStorage import/access restrictions remain active.
 
-Tests, mocks, stories, test infrastructure, and maintenance scripts are excluded
-from these new rules. There is no custom API rule or data-flow tracker.
+`typescript/no-deprecated` applies throughout Web, including tests, mocks, stories,
+test infrastructure, and maintenance scripts. The raw transport and HTTP-client import
+restrictions apply only to production code. Repository-wide generated/vendor and
+declaration-file ignores still apply. There is no custom API rule or data-flow tracker.
 
 Existing findings are recorded in `oxlint-suppressions.json`. These are counts of
 references/imports, not endpoints awaiting migration: they include transport internals,

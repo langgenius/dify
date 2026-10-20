@@ -137,17 +137,30 @@ it('preserves storage and service import restrictions alongside transport restri
   }
 })
 
-it('does not add transport restrictions to test, story, mock or script files', () => {
+it('checks deprecations in all Web scopes while allowing test and script transports', () => {
   const test = fixture()
   try {
     for (const file of [
       'web/feature.spec.ts',
+      'web/feature.test.tsx',
       'web/feature.stories.tsx',
+      'web/__tests__/http.ts',
       'web/__mocks__/http.ts',
       'web/scripts/check.ts',
       'web/test/helper.ts',
+      'web/vitest.setup.ts',
+      'web/vitest.browser.setup.ts',
     ]) {
-      expect(test.lint("import ky from 'ky'\nfetch('/allowed')", file).diagnostics).toEqual([])
+      const source = [
+        "import ky from 'ky'",
+        "fetch('/allowed')",
+        '/** @deprecated Use the replacement. */',
+        'function legacy() {}',
+        'legacy()',
+      ].join('\n')
+      expect(
+        test.lint(source, file).diagnostics.map((d) => [d.code, d.labels[0]!.span.line]),
+      ).toEqual([['typescript(no-deprecated)', 5]])
     }
   } finally {
     test.close()
