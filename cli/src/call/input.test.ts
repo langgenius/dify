@@ -1,5 +1,5 @@
 import { expect, it } from 'vite-plus/test'
-import { applyPins, loadInput, resolveFileRefs } from './input'
+import { applyPins, loadInput, parseJsonValue, resolveFileRefs } from './input'
 
 const src = (raw: string | undefined, stdin = '', files: Record<string, string> = {}) => ({
   raw,
@@ -26,6 +26,27 @@ it('rejects non-object json and unreadable files with input_invalid', async () =
     message: expect.stringContaining('missing.json'),
   })
 })
+
+it('accepts a leading UTF-8 BOM from stdin', async () => {
+  expect(await loadInput(src('@-', '\uFEFF{"a":1}'))).toEqual({ a: 1 })
+})
+
+it('preserves a BOM inside a JSON string', () => {
+  expect(parseJsonValue('\uFEFF{"text":"\uFEFFkept"}', 'input')).toEqual({
+    text: '\uFEFFkept',
+  })
+})
+
+it.each(['\uFEFF{broken}', '\uFEFF\uFEFF{"a":1}'])(
+  'still rejects malformed JSON after a BOM: %s',
+  (raw) => {
+    expect(() => parseJsonValue(raw, 'input')).toThrow(
+      expect.objectContaining({
+        code: 'input_invalid',
+      }),
+    )
+  },
+)
 
 const REF_SCHEMA = {
   type: 'object',

@@ -25,7 +25,8 @@ const STDIN_LABEL = 'stdin'
 
 export function parseJsonValue(raw: string, source: string): unknown {
   try {
-    return JSON.parse(raw)
+    // UTF-8 files written by Windows tools may start with a byte order mark.
+    return JSON.parse(raw.startsWith('\uFEFF') ? raw.slice(1) : raw)
   } catch (cause) {
     throw inputInvalid(`${source}: not valid JSON (${errorMessage(cause)})`, cause)
   }

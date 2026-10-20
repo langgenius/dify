@@ -2,6 +2,7 @@ import type { TestWorld } from '@test/fixtures/kernel'
 import type { CatalogOp } from '@/plugins/catalog'
 import type { CommandEffect } from '@/plugins/commands/command'
 import { readFileSync } from 'node:fs'
+import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
@@ -85,6 +86,26 @@ it('a reserved name reaches the request body through --input', async () => {
   })
   await new Ctor().run(Ctor.finalize(typed, NO_PATH), w.ctx)
   expect(w.mock.lastRunBody).toMatchObject({ input: 'kept' })
+})
+
+it.each(['input', 'inputs'])('loads a BOM-prefixed JSON file through --%s', async (flag) => {
+  const w = await world()
+  const id = 'run.console_app.workflow'
+  const Ctor = opCommand(id, fixtureOp(id))
+  const inputs = { prompt: '\uFEFFkept' }
+  const payload = flag === 'input' ? { app_id: 'app-2', inputs } : inputs
+  const path = join(w.dir, 'input.json')
+  await writeFile(path, `\uFEFF${JSON.stringify(payload)}`, 'utf8')
+  const args = flag === 'input' ? [] : ['--app-id', 'app-2']
+  const typed = parseArgv([...args, `--${flag}`, `@${path}`], {
+    positional: Ctor.positional,
+    schema: Ctor.flags(),
+  })
+
+  const out = await new Ctor().run(Ctor.finalize(typed, NO_PATH), w.ctx)
+
+  expect(out).toMatchObject({ code: 0 })
+  expect(w.mock.lastRunBody).toMatchObject({ inputs })
 })
 
 const EFFECTS: readonly [string, CommandEffect | undefined][] = [
