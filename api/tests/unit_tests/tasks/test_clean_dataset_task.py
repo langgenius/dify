@@ -823,8 +823,7 @@ class TestStepIsolation:
             schedule_refresh.assert_called_once_with(tenant_id)
             assert retried.value.exc is failure
             assert retried.value.when == 30
-            # celery-stubs omits the signature stored on Retry at runtime.
-            retry_signature = getattr(retried.value, "sig", None)
+            retry_signature = retried.value.sig
             assert retry_signature is not None
             assert retry_signature.args == ()
             assert retry_signature.kwargs == {**task_kwargs, "index_cleanup_done": True}
@@ -877,7 +876,8 @@ class TestStepIsolation:
             assert isinstance(raised.value, Retry)
             assert raised.value.exc is failure
             assert raised.value.when == delay
-            retry_signature = getattr(raised.value, "sig", None)
+            # celery-stubs omits the signature stored on Retry at runtime.
+            retry_signature = raised.value.sig  # pyrefly: ignore[missing-attribute]
             assert retry_signature is not None
             assert retry_signature.kwargs["index_cleanup_done"] is False
         assert not any("Cleaned dataset when dataset deleted:" in message for message in caplog.messages)

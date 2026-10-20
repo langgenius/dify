@@ -136,7 +136,7 @@ def clean_dataset_task(
                 "index_cleanup_done": index_cleanup_done,
             },
             countdown=_RETRY_DELAY_SECONDS * (2**self.request.retries),
-        )
+        ) from exc
 
     end_at = time.perf_counter()
     logger.info(
