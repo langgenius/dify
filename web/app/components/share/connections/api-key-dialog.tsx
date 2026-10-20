@@ -221,7 +221,11 @@ export default function ApiKeyDialog({
         if (!nextOpen) onCloseComplete?.()
       }}
     >
-      <DialogContent className="w-140" finalFocus={finalFocus}>
+      <DialogContent
+        className="w-140"
+        finalFocus={finalFocus}
+        backdropProps={{ forceRender: true }}
+      >
         <ApiKeyForm
           mode={mode}
           connectionName={connectionName}

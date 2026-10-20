@@ -36,6 +36,17 @@ const invalidService: RequiredConnectionService = {
   selectedConnectionId: 'key',
 }
 
+const expectNestedEditor = async (editor: HTMLElement, configuration: HTMLElement) => {
+  expect(editor).not.toBe(configuration)
+  expect(configuration).toBeInTheDocument()
+  expect(configuration).toBeVisible()
+  // Configuration stays mounted, but only the editor is exposed to assistive technology.
+  expect(
+    screen.queryByRole('dialog', { name: 'share.connections.configure.title' }),
+  ).not.toBeInTheDocument()
+  await waitFor(() => expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(2))
+}
+
 describe('ConfigureConnections', () => {
   it('shares saved connections across both entry buttons and returns focus to the entry that opened each session', async () => {
     const user = userEvent.setup()
@@ -102,7 +113,7 @@ describe('ConfigureConnections', () => {
       within(notion).getByRole('button', { name: 'share.connections.setup.addApiKey' }),
     )
     const addForm = await screen.findByRole('dialog', { name: 'share.connections.setup.addApiKey' })
-    expect(addForm).toBe(managedDialog)
+    await expectNestedEditor(addForm, managedDialog)
     await user.type(
       within(addForm).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
       'Shared Notion key',
@@ -114,9 +125,8 @@ describe('ConfigureConnections', () => {
     const save = within(addForm).getByRole('button', { name: 'common.operation.save' })
     await user.click(save)
     await user.keyboard('{Escape}')
-    expect(screen.getByRole('dialog', { name: 'share.connections.setup.addApiKey' })).toBe(
-      managedDialog,
-    )
+    expect(screen.getByRole('dialog', { name: 'share.connections.setup.addApiKey' })).toBe(addForm)
+    expect(managedDialog).toBeInTheDocument()
     await user.click(save)
     expect(onConnect).toHaveBeenCalledExactlyOnceWith('notion', 'api-key', {
       name: 'Shared Notion key',
@@ -149,8 +159,7 @@ describe('ConfigureConnections', () => {
     const replaceForm = await screen.findByRole('dialog', {
       name: 'share.connections.apiKeys.replaceTitle',
     })
-    expect(replaceForm).toBe(configuredDialog)
-    expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1)
+    await expectNestedEditor(replaceForm, configuredDialog)
     const name = within(replaceForm).getByRole('textbox', { name: 'plugin.auth.authorizationName' })
     await user.clear(name)
     await user.type(name, 'Restored Search key')
@@ -190,7 +199,7 @@ describe('ConfigureConnections', () => {
     await waitFor(() => expect(manage).toHaveFocus())
   })
 
-  it('adds a key in the same configuration surface without changing another service selection', async () => {
+  it('adds a key in a nested editor without changing another service selection', async () => {
     const user = userEvent.setup()
     const onConnect = vi.fn()
     function ConnectedConfiguration() {
@@ -230,8 +239,7 @@ describe('ConfigureConnections', () => {
         within(notion).getByRole('button', { name: 'share.connections.setup.addApiKey' }),
       )
       const form = await screen.findByRole('dialog', { name: 'share.connections.setup.addApiKey' })
-      expect(form).toBe(configuration)
-      expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1)
+      await expectNestedEditor(form, configuration)
       expect(
         within(form).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
       ).toHaveValue('')
@@ -250,6 +258,7 @@ describe('ConfigureConnections', () => {
       expect(await screen.findByRole('dialog', { name: 'share.connections.configure.title' })).toBe(
         configuration,
       )
+      await waitFor(() => expect(discarded).not.toBeInTheDocument())
       expect(onConnect).not.toHaveBeenCalled()
       expect(within(configuration).getByRole('button', { name: 'Gmail' })).toHaveTextContent(
         'alex@example.com',
@@ -307,8 +316,7 @@ describe('ConfigureConnections', () => {
 
     for (const dismissal of ['cancel', 'close', 'escape']) {
       const replacement = await openReplacement()
-      expect(replacement).toBe(configuration)
-      expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1)
+      await expectNestedEditor(replacement, configuration)
       const name = within(replacement).getByRole('textbox', {
         name: 'plugin.auth.authorizationName',
       })
@@ -401,8 +409,7 @@ describe('ConfigureConnections', () => {
     const replacement = await screen.findByRole('dialog', {
       name: 'share.connections.apiKeys.replaceTitle',
     })
-    expect(replacement).toBe(configuration)
-    expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1)
+    await expectNestedEditor(replacement, configuration)
     const replacementName = within(replacement).getByRole('textbox', {
       name: 'plugin.auth.authorizationName',
     })
@@ -425,6 +432,7 @@ describe('ConfigureConnections', () => {
       name: 'share.connections.configure.title',
     })
     expect(resumed).toBe(configuration)
+    await waitFor(() => expect(replacement).not.toBeInTheDocument())
     expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1)
     expect(
       screen.queryByRole('dialog', { name: 'share.connections.apiKeys.replaceTitle' }),
@@ -578,7 +586,7 @@ describe('ConfigureConnections', () => {
     const addDialog = await screen.findByRole('dialog', {
       name: 'share.connections.setup.addApiKey',
     })
-    expect(addDialog).toBe(dialog)
+    await expectNestedEditor(addDialog, dialog)
     await user.type(
       within(addDialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
       'Notion key',

@@ -239,8 +239,12 @@ describe('API Key connection management', () => {
     const replacement = await screen.findByRole('dialog', {
       name: 'share.connections.apiKeys.replaceTitle',
     })
-    expect(replacement).toBe(dialog)
-    expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1)
+    expect(replacement).not.toBe(dialog)
+    expect(dialog).toBeVisible()
+    expect(
+      screen.queryByRole('dialog', { name: 'share.connections.configure.title' }),
+    ).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(2))
     const apiKey = within(replacement).getByLabelText(/share\.connections\.setup\.apiKey/)
     await user.type(apiKey, 'sk-new-api-key')
     rerender(<ConfigureConnections {...props} isResponding />)
@@ -254,6 +258,7 @@ describe('API Key connection management', () => {
     await user.click(within(replacement).getByRole('button', { name: 'common.operation.cancel' }))
     const resumed = await screen.findByRole('dialog', { name: 'share.connections.configure.title' })
     expect(resumed).toBe(dialog)
+    await waitFor(() => expect(replacement).not.toBeInTheDocument())
     expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(1)
     expect(within(resumed).getByRole('button', { name: 'Google Search' })).toHaveAttribute(
       'aria-disabled',

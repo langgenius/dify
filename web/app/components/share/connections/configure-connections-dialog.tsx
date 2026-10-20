@@ -13,7 +13,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiKeyForm } from './api-key-dialog'
+import ApiKeyDialog from './api-key-dialog'
 import RequiredServices from './required-services'
 
 type Props = Omit<
@@ -42,8 +42,8 @@ export default function ConfigureConnectionsDialog({
   const { t } = useTranslation(['share', 'common'])
   const [open, setOpen] = useState(false)
   const [apiKeyEditor, setApiKeyEditor] = useState<ApiKeyEditor | null>(null)
-  const apiKeySavingRef = useRef(false)
-  const returnToConfigurationRef = useRef(false)
+  const [apiKeyEditorOpen, setApiKeyEditorOpen] = useState(false)
+  const configurationTitleRef = useRef<HTMLHeadingElement>(null)
   const requestReplacement = (serviceId: string, connectionId: string) => {
     if (isResponding || !onReplace) return
     const service = services.find((item) => item.id === serviceId)
@@ -56,97 +56,74 @@ export default function ConfigureConnectionsDialog({
       name: connection.name,
       readmeUrl: service?.readmeUrl,
     })
+    setApiKeyEditorOpen(true)
   }
   const requestAddApiKey = (serviceId: string) => {
     if (isResponding) return
     const service = services.find((item) => item.id === serviceId)
     if (!service?.methods.includes('api-key')) return
     setApiKeyEditor({ mode: 'add', serviceId, readmeUrl: service.readmeUrl })
-  }
-  const showConfiguration = () => {
-    if (apiKeySavingRef.current) return
-    returnToConfigurationRef.current = true
-    setApiKeyEditor(null)
+    setApiKeyEditorOpen(true)
   }
 
   return (
     <Dialog
       handle={handle}
       open={open}
-      onOpenChange={(nextOpen, details) => {
-        if (!nextOpen && apiKeyEditor) {
-          details.cancel()
-          showConfiguration()
-          return
-        }
-        setOpen(nextOpen)
-      }}
+      onOpenChange={setOpen}
       onOpenChangeComplete={(nextOpen) => {
         if (!nextOpen) {
           setApiKeyEditor(null)
-          returnToConfigurationRef.current = false
+          setApiKeyEditorOpen(false)
         }
       }}
     >
-      <DialogContent className={apiKeyEditor ? 'w-140' : 'w-160'}>
-        {apiKeyEditor ? (
-          <ApiKeyForm
-            key={`${apiKeyEditor.mode}:${apiKeyEditor.serviceId}:${apiKeyEditor.mode === 'replace' ? apiKeyEditor.connectionId : ''}`}
-            mode={apiKeyEditor.mode}
-            connectionName={apiKeyEditor.mode === 'replace' ? apiKeyEditor.name : ''}
-            readmeUrl={apiKeyEditor.readmeUrl}
-            onSave={(values) =>
-              apiKeyEditor.mode === 'add'
-                ? onConnect(apiKeyEditor.serviceId, 'api-key', values)
-                : onReplace?.(apiKeyEditor.serviceId, apiKeyEditor.connectionId, values)
-            }
-            onClose={showConfiguration}
-            onSavingChange={(saving) => {
-              apiKeySavingRef.current = saving
-            }}
-            disabled={isResponding || (apiKeyEditor.mode === 'replace' && !onReplace)}
-          />
-        ) : (
-          <>
-            <DialogHeader>
-              <DialogTitle
-                tabIndex={-1}
-                ref={(element) => {
-                  if (element && returnToConfigurationRef.current) {
-                    element.focus()
-                    returnToConfigurationRef.current = false
-                  }
-                }}
-              >
-                {t(($) => $['connections.configure.title'], { ns: 'share' })}
-              </DialogTitle>
-              {isResponding && (
-                <DialogDescription>
-                  {t(($) => $['connections.configure.runningDescription'], { ns: 'share' })}
-                </DialogDescription>
-              )}
-              <DialogHeaderCloseButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              />
-            </DialogHeader>
-            <DialogBody>
-              <div className="px-1 py-3">
-                <RequiredServices
-                  services={services}
-                  onConnect={onConnect}
-                  onConnectionChange={onConnectionChange}
-                  disabled={isResponding}
-                  onReconnect={onReconnect}
-                  onReplace={onReplace}
-                  onRequestReplace={requestReplacement}
-                  onRequestAddApiKey={requestAddApiKey}
-                  onRemove={onRemove}
-                />
-              </div>
-            </DialogBody>
-          </>
-        )}
+      <DialogContent className="w-160">
+        <DialogHeader>
+          <DialogTitle tabIndex={-1} ref={configurationTitleRef}>
+            {t(($) => $['connections.configure.title'], { ns: 'share' })}
+          </DialogTitle>
+          {isResponding && (
+            <DialogDescription>
+              {t(($) => $['connections.configure.runningDescription'], { ns: 'share' })}
+            </DialogDescription>
+          )}
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
+          <div className="px-1 py-3">
+            <RequiredServices
+              services={services}
+              onConnect={onConnect}
+              onConnectionChange={onConnectionChange}
+              disabled={isResponding}
+              onReconnect={onReconnect}
+              onReplace={onReplace}
+              onRequestReplace={requestReplacement}
+              onRequestAddApiKey={requestAddApiKey}
+              onRemove={onRemove}
+            />
+          </div>
+        </DialogBody>
       </DialogContent>
+      {apiKeyEditor && (
+        <ApiKeyDialog
+          key={`${apiKeyEditor.mode}:${apiKeyEditor.serviceId}:${apiKeyEditor.mode === 'replace' ? apiKeyEditor.connectionId : ''}`}
+          mode={apiKeyEditor.mode}
+          connectionName={apiKeyEditor.mode === 'replace' ? apiKeyEditor.name : ''}
+          readmeUrl={apiKeyEditor.readmeUrl}
+          open={apiKeyEditorOpen}
+          onOpenChange={setApiKeyEditorOpen}
+          onCloseComplete={() => setApiKeyEditor(null)}
+          onSave={(values) =>
+            apiKeyEditor.mode === 'add'
+              ? onConnect(apiKeyEditor.serviceId, 'api-key', values)
+              : onReplace?.(apiKeyEditor.serviceId, apiKeyEditor.connectionId, values)
+          }
+          finalFocus={configurationTitleRef}
+          disabled={isResponding || (apiKeyEditor.mode === 'replace' && !onReplace)}
+        />
+      )}
     </Dialog>
   )
 }

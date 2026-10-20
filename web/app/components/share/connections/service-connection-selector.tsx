@@ -129,6 +129,8 @@ export default function ServiceConnectionSelector({
   const methodId = useId()
   const selectedNameId = useId()
   const triggerRef = useRef<HTMLButtonElement>(null)
+  // Opening an editor transfers focus to it instead of restoring the closing popover trigger.
+  const skipReturnFocusRef = useRef(false)
   const [editor, setEditor] = useState<
     { mode: 'add' } | { mode: 'replace'; connection: Connection } | null
   >(null)
@@ -142,7 +144,11 @@ export default function ServiceConnectionSelector({
 
   return (
     <>
-      <Popover>
+      <Popover
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) skipReturnFocusRef.current = false
+        }}
+      >
         <PopoverTrigger
           ref={triggerRef}
           render={<Button variant="ghost" focusableWhenDisabled />}
@@ -194,6 +200,7 @@ export default function ServiceConnectionSelector({
           />
         </PopoverTrigger>
         <PopoverContent
+          finalFocus={() => (skipReturnFocusRef.current ? false : triggerRef.current)}
           placement="bottom-end"
           sideOffset={4}
           aria-label={
@@ -246,6 +253,7 @@ export default function ServiceConnectionSelector({
                           aria-describedby={accountLabelId}
                           onClick={() => {
                             if (disabled || !onReplace) return
+                            skipReturnFocusRef.current = true
                             if (onRequestReplace) {
                               onRequestReplace(service.id, connection.id)
                               return
@@ -315,6 +323,7 @@ export default function ServiceConnectionSelector({
                 }
                 onClick={() => {
                   if (disabled) return
+                  skipReturnFocusRef.current = true
                   if (onRequestAddApiKey) {
                     onRequestAddApiKey(service.id)
                     return
