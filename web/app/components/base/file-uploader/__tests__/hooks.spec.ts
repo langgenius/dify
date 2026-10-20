@@ -5,6 +5,7 @@ import { ORPCError } from '@orpc/client'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { toast } from '@/app/notifications'
+import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { uploadRemoteFileInfo } from '@/service/common'
 import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } from '@/service/share'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
@@ -88,6 +89,8 @@ function setup({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  window.history.replaceState({}, '', '/')
+  captureAppAccessScope()
   navigation.params = {}
   navigation.pathname = '/chat'
   vi.spyOn(toast, 'error').mockReturnValue('toast-id')
@@ -347,3 +350,39 @@ it('advances pending remote progress only to 80 percent and completes from the r
     }),
   )
 })
+
+it.each(['local', 'retry', 'remote'] as const)(
+  'settles a denied or cancelled %s upload without duplicate error feedback',
+  async (uploadKind) => {
+    for (const cancelled of [false, true]) {
+      const error = cancelled
+        ? new DOMException('Upload cancelled', 'AbortError')
+        : new ORPCError('ip_access_denied', { status: 403 })
+      if (!cancelled) {
+        window.history.replaceState({}, '', '/chat/restricted-app')
+        handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope(), error)
+      }
+      const { result, unmount } = setup({ files: uploadKind === 'retry' ? [entity('retry')] : [] })
+      if (uploadKind === 'remote') {
+        vi.mocked(uploadRemoteFileInfo).mockRejectedValueOnce(error)
+        await act(async () => result.current.handleLoadFileFromLink('https://example.com/file'))
+        expect(result.current.files).toEqual([])
+      } else {
+        if (uploadKind === 'retry') act(() => result.current.handleReUploadFile('retry'))
+        else {
+          act(() =>
+            result.current.handleLocalFileUpload(
+              new File(['a'], 'one.txt', { type: 'text/plain' }),
+            ),
+          )
+          await waitFor(() => expect(fileUpload).toHaveBeenCalled())
+        }
+        act(() => vi.mocked(fileUpload).mock.calls.at(-1)![0].onErrorCallback(error))
+        expect(result.current.files[0]?.progress).toBe(-1)
+      }
+      expect(toast.error).not.toHaveBeenCalled()
+      unmount()
+      vi.mocked(fileUpload).mockClear()
+    }
+  },
+)

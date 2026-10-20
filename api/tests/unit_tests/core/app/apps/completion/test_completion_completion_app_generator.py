@@ -135,7 +135,7 @@ def _persist_message(
 @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
 class TestCompletionAppGenerator:
     def test_generate_invalid_query_type(self, generator, sqlite_session: Session):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="query must be a string"):
             generator.generate(
                 session=sqlite_session,
                 app_model=_build_app_model(),
@@ -146,7 +146,7 @@ class TestCompletionAppGenerator:
             )
 
     def test_generate_override_not_debugger(self, generator, sqlite_session: Session):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="^$"):
             generator.generate(
                 session=sqlite_session,
                 app_model=_build_app_model(),
@@ -383,7 +383,7 @@ class TestCompletionAppGenerator:
         app_model.app_model_config_id = current_config.id
         _persist_message(sqlite_session)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Message app_model_config is None"):
             generator.generate_more_like_this(
                 session=sqlite_session,
                 app_model=app_model,

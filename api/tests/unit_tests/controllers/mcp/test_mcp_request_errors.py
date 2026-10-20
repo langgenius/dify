@@ -39,7 +39,7 @@ def client(app: Flask) -> FlaskClient:
     return app.test_client()
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def published_server(sqlite_session: Session) -> AppMCPServer:
     app_id = str(uuid4())
     tenant_id = str(uuid4())

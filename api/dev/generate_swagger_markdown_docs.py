@@ -20,8 +20,11 @@ API_ROOT = Path(__file__).resolve().parents[1]
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
-from dev.generate_fastopenapi_specs import FASTOPENAPI_SPEC_TARGETS, generate_fastopenapi_specs
-from dev.generate_swagger_specs import SPEC_TARGETS, generate_specs
+# Import after script path setup.
+from dev.generate_fastopenapi_specs import FASTOPENAPI_SPEC_TARGETS, generate_fastopenapi_specs  # noqa: E402
+
+# Import after script path setup.
+from dev.generate_swagger_specs import SPEC_TARGETS, generate_specs  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -291,6 +294,13 @@ def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
             text=True,
         )
         if result.returncode != 0:
+            logger.error(
+                "swagger-markdown failed for %s (exit code %s)\nstdout:\n%s\nstderr:\n%s",
+                spec_path,
+                result.returncode,
+                result.stdout,
+                result.stderr,
+            )
             raise subprocess.CalledProcessError(
                 result.returncode,
                 result.args,

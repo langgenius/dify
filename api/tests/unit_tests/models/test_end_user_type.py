@@ -28,14 +28,14 @@ def test_end_user_type_is_plain_persisted_value_enum() -> None:
 
 
 def test_end_user_type_rejects_legacy_service_api_value() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="'service_api' is not a valid EndUserType"):
         EndUserType("service_api")
 
     assert EndUserType("service-api") is EndUserType.SERVICE_API
 
 
 def test_end_user_type_still_rejects_unknown_values() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="'not\\-a\\-real\\-end\\-user\\-type' is not a valid EndUserType"):
         EndUserType("not-a-real-end-user-type")
 
 

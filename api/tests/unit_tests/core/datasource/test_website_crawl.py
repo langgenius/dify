@@ -195,7 +195,7 @@ class TestWebsiteCrawlDatasourcePlugin:
 
         datasource_params = {"url": "https://example.com", "max_depth": 2}
 
-        result = plugin.get_website_crawl(
+        plugin.get_website_crawl(
             user_id="test_user", datasource_parameters=datasource_params, provider_type="watercrawl"
         )
 
@@ -576,7 +576,7 @@ class TestWebsiteService:
         }
 
         mock_response = httpx.Response(200, json={"code": 200, "data": {"taskId": "task-789"}})
-        mock_httpx_post = mocker.patch(
+        mocker.patch(
             "services.data_source.website_service._adaptive_http_client.post",
             return_value=mock_response,
         )
@@ -724,7 +724,6 @@ class TestRobotsTxtRespect:
         This test verifies the provider is initialized correctly.
         """
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
-        mock_instance = mock_client.return_value
 
         provider = WaterCrawlProvider(api_key="test_key", base_url="https://app.watercrawl.dev/")
 
@@ -779,7 +778,7 @@ class TestContentExtraction:
 
     def test_structure_data_with_metadata(self, mocker: MockerFixture) -> None:
         """Test that content is properly structured with metadata."""
-        mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
+        mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
 
         provider = WaterCrawlProvider(api_key="test_key")
 
@@ -804,7 +803,7 @@ class TestContentExtraction:
 
     def test_structure_data_fallback_title(self, mocker: MockerFixture) -> None:
         """Test that fallback title is used when og:title is not available."""
-        mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
+        mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
 
         provider = WaterCrawlProvider(api_key="test_key")
 
@@ -819,7 +818,7 @@ class TestContentExtraction:
 
     def test_structure_data_invalid_result(self, mocker: MockerFixture) -> None:
         """Test that ValueError is raised for invalid result objects."""
-        mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
+        mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
 
         provider = WaterCrawlProvider(api_key="test_key")
 
@@ -903,10 +902,9 @@ class TestErrorHandling:
         """Test that missing API key is handled properly at the httpx client level."""
         # Mock the client to avoid actual httpx initialization
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
-        mock_instance = mock_client.return_value
 
         # Create provider with mocked client - should work with mock
-        provider = WaterCrawlProvider(api_key="test_key")
+        WaterCrawlProvider(api_key="test_key")
 
         # Verify the client was initialized with the API key
         mock_client.assert_called_once_with("test_key", None)
@@ -1462,7 +1460,7 @@ class TestProviderSpecificFeatures:
         mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
 
         # Create provider without specifying base_url
-        provider = WaterCrawlProvider(api_key="test_key")
+        WaterCrawlProvider(api_key="test_key")
 
         # Verify default base URL is used
         mock_client.assert_called_once_with("test_key", None)
@@ -1734,7 +1732,7 @@ class TestEdgeCasesAndBoundaries:
         Not all pages have complete metadata, so extraction should
         handle missing fields gracefully.
         """
-        mock_client = mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
+        mocker.patch("core.rag.extractor.watercrawl.provider.WaterCrawlAPIClient")
 
         provider = WaterCrawlProvider(api_key="test_key")
 

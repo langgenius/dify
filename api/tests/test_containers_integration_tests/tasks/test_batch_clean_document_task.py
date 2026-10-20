@@ -590,7 +590,7 @@ class TestBatchCleanDocumentTask:
                 )
                 assert deleted_segment is None
 
-            except Exception as e:
+            except Exception:
                 # If the task fails due to external service issues (e.g., plugin daemon),
                 # we should still verify that the database state is consistent
                 # This is a common scenario in test environments where external services may not be available
