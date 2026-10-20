@@ -491,6 +491,8 @@ Check login status
 | ---- | ----------- | ------ |
 | 200 | Login status | **application/json**: [LoginStatusResponse](#loginstatusresponse)<br> |
 | 401 | Login status | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | Web app access service unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /logout

@@ -2,6 +2,8 @@ import type { ChatConfig, ChatItemInTree } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { act } from '@testing-library/react'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
+import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
@@ -45,6 +47,15 @@ const createAbortControllerMock = () => {
   const controller = new AbortController()
   vi.spyOn(controller, 'abort')
   return controller
+}
+const createDeferred = <T,>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, resolve, reject }
 }
 const createPausedChatTree = (): ChatItemInTree[] => [
   {
@@ -96,6 +107,8 @@ type HookCallbacks = {
 describe('useChat', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.history.replaceState({}, '', '/')
+    captureAppAccessScope()
     vi.mocked(ssePost).mockReset().mockResolvedValue(undefined)
     vi.mocked(sseGet).mockReset().mockResolvedValue(undefined)
     audio.getAudioPlayer
@@ -889,6 +902,215 @@ describe('useChat', () => {
         expect.objectContaining({ id: 'f-2', url: 'doc.pdf' }),
       ])
     })
+
+    it('should retain the streamed answer and original settlement when history fails', async () => {
+      const historyError = new Response(null, { status: 503 })
+      const onGetConversationMessages = vi.fn().mockRejectedValue(historyError)
+      const onGetSuggestedQuestions = vi.fn()
+      const onConversationComplete = vi.fn()
+      const onSendSettled = vi.fn()
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat({
+          suggested_questions_after_answer: { enabled: true },
+        } as ChatConfig),
+      )
+
+      act(() => {
+        result.current.handleSend(
+          'chat-messages',
+          { query: 'test' },
+          {
+            onGetConversationMessages,
+            onGetSuggestedQuestions,
+            onConversationComplete,
+            onSendSettled,
+          },
+        )
+      })
+      const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+      await act(async () => {
+        callbacks.onData('Streamed answer', true, {
+          messageId: 'answer-1',
+          conversationId: 'conversation-1',
+        })
+        await expect(callbacks.onCompleted()).resolves.toBeUndefined()
+      })
+
+      expect(result.current.chatList.at(-1)?.content).toBe('Streamed answer')
+      expect(result.current.isResponding).toBe(false)
+      expect(onGetSuggestedQuestions).not.toHaveBeenCalled()
+      expect(onConversationComplete).not.toHaveBeenCalled()
+      expect(onSendSettled).toHaveBeenCalledExactlyOnceWith(undefined)
+      expect(toast.error).not.toHaveBeenCalled()
+    })
+
+    it.each(['denied', 'navigation', 'new request', 'stop', 'unmount'] as const)(
+      'should ignore history results after %s',
+      async (transition) => {
+        window.history.replaceState({}, '', '/agent/history-test')
+        const scope = captureAppAccessScope()
+        const history = createDeferred<unknown>()
+        const onGetConversationMessages = vi.fn(() => history.promise)
+        const onGetSuggestedQuestions = vi.fn()
+        const onConversationComplete = vi.fn()
+        const onSendSettled = vi.fn()
+        const { result, unmount } = renderHookWithConsoleQuery(() =>
+          useChat(
+            { suggested_questions_after_answer: { enabled: true } } as ChatConfig,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            { isNewAgent: true },
+          ),
+        )
+
+        act(() => {
+          result.current.handleSend(
+            'chat-messages',
+            { query: 'test' },
+            {
+              isPublicAPI: true,
+              onGetConversationMessages,
+              onGetSuggestedQuestions,
+              onConversationComplete,
+              onSendSettled,
+            },
+          )
+        })
+        const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+        let completion: ReturnType<HookCallbacks['onCompleted']>
+        act(() => {
+          callbacks.onData('Streamed answer', true, {
+            messageId: 'answer-1',
+            conversationId: 'conversation-1',
+          })
+          completion = callbacks.onCompleted()
+        })
+        expect(onGetConversationMessages).toHaveBeenCalledOnce()
+
+        act(() => {
+          if (transition === 'navigation') window.history.replaceState({}, '', '/agent/another-app')
+          if (transition === 'new request')
+            result.current.handleSend(
+              'chat-messages',
+              { query: 'next question' },
+              { isPublicAPI: true },
+            )
+          if (transition === 'stop') result.current.handleStop()
+          if (transition === 'unmount') unmount()
+          if (transition === 'denied')
+            handleAppAccessError(403, { code: 'ip_access_denied' }, scope)
+        })
+        const chatListBeforeHistory = result.current.chatList
+        await act(async () => {
+          history.resolve({ data: [{ id: 'answer-1', answer: 'Late history answer' }] })
+          await completion
+        })
+
+        expect(result.current.chatList).toEqual(chatListBeforeHistory)
+        expect(onGetSuggestedQuestions).not.toHaveBeenCalled()
+        expect(onConversationComplete).not.toHaveBeenCalled()
+        expect(onSendSettled).not.toHaveBeenCalled()
+        expect(toast.error).not.toHaveBeenCalled()
+      },
+    )
+
+    it.each(['denied', 'navigation', 'unmount'] as const)(
+      'should consume history rejection after %s without completion callbacks',
+      async (transition) => {
+        window.history.replaceState({}, '', '/agent/history-rejection')
+        const scope = captureAppAccessScope()
+        const history = createDeferred<unknown>()
+        const onGetSuggestedQuestions = vi.fn()
+        const onConversationComplete = vi.fn()
+        const onSendSettled = vi.fn()
+        const { result, unmount } = renderHookWithConsoleQuery(() => useChat())
+        act(() => {
+          result.current.handleSend(
+            'chat-messages',
+            { query: 'test' },
+            {
+              isPublicAPI: true,
+              onGetConversationMessages: () => history.promise,
+              onGetSuggestedQuestions,
+              onConversationComplete,
+              onSendSettled,
+            },
+          )
+        })
+        const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+        let completion: ReturnType<HookCallbacks['onCompleted']>
+        act(() => {
+          callbacks.onData('Streamed answer', true, {
+            messageId: 'answer-1',
+            conversationId: 'conversation-1',
+          })
+          completion = callbacks.onCompleted()
+        })
+
+        await act(async () => {
+          const error = new Response(null, { status: transition === 'denied' ? 403 : 503 })
+          if (transition === 'denied')
+            handleAppAccessError(403, { code: 'ip_access_denied' }, scope, error)
+          if (transition === 'navigation') window.history.replaceState({}, '', '/chat/another-app')
+          if (transition === 'unmount') unmount()
+          history.reject(error)
+          await expect(completion).resolves.toBeUndefined()
+        })
+
+        expect(result.current.chatList.at(-1)?.content).toBe('Streamed answer')
+        expect(onGetSuggestedQuestions).not.toHaveBeenCalled()
+        expect(onConversationComplete).not.toHaveBeenCalled()
+        expect(onSendSettled).not.toHaveBeenCalled()
+        expect(toast.error).not.toHaveBeenCalled()
+      },
+    )
+
+    it.each(['resolve', 'reject'] as const)(
+      'should ignore a suggested question %s after navigation',
+      async (outcome) => {
+        window.history.replaceState({}, '', '/agent/suggestions-test')
+        const suggestions = createDeferred<unknown>()
+        const onSendSettled = vi.fn()
+        const { result } = renderHookWithConsoleQuery(() =>
+          useChat({
+            suggested_questions_after_answer: { enabled: true },
+          } as ChatConfig),
+        )
+        act(() => {
+          result.current.handleSend(
+            'chat-messages',
+            { query: 'test' },
+            {
+              isPublicAPI: true,
+              onGetSuggestedQuestions: () => suggestions.promise,
+              onSendSettled,
+            },
+          )
+        })
+        const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+        let completion: ReturnType<HookCallbacks['onCompleted']>
+        act(() => {
+          callbacks.onData('Streamed answer', true, {
+            messageId: 'answer-1',
+            conversationId: 'conversation-1',
+          })
+          completion = callbacks.onCompleted()
+        })
+        await act(async () => {
+          window.history.replaceState({}, '', '/agent/another-app')
+          if (outcome === 'resolve') suggestions.resolve({ data: ['Late suggestion'] })
+          else suggestions.reject(new Error('Late failure'))
+          await completion
+        })
+
+        expect(result.current.suggestedQuestions).toEqual([])
+        expect(onSendSettled).not.toHaveBeenCalled()
+      },
+    )
 
     it.each([
       ['UTC', '10:00 AM'],
@@ -2055,6 +2277,71 @@ describe('useChat', () => {
   })
 
   describe('handleStop and handleRestart', () => {
+    it.each(['rejection', 'throw'] as const)(
+      'should finish stopping locally after a service %s',
+      async (failure) => {
+        const error = new Error('Stop request failed')
+        const stopChat = vi.fn(() => {
+          if (failure === 'throw') throw error
+          return Promise.reject(error)
+        })
+        const { result, unmount } = renderHookWithConsoleQuery(() =>
+          useChat(undefined, undefined, undefined, stopChat),
+        )
+        act(() => {
+          result.current.handleSend('chat-messages', { query: 'test' }, {})
+        })
+        const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+        const controller = createAbortControllerMock()
+        await act(async () => {
+          callbacks.onWorkflowStarted({ task_id: 'task-123' })
+          callbacks.getAbortController(controller)
+          result.current.handleStop()
+        })
+
+        expect(result.current.isResponding).toBe(false)
+        expect(controller.abort).toHaveBeenCalledOnce()
+        expect(toast.error).not.toHaveBeenCalled()
+        unmount()
+      },
+    )
+
+    it.each([false, true])(
+      'should consume a rejected stop request when unmounted is %s',
+      async (shouldUnmount) => {
+        window.history.replaceState({}, '', '/agent/stop-test')
+        const scope = captureAppAccessScope()
+        const error = new Response(null, { status: 403 })
+        const stopRequest = createDeferred<void>()
+        const stopChat = vi.fn(() => stopRequest.promise)
+        const { result, unmount } = renderHookWithConsoleQuery(() =>
+          useChat(undefined, undefined, undefined, stopChat),
+        )
+
+        act(() => {
+          result.current.handleSend('chat-messages', { query: 'test' }, { isPublicAPI: true })
+        })
+        const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+        const controller = createAbortControllerMock()
+        act(() => {
+          callbacks.onWorkflowStarted({ task_id: 'task-123' })
+          callbacks.getAbortController(controller)
+          result.current.handleStop()
+        })
+
+        expect(stopChat).toHaveBeenCalledWith('task-123')
+        expect(result.current.isResponding).toBe(false)
+        expect(controller.abort).toHaveBeenCalledOnce()
+
+        await act(async () => {
+          if (shouldUnmount) unmount()
+          handleAppAccessError(403, { code: 'ip_access_denied' }, scope, error)
+          stopRequest.reject(error)
+        })
+        expect(toast.error).not.toHaveBeenCalled()
+      },
+    )
+
     it('clears messages and suggested questions when restarting', async () => {
       const cb = vi.fn()
       const { result } = renderHookWithConsoleQuery(() =>
