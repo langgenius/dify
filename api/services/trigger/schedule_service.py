@@ -218,7 +218,7 @@ class ScheduleService:
         try:
             graph_data = workflow.graph_dict
         except (json.JSONDecodeError, TypeError, AttributeError) as e:
-            raise ScheduleConfigError(f"Failed to parse workflow graph: {e}")
+            raise ScheduleConfigError(f"Failed to parse workflow graph: {e}") from e
 
         if not graph_data:
             raise ScheduleConfigError("Workflow graph is empty")

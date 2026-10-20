@@ -1645,7 +1645,7 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from graphon.graph_events import NodeRunSucceededEvent
+            from graphon.engine_events import NodeRunSucceededEvent
             from graphon.node_events import NodeRunResult
 
             node = _ExecutedNode(
@@ -1714,7 +1714,7 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from graphon.graph_events import NodeRunFailedEvent
+            from graphon.engine_events import NodeRunFailedEvent
             from graphon.node_events import NodeRunResult
 
             node = _ExecutedNode(
@@ -1778,7 +1778,7 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from graphon.graph_events import NodeRunFailedEvent
+            from graphon.engine_events import NodeRunFailedEvent
             from graphon.node_events import NodeRunResult
 
             node = _ExecutedNode(

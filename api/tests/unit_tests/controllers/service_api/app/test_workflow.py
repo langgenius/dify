@@ -35,8 +35,6 @@ from controllers.service_api.app.error import (
     WorkflowVersionExecutionNotAllowedError,
 )
 from controllers.service_api.app.workflow import (
-    AppQueueManager,
-    GraphEngineManager,
     WorkflowAppLogApi,
     WorkflowLogQuery,
     WorkflowRunApi,
@@ -725,9 +723,8 @@ class TestWorkflowTaskStopApi:
 
     def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         stop_mock = Mock()
-        send_mock = Mock()
-        monkeypatch.setattr(AppQueueManager, "set_stop_flag_no_user_check", stop_mock)
-        monkeypatch.setattr(GraphEngineManager, "send_stop_command", send_mock)
+        workflow_module = sys.modules["controllers.service_api.app.workflow"]
+        monkeypatch.setattr(workflow_module.AppTaskService, "stop_workflow_task", stop_mock)
 
         api = WorkflowTaskStopApi()
         handler = unwrap(api.post)
@@ -738,8 +735,13 @@ class TestWorkflowTaskStopApi:
             response = handler(api, app_model=app_model, end_user=end_user, task_id="t1")
 
         assert response == {"result": "success"}
-        stop_mock.assert_called_once_with("t1")
-        send_mock.assert_called_once_with("t1")
+        stop_mock.assert_called_once_with(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            task_id="t1",
+            app_mode=AppMode.WORKFLOW,
+            owner=None,
+        )
 
 
 class TestWorkflowAppLogApi:

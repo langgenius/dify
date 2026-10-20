@@ -90,7 +90,7 @@ def handle_webhook(webhook_id: str):
             }
         ), 429
     except ValueError as error:
-        raise NotFound(str(error))
+        raise NotFound(str(error)) from error
     except RequestEntityTooLarge:
         raise
     except Exception as e:
@@ -161,7 +161,7 @@ def handle_webhook_debug(webhook_id: str):
         return jsonify(response_data), status_code
 
     except ValueError as e:
-        raise NotFound(str(e))
+        raise NotFound(str(e)) from e
     except RequestEntityTooLarge:
         raise
     except Exception:
