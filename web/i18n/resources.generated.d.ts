@@ -571,7 +571,6 @@ export default interface Resources {
     duplicateTitle: 'Duplicate App'
     editApp: 'Edit Info'
     editAppTitle: 'Edit App Info'
-    editFailed: 'Failed to update app info'
     exportApp: 'Export App'
     exportFailed: 'Export failed'
     'exportSecret.description': 'If selected, secret values will be included in the exported app package.'
