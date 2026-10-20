@@ -22,7 +22,9 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import {
   isCurrentWorkspaceDatasetOperatorAtom,
   isCurrentWorkspaceManagerAtom,
+  isCurrentWorkspaceOwnerAtom,
 } from '@/context/workspace-state'
+import { env } from '@/env'
 import { canReadNetworkAccessAtom } from '@/features/network-access/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -33,6 +35,7 @@ import IpPoliciesPage from './ip-policies-page'
 import MembersPage from './members-page'
 import PermissionsPage from './permissions-page'
 import PreferencePage from './preference-page'
+import ResourceAccessTokenPage from './resource-access-token-page'
 import WorkflowLogArchivesPage from './workflow-log-archives-page'
 
 const iconClassName = `
@@ -75,8 +78,10 @@ export default function AccountSetting({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
+  const canViewAccessTokens = env.NEXT_PUBLIC_ENABLE_ACCESS_TOKEN && isCurrentWorkspaceOwner
   const canManageWorkspaceRoles =
     isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const canViewBilling =
@@ -96,6 +101,8 @@ export default function AccountSetting({
         activeTab === ACCOUNT_SETTING_TAB.PERMISSION_SET) &&
       !canManageWorkspaceRoles
     )
+      return ACCOUNT_SETTING_TAB.MEMBERS
+    if (activeTab === ACCOUNT_SETTING_TAB.ACCESS_TOKEN && !canViewAccessTokens)
       return ACCOUNT_SETTING_TAB.MEMBERS
     return activeTab
   })()
@@ -126,6 +133,13 @@ export default function AccountSetting({
       description: t(($) => $['settings.permissionSetDescription'], { ns: 'navigation' }),
       icon: <span className={cn('i-ri-lock-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-lock-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.ACCESS_TOKEN,
+      name: t(($) => $['settings.accessToken'], { ns: 'navigation' }),
+      description: t(($) => $['settings.accessTokenDescription'], { ns: 'navigation' }),
+      icon: <span className={cn('i-ri-key-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-key-2-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.BILLING,
@@ -167,6 +181,8 @@ export default function AccountSetting({
       visibleTabs.push(ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS)
       visibleTabs.push(ACCOUNT_SETTING_TAB.PERMISSION_SET)
     }
+
+    if (canViewAccessTokens) visibleTabs.push(ACCOUNT_SETTING_TAB.ACCESS_TOKEN)
 
     if (canViewBilling) visibleTabs.push(ACCOUNT_SETTING_TAB.BILLING)
 
@@ -283,6 +299,7 @@ export default function AccountSetting({
                       <PermissionsPage containerRef={scrollContainerRef} />
                     )}
                     {activeMenu === ACCOUNT_SETTING_TAB.PERMISSION_SET && <AccessRulesPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.ACCESS_TOKEN && <ResourceAccessTokenPage />}
                     {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
                     {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && (
                       <WorkflowLogArchivesPage />

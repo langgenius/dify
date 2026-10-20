@@ -1,6 +1,10 @@
-import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
-import type { NetworkAccessPoint } from '@/app/components/app/access-point/access-control/network-access'
+import type {
+  AppMode,
+  AppNetworkAccessGroupResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import { trackEvent } from '@/app/components/base/amplitude'
+
+type NetworkAccessPoint = AppNetworkAccessGroupResponse['available_access_points'][number]
 
 export type AccessControlAnalyticsContext = {
   app_id: string

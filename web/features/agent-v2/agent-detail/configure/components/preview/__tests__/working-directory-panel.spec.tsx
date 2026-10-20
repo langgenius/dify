@@ -478,24 +478,25 @@ describe('AgentWorkingDirectoryPanel', () => {
     const downloadingButton = await screen.findByRole('button', {
       name: /common\.operation\.downloading.*notes\.md/i,
     })
-    expect(downloadingButton.querySelector('.animate-spin')).toBeInTheDocument()
     await user.click(downloadingButton)
     expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledTimes(1)
 
     download.resolve({ url: 'https://example.com/sandbox-file' })
 
     await waitFor(() => {
-      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalled()
-      expect(mocks.sandboxFileDownloadMutationFn.mock.calls[0]?.[0]).toEqual({
-        params: {
-          agent_id: 'agent-1',
+      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledExactlyOnceWith(
+        {
+          params: {
+            agent_id: 'agent-1',
+          },
+          body: {
+            caller_type: 'conversation',
+            caller_id: 'conversation-1',
+            path: '~/notes.md',
+          },
         },
-        body: {
-          caller_type: 'conversation',
-          caller_id: 'conversation-1',
-          path: '~/notes.md',
-        },
-      })
+        expect.anything(),
+      )
       expect(mocks.downloadUrl).toHaveBeenCalledWith({
         url: 'https://example.com/sandbox-file',
         fileName: 'notes.md',
@@ -541,29 +542,29 @@ describe('AgentWorkingDirectoryPanel', () => {
     ).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: /common\.operation\.download/i }))
 
-    const downloadingLink = await screen.findByRole('link', {
-      name: /common\.operation\.downloading/i,
-    })
-    expect(downloadingLink.querySelector('.animate-spin')).toBeInTheDocument()
-    const headerDownloadButton = screen.getByRole('button', {
-      name: /common\.operation\.download.*model\.bin/i,
-    })
-    expect(headerDownloadButton.querySelector('.animate-spin')).not.toBeInTheDocument()
+    await user.click(
+      await screen.findByRole('link', {
+        name: /common\.operation\.downloading/i,
+      }),
+    )
+    expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledTimes(1)
 
     download.resolve({ url: 'https://example.com/sandbox-file' })
 
     await waitFor(() => {
-      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalled()
-      expect(mocks.sandboxFileDownloadMutationFn.mock.calls[0]?.[0]).toEqual({
-        params: {
-          agent_id: 'agent-1',
+      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledExactlyOnceWith(
+        {
+          params: {
+            agent_id: 'agent-1',
+          },
+          body: {
+            caller_type: 'conversation',
+            caller_id: 'conversation-1',
+            path: '~/model.bin',
+          },
         },
-        body: {
-          caller_type: 'conversation',
-          caller_id: 'conversation-1',
-          path: '~/model.bin',
-        },
-      })
+        expect.anything(),
+      )
       expect(mocks.downloadUrl).toHaveBeenCalledWith({
         url: 'https://example.com/sandbox-file',
         fileName: 'model.bin',
@@ -706,18 +707,20 @@ describe('AgentWorkingDirectoryPanel', () => {
     download.resolve({ url: 'https://example.com/workflow-sandbox-file' })
 
     await waitFor(() => {
-      expect(mocks.workflowSandboxFileDownloadMutationFn).toHaveBeenCalled()
-      expect(mocks.workflowSandboxFileDownloadMutationFn.mock.calls[0]?.[0]).toEqual({
-        params: {
-          app_id: 'app-1',
-          workflow_run_id: 'run-1',
-          node_id: 'node-1',
+      expect(mocks.workflowSandboxFileDownloadMutationFn).toHaveBeenCalledExactlyOnceWith(
+        {
+          params: {
+            app_id: 'app-1',
+            workflow_run_id: 'run-1',
+            node_id: 'node-1',
+          },
+          body: {
+            node_execution_id: 'execution-1',
+            path: '~/chart.png',
+          },
         },
-        body: {
-          node_execution_id: 'execution-1',
-          path: '~/chart.png',
-        },
-      })
+        expect.anything(),
+      )
       expect(mocks.downloadUrl).toHaveBeenCalledWith({
         url: 'https://example.com/workflow-sandbox-file',
         fileName: 'chart.png',

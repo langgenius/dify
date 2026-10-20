@@ -12,8 +12,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.db.session_factory import session_factory
 from enums import DeploymentEdition
+from extensions.application_services.resource_access_token import build_resource_access_token_cleanup_service
 from extensions.ext_database import db
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from models import (
@@ -52,6 +54,7 @@ from models.workflow import (
 )
 from repositories.factory import DifyAPIRepositoryFactory
 from services.api_token_service import ApiTokenCache
+from services.app_storage_cleanup_service import cleanup_app_storage
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +92,7 @@ def cleanup_app_network_access_group_binding_task(self, tenant_id: str, app_id: 
             "Failed to clean up App network access group binding",
             extra={"tenant_id": tenant_id, "app_id": app_id, "retry_countdown": countdown},
         )
-        raise self.retry(exc=e, countdown=countdown)
+        raise self.retry(exc=e, countdown=countdown) from e
 
 
 def _schedule_app_network_access_group_binding_cleanup(tenant_id: str, app_id: str) -> None:
@@ -112,11 +115,15 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         # Schedule the independent high-retry SaaS cleanup before legacy local
         # cleanup so a later local failure cannot strand the binding.
         _schedule_app_network_access_group_binding_cleanup(tenant_id, app_id)
+        # Preserve ownership records until storage cleanup succeeds, so retries
+        # can still locate files. External I/O runs outside DB transactions.
+        cleanup_app_storage(tenant_id, app_id)
         # Delete related data
         _delete_app_model_configs(tenant_id, app_id)
         _delete_app_site(tenant_id, app_id)
         _delete_app_mcp_servers(tenant_id, app_id)
         _delete_app_api_tokens(tenant_id, app_id)
+        _delete_app_resource_access_token_relations(tenant_id, app_id)
         _delete_installed_apps(tenant_id, app_id)
         _delete_app_stars(tenant_id, app_id)
         _delete_recommended_apps(tenant_id, app_id)
@@ -147,10 +154,10 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         logger.info(click.style(f"App and related data deleted: {app_id} latency: {end_at - start_at}", fg="green"))
     except SQLAlchemyError as e:
         logger.exception(click.style(f"Database error occurred while deleting app {app_id} and related data", fg="red"))
-        raise self.retry(exc=e, countdown=60)  # Retry after 60 seconds
+        raise self.retry(exc=e, countdown=60) from e  # Retry after 60 seconds
     except Exception as e:
         logger.exception(click.style(f"Error occurred while deleting app {app_id} and related data", fg="red"))
-        raise self.retry(exc=e, countdown=60)  # Retry after 60 seconds
+        raise self.retry(exc=e, countdown=60) from e  # Retry after 60 seconds
 
 
 def _delete_app_model_configs(tenant_id: str, app_id: str):
@@ -213,6 +220,14 @@ def _delete_app_api_tokens(tenant_id: str, app_id: str):
         del_api_token,
         "api token",
     )
+
+
+def _delete_app_resource_access_token_relations(tenant_id: str, app_id: str):
+    with session_factory.get_session_maker()() as session:
+        build_resource_access_token_cleanup_service(session=session).delete_resource_relations(
+            tenant_id=tenant_id, resource_type=ResourceAccessTokenResourceType.APP, resource_id=app_id
+        )
+        session.commit()
 
 
 def _delete_installed_apps(tenant_id: str, app_id: str):

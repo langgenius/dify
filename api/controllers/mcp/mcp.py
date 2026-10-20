@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any, Literal, get_args
 
 from flask import Response, request
 from flask_restx import Resource
@@ -12,11 +12,19 @@ from controllers.mcp import mcp_ns
 from core.db.session_factory import session_factory
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import handle_mcp_request, negotiate_protocol_version
+from fields.base import ResponseModel
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from libs import helper
 from models.enums import EndUserType
 from models.model import App, AppMCPServer, AppMode, EndUser
 from services.app.mcp_server_service import AppMCPServerStatus
+
+_MCP_METHODS = frozenset(
+    method
+    for message_type in (mcp_types.ClientRequest, mcp_types.ClientNotification)
+    for model in get_args(message_type.model_fields["root"].annotation)
+    for method in get_args(model.model_fields["method"].annotation)
+)
 
 
 class MCPRequestError(Exception):
@@ -42,7 +50,13 @@ class MCPRequestPayload(BaseModel):
     id: int | str | None = Field(default=None, description="Request ID for tracking responses")
 
 
-class MCPJSONRPCResponse(RootModel[mcp_types.JSONRPCResponse | mcp_types.JSONRPCError]):
+class MCPJSONRPCErrorResponse(ResponseModel):
+    jsonrpc: Literal["2.0"]
+    id: int | float | str | None
+    error: mcp_types.ErrorData
+
+
+class MCPJSONRPCResponse(RootModel[mcp_types.JSONRPCResponse | MCPJSONRPCErrorResponse]):
     pass
 
 
@@ -58,8 +72,8 @@ class MCPAppApi(Resource):
     @mcp_ns.doc(params={"server_code": "Unique identifier for the MCP server"})
     @mcp_ns.response(200, "MCP JSON-RPC response", mcp_ns.models[MCPJSONRPCResponse.__name__])
     @mcp_ns.response(202, "MCP notification accepted")
-    @mcp_ns.response(400, "Invalid MCP request or parameters")
-    @mcp_ns.response(404, "Server or app not found")
+    @mcp_ns.response(400, "Invalid MCP request or parameters", mcp_ns.models[MCPJSONRPCErrorResponse.__name__])
+    @mcp_ns.response(404, "Server or app not found", mcp_ns.models[MCPJSONRPCErrorResponse.__name__])
     def post(self, server_code: str):
         """Handle MCP requests for a specific server.
 
@@ -92,8 +106,22 @@ class MCPAppApi(Resource):
         # Allowed requests retain the existing full body/protocol parser. The
         # 64 KiB cap belongs only to opaque errors, not normal MCP invocations.
         args = MCPRequestPayload.model_validate(mcp_ns.payload or {})
-        request_id: Union[int, str] | None = args.id
-        mcp_request = self._parse_mcp_request(args.model_dump(exclude_none=True))
+        request_id: int | str | None = args.id
+        try:
+            mcp_request = self._parse_mcp_request(args.model_dump(exclude_none=True))
+        except MCPRequestError as e:
+            if "id" not in args.model_fields_set:
+                return Response("", status=202)
+            response = helper.compact_generate_response(
+                {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "error": {"code": e.error_code, "message": e.message},
+                }
+            )
+            # A legacy HTTP error lets modern clients fall back to initialize.
+            response.status_code = 400
+            return response
 
         is_initialize = isinstance(mcp_request.root, mcp_types.InitializeRequest)
         header_value = request.headers.get("MCP-Protocol-Version")
@@ -121,9 +149,7 @@ class MCPAppApi(Resource):
         except MCPServerNotFoundError:
             return mcp_server_not_found_response()
 
-    def _protocol_version_error_response(
-        self, request_id: Union[int, str] | None, header_value: str | None
-    ) -> Response:
+    def _protocol_version_error_response(self, request_id: int | str | None, header_value: str | None) -> Response:
         """Return a JSON-RPC error for an unsupported MCP-Protocol-Version header.
 
         Per JSON-RPC 2.0, an error whose request id is unknown uses a null id, so we echo the
@@ -162,7 +188,7 @@ class MCPAppApi(Resource):
     def _process_mcp_message(
         self,
         mcp_request: mcp_types.ClientRequest | mcp_types.ClientNotification,
-        request_id: Union[int, str] | None,
+        request_id: int | str | None,
         app: App,
         mcp_server: AppMCPServer,
         user_input_form: list[VariableEntity],
@@ -188,7 +214,7 @@ class MCPAppApi(Resource):
     def _handle_request(
         self,
         mcp_request: mcp_types.ClientRequest,
-        request_id: Union[int, str] | None,
+        request_id: int | str | None,
         app: App,
         mcp_server: AppMCPServer,
         user_input_form: list[VariableEntity],
@@ -226,7 +252,7 @@ class MCPAppApi(Resource):
         try:
             return self._convert_user_input_form(raw_user_input_form)
         except ValidationError as e:
-            raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid user_input_form: {str(e)}")
+            raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid user_input_form: {str(e)}") from e
 
     def _convert_user_input_form(self, raw_form: list[dict[str, Any]]) -> list[VariableEntity]:
         """Convert raw user input form to VariableEntity objects"""
@@ -256,13 +282,15 @@ class MCPAppApi(Resource):
 
     def _parse_mcp_request(self, args: dict[str, Any]) -> mcp_types.ClientRequest | mcp_types.ClientNotification:
         """Parse and validate MCP request"""
+        if args.get("method") not in _MCP_METHODS:
+            raise MCPRequestError(mcp_types.METHOD_NOT_FOUND, "Method not found")
         try:
             return mcp_types.ClientRequest.model_validate(args)
         except ValidationError:
             try:
                 return mcp_types.ClientNotification.model_validate(args)
             except ValidationError as e:
-                raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid MCP request: {str(e)}")
+                raise MCPRequestError(mcp_types.INVALID_PARAMS, "Invalid MCP request parameters") from e
 
     def _retrieve_end_user(self, tenant_id: str, mcp_server_id: str, session: Session) -> EndUser | None:
         """Get end user in the caller session"""
@@ -297,7 +325,7 @@ class MCPAppApi(Resource):
         mcp_request: mcp_types.ClientRequest,
         user_input_form: list[VariableEntity],
         session: Session,
-        request_id: Union[int, str],
+        request_id: int | str,
         protocol_version: str,
     ) -> mcp_types.JSONRPCResponse | mcp_types.JSONRPCError | None:
         """Handle MCP request and return response"""

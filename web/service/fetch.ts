@@ -1,8 +1,8 @@
 import type { AfterResponseHook, BeforeRequestHook, Hooks } from 'ky'
 import type { IOtherOptions } from './base'
-import type { AppAccessScope } from '@/features/app-access-error/state'
+import type { RequestGuard } from './request-guard'
 import Cookies from 'js-cookie'
-import ky, { HTTPError } from 'ky'
+import ky from 'ky'
 import {
   API_PREFIX,
   APP_VERSION,
@@ -14,15 +14,10 @@ import {
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
-import {
-  captureAppAccessRequest,
-  hasAppAccessError,
-  isAppAccessErrorResponse,
-  isAppAccessScopeCurrent,
-  throwIfAppAccessBlocked,
-} from '@/features/app-access-error/state'
 import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
+import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
+import { captureRequestGuard } from './request-guard'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
@@ -39,8 +34,8 @@ export const ContentType = {
 }
 
 export type FetchOptionType = Omit<RequestInit, 'body'> & {
-  params?: Record<string, any>
-  body?: BodyInit | Record<string, any> | null
+  params?: Record<string, string | number | boolean | undefined>
+  body?: BodyInit | Record<string, unknown> | null
 }
 
 const afterResponse204: AfterResponseHook = async ({ response }) => {
@@ -52,64 +47,31 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
   }
 }
 
-export type ResponseError = {
-  code: string
-  message: string
-  error?: string
-  reason?: string
-  status: number
-  client_ip?: string
-}
-
-const createResponseFromHTTPError = (error: HTTPError): Response => {
-  const headers = new Headers(error.response.headers)
-  headers.delete('content-length')
-
-  let body: BodyInit | null = null
-  if (typeof error.data === 'string') body = error.data
-  else if (error.data !== undefined) body = JSON.stringify(error.data)
-
-  if (body !== null && !headers.has('content-type')) headers.set('content-type', ContentType.json)
-
-  return new Response(body, {
-    status: error.response.status,
-    statusText: error.response.statusText,
-    headers,
-  })
-}
-
 const afterResponseErrorCode = (
   otherOptions: IOtherOptions,
-  appAccessScope: AppAccessScope | null,
-  appIdentity: boolean,
+  requestGuard: RequestGuard | undefined,
 ): AfterResponseHook => {
   return async ({ request, response }) => {
-    if (!/^[23]\d{2}$/.test(String(response.status))) {
-      let errorData: ResponseError | null = null
-      try {
-        const data: unknown = await response.clone().json()
-        errorData = data as ResponseError
-      } catch {}
+    if (isHttpErrorStatus(response.status)) {
+      const error = await httpErrorFromResponse(response)
+      const errorData = error.data
+      const handled = requestGuard?.handleError(response.status, errorData, error)
+      if (handled || requestGuard?.isActive() === false) throw error
       const shouldNotifyError =
+        response.status >= 400 &&
         response.status !== 401 &&
         errorData &&
         !otherOptions.silent &&
-        !(
-          appAccessScope &&
-          (!isAppAccessScopeCurrent(appAccessScope) || hasAppAccessError(appAccessScope))
-        ) &&
-        !(
-          appAccessScope &&
-          (response.status !== 404 || !appAccessScope.key.startsWith('form:')) &&
-          isAppAccessErrorResponse(response.status, errorData, appIdentity)
-        ) &&
         !shouldSuppressAppDeletionErrorToast(request.url, response.status)
 
-      const errorMessage = errorData?.message || errorData?.error
+      const errorMessage = [errorData?.message, errorData?.error].find(
+        (value): value is string => typeof value === 'string' && !!value.trim(),
+      )
       if (shouldNotifyError && errorMessage) notifyRequestError(request, errorMessage)
 
       if (response.status === 403 && errorData?.code === 'already_setup')
         globalThis.location.href = `${globalThis.location.origin}/signin`
+      throw error
     } else {
       clearRequestErrorToasts(request)
     }
@@ -134,6 +96,7 @@ const baseHooks: Hooks = {
 
 const baseClient = ky.create({
   hooks: baseHooks,
+  throwHttpErrors: isHttpErrorStatus,
   timeout: TIME_OUT,
 })
 
@@ -180,12 +143,8 @@ async function base<T>(
     fetchCompat = false,
     request,
   } = otherOptions
-  const { scope: appAccessScope, appIdentity } = captureAppAccessRequest(
-    url,
-    isPublicAPI,
-    request?.method || init.method,
-  )
-  throwIfAppAccessBlocked(appAccessScope)
+  const requestGuard = captureRequestGuard(url, isPublicAPI, request?.method || init.method)
+  requestGuard?.beforeRequest()
 
   const headers = new Headers(headersFromProps || {})
 
@@ -219,37 +178,31 @@ async function base<T>(
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
       afterResponse: [
         ...(baseHooks.afterResponse || []),
-        afterResponseErrorCode(otherOptions, appAccessScope, appIdentity),
+        afterResponseErrorCode(otherOptions, requestGuard),
       ],
     },
   })
 
-  let res: Response
-  try {
-    res = await client(request || fetchPathname, {
-      ...init,
-      headers,
-      credentials: isMarketplaceAPI ? 'omit' : options.credentials || 'include',
-      retry: {
-        methods: [],
-      },
-      ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
-      searchParams: !fetchCompat ? params : undefined,
-      fetch(resource: RequestInfo | URL, options?: RequestInit) {
-        if (resource instanceof Request && options) {
-          const mergedHeaders = new Headers(options.headers || {})
-          resource.headers.forEach((value, key) => {
-            mergedHeaders.append(key, value)
-          })
-          options.headers = mergedHeaders
-        }
-        return globalThis.fetch(resource, options)
-      },
-    })
-  } catch (error) {
-    if (error instanceof HTTPError) throw createResponseFromHTTPError(error)
-    throw error
-  }
+  const res = await client(request || fetchPathname, {
+    ...init,
+    headers,
+    credentials: isMarketplaceAPI ? 'omit' : options.credentials || 'include',
+    retry: {
+      methods: [],
+    },
+    ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
+    searchParams: !fetchCompat ? params : undefined,
+    fetch(resource: RequestInfo | URL, options?: RequestInit) {
+      if (resource instanceof Request && options) {
+        const mergedHeaders = new Headers(options.headers || {})
+        resource.headers.forEach((value, key) => {
+          mergedHeaders.append(key, value)
+        })
+        options.headers = mergedHeaders
+      }
+      return globalThis.fetch(resource, options)
+    },
+  })
 
   if (needAllResponseContent || fetchCompat) return res as T
   const contentType = res.headers.get('content-type')

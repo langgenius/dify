@@ -62,7 +62,7 @@ class TestFunctionCallMultiDatasetRouter:
         router = FunctionCallMultiDatasetRouter()
         response = Mock()
         response.usage = LLMUsage.empty_usage()
-        response.message.tool_calls = []
+        response.message.tool_calls = list[object]()
         model_instance = Mock()
         model_instance.invoke_llm.return_value = response
         tool_1 = Mock()

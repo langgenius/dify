@@ -1,8 +1,8 @@
 'use client'
 
 import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { IpPolicyFormSession } from './policy-form-analytics'
 import type { IpPolicySource } from '@/features/network-access/analytics'
+import type { IpPolicyFormSession } from '@/features/network-access/policy-editor/policy-form-analytics'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -10,7 +10,6 @@ import Image from 'next/image'
 import { useQueryState } from 'nuqs'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getNetworkAccessErrorStatus } from '@/app/components/app/access-point/access-control/network-access'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
   pricingQueryParamName,
@@ -18,13 +17,14 @@ import {
 } from '@/app/components/billing/pricing/query-params'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { getIpPolicyFailReason, trackNetworkAccessEvent } from '@/features/network-access/analytics'
+import { getNetworkAccessErrorStatus } from '@/features/network-access/errors'
 import {
   canManageNetworkAccessPoliciesAtom,
   canReadNetworkAccessAtom,
 } from '@/features/network-access/permissions'
+import { IpPolicyDialog } from '@/features/network-access/policy-editor'
+import { startIpPolicyForm } from '@/features/network-access/policy-editor/policy-form-analytics'
 import { consoleQuery } from '@/service/console'
-import { IpPolicyDialog } from './policy-dialog'
-import { startIpPolicyForm } from './policy-form-analytics'
 import {
   policyActionsColClassName,
   policyIpEntriesColClassName,
@@ -124,7 +124,12 @@ export default function IpPoliciesPage() {
     setIsRecovering(true)
     setRecoveryError(false)
     try {
-      const refreshed = await queryClient.query({ ...groupsQuery, staleTime: 0 })
+      const refreshed = await queryClient.query(
+        consoleQuery.workspaces.current.networkAccessGroups.get.queryOptions({
+          staleTime: 0,
+          retry: false,
+        }),
+      )
       if (dialogSessionRef.current !== session) return
       const nextGroup = refreshed.groups.find((group) => group.id === groupId)
       setDialogState((current) =>

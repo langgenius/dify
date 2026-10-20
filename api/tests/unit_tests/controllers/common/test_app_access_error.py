@@ -326,6 +326,9 @@ def test_success_and_non_404_errors_are_unchanged(prefix: str, status: int) -> N
     assert "Cache-Control" not in response.headers
 
 
+# These sentinel responses intentionally omit contract fields and forbid JSON
+# reads; the global schema checker would itself violate the behavior under test.
+@pytest.mark.allow_error_contract_violations
 @pytest.mark.parametrize("path", ["/api/site", f"/console/api/apps/{APP_ID}"])
 @pytest.mark.parametrize("status", [200, 201, 204, 301, 302, 303, 304, 307, 308, 401, 500, 503])
 def test_non_candidate_statuses_do_not_parse_json(monkeypatch: pytest.MonkeyPatch, path: str, status: int) -> None:
@@ -361,6 +364,7 @@ def test_non_candidate_statuses_do_not_parse_json(monkeypatch: pytest.MonkeyPatc
         ("/api/human-input-forms/files", "POST", 404),
     ],
 )
+@pytest.mark.allow_error_contract_violations
 def test_route_and_surface_ineligible_errors_do_not_parse_json(
     monkeypatch: pytest.MonkeyPatch, path: str, method: str, status: int
 ) -> None:
@@ -382,6 +386,7 @@ def test_route_and_surface_ineligible_errors_do_not_parse_json(
 
 @pytest.mark.parametrize("status", [200, 400, 403, 404])
 @pytest.mark.parametrize("direct_passthrough", [False, True])
+@pytest.mark.allow_error_contract_violations
 def test_candidate_and_success_streams_never_parse_or_consume_response(
     monkeypatch: pytest.MonkeyPatch, status: int, direct_passthrough: bool
 ) -> None:
@@ -451,6 +456,7 @@ def test_typed_service_api_error_is_unchanged() -> None:
 
 
 @pytest.mark.parametrize("kind", ["stream", "passthrough", "html", "list", "null", "invalid-json"])
+@pytest.mark.allow_error_contract_violations
 def test_non_json_object_and_streamed_responses_are_not_consumed(kind: str) -> None:
     consumed: list[bool] = []
 

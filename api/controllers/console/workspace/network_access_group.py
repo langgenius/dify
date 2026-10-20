@@ -17,6 +17,7 @@ from core.network_access.client_ip import NetworkAccessClientIPUnavailableError,
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.network_access_group_service import (
@@ -427,6 +428,7 @@ class CurrentWorkspaceNetworkAccessGroupCurrentIPCheckApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/network-access-group")
 class AppNetworkAccessGroupApi(Resource):
+    @error_responses(AppNotFoundError)
     @console_ns.response(
         200,
         "App network access group binding retrieved successfully",
@@ -443,6 +445,7 @@ class AppNetworkAccessGroupApi(Resource):
             raise _translate_service_error(exc) from exc
         return _serialize_response(AppNetworkAccessGroupResponse, payload)
 
+    @error_responses(AppNotFoundError)
     @console_ns.expect(console_ns.models[AppNetworkAccessGroupUpdatePayload.__name__])
     @console_ns.response(
         200,
@@ -474,6 +477,7 @@ class AppNetworkAccessGroupApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/network-access-group/status")
 class AppNetworkAccessGroupStatusApi(Resource):
+    @error_responses(AppNotFoundError)
     @console_ns.response(
         200,
         "App network access control entry status retrieved successfully",

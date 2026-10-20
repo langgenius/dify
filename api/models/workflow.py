@@ -6,6 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
+from warnings import deprecated
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -21,9 +22,8 @@ from sqlalchemy import (
     select,
 )
 from sqlalchemy.orm import Mapped, mapped_column
-from typing_extensions import deprecated
 
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
+from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE, is_trigger_node_type
 from core.workflow.environment_variables import load_environment_variables
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
@@ -38,6 +38,7 @@ from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
+from enums import WorkflowKind
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
@@ -149,18 +150,6 @@ class WorkflowType(StrEnum):
 
         app_mode = app_mode if isinstance(app_mode, AppMode) else AppMode.value_of(app_mode)
         return cls.WORKFLOW if app_mode == AppMode.WORKFLOW else cls.CHAT
-
-
-class WorkflowKind(StrEnum):
-    STANDARD = "standard"
-    SNIPPET = "snippet"
-
-    @classmethod
-    def value_of(cls, value: str) -> "WorkflowKind":
-        for kind in cls:
-            if kind.value == value:
-                return kind
-        raise ValueError(f"invalid workflow kind value {value}")
 
 
 def resolve_workflow_kind(kind: str | WorkflowKind | None) -> WorkflowKind:
@@ -355,8 +344,8 @@ class Workflow(Base):  # bug
 
         try:
             node_config: dict[str, Any] = next(filter(lambda node: node["id"] == node_id, nodes))
-        except StopIteration:
-            raise NodeNotFoundError(node_id)
+        except StopIteration as caught_error:
+            raise NodeNotFoundError(node_id) from caught_error
         return NodeConfigDictAdapter.validate_python(adapt_node_config_for_graph(node_config))
 
     @staticmethod
@@ -469,9 +458,7 @@ class Workflow(Base):  # bug
 
         return features
 
-    def walk_nodes(
-        self, specific_node_type: NodeType | None = None
-    ) -> Generator[tuple[str, Mapping[str, Any]], None, None]:
+    def walk_nodes(self, specific_node_type: NodeType | None = None) -> Generator[tuple[str, Mapping[str, Any]]]:
         """
         Walk through the workflow nodes, yield each node configuration.
 
@@ -514,6 +501,13 @@ class Workflow(Base):  # bug
             )
         else:
             yield from ((node["id"], node["data"]) for node in graph_dict["nodes"])
+
+    def has_trigger_node(self) -> bool:
+        """Whether the graph has a trigger entry, which rules out Web App, Service API, OpenAPI, and MCP runs."""
+        return any(
+            isinstance(node_type := node_data.get("type"), str) and is_trigger_node_type(node_type)
+            for _, node_data in self.walk_nodes()
+        )
 
     def user_input_form(self, to_old_structure: bool = False) -> list[Any]:
         # get start node from graph
@@ -799,11 +793,17 @@ class WorkflowRun(Base):
         sa.PrimaryKeyConstraint("id", name="workflow_run_pkey"),
         sa.Index("workflow_run_triggerd_from_idx", "tenant_id", "app_id", "triggered_from"),
         sa.Index("workflow_run_created_at_id_idx", "created_at", "id"),
+        sa.Index("workflow_run_task_id_idx", "task_id", postgresql_where=sa.text("task_id IS NOT NULL")),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
+
+    # Public cancellation uses a task ID distinct from the workflow run ID.
+    # Nullable for historical runs whose task ID is recovered on pause replay.
+    task_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    stop_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     workflow_id: Mapped[str] = mapped_column(StringUUID)
     type: Mapped[WorkflowType] = mapped_column(EnumText(WorkflowType, length=255))
@@ -1470,6 +1470,8 @@ class WorkflowRunArchiveBundle(DefaultFieldsDCMixin, TypeBase):
     row_count: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
     archive_bytes: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
     archived_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    # A non-null value is a durable deletion request, including failed requests that may be retried.
+    deletion_status: Mapped[str | None] = mapped_column(String(16), nullable=True, default=None)
 
 
 class ConversationVariable(TypeBase):
@@ -2118,7 +2120,7 @@ class WorkflowPause(DefaultFieldsDCMixin, TypeBase):
     )
 
     # state_object_key stores the object key referencing the serialized runtime state
-    # of the `GraphEngine`. This object captures the complete execution context of the
+    # of the `Engine`. This object captures the complete execution context of the
     # workflow at the moment it was paused, enabling accurate resumption.
     state_object_key: Mapped[str] = mapped_column(String(length=255), nullable=False)
 

@@ -165,6 +165,6 @@ def handle_webhook_debug(webhook_id: str):
         return webhook_not_found_response()
     except RequestEntityTooLarge:
         raise
-    except Exception as e:
+    except Exception:
         logger.exception("Webhook debug processing failed for %s", webhook_id)
         return jsonify({"error": "Internal server error", "message": "An internal error has occurred."}), 500

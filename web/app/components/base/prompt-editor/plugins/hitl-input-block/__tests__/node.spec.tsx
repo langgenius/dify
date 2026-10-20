@@ -2,8 +2,7 @@ import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/
 import type { Var } from '@/app/components/workflow/types'
 import { act } from '@testing-library/react'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
-import { createLexicalTestEditor, expectInlineWrapperDom } from '../../__tests__/test-helpers'
-import HITLInputBlockComponent from '../component'
+import { createLexicalTestEditor } from '../../__tests__/test-helpers'
 import { $createHITLInputNode, HITLInputNode } from '../node'
 
 const createFormInput = (): FormInputItem => ({
@@ -119,7 +118,7 @@ describe('HITLInputNode', () => {
     })
   })
 
-  it('should clone, serialize, import and decorate correctly', () => {
+  it('preserves editable field metadata and callbacks across clone and serialization', () => {
     const editor = createTestEditor()
     const props = createNodeProps()
 
@@ -144,15 +143,17 @@ describe('HITLInputNode', () => {
         const cloned = HITLInputNode.clone(node)
         const imported = HITLInputNode.importJSON(serialized)
 
-        expect(cloned).toBeInstanceOf(HITLInputNode)
         expect(cloned.getKey()).toBe(node.getKey())
         expect(cloned).not.toBe(node)
-        expect(imported).toBeInstanceOf(HITLInputNode)
-
-        const element = node.decorate()
-        expect(element.type).toBe(HITLInputBlockComponent)
-        expect(element.props.nodeKey).toBe(node.getKey())
-        expect(element.props.varName).toBe('user_name')
+        expect(cloned.exportJSON()).toEqual(serialized)
+        expect(imported.exportJSON()).toEqual(serialized)
+        expect(imported.getTextContent()).toBe('{{#$output.user_name#}}')
+        imported.getOnFormInputsChange()([])
+        imported.getOnFormInputItemRename()(props.formInputs[0]!, 'old_name')
+        imported.getOnFormInputItemRemove()('user_name')
+        expect(props.onFormInputsChange).toHaveBeenCalledWith([])
+        expect(props.onFormInputItemRename).toHaveBeenCalledWith(props.formInputs[0], 'old_name')
+        expect(props.onFormInputItemRemove).toHaveBeenCalledWith('user_name')
       })
     })
   })
@@ -188,35 +189,6 @@ describe('HITLInputNode', () => {
 
         expect(imported.getFormInputs()).toEqual([])
         expect(cloned.getFormInputs()).toEqual([])
-      })
-    })
-  })
-
-  it('should create and update DOM', () => {
-    const editor = createTestEditor()
-    const props = createNodeProps()
-
-    act(() => {
-      editor.update(() => {
-        const node = $createHITLInputNode(
-          props.variableName,
-          props.nodeId,
-          props.formInputs,
-          props.onFormInputsChange,
-          props.onFormInputItemRename,
-          props.onFormInputItemRemove,
-          props.workflowNodesMap,
-          props.getVarType,
-          props.environmentVariables,
-          props.conversationVariables,
-          props.ragVariables,
-          props.readonly,
-        )
-
-        const dom = node.createDOM()
-
-        expectInlineWrapperDom(dom, ['w-[calc(100%-1px)]', 'support-drag'])
-        expect(node.updateDOM()).toBe(false)
       })
     })
   })

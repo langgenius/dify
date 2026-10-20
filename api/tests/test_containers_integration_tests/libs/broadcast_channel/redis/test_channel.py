@@ -325,11 +325,11 @@ class TestRedisBroadcastChannelIntegration:
         topic = broadcast_channel.topic(topic_name)
 
         def _consume(sub: Subscription):
-            for i in sub:
+            for _i in sub:
                 pass
 
         subscriptions = []
-        for i in range(5):
+        for _i in range(5):
             subscription = topic.subscribe()
             subscriptions.append(subscription)
 

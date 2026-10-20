@@ -34,7 +34,6 @@ ignore_imports =
     core.app.apps.advanced_chat.app_generator -> services.conversation_service
     core.app.apps.advanced_chat.app_generator -> services.errors.conversation
     core.app.apps.advanced_chat.app_generator -> services.workflow_draft_variable_service
-    core.app.apps.advanced_chat.app_runner -> services.conversation_variable_updater
     core.app.apps.agent_app.app_generator -> services.agent.composer_service
     core.app.apps.agent_app.app_generator -> services.agent.workspace_service
     core.app.apps.agent_app.app_generator -> services.conversation_service
@@ -57,12 +56,14 @@ ignore_imports =
     core.app.apps.workflow.app_generator -> controllers.console.app.workflow
     core.app.apps.workflow.app_generator -> services.snippet_generate_service
     core.app.apps.workflow.app_generator -> services.workflow_draft_variable_service
+    # Legacy debug callers delegate input hydration to the application owner during core migration.
+    core.app.apps.workflow_app_runner -> services.workflow_node_variables
+    core.workflow.workflow_entry -> services.workflow_node_variables
     core.app.apps.workflow_app_runner -> tasks.mail_human_input_delivery_task
     core.app.features.annotation_reply.annotation_reply -> services.annotation_service
     core.app.features.annotation_reply.annotation_reply -> services.knowledge.dataset_service
     core.app.llm.quota -> services.credit_pool_service
     core.app.task_pipeline.message_cycle_manager -> services.annotation_service
-    core.app.workflow.layers.persistence -> services.workflow.inspector_events
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
     core.helper.credential_utils -> services.system_feature_service
     core.mcp.auth_client -> services
@@ -249,6 +250,7 @@ ignore_imports =
     repositories.knowledge.dataset_api_key_repository -> services.knowledge.api_key_service
     repositories.knowledge.dataset_repository -> services.knowledge.segments.application
     repositories.knowledge.dataset_repository -> services.knowledge.dataset_access
+    repositories.knowledge.dataset_repository -> services.knowledge.entities.datasets
     repositories.knowledge.dataset_repository -> services.knowledge.indexing.estimate
     repositories.knowledge.dataset_repository -> services.knowledge.resource_scope
     repositories.knowledge.document_repository -> services.knowledge.document_sync
@@ -832,6 +834,33 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:conversation-variable-query-boundary]
+name = Conversation variable query is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.conversation_variable_query
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:console-conversation-variable-controller-boundary]
+name = Console conversation variables reach persistence through the composition root
+type = forbidden
+source_modules =
+    controllers.console.app.conversation_variables
+forbidden_modules =
+    extensions.ext_database
+    models
+    repositories
+    sqlalchemy
+allow_indirect_imports = True
+
 [importlinter:contract:tag-application-service-boundary]
 name = Tag application service is framework and persistence neutral
 type = forbidden
@@ -982,7 +1011,6 @@ type = forbidden
 source_modules =
     services.billing_portal_service
     services.compliance_download_service
-    services.partner_tenant_binding_service
 forbidden_modules =
     configs
     controllers
@@ -1074,6 +1102,36 @@ source_modules =
 forbidden_modules =
     extensions.ext_database
     models.model
+    repositories
+    sqlalchemy
+# The composition root (extensions.ext_application_services) wires repositories,
+# so only direct imports are checked here.
+allow_indirect_imports = True
+
+[importlinter:contract:workflow-comment-service-boundary]
+name = Workflow comment application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.app.workflow_comment_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:console-workflow-comment-controller-boundary]
+name = Console workflow comment controller reaches persistence only through the composition root
+type = forbidden
+source_modules =
+    controllers.console.app.workflow_comment
+forbidden_modules =
+    extensions.ext_database
+    models
     repositories
     sqlalchemy
 # The composition root (extensions.ext_application_services) wires repositories,

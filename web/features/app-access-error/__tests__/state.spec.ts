@@ -95,6 +95,17 @@ describe('WebApp IP denial scope', () => {
     expect(handleAppAccessError(403, denied, scope, error)).toBe(false)
     expect(isAppAccessError(error)).toBe(false)
   })
+
+  it.each(['/app/missing/workflow', '/agents/missing/access'])(
+    'leaves a missing console resource at %s to its layout redirect',
+    (path) => {
+      const scope = navigate(path)
+      const error = { status: 404, code: 'app_not_found' }
+      expect(handleAppAccessError(404, error, scope, error, true)).toBe(false)
+      expect(isAppAccessError(error)).toBe(false)
+      expect(hasAppAccessError(scope)).toBe(false)
+    },
+  )
 })
 
 describe('application identity request matching', () => {

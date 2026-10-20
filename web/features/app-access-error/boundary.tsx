@@ -2,15 +2,17 @@
 
 import type { PropsWithChildren } from 'react'
 import { useAtomValueRawSync } from 'jotai/react'
+import dynamic from 'next/dynamic'
 import { useEffect } from 'react'
 import { usePathname, useSearchParams } from '@/next/navigation'
-import AppNotAccessible from './page'
 import {
   appAccessErrorAtom,
   appAccessStore,
   captureAppAccessScope,
   getAppAccessScopeKey,
 } from './state'
+
+const AppNotAccessible = dynamic(() => import('./page'))
 
 export default function AppAccessBoundary({ children }: PropsWithChildren) {
   const pathname = usePathname()

@@ -56,7 +56,7 @@ export function seedAppNetworkAccessGroup(
     tenant_id: 'workspace-1',
     app_id: appId,
     entitled: true,
-    effective_enabled: false,
+    effective_enabled: (overrides.entitled ?? true) && (overrides.binding?.enabled ?? false),
     available_access_points: ['webapp', 'service_api', 'mcp'],
     binding: null,
     ...overrides,

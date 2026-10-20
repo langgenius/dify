@@ -7,7 +7,6 @@ import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { WorkflowCanvas } from '../workflow-canvas'
 
 const actions = vi.hoisted(() => ({
-  nodesReadOnly: false,
   copy: vi.fn(),
   paste: vi.fn(),
   duplicate: vi.fn(),
@@ -55,9 +54,6 @@ vi.mock('../../hooks/use-edges-interactions', () => ({
 vi.mock('../../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: actions.save }),
 }))
-vi.mock('../../hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: actions.nodesReadOnly }),
-}))
 vi.mock('../../hooks/use-workflow-organize', () => ({
   useWorkflowOrganize: () => ({ handleLayout: actions.organize }),
 }))
@@ -104,9 +100,12 @@ function focusCanvas() {
 describe('Workflow canvas commands', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    actions.nodesReadOnly = false
     actions.getNodes.mockReturnValue([])
     actions.getZoom.mockReturnValue(1)
+  })
+
+  afterEach(() => {
+    document.getSelection()?.removeAllRanges()
   })
 
   it.each(['mac', 'windows'] as const)(
@@ -216,8 +215,8 @@ describe('Workflow canvas commands', () => {
 
   it('does not consume unavailable editing commands while still allowing viewport zoom', async () => {
     const user = userEvent.setup()
-    actions.nodesReadOnly = true
-    renderCanvas()
+    const { store } = renderCanvas()
+    act(() => store.setState({ canvasReadOnly: true }))
     const canvas = focusCanvas()
     for (const key of ['s', 'd', 'o', 'z']) {
       const event = new KeyboardEvent('keydown', {
@@ -306,6 +305,5 @@ describe('Workflow canvas commands', () => {
     fireEvent.keyUp(canvas, { key: 'c', ctrlKey: true })
     expect(event.defaultPrevented).toBe(true)
     expect(actions.copy).toHaveBeenCalledTimes(1)
-    selection.removeAllRanges()
   })
 })

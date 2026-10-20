@@ -8,7 +8,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, ValidationError
 
 from configs import dify_config
-from controllers.common.fields import RedirectResponse
+from controllers.common.fields import ErrorMessageResponse, RedirectResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
@@ -17,6 +17,7 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
+from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
 from core.rbac import RBACPermission
 from extensions.ext_application_services import application_services
@@ -31,8 +32,6 @@ from services.data_source.oauth_service import (
     InvalidDataSourceOAuthCodeError,
     InvalidDataSourceOAuthProviderError,
 )
-
-from .. import console_ns
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +64,7 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    ErrorMessageResponse,
     OAuthDataSourceResponse,
     OAuthDataSourceBindingResponse,
     OAuthDataSourceSyncResponse,
@@ -108,7 +108,7 @@ class OAuthDataSource(Resource):
         "Authorization URL or internal setup success",
         console_ns.models[OAuthDataSourceResponse.__name__],
     )
-    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid provider")
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid provider", console_ns.models[ErrorMessageResponse.__name__])
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @console_account_admission(
         allowed_roles=_ADMIN_OR_OWNER_ROLES,
@@ -137,7 +137,7 @@ class OAuthDataSourceCallback(Resource):
     @console_ns.response(
         HTTPStatus.FOUND, "Redirect to console with result", console_ns.models[RedirectResponse.__name__]
     )
-    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid provider")
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid provider", console_ns.models[ErrorMessageResponse.__name__])
     def get(self, provider: str):
         query = query_params_from_request(OAuthDataSourceCallbackQuery)
         try:
@@ -162,7 +162,9 @@ class OAuthDataSourceBinding(Resource):
         "Data source binding success",
         console_ns.models[OAuthDataSourceBindingResponse.__name__],
     )
-    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid provider or code")
+    @console_ns.response(
+        HTTPStatus.BAD_REQUEST, "Invalid provider or code", console_ns.models[ErrorMessageResponse.__name__]
+    )
     @console_account_admission()
     def get(self, request_context: RequestContext, provider: str):
         try:
@@ -194,7 +196,9 @@ class OAuthDataSourceSync(Resource):
         "Data source sync success",
         console_ns.models[OAuthDataSourceSyncResponse.__name__],
     )
-    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid provider or sync failed")
+    @console_ns.response(
+        HTTPStatus.BAD_REQUEST, "Invalid provider or sync failed", console_ns.models[ErrorMessageResponse.__name__]
+    )
     @console_account_admission()
     def get(self, request_context: RequestContext, provider: str, binding_id: UUID):
         try:

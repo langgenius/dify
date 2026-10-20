@@ -52,7 +52,6 @@ describe('IP denial page boundary', () => {
     '/agents/app/access',
     '/explore/installed/app',
   ])('replaces %s and stops query retries after the first IP rejection', async (path) => {
-    vi.useFakeTimers()
     window.history.replaceState({}, '', path)
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: 3, retryDelay: 100 } },
@@ -78,16 +77,14 @@ describe('IP denial page boundary', () => {
       </I18nextProvider>,
     )
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(500)
-    })
-    expect(request).toHaveBeenCalledTimes(1)
     expect(
-      screen.getByRole('heading', { name: enShare['appNotAccessible.title'] }),
+      await screen.findByRole('heading', { name: enShare['appNotAccessible.title'] }),
     ).toBeInTheDocument()
+    expect(request).toHaveBeenCalledTimes(1)
     expect(screen.queryByText('Application loading')).not.toBeInTheDocument()
     expect(screen.getByText('203.0.113.42', { selector: 'code' })).toBeInTheDocument()
 
+    vi.useFakeTimers()
     await act(async () => {
       await vi.advanceTimersByTimeAsync(5_000)
     })

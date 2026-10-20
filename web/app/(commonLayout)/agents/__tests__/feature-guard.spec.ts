@@ -19,7 +19,6 @@ vi.mock('@/next/navigation', () => ({
 
 describe('guardAgentV2Route', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     mocks.agentV2Enabled = true
   })
 

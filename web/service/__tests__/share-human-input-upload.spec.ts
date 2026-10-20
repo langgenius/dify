@@ -1,4 +1,5 @@
 import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
+import { createHttpError } from '@/service/http-error'
 
 const mockPostPublic = vi.hoisted(() => vi.fn())
 const mockUpload = vi.hoisted(() => vi.fn())
@@ -77,6 +78,12 @@ describe('human input form upload services', () => {
       true,
       '/human-input-forms/files',
     )
+    const uploadOptions = mockUpload.mock.calls[0]![0]
+    expect(uploadOptions.data.get('file')).toBe(file)
+    uploadOptions.onprogress(
+      new ProgressEvent('progress', { lengthComputable: true, loaded: 3, total: 7 }),
+    )
+    expect(onProgressCallback).toHaveBeenCalledWith(42)
     expect(onSuccessCallback).toHaveBeenCalledWith(expect.objectContaining({ id: 'file-1' }))
     expect(onErrorCallback).not.toHaveBeenCalled()
   })
@@ -203,7 +210,7 @@ describe('human input form upload services', () => {
   it('should preserve a normal token failure while the form is still active', async () => {
     const { uploadHumanInputFormRemoteFileInfo } = await import('../share')
     window.history.replaceState({}, '', '/form/unavailable-token')
-    const tokenError = new Response(null, { status: 503 })
+    const tokenError = createHttpError(new Response(null, { status: 503 }))
     mockPostPublic.mockRejectedValueOnce(tokenError)
 
     await expect(
@@ -215,7 +222,9 @@ describe('human input form upload services', () => {
   it('should preserve an IP denial returned by the token request', async () => {
     const { uploadHumanInputFormRemoteFileInfo } = await import('../share')
     window.history.replaceState({}, '', '/form/token-denied')
-    const tokenError = new Response(null, { status: 403 })
+    const tokenError = createHttpError(new Response(null, { status: 403 }), {
+      code: 'ip_access_denied',
+    })
     mockPostPublic.mockImplementationOnce(async () => {
       handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope(), tokenError)
       throw tokenError

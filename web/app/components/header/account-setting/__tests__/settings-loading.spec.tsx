@@ -28,13 +28,20 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: ['workspace.member.manage'],
   }))
 })
-vi.mock('@/service/use-common', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-common')>()),
-  useMembers: () => ({ data: { accounts: [] }, refetch: vi.fn() }),
-}))
-vi.mock('@/service/access-control/use-workspace-roles', () => ({
-  useWorkspaceRoleList: () => ({ data: { pages: [] }, isLoading: false }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': async () => ({ accounts: [] }),
+      'workspaces.current.rbac.roles.get': async () => ({
+        data: [],
+        pagination: { current_page: 1, total_pages: 1, total_count: 0, per_page: 20 },
+      }),
+    }),
+  }
+})
 vi.mock('@/hooks/use-breakpoints', () => ({
   MediaType: { mobile: 'mobile', tablet: 'tablet', pc: 'pc' },
   default: () => 'pc',

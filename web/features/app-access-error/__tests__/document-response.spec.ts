@@ -2,7 +2,8 @@
 import { NextRequest } from 'next/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { proxy } from '@/proxy'
-import { APP_UNAVAILABLE_IP_HEADER, getWebAppDocumentResponse } from '../document-response'
+import { APP_UNAVAILABLE_IP_HEADER } from '../document-constants'
+import { getWebAppDocumentResponse } from '../document-response'
 
 const configuration = vi.hoisted(() => ({
   WEBAPP_ACCESS_PREFLIGHT_URL: 'http://gateway.internal:8080/api/webapp/access-mode' as

@@ -37,7 +37,7 @@ export function CommunityEditionTip({
         render={
           <button
             type="button"
-            className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm"
           >
             <span
               aria-hidden

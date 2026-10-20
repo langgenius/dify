@@ -22,14 +22,14 @@ const createRequest = (url: string) => {
   } as Parameters<typeof proxy>[0]
 }
 
-describe('proxy frame options', () => {
-  afterEach(() => {
-    mockEnv.NEXT_PUBLIC_ALLOW_EMBED = false
-    mockEnv.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX = ''
-    mockEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY = ''
-    vi.unstubAllEnvs()
-  })
+afterEach(() => {
+  mockEnv.NEXT_PUBLIC_ALLOW_EMBED = false
+  mockEnv.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX = ''
+  mockEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY = ''
+  vi.unstubAllEnvs()
+})
 
+describe('proxy frame options', () => {
   it('should allow embedded share routes', () => {
     expect(canEmbedPath('/chatbot/token')).toBe(true)
     expect(canEmbedPath('/workflow/token')).toBe(true)

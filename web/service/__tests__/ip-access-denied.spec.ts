@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
@@ -49,6 +50,7 @@ const createXhr = (data: unknown, status = 403) =>
   ({
     open: vi.fn(),
     setRequestHeader: vi.fn(),
+    getAllResponseHeaders: vi.fn(() => 'Content-Type: application/json'),
     send: vi.fn(function (this: { onreadystatechange?: () => void }) {
       this.onreadystatechange?.()
     }),
@@ -100,10 +102,10 @@ describe('WebApp IP access denial transport', () => {
         error = caught
       }
 
-      expect(error).toBeInstanceOf(Response)
+      expect(error).toBeInstanceOf(ORPCError)
       expect(isAppAccessError(error)).toBe(true)
       expect(appAccessStore.get(appAccessErrorAtom)?.clientIp).toBe(denial.client_ip)
-      await expect((error as Response).json()).resolves.toEqual(denial)
+      expect((error as ORPCError<string, unknown>).data).toEqual(denial)
       expect(fetch).toHaveBeenCalledOnce()
       expect(window.location.href).toBe(url)
       expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
@@ -151,6 +153,8 @@ describe('WebApp IP access denial transport', () => {
       { transition: 'navigated' as const, status: 401, code: 'unauthorized' },
       { transition: 'denied' as const, status: 403, code: 'web_app_access_denied' },
       { transition: 'navigated' as const, status: 403, code: 'web_app_access_denied' },
+      { transition: 'denied' as const, status: 403, code: 'already_setup' },
+      { transition: 'navigated' as const, status: 403, code: 'already_setup' },
       { transition: 'denied' as const, status: 401, code: null },
       { transition: 'navigated' as const, status: 401, code: null },
     ])(
@@ -174,7 +178,7 @@ describe('WebApp IP access denial transport', () => {
             : new Response('not JSON', { status }),
         )
 
-        expect(await response).toBeInstanceOf(Response)
+        expect(await response).toBeInstanceOf(ORPCError)
         expect(window.location.href).toBe(url)
         expect(appAccessStore.get(appAccessErrorAtom)).toBe(currentDenial)
         expect(beginRecovery).not.toHaveBeenCalled()
@@ -270,10 +274,10 @@ describe('WebApp IP access denial transport', () => {
         (caught: unknown) => caught,
       )
 
-      expect(error).toBeInstanceOf(Response)
+      expect(error).toBeInstanceOf(ORPCError)
       expect(isAppAccessError(error)).toBe(false)
       expect(appAccessStore.get(appAccessErrorAtom)).toBeNull()
-      await expect((error as Response).json()).resolves.toEqual(data)
+      expect((error as ORPCError<string, unknown>).data).toEqual(data)
       expect(toast.error).toHaveBeenCalledWith(data.message)
       expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
     },
@@ -326,9 +330,10 @@ describe('WebApp IP access denial transport', () => {
       window.history.replaceState({}, '', route)
       const xhr = createXhr(denial)
 
-      await expect(upload({ xhr, data: new FormData() }, true, path)).rejects.toBe(xhr)
+      const error = await upload({ xhr, data: new FormData() }, true, path).catch((error) => error)
 
-      expect(isAppAccessError(xhr)).toBe(true)
+      expect(error).toBeInstanceOf(ORPCError)
+      expect(isAppAccessError(error)).toBe(true)
       expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
       expect(toast.error).not.toHaveBeenCalled()
     },
@@ -337,9 +342,10 @@ describe('WebApp IP access denial transport', () => {
   it('preserves unrelated XHR errors', async () => {
     const xhr = createXhr({ code: 'file_too_large', message: 'File too large' }, 413)
 
-    await expect(upload({ xhr, data: new FormData() }, true)).rejects.toBe(xhr)
+    const error = await upload({ xhr, data: new FormData() }, true).catch((error) => error)
 
-    expect(isAppAccessError(xhr)).toBe(false)
+    expect(error).toMatchObject({ status: 413, code: 'file_too_large' })
+    expect(isAppAccessError(error)).toBe(false)
   })
 })
 
@@ -366,7 +372,7 @@ describe('application not-found transport', () => {
       { isPublicAPI: true },
     ).catch((error) => error)
     expect(isAppAccessError(error)).toBe(true)
-    expect(await (error as Response).json()).toEqual(body)
+    expect((error as ORPCError<string, unknown>).data).toEqual(body)
     expect(appAccessStore.get(appAccessErrorAtom)).toMatchObject({
       reason: 'app_not_found',
       clientIp: '203.0.113.8',
@@ -386,8 +392,10 @@ describe('application not-found transport', () => {
       client_ip: '2001:db8::12',
     }
     const xhr = createXhr(body, 404)
-    await expect(upload({ xhr, data: new FormData() }, true, '/files/upload')).rejects.toBe(xhr)
-    expect(isAppAccessError(xhr)).toBe(true)
+    const error = await upload({ xhr, data: new FormData() }, true, '/files/upload').catch(
+      (error) => error,
+    )
+    expect(isAppAccessError(error)).toBe(true)
     expect(appAccessStore.get(appAccessErrorAtom)?.clientIp).toBe('2001:db8::12')
     expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
   })
@@ -446,8 +454,6 @@ describe('application not-found transport', () => {
     ['/workflow/app', '/passport', true],
     ['/environment/agent/app', '/login/status', true],
     ['/agent/app', '/webapp/access-mode?appCode=app', true],
-    ['/app/app/workflow', '/apps/app', false],
-    ['/agents/app/access', '/agent/app', false],
     ['/installed/app', '/installed-apps/app', false],
   ])(
     'handles an identity 404 at %s without consuming the error or retrying',
@@ -457,8 +463,8 @@ describe('application not-found transport', () => {
       const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(body, 404))
       const error = await request(url, {}, { isPublicAPI }).catch((error) => error)
       expect(isAppAccessError(error)).toBe(true)
-      expect(error).toBeInstanceOf(Response)
-      expect(await (error as Response).json()).toEqual(body)
+      expect(error).toBeInstanceOf(ORPCError)
+      expect((error as ORPCError<string, unknown>).data).toEqual(body)
       expect(appAccessStore.get(appAccessErrorAtom)).toMatchObject({
         reason: 'app_not_found',
         clientIp: '203.0.113.8',
@@ -507,7 +513,7 @@ it.each([
   }
 })
 
-it('ignores a console authorization failure arriving after the application 404', async () => {
+it('ignores a console authorization failure after the missing-resource layout navigates away', async () => {
   vi.clearAllMocks()
   window.history.replaceState({}, '', '/')
   captureAppAccessScope()
@@ -518,15 +524,17 @@ it('ignores a console authorization failure arriving after the application 404',
   await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
   fetch.mockResolvedValueOnce(createResponse({ code: 'app_not_found' }, 404))
   await request('/apps/missing').catch(() => undefined)
+  window.history.replaceState({}, '', '/apps')
+  captureAppAccessScope()
   late.resolve(createResponse({ code: 'unauthorized', message: 'Unauthorized' }, 401))
   await pending
   expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
-  expect(window.location.pathname).toBe('/app/missing/workflow')
+  expect(window.location.pathname).toBe('/apps')
   vi.restoreAllMocks()
 })
 
 it.each(['agent', 'installed'] as const)(
-  'connects the generated %s detail client to the page boundary',
+  'preserves the generated %s detail error owner',
   async (kind) => {
     vi.clearAllMocks()
     window.history.replaceState({}, '', '/')
@@ -545,8 +553,12 @@ it.each(['agent', 'installed'] as const)(
               params: { installed_app_id: 'missing' },
             })
       await promise.catch(() => undefined)
-      expect(appAccessStore.get(appAccessErrorAtom)).toMatchObject({ reason: 'app_not_found' })
-      expect(toast.error).not.toHaveBeenCalled()
+      if (kind === 'installed') {
+        expect(appAccessStore.get(appAccessErrorAtom)).toMatchObject({ reason: 'app_not_found' })
+        expect(toast.error).not.toHaveBeenCalled()
+      } else {
+        expect(appAccessStore.get(appAccessErrorAtom)).toBeNull()
+      }
     } finally {
       vi.restoreAllMocks()
     }

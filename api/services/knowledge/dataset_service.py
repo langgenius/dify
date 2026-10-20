@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
+from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
@@ -26,6 +27,7 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from enums import CloudPlan, DeploymentEdition
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
+from extensions.application_services.resource_access_token import build_resource_access_token_cleanup_service
 from extensions.ext_redis import redis_client
 from graphon.file import helpers as file_helpers
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
@@ -100,6 +102,7 @@ from services.knowledge.segments.application import (
     validate_segment_values,
 )
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.rbac import contracts as rbac_contracts
 from services.tag_application_service import TagTargetQuery
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.batch_clean_document_task import batch_clean_document_task
@@ -128,11 +131,11 @@ class AutoDisableLogsDict(TypedDict):
 
 class DatasetService:
     @staticmethod
-    def _can_manage_all_datasets(tenant_id: str, account_id: str, *, session: Session) -> bool:
+    def _can_manage_all_datasets(tenant_id: str, account_id: str) -> bool:
         if not dify_config.RBAC_ENABLED:
             return False
 
-        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id, session=session)
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id)
         workspace_permission_keys = getattr(getattr(permissions, "workspace", None), "permission_keys", []) or []
         return "dataset.create_and_management" in workspace_permission_keys
 
@@ -151,7 +154,7 @@ class DatasetService:
         *,
         tags: TagTargetQuery,
     ):
-        """Return visible datasets for a tenant, using the injected session for auxiliary permission lookups."""
+        """Return visible datasets for a tenant using the injected read session."""
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
         if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
@@ -177,9 +180,7 @@ class DatasetService:
                     return [], 0
             else:
                 if dify_config.RBAC_ENABLED:
-                    can_manage_all_datasets = DatasetService._can_manage_all_datasets(
-                        str(tenant_id), str(user.id), session=session
-                    )
+                    can_manage_all_datasets = DatasetService._can_manage_all_datasets(str(tenant_id), str(user.id))
                     should_show_all_datasets = include_all and can_manage_all_datasets
                 else:
                     should_show_all_datasets = user.current_role == TenantAccountRole.OWNER and include_all
@@ -382,7 +383,7 @@ class DatasetService:
         enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
             tenant_id,
             account.id,
-            enterprise_rbac_service.RBACResourceType.DATASET,
+            rbac_contracts.RBACResourceType.DATASET,
             dataset.id,
         )
         return dataset
@@ -435,7 +436,16 @@ class DatasetService:
             pipeline_id=pipeline.id,
         )
         session.add(dataset)
+        session.flush()
+        dataset_id = dataset.id
+        creator_id = current_user.id
         session.commit()
+        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id,
+            creator_id,
+            rbac_contracts.RBACResourceType.DATASET,
+            dataset_id,
+        )
         return dataset
 
     @staticmethod
@@ -465,12 +475,12 @@ class DatasetService:
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
                 )
-            except LLMBadRequestError:
+            except LLMBadRequestError as caught_error:
                 raise ValueError(
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-                )
+                ) from caught_error
             except ProviderTokenNotInitError as ex:
-                raise ValueError(f"The dataset is unavailable, due to: {ex.description}")
+                raise ValueError(f"The dataset is unavailable, due to: {ex.description}") from ex
 
     @staticmethod
     def check_embedding_model_setting(tenant_id: str, embedding_model_provider: str, embedding_model: str):
@@ -482,12 +492,12 @@ class DatasetService:
                 model_type=ModelType.TEXT_EMBEDDING,
                 model=embedding_model,
             )
-        except LLMBadRequestError:
+        except LLMBadRequestError as caught_error:
             raise ValueError(
                 "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ValueError(ex.description)
+            raise ValueError(ex.description) from ex
 
     @staticmethod
     def check_is_multimodal_model(tenant_id: str, model_provider: str, model: str):
@@ -503,12 +513,11 @@ class DatasetService:
             model_schema = text_embedding_model.get_model_schema(model_instance.model_name, model_instance.credentials)
             if not model_schema:
                 raise ValueError("Model schema not found")
-            if model_schema.features and ModelFeature.VISION in model_schema.features:
-                return True
-            else:
-                return False
-        except LLMBadRequestError:
-            raise ValueError("No Model available. Please configure a valid provider in the Settings -> Model Provider.")
+            return bool(model_schema.features and ModelFeature.VISION in model_schema.features)
+        except LLMBadRequestError as caught_error:
+            raise ValueError(
+                "No Model available. Please configure a valid provider in the Settings -> Model Provider."
+            ) from caught_error
 
     @staticmethod
     def check_reranking_model_setting(tenant_id: str, reranking_model_provider: str, reranking_model: str):
@@ -520,12 +529,12 @@ class DatasetService:
                 model_type=ModelType.RERANK,
                 model=reranking_model,
             )
-        except LLMBadRequestError:
+        except LLMBadRequestError as caught_error:
             raise ValueError(
                 "No Rerank Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ValueError(ex.description)
+            raise ValueError(ex.description) from ex
 
     @staticmethod
     def update_dataset(dataset_id, data, user, *, session: Session):
@@ -889,12 +898,12 @@ class DatasetService:
                 session,
             )
             filtered_data["collection_binding_id"] = dataset_collection_binding.id
-        except LLMBadRequestError:
+        except LLMBadRequestError as caught_error:
             raise ValueError(
                 "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ValueError(ex.description)
+            raise ValueError(ex.description) from ex
 
     @staticmethod
     def _handle_embedding_model_update_when_technique_unchanged(dataset, data, filtered_data, session: Session):
@@ -972,12 +981,12 @@ class DatasetService:
             if current_provider_str != new_provider_str or data["embedding_model"] != dataset.embedding_model:
                 DatasetService._apply_new_embedding_settings(dataset, data, filtered_data, session)
                 return "update"
-        except LLMBadRequestError:
+        except LLMBadRequestError as caught_error:
             raise ValueError(
                 "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ValueError(ex.description)
+            raise ValueError(ex.description) from ex
         return None
 
     @staticmethod
@@ -1158,13 +1167,13 @@ class DatasetService:
                         dataset.is_multimodal = is_multimodal
                         dataset.collection_binding_id = dataset_collection_binding.id
                         dataset.indexing_technique = IndexTechniqueType(knowledge_configuration.indexing_technique)
-                    except LLMBadRequestError:
+                    except LLMBadRequestError as caught_error:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "
                             "in the Settings -> Model Provider."
-                        )
+                        ) from caught_error
                     except ProviderTokenNotInitError as ex:
-                        raise ValueError(ex.description)
+                        raise ValueError(ex.description) from ex
             else:
                 # add default plugin id to both setting sets, to make sure the plugin model provider is consistent
                 # Skip embedding model checks if not provided in the update request
@@ -1222,13 +1231,13 @@ class DatasetService:
                                         knowledge_configuration.embedding_model,
                                     )
                                     dataset.is_multimodal = is_multimodal
-                    except LLMBadRequestError:
+                    except LLMBadRequestError as caught_error:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "
                             "in the Settings -> Model Provider."
-                        )
+                        ) from caught_error
                     except ProviderTokenNotInitError as ex:
-                        raise ValueError(ex.description)
+                        raise ValueError(ex.description) from ex
                 elif dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                     if dataset.keyword_number != knowledge_configuration.keyword_number:
                         dataset.keyword_number = knowledge_configuration.keyword_number
@@ -1256,6 +1265,11 @@ class DatasetService:
         # silently degrade to unrestricted (access-all) once its last binding is gone.
         dataset_api_key_bindings.delete_keys_scoped_only_to(session, str(dataset.id))
 
+        build_resource_access_token_cleanup_service(session=session).delete_resource_relations(
+            tenant_id=dataset.tenant_id,
+            resource_type=ResourceAccessTokenResourceType.KNOWLEDGE,
+            resource_id=dataset.id,
+        )
         session.delete(dataset)
         session.commit()
         return True
@@ -1708,7 +1722,7 @@ class DocumentService:
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
         except NoPermissionError as e:
-            raise Forbidden(str(e))
+            raise Forbidden(str(e)) from e
 
         upload_files_by_document_id = DocumentService._get_upload_files_by_document_id_for_zip_download(
             dataset_id=dataset_id,
@@ -1822,9 +1836,9 @@ class DocumentService:
                 Document.tenant_id == dataset_ref.tenant_id,
                 Document.dataset_id == dataset_ref.dataset_id,
                 Document.id.in_(document_ids),
-                Document.enabled == True,
+                Document.enabled.is_(True),
                 Document.indexing_status == IndexingStatus.COMPLETED,
-                Document.archived == False,
+                Document.archived.is_(False),
             )
         ).all()
         return documents
@@ -1834,7 +1848,7 @@ class DocumentService:
         documents = session.scalars(
             select(Document).where(
                 Document.dataset_id == dataset_id,
-                Document.enabled == True,
+                Document.enabled.is_(True),
             )
         ).all()
 
@@ -1845,9 +1859,9 @@ class DocumentService:
         documents = session.scalars(
             select(Document).where(
                 Document.dataset_id == dataset_id,
-                Document.enabled == True,
+                Document.enabled.is_(True),
                 Document.indexing_status == IndexingStatus.COMPLETED,
-                Document.archived == False,
+                Document.archived.is_(False),
             )
         ).all()
 
@@ -1919,10 +1933,7 @@ class DocumentService:
 
     @staticmethod
     def check_archived(document):
-        if document.archived:
-            return True
-        else:
-            return False
+        return bool(document.archived)
 
     @staticmethod
     def delete_document(document, session: Session):
@@ -2392,7 +2403,7 @@ class DocumentService:
                             Document.dataset_id == dataset.id,
                             Document.tenant_id == account.current_tenant_id,
                             Document.data_source_type == DataSourceType.UPLOAD_FILE,
-                            Document.enabled == True,
+                            Document.enabled.is_(True),
                             Document.name.in_(file_names),
                         )
                     ).all()
@@ -2447,7 +2458,7 @@ class DocumentService:
                             Document.dataset_id == dataset.id,
                             Document.tenant_id == account.current_tenant_id,
                             Document.data_source_type == DataSourceType.NOTION_IMPORT,
-                            Document.enabled == True,
+                            Document.enabled.is_(True),
                         )
                     ).all()
                 )
@@ -2506,10 +2517,7 @@ class DocumentService:
                         "only_main_content": website_info.only_main_content,
                         "mode": "crawl",
                     }
-                    if len(url) > 255:
-                        document_name = url[:200] + "..."
-                    else:
-                        document_name = url
+                    document_name = url[:200] + "..." if len(url) > 255 else url
                     document = DocumentService.build_document(
                         dataset,
                         dataset_process_rule.id,
@@ -2893,8 +2901,8 @@ class DocumentService:
             session.scalar(
                 select(func.count(Document.id)).where(
                     Document.completed_at.isnot(None),
-                    Document.enabled == True,
-                    Document.archived == False,
+                    Document.enabled.is_(True),
+                    Document.archived.is_(False),
                     Document.tenant_id == current_user.current_tenant_id,
                 )
             )
@@ -2994,7 +3002,7 @@ class DocumentService:
                             sa.and_(
                                 DataSourceOauthBinding.tenant_id == account.current_tenant_id,
                                 DataSourceOauthBinding.provider == "notion",
-                                DataSourceOauthBinding.disabled == False,
+                                DataSourceOauthBinding.disabled.is_(False),
                                 DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
                             )
                         )

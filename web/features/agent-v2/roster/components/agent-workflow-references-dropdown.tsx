@@ -1,7 +1,6 @@
 'use client'
 
 import type { AgentAppPublishedReferenceResponse } from '@dify/contracts/api/console/agent/types.gen'
-import { zAgentIconType } from '@dify/contracts/api/console/agent/zod.gen'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,16 +16,6 @@ import Link from '@/next/link'
 const getWorkflowReferenceHref = (reference: AgentAppPublishedReferenceResponse) =>
   `/app/${reference.app_id}/workflow`
 
-const getWorkflowReferenceIcon = (reference: AgentAppPublishedReferenceResponse) => {
-  const parsedIconType = zAgentIconType.safeParse(reference.app_icon_type).data
-
-  return {
-    iconType: parsedIconType === 'link' ? 'image' : parsedIconType,
-    imageUrl:
-      parsedIconType === 'image' || parsedIconType === 'link' ? reference.app_icon : undefined,
-  }
-}
-
 export function AgentWorkflowReferencesDropdown({
   agentName,
   publishedReferences,
@@ -40,7 +29,7 @@ export function AgentWorkflowReferencesDropdown({
 
   return (
     <DropdownMenu modal={false}>
-      <DropdownMenuTrigger className="pointer-events-auto relative -m-1 flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md p-1 outline-hidden before:pointer-events-none before:absolute before:inset-0 before:rounded-md before:content-[''] hover:before:bg-state-base-hover focus-visible:before:ring-2 focus-visible:before:ring-state-accent-solid data-popup-open:before:bg-state-base-hover">
+      <DropdownMenuTrigger className="pointer-events-auto relative -m-1 flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md p-1 before:pointer-events-none before:absolute before:inset-0 before:rounded-md before:content-[''] hover:before:bg-state-base-hover data-popup-open:before:bg-state-base-hover">
         <span
           aria-hidden
           className="i-custom-vender-agent-v2-plan size-3 shrink-0 text-text-tertiary"
@@ -56,8 +45,6 @@ export function AgentWorkflowReferencesDropdown({
             {t(($) => $['roster.references.label'], { ns: 'agentRoster', name: agentName })}
           </DropdownMenuGroupLabel>
           {publishedReferences.map((reference) => {
-            const { iconType, imageUrl } = getWorkflowReferenceIcon(reference)
-
             return (
               <DropdownMenuLinkItem
                 key={reference.app_id}
@@ -73,10 +60,12 @@ export function AgentWorkflowReferencesDropdown({
                 <span aria-hidden className="shrink-0">
                   <AppIcon
                     size="tiny"
-                    iconType={iconType}
-                    icon={reference.app_icon ?? undefined}
-                    background={reference.app_icon_background}
-                    imageUrl={imageUrl}
+                    icon={{
+                      icon_type: reference.app_icon_type,
+                      icon: reference.app_icon,
+                      icon_url: reference.app_icon,
+                      icon_background: reference.app_icon_background,
+                    }}
                   />
                 </span>
                 <span className="min-w-0 flex-1 truncate">{reference.app_name}</span>
