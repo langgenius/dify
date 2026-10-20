@@ -1,4 +1,5 @@
 import time
+from collections.abc import Iterator
 from datetime import datetime
 
 import pytest
@@ -18,7 +19,7 @@ CREATED_AT_EPOCH = 1792137600
 
 
 @pytest.fixture
-def non_utc_host_timezone(monkeypatch):
+def non_utc_host_timezone(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setenv("TZ", "Asia/Tokyo")
     time.tzset()
     yield
@@ -27,7 +28,7 @@ def non_utc_host_timezone(monkeypatch):
 
 
 @pytest.mark.usefixtures("non_utc_host_timezone")
-def test_build_built_in_field_values_treats_naive_datetimes_as_utc():
+def test_build_built_in_field_values_treats_naive_datetimes_as_utc() -> None:
     values = build_built_in_field_values(
         document_name="doc.txt",
         uploader="Alice",
@@ -56,7 +57,9 @@ def test_build_built_in_field_values_treats_naive_datetimes_as_utc():
         (DataSourceType.ONLINE_DRIVE, "online_drive"),
     ],
 )
-def test_build_built_in_field_values_maps_source_to_metadata_label(data_source_type, source):
+def test_build_built_in_field_values_maps_source_to_metadata_label(
+    data_source_type: DataSourceType, source: str
+) -> None:
     values = build_built_in_field_values(
         document_name="doc.txt",
         uploader=None,
@@ -72,7 +75,9 @@ def test_build_built_in_field_values_maps_source_to_metadata_label(data_source_t
     "data_source_type",
     [DataSourceType.UPLOAD_FILE, DataSourceType.NOTION_IMPORT, DataSourceType.WEBSITE_CRAWL],
 )
-def test_build_document_writes_built_in_fields_in_shared_format(monkeypatch, data_source_type):
+def test_build_document_writes_built_in_fields_in_shared_format(
+    monkeypatch: pytest.MonkeyPatch, data_source_type: DataSourceType
+) -> None:
     monkeypatch.setattr(dataset_service, "naive_utc_now", lambda: CREATED_AT)
     dataset = make_dataset(built_in_field_enabled=True)
 
@@ -99,7 +104,7 @@ def test_build_document_writes_built_in_fields_in_shared_format(monkeypatch, dat
     )
 
 
-def test_build_document_skips_built_in_fields_when_disabled():
+def test_build_document_skips_built_in_fields_when_disabled() -> None:
     dataset = make_dataset(built_in_field_enabled=False)
 
     document = DocumentService.build_document(
@@ -122,7 +127,7 @@ def test_build_document_skips_built_in_fields_when_disabled():
 FRACTIONAL_CREATED_AT = datetime(2026, 10, 16, 8, 0, 0, 900000)
 
 
-def test_build_built_in_field_values_keeps_fractional_epoch_seconds():
+def test_build_built_in_field_values_keeps_fractional_epoch_seconds() -> None:
     values = build_built_in_field_values(
         document_name="doc.txt",
         uploader=None,
@@ -139,7 +144,7 @@ def test_build_built_in_field_values_keeps_fractional_epoch_seconds():
 @pytest.mark.parametrize(("condition", "matches"), [("after", True), (">", True), ("=", False), ("is", False)])
 def test_fractional_built_in_dates_keep_integer_second_boundary_semantics(
     sqlite_session_factory: sessionmaker[Session], field: BuiltInField, condition: str, matches: bool
-):
+) -> None:
     values = build_built_in_field_values(
         document_name="doc.txt",
         uploader=None,
@@ -147,8 +152,9 @@ def test_fractional_built_in_dates_keep_integer_second_boundary_semantics(
         last_update_date=FRACTIONAL_CREATED_AT,
         data_source_type=DataSourceType.UPLOAD_FILE,
     )
+    doc_metadata: dict[str, object] = dict(values)
     with sqlite_session_factory.begin() as session:
-        session.add(make_document(document_id="document-1", doc_metadata=values))
+        session.add(make_document(document_id="document-1", doc_metadata=doc_metadata))
 
     filters = DatasetRetrieval.process_metadata_filter_func(0, condition, field, CREATED_AT_EPOCH, [])
     with sqlite_session_factory() as session:
