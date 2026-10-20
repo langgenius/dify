@@ -17,9 +17,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from jinja2 import Template
 
-from core.workflow.generator.runner import WorkflowGenerator, _find_planned_tool_entry
-from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from core.workflow.generator.types import GraphDict
+from services.workflow.generation.runner import WorkflowGenerator, _find_planned_tool_entry
+from services.workflow.generation.tool_catalogue import ToolCatalogueEntry
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -254,7 +254,7 @@ class TestDynamicToolRouting:
         model.invoke_llm.return_value = _llm_result("invalid")
         entries = [_tool_entry("provider", f"tool_{index:03d}") for index in range(100)]
 
-        with patch("core.workflow.generator.runner.json_repair.loads", side_effect=ValueError("bad JSON")):
+        with patch("services.workflow.generation.runner.json_repair.loads", side_effect=ValueError("bad JSON")):
             text = WorkflowGenerator._resolve_prompt_tool_catalogue(
                 model_instance=model,
                 model_parameters={},
@@ -1263,7 +1263,7 @@ class TestAutoModeResolution:
         assert result["mode"] == "advanced-chat"
 
     def test_auto_with_no_terminal_node_defaults_to_conversational(self):
-        from core.workflow.generator.runner import _resolve_generation_mode
+        from services.workflow.generation.runner import _resolve_generation_mode
 
         plan = cast(Any, {"title": "x", "description": "x", "nodes": [{"node_type": "llm"}]})
         assert _resolve_generation_mode("auto", plan) == "advanced-chat"
@@ -1625,7 +1625,7 @@ class TestWorkflowGeneratorTransientRetry:
         # The planner's first invoke raises a transient connection error; the
         # retry succeeds and the pipeline completes normally. Sleep is patched
         # out so the test doesn't actually wait for the backoff.
-        import core.workflow.generator.runner as _runner_mod
+        import services.workflow.generation.runner as _runner_mod
         from graphon.model_runtime.errors.invoke import InvokeConnectionError
 
         monkeypatch.setattr(_runner_mod.time, "sleep", lambda _s: None)
@@ -1661,7 +1661,7 @@ class TestWorkflowGeneratorTransientRetry:
         # Every attempt hits the transient error — once we exhaust the retry
         # budget the failure surfaces as a normal error envelope rather than
         # hanging or looping forever.
-        import core.workflow.generator.runner as _runner_mod
+        import services.workflow.generation.runner as _runner_mod
         from graphon.model_runtime.errors.invoke import InvokeServerUnavailableError
 
         monkeypatch.setattr(_runner_mod.time, "sleep", lambda _s: None)
@@ -1681,7 +1681,7 @@ class TestWorkflowGeneratorTransientRetry:
 
         assert result["error"]
         # Bounded: planner attempts == the retry budget, nothing more.
-        from core.workflow.generator.runner import _INVOKE_MAX_ATTEMPTS
+        from services.workflow.generation.runner import _INVOKE_MAX_ATTEMPTS
 
         assert model_instance.invoke_llm.call_count == _INVOKE_MAX_ATTEMPTS
 
@@ -1690,7 +1690,7 @@ class TestWorkflowGeneratorTransientRetry:
         # The runner must fail on the first attempt.
         # If the code wrongly slept here we'd want the test to still be fast;
         # patch sleep defensively so a regression can't hang CI.
-        import core.workflow.generator.runner as _runner_mod
+        import services.workflow.generation.runner as _runner_mod
         from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 
         monkeypatch.setattr(_runner_mod.time, "sleep", lambda _s: None)
@@ -1722,7 +1722,7 @@ class TestWorkflowGeneratorEdgeCases:
         # The planner needs deterministic output — a permissive temperature
         # would let it ramble. The runner pins it back down for the planner
         # call while leaving the builder call alone.
-        from core.workflow.generator.runner import _clamp_for_planner
+        from services.workflow.generation.runner import _clamp_for_planner
 
         out = _clamp_for_planner({"temperature": 0.9, "max_tokens": 1024})
         assert out["temperature"] == 0.2
@@ -1733,7 +1733,7 @@ class TestWorkflowGeneratorEdgeCases:
     def test_clamp_for_planner_preserves_low_temperature(self):
         # A user who already picked a tight temperature shouldn't have their
         # setting overridden — clamping only kicks in above 0.5.
-        from core.workflow.generator.runner import _clamp_for_planner
+        from services.workflow.generation.runner import _clamp_for_planner
 
         out = _clamp_for_planner({"temperature": 0.3})
         assert out["temperature"] == 0.3
@@ -1741,7 +1741,7 @@ class TestWorkflowGeneratorEdgeCases:
     def test_clamp_for_planner_injects_default_when_missing(self):
         # No temperature → planner picks 0.2 so the output stays consistent
         # across calls.
-        from core.workflow.generator.runner import _clamp_for_planner
+        from services.workflow.generation.runner import _clamp_for_planner
 
         out = _clamp_for_planner({})
         assert out["temperature"] == 0.2
@@ -1751,7 +1751,7 @@ class TestWorkflowGeneratorEdgeCases:
         # pin max_tokens we inject a tight default. This bounds latency/cost
         # and stops a model that ignores the JSON instruction from rambling
         # until it hits the provider's (often huge) default ceiling.
-        from core.workflow.generator.runner import _PLANNER_DEFAULT_MAX_TOKENS, _clamp_for_planner
+        from services.workflow.generation.runner import _PLANNER_DEFAULT_MAX_TOKENS, _clamp_for_planner
 
         out = _clamp_for_planner({})
         assert out["max_tokens"] == _PLANNER_DEFAULT_MAX_TOKENS
@@ -1759,7 +1759,7 @@ class TestWorkflowGeneratorEdgeCases:
     def test_clamp_for_planner_preserves_caller_max_tokens(self):
         # A caller who explicitly asked for a budget keeps it — we only fill
         # the default in when it's absent, never override an intentional value.
-        from core.workflow.generator.runner import _clamp_for_planner
+        from services.workflow.generation.runner import _clamp_for_planner
 
         out = _clamp_for_planner({"max_tokens": 8192})
         assert out["max_tokens"] == 8192
@@ -3019,7 +3019,7 @@ class TestWorkflowGeneratorVariableReferences:
         # the walker should not treat it as a reference (the LLM-at-runtime
         # will see the literal single-brace string and ignore it; nothing
         # for us to validate).
-        from core.workflow.generator.runner import WorkflowGenerator
+        from services.workflow.generation.runner import WorkflowGenerator
 
         refs: set[tuple[str, str]] = set()
         WorkflowGenerator._collect_refs_in_data(

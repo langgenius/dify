@@ -16,7 +16,7 @@ from configs import dify_config
 from core.rbac import RBACPermission, RBACResourceScope
 from models.account import Account
 from models.model import App
-from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
+from repositories.workflow.collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
 from services.enterprise.rbac_service import RBACService
 
 logger = logging.getLogger(__name__)

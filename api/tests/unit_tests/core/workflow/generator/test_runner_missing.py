@@ -1,10 +1,10 @@
-from core.workflow.generator.runner import (
+from graphon.model_runtime.errors.invoke import InvokeError
+from services.workflow.generation.runner import (
     WorkflowGenerator,
     _stage_error_to_envelope_code,
     _StageJSONError,
     _StageSchemaError,
 )
-from graphon.model_runtime.errors.invoke import InvokeError
 
 
 def test_stage_schema_error():
