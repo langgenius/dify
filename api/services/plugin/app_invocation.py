@@ -159,6 +159,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
 
                 return AdvancedChatAppGenerator(
                     runtime=runtime,
+                    execution_driver=runtime.execution_driver,
                 ).generate(
                     app_model=app,
                     workflow=workflow,
@@ -235,6 +236,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
 
         return WorkflowAppGenerator(
             runtime=runtime,
+            execution_driver=runtime.execution_driver,
         ).generate(
             app_model=app,
             workflow=workflow,

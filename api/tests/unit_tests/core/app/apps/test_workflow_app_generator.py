@@ -1,6 +1,8 @@
 """SQLite-backed tests for workflow app generation and worker reload behavior."""
 
 import contextlib
+import contextvars
+import json
 from dataclasses import replace
 from unittest.mock import MagicMock
 
@@ -11,16 +13,19 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
+from core.app.entities.queue_entities import QueueWorkflowSucceededEvent
+from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager
 from core.repositories import SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository
 from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
+from services.workflow.execution.adapters.workflow.app_queue_manager import WorkflowAppQueueManager
 from services.workflow.execution.ports import WorkflowRuntime
 from tests.unit_tests.model_factories import make_workflow
 
@@ -107,8 +112,8 @@ def _generate_entity(
     )
 
 
-def _runtime_state() -> GraphRuntimeState:
-    return GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+def _runtime_state() -> RuntimeState:
+    return RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
 
 
 def _repositories(
@@ -132,10 +137,72 @@ def _repositories(
     )
 
 
+def test_worker_executes_and_persists_a_workflow_through_the_injected_driver(
+    app: Flask,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    *,
+    workflow_runtime: WorkflowRuntime,
+) -> None:
+    app_model, workflow, end_user = _persist_generator_rows(sqlite_session)
+    workflow.graph = json.dumps(
+        {
+            "nodes": [
+                {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+                {
+                    "id": "end",
+                    "data": {
+                        "type": "end",
+                        "title": "End",
+                        "outputs": [{"variable": "caller", "value_selector": ["sys", "user_id"]}],
+                    },
+                },
+            ],
+            "edges": [{"id": "start-end", "source": "start", "target": "end"}],
+        }
+    )
+    sqlite_session.commit()
+    entity = WorkflowAppGenerateEntity(
+        task_id="worker-task",
+        app_config=_app_config(app_model, workflow),
+        inputs={},
+        files=[],
+        user_id=end_user.id,
+        stream=True,
+        invoke_from=InvokeFrom.SERVICE_API,
+        workflow_execution_id="worker-run",
+    )
+    queue = WorkflowAppQueueManager(entity.task_id, end_user.id, entity.invoke_from, AppMode.WORKFLOW)
+    execution_repository, node_repository = _repositories(sqlite_session_factory, app_model, end_user)
+
+    WorkflowAppGenerator(
+        runtime=workflow_runtime,
+        execution_driver=workflow_runtime.execution_driver,
+    )._generate_worker(
+        flask_app=app,
+        system_user_id=end_user.session_id or "",
+        workflow=workflow_snapshot(workflow),
+        application_generate_entity=entity,
+        queue_manager=queue,
+        context=contextvars.copy_context(),
+        variable_loader=DUMMY_VARIABLE_LOADER,
+        workflow_execution_repository=execution_repository,
+        workflow_node_execution_repository=node_repository,
+    )
+
+    events = [message.event for message in queue.listen()]
+    assert isinstance(events[-1], QueueWorkflowSucceededEvent), events
+    assert events[-1].outputs == {"caller": end_user.session_id}
+    run = sqlite_session.get(WorkflowRun, entity.workflow_execution_id)
+    assert run is not None
+    assert run.status == "succeeded"
+    assert run.outputs_dict == {"caller": end_user.session_id}
+
+
 def test_generate_includes_parent_trace_context_in_extras(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, *, workflow_runtime: WorkflowRuntime
 ) -> None:
-    generator = WorkflowAppGenerator(runtime=workflow_runtime)
+    generator = WorkflowAppGenerator(runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver)
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
 
     monkeypatch.setattr(
@@ -218,7 +285,7 @@ def test_resume_delegates_to_generate(
     *,
     workflow_runtime: WorkflowRuntime,
 ) -> None:
-    generator = WorkflowAppGenerator(runtime=workflow_runtime)
+    generator = WorkflowAppGenerator(runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver)
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
     mock_generate = MagicMock(return_value="ok")
     monkeypatch.setattr(generator, "_generate", mock_generate)
@@ -260,14 +327,14 @@ def test_resume_delegates_to_generate(
     assert kwargs["invoke_from"] == InvokeFrom.DEBUGGER
 
 
-def test_generate_appends_pause_layer_and_forwards_state(
+def test_generate_forwards_pause_configuration_and_state(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
     *,
     workflow_runtime: WorkflowRuntime,
 ) -> None:
-    generator = WorkflowAppGenerator(runtime=workflow_runtime)
+    generator = WorkflowAppGenerator(runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver)
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
 
     queue_manager = MagicMock()
@@ -296,8 +363,6 @@ def test_generate_appends_pause_layer_and_forwards_state(
         "_get_draft_var_saver_factory",
         staticmethod(get_recording_draft_var_saver_factory),
     )
-
-    sqlite_session_factory()
 
     worker_kwargs: dict[str, object] = {}
 
@@ -345,10 +410,8 @@ def test_generate_appends_pause_layer_and_forwards_state(
 
     assert result == "converted"
     graph_engine_layers = worker_kwargs["kwargs"]["graph_engine_layers"]
-    assert graph_engine_layers[0] == "base-layer"
-    pause_layer = graph_engine_layers[1]
-    assert isinstance(pause_layer, PauseStatePersistenceLayer)
-    assert pause_layer._human_form_reader is workflow_runtime.human_form_reader
+    assert graph_engine_layers == ("base-layer",)
+    assert worker_kwargs["kwargs"]["pause_state_config"].state_owner_user_id == "owner"
     assert worker_kwargs["kwargs"]["graph_runtime_state"] is graph_runtime_state
     assert worker_kwargs["joined"] is True
     assert worker_kwargs["join_timeout"] == 300
@@ -362,7 +425,7 @@ def test_resume_path_runs_worker_with_runtime_state(
     *,
     workflow_runtime: WorkflowRuntime,
 ) -> None:
-    generator = WorkflowAppGenerator(runtime=workflow_runtime)
+    generator = WorkflowAppGenerator(runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver)
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
     workflow_run = WorkflowRun(
         id="run",
@@ -394,9 +457,8 @@ def test_resume_path_runs_worker_with_runtime_state(
         MagicMock(side_effect=lambda response, invoke_from: response),
     )
 
-    sqlite_session_factory()
-
     runner_instance = MagicMock()
+    runner_instance.prepare.return_value = None
 
     def runner_ctor(**kwargs):
         assert kwargs["graph_runtime_state"] is runtime_state
@@ -452,4 +514,4 @@ def test_resume_path_runs_worker_with_runtime_state(
     assert result == "raw-response"
     assert worker_lifecycle["joined"] is True
     assert worker_lifecycle["join_timeout"] == 300
-    runner_instance.run.assert_called_once()
+    runner_instance.prepare.assert_called_once()

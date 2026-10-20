@@ -2,30 +2,36 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from core.workflow.system_variables import build_system_variables
 from enums.human_input import HumanInputFormStatus, ValueSourceType
-from graphon.entities import WorkflowStartReason
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.graph import Graph
-from graphon.graph_engine import GraphEngine, GraphEngineConfig
-from graphon.graph_engine.command_channels import InMemoryChannel
-from graphon.graph_events import (
+from graphon.engine import Engine
+from graphon.engine.command import InMemoryChannel
+from graphon.engine_events import (
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunSucceededEvent,
 )
+from graphon.entities import WorkflowStartReason
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.graph import Graph
 from graphon.nodes.base.entities import OutputVariableEntity
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.human_input.entities import HumanInputNodeData as GraphonHumanInputNodeData
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
-from models.human_input_contracts import FormCreateParams, HumanInputFormEntity, HumanInputFormRepository
+from models.human_input_contracts import (
+    FormCreateParams,
+    HumanInputFormEntity,
+    HumanInputFormRecipientEntity,
+    HumanInputFormRepository,
+)
 from models.human_input_entities import (
     FileInputConfig,
     FileListInputConfig,
@@ -37,25 +43,26 @@ from models.human_input_entities import (
 from services.workflow.execution.adapters.human_input import (
     DifyHITLCallback,
 )
+from services.workflow.execution.adapters.node_runtime import DifyFileReferenceFactory
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class PauseStateStore(Protocol):
-    def save(self, runtime_state: GraphRuntimeState) -> None: ...
+    def save(self, runtime_state: RuntimeState) -> None: ...
 
-    def load(self) -> GraphRuntimeState: ...
+    def load(self) -> RuntimeState: ...
 
 
 class InMemoryPauseStore:
     def __init__(self) -> None:
         self._snapshot: str | None = None
 
-    def save(self, runtime_state: GraphRuntimeState) -> None:
+    def save(self, runtime_state: RuntimeState) -> None:
         self._snapshot = runtime_state.dumps()
 
-    def load(self) -> GraphRuntimeState:
+    def load(self) -> RuntimeState:
         assert self._snapshot is not None
-        return GraphRuntimeState.from_snapshot(self._snapshot)
+        return RuntimeState.from_snapshot(self._snapshot)
 
 
 class _TestFileReferenceFactory:
@@ -89,7 +96,7 @@ class StaticForm(HumanInputFormEntity):
         return self.form_id
 
     @property
-    def recipients(self) -> list:
+    def recipients(self) -> list[HumanInputFormRecipientEntity]:
         return []
 
     @property
@@ -125,7 +132,8 @@ class StaticRepo(HumanInputFormRepository):
     def __init__(self, forms_by_node_id: Mapping[str, HumanInputFormEntity]) -> None:
         self._forms_by_node_id = dict(forms_by_node_id)
 
-    def get_form(self, node_id: str) -> HumanInputFormEntity | None:
+    def get_form(self, node_id: str, *, form_id: str | None = None) -> HumanInputFormEntity | None:
+        _ = form_id
         return self._forms_by_node_id.get(node_id)
 
     def set_forms(self, forms_by_node_id: Mapping[str, HumanInputFormEntity]) -> None:
@@ -134,8 +142,11 @@ class StaticRepo(HumanInputFormRepository):
     def create_form(self, params: FormCreateParams) -> HumanInputFormEntity:
         raise AssertionError("create_form should not be called in resume scenario")
 
+    def mark_timeout(self, node_id: str, *, form_id: str) -> HumanInputFormEntity:
+        raise AssertionError("these resume scenarios do not advance the form deadline")
 
-def _build_runtime_state() -> GraphRuntimeState:
+
+def _build_runtime_state() -> RuntimeState:
     variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(
             user_id="user",
@@ -146,10 +157,10 @@ def _build_runtime_state() -> GraphRuntimeState:
         user_inputs={},
         conversation_variables=[],
     )
-    return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    return RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter())
 
 
-def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepository) -> Graph:
+def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) -> Graph:
     graph_config: dict[str, object] = {"nodes": [], "edges": []}
     graph_init_params = build_test_graph_init_params(
         workflow_id="workflow",
@@ -166,8 +177,8 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     start_node = StartNode(
         node_id=start_config["id"],
         data=StartNodeData(title="Start", variables=[]),
-        graph_init_params=graph_init_params,
-        graph_runtime_state=runtime_state,
+        init_params=graph_init_params,
+        runtime_state=runtime_state,
     )
 
     human_data = HumanInputNodeData(
@@ -188,13 +199,13 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     human_a_callback = DifyHITLCallback(
         form_repository=repo,
         node_data=human_data,
-        file_reference_factory=_TestFileReferenceFactory(),
+        file_reference_factory=cast(DifyFileReferenceFactory, _TestFileReferenceFactory()),
     )
     human_a = HumanInputNode(
         node_id=human_a_config["id"],
-        data=human_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=runtime_state,
+        data=GraphonHumanInputNodeData.model_validate(human_data.model_dump()),
+        init_params=graph_init_params,
+        runtime_state=runtime_state,
         hitl_callback=human_a_callback,
     )
 
@@ -202,13 +213,13 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     human_b_callback = DifyHITLCallback(
         form_repository=repo,
         node_data=human_data,
-        file_reference_factory=_TestFileReferenceFactory(),
+        file_reference_factory=cast(DifyFileReferenceFactory, _TestFileReferenceFactory()),
     )
     human_b = HumanInputNode(
         node_id=human_b_config["id"],
-        data=human_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=runtime_state,
+        data=GraphonHumanInputNodeData.model_validate(human_data.model_dump()),
+        init_params=graph_init_params,
+        runtime_state=runtime_state,
         hitl_callback=human_b_callback,
     )
 
@@ -228,8 +239,8 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     end_node = EndNode(
         node_id=end_config["id"],
         data=end_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=runtime_state,
+        init_params=graph_init_params,
+        runtime_state=runtime_state,
     )
 
     builder = (
@@ -242,18 +253,12 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     return builder.connect(tail="human_b", head="end", source_handle="approve").build()
 
 
-def _run_graph(graph: Graph, runtime_state: GraphRuntimeState) -> list[object]:
-    engine = GraphEngine(
-        workflow_id="workflow",
+def _run_graph(graph: Graph, runtime_state: RuntimeState) -> list[object]:
+    engine = Engine(
         graph=graph,
-        graph_runtime_state=runtime_state,
+        runtime_state=runtime_state,
         command_channel=InMemoryChannel(),
-        config=GraphEngineConfig(
-            min_workers=2,
-            max_workers=2,
-            scale_up_threshold=1,
-            scale_down_idle_time=30.0,
-        ),
+        workers=2,
     )
     return list(engine.run())
 

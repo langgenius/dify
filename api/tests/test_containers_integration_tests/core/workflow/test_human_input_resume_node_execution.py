@@ -11,16 +11,17 @@ from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchem
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.system_variables import build_system_variables
 from enums.human_input import HumanInputFormStatus
+from graphon.engine import Engine
+from graphon.engine.command import InMemoryChannel
 from graphon.enums import WorkflowType
 from graphon.graph import Graph
-from graphon.graph_engine import GraphEngine
-from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.human_input.entities import HumanInputNodeData as GraphonHumanInputNodeData
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
@@ -35,10 +36,11 @@ from services.workflow.execution.adapters.human_input import (
     DifyHITLCallback,
 )
 from services.workflow.execution.adapters.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from services.workflow_run_index import WorkflowRunIndex
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
-def _build_runtime_state(workflow_execution_id: str, app_id: str, workflow_id: str, user_id: str) -> GraphRuntimeState:
+def _build_runtime_state(workflow_execution_id: str, app_id: str, workflow_id: str, user_id: str) -> RuntimeState:
     variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(
             workflow_execution_id=workflow_execution_id,
@@ -49,11 +51,11 @@ def _build_runtime_state(workflow_execution_id: str, app_id: str, workflow_id: s
         user_inputs={},
         conversation_variables=[],
     )
-    return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    return RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter())
 
 
 def _build_graph(
-    runtime_state: GraphRuntimeState,
+    runtime_state: RuntimeState,
     tenant_id: str,
     app_id: str,
     workflow_id: str,
@@ -76,8 +78,8 @@ def _build_graph(
     start_node = StartNode(
         node_id="start",
         data=start_data,
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
+        init_params=params,
+        runtime_state=runtime_state,
     )
 
     human_data = HumanInputNodeData(
@@ -94,9 +96,9 @@ def _build_graph(
     )
     human_node = HumanInputNode(
         node_id="human",
-        data=human_data,
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
+        data=GraphonHumanInputNodeData(title=human_data.title),
+        init_params=params,
+        runtime_state=runtime_state,
         hitl_callback=hitl_callback,
     )
 
@@ -108,8 +110,8 @@ def _build_graph(
     end_node = EndNode(
         node_id="end",
         data=end_data,
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
+        init_params=params,
+        runtime_state=runtime_state,
     )
 
     return (
@@ -238,7 +240,9 @@ class TestHumanInputResumeNodeExecutionIntegration:
         self.session.execute(delete(Tenant).where(Tenant.id == self.tenant.id))
         self.session.commit()
 
-    def _build_persistence_layer(self, execution_id: str) -> WorkflowPersistenceLayer:
+    def _build_run_layers(
+        self, execution_id: str, *, resuming: bool
+    ) -> tuple[WorkflowRunIndex, WorkflowPersistenceLayer]:
         generate_entity = _build_generate_entity(
             tenant_id=self.tenant.id,
             app_id=self.app.id,
@@ -246,21 +250,24 @@ class TestHumanInputResumeNodeExecutionIntegration:
             workflow_execution_id=execution_id,
             user_id=self.account.id,
         )
+        session_factory = sessionmaker(bind=self.session.get_bind(), expire_on_commit=False)
         execution_repo = SQLAlchemyWorkflowExecutionRepository(
-            session_factory=self.session.get_bind(),
+            session_factory=session_factory,
             tenant_id=self.tenant.id,
             user=self.account,
             app_id=self.app.id,
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
         node_execution_repo = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=self.session.get_bind(),
+            session_factory=session_factory,
             tenant_id=self.tenant.id,
             user=self.account,
             app_id=self.app.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
-        return WorkflowPersistenceLayer(
+        history = node_execution_repo.get_by_workflow_execution(execution_id, include_paused=True) if resuming else ()
+        run_index = WorkflowRunIndex(history)
+        persistence = WorkflowPersistenceLayer(
             application_generate_entity=generate_entity,
             workflow_info=PersistenceWorkflowInfo(
                 workflow_id=self.workflow.id,
@@ -271,15 +278,18 @@ class TestHumanInputResumeNodeExecutionIntegration:
             workflow_execution_repository=execution_repo,
             workflow_node_execution_repository=node_execution_repo,
         )
+        persistence.set_node_run_indices(run_index.indices)
+        persistence.set_node_execution_history(history)
+        return run_index, persistence
 
-    def _run_graph(self, graph: Graph, runtime_state: GraphRuntimeState, execution_id: str) -> None:
-        engine = GraphEngine(
-            workflow_id=self.workflow.id,
+    def _run_graph(self, graph: Graph, runtime_state: RuntimeState, execution_id: str) -> None:
+        engine = Engine(
             graph=graph,
-            graph_runtime_state=runtime_state,
+            runtime_state=runtime_state,
             command_channel=InMemoryChannel(),
         )
-        engine.layer(self._build_persistence_layer(execution_id))
+        for layer in self._build_run_layers(execution_id, resuming=runtime_state.graph_execution.paused):
+            engine.add_layer(layer)
         for _ in engine.run():
             continue
 
@@ -306,9 +316,16 @@ class TestHumanInputResumeNodeExecutionIntegration:
             form_repository,
         )
         self._run_graph(paused_graph, runtime_state, execution_id)
+        human_execution_id = self.session.scalar(
+            select(WorkflowNodeExecutionModel.id).where(
+                WorkflowNodeExecutionModel.workflow_run_id == execution_id,
+                WorkflowNodeExecutionModel.node_id == "human",
+            )
+        )
+        assert human_execution_id is not None
 
         snapshot = runtime_state.dumps()
-        resumed_state = GraphRuntimeState.from_snapshot(snapshot)
+        resumed_state = RuntimeState.from_snapshot(snapshot)
         form = self.session.scalar(
             select(HumanInputForm).where(
                 HumanInputForm.tenant_id == self.tenant.id,
@@ -339,6 +356,17 @@ class TestHumanInputResumeNodeExecutionIntegration:
         )
         records = self.session.execute(stmt).scalars().all()
         assert len(records) == 1
-        assert records[0].status != "paused"
+        assert records[0].id == human_execution_id
+        assert records[0].status == "succeeded"
         assert records[0].triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
         assert records[0].created_by_role == CreatorUserRole.ACCOUNT
+        executions = self.session.scalars(
+            select(WorkflowNodeExecutionModel)
+            .where(WorkflowNodeExecutionModel.workflow_run_id == execution_id)
+            .order_by(WorkflowNodeExecutionModel.index)
+        ).all()
+        assert [(execution.node_id, execution.index) for execution in executions] == [
+            ("start", 1),
+            ("human", 2),
+            ("end", 3),
+        ]

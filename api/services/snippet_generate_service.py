@@ -30,6 +30,7 @@ from core.app.file_access import DatabaseFileAccessController
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
 from factories import file_factory
 from graphon.file.models import File
+from graphon.graph.scoping import resolve_container_id
 from models import Account
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
@@ -187,6 +188,7 @@ class SnippetGenerateService:
 
         response = WorkflowAppGenerator(
             runtime=self._runtime,
+            execution_driver=self._runtime.execution_driver,
             draft_variable_loader=self._variables.workflow_loader,
             draft_variable_saver=self._variables.saver_factory,
         ).generate(
@@ -233,8 +235,8 @@ class SnippetGenerateService:
         """
         Build a new graph dict with a virtual Start node prepended.
 
-        The virtual Start node is wired to every existing node that has no
-        incoming edges (i.e. the current root candidates).  This guarantees:
+        The virtual Start node is wired to top-level nodes with no incoming
+        edges. Container children retain their own entry points.
 
         :param graph_dict: Original graph configuration.
         :param input_fields: Snippet input field definitions from
@@ -244,13 +246,18 @@ class SnippetGenerateService:
         nodes: list[dict[str, Any]] = list(graph_dict.get("nodes", []))
         edges: list[dict[str, Any]] = list(graph_dict.get("edges", []))
 
-        # Identify nodes with no incoming edges.
+        nodes_by_id = {node["id"]: node for node in nodes}
+        # A container's entry node has no incoming edges, but is not a graph root.
         nodes_with_incoming: set[str] = set()
         for edge in edges:
             target = edge.get("target")
             if isinstance(target, str):
                 nodes_with_incoming.add(target)
-        root_candidate_ids = [n["id"] for n in nodes if n["id"] not in nodes_with_incoming]
+        root_candidate_ids = [
+            node["id"]
+            for node in nodes
+            if node["id"] not in nodes_with_incoming and not resolve_container_id(node, nodes_by_id=nodes_by_id)
+        ]
 
         # Build Start node ``variables`` from snippet input fields.
         start_variables: list[dict[str, Any]] = []
@@ -367,6 +374,7 @@ class SnippetGenerateService:
         return convert_to_event_stream(
             WorkflowAppGenerator(
                 runtime=self._runtime,
+                execution_driver=self._runtime.execution_driver,
                 draft_variable_loader=self._variables.workflow_loader,
                 draft_variable_saver=self._variables.saver_factory,
             ).single_iteration_generate(
@@ -412,6 +420,7 @@ class SnippetGenerateService:
         return convert_to_event_stream(
             WorkflowAppGenerator(
                 runtime=self._runtime,
+                execution_driver=self._runtime.execution_driver,
                 draft_variable_loader=self._variables.workflow_loader,
                 draft_variable_saver=self._variables.saver_factory,
             ).single_loop_generate(

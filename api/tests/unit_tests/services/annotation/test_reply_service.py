@@ -274,6 +274,6 @@ def test_chatflow_runner_search_and_publish_are_outside_transaction(
         events.append(item)
 
     monkeypatch.setattr(runner._events, "_publish_event", publish)
-    runner.run()
+    assert runner.prepare() is None
     assert isinstance(events[0], QueueAnnotationReplyEvent)
     assert isinstance(events[-1], QueueStopEvent)

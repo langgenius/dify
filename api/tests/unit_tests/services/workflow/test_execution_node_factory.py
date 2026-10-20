@@ -1,5 +1,5 @@
 from graphon.enums import BuiltinNodeTypes
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 from services.workflow.execution.ports import WorkflowRuntime
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -7,8 +7,8 @@ from tests.workflow_test_utils import build_test_graph_init_params
 
 def test_factory_constructs_adapter_knowledge_retrieval_node(workflow_runtime: WorkflowRuntime) -> None:
     factory = DifyNodeFactory(
-        graph_init_params=build_test_graph_init_params(),
-        graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0),
+        init_params=build_test_graph_init_params(),
+        runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0),
         workflow_runtime=workflow_runtime,
     )
 

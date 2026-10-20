@@ -1,54 +1,59 @@
 import sys
 import time
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
 from decimal import Decimal
 from types import ModuleType, SimpleNamespace
-from typing import Any
+from typing import Any, cast, override
 
 from pytest_mock import MockerFixture
 
 import models.human_input_entities  # noqa: F401
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.workflow.system_variables import build_system_variables
-from graphon.entities import WorkflowStartReason
-from graphon.entities.base_node_data import BaseNodeData, RetryConfig
-from graphon.entities.pause_reason import SchedulingPause
-from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionStatus
-from graphon.graph import Graph
-from graphon.graph_engine import GraphEngine
-from graphon.graph_engine.command_channels import InMemoryChannel
-from graphon.graph_events import (
-    GraphEngineEvent,
+from extensions.application_services.workflow import WorkflowExecutionDependencies
+from graphon.engine import Engine
+from graphon.engine.command import InMemoryChannel
+from graphon.engine_events import (
+    EngineEvent,
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
+    NodeEvent,
     NodeRunSucceededEvent,
 )
-from graphon.node_events import NodeRunResult, PauseRequestedEvent
+from graphon.entities import WorkflowStartReason
+from graphon.entities.base_node_data import BaseNodeData, RetryConfig
+from graphon.entities.pause_reason import SchedulingPause
+from graphon.enums import BuiltinNodeTypes, ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.node_events import NodeEventPayload, NodeRunResult, PauseRequestedEvent
 from graphon.nodes.base.entities import OutputVariableEntity
 from graphon.nodes.base.node import Node
+from graphon.nodes.container_effects import ContainerAwaitRequest
 from graphon.nodes.end.entities import EndNodeData
 from graphon.nodes.start.entities import StartNodeData
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime.init_params import InitParams
 from models.account import Account
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import Workflow, WorkflowType
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.execution.adapters import node_factory as node_factory_module
 from services.workflow.execution.adapters.chatflow import app_generator as adv_app_gen_module
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 from services.workflow.execution.adapters.workflow import app_generator as wf_app_gen_module
-from services.workflow.execution.ports import WorkflowRuntime
 from tests.workflow_test_utils import build_test_graph_init_params
 
 if "core.ops.ops_trace_manager" not in sys.modules:
     ops_stub = ModuleType("core.ops.ops_trace_manager")
 
     class _StubTraceQueueManager:
-        def __init__(self, *_, **__):
+        def __init__(self, *_: object, **__: object) -> None:
             pass
 
-    ops_stub.TraceQueueManager = _StubTraceQueueManager
+    ops_stub.TraceQueueManager = _StubTraceQueueManager  # type: ignore[attr-defined]
     sys.modules["core.ops.ops_trace_manager"] = ops_stub
 
 
@@ -69,36 +74,42 @@ class _StubToolNode(Node[_StubToolNodeData]):
         node_id: str,
         data: _StubToolNodeData,
         *,
-        graph_init_params,
-        graph_runtime_state,
+        init_params: InitParams,
+        runtime_state: RuntimeState,
         **_kwargs: Any,
     ) -> None:
         super().__init__(
             node_id=node_id,
             data=data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
 
-    def _get_error_strategy(self):
+    @override
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
+    @override
     def _get_retry_config(self) -> RetryConfig:
         return self._node_data.retry_config
 
+    @override
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self):
+    @override
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
+    @override
     def _get_default_value_dict(self) -> dict[str, Any]:
         return self._node_data.default_value_dict
 
     def get_base_node_data(self) -> BaseNodeData:
         return self._node_data
 
-    def _run(self):
+    @override
+    def _run(self) -> Generator[NodeEventPayload | NodeEvent | ContainerAwaitRequest]:
         if self.node_data.pause_on:
             yield PauseRequestedEvent(reason=SchedulingPause(message="test pause"))
             return
@@ -107,10 +118,10 @@ class _StubToolNode(Node[_StubToolNodeData]):
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             outputs={"value": f"{self.id}-done"},
         )
-        yield self._convert_node_run_result_to_graph_node_event(result)
+        yield self._convert_node_run_result_to_node_event(result)
 
 
-def _patch_tool_node(mocker: MockerFixture):
+def _patch_tool_node(mocker: MockerFixture) -> None:
     original_resolve_node_class = node_factory_module.resolve_workflow_node_class
 
     def _patched_resolve_node_class(
@@ -118,7 +129,7 @@ def _patch_tool_node(mocker: MockerFixture):
         node_type: NodeType,
         node_version: str,
         node_data: Mapping[str, Any] | BaseNodeData | None = None,
-    ) -> type[Node]:
+    ) -> type[Node[Any]]:
         if node_type == BuiltinNodeTypes.TOOL:
             return _StubToolNode
         return original_resolve_node_class(
@@ -132,7 +143,7 @@ def _patch_tool_node(mocker: MockerFixture):
 
 def _node_data(node_type: NodeType, data: BaseNodeData) -> dict[str, object]:
     node_data = data.model_dump()
-    node_data["type"] = str(node_type)
+    node_data["type"] = node_type
     return node_data
 
 
@@ -163,7 +174,7 @@ def _build_graph_config(*, pause_on: str | None) -> dict[str, object]:
     return {"nodes": nodes, "edges": edges}
 
 
-def _build_graph(runtime_state: GraphRuntimeState, *, pause_on: str | None) -> Graph:
+def _build_graph(runtime_state: RuntimeState, *, pause_on: str | None) -> Graph:
     graph_config = _build_graph_config(pause_on=pause_on)
     params = build_test_graph_init_params(
         workflow_id="workflow",
@@ -177,21 +188,21 @@ def _build_graph(runtime_state: GraphRuntimeState, *, pause_on: str | None) -> G
     )
 
     node_factory = DifyNodeFactory(
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
+        init_params=params,
+        runtime_state=runtime_state,
     )
 
     return Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
 
-def _build_runtime_state(run_id: str) -> GraphRuntimeState:
+def _build_runtime_state(run_id: str) -> RuntimeState:
     variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="user", app_id="app", workflow_id="workflow"),
         user_inputs={},
         conversation_variables=[],
     )
     variable_pool.add(("sys", "workflow_run_id"), run_id)
-    return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    return RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter())
 
 
 def _make_app() -> App:
@@ -251,27 +262,66 @@ def _make_message() -> Message:
     )
 
 
-def _run_with_optional_pause(runtime_state: GraphRuntimeState, *, pause_on: str | None) -> list[GraphEngineEvent]:
+def _workflow_entity() -> WorkflowAppGenerateEntity:
+    return WorkflowAppGenerateEntity.model_construct(
+        task_id="task",
+        app_config=WorkflowUIBasedAppConfig(
+            tenant_id="tenant",
+            app_id="app",
+            app_mode=AppMode.WORKFLOW,
+            workflow_id="workflow",
+        ),
+        inputs={},
+        files=[],
+        user_id="user",
+        stream=False,
+        invoke_from=InvokeFrom.DEBUGGER,
+        workflow_execution_id="paused-run",
+        trace_manager=SimpleNamespace(),
+    )
+
+
+def _advanced_chat_entity() -> AdvancedChatAppGenerateEntity:
+    return AdvancedChatAppGenerateEntity.model_construct(
+        task_id="task",
+        app_config=WorkflowUIBasedAppConfig(
+            tenant_id="tenant",
+            app_id="app",
+            app_mode=AppMode.ADVANCED_CHAT,
+            workflow_id="workflow",
+        ),
+        inputs={},
+        query="query",
+        files=[],
+        user_id="user",
+        stream=False,
+        invoke_from=InvokeFrom.DEBUGGER,
+        trace_manager=SimpleNamespace(),
+    )
+
+
+def _run_with_optional_pause(runtime_state: RuntimeState, *, pause_on: str | None) -> list[EngineEvent]:
     command_channel = InMemoryChannel()
     graph = _build_graph(runtime_state, pause_on=pause_on)
-    engine = GraphEngine(
-        workflow_id="workflow",
+    engine = Engine(
         graph=graph,
-        graph_runtime_state=runtime_state,
+        runtime_state=runtime_state,
         command_channel=command_channel,
     )
 
-    events: list[GraphEngineEvent] = []
+    events: list[EngineEvent] = []
     for event in engine.run():
         events.append(event)
     return events
 
 
-def _node_successes(events: list[GraphEngineEvent]) -> list[str]:
+def _node_successes(events: list[EngineEvent]) -> list[str]:
     return [evt.node_id for evt in events if isinstance(evt, NodeRunSucceededEvent)]
 
 
-def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture, *, workflow_runtime: WorkflowRuntime):
+def test_workflow_app_pause_resume_matches_baseline(
+    mocker: MockerFixture, *, workflow_runtime: WorkflowExecutionDependencies
+) -> None:
     _patch_tool_node(mocker)
 
     baseline_state = _build_runtime_state("baseline")
@@ -286,36 +336,39 @@ def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture, *, wo
     paused_nodes = _node_successes(paused_events)
     snapshot = paused_state.dumps()
 
-    resumed_state = GraphRuntimeState.from_snapshot(snapshot)
+    resumed_state = RuntimeState.from_snapshot(snapshot)
 
-    generator = wf_app_gen_module.WorkflowAppGenerator(runtime=workflow_runtime)
+    generator = wf_app_gen_module.WorkflowAppGenerator(
+        runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+    )
 
-    def _fake_generate(**kwargs):
-        state: GraphRuntimeState = kwargs["graph_runtime_state"]
+    def _fake_generate(**kwargs: Any) -> list[str]:
+        state: RuntimeState = kwargs["graph_runtime_state"]
         events = _run_with_optional_pause(state, pause_on=None)
         return _node_successes(events)
 
     mocker.patch.object(generator, "_generate", side_effect=_fake_generate)
 
-    resumed_nodes = generator.resume(
-        app_model=_make_app(),
-        workflow=_make_workflow(),
-        user=_make_account(),
-        application_generate_entity=SimpleNamespace(
-            stream=False,
-            invoke_from=InvokeFrom.SERVICE_API,
-            trace_manager=SimpleNamespace(),
+    resumed_nodes = cast(
+        list[str],
+        generator.resume(
+            app_model=_make_app(),
+            workflow=workflow_snapshot(_make_workflow()),
+            user=_make_account(),
+            application_generate_entity=_workflow_entity(),
+            graph_runtime_state=resumed_state,
+            workflow_execution_repository=SimpleNamespace(),
+            workflow_node_execution_repository=SimpleNamespace(),
         ),
-        graph_runtime_state=resumed_state,
-        workflow_execution_repository=SimpleNamespace(),
-        workflow_node_execution_repository=SimpleNamespace(),
     )
 
     assert paused_nodes + resumed_nodes == baseline_nodes
     assert resumed_state.outputs == baseline_outputs
 
 
-def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture, *, workflow_runtime: WorkflowRuntime):
+def test_advanced_chat_pause_resume_matches_baseline(
+    mocker: MockerFixture, *, workflow_runtime: WorkflowExecutionDependencies
+) -> None:
     _patch_tool_node(mocker)
 
     baseline_state = _build_runtime_state("adv-baseline")
@@ -330,31 +383,32 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture, *, w
     paused_nodes = _node_successes(paused_events)
     snapshot = paused_state.dumps()
 
-    resumed_state = GraphRuntimeState.from_snapshot(snapshot)
+    resumed_state = RuntimeState.from_snapshot(snapshot)
 
-    generator = adv_app_gen_module.AdvancedChatAppGenerator(runtime=workflow_runtime)
+    generator = adv_app_gen_module.AdvancedChatAppGenerator(
+        runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+    )
 
-    def _fake_generate(**kwargs):
-        state: GraphRuntimeState = kwargs["graph_runtime_state"]
+    def _fake_generate(**kwargs: Any) -> list[str]:
+        state: RuntimeState = kwargs["graph_runtime_state"]
         events = _run_with_optional_pause(state, pause_on=None)
         return _node_successes(events)
 
     mocker.patch.object(generator, "_generate", side_effect=_fake_generate)
 
-    resumed_nodes = generator.resume(
-        app_model=_make_app(),
-        workflow=_make_workflow(),
-        user=_make_account(),
-        conversation=_make_conversation(),
-        message=_make_message(),
-        application_generate_entity=SimpleNamespace(
-            stream=False,
-            invoke_from=InvokeFrom.SERVICE_API,
-            trace_manager=SimpleNamespace(),
+    resumed_nodes = cast(
+        list[str],
+        generator.resume(
+            app_model=_make_app(),
+            workflow=workflow_snapshot(_make_workflow()),
+            user=_make_account(),
+            conversation=_make_conversation(),
+            message=_make_message(),
+            application_generate_entity=_advanced_chat_entity(),
+            workflow_execution_repository=SimpleNamespace(),
+            workflow_node_execution_repository=SimpleNamespace(),
+            graph_runtime_state=resumed_state,
         ),
-        workflow_execution_repository=SimpleNamespace(),
-        workflow_node_execution_repository=SimpleNamespace(),
-        graph_runtime_state=resumed_state,
     )
 
     assert paused_nodes + resumed_nodes == baseline_nodes
@@ -369,7 +423,7 @@ def test_resume_emits_resumption_start_reason(mocker: MockerFixture) -> None:
     initial_start = next(event for event in paused_events if isinstance(event, GraphRunStartedEvent))
     assert initial_start.reason == WorkflowStartReason.INITIAL
 
-    resumed_state = GraphRuntimeState.from_snapshot(paused_state.dumps())
+    resumed_state = RuntimeState.from_snapshot(paused_state.dumps())
     resumed_events = _run_with_optional_pause(resumed_state, pause_on=None)
     resume_start = next(event for event in resumed_events if isinstance(event, GraphRunStartedEvent))
     assert resume_start.reason == WorkflowStartReason.RESUMPTION

@@ -11,18 +11,29 @@ This test suite covers:
 
 import json
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Generator
+from dataclasses import replace
 from typing import Any, cast
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy import select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
+from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
+from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
+from core.workflow.system_variables import SystemVariableKey, get_system_text
 from enums import DeploymentEdition
+from extensions.application_services.workflow import WorkflowExecutionDependencies
+from extensions.logstore.repositories.logstore_workflow_node_execution_repository import (
+    LogstoreWorkflowNodeExecutionRepository,
+)
+from graphon.engine_events import NodeEvent, NodeRunFailedEvent, NodeRunStartedEvent, NodeRunSucceededEvent
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -30,24 +41,32 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.errors import WorkflowNodeRunFailedError
-from graphon.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.node_events import NodeRunResult
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables.input_entities import VariableEntityType
 from libs.datetime_utils import naive_utc_now
+from machinery.context import RequestContext
 from models.account import Account
 from models.model import App, AppMode
 from models.tools import BuiltinToolProvider
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from repositories.credentials.query_repository import CredentialQueryRepository
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.errors.app import IsDraftWorkflowError
+from services.human_input.debug_service import HumanInputDebugService
+from services.human_input.file_gateway import HumanInputDebugFileGateway
+from services.workflow.contracts import WorkflowDebugNode
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow_service import (
     WorkflowService,
     _rebuild_file_for_user_inputs_in_start_node,
     _rebuild_single_file,
     _setup_variable_pool,
 )
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class TestWorkflowAssociatedDataFactory:
@@ -1689,10 +1708,265 @@ class TestRebuildFileForUserInputsInStartNode:
         assert "attachment" not in result
 
 
+class TestWorkflowServiceDraftExecution:
+    @pytest.mark.parametrize(
+        "repository_type",
+        [
+            SQLAlchemyWorkflowNodeExecutionRepository,
+            CeleryWorkflowNodeExecutionRepository,
+            LogstoreWorkflowNodeExecutionRepository,
+        ],
+    )
+    @pytest.mark.parametrize("status", [WorkflowNodeExecutionStatus.SUCCEEDED, WorkflowNodeExecutionStatus.FAILED])
+    def test_single_step_persists_caller_before_body_and_keeps_workspace_on_completion(
+        self,
+        sqlite_engine: Engine,
+        config_overrides: Callable[..., None],
+        repository_type: type[SQLAlchemyWorkflowNodeExecutionRepository]
+        | type[CeleryWorkflowNodeExecutionRepository]
+        | type[LogstoreWorkflowNodeExecutionRepository],
+        status: WorkflowNodeExecutionStatus,
+        *,
+        workflow_runtime: WorkflowExecutionDependencies,
+        workflow_variables: WorkflowExecutionVariables,
+    ) -> None:
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        node_id = "agent-node"
+        workflow_model = TestWorkflowAssociatedDataFactory.create_workflow(
+            graph={
+                "nodes": [{"id": node_id, "data": {"type": "agent", "version": "2", "title": "Agent"}}],
+                "edges": [],
+            }
+        )
+        workflow = workflow_snapshot(workflow_model)
+        execution_id = str(uuid.uuid4())
+        workspace_binding_id = str(uuid.uuid4())
+        workflow_binding_id = str(uuid.uuid4())
+        started_at = naive_utc_now()
+        config_overrides(AGENT_BACKEND_USE_FAKE=True, LOGSTORE_DUAL_WRITE_ENABLED=False)
+
+        logstore_records: list[dict[str, str]] = []
+        logstore = MagicMock()
+        logstore.put_log.side_effect = lambda _name, record: logstore_records.append(dict(record))
+        logstore.execute_sql.side_effect = lambda **_kwargs: logstore_records[-1:]
+        with (
+            patch(
+                "extensions.logstore.repositories.logstore_workflow_node_execution_repository.AliyunLogStore",
+                return_value=logstore,
+            ),
+            patch(
+                "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore",
+                return_value=logstore,
+            ),
+        ):
+            repository = repository_type(
+                session_factory=sqlite_engine,
+                tenant_id=app.tenant_id,
+                user=account,
+                app_id=app.id,
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            )
+            if repository_type is LogstoreWorkflowNodeExecutionRepository:
+                config_overrides(
+                    API_WORKFLOW_NODE_EXECUTION_REPOSITORY=(
+                        "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository."
+                        "LogstoreAPIWorkflowNodeExecutionRepository"
+                    )
+                )
+
+            runtime = replace(workflow_runtime, node_writer=MagicMock(return_value=repository))
+            service = WorkflowService(
+                sessionmaker(bind=sqlite_engine, expire_on_commit=False),
+                runtime=runtime,
+            )
+            node = DifyNodeFactory(
+                init_params=build_test_graph_init_params(
+                    workflow_id=workflow.id,
+                    graph_config=workflow.graph_dict,
+                    tenant_id=app.tenant_id,
+                    app_id=app.id,
+                    user_id=account.id,
+                ),
+                runtime_state=RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0),
+                agent_binding_resolver=runtime.agent_bindings,
+                workflow_runtime=runtime,
+            ).create_node(
+                {
+                    "id": node_id,
+                    "data": {"type": "agent", "version": "2", "title": "Agent", "agent_node_kind": "dify_agent"},
+                }
+            )
+
+            def node_events(variable_pool: VariablePool) -> Generator[NodeEvent]:
+                yield NodeRunStartedEvent(
+                    id=execution_id,
+                    node_id=node_id,
+                    node_type=BuiltinNodeTypes.AGENT,
+                    node_version="2",
+                    node_title="Agent",
+                    start_at=started_at,
+                )
+                with Session(sqlite_engine) as session:
+                    execution = WorkflowAgentWorkspaceStore._load_execution_by_identity(
+                        session=session,
+                        tenant_id=app.tenant_id,
+                        app_id=app.id,
+                        workflow_id=workflow.id,
+                        workflow_run_id=get_system_text(variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID),
+                        node_id=node_id,
+                        node_execution_id=execution_id,
+                    )
+                    assert execution.status == WorkflowNodeExecutionStatus.RUNNING
+                    assert execution.node_execution_id == execution_id
+                    assert execution.triggered_from == WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
+                    assert execution.finished_at is None
+                    execution.agent_workspace_binding_id = workspace_binding_id
+                    execution.process_data = json.dumps({"workflow_agent_binding_id": workflow_binding_id})
+                    session.commit()
+
+                result = NodeRunResult(
+                    status=status,
+                    outputs={"text": "done"} if status == WorkflowNodeExecutionStatus.SUCCEEDED else {},
+                    process_data={"step": "completed"},
+                    error="runtime failure" if status == WorkflowNodeExecutionStatus.FAILED else "",
+                )
+                event_kwargs = {
+                    "id": execution_id,
+                    "node_id": node_id,
+                    "node_type": BuiltinNodeTypes.AGENT,
+                    "node_run_result": result,
+                    "start_at": started_at,
+                }
+                if status == WorkflowNodeExecutionStatus.FAILED:
+                    yield NodeRunFailedEvent(**event_kwargs, error="runtime failure")
+                else:
+                    yield NodeRunSucceededEvent(**event_kwargs)
+
+            with (
+                patch(
+                    "services.workflow_service.WorkflowEntry.single_step_run",
+                    side_effect=lambda **kwargs: (node, node_events(kwargs["variable_pool"])),
+                ),
+                patch("services.workflow_service.enqueue_draft_node_execution_trace"),
+                patch(
+                    "core.repositories.celery_workflow_node_execution_repository."
+                    "save_workflow_node_execution_task.delay"
+                ) as async_save,
+            ):
+                result = service.run_draft_workflow_node(
+                    app_model=app,
+                    draft_workflow=workflow,
+                    node_id=node_id,
+                    user_inputs={},
+                    account=account,
+                    variables=workflow_variables,
+                )
+
+        assert result.id == execution_id
+        assert result.node_execution_id == execution_id
+        assert result.status == status
+        assert result.created_at == started_at
+        assert result.finished_at is not None
+        if status == WorkflowNodeExecutionStatus.SUCCEEDED:
+            assert result.outputs_dict == {"text": "done"}
+            assert result.process_data_dict is not None
+            assert result.process_data_dict["step"] == "completed"
+        else:
+            assert result.error == "runtime failure"
+        with Session(sqlite_engine) as session:
+            assert list(session.scalars(select(WorkflowNodeExecutionModel.id))) == [execution_id]
+            persisted = session.get(WorkflowNodeExecutionModel, execution_id)
+            assert persisted is not None
+            assert persisted.status == status
+            assert persisted.agent_workspace_binding_id == workspace_binding_id
+            assert persisted.process_data_dict is not None
+            assert persisted.process_data_dict["workflow_agent_binding_id"] == workflow_binding_id
+        if repository_type is CeleryWorkflowNodeExecutionRepository:
+            async_save.assert_called_once()
+            assert async_save.call_args.kwargs["execution_data"]["status"] == status
+        else:
+            async_save.assert_not_called()
+        if repository_type is LogstoreWorkflowNodeExecutionRepository:
+            assert len(logstore_records) == 1
+            assert logstore_records[0]["status"] == status
+
+
 # ===========================================================================
 # TestWorkflowServiceHumanInputOperations
 # Tests for Human Input related methods
 # ===========================================================================
+
+
+class TestHumanInputDebugServiceRegression:
+    def test_form_preview_resolves_nested_inputs_without_loading_email_dependencies(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        definitions = MagicMock()
+        definitions.debug_node.return_value = WorkflowDebugNode(
+            config=cast(
+                Any,
+                {
+                    "id": "human",
+                    "data": {
+                        "type": "human-input",
+                        "title": "Human",
+                        "form_content": "Hello {{#source.object.name#}}",
+                        "inputs": [
+                            {
+                                "type": "paragraph",
+                                "output_variable_name": "comment",
+                                "default": {
+                                    "type": "variable",
+                                    "selector": ["source", "object", "default"],
+                                },
+                            },
+                        ],
+                        "delivery_methods": [
+                            {
+                                "type": "email",
+                                "enabled": True,
+                                "config": {
+                                    "recipients": {"items": []},
+                                    "subject": "Review",
+                                    "body": "{{#email.missing#}} {{#url#}}",
+                                },
+                            },
+                        ],
+                    },
+                },
+            ),
+            environment_variables="{}",
+            conversation_variables=[],
+            enclosing_node_id=None,
+        )
+        variables = MagicMock()
+        variables.loader.return_value.load_variables.return_value = []
+        service = HumanInputDebugService(
+            definitions=definitions,
+            variables=variables,
+            files=HumanInputDebugFileGateway(sessions=sqlite_session_factory, access=MagicMock()),
+            submissions=MagicMock(),
+            forms=MagicMock(),
+            delivery=MagicMock(),
+        )
+        context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id="user-1",
+            active_workspace_id="tenant-1",
+        )
+
+        result = service.preview_form(
+            context,
+            "app-1",
+            "human",
+            {"#source.object.name#": "Alice", "#source.object.default#": "Approved"},
+        )
+
+        assert result["form_content"] == "Hello Alice"
+        assert result["resolved_default_values"] == {"comment": "Approved"}
 
 
 # ===========================================================================

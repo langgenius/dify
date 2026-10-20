@@ -230,7 +230,7 @@ class MCPAppApi(Resource):
         try:
             return self._convert_user_input_form(raw_user_input_form)
         except ValidationError as e:
-            raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid user_input_form: {str(e)}")
+            raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid user_input_form: {str(e)}") from e
 
     def _convert_user_input_form(self, raw_form: list[dict[str, Any]]) -> list[VariableEntity]:
         """Convert raw user input form to VariableEntity objects"""

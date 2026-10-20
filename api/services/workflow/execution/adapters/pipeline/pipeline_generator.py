@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextvars
 import json
 import logging
@@ -6,7 +8,7 @@ import threading
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping
-from typing import Any, Literal, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, cast, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -56,6 +58,9 @@ from services.workflow.execution.adapters.workflow.generate_task_pipeline import
 from services.workflow.execution.generation_service import generate_response
 from services.workflow.execution.ports import WorkflowRuntime
 
+if TYPE_CHECKING:
+    from services.workflow.execution.contracts import WorkflowRunDriver
+
 logger = logging.getLogger(__name__)
 
 
@@ -64,12 +69,14 @@ class PipelineGenerator(AppInputAdapter):
         self,
         *,
         runtime: WorkflowRuntime,
+        execution_driver: WorkflowRunDriver,
         documents: PipelineDocumentStore,
         datasource_providers: DatasourceProviderService,
         draft_variable_loader: Callable[[WorkflowSnapshot, str], VariableLoader] | None = None,
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
     ) -> None:
         self._runtime = runtime
+        self._execution_driver = execution_driver
         super().__init__(
             draft_variable_loader=draft_variable_loader,
             draft_variable_saver=draft_variable_saver,
@@ -593,14 +600,12 @@ class PipelineGenerator(AppInputAdapter):
                     variable_loader=variable_loader,
                     workflow=workflow,
                     system_user_id=system_user_id,
-                    workflow_execution_repository=workflow_execution_repository,
-                    workflow_node_execution_repository=workflow_node_execution_repository,
                     documents=self._documents,
                     workflow_thread_pool_id=workflow_thread_pool_id,
                     runtime=self._runtime,
                     draft_variable_saver=self._draft_variable_saver,
                 )
-                runner.run()
+                self._execution_driver(runner, None, workflow_execution_repository, workflow_node_execution_repository)
             except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:
@@ -653,7 +658,7 @@ class PipelineGenerator(AppInputAdapter):
             return generate_task_pipeline.process()
         except ValueError as e:
             if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
-                raise GenerateTaskStoppedError()
+                raise GenerateTaskStoppedError() from e
             else:
                 logger.exception(
                     "Fails to process generate task pipeline, task_id: %r",

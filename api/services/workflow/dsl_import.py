@@ -24,6 +24,7 @@ from models import AppMode, Workflow
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.entities.dsl_entities import ImportMode
 from services.errors.app import DraftChangedError
+from services.workflow.contracts import WorkflowRecord
 from services.workflow.graph_check import (
     GRAPH_MODES,
     GraphIssue,
@@ -48,7 +49,7 @@ class DslRefusedError(Exception):
         self.issues = list(issues)
 
 
-def stored_secret_ids(draft: Workflow) -> set[str]:
+def stored_secret_ids(draft: Workflow | WorkflowRecord) -> set[str]:
     return {variable.id for variable in draft.environment_variables if isinstance(variable, SecretVariable)}
 
 

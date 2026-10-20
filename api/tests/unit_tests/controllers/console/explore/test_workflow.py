@@ -9,9 +9,13 @@ from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy.orm import Session, sessionmaker
 
 import controllers.console.explore.workflow as workflow_module
+import services.app_task_service as app_task_module
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import App, AppMode, InstalledApp, Tenant
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowRun
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -26,14 +30,15 @@ from tests.unit_tests.controllers.console.explore.test_installed_app_admission i
     _assert_json_response,
     _Harness,
     _set_app_mode,
+    _stop_global_redis,
     harness,
 )
 from tests.unit_tests.services.test_app_task_service import _StopRedis
 
-__all__ = ["harness"]
+__all__ = ["_stop_global_redis", "harness"]
 
 _LAST_USED_AT = datetime(2026, 9, 1, 12, 0, 0)
-_TASK_ID = "workflow-task-with-non-uuid-id"
+_TASK_ID = "a1111111-1111-1111-1111-111111111111"
 _STOP_KEY = f"generate_task_stopped:{_TASK_ID}"
 _COMMAND_KEY = f"workflow:{_TASK_ID}:commands"
 
@@ -96,12 +101,29 @@ def runtime(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
     stop_redis: _StopRedis,
+    _stop_global_redis: _StopRedis,
 ) -> _Runtime:
     _set_app_mode(harness, sqlite_session_factory, AppMode.WORKFLOW)
     with sqlite_session_factory.begin() as session:
         installation = session.get(InstalledApp, harness.installed_app.id)
         assert installation is not None
         installation.last_used_at = _LAST_USED_AT
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            WorkflowRun(
+                id="run-1",
+                tenant_id=harness.target_app.tenant_id,
+                app_id=harness.target_app.id,
+                workflow_id="workflow-1",
+                task_id=_TASK_ID,
+                type=WorkflowType.WORKFLOW,
+                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+                version="1",
+                status=WorkflowExecutionStatus.RUNNING,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=harness.account.id,
+            )
+        )
     runtime = _Runtime(sqlite_session_factory, harness.installed_app.id)
     services = _Services(
         installed_apps=_InstalledAppServices(
@@ -113,6 +135,7 @@ def runtime(
         app_tasks=AppTaskControlService(redis_client=stop_redis),
     )
     monkeypatch.setattr(workflow_module, "application_services", lambda: services)
+    monkeypatch.setattr(type(app_task_module.db), "engine", property(lambda _: sqlite_session_factory.kw["bind"]))
     harness.api.add_resource(
         workflow_module.InstalledAppWorkflowRunApi,
         "/installed-apps/<uuid:installed_app_id>/workflows/run",
@@ -446,7 +469,7 @@ def test_workflow_stop_sets_both_signals_in_order_without_reading_task_ownership
     assert stop_redis.expirations[_STOP_KEY] == 600
     assert set(stop_redis.commands) == {_COMMAND_KEY}
     assert [json.loads(command) for command in stop_redis.commands[_COMMAND_KEY]] == [
-        {"command_type": "abort", "payload": None, "reason": "User requested stop"}
+        {"command_type": "abort", "reason": "User requested stop"}
     ]
     assert stop_redis.expirations[_COMMAND_KEY] == 3600
     assert runtime.calls == []
