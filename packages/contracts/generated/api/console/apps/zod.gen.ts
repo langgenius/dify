@@ -147,22 +147,6 @@ export const zHumanInputFormPreviewPayload = z.object({
 })
 
 /**
- * HumanInputFormPreviewResponse
- */
-export const zHumanInputFormPreviewResponse = z.object({
-  actions: z.array(z.record(z.string(), z.unknown())).optional(),
-  display_in_ui: z.boolean().nullish(),
-  expiration_time: z.int().nullish(),
-  form_content: z.string(),
-  form_id: z.string(),
-  form_token: z.string().nullish(),
-  inputs: z.array(z.record(z.string(), z.unknown())).optional(),
-  node_id: z.string(),
-  node_title: z.string(),
-  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
-})
-
-/**
  * HumanInputFormPreviewSubmitPayload
  */
 export const zHumanInputFormPreviewSubmitPayload = z.object({
@@ -643,6 +627,27 @@ export const zAppNamePayload = z.object({
 })
 
 /**
+ * AppNetworkAccessGroupUpdatePayload
+ */
+export const zAppNetworkAccessGroupUpdatePayload = z.object({
+  access_points: z.array(z.enum(['mcp', 'service_api', 'trigger', 'webapp'])).max(4),
+  enabled: z.boolean(),
+  expected_version: z.int().gte(0),
+  group_id: z.uuid().nullable(),
+})
+
+/**
+ * AppNetworkAccessGroupStatusResponse
+ */
+export const zAppNetworkAccessGroupStatusResponse = z.object({
+  available_count: z.int().gte(0),
+  configured: z.boolean(),
+  covered_count: z.int().gte(0),
+  enabled: z.boolean(),
+  entitled: z.boolean(),
+})
+
+/**
  * RedirectUrlResponse
  */
 export const zRedirectUrlResponse = z.object({
@@ -1040,11 +1045,6 @@ export const zWorkflowCommentResolve = z.object({
   resolved_at: z.int().nullish(),
   resolved_by: z.string().nullish(),
 })
-
-/**
- * DefaultBlockConfigsResponse
- */
-export const zDefaultBlockConfigsResponse = z.array(z.record(z.string(), z.unknown()))
 
 /**
  * DefaultBlockConfigResponse
@@ -1806,6 +1806,43 @@ export const zMessageFile = z.object({
 })
 
 /**
+ * AppNetworkAccessGroupBindingResponse
+ */
+export const zAppNetworkAccessGroupBindingResponse = z.object({
+  access_points: z.array(z.enum(['mcp', 'service_api', 'trigger', 'webapp'])).max(4),
+  app_id: z.string(),
+  created_at: z.iso.datetime(),
+  enabled: z.boolean(),
+  group_id: z.string().nullish(),
+  id: z.string(),
+  tenant_id: z.string(),
+  updated_at: z.iso.datetime(),
+  updated_by_account_id: z.string().nullish(),
+  version: z.int().gte(1),
+})
+
+/**
+ * AppNetworkAccessGroupResponse
+ */
+export const zAppNetworkAccessGroupResponse = z.object({
+  app_id: z.string(),
+  available_access_points: z.array(z.enum(['mcp', 'service_api', 'trigger', 'webapp'])),
+  binding: zAppNetworkAccessGroupBindingResponse.nullable(),
+  effective_enabled: z.boolean(),
+  entitled: z.boolean(),
+  tenant_id: z.string(),
+})
+
+/**
+ * AppNetworkAccessGroupMutationResponse
+ */
+export const zAppNetworkAccessGroupMutationResponse = z.object({
+  available_access_points: z.array(z.enum(['mcp', 'service_api', 'trigger', 'webapp'])),
+  binding: zAppNetworkAccessGroupBindingResponse,
+  effective_enabled: z.boolean(),
+})
+
+/**
  * AppMCPServerStatus
  *
  * Publication state of a Dify app exposed as an MCP server; only ACTIVE servers accept MCP calls.
@@ -2263,6 +2300,19 @@ export const zWorkflowDailyTokenCostStatisticItem = z.object({
 export const zWorkflowDailyTokenCostStatisticResponse = z.object({
   data: z.array(zWorkflowDailyTokenCostStatisticItem),
 })
+
+/**
+ * DefaultBlockConfigItemResponse
+ */
+export const zDefaultBlockConfigItemResponse = z.object({
+  config: z.record(z.string(), z.unknown()),
+  type: z.string(),
+})
+
+/**
+ * DefaultBlockConfigsResponse
+ */
+export const zDefaultBlockConfigsResponse = z.array(zDefaultBlockConfigItemResponse)
 
 /**
  * WorkflowConversationVariableResponse
@@ -2816,6 +2866,27 @@ export const zWorkflowOnlineUsersResponse = z.object({
 })
 
 /**
+ * ButtonStyle
+ *
+ * Button styles for user actions.
+ */
+export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
+
+/**
+ * UserActionConfig
+ *
+ * User action configuration.
+ */
+export const zUserActionConfig = z.object({
+  button_style: zButtonStyle.optional().default('default'),
+  id: z
+    .string()
+    .max(20)
+    .regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
+  title: z.string().max(100),
+})
+
+/**
  * AgentToolCallResponse
  */
 export const zAgentToolCallResponse = z.object({
@@ -3181,6 +3252,29 @@ export const zFileTransferMethod = z.enum([
   'remote_url',
   'tool_file',
 ])
+
+/**
+ * FileInputConfig
+ */
+export const zFileInputConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  output_variable_name: z.string(),
+  type: z.literal('file').optional().default('file'),
+})
+
+/**
+ * FileListInputConfig
+ */
+export const zFileListInputConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  number_limits: z.int().gte(0).optional().default(0),
+  output_variable_name: z.string(),
+  type: z.literal('file-list').optional().default('file-list'),
+})
 
 /**
  * AppFileTypeUploadPayload
@@ -4952,47 +5046,140 @@ export const zAppDetail = z.object({
 })
 
 /**
- * ButtonStyle
+ * ValueSourceType
  *
- * Button styles for user actions.
+ * ValueSourceType records whether the value comes from a static setting
+ * in form definition, or a variable while the workflow is running.
  */
-export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
+export const zValueSourceType = z.enum(['constant', 'variable'])
 
 /**
- * UserActionConfig
+ * StringSource
  *
- * User action configuration.
+ * Default configuration for form inputs.
  */
-export const zUserActionConfig = z.object({
-  button_style: zButtonStyle.optional().default('default'),
-  id: z
-    .string()
-    .max(20)
-    .regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
-  title: z.string().max(100),
+export const zStringSource = z.object({
+  selector: z.array(z.string()).optional(),
+  type: zValueSourceType,
+  value: z.string().optional().default(''),
 })
 
 /**
- * FileInputConfig
+ * ParagraphInputConfig
+ *
+ * Form input definition.
  */
-export const zFileInputConfig = z.object({
-  allowed_file_extensions: z.array(z.string()).optional(),
-  allowed_file_types: z.array(zFileType).optional(),
-  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+export const zParagraphInputConfig = z.object({
+  default: zStringSource.nullish(),
   output_variable_name: z.string(),
-  type: z.literal('file').optional().default('file'),
+  type: z.literal('paragraph').optional().default('paragraph'),
 })
 
 /**
- * FileListInputConfig
+ * StringListSource
  */
-export const zFileListInputConfig = z.object({
-  allowed_file_extensions: z.array(z.string()).optional(),
-  allowed_file_types: z.array(zFileType).optional(),
-  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
-  number_limits: z.int().gte(0).optional().default(0),
+export const zStringListSource = z.object({
+  selector: z.array(z.string()).optional(),
+  type: zValueSourceType,
+  value: z.array(z.string()).optional(),
+})
+
+/**
+ * SelectInputConfig
+ */
+export const zSelectInputConfig = z.object({
+  option_source: zStringListSource,
   output_variable_name: z.string(),
-  type: z.literal('file-list').optional().default('file-list'),
+  type: z.literal('select').optional().default('select'),
+})
+
+export const zFormInputConfig = z.discriminatedUnion('type', [
+  zParagraphInputConfig,
+  zSelectInputConfig,
+  zFileInputConfig,
+  zFileListInputConfig,
+])
+
+/**
+ * HumanInputFormPreviewResponse
+ */
+export const zHumanInputFormPreviewResponse = z.object({
+  actions: z.array(zUserActionConfig).optional(),
+  display_in_ui: z.boolean().nullish(),
+  expiration_time: z.int().nullish(),
+  form_content: z.string(),
+  form_id: z.string(),
+  form_token: z.string().nullish(),
+  inputs: z.array(zFormInputConfig).optional(),
+  node_id: z.string(),
+  node_title: z.string(),
+  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
+})
+
+/**
+ * HumanInputFormDefinition
+ */
+export const zHumanInputFormDefinition = z.object({
+  actions: z.array(zUserActionConfig).optional(),
+  display_in_ui: z.boolean().optional().default(false),
+  expiration_time: z.int(),
+  form_content: z.string(),
+  form_id: z.string(),
+  form_token: z.string().nullish(),
+  inputs: z.array(zFormInputConfig).optional(),
+  node_id: z.string(),
+  node_title: z.string(),
+  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
+})
+
+/**
+ * HumanInputContent
+ */
+export const zHumanInputContent = z.object({
+  form_definition: zHumanInputFormDefinition.nullish(),
+  form_submission_data: zHumanInputFormSubmissionData.nullish(),
+  submitted: z.boolean(),
+  type: zExecutionContentType.optional().default('human_input'),
+  workflow_run_id: z.string(),
+})
+
+/**
+ * MessageDetailResponse
+ */
+export const zMessageDetailResponse = z.object({
+  agent_thoughts: z.array(zAgentThought),
+  annotation: zConversationAnnotation.nullish(),
+  annotation_hit_history: zConversationAnnotationHitHistory.nullish(),
+  answer: z.string(),
+  answer_tokens: z.int(),
+  conversation_id: z.string(),
+  created_at: z.int().nullish(),
+  error: z.string().nullish(),
+  extra_contents: z.array(zHumanInputContent).optional(),
+  feedbacks: z.array(zFeedback),
+  from_account_id: z.string().nullish(),
+  from_end_user_id: z.string().nullish(),
+  from_source: z.string(),
+  id: z.string(),
+  inputs: z.record(z.string(), zAnyJsonValue),
+  message: zAnyJsonValue,
+  message_files: z.array(zMessageFile),
+  message_tokens: z.int(),
+  metadata: zAnyJsonValue,
+  parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number(),
+  query: z.string(),
+  status: z.string(),
+  workflow_run_id: z.string().nullish(),
+})
+
+/**
+ * MessageInfiniteScrollPaginationResponse
+ */
+export const zMessageInfiniteScrollPaginationResponse = z.object({
+  data: z.array(zMessageDetailResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
 })
 
 /**
@@ -5465,127 +5652,6 @@ export const zAgentKnowledgeRetrievalConfig = z.object({
   score_threshold: z.number().gte(0).lte(1).nullish(),
   top_k: z.int().gte(1).nullish(),
   weights: zAgentKnowledgeWeightedScoreConfig.nullish(),
-})
-
-/**
- * ValueSourceType
- *
- * ValueSourceType records whether the value comes from a static setting
- * in form definition, or a variable while the workflow is running.
- */
-export const zValueSourceType = z.enum(['constant', 'variable'])
-
-/**
- * StringSource
- *
- * Default configuration for form inputs.
- */
-export const zStringSource = z.object({
-  selector: z.array(z.string()).optional(),
-  type: zValueSourceType,
-  value: z.string().optional().default(''),
-})
-
-/**
- * ParagraphInputConfig
- *
- * Form input definition.
- */
-export const zParagraphInputConfig = z.object({
-  default: zStringSource.nullish(),
-  output_variable_name: z.string(),
-  type: z.literal('paragraph').optional().default('paragraph'),
-})
-
-/**
- * StringListSource
- */
-export const zStringListSource = z.object({
-  selector: z.array(z.string()).optional(),
-  type: zValueSourceType,
-  value: z.array(z.string()).optional(),
-})
-
-/**
- * SelectInputConfig
- */
-export const zSelectInputConfig = z.object({
-  option_source: zStringListSource,
-  output_variable_name: z.string(),
-  type: z.literal('select').optional().default('select'),
-})
-
-export const zFormInputConfig = z.discriminatedUnion('type', [
-  zParagraphInputConfig.extend({ type: z.literal('paragraph') }),
-  zSelectInputConfig.extend({ type: z.literal('select') }),
-  zFileInputConfig.extend({ type: z.literal('file') }),
-  zFileListInputConfig.extend({ type: z.literal('file-list') }),
-])
-
-/**
- * HumanInputFormDefinition
- */
-export const zHumanInputFormDefinition = z.object({
-  actions: z.array(zUserActionConfig).optional(),
-  display_in_ui: z.boolean().optional().default(false),
-  expiration_time: z.int(),
-  form_content: z.string(),
-  form_id: z.string(),
-  form_token: z.string().nullish(),
-  inputs: z.array(zFormInputConfig).optional(),
-  node_id: z.string(),
-  node_title: z.string(),
-  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
-})
-
-/**
- * HumanInputContent
- */
-export const zHumanInputContent = z.object({
-  form_definition: zHumanInputFormDefinition.nullish(),
-  form_submission_data: zHumanInputFormSubmissionData.nullish(),
-  submitted: z.boolean(),
-  type: zExecutionContentType.optional().default('human_input'),
-  workflow_run_id: z.string(),
-})
-
-/**
- * MessageDetailResponse
- */
-export const zMessageDetailResponse = z.object({
-  agent_thoughts: z.array(zAgentThought),
-  annotation: zConversationAnnotation.nullish(),
-  annotation_hit_history: zConversationAnnotationHitHistory.nullish(),
-  answer: z.string(),
-  answer_tokens: z.int(),
-  conversation_id: z.string(),
-  created_at: z.int().nullish(),
-  error: z.string().nullish(),
-  extra_contents: z.array(zHumanInputContent).optional(),
-  feedbacks: z.array(zFeedback),
-  from_account_id: z.string().nullish(),
-  from_end_user_id: z.string().nullish(),
-  from_source: z.string(),
-  id: z.string(),
-  inputs: z.record(z.string(), zAnyJsonValue),
-  message: zAnyJsonValue,
-  message_files: z.array(zMessageFile),
-  message_tokens: z.int(),
-  metadata: zAnyJsonValue,
-  parent_message_id: z.string().nullish(),
-  provider_response_latency: z.number(),
-  query: z.string(),
-  status: z.string(),
-  workflow_run_id: z.string().nullish(),
-})
-
-/**
- * MessageInfiniteScrollPaginationResponse
- */
-export const zMessageInfiniteScrollPaginationResponse = z.object({
-  data: z.array(zMessageDetailResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
 })
 
 /**
@@ -6927,6 +6993,35 @@ export const zPostAppsByAppIdNamePath = z.object({
  * Name availability checked
  */
 export const zPostAppsByAppIdNameResponse = zAppDetail
+
+export const zGetAppsByAppIdNetworkAccessGroupPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * App network access group binding retrieved successfully
+ */
+export const zGetAppsByAppIdNetworkAccessGroupResponse = zAppNetworkAccessGroupResponse
+
+export const zPutAppsByAppIdNetworkAccessGroupBody = zAppNetworkAccessGroupUpdatePayload
+
+export const zPutAppsByAppIdNetworkAccessGroupPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * App network access group binding updated successfully
+ */
+export const zPutAppsByAppIdNetworkAccessGroupResponse = zAppNetworkAccessGroupMutationResponse
+
+export const zGetAppsByAppIdNetworkAccessGroupStatusPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * App network access control entry status retrieved successfully
+ */
+export const zGetAppsByAppIdNetworkAccessGroupStatusResponse = zAppNetworkAccessGroupStatusResponse
 
 export const zPostAppsByAppIdPublishToCreatorsPlatformPath = z.object({
   app_id: z.uuid(),

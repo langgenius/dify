@@ -17,7 +17,9 @@ import { VersionLabel } from '../shared/version-label'
 import { ACCESS_POINT_ORDER, getAccessPointHref } from '../utils/access-point'
 
 function Divider() {
-  return <div className="i-custom-vender-deploy-line-5 h-10 w-3" />
+  return (
+    <div aria-hidden className="i-custom-vender-deploy-line-5 hidden h-10 w-3 shrink-0 lg:block" />
+  )
 }
 
 export const BuiltInEnvironmentCard = memo(
@@ -71,17 +73,17 @@ export const BuiltInEnvironmentCard = memo(
             <span aria-hidden className="i-ri-instance-line size-5 text-text-secondary" />
           </div>
           {/* Info */}
-          <div className="flex items-center gap-10">
-            <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-x-10 gap-y-4">
+            <div className="flex min-w-0 flex-col gap-1">
               <h2 id="built-in-environment-title" className="system-md-semibold text-text-primary">
                 {t(($) => $['studio.builtInTitle'])}
               </h2>
-              <p className="truncate system-xs-regular text-text-tertiary">
+              <p className="system-xs-regular wrap-break-word text-text-tertiary">
                 {t(($) => $['studio.builtInDescription'])}
               </p>
             </div>
             <Divider />
-            <div className="flex flex-col gap-1">
+            <div className="flex min-w-0 flex-col gap-1">
               <div className="system-2xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['studio.liveVersion'])}
               </div>
@@ -110,9 +112,9 @@ export const BuiltInEnvironmentCard = memo(
           </div>
         </div>
         {/* Status and updated time */}
-        <div className="flex items-center justify-between gap-4 px-4 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5">
           <RuntimeStateIndicator runtimeState={RuntimeState.RUNTIME_STATE_RUNNING} />
-          <p className="truncate system-xs-regular text-text-tertiary">
+          <p className="system-xs-regular wrap-break-word text-text-tertiary">
             {publishedWorkflow
               ? t(($) => $['studio.updatedAtBy'], {
                   name: updatedBy,

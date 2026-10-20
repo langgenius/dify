@@ -1,7 +1,9 @@
 'use client'
-import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  AccountWithRoleResponse,
+  MemberInviteResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { Member } from '@/models/common'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -65,14 +67,14 @@ const MembersPage = () => {
     accounts.length >= features.members.limit
   const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
   const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)
-  const [detailsMember, setDetailsMember] = useState<Member | null>(null)
+  const [detailsMember, setDetailsMember] = useState<AccountWithRoleResponse | null>(null)
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
   const roleColumnLabel = systemFeatures.rbac_enabled
     ? t(($) => $['members.roles'], { ns: 'workspaceMembers' })
     : t(($) => $['members.role'], { ns: 'workspaceMembers' })
 
-  const handleOpenDetails = useCallback((member: Member) => {
+  const handleOpenDetails = useCallback((member: AccountWithRoleResponse) => {
     setDetailsMember(member)
   }, [])
 
@@ -89,12 +91,12 @@ const MembersPage = () => {
       ? roles.map((role) => role.id)
       : roles.slice(0, 1).map((role) => role.id)
 
-    updateRolesOfMember(
+    return updateRolesOfMember(
       { params: { member_id: detailsMember!.id }, body: { role_ids: roleIds } },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-          refetch()
+          await refetch()
         },
       },
     )

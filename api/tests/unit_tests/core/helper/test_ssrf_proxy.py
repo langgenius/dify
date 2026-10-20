@@ -146,7 +146,7 @@ def test_retry_exceed_max_retries(mock_get_client, client_factory, monkeypatch: 
     mock_client, send_calls = client_factory(mock_response)
     mock_get_client.return_value = mock_client
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(Exception, match="Reached maximum retries \\(2\\) for URL http://example\\.com") as e:
         make_request("GET", "http://example.com", max_retries=SSRF_DEFAULT_MAX_RETRIES - 1)
     assert str(e.value) == f"Reached maximum retries ({SSRF_DEFAULT_MAX_RETRIES - 1}) for URL http://example.com"
     assert len(send_calls) == SSRF_DEFAULT_MAX_RETRIES

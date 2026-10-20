@@ -84,32 +84,36 @@ describe('sse parsing', () => {
     expect(text).toBe('hello world')
   })
 
-  it.each(['', 'data: {"event":"message","answer":"partial answer"}\n\n'])(
-    'toText rejects a streamed API error after %j',
-    async (prefix) => {
-      const error = {
-        event: 'error',
-        status: 429,
-        code: 'rate_limit_error',
-        message: 'Rate limit reached',
-      }
-      const stream = Readable.from([prefix, `data: ${JSON.stringify(error)}\n\n`])
-      const sseStream = createSseStream(stream, {
-        status: 200,
-        headers: {},
-        requestId: 'req-stream',
-      })
+  it.each([
+    '',
+    'data: {"event":"message","answer":"partial answer"}\n\n',
+    [
+      'data: {"event":"text_chunk","data":{"text":"partial answer"}}\n\n',
+      'data: {"event":"message_replace","answer":"replacement"}\n\n',
+    ].join(''),
+  ])('toText rejects a streamed API error after %j', async (prefix) => {
+    const error = {
+      event: 'error',
+      status: 429,
+      code: 'rate_limit_error',
+      message: 'Rate limit reached',
+    }
+    const stream = Readable.from([prefix, `data: ${JSON.stringify(error)}\n\n`])
+    const sseStream = createSseStream(stream, {
+      status: 200,
+      headers: {},
+      requestId: 'req-stream',
+    })
 
-      const result = sseStream.toText()
-      await expect(result).rejects.toBeInstanceOf(APIError)
-      await expect(result).rejects.toMatchObject({
-        message: error.message,
-        statusCode: error.status,
-        responseBody: error,
-        requestId: 'req-stream',
-      })
-    },
-  )
+    const result = sseStream.toText()
+    await expect(result).rejects.toBeInstanceOf(APIError)
+    await expect(result).rejects.toMatchObject({
+      message: error.message,
+      statusCode: error.status,
+      responseBody: error,
+      requestId: 'req-stream',
+    })
+  })
 
   it('keeps streamed API errors available to event consumers', async () => {
     const error = { event: 'error', status: 400, code: 'invalid_param', message: 'Invalid input' }
@@ -125,6 +129,22 @@ describe('sse parsing', () => {
     expect(events).toEqual([error])
   })
 
+  it('rejects malformed error metadata without collecting its text', async () => {
+    const error = { event: 'error', message: null, status: '429', answer: 'not a success' }
+    const stream = createSseStream(Readable.from([`data: ${JSON.stringify(error)}\n\n`]), {
+      status: 200,
+      headers: {},
+    })
+
+    await expect(stream.toText()).rejects.toMatchObject({
+      name: 'APIError',
+      message: 'Stream returned an error',
+      statusCode: undefined,
+      responseBody: error,
+      requestId: undefined,
+    })
+  })
+
   it('toText extracts text from string data', async () => {
     const stream = Readable.from(['data: plain text\n\n'])
     const sseStream = createSseStream(stream, { status: 200, headers: {} })
@@ -137,6 +157,29 @@ describe('sse parsing', () => {
     const sseStream = createSseStream(stream, { status: 200, headers: {} })
     const text = await sseStream.toText()
     expect(text).toBe('hello')
+  })
+
+  it('toText collects text_chunk events from workflow streams', async () => {
+    const stream = Readable.from([
+      'data: {"event":"workflow_started","data":{"id":"run"}}\n\n',
+      'data: {"event":"text_chunk","data":{"text":"Hello","from_variable_selector":["llm","text"]}}\n\n',
+      'data: {"event":"reasoning_chunk","data":{"text":"thinking"}}\n\n',
+      'data: {"event":"text_chunk","data":{"text":" world"}}\n\n',
+      'data: {"event":"workflow_finished","data":{"outputs":{"text":"Hello world"}}}\n\n',
+    ])
+    const text = await createSseStream(stream, { status: 200, headers: {} }).toText()
+    expect(text).toBe('Hello world')
+  })
+
+  it('toText replaces streamed text on message_replace', async () => {
+    const stream = Readable.from([
+      'data: {"event":"message","answer":"unsafe "}\n\n',
+      'data: {"event":"message","answer":"output"}\n\n',
+      'data: {"event":"message_replace","answer":"Sorry, I cannot answer that.","reason":"output_moderation"}\n\n',
+      'data: {"event":"message_end","id":"msg"}\n\n',
+    ])
+    const text = await createSseStream(stream, { status: 200, headers: {} }).toText()
+    expect(text).toBe('Sorry, I cannot answer that.')
   })
 
   it('toText returns empty for invalid data', async () => {

@@ -81,45 +81,45 @@ const ExportImage = memo(() => {
             zoom,
           })
 
-          await new Promise((resolve) => setTimeout(resolve, 300))
+          try {
+            await new Promise((resolve) => setTimeout(resolve, 300))
 
-          const padding = 50
-          const contentWidth = nodesBounds.width + padding * 2
-          const contentHeight = nodesBounds.height + padding * 2
+            const padding = 50
+            const contentWidth = nodesBounds.width + padding * 2
+            const contentHeight = nodesBounds.height + padding * 2
 
-          const exportOptions = {
-            filter,
-            backgroundColor: '#1a1a1a',
-            pixelRatio: 2,
-            width: contentWidth,
-            height: contentHeight,
-            style: {
-              width: `${contentWidth}px`,
-              height: `${contentHeight}px`,
-              transform: `translate(${padding - nodesBounds.x}px, ${padding - nodesBounds.y}px)`,
-              transformOrigin: 'top left',
-            },
-          }
+            const exportOptions = {
+              filter,
+              backgroundColor: '#1a1a1a',
+              pixelRatio: 2,
+              width: contentWidth,
+              height: contentHeight,
+              style: {
+                width: `${contentWidth}px`,
+                height: `${contentHeight}px`,
+                transform: `translate(${padding - nodesBounds.x}px, ${padding - nodesBounds.y}px)`,
+                transformOrigin: 'top left',
+              },
+            }
 
-          switch (type) {
-            case 'png':
-              dataUrl = await toPng(flowElement, exportOptions)
-              break
-            case 'jpeg':
-              dataUrl = await toJpeg(flowElement, exportOptions)
-              break
-            case 'svg':
-              dataUrl = await toSvg(flowElement, { filter })
-              break
-            default:
-              dataUrl = await toPng(flowElement, exportOptions)
-          }
+            switch (type) {
+              case 'png':
+                dataUrl = await toPng(flowElement, exportOptions)
+                break
+              case 'jpeg':
+                dataUrl = await toJpeg(flowElement, exportOptions)
+                break
+              case 'svg':
+                dataUrl = await toSvg(flowElement, { filter })
+                break
+              default:
+                dataUrl = await toPng(flowElement, exportOptions)
+            }
 
-          filename += '-whole-workflow'
-
-          setTimeout(() => {
+            filename += '-whole-workflow'
+          } finally {
             reactFlow.setViewport(currentViewport)
-          }, 500)
+          }
         } else {
           // Current viewport export (existing functionality)
           switch (type) {

@@ -44,30 +44,37 @@ clipping.
 
 ## Layering
 
-| Layer                                                                   | z-index |
-| ----------------------------------------------------------------------- | ------- |
-| Dialogs, pickers, drawers, menus, popovers, preview cards, and tooltips | `z-50`  |
-| Toast viewport                                                          | `z-60`  |
-
-Overlays at `z-50` rely on portal DOM order; the portal mounted later appears above earlier ones.
-Toast remains one layer above ordinary overlays.
+Overlays set no z-index; portal DOM order stacks them. A Base UI modal blocks outside clicks with
+an unstyled sibling of its popup, so any overlay z-index can lift a lower layer above that guard.
+Only a body-level layer that must stay above overlays mounted after it sets one. A portal into an
+application container sits inside the isolated root and layers against its siblings there.
 
 Positioners hide with their anchor: Base UI marks them `data-anchor-hidden` when the anchor is
 clipped, `display: none` or unmounted, and the shared positioner class turns that into
 `visibility: hidden` plus `pointer-events: none` so a popup never lingers at the viewport origin.
 
-- Do not add call-site `z-*` overrides. Fix the owning overlay structure when content is clipped
-  or hidden.
+- Do not add call-site `z-*` overrides or force a backdrop to block clicks. Fix the owning overlay
+  structure when content is clipped, hidden, or clickable behind a modal.
 - Do not wrap a Dify UI overlay in another manual portal.
 - Add shared backdrop or presentation chrome inside the owning exported component, not at call
   sites.
 
 ## Primitive semantics
 
-- Use `Dialog` for modal content that needs focus containment and scroll locking.
+- Use `Dialog` for modal content that needs focus containment and scroll locking. `DialogContent`
+  is the centered modal surface: compose `DialogHeader`, `DialogBody` and `DialogFooter` in it, and
+  `DialogBody` scrolls between the other two. A wrapper between the surface and its parts, such as
+  a form, keeps the flex chain with `contents`. `DialogPopup` is the bare dialog element for a
+  surface that places and dresses itself.
+  `DialogContent` and `AlertDialogContent` allow `transition-none`, including state variants,
+  without requiring custom popup composition.
+  `DialogHeaderCloseButton` is the optional standard close icon inside `DialogHeader`; the header
+  reserves inline-end space when it contains the button. Without it, the header keeps its normal
+  gutters. Use the unstyled `DialogClose` with `render` for footer actions and custom close controls.
 - Use `AlertDialog` only for a destructive or must-confirm decision requiring an explicit answer.
   It blocks outside-press dismissal but still closes on Escape; cancel that close in
-  `onOpenChange` when the answer must be explicit.
+  `onOpenChange` when the answer must be explicit. `AlertDialogHeader` holds the title and
+  description; anything the user fills in or reviews before answering goes in `AlertDialogBody`.
 - Use `Drawer` for side-panel interactions that follow the drawer model.
 - Use `DropdownMenu` for button-triggered action lists and `ContextMenu` for context actions.
   A long action list filters with `DropdownMenuFilterProvider`; choosing a value is

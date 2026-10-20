@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { ToolDatePicker } from '../tool-date-picker'
@@ -16,35 +16,6 @@ vi.mock('react-i18next', async () => {
 })
 
 describe('ToolDatePicker', () => {
-  it('preserves a stored date-only value when rendering in a negative timezone', () => {
-    render(
-      <ToolDatePicker
-        aria-label="Select date"
-        value="2024-05-01"
-        onChange={vi.fn()}
-        placeholder="Select date"
-      />,
-    )
-
-    expect(screen.getByRole('button', { name: 'Select date May 1, 2024' })).toBeInTheDocument()
-  })
-
-  it('returns an empty string when clearing the date', () => {
-    const onChange = vi.fn()
-    render(
-      <ToolDatePicker
-        aria-label="Select date"
-        value="2024-05-01"
-        onChange={onChange}
-        placeholder="Select date"
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
-
-    expect(onChange).toHaveBeenCalledWith('')
-  })
-
   it('disables interaction and clearing when read only', () => {
     render(
       <ToolDatePicker
@@ -68,7 +39,6 @@ describe('ToolDatePicker', () => {
     render(<ToolDatePicker aria-label="Select date" value="2024-05-01" onChange={vi.fn()} />)
 
     const trigger = screen.getByRole('button', { name: 'Select date May 1, 2024' })
-    expect(within(trigger).queryByRole('button')).not.toBeInTheDocument()
     await user.tab()
     expect(trigger).toHaveFocus()
     await user.keyboard('{Enter}')

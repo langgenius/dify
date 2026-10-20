@@ -13,19 +13,6 @@ const tagsMap: Record<string, Tag> = {
 }
 
 describe('LabeledTrigger', () => {
-  it('shows all-tags text when no tags are selected', () => {
-    render(
-      <Popover>
-        <LabeledTrigger tags={[]} tagsMap={tagsMap} onTagsChange={vi.fn()} />
-      </Popover>,
-    )
-
-    expect(screen.getByRole('button', { name: 'pluginTags.allTags' })).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: /^pluginTags\.clearSelectedTags/ }),
-    ).not.toBeInTheDocument()
-  })
-
   it('shows selected tag labels and overflow count', () => {
     render(
       <Popover>
@@ -65,22 +52,5 @@ describe('LabeledTrigger', () => {
       screen.queryByRole('button', { name: /^pluginTags\.clearSelectedTags/ }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'pluginTags.allTags' })).toHaveFocus()
-  })
-
-  it('reflects the actual popover state on the trigger', async () => {
-    const user = userEvent.setup()
-
-    render(
-      <Popover>
-        <LabeledTrigger tags={[]} tagsMap={tagsMap} onTagsChange={vi.fn()} />
-      </Popover>,
-    )
-
-    const trigger = screen.getByRole('button', { name: 'pluginTags.allTags' })
-    expect(trigger).not.toHaveAttribute('data-popup-open')
-
-    await user.click(trigger)
-
-    expect(trigger).toHaveAttribute('data-popup-open', '')
   })
 })

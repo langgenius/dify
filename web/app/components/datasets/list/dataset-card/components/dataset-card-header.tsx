@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -13,13 +13,13 @@ const docModeInfoClassName =
   'flex min-h-3 items-center gap-x-3 system-2xs-medium-uppercase text-text-tertiary'
 
 type DatasetCardHeaderProps = {
-  dataset: DataSet
+  dataset: DatasetDetailWithPartialMembersResponse
   nameId?: string
 }
 
 // DocModeInfo component - placed before usage
 type DocModeInfoProps = {
-  dataset: DataSet
+  dataset: DatasetDetailWithPartialMembersResponse
   isExternalProvider: boolean
   isShowDocModeInfo: boolean
 }

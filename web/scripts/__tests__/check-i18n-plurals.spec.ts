@@ -1,11 +1,11 @@
 // @vitest-environment node
 
 import { execFileSync } from 'node:child_process'
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { getTranslationSourceKey } from '@dify/tooling/i18n-plurals'
 import { describe, expect, it } from 'vite-plus/test'
-import { getTranslationSourceKey } from '../check-i18n-plurals'
 
 describe('locale-specific plural keys', () => {
   const sourceKeys = new Set(['skill.references_one', 'skill.references_other', 'skill.title'])
@@ -49,7 +49,12 @@ describe('locale-specific plural keys', () => {
     const directory = await mkdtemp(path.join(tmpdir(), 'dify-i18n-plurals-'))
     try {
       await mkdir(path.join(directory, 'scripts'))
-      for (const file of ['check-i18n.js', 'check-i18n-plurals.ts', 'check-i18n-values.ts']) {
+      await symlink(
+        new URL('../../../node_modules', import.meta.url),
+        path.join(directory, 'node_modules'),
+        'junction',
+      )
+      for (const file of ['check-i18n.js', 'check-i18n-values.ts']) {
         await copyFile(
           new URL(`../${file}`, import.meta.url),
           path.join(directory, 'scripts', file),

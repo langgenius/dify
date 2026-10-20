@@ -102,8 +102,9 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const { config } = useChatContext()
 
   const handleFeedback = async (childFeedback: FeedbackType) => {
+    if (!childMessageId) return
     await updateFeedback(
-      { url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } },
+      { messageId: childMessageId, body: { rating: childFeedback.rating } },
       appSourceType,
       installedAppId,
     )
@@ -139,7 +140,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       return
     }
     startQuerying()
-    const res: any = await fetchMoreLikeThis(messageId as string, appSourceType, installedAppId)
+    const res: any = await fetchMoreLikeThis(messageId, appSourceType, installedAppId)
     setCompletionRes(res.answer)
     setChildFeedback({
       rating: null,

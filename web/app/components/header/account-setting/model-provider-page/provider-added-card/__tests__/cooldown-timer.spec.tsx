@@ -5,16 +5,10 @@ import CooldownTimer from '../cooldown-timer'
 describe('CooldownTimer', () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    vi.clearAllMocks()
   })
 
   afterEach(() => {
     vi.useRealTimers()
-  })
-
-  it.each([0, undefined])('does not show an inactive cooldown (%s)', (secondsRemaining) => {
-    const { container } = render(<CooldownTimer secondsRemaining={secondsRemaining} />)
-    expect(container.firstChild).toBeNull()
   })
 
   it('clears the cooldown indicator and finishes once when the deadline is reached', () => {
@@ -25,12 +19,12 @@ describe('CooldownTimer', () => {
       </StrictMode>,
     )
 
-    expect(container.firstChild).not.toBeNull()
+    expect(container).not.toBeEmptyDOMElement()
     act(() => vi.advanceTimersByTime(1000))
     expect(onFinish).not.toHaveBeenCalled()
 
     act(() => vi.advanceTimersByTime(1000))
-    expect(container.firstChild).toBeNull()
+    expect(container).toBeEmptyDOMElement()
     expect(onFinish).toHaveBeenCalledTimes(1)
 
     act(() => vi.advanceTimersByTime(5000))

@@ -5,6 +5,8 @@ import type {
   PluginCategoryListResponse,
   PluginEntity,
   PluginInstallationItemResponse,
+  PluginInstallTask,
+  PluginInstallTaskStartResponse,
   PluginListResponse,
   PluginParameterOption,
 } from '@dify/contracts/api/console/workspaces/types.gen'
@@ -19,7 +21,6 @@ import type { AutoUpdateConfig } from '@/app/components/plugins/reference-settin
 import type {
   Dependency,
   GitHubItemAndMarketPlaceDependency,
-  InstallPackageResponse,
   InstallStatusResponse,
   MetaData,
   PackageDependency,
@@ -28,10 +29,8 @@ import type {
   PluginDeclaration,
   PluginDetail,
   PluginTask,
-  PluginTaskStart,
   ReferenceSetting,
   VersionInfo,
-  VersionListResponse,
 } from '@/app/components/plugins/types'
 import type { Collection } from '@/app/components/tools/types'
 import {
@@ -483,7 +482,7 @@ const isUnfinishedPluginTask = (task: PluginTask) =>
   task.status === TaskStatus.pending || task.status === TaskStatus.running
 
 // Each plugin status records its task so a single status can be cleared.
-const normalizeStartedPluginTask = (task: PluginTaskStart): PluginTask => ({
+const normalizeStartedPluginTask = (task: PluginInstallTask): PluginTask => ({
   ...task,
   plugins: task.plugins.map((plugin) => ({
     ...plugin,
@@ -491,7 +490,10 @@ const normalizeStartedPluginTask = (task: PluginTaskStart): PluginTask => ({
   })),
 })
 
-const upsertStartedPluginTask = (queryClient: QueryClient, response: InstallPackageResponse) => {
+const upsertStartedPluginTask = (
+  queryClient: QueryClient,
+  response: PluginInstallTaskStartResponse,
+) => {
   if (!response.task) return
 
   const startedTask = normalizeStartedPluginTask(response.task)
@@ -806,7 +808,7 @@ export const useInvalidateInstalledPluginList = () => {
 }
 
 export const useInstallPackageFromMarketPlace = (
-  options?: MutateOptions<InstallPackageResponse, Error, string>,
+  options?: MutateOptions<PluginInstallTaskStartResponse, Error, string>,
 ) => {
   const queryClient = useQueryClient()
   return useMutation({
@@ -824,7 +826,7 @@ export const useInstallPackageFromMarketPlace = (
 }
 
 export const useUpdatePackageFromMarketPlace = (
-  options?: MutateOptions<InstallPackageResponse, Error, ParserMarketplaceUpgrade>,
+  options?: MutateOptions<PluginInstallTaskStartResponse, Error, ParserMarketplaceUpgrade>,
 ) => {
   const queryClient = useQueryClient()
   return useMutation({
@@ -849,17 +851,6 @@ export const usePluginDeclarationFromMarketPlace = (pluginUniqueIdentifier: stri
         query: { plugin_unique_identifier: pluginUniqueIdentifier },
       }),
     enabled: !!pluginUniqueIdentifier,
-  })
-}
-
-export const useVersionListOfPlugin = (pluginID: string, enabled = true) => {
-  return useQuery<{ data: VersionListResponse }>({
-    enabled: enabled && !!pluginID,
-    queryKey: [NAME_SPACE, 'versions', pluginID],
-    queryFn: () =>
-      getMarketplace<{ data: VersionListResponse }>(`/plugins/${pluginID}/versions`, {
-        params: { page: 1, page_size: 100 },
-      }),
   })
 }
 
@@ -1449,7 +1440,7 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   }, [refetch])
 
   const handleInstallTaskStart = useCallback(
-    (response: InstallPackageResponse) => {
+    (response: PluginInstallTaskStartResponse) => {
       if (response.all_installed) return
 
       upsertStartedPluginTask(queryClient, response)

@@ -561,7 +561,7 @@ class MLflowDataTrace(BaseTraceInstance):
             mlflow.search_experiments(max_results=1)
             return True
         except Exception as e:
-            raise ValueError(f"MLflow connection failed: {str(e)}")
+            raise ValueError(f"MLflow connection failed: {str(e)}") from e
 
     def get_project_url(self):
         return self._project_url

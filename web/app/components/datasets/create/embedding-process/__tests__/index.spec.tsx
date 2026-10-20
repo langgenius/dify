@@ -1,16 +1,30 @@
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactElement } from 'react'
-import type { IndexingStatusResponse } from '@/models/datasets'
-import { QueryClient } from '@tanstack/react-query'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import EmbeddingProcess from '../index'
 
+const status: DocumentStatusResponse = {
+  id: 'document-1',
+  indexing_status: 'completed',
+  completed_segments: 1,
+  total_segments: 1,
+  processing_started_at: null,
+  parsing_completed_at: null,
+  cleaning_completed_at: null,
+  splitting_completed_at: null,
+  completed_at: null,
+  paused_at: null,
+  error: null,
+  stopped_at: null,
+}
+
 let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 let mockPlanType: 'sandbox' | 'professional' | 'team' = 'sandbox'
 let mockPollingState: {
-  statusList: IndexingStatusResponse[]
+  statusList: DocumentStatusResponse[]
   isEmbedding: boolean
   isEmbeddingCompleted: boolean
 } = {
@@ -18,30 +32,6 @@ let mockPollingState: {
   isEmbedding: false,
   isEmbeddingCompleted: false,
 }
-
-vi.mock('@/next/link', () => ({
-  default: ({
-    children,
-    href,
-    ...props
-  }: {
-    children: React.ReactNode
-    href: string
-    target?: string
-    rel?: string
-  }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.processRule.get': () => ({ data: undefined }),
-  })
-})
 
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://api.example.com/docs',
@@ -51,32 +41,8 @@ vi.mock('../use-indexing-status-polling', () => ({
   useIndexingStatusPolling: () => mockPollingState,
 }))
 
-vi.mock('../indexing-progress-item', () => ({
-  default: () => <div>progress item</div>,
-}))
-
-vi.mock('../rule-detail', () => ({
-  default: () => <div>rule detail</div>,
-}))
-
 vi.mock('../upgrade-banner', () => ({
   default: () => <div>upgrade processing priority</div>,
-}))
-
-vi.mock('@/app/components/datasets/common/vector-space-admission-alert', () => ({
-  default: ({
-    showUpgrade,
-    estimatedMb,
-    planLimitMb,
-  }: {
-    showUpgrade: boolean
-    estimatedMb: number
-    planLimitMb: number
-  }) => (
-    <div>{`vector space admission alert ${estimatedMb}MB / ${planLimitMb}MB ${
-      showUpgrade ? 'with upgrade' : 'without upgrade'
-    }`}</div>
-  ),
 }))
 
 function render(ui: ReactElement) {
@@ -88,7 +54,6 @@ function render(ui: ReactElement) {
 
 describe('EmbeddingProcess', () => {
   beforeEach(() => {
-    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.clearAllMocks()
     deploymentEdition = 'COMMUNITY'
     mockPlanType = 'sandbox'
@@ -112,19 +77,23 @@ describe('EmbeddingProcess', () => {
 
     render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
 
-    expect(screen.getByRole('status')).toHaveTextContent('datasetDocuments.embedding.completed')
+    expect(screen.getByText('datasetDocuments.embedding.completed')).toHaveAttribute(
+      'role',
+      'status',
+    )
   })
 
   it('shows the vector-space admission alert after processing completes', () => {
     mockPollingState = {
       statusList: [
         {
+          ...status,
           id: 'document-1',
           indexing_status: 'error',
           error_code: 'vector_space_estimate_exceeded',
           estimated_vector_space_mb: 61,
           vector_space_limit_mb: 50,
-        } as IndexingStatusResponse,
+        },
       ],
       isEmbedding: false,
       isEmbeddingCompleted: true,
@@ -132,22 +101,30 @@ describe('EmbeddingProcess', () => {
 
     render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
 
-    expect(screen.getByRole('status')).toHaveTextContent('datasetDocuments.embedding.completed')
-    expect(
-      screen.getByText('vector space admission alert 61MB / 50MB without upgrade'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('datasetDocuments.embedding.completed')).toHaveAttribute(
+      'role',
+      'status',
+    )
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent(
+      'datasetDocuments.embedding.vectorSpaceEstimateExceeded.description',
+    )
+    expect(alert).toHaveTextContent('61')
+    expect(alert).toHaveTextContent('50')
+    expect(within(alert).queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('does not show the vector-space alert for another indexing error', () => {
     mockPollingState = {
       statusList: [
         {
+          ...status,
           id: 'document-1',
           indexing_status: 'error',
           error_code: null,
           estimated_vector_space_mb: 61,
           vector_space_limit_mb: 50,
-        } as IndexingStatusResponse,
+        },
       ],
       isEmbedding: false,
       isEmbeddingCompleted: true,
@@ -155,7 +132,7 @@ describe('EmbeddingProcess', () => {
 
     render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
 
-    expect(screen.queryByText(/vector space admission alert/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('does not suggest an upgrade to team users', () => {
@@ -164,12 +141,13 @@ describe('EmbeddingProcess', () => {
     mockPollingState = {
       statusList: [
         {
+          ...status,
           id: 'document-1',
           indexing_status: 'error',
           error_code: 'vector_space_estimate_exceeded',
           estimated_vector_space_mb: 61,
           vector_space_limit_mb: 50,
-        } as IndexingStatusResponse,
+        },
       ],
       isEmbedding: false,
       isEmbeddingCompleted: true,
@@ -177,22 +155,34 @@ describe('EmbeddingProcess', () => {
 
     render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
 
-    expect(
-      screen.getByText('vector space admission alert 61MB / 50MB without upgrade'),
-    ).toBeInTheDocument()
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent(
+      'datasetDocuments.embedding.vectorSpaceEstimateExceeded.description',
+    )
+    expect(alert).toHaveTextContent('61')
+    expect(alert).toHaveTextContent('50')
+    expect(within(alert).queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('links to the document list and invalidates its cache on activation', async () => {
     const user = userEvent.setup()
-    render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
+    const { queryClient } = render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
+    const documentListKey = consoleQuery.datasets.byDatasetId.documents.get.queryKey({
+      input: { params: { dataset_id: 'dataset-1' } },
+    })
+    queryClient.setQueryData(documentListKey, {
+      data: [],
+      has_more: false,
+      page: 1,
+      limit: 20,
+      total: 0,
+    })
 
     const link = screen.getByRole('link', { name: 'datasetCreation.stepThree.navTo' })
     expect(link).toHaveAttribute('href', '/datasets/dataset-1/documents')
     await user.click(link)
 
-    expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.datasets.byDatasetId.documents.get.key(),
-    })
+    expect(queryClient.getQueryState(documentListKey)?.isInvalidated).toBe(true)
   })
 
   it('links to the dataset API reference', () => {

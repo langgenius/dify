@@ -1,13 +1,15 @@
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it } from 'vite-plus/test'
 import {
+  createAgentReference,
   createSkillDetail,
   createSkillVersion,
   getFileTreeButton,
   getMocks,
   getSourceEditor,
+  preserveDraftFilesOnSave,
   renderSkillDetailPage,
   resetDetailPageFixture,
 } from './detail-page.fixture'
@@ -16,30 +18,6 @@ const mocks = getMocks()
 
 describe('SkillDetailPage metadata', () => {
   beforeEach(resetDetailPageFixture)
-
-  it('opens the inline tag selector with workspace tag options', async () => {
-    const user = userEvent.setup()
-    renderSkillDetailPage()
-
-    const addTagButton = await screen.findByRole('combobox', {
-      name: 'skill.skillManagement.detail.addTag',
-    })
-    await user.click(addTagButton)
-
-    expect(
-      await screen.findByRole('combobox', {
-        name: 'common.tag.selectorPlaceholder',
-      }),
-    ).toHaveFocus()
-    expect(screen.getByRole('option', { name: 'Search' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'Productivity' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.tag.manageTags' })).toBeInTheDocument()
-    expect(
-      screen.queryByRole('heading', {
-        name: 'skill.skillManagement.detail.addTag',
-      }),
-    ).not.toBeInTheDocument()
-  })
 
   it('previews selected workspace tags immediately and saves once when the selector closes', async () => {
     const user = userEvent.setup()
@@ -50,7 +28,10 @@ describe('SkillDetailPage metadata', () => {
         name: 'skill.skillManagement.detail.addTag',
       }),
     )
-    await user.click(await screen.findByRole('option', { name: 'Search' }))
+    expect(
+      await screen.findByRole('combobox', { name: 'common.tag.selectorPlaceholder' }),
+    ).toHaveFocus()
+    await user.click(screen.getByRole('option', { name: 'Search' }))
 
     expect(
       within(screen.getByRole('region', { name: /skillManagement\.detail\.fileCount/ })).getByText(
@@ -120,30 +101,6 @@ describe('SkillDetailPage metadata', () => {
     expect(mocks.skillMetadataMutationFn).toHaveBeenCalledTimes(1)
   })
 
-  it('renders an unmatched search as a create action instead of a tag checkbox', async () => {
-    const user = userEvent.setup()
-    renderSkillDetailPage()
-
-    await user.click(
-      await screen.findByRole('combobox', {
-        name: 'skill.skillManagement.detail.addTag',
-      }),
-    )
-    await user.type(
-      await screen.findByRole('combobox', {
-        name: 'common.tag.selectorPlaceholder',
-      }),
-      'BrandNew',
-    )
-
-    expect(
-      await screen.findByRole('option', {
-        name: "common.tag.create 'BrandNew'",
-      }),
-    ).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: 'BrandNew' })).not.toBeInTheDocument()
-  })
-
   it('previews a newly created tag immediately and binds it when the selector closes', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
@@ -194,10 +151,9 @@ describe('SkillDetailPage metadata', () => {
 
   it('keeps selected tags visible and prevents reopening while the metadata request is pending', async () => {
     const user = userEvent.setup()
-    let resolveMutation: ((detail: SkillDetailResponse) => void) | undefined
-    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+    let resolveMutation!: (detail: SkillDetailResponse) => void
+
     mocks.skillDetailQueryOptions.mockImplementation(() => ({
-      queryKey: ['skill-detail'],
       queryFn: async () => mocks.skillDetail,
     }))
     mocks.skillMetadataMutationFn.mockImplementation(
@@ -240,7 +196,7 @@ describe('SkillDetailPage metadata', () => {
         updated_at: 1784638491,
       })
       mocks.skillDetail = nextDetail
-      resolveMutation?.(nextDetail)
+      resolveMutation(nextDetail)
     })
 
     expect(await screen.findByText('Search')).toBeInTheDocument()
@@ -249,10 +205,9 @@ describe('SkillDetailPage metadata', () => {
 
   it('restores persisted tags when saving the visible selection fails', async () => {
     const user = userEvent.setup()
-    let rejectMutation: ((error: Error) => void) | undefined
-    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+    let rejectMutation!: (error: Error) => void
+
     mocks.skillDetailQueryOptions.mockImplementation(() => ({
-      queryKey: ['skill-detail'],
       queryFn: async () => mocks.skillDetail,
     }))
     mocks.skillDetail = createSkillDetail({ tags: ['Search'] })
@@ -280,7 +235,7 @@ describe('SkillDetailPage metadata', () => {
     expect(sidebar.getByText('Productivity')).toBeInTheDocument()
 
     await act(async () => {
-      rejectMutation?.(new Error('Saving tags failed'))
+      rejectMutation(new Error('Saving tags failed'))
     })
 
     expect(await sidebar.findByText('Search')).toBeInTheDocument()
@@ -315,41 +270,11 @@ describe('SkillDetailPage metadata', () => {
     expect(await screen.findByRole('dialog')).toHaveTextContent('common.tag.manageTags')
   })
 
-  it('removes an existing tag from its badge action', async () => {
-    const user = userEvent.setup()
-    mocks.skillDetail = createSkillDetail({
-      tags: ['Search', 'Productivity', 'Utilities', 'Pre-sales'],
-    })
-    renderSkillDetailPage()
-
-    expect(await screen.findByText('Search')).toBeInTheDocument()
-    expect(screen.getByText('Productivity')).toBeInTheDocument()
-    expect(screen.getByText('Utilities')).toBeInTheDocument()
-    expect(screen.getByText('Pre-sales')).toBeInTheDocument()
-    await user.click(
-      screen.getByRole('button', {
-        name: 'skill.skillManagement.detail.removeTag:{"tag":"Search"}',
-      }),
-    )
-
-    await waitFor(() => {
-      expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
-        expect.objectContaining({
-          body: expect.objectContaining({
-            tags: ['Productivity', 'Utilities', 'Pre-sales'],
-          }),
-        }),
-        expect.anything(),
-      )
-    })
-  })
-
   it('hides a removed tag only after the metadata request finishes', async () => {
     const user = userEvent.setup()
-    let resolveMutation: ((detail: SkillDetailResponse) => void) | undefined
-    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+    let resolveMutation!: (detail: SkillDetailResponse) => void
+
     mocks.skillDetailQueryOptions.mockImplementation(() => ({
-      queryKey: ['skill-detail'],
       queryFn: async () => mocks.skillDetail,
     }))
     mocks.skillDetail = createSkillDetail({
@@ -369,6 +294,14 @@ describe('SkillDetailPage metadata', () => {
       }),
     )
 
+    expect(mocks.skillMetadataMutationFn).toHaveBeenCalledTimes(1)
+    expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
+      {
+        params: { skill_id: 'skill-1' },
+        body: { expected_updated_at: 1784638487, tags: ['Productivity'] },
+      },
+      expect.anything(),
+    )
     expect(screen.getByText('Search')).toBeInTheDocument()
     expect(screen.getByText('Productivity')).toBeInTheDocument()
 
@@ -378,29 +311,11 @@ describe('SkillDetailPage metadata', () => {
         updated_at: 1784638491,
       })
       mocks.skillDetail = nextDetail
-      resolveMutation?.(nextDetail)
+      resolveMutation(nextDetail)
     })
 
     await waitFor(() => {
       expect(screen.queryByText('Search')).not.toBeInTheDocument()
-    })
-  })
-
-  it('does not expose display-name editing in the SKILL.md metadata editor before publishing', async () => {
-    const user = userEvent.setup()
-    renderSkillDetailPage()
-
-    expect(await screen.findByText('name')).toBeInTheDocument()
-    expect(screen.getByText('description')).toBeInTheDocument()
-    expect(screen.queryByText('display-name')).not.toBeInTheDocument()
-
-    await user.click(
-      screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),
-    )
-
-    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
-    await waitFor(() => {
-      expect(mocks.publishSkillMutationFn).toHaveBeenCalled()
     })
   })
 
@@ -539,8 +454,7 @@ describe('SkillDetailPage metadata', () => {
     const detailPromise = new Promise<SkillDetailResponse>((resolve) => {
       resolveDetail = resolve
     })
-    mocks.skillDetailQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-detail', options],
+    mocks.skillDetailQueryOptions.mockImplementation(() => ({
       queryFn: () => detailPromise,
     }))
     const { onUrlUpdate, queryClient } = renderSkillDetailPage({
@@ -602,6 +516,10 @@ describe('SkillDetailPage metadata', () => {
   it('requires the display name before deleting a referenced skill from the sidebar', async () => {
     const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({ reference_count: 1 })
+    preserveDraftFilesOnSave()
+    mocks.skillReferencesQueryOptions.mockImplementation(() => ({
+      queryFn: async () => ({ data: [createAgentReference()] }),
+    }))
     mocks.deleteSkillMutationFn.mockResolvedValue({})
     renderSkillDetailPage()
 
@@ -616,7 +534,7 @@ describe('SkillDetailPage metadata', () => {
       screen.getByText('skill.skillManagement.deleteDialog.title:{"name":"Untitled skill"}'),
     ).toBeInTheDocument()
     const dialog = screen.getByRole('alertdialog')
-    const confirmationInput = within(dialog).getByPlaceholderText(
+    const confirmationInput = await within(dialog).findByPlaceholderText(
       'skill.skillManagement.deleteDialog.confirmInputPlaceholder',
     )
     const confirmButton = within(dialog).getByRole('button', {
@@ -645,8 +563,7 @@ describe('SkillDetailPage metadata', () => {
     let referenceRequestCount = 0
     let shouldHangReferenceRequest = false
     mocks.skillDetail = createSkillDetail({ reference_count: 0 })
-    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references-pending', options],
+    mocks.skillReferencesQueryOptions.mockImplementation(() => ({
       queryFn: () => {
         referenceRequestCount += 1
         if (!shouldHangReferenceRequest) return Promise.resolve({ data: [] })
@@ -688,18 +605,16 @@ describe('SkillDetailPage metadata', () => {
   })
 
   it('does not expose mutable More actions while viewing a published version', async () => {
-    mocks.skillVersionsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-versions', options],
+    mocks.skillVersionsQueryOptions.mockImplementation(() => ({
       queryFn: async () => ({ data: [createSkillVersion()] }),
     }))
     renderSkillDetailPage()
 
-    await userEvent
-      .setup()
-      .click(
-        await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
-      )
-    await userEvent.setup().click(await screen.findByText('Initial version'))
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
+    )
+    await user.click(await screen.findByText('Initial version'))
 
     expect(
       screen.queryByRole('button', {
@@ -730,8 +645,10 @@ describe('SkillDetailPage metadata', () => {
 
   it('marks changes as published and enables publish update after new edits', async () => {
     const user = userEvent.setup()
-    const { queryClient } = renderSkillDetailPage()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    renderSkillDetailPage()
+    expect(await screen.findByText('name')).toBeInTheDocument()
+    expect(screen.getByText('description')).toBeInTheDocument()
+    expect(screen.queryByText('display-name')).not.toBeInTheDocument()
 
     const publishButton = await screen.findByRole('button', {
       name: 'skill.skillManagement.detail.publishUpdate',
@@ -743,11 +660,7 @@ describe('SkillDetailPage metadata', () => {
     await waitFor(() => {
       expect(mocks.publishSkillMutationFn).toHaveBeenCalled()
     })
-    await waitFor(() => {
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['skills', { type: 'infinite' }],
-      })
-    })
+    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
     await waitFor(() => {
       expect(document.body).toHaveTextContent('skill.skillManagement.detail.upToDate')
     })
@@ -921,6 +834,21 @@ describe('SkillDetailPage metadata', () => {
 
     expect(screen.getByRole('textbox', { name: 'team value' })).toHaveValue('success')
     expect(screen.getByRole('textbox', { name: 'owner value' })).toHaveValue('support')
+    await user.click(
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),
+    )
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            path: 'SKILL.md',
+            content: expect.stringMatching(/owner: support[\s\S]*team: success/),
+          }),
+        }),
+        expect.anything(),
+      )
+      expect(mocks.publishSkillMutationFn).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('cancels custom metadata creation from both metadata fields', async () => {
@@ -1066,16 +994,12 @@ describe('SkillDetailPage metadata', () => {
       }),
     )
     await user.click(await screen.findByText('references'))
-    fireEvent.click(getFileTreeButton('references/refund-policy.md'))
+    await user.click(getFileTreeButton('references/refund-policy.md'))
+    await user.click(
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.markdownSourceMode' }),
+    )
 
-    await waitFor(() => {
-      expect(
-        screen
-          .getAllByRole('textbox')
-          .map((textbox) => ('value' in textbox ? String(textbox.value) : textbox.textContent))
-          .join('\n'),
-      ).toContain('# 退款政策')
-    })
+    await waitFor(() => expect(getSourceEditor().value).toContain('# 退款政策'))
     expect(screen.queryByDisplayValue('refund-policy')).not.toBeInTheDocument()
     expect(screen.queryByDisplayValue('Refund policy.')).not.toBeInTheDocument()
     expect(screen.queryByDisplayValue('Refund Policy')).not.toBeInTheDocument()

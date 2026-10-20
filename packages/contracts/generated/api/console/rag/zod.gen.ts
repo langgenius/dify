@@ -111,11 +111,6 @@ export const zSimpleResultResponse = z.object({
 })
 
 /**
- * DefaultBlockConfigsResponse
- */
-export const zDefaultBlockConfigsResponse = z.array(z.record(z.string(), z.unknown()))
-
-/**
  * DefaultBlockConfigResponse
  */
 export const zDefaultBlockConfigResponse = z.record(z.string(), z.unknown())
@@ -476,6 +471,19 @@ export const zWorkflowRunNodeExecutionListResponse = z.object({
 })
 
 /**
+ * DefaultBlockConfigItemResponse
+ */
+export const zDefaultBlockConfigItemResponse = z.object({
+  config: z.record(z.string(), z.unknown()),
+  type: z.string(),
+})
+
+/**
+ * DefaultBlockConfigsResponse
+ */
+export const zDefaultBlockConfigsResponse = z.array(zDefaultBlockConfigItemResponse)
+
+/**
  * WorkflowConversationVariableResponse
  */
 export const zWorkflowConversationVariableResponse = z.object({
@@ -555,6 +563,13 @@ export const zWorkflowPaginationResponse = z.object({
 export const zRagPipelineStepParametersResponse = z.object({
   variables: z.array(zPipelineVariableResponse),
 })
+
+/**
+ * RagPipelinePublishedWorkflowResponse
+ *
+ * A null response means the pipeline has no published workflow.
+ */
+export const zRagPipelinePublishedWorkflowResponse = zWorkflowResponse.nullable()
 
 /**
  * EnvironmentVariableItemResponse
@@ -1780,7 +1795,8 @@ export const zGetRagPipelinesByPipelineIdWorkflowsPublishPath = z.object({
 /**
  * Published workflow retrieved successfully, or null if not exist
  */
-export const zGetRagPipelinesByPipelineIdWorkflowsPublishResponse = zWorkflowResponse
+export const zGetRagPipelinesByPipelineIdWorkflowsPublishResponse =
+  zRagPipelinePublishedWorkflowResponse
 
 export const zPostRagPipelinesByPipelineIdWorkflowsPublishPath = z.object({
   pipeline_id: z.uuid(),

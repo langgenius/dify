@@ -8,7 +8,7 @@ import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,11 +35,7 @@ import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
-import {
-  useInvalidateAppWorkflow,
-  usePublishWorkflow,
-  useResetWorkflowVersionHistory,
-} from '@/service/use-workflow'
+import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation(['common', 'workflow'])
@@ -134,10 +130,7 @@ const FeaturesTrigger = () => {
     return edges.some((edge) => startNodeIds.includes(edge.source))
   }, [edges, startNodeIds])
   // Track trigger presence so the publisher can adjust UI (e.g. hide missing start section).
-  const hasTriggerNode = useMemo(
-    () => nodes.some((node) => isTriggerNode(node.data.type as BlockEnum)),
-    [nodes],
-  )
+  const hasTriggerNode = useMemo(() => nodes.some((node) => isTriggerNode(node.data.type)), [nodes])
   const startNodeLimitExceeded = useMemo(() => {
     const entryCount = nodes.reduce((count, node) => {
       const nodeType = node.data.type as BlockEnum
@@ -159,11 +152,12 @@ const FeaturesTrigger = () => {
     setShowFeaturesPanel(!showFeaturesPanel)
   }, [workflowStore, getNodesReadOnly])
 
-  const { mutateAsync: publishWorkflow } = usePublishWorkflow()
+  const { mutateAsync: publishWorkflow } = useMutation(
+    consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions(),
+  )
   // const { validateBeforeRun } = useWorkflowRunValidation()
   const needWarningNodes = useChecklist(nodes, edges)
 
-  const updatePublishedWorkflow = useInvalidateAppWorkflow()
   const onPublish = useCallback(
     async (params?: AppPublisherPublishParams, options?: AppPublisherPublishOptions) => {
       const publishParams = params && 'title' in params ? params : undefined
@@ -182,26 +176,17 @@ const FeaturesTrigger = () => {
         if (!draftSyncResult) throw new Error('Workflow draft sync failed')
 
         const res = await publishWorkflow({
-          url: publishParams?.url || `/apps/${appID}/workflows/publish`,
-          title: publishParams?.title || '',
-          releaseNotes: publishParams?.releaseNotes || '',
+          params: { app_id: appID },
+          body: {
+            marked_name: publishParams?.title || '',
+            marked_comment: publishParams?.releaseNotes || '',
+          },
         })
         if (res) {
           // One toast per publish: a warning from the server replaces the success message.
           if (res.warning) toast.warning(res.warning)
           else if (options?.showSuccessToast !== false)
             toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-          updatePublishedWorkflow(appID)
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.apps.byAppId.get.queryKey({
-              input: { params: { app_id: appID } },
-            }),
-          })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.apps.byAppId.triggers.get.queryKey({
-              input: { params: { app_id: appID } },
-            }),
-          })
           if (rosterAgentIds.length > 0) {
             void queryClient.invalidateQueries({
               queryKey: consoleQuery.agent.get.key(),
@@ -235,7 +220,6 @@ const FeaturesTrigger = () => {
       publishWorkflow,
       appID,
       t,
-      updatePublishedWorkflow,
       rosterAgentIds,
       queryClient,
       workflowStore,

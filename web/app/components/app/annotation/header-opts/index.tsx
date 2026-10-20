@@ -1,6 +1,7 @@
 'use client'
+import type { Annotation } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { AnnotationItem, AnnotationItemBasic } from '../type'
+import type { AnnotationItemBasic } from '../type'
 import { AlertDialog } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -36,24 +37,24 @@ type Props = Readonly<{
 }>
 
 type OperationsMenuProps = {
-  list: AnnotationItem[]
+  list: Annotation[]
   onBulkImport: () => void
   onClearAll: () => void
   onExportJsonl: () => void
 }
 
-const buildAnnotationJsonlRecords = (list: AnnotationItem[]) =>
+const buildAnnotationJsonlRecords = (list: Annotation[]) =>
   list.map((item) => {
     return `{"messages": [{"role": "system", "content": ""}, {"role": "user", "content": ${JSON.stringify(item.question ?? '')}}, {"role": "assistant", "content": ${JSON.stringify(item.answer ?? '')}}]}`
   })
 
-const downloadAnnotationJsonl = (list: AnnotationItem[], locale: string) => {
+const downloadAnnotationJsonl = (list: Annotation[], locale: string) => {
   const content = buildAnnotationJsonlRecords(list).join('\n')
   const file = new Blob([content], { type: 'application/jsonl' })
   downloadBlob({ data: file, fileName: `annotations-${locale}.jsonl` })
 }
 
-const downloadAnnotationCsv = (list: AnnotationItem[], locale: string) => {
+const downloadAnnotationCsv = (list: Annotation[], locale: string) => {
   const content = jsonToCSV([
     locale !== LanguagesSupported[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
     ...list.map((item) => [item.question ?? '', item.answer ?? '']),
@@ -130,7 +131,7 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
 const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) => {
   const { t } = useTranslation(['appAnnotation', 'common'])
   const locale = useLocale()
-  const [list, setList] = useState<AnnotationItem[]>([])
+  const [list, setList] = useState<Annotation[]>([])
 
   const fetchList = React.useCallback(async () => {
     const { data } = await consoleClient.apps.byAppId.annotations.export.get({

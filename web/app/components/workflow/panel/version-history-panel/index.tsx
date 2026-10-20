@@ -1,6 +1,6 @@
 'use client'
 
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
@@ -10,7 +10,6 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { getEditorResourceId } from '@/app/components/workflow/editor-resource/resource'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { toast } from '@/app/notifications'
@@ -48,22 +47,18 @@ const INITIAL_PAGE = 1
 
 export type VersionHistoryPanelProps = {
   getVersionListUrl?: string
-  deleteVersionUrl?: (versionId: string) => string
-  updateVersionUrl?: (versionId: string) => string
   latestVersionId?: string
 }
 
 export const VersionHistoryPanel = ({
   getVersionListUrl,
-  deleteVersionUrl,
-  updateVersionUrl,
   latestVersionId,
 }: VersionHistoryPanelProps) => {
   const [filterValue, setFilterValue] = useState<WorkflowVersionFilterOptions>(
     WorkflowVersionFilterOptions.all,
   )
   const [isOnlyShowNamedVersions, setIsOnlyShowNamedVersions] = useState(false)
-  const [operatedItem, setOperatedItem] = useState<VersionHistory>()
+  const [operatedItem, setOperatedItem] = useState<FetchWorkflowDraftResponse>()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -88,7 +83,6 @@ export const VersionHistoryPanel = ({
     select: (data) => data.profile,
   })
   const resource = useAtomValue(editorResourceAtom)
-  const resourceId = getEditorResourceId(resource)
   const canImportExportDSL = useHooksStore((s) => s.accessControl.canImportExportDSL)
   const invalidAllLastRun = useInvalidateAllLastRun(resource)
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
@@ -109,7 +103,7 @@ export const VersionHistoryPanel = ({
   })
 
   const handleVersionClick = useCallback(
-    (item: VersionHistory) => {
+    (item: FetchWorkflowDraftResponse) => {
       if (item.id !== currentVersion?.id) {
         setCurrentVersion(item)
         if (item.version === WorkflowVersion.Draft) handleLoadBackupDraft()
@@ -148,7 +142,7 @@ export const VersionHistoryPanel = ({
   }, [])
 
   const handleClickActionMenuItem = useCallback(
-    (item: VersionHistory, operation: VersionHistoryContextMenuOptions) => {
+    (item: FetchWorkflowDraftResponse, operation: VersionHistoryContextMenuOptions) => {
       if (operation === VersionHistoryContextMenuOptions.delete && item.environments?.length) {
         toast.error(
           t(($) => $['versionHistory.action.deleteDeployedVersionError'], {
@@ -209,7 +203,7 @@ export const VersionHistoryPanel = ({
   }, [])
 
   const emitRestoreIntent = useCallback(
-    async (item: VersionHistory) => {
+    async (item: FetchWorkflowDraftResponse) => {
       try {
         const { collaborationManager } =
           await import('../../collaboration/core/collaboration-manager')
@@ -230,7 +224,7 @@ export const VersionHistoryPanel = ({
   )
 
   const emitRestoreComplete = useCallback(
-    async (item: VersionHistory, success: boolean, errorMessage?: string) => {
+    async (item: FetchWorkflowDraftResponse, success: boolean, errorMessage?: string) => {
       try {
         const { collaborationManager } =
           await import('../../collaboration/core/collaboration-manager')
@@ -263,7 +257,7 @@ export const VersionHistoryPanel = ({
   const { mutateAsync: restoreWorkflow } = useRestoreWorkflow(resource)
 
   const handleRestore = useCallback(
-    async (item: VersionHistory) => {
+    async (item: FetchWorkflowDraftResponse) => {
       setShowWorkflowVersionHistoryPanel(false)
       await emitRestoreIntent(item)
 
@@ -303,33 +297,22 @@ export const VersionHistoryPanel = ({
     ],
   )
 
-  const { mutateAsync: deleteWorkflow } = useDeleteWorkflow()
+  const deleteWorkflow = useDeleteWorkflow(resource)
 
   const handleDelete = useCallback(
     async (id: string) => {
-      await deleteWorkflow(deleteVersionUrl?.(id) || '', {
-        onSuccess: () => {
-          setDeleteConfirmOpen(false)
-          resetWorkflowVersionHistory()
-          deleteAllInspectVars()
-          invalidAllLastRun()
-        },
-        onError: () => {
-          toast.error(t(($) => $['versionHistory.action.deleteFailure'], { ns: 'workflowHistory' }))
-        },
-        onSettled: () => {
-          setDeleteConfirmOpen(false)
-        },
-      })
+      try {
+        await deleteWorkflow(id)
+        resetWorkflowVersionHistory()
+        deleteAllInspectVars()
+        invalidAllLastRun()
+      } catch {
+        toast.error(t(($) => $['versionHistory.action.deleteFailure'], { ns: 'workflowHistory' }))
+      } finally {
+        setDeleteConfirmOpen(false)
+      }
     },
-    [
-      deleteWorkflow,
-      t,
-      resetWorkflowVersionHistory,
-      deleteAllInspectVars,
-      invalidAllLastRun,
-      deleteVersionUrl,
-    ],
+    [deleteWorkflow, t, resetWorkflowVersionHistory, deleteAllInspectVars, invalidAllLastRun],
   )
 
   const { mutateAsync: updateWorkflow } = useUpdateWorkflow()
@@ -337,40 +320,17 @@ export const VersionHistoryPanel = ({
   const handleUpdateWorkflow = useCallback(
     async (params: { id?: string; title: string; releaseNotes: string }) => {
       const { id, ...rest } = params
-      await updateWorkflow(
-        {
-          ...(resource.kind === 'app' && resourceId
-            ? { appId: resource.appId, appMode: resource.mode }
-            : {}),
-          url: updateVersionUrl?.(id || '') || '',
-          ...rest,
-        },
-        {
-          onSuccess: () => {
-            setEditModalOpen(false)
-            if (id === latestVersionId && resource.kind === 'app' && resourceId)
-              invalidateAppWorkflow(resourceId)
-          },
-          onError: () => {
-            toast.error(
-              t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }),
-            )
-          },
-          onSettled: () => {
-            setEditModalOpen(false)
-          },
-        },
-      )
+      if (!id) return
+      try {
+        await updateWorkflow({ resource, versionId: id, ...rest })
+        if (id === latestVersionId && resource.kind === 'app') invalidateAppWorkflow(resource.appId)
+      } catch {
+        toast.error(t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }))
+      } finally {
+        setEditModalOpen(false)
+      }
     },
-    [
-      resourceId,
-      resource,
-      invalidateAppWorkflow,
-      latestVersionId,
-      t,
-      updateWorkflow,
-      updateVersionUrl,
-    ],
+    [resource, invalidateAppWorkflow, latestVersionId, t, updateWorkflow],
   )
 
   return (

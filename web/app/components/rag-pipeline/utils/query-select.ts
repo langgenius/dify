@@ -1,4 +1,7 @@
-import type { DocumentPipelineExecutionLogResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type {
+  DocumentPipelineExecutionLogResponse,
+  IndexingEstimateResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type {
   PipelineGenerateResponse,
   PipelineTemplateDetailResponse,
@@ -7,15 +10,15 @@ import type {
   PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse,
   RagPipelineImportCheckDependenciesResponse,
   RagPipelinePublishedRunResponse,
+  RagPipelinePublishedWorkflowResponse,
   RagPipelineStepParametersResponse,
   WorkflowAppBlockingResponse,
-  WorkflowResponse,
   WorkflowRunNodeExecutionResponse,
 } from '@dify/contracts/api/console/rag/types.gen'
 import type { Viewport } from 'reactflow'
 import type { Dependency } from '@/app/components/plugins/types'
 import type { Edge, Node } from '@/app/components/workflow/types'
-import type { FileIndexingEstimateResponse, IconInfo } from '@/models/datasets'
+import type { IconInfo } from '@/models/datasets'
 import type {
   PipelineExecutionLogResponse,
   PipelineTemplate,
@@ -23,7 +26,7 @@ import type {
   RAGPipelineVariable,
 } from '@/models/pipeline'
 import type { AppIconType } from '@/types/app'
-import type { NodeRunResult } from '@/types/workflow'
+import type { NodeTracing } from '@/types/workflow'
 import { BlockEnum, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { ChunkingMode } from '@/models/datasets'
 import { DatasourceType, PipelineInputVarType } from '@/models/pipeline'
@@ -117,8 +120,8 @@ export const selectPipelineTemplate = (
   },
 })
 
-export const selectPublishedPipelineNodes = (workflow: WorkflowResponse) =>
-  toGraphNodes(workflow.graph)
+export const selectPublishedPipelineNodes = (workflow: RagPipelinePublishedWorkflowResponse) =>
+  workflow ? toGraphNodes(workflow.graph) : []
 
 const toDefaultValue = (value: unknown) =>
   typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
@@ -181,7 +184,7 @@ export const isPipelineProcessingRun = (
 ): response is PipelineGenerateResponse => 'batch' in response
 
 // Preview runs return the indexing estimate as the workflow outputs.
-const isFileIndexingEstimate = (value: unknown): value is FileIndexingEstimateResponse =>
+const isFileIndexingEstimate = (value: unknown): value is IndexingEstimateResponse =>
   isRecord(value) && typeof value.total_segments === 'number' && Array.isArray(value.preview)
 
 export const selectPreviewRunEstimate = (response: WorkflowAppBlockingResponse) =>
@@ -195,7 +198,7 @@ const BLOCKS: Record<string, BlockEnum> = BlockEnum
 
 export const selectDatasourceSingleRun = (
   execution: WorkflowRunNodeExecutionResponse,
-): NodeRunResult => {
+): NodeTracing => {
   const metadata = isRecord(execution.execution_metadata) ? execution.execution_metadata : undefined
   return {
     id: execution.id,

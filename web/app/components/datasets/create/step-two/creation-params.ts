@@ -1,4 +1,7 @@
-import type { IndexingEstimatePayload } from '@dify/contracts/api/console/datasets/types.gen'
+import type {
+  IndexingEstimatePayload,
+  NotionInfo,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { IndexingType } from './hooks/use-indexing-config'
 import type { StepTwoFile, StepTwoNotionPage } from './types'
 import type { DataSourceProvider } from '@/models/common'
@@ -7,7 +10,6 @@ import type {
   CrawlOptions,
   CrawlResultItem,
   DataSourceType,
-  NotionInfo,
   ProcessRule,
 } from '@/models/datasets'
 import { groupBy } from 'es-toolkit/compat'

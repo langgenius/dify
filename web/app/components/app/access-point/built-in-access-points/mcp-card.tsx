@@ -2,6 +2,7 @@
 
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { PublishedWorkflow } from '../shared/utils'
+import type { AccessPointAvailability } from '@/app/components/base/access-point/status'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -9,6 +10,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -29,23 +31,20 @@ type MCPAccessPointCardProps = {
   appInfo: AppDetailWithSite
   canManageAccessPoint: boolean
   highlighted?: boolean
-  triggerModeDisabled: boolean
+  availability: AccessPointAvailability
   workflow: PublishedWorkflow
-  workflowLoading: boolean
 }
 
 export function MCPAccessPointCard({
   appInfo,
   canManageAccessPoint,
   highlighted,
-  triggerModeDisabled,
+  availability,
   workflow,
-  workflowLoading,
 }: MCPAccessPointCardProps) {
   const { t } = useTranslation(['appOverview', 'common', 'deployments', 'tools'])
   const advancedApp = isAdvancedApp(appInfo)
   const basicApp = !advancedApp
-  const workflowApp = appInfo.mode === 'workflow'
   const [showServerModal, setShowServerModal] = useState(false)
   const [showRegenerate, setShowRegenerate] = useState(false)
   const basicConfig = appInfo.model_config
@@ -85,11 +84,8 @@ export function MCPAccessPointCard({
     ? `${appInfo.api_base_url.replace(/\/v1$/, '')}/mcp/server/${detail?.server_code}/mcp`
     : '***********'
   const workflowNodes = getPublishedWorkflowNodes(workflow)
-  const missingStartNode =
-    workflowApp && !workflowNodes.some((node) => node.data.type === BlockEnum.Start)
-  const appUnpublished = advancedApp ? !workflow?.graph : !basicConfig?.updated_at
-  const loading = serverDetailLoading || (advancedApp && workflowLoading)
-  const unavailable = !loading && (appUnpublished || missingStartNode || triggerModeDisabled)
+  const loading = serverDetailLoading || availability === 'loading'
+  const unavailable = !loading && availability === 'unavailable'
 
   const basicAppInputs = useMemo(() => {
     if (!basicApp || !basicAppInputForm) return []
@@ -216,14 +212,14 @@ export function MCPAccessPointCard({
 
       <AlertDialog open={showRegenerate} onOpenChange={(open) => !open && setShowRegenerate(false)}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-md-regular text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['mcp.server.reGen'], { ns: 'tools' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

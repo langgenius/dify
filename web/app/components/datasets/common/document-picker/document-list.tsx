@@ -1,5 +1,5 @@
 'use client'
-import type { SimpleDocumentDetail } from '@/models/datasets'
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ComboboxItem, ComboboxItemText, ComboboxList } from '@langgenius/dify-ui/combobox'
 import { getUploadFileExtension } from '@/app/components/datasets/documents/document-source'
@@ -9,7 +9,7 @@ type Props = Readonly<{
   className?: string
 }>
 
-function getDocumentExtension(document: SimpleDocumentDetail) {
+function getDocumentExtension(document: DocumentWithSegmentsResponse) {
   const detailExtension = document.data_source_detail_dict?.upload_file?.extension
   if (detailExtension) return detailExtension
 
@@ -18,7 +18,9 @@ function getDocumentExtension(document: SimpleDocumentDetail) {
 
 export default function DocumentList({ className }: Props) {
   return (
-    <ComboboxList<SimpleDocumentDetail> className={cn('max-h-[calc(100vh-120px)]', className)}>
+    <ComboboxList<DocumentWithSegmentsResponse>
+      className={cn('max-h-[calc(100vh-120px)]', className)}
+    >
       {(item) => {
         const extension = getDocumentExtension(item)
         return (

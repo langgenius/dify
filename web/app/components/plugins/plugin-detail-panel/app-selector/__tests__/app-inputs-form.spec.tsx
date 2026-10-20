@@ -1,15 +1,18 @@
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import type { FileUploaderInAttachmentWrapperProps } from '@/app/components/base/file-uploader/file-uploader-in-attachment'
 import type { fileUpload } from '@/app/components/base/file-uploader/utils'
 import { zAppAgentModePayload } from '@dify/contracts/api/console/apps/zod.gen'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRef, useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useFile } from '@/app/components/base/file-uploader/hooks'
 import { FileContextProvider, useStore } from '@/app/components/base/file-uploader/store'
 import { InputVarType } from '@/app/components/workflow/types'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import AppInputsForm from '../app-inputs-form'
+
+const render = (ui: ReactNode) => rtlRender(ui, { wrapper: createConsoleQueryWrapper().wrapper })
 
 const mockFileUpload = vi.hoisted(() => vi.fn<typeof fileUpload>())
 
@@ -157,43 +160,20 @@ describe('AppInputsForm', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('should update text input values', async () => {
+  it.each([
+    [InputVarType.textInput, 'textbox', 'hello'],
+    [InputVarType.number, 'spinbutton', '42'],
+    [InputVarType.paragraph, 'textbox', 'updated paragraph'],
+  ] as const)('updates a %s field while preserving sibling inputs', async (type, role, value) => {
     const user = userEvent.setup()
     const onFormChange = vi.fn()
-
     renderControlledForm({
-      inputsForms: [
-        {
-          variable: 'question',
-          label: 'Question',
-          type: InputVarType.textInput,
-          required: false,
-        },
-      ],
-      initialInputs: { question: '' },
+      inputsForms: [{ variable: 'answer', label: 'Answer', type, required: false }],
+      initialInputs: { answer: '', topic: 'existing' },
       onFormChange,
     })
-
-    await user.type(screen.getByRole('textbox', { name: 'Question' }), 'hello')
-
-    expect(onFormChange).toHaveBeenCalledWith({ question: 'hello' })
-  })
-
-  it('should update number input values', async () => {
-    const user = userEvent.setup()
-    const onFormChange = vi.fn()
-
-    renderControlledForm({
-      inputsForms: [
-        { variable: 'count', label: 'Count', type: InputVarType.number, required: false },
-      ],
-      initialInputs: { count: '' },
-      onFormChange,
-    })
-
-    await user.type(screen.getByRole('spinbutton', { name: 'Count' }), '42')
-
-    expect(onFormChange).toHaveBeenCalledWith({ count: '42' })
+    await user.type(screen.getByRole(role, { name: 'Answer' }), value)
+    expect(onFormChange).toHaveBeenLastCalledWith({ answer: value, topic: 'existing' })
   })
 
   it('should update select values', async () => {
@@ -267,7 +247,6 @@ describe('AppInputsForm', () => {
       expect(selectedInputs).toEqual({
         attachment: type === InputVarType.singleFile ? persistedFile : [persistedFile],
       })
-      expect(screen.getByTestId('file-uploader-value')).toHaveTextContent('uploaded-file-1')
     },
   )
 
@@ -305,31 +284,6 @@ describe('AppInputsForm', () => {
     expect(mockFileUpload.mock.lastCall?.[0].file).toBe(originalFile)
     expect(screen.queryByRole('button', { name: 'Retry demo.png' })).not.toBeInTheDocument()
     expect(() => parseAgentToolInputs(onFormChange.mock.lastCall?.[0])).not.toThrow()
-  })
-
-  it('should update paragraph fields and preserve sibling input values', async () => {
-    const user = userEvent.setup()
-    const onFormChange = vi.fn()
-
-    renderControlledForm({
-      inputsForms: [
-        {
-          variable: 'description',
-          label: 'Description',
-          type: InputVarType.paragraph,
-          required: false,
-        },
-      ],
-      initialInputs: { description: '', topic: 'existing' },
-      onFormChange,
-    })
-
-    await user.type(screen.getByRole('textbox', { name: 'Description' }), 'updated paragraph')
-
-    expect(onFormChange).toHaveBeenCalledWith({
-      description: 'updated paragraph',
-      topic: 'existing',
-    })
   })
 
   it('should keep multi-file values and forward empty multi-file uploads', () => {

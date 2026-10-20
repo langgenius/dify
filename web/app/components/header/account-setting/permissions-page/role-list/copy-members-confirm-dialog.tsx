@@ -3,12 +3,13 @@
 import type { Role } from '@/models/access-control'
 import {
   AlertDialog,
+  AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
@@ -39,11 +40,11 @@ export function CopyMembersConfirmDialog({
   return (
     <AlertDialog open onOpenChange={onOpenChange}>
       <AlertDialogContent backdropProps={{ forceRender: true }}>
-        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             {t(($) => $['role.copyMembersTitle'], { ns: 'permission' })}
           </AlertDialogTitle>
-          <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-secondary">
+          <AlertDialogDescription>
             {isLoadingMemberCount
               ? t(($) => $['role.copyMembersLoading'], { ns: 'permission' })
               : t(($) => $['role.copyMembersDescription'], {
@@ -52,23 +53,24 @@ export function CopyMembersConfirmDialog({
                   count: memberCount,
                 })}
           </AlertDialogDescription>
-        </div>
+        </AlertDialogHeader>
         <AlertDialogFooter>
-          <Button
+          <AlertDialogConfirmButton
             variant="secondary"
+            tone="default"
             disabled={isActionDisabled}
             onClick={() => onDuplicate(false)}
           >
             {t(($) => $['operation.skip'], { ns: 'common' })}
-          </Button>
-          <Button
-            variant="primary"
+          </AlertDialogConfirmButton>
+          <AlertDialogConfirmButton
+            tone="default"
             disabled={isLoadingMemberCount}
             loading={isCopyingRole}
             onClick={() => onDuplicate(true)}
           >
             {t(($) => $['operation.copy'], { ns: 'common' })}
-          </Button>
+          </AlertDialogConfirmButton>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -3,13 +3,15 @@ import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answe
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
+import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
-import { fetchHumanInputNodeStepRunForm, submitHumanInputNodeStepRunForm } from '@/service/workflow'
+import { consoleQuery } from '@/service/console'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
+import { selectHumanInputFormPreview } from '../query-select'
 import { getHumanInputFormDependencySelectors, isOutput } from '../utils'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -29,6 +31,18 @@ const useSingleRunFormParams = ({
   getInputVars,
   setRunInputData,
 }: Params) => {
+  const { mutateAsync: previewWorkflowForm } = useMutation(
+    consoleQuery.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form.preview.post.mutationOptions(),
+  )
+  const { mutateAsync: previewChatflowForm } = useMutation(
+    consoleQuery.apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form.preview.post.mutationOptions(),
+  )
+  const { mutateAsync: submitWorkflowForm } = useMutation(
+    consoleQuery.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form.run.post.mutationOptions(),
+  )
+  const { mutateAsync: submitChatflowForm } = useMutation(
+    consoleQuery.apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form.run.post.mutationOptions(),
+  )
   const { t } = useTranslation(['workflow', 'workflowHumanInput'])
   const { inputs } = useNodeCrud<HumanInputNodeType>(id, payload)
   const [showGeneratedForm, setShowGeneratedForm] = useState(false)
@@ -71,31 +85,23 @@ const useSingleRunFormParams = ({
   const resource = useAtomValue(editorResourceAtom)
   const appId = resource.kind === 'app' ? resource.appId : undefined
   const isWorkflowMode = resource.kind === 'app' && resource.mode === 'workflow'
-  const fetchURL = useMemo(() => {
-    if (!appId) return ''
-    if (!isWorkflowMode) {
-      return `/apps/${appId}/advanced-chat/workflows/draft/human-input/nodes/${id}/form`
-    } else {
-      return `/apps/${appId}/workflows/draft/human-input/nodes/${id}/form`
-    }
-  }, [appId, id, isWorkflowMode])
-
   const handleFetchFormContent = useCallback(
     async (inputs: Record<string, string>) => {
-      if (!fetchURL) return null
-      let requestParamsObj: Record<string, string> = {}
-      Object.keys(inputs).forEach((key) => {
-        if (inputs[key] === undefined) {
-          delete inputs[key]
-        }
+      if (!appId) return null
+      const requestParamsObj = Object.fromEntries(
+        Object.entries(inputs).filter(([, value]) => value !== undefined),
+      )
+      const previewForm = isWorkflowMode ? previewWorkflowForm : previewChatflowForm
+      const response = await previewForm({
+        params: { app_id: appId, node_id: id },
+        body: { inputs: requestParamsObj },
       })
-      requestParamsObj = { ...inputs }
-      const data = await fetchHumanInputNodeStepRunForm(fetchURL, { inputs: requestParamsObj! })
+      const data = selectHumanInputFormPreview(response)
       setFormData(data)
       setRequiredInputs(requestParamsObj)
       return data
     },
-    [fetchURL],
+    [appId, id, isWorkflowMode, previewWorkflowForm, previewChatflowForm],
   )
 
   const handleSubmitHumanInputForm = useCallback(
@@ -104,15 +110,28 @@ const useSingleRunFormParams = ({
       form_inputs: Record<string, HumanInputFieldValue> | undefined
       action: string
     }) => {
+      if (!appId) return
       const formInputs = formData?.inputs?.length ? formData.inputs : inputs.inputs
-
-      await submitHumanInputNodeStepRunForm(fetchURL, {
-        inputs: requiredInputs,
-        form_inputs: getProcessedHumanInputFormInputs(formInputs, submission.inputs),
-        action: submission.action,
+      const submitForm = isWorkflowMode ? submitWorkflowForm : submitChatflowForm
+      await submitForm({
+        params: { app_id: appId, node_id: id },
+        body: {
+          inputs: requiredInputs,
+          form_inputs: getProcessedHumanInputFormInputs(formInputs, submission.inputs) ?? {},
+          action: submission.action,
+        },
       })
     },
-    [fetchURL, formData?.inputs, inputs.inputs, requiredInputs],
+    [
+      appId,
+      id,
+      isWorkflowMode,
+      submitWorkflowForm,
+      submitChatflowForm,
+      formData?.inputs,
+      inputs.inputs,
+      requiredInputs,
+    ],
   )
 
   const handleShowGeneratedForm = async (formValue: Record<string, string>) => {

@@ -3,6 +3,7 @@ Unit tests for Service API wraps (authentication decorators)
 """
 
 import uuid
+from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -50,9 +51,9 @@ class _RecordingEndUserCommands:
         return self._result
 
 
+@dataclass(eq=False, repr=False)
 class _AppScopedEndUserServicesStub:
-    def __init__(self, commands: _RecordingEndUserCommands) -> None:
-        self.commands = commands
+    commands: _RecordingEndUserCommands
 
 
 class _ApplicationServicesStub:
@@ -166,7 +167,7 @@ class TestValidateAndGetApiToken:
             # Act & Assert
             with pytest.raises(Unauthorized) as exc_info:
                 validate_and_get_api_token("app")
-            assert "Authorization scheme must be 'Bearer'" in str(exc_info.value)
+            assert "Authorization header must be provided and start with 'Bearer'" in str(exc_info.value)
 
     @patch("controllers.service_api.wraps.record_token_usage")
     @patch("controllers.service_api.wraps.ApiTokenCache")
@@ -222,6 +223,16 @@ class TestValidateAppToken:
         app = Flask(__name__)
         app.config["TESTING"] = True
         return app
+
+    @pytest.mark.parametrize("separator", ["\u00a0", "\u001c", "\u000b", "\u2003"])
+    def test_non_http_whitespace_never_resolves_resource_token(self, app: Flask, separator: str) -> None:
+        with (
+            app.test_request_context("/", headers={"Authorization": f"Bearer{separator}dify_rt_token"}),
+            patch.object(wraps_module, "application_services") as services,
+            pytest.raises(Unauthorized),
+        ):
+            validate_app_token(lambda: "ok")()
+        services.assert_not_called()
 
     @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")

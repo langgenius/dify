@@ -1,20 +1,24 @@
 import type { CredentialSlot } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { DeploymentConfigurationValuesController } from './use-deployment-configuration-values'
+import type { DeploymentFieldError } from './utils/field-id'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CredentialField } from './credential-field'
 import { SectionHeading } from './section-heading'
+import { credentialFieldId } from './utils/field-id'
 import { credentialSlotKey, defaultCredentialId } from './utils/workflow-deployment-input'
 
 const CredentialConfigurationField = memo(
   ({
+    error,
     onChange,
     paths,
     slot,
     slotKey,
     value,
   }: {
+    error?: string
     onChange: DeploymentConfigurationValuesController['setCredential']
     paths?: NonNullable<CredentialSlot['workflow_as_tool_dependency']>['paths']
     slot: CredentialSlot
@@ -23,6 +27,7 @@ const CredentialConfigurationField = memo(
   }) => {
     return (
       <CredentialField
+        error={error}
         paths={paths}
         slot={slot}
         value={value}
@@ -37,11 +42,13 @@ export const CredentialsSection = memo(
   ({
     credentialSlots,
     credentials,
+    fieldError,
     horizontalPaddingClassName,
     onChange,
   }: {
     credentialSlots: CredentialSlot[]
     credentials: DeploymentConfigurationValuesController['credentials']
+    fieldError?: DeploymentFieldError
     horizontalPaddingClassName: string
     onChange: DeploymentConfigurationValuesController['setCredential']
   }) => {
@@ -65,6 +72,9 @@ export const CredentialsSection = memo(
 
           return (
             <CredentialConfigurationField
+              error={
+                fieldError?.fieldId === credentialFieldId(slot) ? fieldError.message : undefined
+              }
               key={slotKey}
               slot={slot}
               slotKey={slotKey}
@@ -90,6 +100,9 @@ export const CredentialsSection = memo(
 
               return (
                 <CredentialConfigurationField
+                  error={
+                    fieldError?.fieldId === credentialFieldId(slot) ? fieldError.message : undefined
+                  }
                   key={slotKey}
                   paths={slot.workflow_as_tool_dependency?.paths}
                   slot={slot}

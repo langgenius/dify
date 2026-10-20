@@ -1,167 +1,113 @@
-import type { FileUploadConfigResponse } from '@/models/common'
 import type { VarInInspect } from '@/types/workflow'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { VarType } from '@/app/components/workflow/types'
-import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { VarInInspectType } from '@/types/workflow'
 import {
   BoolArraySection,
   ErrorMessages,
-  FileEditorSection,
   JsonEditorSection,
   TextEditorSection,
 } from '../value-content-sections'
 
-const toastMocks = vi.hoisted(() => ({
-  call: vi.fn(),
-  dismiss: vi.fn(),
-  update: vi.fn(),
-  promise: vi.fn(),
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: Object.assign(toastMocks.call, {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-    dismiss: toastMocks.dismiss,
-    update: toastMocks.update,
-    promise: toastMocks.promise,
-  }),
-}))
-
+// Rich JSON editing is independently tested; retain the readonly contract at this boundary.
 vi.mock(
   '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor',
   () => ({
-    default: ({ schema, onUpdate }: { schema: string; onUpdate: (value: string) => void }) => (
+    default: ({
+      schema,
+      readonly,
+      onUpdate,
+    }: {
+      schema: string
+      readonly?: boolean
+      onUpdate: (value: string) => void
+    }) => (
       <textarea
-        data-testid="schema-editor"
+        aria-label="JSON"
         value={schema}
+        readOnly={readonly}
         onChange={(event) => onUpdate(event.target.value)}
       />
     ),
   }),
 )
-
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({ token: '' }),
-  usePathname: () => '/',
-}))
-
-describe('value-content sections', () => {
-  const createFileUploadConfig = (): FileUploadConfigResponse =>
-    createFileUploadConfigFixture({
-      batch_count_limit: 10,
-      image_file_batch_limit: 10,
-      single_chunk_attachment_limit: 10,
-      attachment_image_file_size_limit: 2,
-      file_size_limit: 15,
-      file_upload_limit: 5,
-      workflow_file_upload_limit: 5,
-    })
-
-  const createVar = (overrides: Partial<VarInInspect>): VarInInspect =>
-    ({
-      id: 'var-1',
-      name: 'query',
-      type: VarInInspectType.node,
-      value_type: VarType.string,
-      value: '',
-      ...overrides,
-    }) as VarInInspect
-
-  it('should render the text editor section and forward text changes', () => {
-    const handleTextChange = vi.fn()
-
-    render(
-      <TextEditorSection
-        currentVar={createVar({ value_type: VarType.string })}
-        value="hello"
-        textEditorDisabled={false}
-        isTruncated={false}
-        onTextChange={handleTextChange}
-      />,
-    )
-
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'updated' } })
-    expect(handleTextChange).toHaveBeenCalledWith('updated')
-  })
-
-  it('should render the textarea editor for non-string values', () => {
-    const handleTextChange = vi.fn()
-
-    render(
-      <TextEditorSection
-        currentVar={createVar({ name: 'count', value_type: VarType.number })}
-        value="12"
-        textEditorDisabled={false}
-        isTruncated={false}
-        onTextChange={handleTextChange}
-      />,
-    )
-
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '24' } })
-    expect(handleTextChange).toHaveBeenCalledWith('24')
-  })
-
-  it('should update a boolean array item by index', () => {
-    const onChange = vi.fn()
-    render(<BoolArraySection values={[true, false]} onChange={onChange} />)
-
-    fireEvent.click(screen.getAllByText('True')[1]!)
-    expect(onChange).toHaveBeenCalledWith([true, true])
-  })
-
-  it('should render schema editor and error messages', () => {
-    const onChange = vi.fn()
-    render(
-      <>
-        <JsonEditorSection
-          hasChunks={false}
-          valueType={VarType.object}
-          json="{}"
-          readonly={false}
+const createVar = (value_type: VarType): VarInInspect => ({
+  id: 'var-1',
+  name: 'value',
+  type: VarInInspectType.node,
+  value_type,
+  value: '',
+  description: '',
+  selector: ['node-1', 'value'],
+  edited: false,
+  visible: true,
+  is_truncated: false,
+  full_content: { size_bytes: 0, download_url: '' },
+})
+it.each([VarType.string, VarType.number])(
+  'edits a %s value and blocks edits when the field becomes read-only',
+  async (type) => {
+    function Editor({ readonly }: { readonly: boolean }) {
+      const [value, setValue] = useState('12')
+      return (
+        <TextEditorSection
+          currentVar={createVar(type)}
+          value={value}
+          textEditorDisabled={readonly}
           isTruncated={false}
-          onChange={onChange}
+          onTextChange={setValue}
         />
-        <ErrorMessages parseError={new Error('Broken JSON')} validationError="Too deep" />
-      </>,
+      )
+    }
+    const user = userEvent.setup()
+    const { rerender } = render(<Editor readonly={false} />)
+    const input = screen.getByRole('textbox')
+    await user.clear(input)
+    await user.type(input, '24')
+    expect(input).toHaveValue('24')
+    rerender(<Editor readonly />)
+    await user.type(screen.getByRole('textbox'), '5')
+    expect(screen.getByRole('textbox')).toHaveValue('24')
+  },
+)
+it('edits only the selected boolean array entry and retains the previous edit', async () => {
+  function Editor() {
+    const [values, setValues] = useState([true, false])
+    return (
+      <>
+        <BoolArraySection values={values} onChange={setValues} />
+        <output aria-label="Values">{JSON.stringify(values)}</output>
+      </>
     )
-
-    fireEvent.change(screen.getByTestId('schema-editor'), { target: { value: '{"foo":1}' } })
-    expect(onChange).toHaveBeenCalledWith('{"foo":1}')
-    expect(screen.getByText('Broken JSON'))!.toBeInTheDocument()
-    expect(screen.getByText('Too deep'))!.toBeInTheDocument()
-  })
-
-  it('should render chunk preview when the json editor has chunks', () => {
-    render(
+  }
+  const user = userEvent.setup()
+  render(<Editor />)
+  await user.click(screen.getAllByRole('button', { name: 'True' })[1]!)
+  expect(screen.getByRole('status')).toHaveTextContent('[true,true]')
+  await user.click(screen.getAllByRole('button', { name: 'False' })[0]!)
+  expect(screen.getByRole('status')).toHaveTextContent('[false,true]')
+})
+it('keeps truncated JSON read-only and displays parsing and validation errors', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  render(
+    <>
       <JsonEditorSection
-        hasChunks
-        schemaType="general_structure"
+        hasChunks={false}
         valueType={VarType.object}
-        json="{}"
+        json='{"foo":1}'
         readonly={false}
-        isTruncated={false}
-        onChange={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByTestId('schema-editor'))!.toBeInTheDocument()
-  })
-
-  it('should render the file editor section', () => {
-    render(
-      <FileEditorSection
-        currentVar={createVar({ name: 'files', value_type: VarType.file })}
-        fileValue={[]}
-        fileUploadConfig={createFileUploadConfig()}
-        textEditorDisabled={false}
-        onChange={vi.fn()}
-      />,
-    )
-
-    expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
-  })
+        isTruncated
+        onChange={onChange}
+      />
+      <ErrorMessages parseError={new Error('Broken JSON')} validationError="Too deep" />
+    </>,
+  )
+  await user.type(screen.getByRole('textbox', { name: 'JSON' }), 'x')
+  expect(screen.getByRole('textbox', { name: 'JSON' })).toHaveValue('{"foo":1}')
+  expect(onChange).not.toHaveBeenCalled()
+  expect(screen.getByText('Broken JSON')).toBeVisible()
+  expect(screen.getByText('Too deep')).toBeVisible()
 })

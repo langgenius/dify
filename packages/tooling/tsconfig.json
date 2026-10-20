@@ -1,0 +1,9 @@
+{
+  "extends": "@dify/tsconfig/node.json",
+  "compilerOptions": {
+    "types": ["node", "vite/client"],
+    "allowImportingTsExtensions": true,
+    "allowJs": false
+  },
+  "include": ["**/*.ts"]
+}
