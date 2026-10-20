@@ -1,5 +1,5 @@
 import type { OxlintConfig } from 'vite-plus/lint'
-import { jsxA11yRules } from '../../../lint.config.ts'
+import { jsxA11yRules } from './lint.config.ts'
 
 export default {
   categories: {

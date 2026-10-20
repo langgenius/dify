@@ -5,9 +5,9 @@ import path from 'node:path'
 import process from 'node:process'
 import ts from 'typescript'
 
-const webRoot = path.resolve(import.meta.dirname, '..')
+const webRoot = path.resolve(import.meta.dirname, '../../../web')
 const repositoryRoot = path.resolve(webRoot, '..')
-const configPath = path.resolve(import.meta.dirname, 'a11y', 'oxlint.config.ts')
+const configPath = path.resolve(import.meta.dirname, '../a11y.config.ts')
 const require = createRequire(import.meta.url)
 const vitePlusRequire = createRequire(require.resolve('vite-plus/package.json'))
 const oxlintPackageDirectory = path.dirname(vitePlusRequire.resolve('oxlint/package.json'))

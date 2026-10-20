@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import tsParser from '@typescript-eslint/parser'
 import { Linter } from 'eslint'
 import { it } from 'vite-plus/test'
+import { repositoryRoot } from '../../../paths.ts'
 import rule from './require-title-for-truncated-text.js'
 import './fixtures/truncation.module.css'
 
@@ -13,7 +14,7 @@ const plugin = {
 }
 
 function verifyAndFix(code, filename = 'test.tsx') {
-  const linter = new Linter({ cwd: resolve('..') })
+  const linter = new Linter({ cwd: repositoryRoot })
   return linter.verifyAndFix(
     code,
     [
@@ -172,7 +173,7 @@ it('reports a single nested text child or a text-bearing prop without fixing', (
 })
 
 it('checks Dify UI single text but ignores multiple text children', () => {
-  const filename = resolve('../packages/dify-ui/src/example.tsx')
+  const filename = resolve(repositoryRoot, 'packages/dify-ui/src/example.tsx')
   const result = verifyAndFix(
     `
       export const Example = ({ primary, secondary }) => <>
@@ -208,7 +209,7 @@ it('does not count non-text conditional children as additional text', () => {
 })
 
 it('resolves truncation classes imported from CSS modules', () => {
-  const filename = resolve('plugins/eslint/rules/fixtures/example.tsx')
+  const filename = resolve(import.meta.dirname, 'fixtures/example.tsx')
   const result = verifyAndFix(
     `
       import styles from './truncation.module.css'

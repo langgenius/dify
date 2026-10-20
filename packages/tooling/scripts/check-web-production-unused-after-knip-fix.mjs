@@ -3,11 +3,12 @@ import { realpathSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import unusedConfig from '../oxlint.unused.config.json' with { type: 'json' }
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url))
-const repoRoot = path.resolve(scriptDir, '..')
+const repoRoot = path.resolve(scriptDir, '../../..')
 const webDir = path.join(repoRoot, 'web')
-const unusedLintConfig = path.join(webDir, 'oxlint.unused.config.json')
+const unusedLintConfig = path.resolve(scriptDir, '../oxlint.unused.config.json')
 const require = createRequire(import.meta.url)
 const vitePlusEntry = realpathSync(require.resolve('vite-plus'))
 const vitePlusRequire = createRequire(vitePlusEntry)
@@ -18,10 +19,6 @@ const oxlintBin =
   typeof oxlintManifest.bin === 'string' ? oxlintManifest.bin : oxlintManifest.bin?.oxlint
 if (!oxlintBin) throw new Error('Unable to resolve the bundled Oxlint executable.')
 const oxlint = path.resolve(path.dirname(oxlintPackagePath), oxlintBin)
-
-function commandName(name) {
-  return process.platform === 'win32' ? `${name}.cmd` : name
-}
 
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -96,7 +93,7 @@ async function restoreWorktree() {
   }
 }
 
-const knip = path.join(repoRoot, 'node_modules', '.bin', commandName('knip'))
+const knip = fileURLToPath(new URL('../bin/knip.js', import.meta.resolve('knip')))
 let shouldRestore = false
 let hasUnusedMessages = false
 
@@ -105,9 +102,13 @@ try {
   shouldRestore = true
 
   console.log('Running knip --production --fix...')
-  const knipResult = await run(knip, ['--workspace', 'web', '--production', '--fix'], {
-    cwd: repoRoot,
-  })
+  const knipResult = await run(
+    process.execPath,
+    [knip, '--workspace', 'web', '--production', '--fix'],
+    {
+      cwd: repoRoot,
+    },
+  )
   if (knipResult.status !== 0) {
     process.stdout.write(knipResult.stdout)
     process.stderr.write(knipResult.stderr)
@@ -117,7 +118,16 @@ try {
   console.log('Running isolated Oxlint unused checks after knip --fix...')
   const lintResult = await run(
     process.execPath,
-    [oxlint, '--config', unusedLintConfig, '--format', 'json', '.'],
+    [
+      oxlint,
+      '--config',
+      unusedLintConfig,
+      // CLI ignore patterns are relative to Web's cwd, not the shared config directory.
+      ...unusedConfig.ignorePatterns.flatMap((pattern) => ['--ignore-pattern', pattern]),
+      '--format',
+      'json',
+      '.',
+    ],
     { cwd: webDir },
   )
 

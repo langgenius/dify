@@ -145,7 +145,7 @@
 /web/ @iamjoel
 
 # Frontend - Tooling
-/lint.config.ts @hyoban @lyzno1
+/packages/tooling/ @hyoban @lyzno1
 /eslint.config.mjs @hyoban @lyzno1
 /knip.config.ts @hyoban @lyzno1
 /vite.config.ts @hyoban @lyzno1
