@@ -1,6 +1,7 @@
 name: Main CI Pipeline
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: ['main']
   merge_group:
@@ -458,7 +459,7 @@ jobs:
       - check-changes
     uses: ./.github/workflows/style.yml
     with:
-      base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+      base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || 'origin/main' }}
       classification-succeeded: ${{ needs.check-changes.result == 'success' }}
       run-python-style: ${{ needs.check-changes.outputs.python-style-changed == 'true' }}
       run-dify-agent-style: ${{ needs.check-changes.outputs.dify-agent-style-changed == 'true' }}
