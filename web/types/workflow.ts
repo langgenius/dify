@@ -368,6 +368,7 @@ export type HumanInputFormValue = string | FileResponse | FileResponse[]
 export type HumanInputResolvedValue = string | FileResponse | FileResponse[]
 
 export type HumanInputFilledFormData = {
+  form_id: string
   node_id: string
   node_title: string
   rendered_content: string
@@ -386,6 +387,7 @@ export type HumanInputFormFilledResponse = {
 }
 
 export type HumanInputFormTimeoutData = {
+  form_id: string
   node_id: string
   node_title: string
   expiration_time: number
