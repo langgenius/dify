@@ -630,6 +630,7 @@ type UploadResponse = {
   [key: string]: unknown
 }
 
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const upload = async (
   options: UploadOptions,
   isPublicAPI?: boolean,
@@ -704,6 +705,7 @@ export const upload = async (
   })
 }
 
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const ssePost = async (
   url: string,
   fetchOptions: FetchOptionType,
@@ -878,6 +880,7 @@ export const ssePost = async (
     })
 }
 
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const sseGet = async (
   url: string,
   fetchOptions: FetchOptionType,
@@ -1064,6 +1067,7 @@ export type GeneratorStreamCallbacks = {
  * positional callbacks through that shared, high-blast-radius path isn't worth
  * it. This helper reuses the same cookie-auth + CSRF + abort setup but
  * only understands the generator's two events: ``plan`` then ``result``.
+ * @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception.
  */
 export const sseGeneratorPost = (
   url: string,
@@ -1154,6 +1158,7 @@ export const sseGeneratorPost = (
 }
 
 // base request
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const request = async <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   try {
     const otherOptionsForBaseFetch = otherOptions || {}
@@ -1262,11 +1267,13 @@ export const get = <T>(url: string, options = {}, otherOptions?: IOtherOptions) 
 }
 
 // For public API
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const getPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return get<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
 // For Marketplace API
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const getMarketplace = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return get<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
 }
@@ -1282,10 +1289,12 @@ export const post = <T>(url: string, options = {}, otherOptions?: IOtherOptions)
 }
 
 // For Marketplace API
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const postMarketplace = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return post<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
 }
 
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const postPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return post<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
@@ -1300,6 +1309,7 @@ export const del = <T>(url: string, options = {}, otherOptions?: IOtherOptions) 
   return request<T>(url, Object.assign({}, options, { method: 'DELETE' }), otherOptions)
 }
 
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const delPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return del<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
@@ -1314,6 +1324,7 @@ export const patch = <T>(url: string, options = {}, otherOptions?: IOtherOptions
   return request<T>(url, Object.assign({}, options, { method: 'PATCH' }), otherOptions)
 }
 
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const patchPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return patch<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
