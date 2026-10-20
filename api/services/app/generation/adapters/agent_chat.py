@@ -1,0 +1,380 @@
+import contextvars
+import logging
+import threading
+import uuid
+from collections.abc import Callable, Generator, Mapping
+from typing import Any, Literal, overload
+
+from flask import Flask, current_app
+from pydantic import ValidationError
+from sqlalchemy.orm import Session, sessionmaker
+
+from configs import dify_config
+from constants import UUID_NIL
+from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
+from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
+from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
+from core.app.apps.agent_chat.generate_response_converter import AgentChatAppGenerateResponseConverter
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
+from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
+from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
+from core.helper.trace_id_helper import extract_trace_session_id_from_args
+from core.ops.ops_trace_manager import TraceQueueManager
+from core.tools.__base.tool import Tool
+from core.tools.entities.tool_entities import ToolInvokeMeta
+from factories import file_factory
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from libs.flask_utils import preserve_flask_contexts
+from models import Account, App, EndUser
+from models.annotation_reply import AnnotationReplies
+from models.model import Message
+from services.agent.chat.ports import AgentDatasetTools, AgentToolInvoker
+from services.app.generation.adapters.agent_chat_runner import AgentChatAppRunner
+from services.app.generation.message_records import MessageBasedAppGenerator
+from services.app.generation.ports import ChatRecords, MessageFileWriter
+from services.tools.tool_engine import ToolEngine
+from services.workflow.execution.ports import WorkflowRuntime
+
+logger = logging.getLogger(__name__)
+
+
+class _SessionBoundAgentToolInvoker(AgentToolInvoker):
+    """Own one short-lived Session for each eager Agent tool invocation."""
+
+    def __init__(self, tool_sessions: sessionmaker[Session]) -> None:
+        self._tool_sessions = tool_sessions
+
+    def __call__(
+        self,
+        tool: Tool,
+        tool_parameters: str | dict[str, Any],
+        user_id: str,
+        tenant_id: str,
+        message: Message,
+        invoke_from: InvokeFrom,
+        agent_tool_callback: DifyAgentCallbackHandler,
+        trace_manager: TraceQueueManager | None = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
+        *,
+        records: MessageFileWriter,
+    ) -> tuple[str, list[str], ToolInvokeMeta]:
+        with self._tool_sessions() as session:
+            return ToolEngine.agent_invoke(
+                session=session,
+                tool=tool,
+                tool_parameters=tool_parameters,
+                user_id=user_id,
+                tenant_id=tenant_id,
+                message=message,
+                invoke_from=invoke_from,
+                agent_tool_callback=agent_tool_callback,
+                trace_manager=trace_manager,
+                conversation_id=conversation_id,
+                app_id=app_id,
+                message_id=message_id,
+                records=records,
+            )
+
+
+class AgentChatAppGenerator(MessageBasedAppGenerator):
+    def __init__(
+        self,
+        *,
+        dataset_tools: AgentDatasetTools,
+        records: ChatRecords,
+        annotations: AnnotationReplies,
+        tool_sessions: sessionmaker[Session],
+        draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
+        workflow_runtime: WorkflowRuntime | None = None,
+    ):
+        super().__init__(
+            records=records,
+            annotations=annotations,
+            draft_variable_saver=draft_variable_saver,
+            workflow_runtime=workflow_runtime,
+        )
+        self._dataset_tools = dataset_tools
+        self._tool_invoker = _SessionBoundAgentToolInvoker(tool_sessions)
+
+    @overload
+    def generate(
+        self,
+        *,
+        app_model: App,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: Literal[False],
+        session: Session,
+    ) -> Mapping[str, Any]: ...
+
+    @overload
+    def generate(
+        self,
+        *,
+        app_model: App,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: Literal[True],
+        session: Session,
+    ) -> Generator[Mapping | str, None, None]: ...
+
+    @overload
+    def generate(
+        self,
+        *,
+        app_model: App,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: bool,
+        session: Session,
+    ) -> Mapping | Generator[Mapping | str, None, None]: ...
+
+    def generate(
+        self,
+        *,
+        app_model: App,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: bool = True,
+        session: Session,
+    ) -> Mapping | Generator[Mapping | str, None, None]:
+        """
+        Generate App response.
+
+        :param app_model: App
+        :param user: account or end user
+        :param args: request args
+        :param invoke_from: invoke from source
+        :param streaming: is stream
+        """
+        if not streaming:
+            raise ValueError("Agent Chat App does not support blocking mode")
+
+        if not args.get("query"):
+            raise ValueError("query is required")
+
+        query = args["query"]
+        if not isinstance(query, str):
+            raise ValueError("query must be a string")
+
+        query = query.replace("\x00", "")
+        inputs = args["inputs"]
+
+        extras = {
+            "auto_generate_conversation_name": args.get("auto_generate_name", True),
+            **extract_trace_session_id_from_args(args),
+        }
+
+        # get conversation
+        conversation = None
+        conversation_id = args.get("conversation_id")
+        if conversation_id:
+            conversation = self._records.conversation(
+                app_id=app_model.id,
+                conversation_id=conversation_id,
+                account_id=user.id if isinstance(user, Account) else None,
+                end_user_id=user.id if isinstance(user, EndUser) else None,
+            )
+        # get app model config
+        app_model_config = self._get_app_model_config(
+            app_model=app_model,
+            conversation=conversation,
+        )
+
+        # validate override model config
+        override_model_config_dict = None
+        if args.get("model_config"):
+            if invoke_from != InvokeFrom.DEBUGGER:
+                raise ValueError("Only in App debug mode can override model config")
+
+            # validate config
+            override_model_config_dict = AgentChatAppConfigManager.config_validate(
+                tenant_id=app_model.tenant_id,
+                config=args["model_config"],
+                session=session,
+            )
+
+            # always enable retriever resource in debugger mode
+            override_model_config_dict["retriever_resource"] = {"enabled": True}
+
+        if override_model_config_dict:
+            annotation_reply = None
+            effective_model_config_dict = override_model_config_dict
+        else:
+            annotation_reply = self._records.annotation_config(tenant_id=app_model.tenant_id, app_id=app_model.id)
+            effective_model_config_dict = app_model_config.to_dict(annotation_reply=annotation_reply)
+
+        # parse files
+        # TODO(QuantumGhost): Move file parsing logic to the API controller layer
+        # for better separation of concerns.
+        #
+        # For implementation reference, see the `_parse_file` function and
+        # `DraftWorkflowNodeRunApi` class which handle this properly.
+        with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
+            files = args.get("files") or []
+            file_extra_config = FileUploadConfigManager.convert(effective_model_config_dict)
+            if file_extra_config:
+                file_objs = file_factory.build_from_mappings(
+                    mappings=files,
+                    tenant_id=app_model.tenant_id,
+                    config=file_extra_config,
+                    access_controller=self._file_access_controller,
+                )
+            else:
+                file_objs = []
+
+            # convert to app config
+            app_config = AgentChatAppConfigManager.get_app_config(
+                app_model=app_model,
+                app_model_config=app_model_config,
+                conversation=conversation,
+                override_config_dict=override_model_config_dict,
+                annotation_reply=annotation_reply,
+            )
+
+            # get tracing instance
+            trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
+
+            # init application generate entity
+            application_generate_entity = AgentChatAppGenerateEntity(
+                task_id=str(uuid.uuid4()),
+                app_config=app_config,
+                model_conf=ModelConfigConverter.convert(app_config),
+                file_upload_config=file_extra_config,
+                conversation_id=conversation.id if conversation else None,
+                inputs=self._prepare_user_inputs(
+                    user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
+                ),
+                query=query,
+                files=list(file_objs),
+                parent_message_id=(
+                    args.get("parent_message_id")
+                    if invoke_from not in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}
+                    else UUID_NIL
+                ),
+                user_id=user.id,
+                stream=streaming,
+                invoke_from=invoke_from,
+                extras=extras,
+                call_depth=0,
+                trace_manager=trace_manager,
+            )
+
+            session.expunge_all()
+            session.close()
+
+            # init generate records
+            (conversation, message) = self._init_generate_records(
+                application_generate_entity,
+                conversation,
+            )
+
+            # init queue manager
+            queue_manager = MessageBasedAppQueueManager(
+                task_id=application_generate_entity.task_id,
+                user_id=application_generate_entity.user_id,
+                invoke_from=application_generate_entity.invoke_from,
+                conversation_id=conversation.id,
+                app_mode=conversation.mode,
+                message_id=message.id,
+            )
+
+            # new thread with request context and contextvars
+            context = contextvars.copy_context()
+
+            worker_thread = threading.Thread(
+                target=self._generate_worker,
+                kwargs={
+                    "flask_app": current_app._get_current_object(),  # type: ignore
+                    "context": context,
+                    "application_generate_entity": application_generate_entity,
+                    "queue_manager": queue_manager,
+                    "conversation_id": conversation.id,
+                    "message_id": message.id,
+                },
+            )
+
+            worker_thread.start()
+
+            # return response or stream generator
+            response = self._handle_response(
+                application_generate_entity=application_generate_entity,
+                queue_manager=queue_manager,
+                conversation=conversation,
+                message=message,
+                user=user,
+                stream=streaming,
+            )
+            return AgentChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+
+    def _generate_worker(
+        self,
+        flask_app: Flask,
+        context: contextvars.Context,
+        application_generate_entity: AgentChatAppGenerateEntity,
+        queue_manager: AppQueueManager,
+        conversation_id: str,
+        message_id: str,
+    ):
+        """
+        Generate worker in a new thread.
+        :param flask_app: Flask app
+        :param application_generate_entity: application generate entity
+        :param queue_manager: queue manager
+        :param conversation_id: conversation ID
+        :param message_id: message ID
+        :return:
+        """
+
+        with preserve_flask_contexts(flask_app, context_vars=context):
+            try:
+                # get conversation and message
+                app_config = application_generate_entity.app_config
+                app_record, conversation, message = self._records.load(
+                    tenant_id=app_config.tenant_id,
+                    app_id=app_config.app_id,
+                    conversation_id=conversation_id,
+                    message_id=message_id,
+                )
+
+                # chatbot app
+                runner = AgentChatAppRunner(
+                    records=self._records,
+                    dataset_tools=self._dataset_tools,
+                    tool_invoker=self._tool_invoker,
+                )
+                runner.run(
+                    draft_variable_saver=self._draft_variable_saver,
+                    workflow_runtime=self._workflow_runtime,
+                    app_record=app_record,
+                    annotations=self._annotations,
+                    application_generate_entity=application_generate_entity,
+                    queue_manager=queue_manager,
+                    conversation=conversation,
+                    message=message,
+                )
+            except GenerateTaskStoppedError:
+                pass
+            except InvokeAuthorizationError:
+                queue_manager.publish_error(
+                    InvokeAuthorizationError("Incorrect API key provided"), PublishFrom.APPLICATION_MANAGER
+                )
+            except ValidationError as e:
+                logger.exception("Validation Error when generating")
+                queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
+            except ValueError as e:
+                if dify_config.DEBUG:
+                    logger.exception("Error when generating")
+                queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
+            except Exception as e:
+                logger.exception("Unknown Error when generating")
+                queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
