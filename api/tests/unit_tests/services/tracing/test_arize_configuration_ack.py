@@ -273,7 +273,7 @@ def test_legacy_api_check_also_requires_the_real_ack(
     )
     try:
         if accepted:
-            assert instance.api_check() is True
+            assert instance.api_check()
         else:
             with pytest.raises(ArizeConfigurationError, match="permission_denied"):
                 instance.api_check()
