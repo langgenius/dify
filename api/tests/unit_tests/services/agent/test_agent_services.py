@@ -56,8 +56,8 @@ from services.agent.errors import (
     InvalidComposerConfigError,
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
+from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
 from services.agent.roster_service import AgentRosterService
-from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.agent.workspace_service import AgentWorkspaceService
 from services.app_service import AppListParams, AppService
 from services.entities.agent_entities import (

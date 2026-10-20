@@ -1,22 +1,22 @@
 """Exercise the SQL emitted when workflow retrieval assembles source citations."""
 
-from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import event, inspect
 from sqlalchemy.exc import InvalidRequestError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
-from core.rag.embedding.retrieval import RetrievalSegments
 from core.rag.models.document import Document as RetrievedDocument
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from models.dataset import Dataset, Document, DocumentSegment
+from repositories.knowledge.retrieval_repository import KnowledgeRetrievalRepository
 from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
 
 
-def test_source_citations_do_not_fetch_unused_document_fields(sqlite_session: Session) -> None:
+def test_source_citations_do_not_fetch_unused_document_fields(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     tenant_id, creator_id, dataset_id, document_id = (str(uuid4()) for _ in range(4))
     dataset = Dataset(id=dataset_id, tenant_id=tenant_id, name="Knowledge", created_by=creator_id)
     document = Document(
@@ -35,28 +35,29 @@ def test_source_citations_do_not_fetch_unused_document_fields(sqlite_session: Se
         data_source_info="x" * 1_000_000,
         error="y" * 1_000_000,
     )
-    segments = [
-        DocumentSegment(
-            tenant_id=tenant_id,
-            dataset_id=dataset_id,
-            document_id=document_id,
-            position=position,
-            content=f"content-{position}",
-            word_count=10,
-            tokens=3,
-            created_by=creator_id,
-            enabled=True,
-            index_node_id=f"node-{position}",
-            index_node_hash=f"hash-{position}",
-        )
-        for position in (1, 2)
-    ]
-    sqlite_session.add_all([dataset, document, *segments])
+    segment = DocumentSegment(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=document_id,
+        position=1,
+        content="content-1",
+        word_count=10,
+        tokens=3,
+        created_by=creator_id,
+        enabled=True,
+        status="completed",
+        index_node_id="node-1",
+        index_node_hash="hash-1",
+    )
+    sqlite_session.add_all([dataset, document, segment])
     sqlite_session.commit()
-    records = [
-        RetrievalSegments(segment=segment, score=score) for segment, score in zip(segments, (0.8, 0.9), strict=True)
+    retrieved = [
+        RetrievedDocument(
+            provider="dify",
+            page_content="content-1",
+            metadata={"document_id": document_id, "doc_id": "node-1", "score": 0.8},
+        )
     ]
-    retrieved = [RetrievedDocument(provider="dify", page_content="content", metadata={})]
     request = KnowledgeRetrievalRequest(
         tenant_id=tenant_id,
         user_id=creator_id,
@@ -74,34 +75,29 @@ def test_source_citations_do_not_fetch_unused_document_fields(sqlite_session: Se
             queries.append(statement)
 
     engine = sqlite_session.get_bind()
-    retrieval = DatasetRetrieval()
+    repository = KnowledgeRetrievalRepository(sqlite_session_factory)
     event.listen(engine, "before_cursor_execute", capture_query)
     try:
-        with (
-            patch.object(retrieval, "_check_knowledge_rate_limit"),
-            patch.object(retrieval, "_get_available_datasets", return_value=[dataset]),
-            patch.object(retrieval, "multiple_retrieve", return_value=retrieved),
-            patch(
-                "core.rag.retrieval.dataset_retrieval.RetrievalService.format_retrieval_documents",
-                return_value=records,
-            ),
-        ):
-            sources = retrieval.knowledge_retrieval(sqlite_session, request)
+        sources = repository.workflow_sources(request, retrieved, [dataset_id])
     finally:
         event.remove(engine, "before_cursor_execute", capture_query)
 
-    assert len(sources) == 2
-    assert [source.content for source in sources] == ["content-2", "content-1"]
-    for source in sources:
-        assert source.title == "source.txt"
-        assert source.metadata.document_id == document_id
-        assert source.metadata.dataset_name == "Knowledge"
-        assert source.metadata.data_source_type == "upload_file"
-        assert source.metadata.doc_metadata == {"category": "transport"}
-    assert len(queries) == 1, "Citation fields must not cause additional lazy SQL queries"
-    assert "documents.data_source_info" not in queries[0]
-    assert "documents.error" not in queries[0]
-    assert "documents.indexing_latency" not in queries[0]
+    assert len(sources) == 1
+    source = sources[0]
+    assert source.content == "content-1"
+    assert source.title == "source.txt"
+    assert source.metadata.document_id == document_id
+    assert source.metadata.dataset_name == "Knowledge"
+    assert source.metadata.data_source_type == "upload_file"
+    assert source.metadata.doc_metadata == {"category": "transport"}
+    citation_queries = [query for query in queries if "documents.name" in query]
+    assert len(citation_queries) == 1, "Citation fields must come from one minimal, owner-scoped query"
+    citation_query = citation_queries[0]
+    assert "documents.tenant_id = ?" in citation_query
+    assert "documents.dataset_id IN" in citation_query
+    assert "documents.data_source_info" not in citation_query
+    assert "documents.error" not in citation_query
+    assert "documents.indexing_latency" not in citation_query
 
 
 def test_source_document_read_is_scoped_and_has_no_lazy_queries(sqlite_session: Session) -> None:

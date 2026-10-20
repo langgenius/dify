@@ -480,7 +480,7 @@ class TestWorkflowService:
         with (
             patch("services.workflow_service.app_draft_workflow_was_synced"),
             patch(
-                "services.agent.workflow_publish_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
+                "services.agent.legacy_workflow_publish_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
                 return_value={"retired-agent"},
             ),
             patch("services.workflow_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
@@ -837,7 +837,7 @@ class TestWorkflowService:
                 wraps=workflow_service.get_published_workflow_by_id,
             ) as get_published_workflow_by_id,
             patch(
-                "services.agent.workflow_publish_service.WorkflowAgentPublishService.restore_agent_node_bindings_to_draft",
+                "services.agent.legacy_workflow_publish_service.WorkflowAgentPublishService.restore_agent_node_bindings_to_draft",
                 return_value={"retired-agent"},
             ),
             patch("services.workflow_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
