@@ -9,7 +9,8 @@ from typing import Any, cast
 from unittest.mock import Mock, create_autospec, patch
 
 import pytest
-from sqlalchemy import Engine, Table, inspect
+from flask import Flask
+from sqlalchemy import Engine, Table, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
@@ -29,9 +30,11 @@ from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
 from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
-from models.workflow import Workflow, WorkflowType
+from models.tools import WorkflowToolProvider
+from models.workflow import Workflow, WorkflowRun, WorkflowType
 from repositories.tools.workflow_repository import WorkflowToolRepository
 from repositories.workflow.definition_repository import workflow_snapshot
+from services.tools.tool_manager import ToolManager
 from services.tools.workflow.tool import WorkflowTool
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.ports import WorkflowRuntime
@@ -183,15 +186,89 @@ def _build_tool(
             return_value=create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
         ),
         workflow_app_id=workflow_app_id,
+        workflow_entities={},
         workflow_as_tool_id="wf-tool-1",
         version=version,
-        workflow_entities={},
         workflow_call_depth=1,
         entity=entity,
         runtime=runtime,
         workflow_runtime=workflow_runtime,
         queries=workflow_runtime.tools,
     )
+
+
+def test_legacy_workflow_tool_executes_with_the_upper_owned_driver(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_session: Session,
+    *,
+    workflow_runtime: WorkflowRuntime,
+) -> None:
+    from core.ops.ops_trace_manager import OpsTraceManager
+
+    tool_db = SqliteToolDb(sqlite_engine, sqlite_session_factory, sqlite_session)
+    _persist_tenant(tool_db)
+    user = _persist_end_user(tool_db)
+    app_model = _persist_app(tool_db)
+    workflow = _persist_workflow(tool_db, version="1")
+    workflow.graph = json.dumps(
+        {
+            "nodes": [
+                {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+                {
+                    "id": "end",
+                    "data": {
+                        "type": "end",
+                        "title": "End",
+                        "outputs": [{"variable": "caller", "value_selector": ["sys", "user_id"]}],
+                    },
+                },
+            ],
+            "edges": [{"id": "start-end", "source": "start", "target": "end"}],
+        }
+    )
+    app_model.workflow_id = workflow.id
+    provider = WorkflowToolProvider(
+        name="legacy_workflow",
+        label="Legacy workflow",
+        icon='{"background":"#222","content":"W"}',
+        app_id=app_model.id,
+        version=workflow.version,
+        user_id=CREATOR_ID,
+        tenant_id=TENANT_ID,
+        description="Workflow tool",
+        parameter_configuration="[]",
+    )
+    sqlite_session.add(provider)
+    sqlite_session.commit()
+    flask_app = Flask(__name__)
+    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", lambda *_args: None)
+
+    with flask_app.app_context():
+        tool = ToolManager.get_tool_runtime(
+            provider_type=ToolProviderType.WORKFLOW,
+            provider_id=provider.id,
+            tool_name=provider.name,
+            tenant_id=TENANT_ID,
+            user_id=user.id,
+            invoke_from=InvokeFrom.SERVICE_API,
+            tool_providers=workflow_runtime.tool_providers,
+            workflow_queries=workflow_runtime.tools,
+            workflow_runtime=workflow_runtime,
+        )
+        messages = list(tool.invoke(session=sqlite_session, user_id=user.id, tool_parameters={}))
+
+    assert any(
+        isinstance(message.message, ToolInvokeMessage.VariableMessage)
+        and message.message.variable_name == "caller"
+        and message.message.variable_value == user.session_id
+        for message in messages
+    )
+    run = sqlite_session.scalar(select(WorkflowRun).where(WorkflowRun.app_id == app_model.id))
+    assert run is not None
+    assert run.status == "succeeded"
+    assert run.outputs_dict == {"caller": user.session_id}
 
 
 def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_field(
@@ -207,7 +284,6 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
-    # Resolve a persisted account without exercising the lookup in this behavior test.
     user = _persist_account(sqlite_tool_db)
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
@@ -482,7 +558,6 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
-    # Resolve a persisted account without exercising the lookup in this behavior test.
     user = _persist_account(sqlite_tool_db)
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
@@ -491,7 +566,6 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(
         "services.workflow.execution.adapters.workflow.app_generator.WorkflowAppGenerator.generate",
         lambda *args, **kwargs: {"data": {"outputs": mock_outputs}},
     )
-    monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
 
     # Execute tool invocation
     messages = list(tool.invoke(session=sqlite_tool_db.caller_session, user_id="test_user", tool_parameters={}))
@@ -527,7 +601,6 @@ def test_workflow_tool_should_handle_empty_outputs(
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
-    # Resolve a persisted account without exercising the lookup in this behavior test.
     user = _persist_account(sqlite_tool_db)
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
@@ -536,7 +609,6 @@ def test_workflow_tool_should_handle_empty_outputs(
         "services.workflow.execution.adapters.workflow.app_generator.WorkflowAppGenerator.generate",
         lambda *args, **kwargs: {"data": {}},
     )
-    monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
 
     # Execute tool invocation
     messages = list(tool.invoke(session=sqlite_tool_db.caller_session, user_id="test_user", tool_parameters={}))
@@ -951,7 +1023,7 @@ def test_composed_tool_fork_runs_real_generator_with_injected_draft_saver(
     from extensions.application_services.workflow_variables import build_workflow_variable_service
     from graphon.nodes import BuiltinNodeTypes
     from graphon.nodes.tool.entities import ToolNodeData
-    from graphon.runtime import GraphRuntimeState, VariablePool
+    from graphon.runtime import RuntimeState, VariablePool
     from models.tools import WorkflowToolProvider
     from models.workflow import WorkflowDraftVariable
     from services.tools import tools_transform_service
@@ -998,16 +1070,16 @@ def test_composed_tool_fork_runs_real_generator_with_injected_draft_saver(
             user_from=UserFrom.ACCOUNT,
             invoke_from=invoke_from,
         )
-        state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+        state = RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0)
         factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=DifyGraphInitContext(
                 workflow_id=workflow.id, graph_config=workflow.graph_dict, run_context=run_context, call_depth=0
             ),
-            graph_runtime_state=state,
+            runtime_state=state,
             draft_variable_saver=saver,
             agent_binding_resolver=resolver,
             workflow_runtime=workflow_runtime,
-        ).with_runtime_state(state)
+        )
         runtime = factory._tool_runtime
         handle = runtime.get_runtime(
             node_id="outer-tool-node",
@@ -1145,7 +1217,7 @@ def test_nested_workflow_preserves_admitted_end_user_and_resolves_agent_binding(
 
     def probe_engine(entry: WorkflowEntry) -> Iterator[object]:
         engine = entry.graph_engine
-        pool = engine._graph_runtime_state.variable_pool
+        pool = engine.runtime_state.variable_pool
         node = engine._graph.nodes["agent-node"]
         assert isinstance(node, DifyAgentNode)
         bundle = node._binding_resolver.resolve(

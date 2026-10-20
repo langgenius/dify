@@ -4,7 +4,7 @@ from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from typing import Any, override
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, selectinload
 
 from core.db.session_factory import session_factory
@@ -42,6 +42,7 @@ from models.human_input_delivery import (
     InteractiveSurfaceDeliveryMethod,
 )
 from models.human_input_entities import FormDefinition, HumanInputNodeData
+from repositories.human_input_errors import FormAlreadyHandledError
 
 
 @dataclasses.dataclass(frozen=True)
@@ -445,6 +446,8 @@ class HumanInputFormRepositoryImpl:
         )
         if form_id is not None:
             form_query = form_query.where(HumanInputForm.id == form_id)
+        if self._app_id is not None:
+            form_query = form_query.where(HumanInputForm.app_id == self._app_id)
         with self._sessions() as session:
             form_model: HumanInputForm | None = session.scalars(form_query).first()
             if form_model is None:
@@ -453,6 +456,34 @@ class HumanInputFormRepositoryImpl:
             recipient_query = select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id == form_model.id)
             recipient_models = session.scalars(recipient_query).all()
             return _HumanInputFormEntityImpl(form_model=form_model, recipient_models=recipient_models)
+
+    def mark_timeout(self, node_id: str, *, form_id: str) -> HumanInputFormEntity:
+        if self._workflow_execution_id is None:
+            raise ValueError("workflow_execution_id is required to time out runtime human input forms")
+
+        statement = (
+            update(HumanInputForm)
+            .where(
+                HumanInputForm.id == form_id,
+                HumanInputForm.tenant_id == self._tenant_id,
+                HumanInputForm.workflow_run_id == self._workflow_execution_id,
+                HumanInputForm.node_id == node_id,
+                HumanInputForm.status == HumanInputFormStatus.WAITING,
+                HumanInputForm.submitted_at.is_(None),
+                HumanInputForm.expiration_time <= naive_utc_now(),
+            )
+            .values(status=HumanInputFormStatus.TIMEOUT)
+        )
+        if self._app_id is not None:
+            statement = statement.where(HumanInputForm.app_id == self._app_id)
+        with self._sessions() as session, session.begin():
+            session.execute(statement)
+
+        # A submission or global expiration may have won the race to finish the form.
+        form = self.get_form(node_id, form_id=form_id)
+        if form is None:
+            raise FormNotFoundError(f"form not found, id={form_id}")
+        return form
 
 
 def _form_record(form_model: HumanInputForm, recipient_model: HumanInputFormRecipient | None) -> "HumanInputFormRecord":
@@ -545,6 +576,42 @@ class HumanInputFormSubmissionRepository:
                 return None
             return _form_record(form_model, None)
 
+    def get_by_form_ids(
+        self, form_ids: Sequence[str], *, tenant_id: str, app_id: str, workflow_run_id: str
+    ) -> dict[str, HumanInputFormRecord]:
+        """Materialize a batch of forms without retaining a database session."""
+        if not form_ids:
+            return {}
+        with self._sessions() as session:
+            forms = session.scalars(
+                select(HumanInputForm).where(
+                    HumanInputForm.id.in_(form_ids),
+                    HumanInputForm.tenant_id == tenant_id,
+                    HumanInputForm.app_id == app_id,
+                    HumanInputForm.workflow_run_id == workflow_run_id,
+                )
+            )
+            return {form.id: _form_record(form, None) for form in forms}
+
+    def get_by_form_id_and_recipient_type(
+        self,
+        form_id: str,
+        recipient_type: RecipientType,
+    ) -> HumanInputFormRecord | None:
+        query = (
+            select(HumanInputFormRecipient)
+            .options(selectinload(HumanInputFormRecipient.form))
+            .where(
+                HumanInputFormRecipient.form_id == form_id,
+                HumanInputFormRecipient.recipient_type == recipient_type,
+            )
+        )
+        with self._sessions() as session:
+            recipient_model = session.scalars(query).first()
+            if recipient_model is None or recipient_model.form is None:
+                return None
+            return _form_record(recipient_model.form, recipient_model)
+
     def mark_submitted(
         self,
         *,
@@ -556,9 +623,11 @@ class HumanInputFormSubmissionRepository:
         submission_end_user_id: str | None,
     ) -> HumanInputFormRecord:
         with self._sessions() as session, session.begin():
-            form_model = session.get(HumanInputForm, form_id)
+            form_model = session.get(HumanInputForm, form_id, with_for_update=True)
             if form_model is None:
                 raise FormNotFoundError(f"form not found, id={form_id}")
+            if form_model.status != HumanInputFormStatus.WAITING:
+                raise FormAlreadyHandledError(form_model.status)
 
             recipient_model = session.get(HumanInputFormRecipient, recipient_id) if recipient_id else None
 

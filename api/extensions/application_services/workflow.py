@@ -30,6 +30,7 @@ from services.rbac.members import MemberService
 from services.tools.provider_queries import ToolProviders
 from services.tools.tool_engine import ToolEngine
 from services.workflow.execution.chatflow_ports import ChatflowRecords, ConversationVariables
+from services.workflow.execution.contracts import WorkflowRunDriver
 from services.workflow.execution.node_queries import ConversationHistory, DatasourceCredentials, RetrieverAttachments
 from services.workflow.execution.ports import (
     ExecutionContexts,
@@ -118,6 +119,7 @@ class _SessionBoundAgentToolInvoker(AgentToolInvoker):
 
 @dataclass(frozen=True)
 class WorkflowExecutionDependencies:
+    execution_driver: WorkflowRunDriver
     history: ConversationHistory
     attachments: RetrieverAttachments
     datasource_credentials: DatasourceCredentials
@@ -165,11 +167,13 @@ def build_workflow_execution_dependencies(database_client: sessionmaker[Session]
     from services.tools.dataset.tool import DatasetRetrieverTool
     from services.workflow.execution.adapters.events import enqueue_human_input_notifications
     from services.workflow.execution.adapters.human_input_events import enrich_graph_pause_reasons
+    from services.workflow_run_agg import WorkflowRunAgg
 
     retrieval = build_dataset_retrieval(database_client)
     records = AppGenerationRepository(database_client)
     human_form_reader = HumanInputFormSubmissionRepository(sessions=database_client)
     return WorkflowExecutionDependencies(
+        execution_driver=WorkflowRunAgg.run,
         history=records,
         attachments=SQLAlchemySegmentRepository(session_factory=database_client),
         datasource_credentials=build_data_source_credentials(
@@ -228,7 +232,6 @@ def build_console_workflow_service(
 ) -> ConsoleWorkflowService[WorkflowAgentBindingStore]:
     from core.app.file_access import DatabaseFileAccessController
     from core.helper.encrypter import decrypt_token
-    from graphon.graph_engine.manager import GraphEngineManager
     from repositories.app.console_repository import ConsoleAppRepository
     from repositories.workflow.collaboration_repository import WorkflowCollaborationRepository
     from repositories.workflow.debug_reservation_repository import WorkflowDebugReservationRepository
@@ -239,6 +242,7 @@ def build_console_workflow_service(
     from services.app.console_gateway import EnterpriseConsoleAppAccess
     from services.app_generate_service import AppGenerateService
     from services.app_service import AppService
+    from services.app_task_service import AppTaskControlService
     from services.workflow.access_gateway import WorkflowAccessGateway
     from services.workflow.console_service import ConsoleWorkflowService
     from services.workflow.conversion_service import WorkflowConversionService
@@ -274,7 +278,7 @@ def build_console_workflow_service(
             reservations=WorkflowDebugReservationRepository(database_client),
             executions=WorkflowNodeExecutionRepository(database_client),
             generator=AppGenerateService,
-            graph_engine=GraphEngineManager(redis),
+            tasks=AppTaskControlService(redis_client=redis),
             file_access=DatabaseFileAccessController(),
         ),
         apps=apps,

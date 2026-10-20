@@ -41,7 +41,6 @@ from core.workflow.nodes.agent_v2.session_store import (
     WorkflowAgentSessionScope,
     WorkflowAgentWorkspaceStore,
 )
-from graphon.entities import GraphInitParams
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -51,7 +50,7 @@ from graphon.enums import (
 )
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import InitParams, RuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
@@ -169,17 +168,8 @@ class FakeSessionStore:
         self.backend_binding_ref = backend_binding_ref
         self.resolved_scopes: list[WorkflowAgentSessionScope] = []
         self.existing_scope_lookups: list[dict[str, object]] = []
-        # ENG-638: set to simulate resume after a submitted/timed-out form.
         self.loaded_session: StoredWorkflowAgentSession | None = None
-        self.saved: list[
-            tuple[
-                WorkflowAgentSessionScope,
-                str,
-                SessionSnapshot | None,
-                str | None,
-                str | None,
-            ]
-        ] = []
+        self.saved: list[tuple[WorkflowAgentSessionScope, str, SessionSnapshot | None]] = []
 
     def load_existing_node_execution_scope(self, **kwargs: object) -> WorkflowAgentSessionScope | None:
         self.existing_scope_lookups.append(kwargs)
@@ -397,18 +387,12 @@ class CancelFailingStreamBackendClient(FailingStreamBackendClient):
 
 
 def _drain_event_stream(node: DifyAgentNode):
-    stream = node._consume_event_stream(
+    return node._consume_event_stream(
         "run-1",
         inputs={},
         process_data={"workflow_agent_binding_id": "binding-1"},
         metadata={"agent_backend": {}},
-        stream_text=False,
     )
-    while True:
-        try:
-            next(stream)
-        except StopIteration as stop:
-            return stop.value
 
 
 def _node(
@@ -422,7 +406,7 @@ def _node(
     runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
     error_strategy: ErrorStrategy | None = None,
 ) -> DifyAgentNode:
-    graph_init_params = GraphInitParams(
+    graph_init_params = InitParams(
         workflow_id="workflow-1",
         graph_config={"nodes": [], "edges": []},
         run_context={
@@ -468,9 +452,9 @@ def _node(
                 else [],
             }
         ),
-        graph_init_params=graph_init_params,
-        graph_runtime_state=cast(
-            GraphRuntimeState,
+        init_params=graph_init_params,
+        runtime_state=cast(
+            RuntimeState,
             SimpleNamespace(
                 variable_pool=FakeVariablePool(),
                 graph_execution=SimpleNamespace(aborted=False),
@@ -658,15 +642,12 @@ def test_agent_node_passes_execution_id_to_session_store_and_runtime_request_bui
     assert context.node_execution_id == execution_id
 
 
-def test_agent_node_run_streams_agent_message_delta_as_text_chunks(tool_providers):
+def test_agent_node_records_agent_message_delta_without_text_stream(tool_providers):
     events = list(_node(tool_providers=tool_providers, agent_backend_client=AgentMessageDeltaBackendClient())._run())
 
-    assert events[:2] == [
-        StreamChunkEvent(selector=["agent-node", "text"], chunk="hello ", is_final=False),
-        StreamChunkEvent(selector=["agent-node", "text"], chunk="", is_final=True),
-    ]
-    assert len(events) == 3
-    result = cast(StreamCompletedEvent, events[2]).node_run_result
+    assert not any(isinstance(event, StreamChunkEvent) for event in events)
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent"}
     agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
@@ -983,7 +964,7 @@ def test_agent_node_cancels_backend_run_when_stream_raises_unexpected_error(tool
 def test_agent_node_uses_graph_abort_reason_when_cancel_request_fails(tool_providers, caplog):
     client = CancelFailingStreamBackendClient()
     node = _node(tool_providers=tool_providers, agent_backend_client=client)
-    node.graph_runtime_state.graph_execution = SimpleNamespace(aborted=True)
+    node.runtime_state.graph_execution = SimpleNamespace(aborted=True)
 
     terminal, failure = _drain_event_stream(node)
 
@@ -1084,8 +1065,8 @@ def test_agent_routes_initialize_through_workflow_node_factory(
         tool_providers=tool_providers,
     )
     factory = DifyNodeFactory(
-        template.graph_init_params,
-        template.graph_runtime_state,
+        template.init_params,
+        template.runtime_state,
         agent_binding_resolver=FakeBindingResolver(),
         workflow_runtime=workflow_runtime,
     )
@@ -1097,7 +1078,7 @@ def test_agent_routes_initialize_through_workflow_node_factory(
         },
         error_strategy=error_strategy,
     )
-    # Exercise the production factory, which serializes data before construction.
+    # Exercise the production factory's concrete node-data validation.
     node_config = {"id": "agent-node", "data": node_data}
     if expected_execution_type is None:
         with pytest.raises(ValueError, match="default-value"):
@@ -1111,13 +1092,11 @@ def test_agent_routes_initialize_through_workflow_node_factory(
 
 
 def test_agent_routes_use_the_successful_retry_to_fan_out_and_skip_other_branches(tool_providers):
+    from graphon.engine.scheduler import Scheduler
+    from graphon.engine_events.traversal import GraphEdgeSkippedEvent, GraphEdgeTakenEvent
     from graphon.enums import NodeState
     from graphon.graph.edge import Edge
     from graphon.graph.graph import Graph
-    from graphon.graph_engine.graph_state_manager import GraphStateManager
-    from graphon.graph_engine.graph_traversal.edge_processor import EdgeProcessor
-    from graphon.graph_engine.graph_traversal.skip_propagator import SkipPropagator
-    from graphon.graph_events.traversal import GraphEdgeSkippedEvent, GraphEdgeTakenEvent
     from graphon.nodes.end.end_node import EndNode
     from graphon.nodes.end.entities import EndNodeData
 
@@ -1161,8 +1140,8 @@ def test_agent_routes_use_the_successful_retry_to_fan_out_and_skip_other_branche
         target: EndNode(
             node_id=target,
             data=EndNodeData(title=target, outputs=[]),
-            graph_init_params=node.graph_init_params,
-            graph_runtime_state=node.graph_runtime_state,
+            init_params=node.init_params,
+            runtime_state=node.runtime_state,
         )
         for target in edges
     }
@@ -1173,8 +1152,7 @@ def test_agent_routes_use_the_successful_retry_to_fan_out_and_skip_other_branche
         out_edges={"agent-node": list(edges)},
         in_edges={target: [target] for target in edges},
     )
-    state = GraphStateManager(graph, node.graph_runtime_state, "root")
-    ready, traversed = EdgeProcessor(graph, state, SkipPropagator(graph, state)).process_node_success(
+    ready, traversed = Scheduler(graph, node.runtime_state, "root").process_node_success(
         "agent-node", result.edge_source_handle
     )
     assert ready == ["b-end-1", "b-end-2"]
@@ -1233,12 +1211,13 @@ def test_agent_route_conditions_load_variables_only_when_routing_is_enabled(enab
 
 
 def test_disabled_routes_continue_through_graphon_default_values(tool_providers):
+    from graphon.engine.event.node_failure import NodeFailureHandler
+    from graphon.engine.scheduler import Scheduler
+    from graphon.engine_events.node import NodeRunExceptionEvent, NodeRunFailedEvent
     from graphon.graph.edge import Edge
     from graphon.graph.graph import Graph
-    from graphon.graph_engine.error_handler import ErrorHandler
-    from graphon.graph_engine.graph_traversal.edge_processor import EdgeProcessor
-    from graphon.graph_events.node import NodeRunExceptionEvent, NodeRunFailedEvent
     from graphon.node_events import NodeRunResult
+    from graphon.runtime.execution import GraphExecution
 
     node = _node(tool_providers=tool_providers, error_strategy=ErrorStrategy.DEFAULT_VALUE)
     edges = {target: Edge(id=target, tail="agent-node", head=target) for target in ["next-a", "next-b"]}
@@ -1252,10 +1231,10 @@ def test_disabled_routes_continue_through_graphon_default_values(tool_providers)
         error="backend failed",
         node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED, error="backend failed"),
     )
-    result = ErrorHandler(graph, MagicMock()).handle_node_failure(frame_id="root", event=failure)
+    result = NodeFailureHandler(graph, GraphExecution(workflow_id="workflow-1")).handle(frame_id="root", event=failure)
     assert isinstance(result, NodeRunExceptionEvent)
     assert result.node_run_result.outputs["text"] == "fallback"
-    ready, traversed = EdgeProcessor(graph, MagicMock(), MagicMock()).process_node_success(
+    ready, traversed = Scheduler(graph, node.runtime_state, "root").process_node_success(
         "agent-node", result.node_run_result.edge_source_handle
     )
     assert ready == ["next-a", "next-b"]

@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 from types import SimpleNamespace
 from unittest.mock import Mock, create_autospec
 
@@ -9,16 +10,20 @@ from core.app.app_config.features.file_upload.manager import FileUploadConfigMan
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
 from graphon.file import FileUploadConfig
 from graphon.file.models import File
+from graphon.graph import Graph
+from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.snippet_generate_service import SnippetGenerateService
 from services.workflow.contracts import WorkflowSnapshot
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow_service import WorkflowService
 from tests.unit_tests.model_factories import make_account, make_workflow
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class SnippetReader:
@@ -88,6 +93,8 @@ def test_debug_generators_use_injected_variable_dependencies(
     calls: list[str] = []
 
     def execute(generator: WorkflowAppGenerator, **_kwargs: object) -> dict[str, str]:
+        assert generator._runtime is generation._runtime
+        assert generator._execution_driver is generation._runtime.execution_driver
         assert generator._draft_variable_loader == workflow_variables.workflow_loader
         assert generator._draft_variable_saver == workflow_variables.saver_factory
         saver = generator._get_draft_var_saver_factory(InvokeFrom.DEBUGGER, user, tenant_id=workflow.tenant_id)
@@ -182,6 +189,129 @@ def test_ensure_start_node_injects_virtual_start_for_root_candidates():
     assert updated_graph["nodes"][0]["data"]["variables"][0]["max_length"] == 128
     assert updated_graph["edges"][-1]["source"] == SNIPPET_VIRTUAL_START_NODE_ID
     assert updated_graph["edges"][-1]["target"] == "llm-1"
+
+
+def _nested_snippet_graph(ownership: str, outer_type: str) -> dict:
+    inner_type = "iteration" if outer_type == "loop" else "loop"
+    nodes = []
+    for node_id, node_type in (("outer", outer_type), ("inner", inner_type)):
+        data = {"type": node_type, "title": node_id, "start_node_id": f"{node_id}-start"}
+        if node_type == "loop":
+            data.update(loop_count=1, break_conditions=[], logical_operator="and")
+        else:
+            data.update(iterator_selector=["input", "items"], output_selector=[node_id, "item"])
+        nodes.extend(
+            [
+                {"id": node_id, "data": data},
+                {"id": f"{node_id}-start", "data": {"type": f"{node_type}-start", "title": "Container start"}},
+            ]
+        )
+    nodes.append({"id": "output", "data": {"type": "end", "title": "Output", "outputs": []}})
+    owners = {"outer-start": "outer", "inner": "outer", "inner-start": "inner"}
+    for node in nodes:
+        owner = owners.get(node["id"], "")
+        if ownership == "canonical":
+            node["data"]["container_id"] = owner
+            node["parentId"] = "stale-parent"
+            node["data"].update(iteration_id="stale-iteration", loop_id="stale-loop")
+        elif ownership == "parent":
+            if owner:
+                node["parentId"] = owner
+        elif owner:
+            node["data"][f"{outer_type}_id"] = "outer"
+            if owner == "inner":
+                node["data"][f"{inner_type}_id"] = "inner"
+    return {
+        "nodes": nodes,
+        "edges": [{"source": "outer", "target": "output"}, {"source": "outer-start", "target": "inner"}],
+    }
+
+
+@pytest.mark.parametrize("ownership", ["canonical", "parent", "legacy"])
+@pytest.mark.parametrize("outer_type", ["iteration", "loop"])
+def test_virtual_start_preserves_nested_container_graphs(ownership: str, outer_type: str) -> None:
+    graph_config = _nested_snippet_graph(ownership, outer_type)
+    original = deepcopy(graph_config)
+
+    injected = SnippetGenerateService._inject_virtual_start_node(graph_config, [])
+
+    assert [edge["target"] for edge in injected["edges"] if edge["source"] == SNIPPET_VIRTUAL_START_NODE_ID] == [
+        "outer"
+    ]
+    factory = DifyNodeFactory(
+        init_params=build_test_graph_init_params(graph_config=injected),
+        runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0),
+    )
+    graph = Graph.init(graph_config=injected, node_factory=factory, root_node_id=SNIPPET_VIRTUAL_START_NODE_ID)
+    assert set(graph.nodes) == {SNIPPET_VIRTUAL_START_NODE_ID, "outer", "output"}
+    for container_id, expected in (("outer", {"outer-start", "inner"}), ("inner", {"inner-start"})):
+        graph = Graph.init(
+            graph_config=graph.graph_config,
+            node_factory=graph.node_factory,
+            root_node_id=f"{container_id}-start",
+            container_id=container_id,
+        )
+        assert set(graph.nodes) == expected
+    assert graph_config == original
+
+
+def test_virtual_start_connects_all_flat_roots_without_changing_the_input() -> None:
+    graph_config = {
+        "nodes": [{"id": node_id, "data": {"type": "end"}} for node_id in ("first", "second", "downstream")],
+        "edges": [{"source": "first", "target": "downstream"}],
+    }
+    original = deepcopy(graph_config)
+
+    injected = SnippetGenerateService._inject_virtual_start_node(graph_config, [])
+
+    assert [edge["target"] for edge in injected["edges"] if edge["source"] == SNIPPET_VIRTUAL_START_NODE_ID] == [
+        "first",
+        "second",
+    ]
+    assert graph_config == original
+
+
+def test_virtual_start_does_not_promote_disconnected_owned_nodes() -> None:
+    graph_config = _nested_snippet_graph("canonical", "loop")
+    graph_config["nodes"].append({"id": "detached", "data": {"type": "end", "container_id": "inner"}})
+
+    injected = SnippetGenerateService._inject_virtual_start_node(graph_config, [])
+
+    assert [edge["target"] for edge in injected["edges"] if edge["source"] == SNIPPET_VIRTUAL_START_NODE_ID] == [
+        "outer"
+    ]
+
+
+def test_virtual_start_keeps_missing_container_ownership_invalid() -> None:
+    graph_config = _nested_snippet_graph("legacy", "loop")
+    nodes = {node["id"]: node for node in graph_config["nodes"]}
+    nodes["inner-start"]["data"]["container_id"] = "missing-container"
+    original = deepcopy(graph_config)
+
+    injected = SnippetGenerateService._inject_virtual_start_node(graph_config, [])
+
+    assert not any(
+        edge["source"] == SNIPPET_VIRTUAL_START_NODE_ID and edge["target"] == "inner-start"
+        for edge in injected["edges"]
+    )
+    factory = DifyNodeFactory(
+        init_params=build_test_graph_init_params(graph_config=injected),
+        runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0),
+    )
+    with pytest.raises(ValueError, match="unknown or cyclic containers"):
+        Graph.init(graph_config=injected, node_factory=factory, root_node_id=SNIPPET_VIRTUAL_START_NODE_ID)
+    assert graph_config == original
+
+
+def test_virtual_start_rejects_ambiguous_legacy_container_ownership() -> None:
+    graph_config = _nested_snippet_graph("legacy", "loop")
+    nodes = {node["id"]: node for node in graph_config["nodes"]}
+    del nodes["inner"]["data"]["loop_id"]
+    original = deepcopy(graph_config)
+
+    with pytest.raises(ValueError, match="ambiguous legacy container owners"):
+        SnippetGenerateService._inject_virtual_start_node(graph_config, [])
+    assert graph_config == original
 
 
 def test_parse_files_returns_empty_when_upload_config_disabled(monkeypatch: pytest.MonkeyPatch):

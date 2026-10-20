@@ -213,7 +213,7 @@ class BuiltinToolManageService:
                 # create a new credential. partial-member access is handled by RBAC.
 
             except Exception as e:
-                raise ValueError(str(e))
+                raise ValueError(str(e)) from e
         return {"result": "success"}
 
     @staticmethod
@@ -305,7 +305,7 @@ class BuiltinToolManageService:
                     session.flush()
                     credential_id = db_provider.id
             except Exception as e:
-                raise ValueError(str(e))
+                raise ValueError(str(e)) from e
 
         return {"result": "success", "id": credential_id}
 

@@ -190,6 +190,7 @@ def test_copy_preserves_shared_roster_bindings_and_clones_owned_inline_agents(
             )
     monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
     monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", lambda: False)
+
     exported = app_services.console.export(context, app_id, AppExportOptions(format="yaml"))
     assert isinstance(exported, str)
     portable = yaml.safe_load(exported)
@@ -771,7 +772,6 @@ def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
         "sync_draft_workflow",
         record_calls(WorkflowDefinitionStore.sync_draft_workflow, syncs),
     )
-
     AppLifecycleGateway(
         session_factory=sqlite_session_factory,
         tool_providers=tool_providers,

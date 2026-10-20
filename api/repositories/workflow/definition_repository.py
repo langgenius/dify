@@ -99,8 +99,8 @@ class WorkflowDefinitionStore:
         if workflow_id:
             try:
                 uuid.UUID(workflow_id)
-            except ValueError:
-                raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ")
+            except ValueError as exc:
+                raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ") from exc
             workflow = WorkflowDefinitionStore.get_published_workflow_by_id(app_model, workflow_id, session=session)
             if workflow is None:
                 raise WorkflowNotFoundError(f"Workflow not found with id: {workflow_id}")

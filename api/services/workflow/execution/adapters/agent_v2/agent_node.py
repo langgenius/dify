@@ -34,6 +34,7 @@ from core.workflow.nodes.agent_v2.output_failure_orchestrator import (
 from core.workflow.nodes.agent_v2.output_type_checker import OutputTypeCheckOutcome, PerOutputTypeChecker
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.engine_events import NodeRunPauseRequestedEvent
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -41,8 +42,7 @@ from graphon.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from graphon.graph_events import NodeRunPauseRequestedEvent
-from graphon.node_events import NodeEventBase, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
+from graphon.node_events import NodeEventPayload, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from models.agent_config_entities import WorkflowNodeJobConfig, WorkflowOutputRoutes
@@ -56,8 +56,7 @@ from services.workflow.execution.adapters.agent_v2.runtime_request_builder impor
 )
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import InitParams, RuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -87,8 +86,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         node_id: str,
         data: DifyAgentNodeData,
         *,
-        graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
+        init_params: InitParams,
+        runtime_state: RuntimeState,
         binding_resolver: WorkflowAgentRuntimeBindings,
         runtime_request_builder: WorkflowAgentRuntimeRequestBuilder,
         agent_backend_client: AgentBackendRunClient,
@@ -101,10 +100,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         super().__init__(
             node_id=node_id,
             data=data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
-        # The base node parses the factory's serialized payload into node_data.
         if self.node_data.agent_output_routes.enabled and self.error_strategy == ErrorStrategy.DEFAULT_VALUE:
             raise ValueError("Output routes do not support the node-level default-value error strategy.")
         if self.node_data.agent_output_routes.enabled:
@@ -128,7 +126,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         event.extras["agent_node"] = {"version": "2", "agent_node_kind": self.node_data.agent_node_kind}
 
     @override
-    def _run(self) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent]:
+    def _run(self) -> Generator[NodeEventPayload | NodeRunPauseRequestedEvent]:
         inputs: dict[str, Any] = {}
         process_data: dict[str, Any] = {}
         metadata: dict[str, Any] = {
@@ -155,16 +153,16 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         inputs: dict[str, Any],
         process_data: dict[str, Any],
         metadata: dict[str, Any],
-    ) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent]:
+    ) -> Generator[NodeEventPayload | NodeRunPauseRequestedEvent]:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
-        workflow_id = self.graph_init_params.workflow_id
+        workflow_id = self.init_params.workflow_id
         workflow_run_id = get_system_text(
-            self.graph_runtime_state.variable_pool,
+            self.runtime_state.variable_pool,
             SystemVariableKey.WORKFLOW_EXECUTION_ID,
         )
         # Chatflow sessions also carry their owning conversation.
         conversation_id = get_system_text(
-            self.graph_runtime_state.variable_pool,
+            self.runtime_state.variable_pool,
             SystemVariableKey.CONVERSATION_ID,
         )
 
@@ -249,7 +247,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         workflow_run_id=workflow_run_id,
                         node_id=self._node_id,
                         node_execution_id=self.execution_id,
-                        variable_pool=self.graph_runtime_state.variable_pool,
+                        variable_pool=self.runtime_state.variable_pool,
                         binding=bundle.binding,
                         agent=bundle.agent,
                         snapshot=bundle.snapshot,
@@ -578,11 +576,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         return cancellation, None
 
     def _is_graph_aborted(self) -> bool:
-        """Let Agent SSE consumption observe GraphEngine's cooperative abort state."""
-        try:
-            return self.graph_runtime_state.graph_execution.aborted
-        except (AttributeError, RuntimeError):
-            return False
+        """Let Agent SSE consumption observe Engine's cooperative abort state."""
+        return self.runtime_state.graph_execution.aborted
 
     def _stream_stop_reason(self) -> str:
         return "workflow_graph_aborted" if self._is_graph_aborted() else "event_stream_failed"

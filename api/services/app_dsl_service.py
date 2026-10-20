@@ -205,8 +205,8 @@ class AppDslService:
         # Validate import mode
         try:
             mode = ImportMode(import_mode)
-        except ValueError:
-            raise ValueError(f"Invalid import_mode: {import_mode}")
+        except ValueError as caught_error:
+            raise ValueError(f"Invalid import_mode: {import_mode}") from caught_error
 
         # Get YAML content
         content: str = ""
@@ -924,9 +924,10 @@ class AppDslService:
 
     def _sync_copied_workflow_bindings(self, *, workflow: Workflow, account_id: str) -> set[str]:
         """Reuse roster Agents while retaining node-owned inline materialization and complete node jobs."""
-        retirement_candidates = WorkflowAgentPublishService(
-            repository=WorkflowAgentBindingRepository(self._session)
-        ).synchronize_draft(
+        bindings = WorkflowAgentPublishService(repository=WorkflowAgentBindingRepository(self._session))
+        # WorkflowDraftService validates after this materializer restores the portable node-job payload.
+        # synchronize_draft would validate too early, against the default job created for a roster binding.
+        retirement_candidates = bindings.synchronize_bindings(
             draft_workflow=workflow_binding_scope(workflow),
             account_id=account_id,
         )
@@ -1068,7 +1069,9 @@ class AppDslService:
         if preserve_agent_bindings:
             graph = WorkflowAgentPublishService(
                 repository=WorkflowAgentBindingRepository(session)
-            ).project_draft_bindings_to_graph(draft_workflow=workflow_binding_scope(workflow))
+            ).project_draft_bindings_to_graph(
+                draft_workflow=workflow_binding_scope(workflow),
+            )
             agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
             for binding in cls._workflow_agent_bindings(workflow=workflow, session=session):
                 node_data = agent_nodes.get(binding.node_id)

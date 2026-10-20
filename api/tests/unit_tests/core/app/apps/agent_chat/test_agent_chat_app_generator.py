@@ -87,6 +87,7 @@ def generator(
         tool_invoker=workflow_runtime.agent_tool_invoker,
         annotations=annotation_replies,
         records=app_records,
+        workflow_runtime=workflow_runtime,
     )
 
 

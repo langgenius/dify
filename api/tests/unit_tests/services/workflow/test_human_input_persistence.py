@@ -16,10 +16,11 @@ from core.workflow.system_variables import build_system_variables
 from enums.human_input import HumanInputFormStatus, RecipientType
 from extensions.application_services.workflow import build_workflow_execution_dependencies
 from extensions.application_services.workflow_variables import build_workflow_variable_service
-from graphon.graph_engine import GraphEngine
-from graphon.graph_events import NodeRunSucceededEvent
+from graphon.engine import Engine
+from graphon.engine_events import EngineEvent, NodeRunSucceededEvent
+from graphon.file.protocols import WorkflowFileRuntimeProtocol
 from graphon.node_events import PauseRequestedEvent, StreamCompletedEvent
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.base import TypeBase
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
@@ -52,15 +53,16 @@ def form_databases(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureReque
 
 
 def factory(runtime: WorkflowRuntime | None, invoke_from: InvokeFrom = InvokeFrom.DEBUGGER) -> DifyNodeFactory:
-    state = GraphRuntimeState(
+    state = RuntimeState(
+        workflow_id="workflow",
         variable_pool=VariablePool.from_bootstrap(
             system_variables=build_system_variables(app_id="app", workflow_execution_id="run")
         ),
         start_at=0,
     )
     return DifyNodeFactory(
-        graph_init_params=build_test_graph_init_params(invoke_from=invoke_from),
-        graph_runtime_state=state,
+        init_params=build_test_graph_init_params(invoke_from=invoke_from),
+        runtime_state=state,
         workflow_runtime=runtime,
     )
 
@@ -102,7 +104,7 @@ def test_node_creates_and_resumes_form_in_injected_database(
         runtime = build_workflow_execution_dependencies(sessions)
     node_factory = factory(runtime, invoke_from)
     if rebind:
-        node_factory = node_factory.with_runtime_state(node_factory.graph_runtime_state)
+        node_factory = node_factory.with_runtime_state(node_factory.runtime_state)
     node = node_factory.create_node(node_config())
     node.bind_execution_id("human-execution")
     events = list(node._run())
@@ -170,8 +172,8 @@ def test_create_form_commit_failure_does_not_return_a_pause_or_persist_form(
 def test_created_form_timeout_reaches_event_stream_in_same_database(form_databases: FormDatabases) -> None:
     from dataclasses import dataclass
 
+    from graphon.engine_events import NodeRunHumanInputFormTimeoutEvent
     from graphon.graph import Graph
-    from graphon.graph_events import NodeRunHumanInputFormTimeoutEvent
     from services.workflow.execution.adapters.workflow_entry import iter_dify_graph_engine_events
 
     sessions, global_sessions = form_databases
@@ -188,14 +190,17 @@ def test_created_form_timeout_reaches_event_stream_in_same_database(form_databas
     @dataclass
     class NodeEvents:
         graph: Graph
-        graph_runtime_state: GraphRuntimeState
+        runtime_state: RuntimeState
+        file_runtime: WorkflowFileRuntimeProtocol | None = None
 
-        def run(self) -> Iterator[object]:
-            yield from node.run()
+        def run(self) -> Iterator[EngineEvent]:
+            for run_event in node.run():
+                assert isinstance(run_event, EngineEvent)
+                yield run_event
 
     events = list(
         iter_dify_graph_engine_events(
-            cast(GraphEngine, NodeEvents(Graph(root_node=node), node.graph_runtime_state)),
+            cast(Engine, NodeEvents(Graph(root_node=node), node.runtime_state)),
             human_form_reader=runtime.human_form_reader,
         )
     )

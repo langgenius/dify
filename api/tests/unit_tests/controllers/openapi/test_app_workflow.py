@@ -226,7 +226,7 @@ def test_set_env_accepts_mask_for_a_stored_secret(
     with app.test_request_context("/openapi/v1/apps/app-1/env/s-1", method="PUT"):
         cast(_EndpointView, api.put).__handler__(api, ctx, "app-1", "s-1", body=body)
 
-    sqlite_session.expire(draft)
+    sqlite_session.refresh(draft)
     assert _env(draft) == [("s-1", "plain", SecretVariable)]
     assert draft.updated_by == ACCOUNT_ID
 
@@ -324,7 +324,7 @@ def test_delete_env_removes_a_stored_variable(
     with app.test_request_context("/openapi/v1/apps/app-1/env/e-1", method="DELETE"):
         cast(_EndpointView, api.delete).__handler__(api, ctx, "app-1", "e-1")
 
-    sqlite_session.expire(draft)
+    sqlite_session.refresh(draft)
     assert _env(draft) == [("e-2", "https://x", StringVariable)]
 
 

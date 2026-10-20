@@ -5,10 +5,10 @@ from unittest.mock import patch
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.rag.models.document import Document
-from extensions.application_services.retrieval import build_dataset_retrieval
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from models import Account
 from models.dataset import Dataset, DatasetQuery
 from services.hit_testing_service import HitTestingService
@@ -68,7 +68,10 @@ class TestHitTestingServiceRetrieveTransaction:
     """Regression tests for https://github.com/langgenius/dify/issues/38998."""
 
     def test_retrieve_should_not_close_caller_managed_transaction(
-        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+        self,
+        sqlite_session: Session,
+        *,
+        workflow_runtime: WorkflowExecutionDependencies,
     ) -> None:
         """retrieve() must not commit the caller-managed session mid-flow.
 
@@ -102,7 +105,7 @@ class TestHitTestingServiceRetrieveTransaction:
                     None,
                     {},
                     session=sqlite_session,
-                    retrieval=build_dataset_retrieval(sqlite_session_factory),
+                    retrieval=workflow_runtime.retrieval,
                 )
 
         assert result["query"]["content"] == query

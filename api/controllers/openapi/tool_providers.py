@@ -13,7 +13,11 @@ from werkzeug.exceptions import BadRequest
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
-from controllers.openapi._errors import CredentialNotFound, CredentialOAuthOnly, ProviderNotFound
+from controllers.openapi._errors import (
+    CredentialNotFound,
+    CredentialOAuthOnly,
+    ProviderNotFound,
+)
 from controllers.openapi._i18n import localized
 from controllers.openapi._models import (
     CredentialFormField,
@@ -33,12 +37,20 @@ from controllers.openapi._models import (
 )
 from controllers.openapi._search import matches
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.requirements import ADMIN_ROLES, WORKSPACE_READ_GUARDS, workspace_write_guards
+from controllers.openapi.auth.requirements import (
+    ADMIN_ROLES,
+    WORKSPACE_READ_GUARDS,
+    workspace_write_guards,
+)
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import ToolParameter
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
-from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity, ToolProviderCredentialApiEntity
+from core.tools.entities.api_entities import (
+    ToolApiEntity,
+    ToolProviderApiEntity,
+    ToolProviderCredentialApiEntity,
+)
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from extensions.ext_application_services import application_services
@@ -131,10 +143,12 @@ _TOOL_SOURCES: Final[dict[ToolSource, Callable[[Context], list[ToolProviderApiEn
         tool_providers=application_services().tools.tool_providers,
     ),
     ToolSource.WORKFLOW: lambda ctx: application_services().tools.workflows.list_tenant_workflow_tools(
-        ctx.account.id, ctx.workspace.id
+        ctx.account.id,
+        ctx.workspace.id,
     ),
     ToolSource.API: lambda ctx: ApiToolManageService.list_api_tools(
-        ctx.workspace.id, tool_providers=application_services().tools.tool_providers
+        ctx.workspace.id,
+        tool_providers=application_services().tools.tool_providers,
     ),
     ToolSource.MCP: _mcp_providers,
 }
