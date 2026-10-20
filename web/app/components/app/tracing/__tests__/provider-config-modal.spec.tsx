@@ -304,6 +304,26 @@ describe('ProviderConfigModal', () => {
           payload: validConfigs[provider],
         })
 
+        const credentialLabels = {
+          arize: ['API Key'],
+          phoenix: ['API Key'],
+          langsmith: ['API Key'],
+          langfuse: ['app.tracing.configProvider.secretKey'],
+          opik: ['API Key'],
+          weave: ['API Key'],
+          aliyun: ['License Key'],
+          mlflow: ['app.tracing.configProvider.password'],
+          databricks: [
+            'app.tracing.configProvider.clientSecret',
+            'app.tracing.configProvider.personalAccessToken',
+          ],
+          tencent: ['Token'],
+        } satisfies Record<ConfigurableTracingProvider, string[]>
+        for (const label of credentialLabels[provider]) {
+          const credential = screen.getByRole('textbox', { name: label })
+          expect(credential).toHaveAttribute('autocomplete', 'off')
+        }
+
         const edits = {
           arize: ['Space ID', 'space_id', 'new-space'],
           phoenix: ['app.tracing.configProvider.project', 'project', 'new-project'],
