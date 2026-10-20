@@ -31,12 +31,12 @@ from core.dify_builder.models import (
 from core.dify_builder.state import PcState
 
 
-def test_entry_mode_values_are_verbatim_go_strings():
+def test_entry_mode_values_are_verbatim_go_strings() -> None:
     assert EntryMode.FIX == "fix"
     assert EntryMode.FIX_CHECKLIST == "fix_checklist"
 
 
-def test_checklist_error_defaults_and_construction():
+def test_checklist_error_defaults_and_construction() -> None:
     e = ChecklistError()
     assert e.node_id == ""
     assert e.node_type == ""
@@ -58,14 +58,14 @@ def test_checklist_error_defaults_and_construction():
     assert e3.messages == ["missing required field 'metrics'"]
 
 
-def test_checklist_error_default_factory_not_shared_between_instances():
+def test_checklist_error_default_factory_not_shared_between_instances() -> None:
     e1 = ChecklistError()
     e2 = ChecklistError()
     e1.messages.append("boom")
     assert e2.messages == []
 
 
-def test_session_construction_at_version_1():
+def test_session_construction_at_version_1() -> None:
     now = datetime(2026, 8, 18, 0, 0, 0)
     # Mirrors handlers_fix_test.go: &Session{AppID: "app", TenantID: "t",
     # OwnerAccountID: "u", EntryMode: EntryModeFix, CurrentState: FixDiagnose}
@@ -100,7 +100,7 @@ def test_session_construction_at_version_1():
     assert s2.created_at == now
 
 
-def test_node_output_defaults():
+def test_node_output_defaults() -> None:
     o = NodeOutput()
     assert o.error == ""
     assert o.inputs == {}
@@ -112,7 +112,7 @@ def test_node_output_defaults():
     assert o2.inputs == {}
 
 
-def test_run_immutable_default_and_construction():
+def test_run_immutable_default_and_construction() -> None:
     r = Run()
     assert r.immutable is False
     assert r.per_node == []
@@ -127,20 +127,20 @@ def test_run_immutable_default_and_construction():
     assert r2.per_node == []
 
 
-def test_run_per_node_default_factory_not_shared_between_instances():
+def test_run_per_node_default_factory_not_shared_between_instances() -> None:
     r1 = Run()
     r2 = Run()
     r1.per_node.append(NodeOutput(node_id="n1"))
     assert r2.per_node == []
 
 
-def test_snapshot_defaults():
+def test_snapshot_defaults() -> None:
     snap = Snapshot(session_id="sess-1", hash="h1")
     assert snap.id == ""
     assert snap.graph == {}
 
 
-def test_checkpoint_requires_state_but_defaults_ids():
+def test_checkpoint_requires_state_but_defaults_ids() -> None:
     cp = Checkpoint(state=PcState.FIX_APPLY)
     assert cp.id == ""
     assert cp.session_id == ""
@@ -148,20 +148,20 @@ def test_checkpoint_requires_state_but_defaults_ids():
     assert cp.state == PcState.FIX_APPLY
 
 
-def test_test_input_defaults():
+def test_test_input_defaults() -> None:
     ti = TestInput(session_id="sess-1", source="mock")
     assert ti.id == ""
     assert ti.inputs == {}
     assert ti.start_schema_hash == ""
 
 
-def test_conversation_item_defaults():
+def test_conversation_item_defaults() -> None:
     item = ConversationItem(kind="run-context", seq=0)
     assert item.payload == {}
     assert item.at_version == 0
 
 
-def test_fix_context_round_trip_defaults_empty():
+def test_fix_context_round_trip_defaults_empty() -> None:
     # Mirrors runner_test.go: repo.CreateSession(..., &DifyBuilderContext{}, nil)
     fc = DifyBuilderContext()
     assert fc.failed_run_id == ""
@@ -178,7 +178,7 @@ def test_fix_context_round_trip_defaults_empty():
     assert fc.checklist_errors == []
 
 
-def test_fix_context_partial_construction():
+def test_fix_context_partial_construction() -> None:
     # Mirrors handlers_fix_test.go: &DifyBuilderContext{FailedRunID: "TR-1"}
     fc = DifyBuilderContext(failed_run_id="TR-1")
     assert fc.failed_run_id == "TR-1"
@@ -192,7 +192,7 @@ def test_fix_context_partial_construction():
     assert fc2.failed_run_id == ""
 
 
-def test_action_defaults_payload_and_verbatim_kind():
+def test_action_defaults_payload_and_verbatim_kind() -> None:
     # Mirrors handlers_fix_test.go: &Action{Kind: "request_fix", BaseVersion: 1}
     a = Action(kind="request_fix", base_version=1)
     assert a.kind == "request_fix"
@@ -200,7 +200,7 @@ def test_action_defaults_payload_and_verbatim_kind():
     assert a.payload == {}
 
 
-def test_actor_has_no_forward_auth():
+def test_actor_has_no_forward_auth() -> None:
     actor = Actor(account_id="acc-1", tenant_id="tenant-1")
     assert actor.account_id == "acc-1"
     assert actor.tenant_id == "tenant-1"
@@ -208,7 +208,7 @@ def test_actor_has_no_forward_auth():
     assert not hasattr(actor, "bearer")
 
 
-def test_turn_action_is_optional_actor_is_not():
+def test_turn_action_is_optional_actor_is_not() -> None:
     actor = Actor(account_id="acc-1", tenant_id="tenant-1")
 
     turn_no_action = Turn(actor=actor)
@@ -222,14 +222,14 @@ def test_turn_action_is_optional_actor_is_not():
     assert not hasattr(turn_with_action, "auth")
 
 
-def test_apply_result_has_structure_fingerprint_default():
+def test_apply_result_has_structure_fingerprint_default() -> None:
     from core.dify_builder.models import ApplyResult
 
     assert ApplyResult().structure_fingerprint == ""
     assert ApplyResult(structure_fingerprint="fp1").structure_fingerprint == "fp1"
 
 
-def test_dify_builder_context_recovery_fields_default():
+def test_dify_builder_context_recovery_fields_default() -> None:
     from core.dify_builder.models import DifyBuilderContext
 
     fc = DifyBuilderContext()

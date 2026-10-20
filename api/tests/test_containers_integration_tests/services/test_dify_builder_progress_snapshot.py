@@ -24,7 +24,7 @@ def _snapshot(session_id: str) -> progress_snapshot.ProgressSnapshot:
 
 
 @pytest.mark.usefixtures("flask_app_with_containers")
-def test_out_of_order_snapshot_writes_cannot_regress_revision_or_durable_version():
+def test_out_of_order_snapshot_writes_cannot_regress_revision_or_durable_version() -> None:
     session_id, tenant_id = str(uuid4()), str(uuid4())
     token = session_lock.acquire(session_id)
     assert token is not None
@@ -45,7 +45,7 @@ def test_out_of_order_snapshot_writes_cannot_regress_revision_or_durable_version
 
 
 @pytest.mark.usefixtures("flask_app_with_containers")
-def test_replacement_worker_does_not_restore_or_accept_previous_workers_progress():
+def test_replacement_worker_does_not_restore_or_accept_previous_workers_progress() -> None:
     session_id, tenant_id = str(uuid4()), str(uuid4())
     token = session_lock.acquire(session_id)
     assert token is not None

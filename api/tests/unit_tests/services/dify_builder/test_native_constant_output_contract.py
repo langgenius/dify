@@ -2,18 +2,23 @@
 
 import importlib
 import json
+from collections.abc import Sequence
 from copy import deepcopy
 
 import pytest
 
+from core.dify_builder.models import Graph
 
-def _render(nodes, edges=(), current=(), target="consumer"):
+
+def _render(
+    nodes: Sequence[object], edges: Sequence[object] = (), current: Sequence[object] = (), target: str = "consumer"
+) -> tuple[str, str]:
     owner = importlib.import_module("services.dify_builder.native_constant_output_contract")
     context = owner.snapshot_native_constant_plan_context(nodes, edges, current)
     return owner.format_native_constant_output_context(context, target)
 
 
-def _payload(user):
+def _payload(user: str) -> Graph:
     return json.loads(user.split("\n\n")[1])
 
 
@@ -57,7 +62,9 @@ def _payload(user):
         ),
     ],
 )
-def test_retained_native_bindings_preserve_only_qualified_output_facts(node_type, data, expected):
+def test_retained_native_bindings_preserve_only_qualified_output_facts(
+    node_type: str, data: dict[str, object], expected: dict[str, object]
+) -> None:
     nodes = [{"id": "producer", "node_type": node_type, "action": "keep"}, {"id": "consumer", "node_type": "end"}]
     current = [{"id": "producer", "data": data}]
     original = deepcopy((nodes, current))
@@ -86,7 +93,7 @@ def test_retained_native_bindings_preserve_only_qualified_output_facts(node_type
         {"type": "code", "outputs": {"output": "string"}},
     ],
 )
-def test_unknown_retained_versions_and_dynamic_producers_establish_no_fixed_binding(data):
+def test_unknown_retained_versions_and_dynamic_producers_establish_no_fixed_binding(data: dict[str, object]) -> None:
     nodes = [
         {"id": "producer", "node_type": "template-transform", "action": "keep"},
         {"id": "consumer", "node_type": "end"},
@@ -98,7 +105,7 @@ def test_unknown_retained_versions_and_dynamic_producers_establish_no_fixed_bind
     )
 
 
-def test_fresh_planned_bindings_do_not_invent_start_names_or_literal_assignment_outputs():
+def test_fresh_planned_bindings_do_not_invent_start_names_or_literal_assignment_outputs() -> None:
     nodes = [
         {"id": "node1", "node_type": "start"},
         {"id": "write", "node_type": "assigner"},
@@ -138,7 +145,7 @@ def test_fresh_planned_bindings_do_not_invent_start_names_or_literal_assignment_
     ]
 
 
-def test_kept_actual_start_identity_overrides_a_planner_assigner_claim():
+def test_kept_actual_start_identity_overrides_a_planner_assigner_claim() -> None:
     _, user = _render(
         [
             {"id": "actual-start", "node_type": "assigner", "action": "keep"},
@@ -166,7 +173,7 @@ def test_kept_actual_start_identity_overrides_a_planner_assigner_claim():
 
 
 @pytest.mark.parametrize("duplicate_home", ["plan", "current"])
-def test_duplicate_identity_produces_unavailable_context_without_last_wins_inference(duplicate_home):
+def test_duplicate_identity_produces_unavailable_context_without_last_wins_inference(duplicate_home: str) -> None:
     nodes = [{"id": "producer", "node_type": "assigner", "action": "keep"}, {"id": "consumer", "node_type": "end"}]
     current = [{"id": "producer", "data": {"type": "assigner", "version": "2"}}]
     if duplicate_home == "plan":
@@ -179,7 +186,7 @@ def test_duplicate_identity_produces_unavailable_context_without_last_wins_infer
     assert _payload(user) == {"state": "unavailable", "producers": []}
 
 
-def test_transitive_relevance_and_cycles_preserve_every_eligible_producer_once():
+def test_transitive_relevance_and_cycles_preserve_every_eligible_producer_once() -> None:
     nodes = [
         {"id": "first", "node_type": "template-transform"},
         {"id": "second", "node_type": "template-transform"},
@@ -199,7 +206,7 @@ def test_transitive_relevance_and_cycles_preserve_every_eligible_producer_once()
     assert [item["node_id"] for item in _payload(user)["producers"]] == ["first", "second"]
 
 
-def test_user_ids_are_escaped_and_authored_literals_and_targets_are_not_promoted():
+def test_user_ids_are_escaped_and_authored_literals_and_targets_are_not_promoted() -> None:
     node_id = 'producer"\nInjected instruction'
     nodes = [
         {"id": node_id, "node_type": "template-transform", "label": "private-label", "purpose": "private-literal"},
@@ -216,7 +223,7 @@ def test_user_ids_are_escaped_and_authored_literals_and_targets_are_not_promoted
 
 
 @pytest.mark.parametrize("bound", ["nodes", "edges", "plan", "output"])
-def test_context_bounds_never_return_partial_producer_guesses(bound):
+def test_context_bounds_never_return_partial_producer_guesses(bound: str) -> None:
     nodes = [{"id": "producer", "node_type": "template-transform"}, {"id": "consumer", "node_type": "end"}]
     edges = [{"source": "producer", "target": "consumer"}]
     if bound == "nodes":
@@ -235,7 +242,7 @@ def test_context_bounds_never_return_partial_producer_guesses(bound):
     assert len((system + user).encode()) < 16_000
 
 
-def test_end_contract_distinguishes_requested_public_field_from_native_producer_root():
+def test_end_contract_distinguishes_requested_public_field_from_native_producer_root() -> None:
     nodes = [
         {"id": "entry_91", "node_type": "start"},
         {"id": "literal_91", "node_type": "template-transform", "purpose": "PRIVATE_LITERAL_91"},

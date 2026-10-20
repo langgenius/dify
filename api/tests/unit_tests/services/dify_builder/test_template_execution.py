@@ -5,15 +5,18 @@ Literal outputs catch incorrect whitespace, operand semantics and byte accountin
 Effectful owners, Jinja compilation/rendering and deliberate parser faults are replaced.
 """
 
+from collections.abc import Iterator
 from copy import deepcopy
+from typing import Never, override
 from unittest.mock import Mock
 
 import pytest
 import yaml
 
 from core.dify_builder.execution_policy import BuilderExecutionPolicyError, admitted_node_bindings, canonical_digest
+from core.dify_builder.models import Graph
 from core.workflow.restricted_execution import validate_restricted_node, validate_restricted_raw_node
-from graphon.graph_events import GraphRunSucceededEvent, NodeRunSucceededEvent
+from graphon.engine_events import GraphRunSucceededEvent, NodeRunSucceededEvent
 from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
 from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
 from tests.unit_tests.core.dify_builder.test_execution_policy import snapshot
@@ -27,15 +30,16 @@ from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native 
 from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native import (
     forbid_live as forbid_live,  # noqa: PLC0414
 )
+from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
 
 
 @pytest.fixture(autouse=True)
-def no_jinja_compilation(monkeypatch):
+def no_jinja_compilation(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     """Restricted rendering interprets finite AST only; lex/parse stay real."""
     from jinja2 import Environment, Template, debug
 
-    spies = []
+    spies: list[Mock] = []
     for owner, names in (
         (Environment, ("from_string", "compile", "compile_expression", "compile_templates", "_generate", "_compile")),
         (Template, ("render", "generate", "render_async", "generate_async")),
@@ -51,7 +55,7 @@ def no_jinja_compilation(monkeypatch):
         spy.assert_not_called()
 
 
-def template_graph(template=None, names=("subject", "body")):
+def template_graph(template: str | None = None, names: tuple[str, ...] = ("subject", "body")) -> Graph:
     graph = yaml.safe_load((FIXTURES / "template_notification.yml").read_text())
     if template is not None:
         graph["nodes"][1]["data"]["template"] = template
@@ -60,14 +64,16 @@ def template_graph(template=None, names=("subject", "body")):
     return graph
 
 
-def renderer_from_factory(owned, template="{{ subject }}", names=("subject", "body")):
+def renderer_from_factory(
+    owned: Owned, template: str = "{{ subject }}", names: tuple[str, ...] = ("subject", "body")
+) -> Jinja2TemplateRenderer:
     factory, _, _ = prepare_native(
         owned,
         "template_notification.yml",
         graph_config=template_graph(template, names),
         inputs=dict.fromkeys(names, "safe"),
     )
-    node = factory.create_node(factory.graph_init_params.graph_config["nodes"][1])
+    node = factory.create_node(factory.init_params.graph_config["nodes"][1])
     assert type(node) is TemplateTransformNode
     renderer = node._jinja2_template_renderer
     assert isinstance(renderer, Jinja2TemplateRenderer)
@@ -93,7 +99,9 @@ def renderer_from_factory(owned, template="{{ subject }}", names=("subject", "bo
         ),
     ],
 )
-def test_template_ticket_outputs_use_real_runner_and_native_nodes(owned, forbid_live, inputs, want):
+def test_template_ticket_outputs_use_real_runner_and_native_nodes(
+    owned: Owned, forbid_live: list[str], inputs: dict[str, str], want: str
+) -> None:
     factory, context, recorder = prepare_native(owned, "template_notification.yml", inputs=inputs)
     runner_graph = init_runner_graph(owned, factory, context, recorder)
     graph, events, error = execute_native(factory, graph=runner_graph)
@@ -114,7 +122,9 @@ def test_template_ticket_outputs_use_real_runner_and_native_nodes(owned, forbid_
         pytest.param({"heading": "", "detail": ""}, "none", id="renamed-else"),
     ],
 )
-def test_generic_template_if_elif_else_and_scalar_short_circuit(owned, inputs, want):
+def test_generic_template_if_elif_else_and_scalar_short_circuit(
+    owned: Owned, inputs: dict[str, str], want: str
+) -> None:
     text = (
         "{% if not heading|trim and not detail|trim %}none"
         "{% elif heading|trim or detail|trim %}"
@@ -132,7 +142,7 @@ def test_generic_template_if_elif_else_and_scalar_short_circuit(owned, inputs, w
     assert receipts(owned) == []
 
 
-def test_multiple_native_templates_accept_only_earlier_output_capability(owned):
+def test_multiple_native_templates_accept_only_earlier_output_capability(owned: Owned) -> None:
     graph = template_graph("[{{ subject|trim }}]")
     second = {
         "id": "format",
@@ -177,7 +187,9 @@ def test_multiple_native_templates_accept_only_earlier_output_capability(owned):
         pytest.param("{# comment #}{{ '\\u2713' }}", {"subject": "", "body": ""}, "✓", id="primitive-constant"),
     ],
 )
-def test_injected_native_renderer_preserves_scalar_and_whitespace_semantics(owned, template, values, want):
+def test_injected_native_renderer_preserves_scalar_and_whitespace_semantics(
+    owned: Owned, template: str, values: dict[str, object], want: str
+) -> None:
     renderer = renderer_from_factory(owned, template)
     assert renderer.render_template(template, values) == want
     assert receipts(owned) == []
@@ -205,7 +217,7 @@ def test_injected_native_renderer_preserves_scalar_and_whitespace_semantics(owne
         pytest.param("{% if subject %}missing endif SECRET-TEMPLATE", id="syntax-error"),
     ],
 )
-def test_unreviewed_template_ast_refuses_even_when_unreachable(template):
+def test_unreviewed_template_ast_refuses_even_when_unreachable(template: str) -> None:
     with pytest.raises(BuilderExecutionPolicyError) as error:
         admitted_node_bindings(snapshot(template_graph(template)))
     assert error.value.reason_code == "unsupported_template_syntax"
@@ -230,7 +242,7 @@ def test_unreviewed_template_ast_refuses_even_when_unreachable(template):
         "file",
     ],
 )
-def test_template_raw_configuration_and_selector_capabilities_refuse(mutation):
+def test_template_raw_configuration_and_selector_capabilities_refuse(mutation: str) -> None:
     graph = template_graph()
     data = graph["nodes"][1]["data"]
     variables = data["variables"]
@@ -261,7 +273,7 @@ def test_template_raw_configuration_and_selector_capabilities_refuse(mutation):
 
 
 @pytest.mark.parametrize("output", ["headers", "status_code", "file"])
-def test_template_cannot_select_non_body_http_capabilities(output):
+def test_template_cannot_select_non_body_http_capabilities(output: str) -> None:
     graph = template_graph("{{ subject }}")
     http = yaml.safe_load((FIXTURES / "http_text.yml").read_text())["nodes"][1]
     http["data"]["url"] = "https://sample.invalid/fixed"
@@ -278,10 +290,10 @@ def test_template_cannot_select_non_body_http_capabilities(output):
 
 
 @pytest.mark.parametrize("text", ["x" * 16385, "é" * 8193], ids=["ascii-over", "utf8-over"])
-def test_source_byte_limit_precedes_parser_allocation(monkeypatch, text):
+def test_source_byte_limit_precedes_parser_allocation(monkeypatch: pytest.MonkeyPatch, text: str) -> None:
     from jinja2 import Environment
 
-    def forbidden(*_args, **_kwargs):
+    def forbidden(*_args: object, **_kwargs: object) -> Never:
         pytest.fail("over-limit source reached Jinja parser")
 
     monkeypatch.setattr(Environment, "parse", forbidden)
@@ -290,10 +302,10 @@ def test_source_byte_limit_precedes_parser_allocation(monkeypatch, text):
     assert error.value.reason_code == "template_execution_limit"
 
 
-def test_lexer_token_limit_precedes_parser_allocation(monkeypatch):
+def test_lexer_token_limit_precedes_parser_allocation(monkeypatch: pytest.MonkeyPatch) -> None:
     from jinja2 import Environment
 
-    def forbidden(*_args, **_kwargs):
+    def forbidden(*_args: object, **_kwargs: object) -> Never:
         pytest.fail("over-limit lexer token stream reached Jinja parser")
 
     monkeypatch.setattr(Environment, "parse", forbidden)
@@ -309,7 +321,7 @@ def test_lexer_token_limit_precedes_parser_allocation(monkeypatch):
         pytest.param("{% if subject %}" * 17 + "text" + "{% endif %}" * 17, id="ast-depth-over"),
     ],
 )
-def test_ast_budgets_refuse_small_but_structurally_excessive_templates(text):
+def test_ast_budgets_refuse_small_but_structurally_excessive_templates(text: str) -> None:
     with pytest.raises(BuilderExecutionPolicyError) as error:
         admitted_node_bindings(snapshot(template_graph(text)))
     assert error.value.reason_code == "template_execution_limit"
@@ -323,13 +335,14 @@ def test_ast_budgets_refuse_small_but_structurally_excessive_templates(text):
         pytest.param("{{subject}}x" * 127, "sx" * 127, id="ast-nodes-exact"),
     ],
 )
-def test_exact_source_and_ast_limits_remain_usable(owned, text, want):
+def test_exact_source_and_ast_limits_remain_usable(owned: Owned, text: str, want: str) -> None:
     renderer = renderer_from_factory(owned, text)
     assert renderer.render_template(text, {"subject": "s", "body": ""}) == want
 
 
 class ExplosiveString(str):  # noqa: FURB189 -- regression needs a str subclass, not UserString
-    def __str__(self):
+    @override
+    def __str__(self) -> Never:
         pytest.fail("custom scalar conversion executed")
 
 
@@ -348,7 +361,7 @@ class ExplosiveString(str):  # noqa: FURB189 -- regression needs a str subclass,
         pytest.param("\ud800", id="invalid-utf8"),
     ],
 )
-def test_runtime_renderer_refuses_non_exact_or_over_limit_selected_values(owned, value):
+def test_runtime_renderer_refuses_non_exact_or_over_limit_selected_values(owned: Owned, value: object) -> None:
     renderer = renderer_from_factory(owned)
     with pytest.raises(TemplateRenderError) as error:
         renderer.render_template("{{ subject }}", {"subject": value, "body": ""})
@@ -363,19 +376,19 @@ def test_runtime_renderer_refuses_non_exact_or_over_limit_selected_values(owned,
         pytest.param({"subject": 2**53 - 1, "body": ""}, "9007199254740991", id="integer-exact"),
     ],
 )
-def test_runtime_exact_scalar_and_output_byte_limits(owned, values, want):
+def test_runtime_exact_scalar_and_output_byte_limits(owned: Owned, values: dict[str, object], want: str) -> None:
     renderer = renderer_from_factory(owned)
     assert renderer.render_template("{{ subject }}", values) == want
 
 
-def test_output_budget_counts_all_fragments_before_join(owned):
+def test_output_budget_counts_all_fragments_before_join(owned: Owned) -> None:
     renderer = renderer_from_factory(owned, "{{subject}}{{body}}")
     with pytest.raises(TemplateRenderError):
         renderer.render_template("{{subject}}{{body}}", {"subject": "é" * 32768, "body": "x"})
     assert receipts(owned) == []
 
 
-def test_selected_text_aggregate_budget_counts_unused_declared_values(owned):
+def test_selected_text_aggregate_budget_counts_unused_declared_values(owned: Owned) -> None:
     renderer = renderer_from_factory(owned, "small", ("subject", "body", "third"))
     with pytest.raises(TemplateRenderError):
         renderer.render_template("small", {"subject": "x" * 65536, "body": "x" * 65536, "third": "x"})
@@ -385,10 +398,10 @@ def test_selected_text_aggregate_budget_counts_unused_declared_values(owned):
 @pytest.mark.parametrize(
     "error_type", [RecursionError, OverflowError, ValueError], ids=["recursion", "overflow", "value"]
 )
-def test_parser_failures_are_sanitized_refusals(monkeypatch, error_type):
+def test_parser_failures_are_sanitized_refusals(monkeypatch: pytest.MonkeyPatch, error_type: type[Exception]) -> None:
     from jinja2 import Environment
 
-    def broken(*_args, **_kwargs):
+    def broken(*_args: object, **_kwargs: object) -> Never:
         raise error_type("SECRET-PARSER-TEXT")
 
     monkeypatch.setattr(Environment, "parse", broken)
@@ -405,7 +418,7 @@ def test_parser_failures_are_sanitized_refusals(monkeypatch, error_type):
         pytest.param("{% if subject %}SECRET-PARSER", id="parser-unclosed-if"),
     ],
 )
-def test_malformed_lexer_and_parser_never_rewrite_python_traceback(owned, template):
+def test_malformed_lexer_and_parser_never_rewrite_python_traceback(owned: Owned, template: str) -> None:
     from jinja2 import debug
 
     renderer = renderer_from_factory(owned)
@@ -418,18 +431,20 @@ def test_malformed_lexer_and_parser_never_rewrite_python_traceback(owned, templa
     assert "SECRET-" not in str(failure.value)
     # Call-stage assertions make the synthetic Python boundary visible as a
     # behavioral failure even when admission/renderer sanitize its guard error.
+    assert isinstance(debug.rewrite_traceback_stack, Mock)
     debug.rewrite_traceback_stack.assert_not_called()
+    assert isinstance(debug.fake_traceback, Mock)
     debug.fake_traceback.assert_not_called()
 
 
 @pytest.mark.parametrize("mutation", ["class", "version", "latest", "raw-config", "binding"])
-def test_native_template_class_version_and_raw_binding_are_rechecked(owned, mutation):
+def test_native_template_class_version_and_raw_binding_are_rechecked(owned: Owned, mutation: str) -> None:
     factory, context, _ = prepare_native(
         owned,
         "template_notification.yml",
         inputs={"subject": "Notice", "body": "Body"},
     )
-    raw = deepcopy(factory.graph_init_params.graph_config["nodes"][1])
+    raw = deepcopy(factory.init_params.graph_config["nodes"][1])
     node_class = TemplateTransformNode
     if mutation == "class":
 
@@ -453,7 +468,7 @@ def test_native_template_class_version_and_raw_binding_are_rechecked(owned, muta
             context=context, node_id="template", node_class=node_class, raw_node_data=raw["data"]
         )
     if mutation == "class":
-        data = TemplateTransformNode.validate_node_data(factory.graph_init_params.graph_config["nodes"][1]["data"])
+        data = TemplateTransformNode.validate_node_data(factory.init_params.graph_config["nodes"][1]["data"])
         with pytest.raises(BuilderExecutionPolicyError):
             validate_restricted_node(
                 context=context, node_id="template", node_class=node_class, resolved_node_data=data
@@ -462,7 +477,9 @@ def test_native_template_class_version_and_raw_binding_are_rechecked(owned, muta
 
 
 @pytest.mark.parametrize("entry", ["create", "graph-init", "constructor"])
-def test_native_factory_rejects_template_raw_drift_before_native_validator(owned, monkeypatch, entry):
+def test_native_factory_rejects_template_raw_drift_before_native_validator(
+    owned: Owned, monkeypatch: pytest.MonkeyPatch, entry: str
+) -> None:
     from core.workflow.node_factory import DifyNodeFactory
     from graphon.graph import Graph
 
@@ -471,22 +488,22 @@ def test_native_factory_rejects_template_raw_drift_before_native_validator(owned
         "template_notification.yml",
         inputs={"subject": "Notice", "body": "Body"},
     )
-    graph = deepcopy(factory.graph_init_params.graph_config)
+    graph = deepcopy(factory.init_params.graph_config)
     graph["nodes"][1]["data"]["template"] = "changed after launch"
 
-    def forbidden(*_args, **_kwargs):
+    def forbidden(*_args: object, **_kwargs: object) -> Never:
         pytest.fail("raw drift reached concrete native Template validation")
 
     monkeypatch.setattr(TemplateTransformNode, "validate_node_data", forbidden)
 
-    def invoke():
+    def invoke() -> object:
         if entry == "create":
             return factory.create_node(graph["nodes"][1])
         if entry == "graph-init":
             return Graph.init(graph_config=graph, node_factory=factory, root_node_id="start")
         return DifyNodeFactory(
-            factory.graph_init_params.model_copy(update={"graph_config": graph}),
-            factory.graph_runtime_state,
+            factory.init_params.model_copy(update={"graph_config": graph}),
+            factory.runtime_state,
             execution_recorder=recorder,
         )
 
@@ -496,12 +513,12 @@ def test_native_factory_rejects_template_raw_drift_before_native_validator(owned
 
 
 @pytest.mark.parametrize("names", [("v" * 64,), tuple(f"v{i}" for i in range(32))], ids=["name-exact", "count-exact"])
-def test_exact_legal_variable_name_and_count_limits(owned, names):
+def test_exact_legal_variable_name_and_count_limits(owned: Owned, names: tuple[str, ...]) -> None:
     renderer = renderer_from_factory(owned, "literal", names)
     assert renderer.render_template("literal", dict.fromkeys(names, "")) == "literal"
 
 
-def test_native_template_binding_retains_literal_raw_config_digest():
+def test_native_template_binding_retains_literal_raw_config_digest() -> None:
     graph = template_graph()
     binding = admitted_node_bindings(snapshot(graph))[1]
     assert binding.implementation == "graphon.nodes.template_transform.template_transform_node.TemplateTransformNode"

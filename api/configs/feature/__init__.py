@@ -426,6 +426,19 @@ class EndpointConfig(BaseSettings):
 
     TRIGGER_URL: str = Field(description="Template url for triggers", default="http://localhost:5001")
 
+    NETWORK_ACCESS_API_URL: str = Field(
+        description="Optional internal SaaS API base URL for network access policy requests; "
+        "falls back to BILLING_API_URL",
+        default="",
+    )
+
+    NETWORK_ACCESS_TRUSTED_PROXY_CIDRS: str = Field(
+        description="Comma-separated trusted proxy CIDRs for network-access current-IP previews. "
+        "Only verified socket peers may supply X-Forwarded-For; empty disables Cloud IP previews. "
+        "Match the Gateway trust boundary and sanitize or append the client IP at the edge.",
+        default="",
+    )
+
 
 class FileAccessConfig(BaseSettings):
     """
@@ -965,26 +978,10 @@ class WorkflowConfig(BaseSettings):
         default=400_000,
     )
 
-    # GraphEngine Worker Pool Configuration
-    GRAPH_ENGINE_MIN_WORKERS: PositiveInt = Field(
-        description="Minimum number of workers per GraphEngine instance",
-        default=3,
-    )
-
+    # Engine Worker Pool Configuration
     GRAPH_ENGINE_MAX_WORKERS: PositiveInt = Field(
-        description="Maximum number of workers per GraphEngine instance",
+        description="Number of workers per Engine instance",
         default=10,
-    )
-
-    GRAPH_ENGINE_SCALE_UP_THRESHOLD: NonNegativeInt = Field(
-        description="Pending task threshold that triggers worker scale up",
-        default=0,
-    )
-
-    GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME: float = Field(
-        description="Seconds of idle time before scaling down workers",
-        default=5.0,
-        ge=0.1,
     )
 
     DIFY_BUILDER_MAX_ADVANCE_SECONDS: PositiveInt = Field(

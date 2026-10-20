@@ -35,7 +35,7 @@ def _rbac_queries(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return queries
 
 
-def test_session_view_to_dict_projects_only_browser_fields():
+def test_session_view_to_dict_projects_only_browser_fields() -> None:
     view = SessionView(
         session_id="s1",
         app_id="a1",
@@ -61,7 +61,7 @@ def test_session_view_to_dict_projects_only_browser_fields():
     }
 
 
-def test_public_session_projection_exposes_decision_and_strips_internal_revision_fields():
+def test_public_session_projection_exposes_decision_and_strips_internal_revision_fields() -> None:
     decision = {
         "title": "What should Builder do next?",
         "description": "Choose one option to continue.",
@@ -130,8 +130,8 @@ def test_public_session_projection_exposes_decision_and_strips_internal_revision
     }
 
 
-def test_settled_command_finished_sse_exposes_reply_language():
-    view = {
+def test_settled_command_finished_sse_exposes_reply_language() -> None:
+    view: dict[str, object] = {
         "session_id": "s1",
         "version": 3,
         "reply_language": "zh-Hans",
@@ -157,7 +157,7 @@ def test_settled_command_finished_sse_exposes_reply_language():
     assert event["data"]["command_id"] == "command-1"
 
 
-def test_error_map():
+def test_error_map() -> None:
     assert wiring.dify_builder_error_response(ModelUnavailableError("private provider detail")) == (
         {"code": "model_unavailable", "message": "Builder model is unavailable", "recoverable": True},
         400,
@@ -171,7 +171,7 @@ def test_error_map():
     assert wiring.dify_builder_error_response(ValueError("x")) is None  # unknown → caller re-raises
 
 
-def test_build_service_enqueue_calls_delay_with_dicts():
+def test_build_service_enqueue_calls_delay_with_dicts() -> None:
     with patch("services.dify_builder.wiring.advance_session") as task, patch("services.dify_builder.wiring.db"):
         svc = wiring.build_service()
         action = Action(kind="run_verify", base_version=2)

@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from core.dify_builder.models import Graph
 from core.plugin.entities.plugin import PluginInstallation
 from core.plugin.entities.plugin_daemon import PluginToolProviderEntity
 from services.dify_builder import json_tool_metadata as metadata
@@ -62,18 +63,23 @@ def _installation(**changes: object) -> PluginInstallation:
     )
 
 
-def _owners(monkeypatch, installations=None, provider=None, error=None):
-    calls = []
+def _owners(
+    monkeypatch: pytest.MonkeyPatch,
+    installations: list[PluginInstallation] | None = None,
+    provider: object | None = None,
+    error: Exception | None = None,
+) -> list[tuple[str, str, list[str] | str]]:
+    calls: list[tuple[str, str, list[str] | str]] = []
 
     class Installer:
-        def fetch_plugin_installation_by_ids(self, tenant_id, plugin_ids):
+        def fetch_plugin_installation_by_ids(self, tenant_id: str, plugin_ids: list[str]) -> list[PluginInstallation]:
             calls.append(("install", tenant_id, plugin_ids))
             if error:
                 raise error
             return [_installation()] if installations is None else installations
 
     class Manager:
-        def fetch_tool_provider(self, tenant_id, provider_id):
+        def fetch_tool_provider(self, tenant_id: str, provider_id: str) -> object:
             calls.append(("provider", tenant_id, provider_id))
             if error:
                 raise error
@@ -92,7 +98,7 @@ def _expected(actual: metadata.InstalledJsonParse) -> QualifiedJsonToolBinding:
     )
 
 
-def test_reviewed_normalized_declaration_matches_frozen_digests(monkeypatch):
+def test_reviewed_normalized_declaration_matches_frozen_digests(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = _owners(monkeypatch)
     actual = metadata.resolve_installed_json_parse(tenant_id=TENANT)
     assert actual.provider_schema_digest == metadata.PROVIDER_SCHEMA_DIGEST
@@ -107,7 +113,7 @@ def test_reviewed_normalized_declaration_matches_frozen_digests(monkeypatch):
 
 
 @pytest.mark.parametrize("count", [0, 2])
-def test_zero_or_multiple_installations_refuse(monkeypatch, count):
+def test_zero_or_multiple_installations_refuse(monkeypatch: pytest.MonkeyPatch, count: int) -> None:
     _owners(monkeypatch, installations=[_installation()] * count)
     with pytest.raises(BuilderExecutionPolicyError, match="installed_json_tool_unavailable"):
         metadata.resolve_installed_json_parse(tenant_id=TENANT)
@@ -129,7 +135,9 @@ def test_zero_or_multiple_installations_refuse(monkeypatch, count):
         ("source", "remote"),
     ],
 )
-def test_installation_identity_or_runtime_drift_refuses(monkeypatch, field, value):
+def test_installation_identity_or_runtime_drift_refuses(
+    monkeypatch: pytest.MonkeyPatch, field: str, value: str
+) -> None:
     _owners(monkeypatch, installations=[_installation(**{field: value})])
     if field == "runtime_type" and value == "serverless":
         actual = metadata.resolve_installed_json_parse(tenant_id=TENANT)
@@ -142,7 +150,7 @@ def test_installation_identity_or_runtime_drift_refuses(monkeypatch, field, valu
 
 
 @pytest.mark.parametrize("field", ["provider", "plugin_id", "plugin_unique_identifier"])
-def test_provider_identity_drift_refuses(monkeypatch, field):
+def test_provider_identity_drift_refuses(monkeypatch: pytest.MonkeyPatch, field: str) -> None:
     _owners(monkeypatch, provider=_provider(**{field: "other"}))
     with pytest.raises(BuilderExecutionPolicyError, match="unsupported_json_tool_installation"):
         metadata.resolve_installed_json_parse(tenant_id=TENANT)
@@ -158,7 +166,9 @@ def test_provider_identity_drift_refuses(monkeypatch, field):
         ("default", False),
     ],
 )
-def test_schema_credential_oauth_dynamic_or_default_drift_refuses(monkeypatch, mutation, value):
+def test_schema_credential_oauth_dynamic_or_default_drift_refuses(
+    monkeypatch: pytest.MonkeyPatch, mutation: str, value: Graph | bool | list[Graph]
+) -> None:
     provider = _provider().model_dump(mode="json")
     declaration = provider["declaration"]
     if mutation == "credential":
@@ -176,21 +186,21 @@ def test_schema_credential_oauth_dynamic_or_default_drift_refuses(monkeypatch, m
         metadata.resolve_installed_json_parse(tenant_id=TENANT)
 
 
-def test_transport_failure_is_sanitized(monkeypatch):
+def test_transport_failure_is_sanitized(monkeypatch: pytest.MonkeyPatch) -> None:
     _owners(monkeypatch, error=RuntimeError("private daemon response"))
     with pytest.raises(BuilderExecutionPolicyError) as exc:
         metadata.resolve_installed_json_parse(tenant_id=TENANT)
     assert "private daemon response" not in str(exc.value)
 
 
-def test_malformed_native_response_is_sanitized(monkeypatch):
+def test_malformed_native_response_is_sanitized(monkeypatch: pytest.MonkeyPatch) -> None:
     _owners(monkeypatch, provider={"error": "private validation detail"})
     with pytest.raises(BuilderExecutionPolicyError) as exc:
         metadata.resolve_installed_json_parse(tenant_id=TENANT)
     assert "private validation detail" not in str(exc.value)
 
 
-def test_persisted_binding_drift_refuses(monkeypatch):
+def test_persisted_binding_drift_refuses(monkeypatch: pytest.MonkeyPatch) -> None:
     _owners(monkeypatch)
     actual = metadata.resolve_installed_json_parse(tenant_id=TENANT)
     expected = _expected(actual).model_copy(update={"installation_id": "other"})
@@ -198,7 +208,7 @@ def test_persisted_binding_drift_refuses(monkeypatch):
         metadata.require_same_json_installation(expected, actual)
 
 
-def test_qualified_serverless_installation_persists_its_own_binding(monkeypatch):
+def test_qualified_serverless_installation_persists_its_own_binding(monkeypatch: pytest.MonkeyPatch) -> None:
     _owners(monkeypatch, installations=[_installation(runtime_type="serverless")])
 
     actual = metadata.resolve_installed_json_parse(tenant_id=TENANT)
@@ -212,7 +222,7 @@ def test_qualified_serverless_installation_persists_its_own_binding(monkeypatch)
     metadata.require_same_json_installation(expected, actual)
 
 
-def test_qualified_serverless_binding_preserves_runtime_and_digest(monkeypatch):
+def test_qualified_serverless_binding_preserves_runtime_and_digest(monkeypatch: pytest.MonkeyPatch) -> None:
     _owners(monkeypatch)
     local = metadata.resolve_installed_json_parse(tenant_id=TENANT)
     serverless = replace(
@@ -232,7 +242,7 @@ def test_qualified_serverless_binding_preserves_runtime_and_digest(monkeypatch):
     "changed",
     ["runtime_type", "qualification_digest"],
 )
-def test_cross_variant_expected_binding_drift_refuses(monkeypatch, changed):
+def test_cross_variant_expected_binding_drift_refuses(monkeypatch: pytest.MonkeyPatch, changed: str) -> None:
     _owners(monkeypatch)
     local = metadata.resolve_installed_json_parse(tenant_id=TENANT)
     expected = _expected(local)

@@ -455,8 +455,8 @@ def apply_insert_between(
     Raises ``ValueError`` if no edge in ``graph["edges"]`` matches (the
     Slice 1 dangling-ref validation). Returns ``(new_graph, [new_node_id])``.
     """
-    old_source = edge.get("source")
-    old_target = edge.get("target")
+    old_source = edge["source"]
+    old_target = edge["target"]
     new_graph = copy.deepcopy(graph)
     edges = new_graph.get("edges", [])
     matched = next((e for e in edges if e.get("source") == old_source and e.get("target") == old_target), None)

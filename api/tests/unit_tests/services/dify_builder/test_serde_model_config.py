@@ -2,12 +2,12 @@ from core.dify_builder.models import DifyBuilderContext
 from services.dify_builder.serde import context_from_dict, context_to_dict
 
 
-def test_model_config_defaults_empty():
+def test_model_config_defaults_empty() -> None:
     fc = DifyBuilderContext()
     assert fc.model_config == {}
 
 
-def test_model_config_round_trips():
+def test_model_config_round_trips() -> None:
     model_config = {
         "provider": "openai",
         "name": "gpt-4o",
@@ -19,7 +19,7 @@ def test_model_config_round_trips():
     assert restored.model_config == model_config
 
 
-def test_model_config_absent_in_old_row_defaults_empty():
+def test_model_config_absent_in_old_row_defaults_empty() -> None:
     # An older persisted dict (pre-this-field) still deserializes.
     restored = context_from_dict({"goal_text": "x"})
     assert restored.model_config == {}

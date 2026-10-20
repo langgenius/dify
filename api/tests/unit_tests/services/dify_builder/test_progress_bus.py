@@ -3,7 +3,7 @@
 import json
 import threading
 from collections.abc import Iterator
-from typing import Self
+from typing import Self, override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -76,7 +76,8 @@ class _LazySubscriber:
 
 
 class _TerminalSubscription(_Subscription):
-    def receive(self, timeout: float | None = 0.1) -> bytes | None:  # noqa: ARG002
+    @override
+    def receive(self, timeout: float | None = 0.1) -> bytes | None:
         return b'{"kind":"command_finished","state":"success","command_id":""}'
 
 
@@ -86,6 +87,7 @@ class _AckControlledSubscription(_Subscription):
         self.waiting_for_ack = threading.Event()
         self.release_ack = threading.Event()
 
+    @override
     def __enter__(self) -> Self:
         self.order.append("activate")
         self.waiting_for_ack.set()

@@ -1,9 +1,14 @@
 """M1: user-facing agent prompts instruct the model to answer in the user's language."""
 
+from collections.abc import Callable, Iterator
+from types import ModuleType
+
+import pytest
+
 from services.dify_builder.agent import llm
 
 
-def test_language_instruction_constants():
+def test_language_instruction_constants() -> None:
     assert "same language" in llm.LANGUAGE_INSTRUCTION.lower()
     js = llm.json_language_instruction("root_cause")
     assert "root_cause" in js
@@ -11,11 +16,13 @@ def test_language_instruction_constants():
     assert js.startswith(" ")  # concatenable onto an existing prompt
 
 
-def _system_captured(monkeypatch, module, fn_name, call):  # noqa: ARG001
+def _system_captured(
+    monkeypatch: pytest.MonkeyPatch, _module: ModuleType, _fn_name: str, call: Callable[[], object]
+) -> str:
     """Call an agent fn with a fake model, capturing the `system` prompt passed to llm."""
-    captured = {}
+    captured: dict[str, str] = {}
 
-    def fake_invoke_json(model, *, system, user, model_parameters=None, stop=None, on_reasoning=None):  # noqa: ARG001
+    def fake_invoke_json(_model: object, *, system: str, **_kwargs: object) -> dict[str, object]:
         captured["system"] = system
         return {
             "fields": [],
@@ -29,19 +36,19 @@ def _system_captured(monkeypatch, module, fn_name, call):  # noqa: ARG001
             "target_node_ids": [],
         }
 
-    def fake_invoke_text(model, *, system, user, model_parameters=None, stop=None, on_reasoning=None):  # noqa: ARG001
+    def fake_invoke_text(_model: object, *, system: str, **_kwargs: object) -> str:
         captured["system"] = system
         return '{"plan": ["x"]}'
 
     def fake_invoke_text_stream(
-        model,  # noqa: ARG001
+        model: object,  # noqa: ARG001
         *,
-        system,
-        user,  # noqa: ARG001
-        model_parameters=None,  # noqa: ARG001
-        stop=None,  # noqa: ARG001
-        on_reasoning=None,  # noqa: ARG001
-    ):
+        system: str,
+        user: str,  # noqa: ARG001
+        model_parameters: object = None,  # noqa: ARG001
+        stop: object = None,  # noqa: ARG001
+        on_reasoning: object = None,  # noqa: ARG001
+    ) -> Iterator[str]:
         captured["system"] = system
         yield "hi"
 
@@ -52,7 +59,7 @@ def _system_captured(monkeypatch, module, fn_name, call):  # noqa: ARG001
     return captured["system"]
 
 
-def test_chat_prompt_has_language_instruction(monkeypatch):
+def test_chat_prompt_has_language_instruction(monkeypatch: pytest.MonkeyPatch) -> None:
     from core.dify_builder.models import DifyBuilderContext
     from core.dify_builder.state import PcState
     from services.dify_builder.agent import chat
@@ -68,7 +75,7 @@ def test_chat_prompt_has_language_instruction(monkeypatch):
     assert "same language" in system.lower()
 
 
-def test_plan_prompt_keeps_keys_english(monkeypatch):
+def test_plan_prompt_keeps_keys_english(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.agent import build
 
     system = _system_captured(

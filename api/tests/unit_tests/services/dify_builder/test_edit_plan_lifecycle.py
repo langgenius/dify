@@ -6,8 +6,9 @@ from unittest.mock import patch
 
 import pytest
 
+from core.dify_builder.contract import ProgressEventData
 from core.dify_builder.handlers_edit import edit_registry
-from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, MutationIntent, Session, Turn
+from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Graph, MutationIntent, Session, Turn
 from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState
@@ -21,14 +22,17 @@ from tests.unit_tests.core.dify_builder.fakes import FakeEditDifyPort, InMemoryR
     "entry_state",
     [PcState.EDIT_IMPACT_ANALYSIS, PcState.EDIT_PLAN_APPROVAL, PcState.EDIT_REVIEW, PcState.EDIT_REVERTED],
 )
-def test_failed_replanning_preserves_snapshot_and_recovers_on_retry(monkeypatch, entry_state):
+def test_failed_replanning_preserves_snapshot_and_recovers_on_retry(
+    monkeypatch: pytest.MonkeyPatch, entry_state: PcState
+) -> None:
     agent = PlaceholderAgent()
     new_plan = WorkflowPlan("New title", "New input", "New output", ["New step", "Return answer"])
     proposals = iter([None, new_plan])
     monkeypatch.setattr(agent, "propose_edit_plan", lambda *_: next(proposals))
     repo = InMemoryRepository()
     dify = FakeEditDifyPort()
-    progress, canvas = [], []
+    progress: list[ProgressEventData] = []
+    canvas: list[Graph] = []
     env = Env(
         agent=agent,
         repo=repo,

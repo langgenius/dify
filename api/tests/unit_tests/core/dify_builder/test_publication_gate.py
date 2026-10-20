@@ -1,4 +1,5 @@
 from datetime import datetime
+from types import ModuleType
 from unittest.mock import Mock
 
 import pytest
@@ -24,7 +25,9 @@ FLOWS = [
 ]
 
 
-def fixture(flow):
+def fixture(
+    flow: tuple[ModuleType, EntryMode, PcState, str, str],
+) -> tuple[ModuleType, FakeDifyPort, InMemoryRepository, Env, Session, Turn]:
     module, mode, state, kind, retest = flow
     dify = FakeDifyPort()
     repo = InMemoryRepository()
@@ -35,7 +38,9 @@ def fixture(flow):
 
 @pytest.mark.parametrize("flow", FLOWS)
 @pytest.mark.parametrize("status", ["failed", "running", "legacy", "foreign", "stale", "missing"])
-def test_publish_verification_direct_boundaries(flow, status):
+def test_publish_verification_direct_boundaries(
+    flow: tuple[ModuleType, EntryMode, PcState, str, str], status: str
+) -> None:
     module, dify, repo, env, s, turn = fixture(flow)
     run = Run(
         id="latest",
@@ -63,8 +68,9 @@ def test_publish_verification_direct_boundaries(flow, status):
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_verification_retest_route_clears_previous(flow):
+def test_verification_retest_route_clears_previous(flow: tuple[ModuleType, EntryMode, PcState, str, str]) -> None:
     module, dify, repo, env, s, turn = fixture(flow)
+    assert turn.action is not None
     turn.action.kind = flow[4]
     fc = DifyBuilderContext(verify_run_id="old")
     decision = getattr(module, "handle_review", None) or module.handle_await_decision
@@ -74,7 +80,9 @@ def test_verification_retest_route_clears_previous(flow):
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_verification_latest_attempt_and_truthful_outputs(flow):
+def test_verification_latest_attempt_and_truthful_outputs(
+    flow: tuple[ModuleType, EntryMode, PcState, str, str],
+) -> None:
     module, dify, repo, env, s, turn = fixture(flow)
     evidence = RunVerification(
         execution_evidence=successful_verification(dify).execution_evidence,
@@ -105,7 +113,7 @@ def test_verification_latest_attempt_and_truthful_outputs(flow):
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_publish_verification_positive_and_final_race(flow):
+def test_publish_verification_positive_and_final_race(flow: tuple[ModuleType, EntryMode, PcState, str, str]) -> None:
     from core.dify_builder.errors import HashMismatchError
     from tests.unit_tests.core.dify_builder.fakes import successful_verification
 
@@ -135,7 +143,9 @@ def test_publish_verification_positive_and_final_race(flow):
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_verification_unresolved_output_never_invents_repair(flow):
+def test_verification_unresolved_output_never_invents_repair(
+    flow: tuple[ModuleType, EntryMode, PcState, str, str],
+) -> None:
     from core.dify_builder.models import OutputFinding
 
     module, dify, repo, env, s, turn = fixture(flow)
@@ -172,7 +182,9 @@ def test_verification_unresolved_output_never_invents_repair(flow):
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_verification_failed_card_preserves_execution_outcome(flow):
+def test_verification_failed_card_preserves_execution_outcome(
+    flow: tuple[ModuleType, EntryMode, PcState, str, str],
+) -> None:
     module, dify, repo, env, s, turn = fixture(flow)
     dify.verify_pass = False
     handler = (
@@ -186,8 +198,11 @@ def test_verification_failed_card_preserves_execution_outcome(flow):
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_verification_new_attempt_entry_clears_old_evidence(flow):
+def test_verification_new_attempt_entry_clears_old_evidence(
+    flow: tuple[ModuleType, EntryMode, PcState, str, str],
+) -> None:
     module, _dify, _repo, env, session, turn = fixture(flow)
+    assert turn.action is not None
     turn.action.kind = flow[4]
     handler = (
         getattr(module, "handle_execution", None)
@@ -199,7 +214,9 @@ def test_verification_new_attempt_entry_clears_old_evidence(flow):
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_verification_unbound_success_reply_requires_retest(flow):
+def test_verification_unbound_success_reply_requires_retest(
+    flow: tuple[ModuleType, EntryMode, PcState, str, str],
+) -> None:
     module, dify, _repo, env, session, turn = fixture(flow)
     dify.run_draft = Mock(return_value=Run(status="succeeded"))
     handler = (
@@ -215,7 +232,9 @@ def test_verification_unbound_success_reply_requires_retest(flow):
 
 @pytest.mark.parametrize("flow", FLOWS)
 @pytest.mark.parametrize("failure_mode", ["native", "launch", "invalid_prepared_input"])
-def test_verification_input_failure_retains_latest_persisted_attempt(flow, failure_mode):
+def test_verification_input_failure_retains_latest_persisted_attempt(
+    flow: tuple[ModuleType, EntryMode, PcState, str, str], failure_mode: str
+) -> None:
     from core.dify_builder.models import TestInput
     from core.dify_builder.runner import Runner
     from tests.unit_tests.core.dify_builder.fakes import successful_verification
@@ -319,7 +338,9 @@ def test_verification_input_failure_retains_latest_persisted_attempt(flow, failu
 
 
 @pytest.mark.parametrize("flow", FLOWS)
-def test_verification_prelaunch_input_gate_still_clears_prior_evidence(flow):
+def test_verification_prelaunch_input_gate_still_clears_prior_evidence(
+    flow: tuple[ModuleType, EntryMode, PcState, str, str],
+) -> None:
     module, dify, _repo, env, session, turn = fixture(flow)
     dify.app_mode = "advanced-chat"
     dify.run_draft = Mock()

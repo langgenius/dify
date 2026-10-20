@@ -2,12 +2,13 @@
 
 import json
 from datetime import datetime
+from typing import override
 
 import pytest
 
 from core.dify_builder.handlers_build import build_registry
 from core.dify_builder.handlers_edit import edit_registry
-from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
+from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Graph, Session, Turn
 from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState
@@ -18,7 +19,7 @@ from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepos
 
 
 class PlanningAgent(PlaceholderAgent):
-    def __init__(self):
+    def __init__(self) -> None:
         self.plan = WorkflowPlan(
             title="为客服答复增加引用来源",
             input_summary="用户提交的问题和附件。",
@@ -26,13 +27,16 @@ class PlanningAgent(PlaceholderAgent):
             items=["Retrieve relevant knowledge", "Generate an answer with references"],
         )
 
-    def propose_plan_v1(self, _requirements, *, goal_text):  # noqa: ARG002
+    @override
+    def propose_plan_v1(self, requirements: dict[str, object], *, goal_text: str) -> WorkflowPlan:
         return self.plan
 
-    def propose_edit_plan(self, _edit_rules, _graph):
+    @override
+    def propose_edit_plan(self, edit_rules: dict[str, object], graph: Graph) -> WorkflowPlan:
         return self.plan
 
-    def bind_resources(self, plan_items, _resource_ids):
+    @override
+    def bind_resources(self, plan_items: list[str], resource_ids: list[str]) -> list[str]:
         return [f"{item} (using selected resources)" for item in plan_items]
 
 
@@ -46,7 +50,7 @@ class PlanningAgent(PlaceholderAgent):
         (EntryMode.EDIT, PcState.EDIT_REVERTED, "re_fix"),
     ],
 )
-def test_plan_overview_is_saved_with_its_final_steps(mode, state, action):
+def test_plan_overview_is_saved_with_its_final_steps(mode: EntryMode, state: PcState, action: str) -> None:
     agent = PlanningAgent()
     repo = InMemoryRepository()
     env = Env(agent=agent, repo=repo, dify=FakeDifyPort(), now=lambda: datetime.min)
@@ -100,17 +104,19 @@ def test_plan_overview_is_saved_with_its_final_steps(mode, state, action):
 
 @pytest.mark.parametrize("field", ["title", "input_summary", "output_summary"])
 @pytest.mark.parametrize("invalid", [None, "", "   ", 7])
-def test_incomplete_overview_retries_without_accepting_the_steps(monkeypatch, field, invalid):
-    response = {
+def test_incomplete_overview_retries_without_accepting_the_steps(
+    monkeypatch: pytest.MonkeyPatch, field: str, invalid: object
+) -> None:
+    response: dict[str, object] = {
         "title": "Summarize documents",
         "input_summary": "Source documents.",
         "output_summary": "A summary report.",
         "plan": ["Read documents", "Return the summary"],
     }
     response[field] = invalid
-    calls = []
+    calls: list[str] = []
 
-    def invoke_text(_model, *, system, user, on_reasoning=None):  # noqa: ARG001
+    def invoke_text(_model: object, *, system: str, user: str, on_reasoning: object = None) -> str:  # noqa: ARG001
         calls.append(user)
         return json.dumps(response)
 

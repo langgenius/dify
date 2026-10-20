@@ -28,6 +28,7 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
 import logging
 import re
 import uuid
+from contextlib import suppress
 from dataclasses import replace
 from typing import Any
 
@@ -1392,10 +1393,8 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
 def publication_for_context(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> PublicationDecision:
     run = None
     if fc.verify_run_id:
-        try:
+        with suppress(NotFoundError):
             run = env.repo.get_run(fc.verify_run_id)
-        except NotFoundError:
-            pass
     graph, revision = env.dify.read_graph(s.app_id, turn.actor)
     return publication_decision(
         run, session_id=s.id, current_revision=revision, current_graph_revision=env.dify.graph_revision(graph)

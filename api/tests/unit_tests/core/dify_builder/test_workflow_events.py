@@ -1,5 +1,6 @@
 """Full run events and the separate repair/retest command boundary."""
 
+from collections.abc import Callable
 from datetime import datetime
 from unittest.mock import MagicMock
 
@@ -19,7 +20,7 @@ from core.dify_builder.models import (
     TestInput,
     Turn,
 )
-from core.dify_builder.runner import Env, Runner
+from core.dify_builder.runner import Env, Handler, Runner
 from core.dify_builder.state import PcState
 from tests.unit_tests.core.dify_builder.fakes import (
     FakeDifyPort,
@@ -38,7 +39,7 @@ from tests.unit_tests.core.dify_builder.fakes import (
         (handle_verify, PcState.FIX_VERIFY, EntryMode.FIX),
     ],
 )
-def test_all_test_flows_forward_native_events(handler, state, mode):
+def test_all_test_flows_forward_native_events(handler: Handler, state: PcState, mode: EntryMode) -> None:
     port = FakeDifyPort()
     port.workflow_events = [
         {"event": "workflow_started", "workflow_run_id": "run-1", "data": {"inputs": {"query": "hello"}}},
@@ -93,8 +94,13 @@ def test_all_test_flows_forward_native_events(handler, state, mode):
     ],
 )
 def test_structural_repair_is_committed_before_a_separate_retest(
-    registry, mode, repair_state, ready_state, test_action, review_state
-):
+    registry: Callable[[], dict[PcState, Handler]],
+    mode: EntryMode,
+    repair_state: PcState,
+    ready_state: PcState,
+    test_action: str,
+    review_state: PcState,
+) -> None:
     port = FakeEditDifyPort()
     port.run_draft = MagicMock(wraps=port.run_draft)
     repo = InMemoryRepository()
@@ -130,7 +136,7 @@ def test_structural_repair_is_committed_before_a_separate_retest(
     port.run_draft.assert_called_once()
 
 
-def test_edit_unknown_result_does_not_stage_a_failure_or_repair():
+def test_edit_unknown_result_does_not_stage_a_failure_or_repair() -> None:
     port = FakeEditDifyPort()
     port.run_draft = MagicMock(return_value=Run(status="running", dify_run_id="run-1"))
     env = Env(dify=port, agent=StubAgent(), repo=InMemoryRepository(), now=lambda: datetime.min)
@@ -143,6 +149,8 @@ def test_edit_unknown_result_does_not_stage_a_failure_or_repair():
     )
 
     assert result.next == PcState.EDIT_AWAIT_REPAIR
+    assert result.run is not None
     assert result.run.status == "running"
+    assert result.context is not None
     assert not result.context.staged_repair
     assert not any(item.kind in {"error", "change_set"} for item in result.items)

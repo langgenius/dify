@@ -1,14 +1,10 @@
-import type {
-  ModelType,
-  ProviderWithModelsResponse,
-} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   ConfigurationMethodEnum,
   Credential,
   CustomConfigurationModelFixedFields,
   CustomModel,
   DefaultModel,
-  DefaultModelResponse,
   ModelModalModeEnum,
   ModelProvider,
 } from './declarations'
@@ -27,59 +23,6 @@ import { consoleQuery } from '@/service/console'
 import { useExpandModelProviderList } from './atoms'
 import { CustomConfigurationStatusEnum, ModelStatusEnum, ModelTypeEnum } from './declarations'
 import { modelProviderDetailsQueryOptions } from './utils'
-
-type UseDefaultModelAndModelList = (
-  defaultModel: DefaultModelResponse | undefined,
-  modelList: ProviderWithModelsResponse[],
-) => [DefaultModel | undefined, (model: DefaultModel | undefined) => void, () => void]
-export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
-  defaultModel,
-  modelList,
-) => {
-  const currentDefaultModel = useMemo(() => {
-    const currentProvider = modelList.find(
-      (provider) => provider.provider === defaultModel?.provider.provider,
-    )
-    const currentModel = currentProvider?.models.find(
-      (model) => model.model === defaultModel?.model,
-    )
-    const currentDefaultModel = currentProvider &&
-      currentModel && {
-        model: currentModel.model,
-        provider: currentProvider.provider,
-      }
-
-    return (
-      currentDefaultModel ??
-      (defaultModel
-        ? { model: defaultModel.model, provider: defaultModel.provider.provider }
-        : undefined)
-    )
-  }, [defaultModel, modelList])
-  const currentDefaultModelKey = currentDefaultModel
-    ? `${currentDefaultModel.provider}:${currentDefaultModel.model}`
-    : ''
-  const [defaultModelState, setDefaultModelState] = useState<DefaultModel | undefined>(
-    currentDefaultModel,
-  )
-  const [defaultModelSourceKey, setDefaultModelSourceKey] = useState(currentDefaultModelKey)
-  const selectedDefaultModel =
-    defaultModelSourceKey === currentDefaultModelKey ? defaultModelState : currentDefaultModel
-
-  const handleDefaultModelChange = useCallback(
-    (model: DefaultModel | undefined) => {
-      setDefaultModelSourceKey(currentDefaultModelKey)
-      setDefaultModelState(model)
-    },
-    [currentDefaultModelKey],
-  )
-
-  return [
-    selectedDefaultModel,
-    handleDefaultModelChange,
-    () => handleDefaultModelChange(currentDefaultModel),
-  ]
-}
 
 export const useLanguage = () => {
   const locale = useLocale()

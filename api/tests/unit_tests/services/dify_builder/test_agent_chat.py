@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+
 import pytest
 
 from core.dify_builder.models import ConversationItem, DifyBuilderContext
@@ -5,7 +7,7 @@ from core.dify_builder.state import PcState
 from services.dify_builder.agent import chat
 
 
-def test_respond_streams_model_deltas_and_returns_the_complete_reply(monkeypatch):
+def test_respond_streams_model_deltas_and_returns_the_complete_reply(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         chat.llm,
         "invoke_text_stream",
@@ -28,7 +30,7 @@ def test_respond_streams_model_deltas_and_returns_the_complete_reply(monkeypatch
     assert deltas == ["First ", "second"]
 
 
-def test_respond_streams_the_fallback_when_no_model_is_available():
+def test_respond_streams_the_fallback_when_no_model_is_available() -> None:
     deltas: list[str] = []
 
     reply = chat.respond(
@@ -45,8 +47,8 @@ def test_respond_streams_the_fallback_when_no_model_is_available():
     assert deltas == [reply]
 
 
-def test_respond_does_not_replace_an_already_streamed_partial_reply(monkeypatch):
-    def partial_stream(*_args, **_kwargs):
+def test_respond_does_not_replace_an_already_streamed_partial_reply(monkeypatch: pytest.MonkeyPatch) -> None:
+    def partial_stream(*_args: object, **_kwargs: object) -> Iterator[str]:
         yield "Partial"
         raise RuntimeError("stream failed")
 
@@ -68,10 +70,10 @@ def test_respond_does_not_replace_an_already_streamed_partial_reply(monkeypatch)
     assert deltas == ["Partial"]
 
 
-def test_respond_keeps_dynamic_history_and_ignores_legacy_notices(monkeypatch):
+def test_respond_keeps_dynamic_history_and_ignores_legacy_notices(monkeypatch: pytest.MonkeyPatch) -> None:
     prompts: list[str] = []
 
-    def stream(_model, *, user, **_kwargs):
+    def stream(_model: object, *, user: str, **_kwargs: object) -> Iterator[str]:
         prompts.append(user)
         return iter(["动态 ", "response"])
 

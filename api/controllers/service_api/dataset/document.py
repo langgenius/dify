@@ -463,7 +463,7 @@ def _create_document_by_text(session: Session, tenant_id: str, dataset_id: UUID)
             session=session,
         )
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
+        raise ProviderNotInitializeError(ex.description) from ex
     document = documents[0]
 
     return document, batch
@@ -527,7 +527,7 @@ def _update_document_by_text(
             session=session,
         )
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
+        raise ProviderNotInitializeError(ex.description) from ex
     document = documents[0]
 
     return document, batch
@@ -830,7 +830,7 @@ class DocumentAddByFileApi(DatasetApiResource):
                 default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
-            raise FileTooLargeError(file_too_large_error.description)
+            raise FileTooLargeError(file_too_large_error.description) from file_too_large_error
         data_source = {
             "type": "upload_file",
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
@@ -856,7 +856,7 @@ class DocumentAddByFileApi(DatasetApiResource):
                 session=session,
             )
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
+            raise ProviderNotInitializeError(ex.description) from ex
         document = documents[0]
         return _document_and_batch_response(document, batch, session=session), 200
 
@@ -910,9 +910,9 @@ def _update_document_by_file(
                 default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
-            raise FileTooLargeError(file_too_large_error.description)
-        except services.errors.file.UnsupportedFileTypeError:
-            raise UnsupportedFileTypeError()
+            raise FileTooLargeError(file_too_large_error.description) from file_too_large_error
+        except services.errors.file.UnsupportedFileTypeError as caught_error:
+            raise UnsupportedFileTypeError() from caught_error
         data_source = {
             "type": "upload_file",
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
@@ -937,7 +937,7 @@ def _update_document_by_file(
             session=session,
         )
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
+        raise ProviderNotInitializeError(ex.description) from ex
     document = documents[0]
     return document, document.batch
 

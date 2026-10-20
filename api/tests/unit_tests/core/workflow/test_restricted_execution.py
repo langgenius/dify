@@ -1,18 +1,24 @@
 """Capability admission ordering and the complete native HTTP protocol boundary."""
 
+from __future__ import annotations
+
 import json
 import math
+from collections.abc import Callable
 from copy import deepcopy
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TypedDict, cast
 from unittest.mock import MagicMock
 
 import pytest
 
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError, admitted_node_bindings
+from core.dify_builder.execution_policy import (
+    BuilderExecutionPolicyError,
+    admitted_node_bindings,
+)
 from graphon.http import HttpClientProtocol
 from graphon.nodes.http_request.node import HttpRequestNode
 from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph, snapshot
 from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native import (
     forbid_live as forbid_live,  # noqa: PLC0414
@@ -21,17 +27,8 @@ from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native 
     prepare_native,
     receipts,
 )
+from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
-
-if TYPE_CHECKING:
-    from sqlalchemy.orm import Session, sessionmaker
-
-    from core.dify_builder.models import Actor
-    from models.model import App
-    from models.workflow import Workflow
-
-    # Shape yielded by the shared ``owned`` fixture.
-    OwnedFixture = tuple[sessionmaker[Session], Actor, App, Workflow, str, str]
 
 
 class RawNode(TypedDict):
@@ -45,11 +42,11 @@ class RawGraph(TypedDict):
 
 
 @pytest.mark.parametrize("method", ["get", "head", "post", "put", "delete", "patch"])
-def test_all_protocol_methods_serve_text_and_append_distinct_attempts(owned, method):
+def test_all_protocol_methods_serve_text_and_append_distinct_attempts(owned: Owned, method: str) -> None:
     from core.workflow.restricted_execution import PolicyTransportError, RestrictedHttpClient
 
     factory, context, recorder = prepare_native(owned, "http_text.yml", samples=(fixture(body="你好"),))
-    node = factory.create_node(factory.graph_init_params.graph_config["nodes"][1])
+    node = factory.create_node(factory.init_params.graph_config["nodes"][1])
     assert isinstance(node, HttpRequestNode)
     client = node.http_client
     assert isinstance(client, RestrictedHttpClient)
@@ -101,15 +98,15 @@ def test_all_protocol_methods_serve_text_and_append_distinct_attempts(owned, met
         {"unknown": None},
     ],
 )
-def test_runtime_kwargs_deny_before_fixture_return_and_append_receipt(owned, kwargs):
+def test_runtime_kwargs_deny_before_fixture_return_and_append_receipt(owned: Owned, kwargs: dict[str, object]) -> None:
     from core.workflow.restricted_execution import PolicyTransportError
 
     factory, _, _ = prepare_native(owned, "http_text.yml", samples=(fixture(),))
-    node = factory.create_node(factory.graph_init_params.graph_config["nodes"][1])
+    node = factory.create_node(factory.init_params.graph_config["nodes"][1])
     assert isinstance(node, HttpRequestNode)
     client = node.http_client
     with pytest.raises(PolicyTransportError, match="execution_policy: http_request_arguments"):
-        client.get("https://sample.invalid/private", **kwargs)
+        cast(Callable[..., object], client.get)("https://sample.invalid/private", **kwargs)
     assert receipts(owned)[0]["kind"] == "effect_blocked"
     assert "private" not in json.dumps(receipts(owned))
 
@@ -117,14 +114,14 @@ def test_runtime_kwargs_deny_before_fixture_return_and_append_receipt(owned, kwa
 @pytest.mark.parametrize(
     "entry", ["download", "build_from_mapping", "create_file_by_raw", "get_file_generator_by_tool_file_id", "factory"]
 )
-def test_file_collaborators_deny_and_record(owned, entry):
+def test_file_collaborators_deny_and_record(owned: Owned, entry: str) -> None:
     from core.workflow.restricted_execution import PolicyTransportError
 
     factory, _, _ = prepare_native(owned, "http_text.yml", samples=(fixture(),))
-    node = factory.create_node(factory.graph_init_params.graph_config["nodes"][1])
+    node = factory.create_node(factory.init_params.graph_config["nodes"][1])
     assert isinstance(node, HttpRequestNode)
 
-    def invoke():
+    def invoke() -> None:
         if entry == "download":
             node._file_manager.download(MagicMock())
         elif entry == "build_from_mapping":
@@ -142,7 +139,9 @@ def test_file_collaborators_deny_and_record(owned, entry):
 
 
 @pytest.mark.parametrize("node_type", ["llm", "tool", "agent", "code", "template-transform", "iteration", "new-effect"])
-def test_forbidden_raw_type_refused_before_concrete_validation_or_model_resolution(owned, monkeypatch, node_type):
+def test_forbidden_raw_type_refused_before_concrete_validation_or_model_resolution(
+    owned: Owned, monkeypatch: pytest.MonkeyPatch, node_type: str
+) -> None:
 
     factory, _, _ = prepare_native(owned, "scalar.yml", inputs={"text": "x"})
     forbidden = MagicMock(side_effect=AssertionError("effectful class validation reached"))
@@ -154,7 +153,7 @@ def test_forbidden_raw_type_refused_before_concrete_validation_or_model_resoluti
         )
         monkeypatch.setattr(forbidden_class, "validate_node_data", forbidden)
         monkeypatch.setattr(forbidden_class, "__init__", forbidden)
-    node = deepcopy(factory.graph_init_params.graph_config["nodes"][0])
+    node = deepcopy(factory.init_params.graph_config["nodes"][0])
     node["data"]["type"] = node_type
     with pytest.raises(BuilderExecutionPolicyError):
         factory.create_node(node)
@@ -163,12 +162,14 @@ def test_forbidden_raw_type_refused_before_concrete_validation_or_model_resoluti
 
 @pytest.mark.parametrize("entry", ["create", "graph_init", "constructor"])
 @pytest.mark.parametrize("mutation", ["class", "unknown_version", "latest", "config"])
-def test_raw_identity_and_config_gate_runs_before_concrete_validation(owned, monkeypatch, mutation, entry):
+def test_raw_identity_and_config_gate_runs_before_concrete_validation(
+    owned: Owned, monkeypatch: pytest.MonkeyPatch, mutation: str, entry: str
+) -> None:
     from core.workflow.node_factory import DifyNodeFactory
     from graphon.graph import Graph
 
     factory, _, _ = prepare_native(owned, "scalar.yml", inputs={"text": "x"})
-    node = deepcopy(factory.graph_init_params.graph_config["nodes"][0])
+    node = deepcopy(factory.init_params.graph_config["nodes"][0])
     forbidden = MagicMock(side_effect=AssertionError("concrete validation reached"))
     monkeypatch.setattr(StartNode, "validate_node_data", forbidden)
     if mutation == "class":
@@ -187,34 +188,35 @@ def test_raw_identity_and_config_gate_runs_before_concrete_validation(owned, mon
         node["data"]["new_extra"] = "changed"
     else:
         node["data"]["version"] = "latest" if mutation == "latest" else "999"
-    config = deepcopy(factory.graph_init_params.graph_config)
+    config = deepcopy(factory.init_params.graph_config)
     config["nodes"][0] = node
 
-    def invoke():
+    def invoke() -> None:
         if entry == "create":
-            return factory.create_node(node)
-        if entry == "graph_init":
-            return Graph.init(graph_config=config, node_factory=factory, root_node_id="start")
-        return DifyNodeFactory(
-            factory.graph_init_params.model_copy(update={"graph_config": config}),
-            factory.graph_runtime_state,
-            execution_recorder=factory.execution_recorder,
-        )
+            factory.create_node(node)
+        elif entry == "graph_init":
+            Graph.init(graph_config=config, node_factory=factory, root_node_id="start")
+        else:
+            DifyNodeFactory(
+                factory.init_params.model_copy(update={"graph_config": config}),
+                factory.runtime_state,
+                execution_recorder=factory.execution_recorder,
+            )
 
     with pytest.raises(BuilderExecutionPolicyError):
         invoke()
     forbidden.assert_not_called()
 
 
-def test_with_runtime_state_keeps_exact_policy_recorder_and_private_key(owned):
+def test_with_runtime_state_keeps_exact_policy_recorder_and_private_key(owned: Owned) -> None:
     factory, context, recorder = prepare_native(owned, "http_text.yml", samples=(fixture(),))
-    state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+    state = RuntimeState(workflow_id=context.workflow_id, variable_pool=VariablePool(), start_at=0)
     clone = factory.with_runtime_state(state)
     assert clone.execution_recorder is recorder
     assert clone._dify_context.builder_execution is context
     assert clone._dify_context.builder_execution.http_fixtures is context.http_fixtures
     assert clone._request_hmac_key is factory._request_hmac_key
-    node = clone.create_node(clone.graph_init_params.graph_config["nodes"][1])
+    node = clone.create_node(clone.init_params.graph_config["nodes"][1])
     assert isinstance(node, HttpRequestNode)
     node.http_client.get("https://sample.invalid/clone")
     assert len(receipts(owned)) == 1
@@ -233,14 +235,14 @@ def test_with_runtime_state_keeps_exact_policy_recorder_and_private_key(owned):
         {"type": "string", "key": "body", "value": "x", "extra": "x"},
     ],
 )
-def test_http_defaults_stay_bounded_scalar_and_known_keys(bad):
+def test_http_defaults_stay_bounded_scalar_and_known_keys(bad: dict[str, object]) -> None:
     value = cast(RawGraph, graph(http=True))
     value["nodes"][1]["data"]["default_value"] = [bad]
     with pytest.raises(BuilderExecutionPolicyError):
         admitted_node_bindings(snapshot(value))
 
 
-def test_fixed_utf8_header_and_scalar_defaults_are_admitted():
+def test_fixed_utf8_header_and_scalar_defaults_are_admitted() -> None:
     value = cast(RawGraph, graph(http=True))
     value["nodes"][1]["data"].update(
         headers="Content-Type: application/json; charset=utf-8",
@@ -254,7 +256,7 @@ def test_fixed_utf8_header_and_scalar_defaults_are_admitted():
 
 
 @pytest.mark.parametrize("name", ["code_increment.yml", "template_greeting.yml"])
-def test_reserved_sandbox_fixtures_are_unavailable_before_sandbox_owner(owned, name):
+def test_reserved_sandbox_fixtures_are_unavailable_before_sandbox_owner(owned: Owned, name: str) -> None:
     # Keep both negative identities: Code still needs the sandbox owner; an
     # unsafe Template remains unavailable under the bounded native adapter.
     if name == "template_greeting.yml":
@@ -273,7 +275,7 @@ def test_reserved_sandbox_fixtures_are_unavailable_before_sandbox_owner(owned, n
 
 
 @pytest.mark.parametrize("change", ["fixture_digest", "fixture_node", "fixture_body", "context_digest"])
-def test_wrong_fixture_or_context_cannot_construct_native_adapter(owned, change):
+def test_wrong_fixture_or_context_cannot_construct_native_adapter(owned: Owned, change: str) -> None:
     from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
     from core.dify_builder.execution_policy import context_digest
     from core.workflow.node_factory import DifyNodeFactory
@@ -290,16 +292,16 @@ def test_wrong_fixture_or_context_cannot_construct_native_adapter(owned, change)
     if change != "context_digest":
         altered = altered.model_copy(update={"context_digest": context_digest(altered)})
     dify_context = factory._dify_context.model_copy(update={"builder_execution": altered})
-    params = factory.graph_init_params.model_copy(update={"run_context": {DIFY_RUN_CONTEXT_KEY: dify_context}})
+    params = factory.init_params.model_copy(update={"run_context": {DIFY_RUN_CONTEXT_KEY: dify_context}})
     with pytest.raises(BuilderExecutionPolicyError):
-        DifyNodeFactory(params, factory.graph_runtime_state, execution_recorder=recorder)
+        DifyNodeFactory(params, factory.runtime_state, execution_recorder=recorder)
     assert receipts(owned) == []
 
 
 @pytest.mark.parametrize(
     "raw", [{"body": b"file"}, {"content_type": "application/octet-stream"}, {"files": []}, {"node_version": "latest"}]
 )
-def test_response_file_or_unknown_fixture_payload_is_rejected(raw):
+def test_response_file_or_unknown_fixture_payload_is_rejected(raw: dict[str, object]) -> None:
     from pydantic import ValidationError
 
     with pytest.raises(ValidationError):
@@ -309,7 +311,7 @@ def test_response_file_or_unknown_fixture_payload_is_rejected(raw):
 @pytest.mark.parametrize(
     "mutation", ["defaults_alias", "duplicate_defaults", "header_variable", "header_charset", "hidden_auth", "options"]
 )
-def test_unreviewed_raw_http_shapes_remain_unavailable(mutation):
+def test_unreviewed_raw_http_shapes_remain_unavailable(mutation: str) -> None:
     value = cast(RawGraph, graph(http=True))
     data = value["nodes"][1]["data"]
     if mutation == "defaults_alias":
@@ -328,7 +330,9 @@ def test_unreviewed_raw_http_shapes_remain_unavailable(mutation):
         admitted_node_bindings(snapshot(value))
 
 
-def test_actual_resolved_class_is_guarded_before_its_validator_when_registry_changes(owned, monkeypatch):
+def test_actual_resolved_class_is_guarded_before_its_validator_when_registry_changes(
+    owned: Owned, monkeypatch: pytest.MonkeyPatch
+) -> None:
     factory, _, _ = prepare_native(owned, "scalar.yml", inputs={"text": "x"})
     forbidden = MagicMock(side_effect=AssertionError("unreviewed concrete validator reached"))
 
@@ -344,16 +348,18 @@ def test_actual_resolved_class_is_guarded_before_its_validator_when_registry_cha
     classes = iter((StartNode, StartNode, ChangedStart))
     monkeypatch.setattr(factory, "_resolve_node_class", lambda **_: next(classes))
     with pytest.raises(BuilderExecutionPolicyError):
-        factory.create_node(factory.graph_init_params.graph_config["nodes"][0])
+        factory.create_node(factory.init_params.graph_config["nodes"][0])
     forbidden.assert_not_called()
 
 
 @pytest.mark.parametrize("change", ["binding", "implementation_version"])
-def test_typed_capability_recheck_requires_same_exact_binding_and_version(owned, monkeypatch, change):
+def test_typed_capability_recheck_requires_same_exact_binding_and_version(
+    owned: Owned, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
     from core.workflow.restricted_execution import validate_restricted_node
 
     factory, context, _ = prepare_native(owned, "scalar.yml", inputs={"text": "x"})
-    data = StartNode.validate_node_data(factory.graph_init_params.graph_config["nodes"][0]["data"])
+    data = StartNode.validate_node_data(factory.init_params.graph_config["nodes"][0]["data"])
     if change == "binding":
         binding = context.admitted_nodes[0].model_copy(update={"implementation": "unreviewed.StartNode"})
         context = context.model_copy(update={"admitted_nodes": (binding, *context.admitted_nodes[1:])})
@@ -364,7 +370,7 @@ def test_typed_capability_recheck_requires_same_exact_binding_and_version(owned,
 
 
 def test_default_restricted_branch_still_denies_tool_nodes_after_confirmed_branch(
-    owned: "OwnedFixture", monkeypatch: pytest.MonkeyPatch
+    owned: Owned, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The confirmed Tool branch never widens the default restricted factory."""
     from core.tools.tool_manager import ToolManager

@@ -171,7 +171,10 @@ def gmail_graph(credential_id: str) -> dict[str, object]:
             "data": {"type": "end", "title": "End", "outputs": [{"variable": "r", "value_selector": ["tool", "json"]}]},
         },
     ]
-    return {"nodes": nodes, "edges": [{"source": a["id"], "target": b["id"]} for a, b in zip(nodes, nodes[1:])]}
+    return {
+        "nodes": nodes,
+        "edges": [{"source": a["id"], "target": b["id"]} for a, b in zip(nodes, nodes[1:], strict=False)],
+    }
 
 
 class World:

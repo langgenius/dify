@@ -28,7 +28,7 @@ def workflow() -> Workflow:
 
 
 @pytest.fixture
-def setup(workflow: Workflow):
+def setup(workflow: Workflow) -> tuple[WorkflowDraftSyncService, Mock, Mock, Mock, MagicMock, ServerDraftChange]:
     repository = Mock(spec=WorkflowDraftSyncRepository)
     repository.announce.return_value = False
     repository.claim.return_value = True
@@ -56,7 +56,9 @@ def setup(workflow: Workflow):
     return service, repository, collaboration_repository, socketio, session, change
 
 
-def test_broadcasts_one_accepted_update_including_the_writer_and_replays_it_on_retry(setup):
+def test_broadcasts_one_accepted_update_including_the_writer_and_replays_it_on_retry(
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, MagicMock, ServerDraftChange],
+) -> None:
     service, repository, _collaboration_repository, socketio, session, change = setup
     first, status = service.sync("follower", session=session)
     assert status == 200
@@ -73,7 +75,9 @@ def test_broadcasts_one_accepted_update_including_the_writer_and_replays_it_on_r
     repository.accept.assert_called_once()
 
 
-def test_retries_another_ready_client_after_the_selected_writer_times_out(setup):
+def test_retries_another_ready_client_after_the_selected_writer_times_out(
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, MagicMock, ServerDraftChange],
+) -> None:
     service, _repository, _collaboration_repository, socketio, session, change = setup
     socketio.call.side_effect = [SocketIOTimeoutError(), {"revision": change.revision, "update": b"replacement"}]
 
@@ -85,7 +89,9 @@ def test_retries_another_ready_client_after_the_selected_writer_times_out(setup)
     socketio.emit.assert_called_once_with("server_draft_update", result, room="app-1")
 
 
-def test_drops_a_proposal_when_its_lease_or_draft_version_was_superseded(setup):
+def test_drops_a_proposal_when_its_lease_or_draft_version_was_superseded(
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, MagicMock, ServerDraftChange],
+) -> None:
     service, repository, _collaboration_repository, socketio, session, _change = setup
     repository.accept.return_value = False
 
@@ -97,7 +103,9 @@ def test_drops_a_proposal_when_its_lease_or_draft_version_was_superseded(setup):
     repository.release.assert_called_once()
 
 
-def test_skips_unready_browsers_to_reach_a_ready_writer(setup):
+def test_skips_unready_browsers_to_reach_a_ready_writer(
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, MagicMock, ServerDraftChange],
+) -> None:
     service, _repository, collaboration_repository, socketio, session, change = setup
     collaboration_repository.get_session_sids.return_value = ["leader", "reconnecting", "ready"]
     socketio.call.side_effect = [
@@ -113,7 +121,9 @@ def test_skips_unready_browsers_to_reach_a_ready_writer(setup):
     assert [call.kwargs["to"] for call in socketio.call.call_args_list] == ["leader", "reconnecting", "ready"]
 
 
-def test_does_not_choose_another_writer_while_a_request_is_in_flight(setup):
+def test_does_not_choose_another_writer_while_a_request_is_in_flight(
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, MagicMock, ServerDraftChange],
+) -> None:
     service, repository, _collaboration_repository, socketio, session, _change = setup
     repository.claim.return_value = False
 
@@ -123,7 +133,9 @@ def test_does_not_choose_another_writer_while_a_request_is_in_flight(setup):
     repository.accept.assert_not_called()
 
 
-def test_rejects_unjoined_clients_and_scopes_draft_reads_to_the_socket_tenant(setup):
+def test_rejects_unjoined_clients_and_scopes_draft_reads_to_the_socket_tenant(
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, MagicMock, ServerDraftChange],
+) -> None:
     service, _repository, collaboration_repository, socketio, session, _change = setup
     collaboration_repository.get_sid_mapping.return_value = None
     assert service.sync("unjoined", session=session)[1] == 401
@@ -138,8 +150,8 @@ def test_rejects_unjoined_clients_and_scopes_draft_reads_to_the_socket_tenant(se
     socketio.call.assert_not_called()
 
 
-def test_notification_carries_a_version_and_preserves_the_patch_baseline(workflow: Workflow):
-    before = {"nodes": [], "edges": []}
+def test_notification_carries_a_version_and_preserves_the_patch_baseline(workflow: Workflow) -> None:
+    before: dict[str, object] = {"nodes": [], "edges": []}
     with (
         config_overrides_context(ENABLE_COLLABORATION_MODE=True),
         patch("services.workflow_draft_sync_service.WorkflowCollaborationRepository") as collaborators,
@@ -158,7 +170,7 @@ def test_notification_carries_a_version_and_preserves_the_patch_baseline(workflo
     socketio.emit.assert_called_once_with("server_draft_changed", {"revision": change.revision}, room="app-1")
 
 
-def test_notification_failure_does_not_turn_a_committed_write_into_a_failure(workflow: Workflow):
+def test_notification_failure_does_not_turn_a_committed_write_into_a_failure(workflow: Workflow) -> None:
     with (
         config_overrides_context(ENABLE_COLLABORATION_MODE=True),
         patch("services.workflow_draft_sync_service.WorkflowCollaborationRepository") as collaborators,
@@ -171,7 +183,7 @@ def test_notification_failure_does_not_turn_a_committed_write_into_a_failure(wor
     logger.exception.assert_called_once()
 
 
-def test_disabled_collaboration_does_not_access_redis_or_emit_notifications(workflow: Workflow):
+def test_disabled_collaboration_does_not_access_redis_or_emit_notifications(workflow: Workflow) -> None:
     with (
         config_overrides_context(ENABLE_COLLABORATION_MODE=False),
         patch("services.workflow_draft_sync_service.WorkflowCollaborationRepository") as collaborators,

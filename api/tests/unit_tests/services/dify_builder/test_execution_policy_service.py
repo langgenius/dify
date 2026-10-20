@@ -1,32 +1,43 @@
 """Real SQLite owner/state controls. PostgreSQL locking is CI-owned."""
 
+from __future__ import annotations
+
 import hashlib
 import importlib
 import json
+from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
+from types import ModuleType
+from typing import Literal, NoReturn, Unpack, cast
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine, delete, select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Table, create_engine, delete, select
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
+from typing_extensions import TypedDict
 
 from core.dify_builder import execution_policy as domain
-from core.dify_builder.models import Actor
+from core.dify_builder.models import Actor, Graph
+from graphon.enums import WorkflowNodeExecutionStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import Base, TypeBase
 from models.dify_builder import DifyBuilderSession, DifyBuilderTestInput
-from models.model import App
+from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
+from services.dify_builder.execution_contracts import TrustedExecutionCompletion
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph, policy
+
+type Owned = tuple[sessionmaker[Session], Actor, App, Workflow, str, str]
+
 
 _PRE_EXTRACTION_GOLDENS = (
     Path(__file__).resolve().parents[3] / "fixtures/workflow/builder_restricted/pre_extraction_context_goldens.json"
 )
 
 
-def _stored_context_values():
+def _stored_context_values() -> dict[str, object]:
     return {
         "request_id": "request-1",
         "tenant_id": "tenant-1",
@@ -45,7 +56,7 @@ def _stored_context_values():
     }
 
 
-def _json_context():
+def _json_context() -> domain.JsonToolExecutionContext:
     p = policy()
     values = _stored_context_values()
     nodes = tuple(
@@ -89,7 +100,7 @@ def _json_context():
     return initial.model_copy(update={"context_digest": p.context_digest(initial)})
 
 
-def test_historical_restricted_context_tag_and_absence_decode_identically():
+def test_historical_restricted_context_tag_and_absence_decode_identically() -> None:
     p = policy()
     initial = p.BuilderExecutionContext.model_validate(
         {
@@ -104,13 +115,17 @@ def test_historical_restricted_context_tag_and_absence_decode_identically():
     untagged = p.validate_execution_context({key: value for key, value in stored.items() if key != "policy_version"})
     assert tagged.model_dump(mode="json") == untagged.model_dump(mode="json") == stored
     assert p.context_digest(tagged) == p.context_digest(untagged) == stored["context_digest"]
-    for forged in ({**stored, "qualified_tool": {}}, {**stored, "policy_version": "unknown-v9"}):
+    forged_contexts: tuple[dict[str, object], ...] = (
+        {**stored, "qualified_tool": {}},
+        {**stored, "policy_version": "unknown-v9"},
+    )
+    for forged in forged_contexts:
         with pytest.raises(p.BuilderExecutionPolicyError):
             p.validate_execution_context(forged)
 
 
 @pytest.mark.parametrize("case_name", ["restricted_tagged", "restricted_untagged", "confirmed_tagged"])
-def test_saved_pre_extraction_context_bytes_and_digest_are_unchanged(case_name):
+def test_saved_pre_extraction_context_bytes_and_digest_are_unchanged(case_name: str) -> None:
     p = policy()
     golden = json.loads(_PRE_EXTRACTION_GOLDENS.read_text())["cases"][case_name]
     decoded = p.validate_execution_context(golden["raw"])
@@ -123,10 +138,14 @@ def test_saved_pre_extraction_context_bytes_and_digest_are_unchanged(case_name):
 
 
 @pytest.mark.parametrize("case_name", ["restricted_tagged", "restricted_untagged", "confirmed_tagged"])
-def test_saved_pre_extraction_context_refuses_json_fields_and_unknown_tags(case_name):
+def test_saved_pre_extraction_context_refuses_json_fields_and_unknown_tags(case_name: str) -> None:
     p = policy()
     raw = json.loads(_PRE_EXTRACTION_GOLDENS.read_text())["cases"][case_name]["raw"]
-    for forged in ({**raw, "qualified_tool": {}}, {**raw, "policy_version": "builder-unknown-v9"}):
+    forged_contexts: tuple[dict[str, object], ...] = (
+        {**raw, "qualified_tool": {}},
+        {**raw, "policy_version": "builder-unknown-v9"},
+    )
+    for forged in forged_contexts:
         with pytest.raises(p.BuilderExecutionPolicyError, match="invalid_execution_context"):
             p.validate_execution_context(forged)
 
@@ -150,7 +169,7 @@ def test_saved_pre_extraction_context_refuses_json_fields_and_unknown_tags(case_
         "final_parameters_digest",
     ],
 )
-def test_json_context_digest_covers_qualified_binding(field):
+def test_json_context_digest_covers_qualified_binding(field: str) -> None:
     p = policy()
     context = _json_context()
     replacement = "a" * 64 if field == "checksum" or field.endswith("_digest") else "alternate"
@@ -167,7 +186,7 @@ def test_json_context_digest_covers_qualified_binding(field):
             p.validate_execution_context(raw)
 
 
-def test_json_context_decodes_through_completion_and_requires_explicit_tag():
+def test_json_context_decodes_through_completion_and_requires_explicit_tag() -> None:
     p = policy()
     context = _json_context()
     assert isinstance(p.validate_execution_context(context.model_dump(mode="json")), p.JsonToolExecutionContext)
@@ -188,12 +207,12 @@ def test_json_context_decodes_through_completion_and_requires_explicit_tag():
         p.validate_execution_context(without_tag)
 
 
-def service_module():
+def service_module() -> ModuleType:
     return importlib.import_module("services.dify_builder.execution_policy_service")
 
 
 @pytest.fixture
-def owned():
+def owned() -> Iterator[Owned]:
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)
     TypeBase.metadata.create_all(engine)
@@ -244,7 +263,7 @@ def owned():
     engine.dispose()
 
 
-def prepare_inputs(owned, **kwargs):
+def prepare_inputs(owned: Owned, **kwargs: object) -> domain.BuilderExecutionContext | domain.JsonToolExecutionContext:
     factory, actor, app, workflow, sid, tid = owned
     return (
         service_module()
@@ -262,7 +281,7 @@ def prepare_inputs(owned, **kwargs):
     )
 
 
-def test_owned_preparation_binds_both_inputs_and_does_not_infer_mock_mode(owned):
+def test_owned_preparation_binds_both_inputs_and_does_not_infer_mock_mode(owned: Owned) -> None:
     context = prepare_inputs(owned)
     assert context.mode == "restricted"
     assert context.submitted_inputs_digest != context.effective_inputs_digest
@@ -272,7 +291,7 @@ def test_owned_preparation_binds_both_inputs_and_does_not_infer_mock_mode(owned)
 @pytest.mark.parametrize(
     "owner", ["membership", "account", "workspace", "session_owner", "session_app", "session_tenant", "test_session"]
 )
-def test_full_owner_chain_required(owned, owner):
+def test_full_owner_chain_required(owned: Owned, owner: str) -> None:
     factory, actor, app, workflow, sid, tid = owned
     with factory.begin() as db:
         if owner == "membership":
@@ -282,7 +301,9 @@ def test_full_owner_chain_required(owned, owner):
         elif owner == "workspace":
             db.execute(delete(Tenant))
         elif owner == "test_session":
-            db.get(DifyBuilderTestInput, tid).session_id = str(uuid4())
+            stored_dify_builder_test_input = db.get(DifyBuilderTestInput, tid)
+            assert stored_dify_builder_test_input is not None
+            stored_dify_builder_test_input.session_id = str(uuid4())
         else:
             row = db.get(DifyBuilderSession, sid)
             setattr(
@@ -294,7 +315,7 @@ def test_full_owner_chain_required(owned, owner):
         prepare_inputs(owned)
 
 
-def test_owner_helpers_are_exported_once_for_shared_callers(owned, monkeypatch):
+def test_owner_helpers_are_exported_once_for_shared_callers(owned: Owned, monkeypatch: pytest.MonkeyPatch) -> None:
     from configs import dify_config
     from services.enterprise.rbac_service import RBACService
 
@@ -329,10 +350,12 @@ def test_owner_helpers_are_exported_once_for_shared_callers(owned, monkeypatch):
         ("_features", '{"unknown":{"enabled":true}}'),
     ],
 )
-def test_metadata_refusal_precedes_revision_access(owned, monkeypatch, field, value):
+def test_metadata_refusal_precedes_revision_access(
+    owned: Owned, monkeypatch: pytest.MonkeyPatch, field: str, value: str
+) -> None:
     module = service_module()
 
-    def forbidden(*_args):
+    def forbidden(*_args: object) -> NoReturn:
         raise AssertionError("revision accessed after metadata refusal")
 
     monkeypatch.setattr(module, "execution_revision", forbidden)
@@ -341,7 +364,7 @@ def test_metadata_refusal_precedes_revision_access(owned, monkeypatch, field, va
         prepare_inputs(owned)
 
 
-def test_launch_exactly_once_and_observation_binding(owned):
+def test_launch_exactly_once_and_observation_binding(owned: Owned) -> None:
     p = policy()
     service = service_module().BuilderExecutionPolicyService(owned[0])
     context = prepare_inputs(owned)
@@ -373,30 +396,40 @@ def test_launch_exactly_once_and_observation_binding(owned):
     assert not recorder.healthy
 
 
-def test_fixture_stamp_lineage_stale_reuse_and_malformed_persistence(owned):
+def test_fixture_stamp_lineage_stale_reuse_and_malformed_persistence(owned: Owned) -> None:
     factory, actor, app, workflow, sid, tid = owned
     module = service_module()
     service = module.BuilderExecutionPolicyService(factory)
     workflow.graph = json.dumps(graph(http=True))
     with factory.begin() as db:
-        db.get(Workflow, workflow.id).graph = workflow.graph
+        stored_workflow = db.get(Workflow, workflow.id)
+        assert stored_workflow is not None
+        stored_workflow.graph = workflow.graph
     revision = module.execution_revision(workflow)
     envelope = service.stamp_http_fixtures(app.id, actor, base_app_revision=revision, fixtures=(fixture(),))
     with factory.begin() as db:
-        db.get(DifyBuilderTestInput, tid).http_fixtures = envelope.model_dump(mode="json")
+        stored_dify_builder_test_input = db.get(DifyBuilderTestInput, tid)
+        assert stored_dify_builder_test_input is not None
+        stored_dify_builder_test_input.http_fixtures = envelope.model_dump(mode="json")
     assert prepare_inputs(owned).mode == "mock"
     with pytest.raises(policy().BuilderExecutionPolicyError, match="stale_http_fixtures"):
         service.stamp_http_fixtures(app.id, actor, base_app_revision="old", fixtures=(fixture(),))
     with factory.begin() as db:
-        db.get(DifyBuilderTestInput, tid).http_fixtures = {"schema_version": 1, "fixtures": []}
+        stored_dify_builder_test_input = db.get(DifyBuilderTestInput, tid)
+        assert stored_dify_builder_test_input is not None
+        stored_dify_builder_test_input.http_fixtures = {"schema_version": 1, "fixtures": []}
     with pytest.raises(policy().BuilderExecutionPolicyError, match="invalid_http_fixture_envelope"):
         prepare_inputs(owned)
     with factory.begin() as db:
-        db.get(DifyBuilderTestInput, tid).http_fixtures = envelope.model_dump(mode="json")
+        stored_dify_builder_test_input = db.get(DifyBuilderTestInput, tid)
+        assert stored_dify_builder_test_input is not None
+        stored_dify_builder_test_input.http_fixtures = envelope.model_dump(mode="json")
         changed = graph(http=True)
         changed["nodes"][1]["data"]["url"] = "https://changed.invalid"
         workflow.graph = json.dumps(changed)
-        db.get(Workflow, workflow.id).graph = workflow.graph
+        stored_workflow = db.get(Workflow, workflow.id)
+        assert stored_workflow is not None
+        stored_workflow.graph = workflow.graph
     with pytest.raises(policy().BuilderExecutionPolicyError, match="stale_http_fixtures"):
         prepare_inputs(owned)
 
@@ -417,7 +450,7 @@ def test_fixture_stamp_lineage_stale_reuse_and_malformed_persistence(owned):
         "fixtures",
     ],
 )
-def test_revalidation_refuses_changed_execution(owned, change, monkeypatch):
+def test_revalidation_refuses_changed_execution(owned: Owned, change: str, monkeypatch: pytest.MonkeyPatch) -> None:
     factory, actor, app, workflow, sid, tid = owned
     module = service_module()
     context = prepare_inputs(owned)
@@ -451,18 +484,24 @@ def test_revalidation_refuses_changed_execution(owned, change, monkeypatch):
         with factory.begin() as db:
             if change == "graph":
                 workflow.graph = json.dumps(graph(http=True))
-                db.get(Workflow, workflow.id).graph = workflow.graph
+                stored_workflow = db.get(Workflow, workflow.id)
+                assert stored_workflow is not None
+                stored_workflow.graph = workflow.graph
             elif change == "owner":
-                db.get(DifyBuilderSession, sid).owner_account_id = str(uuid4())
+                stored_dify_builder_session = db.get(DifyBuilderSession, sid)
+                assert stored_dify_builder_session is not None
+                stored_dify_builder_session.owner_account_id = str(uuid4())
             else:
-                db.get(DifyBuilderTestInput, tid).http_fixtures = {}
+                stored_dify_builder_test_input = db.get(DifyBuilderTestInput, tid)
+                assert stored_dify_builder_test_input is not None
+                stored_dify_builder_test_input.http_fixtures = {}
     if change in {"environment", "conversation", "tracing"}:
         monkeypatch.setattr(module, "execution_revision", lambda *_args: pytest.fail("refusal accessed revision"))
     with pytest.raises(policy().BuilderExecutionPolicyError):
         module.BuilderExecutionPolicyService(factory).revalidate(**kwargs)
 
 
-def test_sealed_append_and_tampered_full_context_refused(owned):
+def test_sealed_append_and_tampered_full_context_refused(owned: Owned) -> None:
     from models.dify_builder import DifyBuilderExecutionRequest
 
     p = policy()
@@ -474,7 +513,9 @@ def test_sealed_append_and_tampered_full_context_refused(owned):
         )
     service.claim_launch(context=context, native_run_id="run", task_id="task")
     with owned[0].begin() as db:
-        db.get(DifyBuilderExecutionRequest, context.request_id).state = "sealed"
+        stored_dify_builder_execution_request = db.get(DifyBuilderExecutionRequest, context.request_id)
+        assert stored_dify_builder_execution_request is not None
+        stored_dify_builder_execution_request.state = "sealed"
     observation = p.BuilderExecutionObservation(
         observation_id="receipt",
         invocation_id="call",
@@ -489,7 +530,9 @@ def test_sealed_append_and_tampered_full_context_refused(owned):
 
 
 @pytest.mark.parametrize("handler_name", ["build", "edit", "fix"])
-def test_all_handlers_persist_actual_server_stamp(owned, monkeypatch, handler_name):
+def test_all_handlers_persist_actual_server_stamp(
+    owned: Owned, monkeypatch: pytest.MonkeyPatch, handler_name: str
+) -> None:
     from datetime import datetime
 
     from core.dify_builder import handlers_build, handlers_edit, handlers_fix
@@ -503,7 +546,9 @@ def test_all_handlers_persist_actual_server_stamp(owned, monkeypatch, handler_na
     factory, actor, app, workflow, sid, tid = owned
     workflow.graph = json.dumps(graph(http=True))
     with factory.begin() as db:
-        db.get(Workflow, workflow.id).graph = workflow.graph
+        stored_workflow = db.get(Workflow, workflow.id)
+        assert stored_workflow is not None
+        stored_workflow.graph = workflow.graph
     revision = service_module().execution_revision(workflow)
     monkeypatch.setattr(dify_port, "_session_factory", lambda: factory)
     port = FakeDifyPort()
@@ -530,23 +575,29 @@ def test_all_handlers_persist_actual_server_stamp(owned, monkeypatch, handler_na
     )
     handler = {"build": handlers_build, "edit": handlers_edit, "fix": handlers_fix}[handler_name].handle_await_testdata
     result = handler(env, turn, session, DifyBuilderContext())
+    assert result.context is not None
     saved = repo.get_test_input(result.context.test_input_ref)
+    assert saved.http_fixtures is not None
     assert saved.http_fixtures.execution_revision == revision
     assert saved.http_fixtures.fixtures[0].status_code == 201
     assert saved.http_fixtures.fixtures[0].source == "user_sample"
 
 
 @pytest.mark.parametrize("field", ["app_id", "tenant_id"])
-def test_supplied_workflow_identity_cannot_disagree_with_owned_row(owned, field):
+def test_supplied_workflow_identity_cannot_disagree_with_owned_row(owned: Owned, field: str) -> None:
     setattr(owned[3], field, str(uuid4()))
     with pytest.raises(policy().BuilderExecutionPolicyError, match="execution_owner_mismatch"):
         prepare_inputs(owned)
 
 
-def test_raw_tracing_refusal_in_prepare_and_fixture_stamp_precedes_revision(owned, monkeypatch):
+def test_raw_tracing_refusal_in_prepare_and_fixture_stamp_precedes_revision(
+    owned: Owned, monkeypatch: pytest.MonkeyPatch
+) -> None:
     factory, actor, app, workflow, sid, tid = owned
     with factory.begin() as db:
-        db.get(App, app.id).tracing = '{"enabled":true,"tracing_provider":"secret"}'
+        stored_app = db.get(App, app.id)
+        assert stored_app is not None
+        stored_app.tracing = '{"enabled":true,"tracing_provider":"secret"}'
     module = service_module()
     monkeypatch.setattr(module, "execution_revision", lambda *_args: pytest.fail("tracing refusal accessed revision"))
     service = module.BuilderExecutionPolicyService(factory)
@@ -567,11 +618,15 @@ def test_raw_tracing_refusal_in_prepare_and_fixture_stamp_precedes_revision(owne
         {"nodes": [{"id": "start", "data": {"type": "start", "variables": [None]}}], "edges": []},
     ],
 )
-def test_malformed_snapshot_refusal_is_sanitized_before_revision(owned, monkeypatch, malformed_graph, boundary):
+def test_malformed_snapshot_refusal_is_sanitized_before_revision(
+    owned: Owned, monkeypatch: pytest.MonkeyPatch, malformed_graph: Graph, boundary: str
+) -> None:
     factory, actor, app, workflow, sid, tid = owned
     workflow.graph = json.dumps(malformed_graph)
     with factory.begin() as db:
-        db.get(Workflow, workflow.id).graph = workflow.graph
+        stored_workflow = db.get(Workflow, workflow.id)
+        assert stored_workflow is not None
+        stored_workflow.graph = workflow.graph
     module = service_module()
     monkeypatch.setattr(module, "execution_revision", lambda *_args: pytest.fail("malformed draft accessed revision"))
     service = module.BuilderExecutionPolicyService(factory)
@@ -585,7 +640,7 @@ def test_malformed_snapshot_refusal_is_sanitized_before_revision(owned, monkeypa
     assert "private" not in str(error.value)
 
 
-def test_append_verifies_fixture_node_implementation_profile_and_bound_limit(owned):
+def test_append_verifies_fixture_node_implementation_profile_and_bound_limit(owned: Owned) -> None:
     from models.dify_builder import DifyBuilderExecutionRequest
 
     factory, actor, app, workflow, sid, tid = owned
@@ -593,13 +648,18 @@ def test_append_verifies_fixture_node_implementation_profile_and_bound_limit(own
     workflow.graph = json.dumps(graph(http=True))
     service = module.BuilderExecutionPolicyService(factory)
     with factory.begin() as db:
-        db.get(Workflow, workflow.id).graph = workflow.graph
+        stored_workflow = db.get(Workflow, workflow.id)
+        assert stored_workflow is not None
+        stored_workflow.graph = workflow.graph
     envelope = service.stamp_http_fixtures(
         app.id, actor, base_app_revision=module.execution_revision(workflow), fixtures=(fixture(),)
     )
     with factory.begin() as db:
-        db.get(DifyBuilderTestInput, tid).http_fixtures = envelope.model_dump(mode="json")
+        stored_dify_builder_test_input = db.get(DifyBuilderTestInput, tid)
+        assert stored_dify_builder_test_input is not None
+        stored_dify_builder_test_input.http_fixtures = envelope.model_dump(mode="json")
     context = prepare_inputs(owned)
+    assert isinstance(context, domain.BuilderExecutionContext)
     service.claim_launch(context=context, native_run_id="run", task_id="task")
     observation = policy().BuilderExecutionObservation(
         observation_id="served",
@@ -631,9 +691,9 @@ def test_append_verifies_fixture_node_implementation_profile_and_bound_limit(own
             observation=observation.model_copy(update={"observation_id": "new"}),
         )
     with factory.begin() as db:
-        db.get(DifyBuilderExecutionRequest, context.request_id).observations = [
-            observation.model_dump(mode="json")
-        ] * 4096
+        stored_dify_builder_execution_request = db.get(DifyBuilderExecutionRequest, context.request_id)
+        assert stored_dify_builder_execution_request is not None
+        stored_dify_builder_execution_request.observations = [observation.model_dump(mode="json")] * 4096
     with pytest.raises(policy().BuilderExecutionPolicyError, match="observation_limit_exceeded"):
         service.record(
             context=context,
@@ -643,7 +703,9 @@ def test_append_verifies_fixture_node_implementation_profile_and_bound_limit(own
         )
 
 
-def test_native_rbac_requires_both_scenes_and_allows_delegated_membership(owned, monkeypatch):
+def test_native_rbac_requires_both_scenes_and_allows_delegated_membership(
+    owned: Owned, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from configs import dify_config
     from core.rbac import RBACPermission
     from services.enterprise.rbac_service import RBACService
@@ -654,7 +716,9 @@ def test_native_rbac_requires_both_scenes_and_allows_delegated_membership(owned,
     monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
     calls = []
 
-    def check(_tenant_id, _account_id, *, scene, resource_type, resource_id):
+    def check(
+        _tenant_id: str, _account_id: str, *, scene: RBACPermission, resource_type: str, resource_id: str
+    ) -> bool:
         assert resource_type == "app"
         assert resource_id == app.id
         calls.append(scene)
@@ -668,13 +732,15 @@ def test_native_rbac_requires_both_scenes_and_allows_delegated_membership(owned,
     assert prepare_inputs(owned).actor_id == actor.account_id
 
 
-def test_native_rbac_plain_app_maintainer_bypass_is_persisted(owned, monkeypatch):
+def test_native_rbac_plain_app_maintainer_bypass_is_persisted(owned: Owned, monkeypatch: pytest.MonkeyPatch) -> None:
     from configs import dify_config
     from services.enterprise.rbac_service import RBACService
 
     factory, actor, app, workflow, sid, tid = owned
     with factory.begin() as db:
-        db.get(App, app.id).maintainer = actor.account_id
+        stored_app = db.get(App, app.id)
+        assert stored_app is not None
+        stored_app.maintainer = actor.account_id
         db.query(TenantAccountJoin).update({"role": TenantAccountRole.NORMAL})
     monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
     monkeypatch.setattr(
@@ -684,16 +750,19 @@ def test_native_rbac_plain_app_maintainer_bypass_is_persisted(owned, monkeypatch
 
 
 @pytest.mark.parametrize("status", ["active", "archived"])
-def test_native_rbac_agent_app_binding_precedes_maintainer_bypass(owned, monkeypatch, status):
+def test_native_rbac_agent_app_binding_precedes_maintainer_bypass(
+    owned: Owned, monkeypatch: pytest.MonkeyPatch, status: str
+) -> None:
     from configs import dify_config
     from models.agent import Agent, AgentScope, AgentSource, AgentStatus
     from services.enterprise.rbac_service import RBACService
 
     factory, actor, app, workflow, sid, tid = owned
-    Agent.__table__.create(factory.kw["bind"], checkfirst=True)
+    cast(Table, Agent.__table__).create(factory.kw["bind"], checkfirst=True)
     with factory.begin() as db:
         row = db.get(App, app.id)
-        row.mode = "agent"
+        assert row is not None
+        row.mode = AppMode.AGENT
         row.maintainer = actor.account_id
         db.add(
             Agent(
@@ -715,7 +784,16 @@ def test_native_rbac_agent_app_binding_precedes_maintainer_bypass(owned, monkeyp
         )
 
 
-def completion(context, run_id=None, **changes):
+class CompletionChanges(TypedDict, total=False, closed=True):
+    refusal: domain.BuilderExecutionRefusal | None
+    preworker_refusal: bool
+
+
+def completion(
+    context: domain.BuilderExecutionContext | domain.JsonToolExecutionContext,
+    run_id: str | None = None,
+    **changes: Unpack[CompletionChanges],
+) -> TrustedExecutionCompletion:
     return domain.TrustedExecutionCompletion(
         context=context,
         native_run_id=run_id,
@@ -728,7 +806,9 @@ def completion(context, run_id=None, **changes):
     )
 
 
-def native_rows(owned, context, status="succeeded"):
+def native_rows(
+    owned: Owned, context: domain.BuilderExecutionContext | domain.JsonToolExecutionContext, status: str = "succeeded"
+) -> str:
     factory, actor, app, workflow, _, _ = owned
     run_id = str(uuid4())
     service_module().BuilderExecutionPolicyService(factory).claim_launch(
@@ -780,7 +860,7 @@ def native_rows(owned, context, status="succeeded"):
     return run_id
 
 
-def test_seal_requires_authoritative_native_rows_and_is_idempotent(owned):
+def test_seal_requires_authoritative_native_rows_and_is_idempotent(owned: Owned) -> None:
     context = prepare_inputs(owned)
     service = service_module().BuilderExecutionPolicyService(owned[0])
     run_id = native_rows(owned, context)
@@ -807,7 +887,9 @@ def test_seal_requires_authoritative_native_rows_and_is_idempotent(owned):
         (None, "", "execution_evidence_unknown"),
     ],
 )
-def test_native_predecessor_corroborates_chain_when_present(owned, start_predecessor, end_predecessor, outcome):
+def test_native_predecessor_corroborates_chain_when_present(
+    owned: Owned, start_predecessor: None | str, end_predecessor: None | str, outcome: str
+) -> None:
     context = prepare_inputs(owned)
     service = service_module().BuilderExecutionPolicyService(owned[0])
     run_id = native_rows(owned, context)
@@ -822,7 +904,7 @@ def test_native_predecessor_corroborates_chain_when_present(owned, start_predece
         assert [node.predecessor_node_id for node in nodes] == [start_predecessor, end_predecessor]
 
 
-def test_optional_predecessor_change_cannot_rewrite_sealed_evidence(owned):
+def test_optional_predecessor_change_cannot_rewrite_sealed_evidence(owned: Owned) -> None:
     from models.dify_builder import DifyBuilderExecutionRequest
 
     context = prepare_inputs(owned)
@@ -844,7 +926,7 @@ def test_optional_predecessor_change_cannot_rewrite_sealed_evidence(owned):
 
 
 @pytest.mark.parametrize("missing", ["worker", "response", "recorder", "node", "run"])
-def test_incomplete_proof_seals_unknown(owned, missing):
+def test_incomplete_proof_seals_unknown(owned: Owned, missing: str) -> None:
     context = prepare_inputs(owned)
     service = service_module().BuilderExecutionPolicyService(owned[0])
     run_id = native_rows(owned, context)
@@ -865,7 +947,7 @@ def test_incomplete_proof_seals_unknown(owned, missing):
 
 
 @pytest.mark.parametrize("status", ["failed", "stopped", "partial-succeeded"])
-def test_complete_non_success_native_status_remains_native_failed(owned, status):
+def test_complete_non_success_native_status_remains_native_failed(owned: Owned, status: str) -> None:
     context = prepare_inputs(owned)
     service = service_module().BuilderExecutionPolicyService(owned[0])
     run_id = native_rows(owned, context, status)
@@ -891,7 +973,13 @@ def test_complete_non_success_native_status_remains_native_failed(owned, status)
         (None, "succeeded", False, "execution_evidence_unknown"),
     ],
 )
-def test_http_receipts_and_unknown_first_precedence(owned, kind, status, missing, outcome):
+def test_http_receipts_and_unknown_first_precedence(
+    owned: Owned,
+    kind: Literal["effect_blocked", "fixture_served"] | None,
+    status: str,
+    missing: bool | str,
+    outcome: str,
+) -> None:
     from sqlalchemy import select
 
     from models.dify_builder import DifyBuilderTestInput
@@ -902,12 +990,17 @@ def test_http_receipts_and_unknown_first_precedence(owned, kind, status, missing
     factory, actor, app, workflow, sid, tid = owned
     workflow.graph = json.dumps(graph(http=True))
     with factory.begin() as db:
-        db.get(Workflow, workflow.id).graph = workflow.graph
+        stored_workflow = db.get(Workflow, workflow.id)
+        assert stored_workflow is not None
+        stored_workflow.graph = workflow.graph
         if kind == "fixture_served":
-            db.get(DifyBuilderTestInput, tid).http_fixtures = domain.HttpFixtureSetV1(
+            stored_dify_builder_test_input = db.get(DifyBuilderTestInput, tid)
+            assert stored_dify_builder_test_input is not None
+            stored_dify_builder_test_input.http_fixtures = domain.HttpFixtureSetV1(
                 execution_revision=execution_revision(workflow), fixtures=(fixture(),)
             ).model_dump(mode="json")
     context = prepare_inputs(owned)
+    assert isinstance(context, domain.BuilderExecutionContext)
     service = service_module().BuilderExecutionPolicyService(factory)
     run_id = native_rows(owned, context, status)
     if kind:
@@ -927,12 +1020,15 @@ def test_http_receipts_and_unknown_first_precedence(owned, kind, status, missing
             ),
         )
     with factory.begin() as db:
-        db.get(WorkflowRun, run_id).total_steps = 3
+        stored_workflow_run = db.get(WorkflowRun, run_id)
+        assert stored_workflow_run is not None
+        stored_workflow_run.total_steps = 3
         nodes = list(db.scalars(select(WorkflowNodeExecutionModel).order_by(WorkflowNodeExecutionModel.index)))
         if missing == "malformed_receipt":
             from models.dify_builder import DifyBuilderExecutionRequest
 
             row = db.get(DifyBuilderExecutionRequest, context.request_id)
+            assert row is not None
             row.observations = [*row.observations, {"broken": True}]
         elif missing:
             db.delete(nodes[0])
@@ -940,7 +1036,9 @@ def test_http_receipts_and_unknown_first_precedence(owned, kind, status, missing
     assert result.safety_outcome == outcome
     assert result.blocked_node_ids == (("http",) if kind == "effect_blocked" else ())
     with factory() as db:
-        assert db.get(WorkflowRun, run_id).status == status
+        stored_workflow_run = db.get(WorkflowRun, run_id)
+        assert stored_workflow_run is not None
+        assert stored_workflow_run.status == status
 
 
 @pytest.mark.parametrize(
@@ -962,7 +1060,7 @@ def test_http_receipts_and_unknown_first_precedence(owned, kind, status, missing
         "node_type",
     ],
 )
-def test_canonical_native_owner_and_proof_mutations(owned, mutation):
+def test_canonical_native_owner_and_proof_mutations(owned: Owned, mutation: str) -> None:
     from sqlalchemy import select
 
     context = prepare_inputs(owned)
@@ -970,6 +1068,7 @@ def test_canonical_native_owner_and_proof_mutations(owned, mutation):
     run_id = native_rows(owned, context)
     with owned[0].begin() as db:
         run = db.get(WorkflowRun, run_id)
+        assert run is not None
         nodes = list(db.scalars(select(WorkflowNodeExecutionModel).order_by(WorkflowNodeExecutionModel.index)))
         if mutation == "actor":
             run.created_by = str(uuid4())
@@ -1017,7 +1116,7 @@ def test_canonical_native_owner_and_proof_mutations(owned, mutation):
         ("partial-succeeded", "execution_evidence_unknown"),
     ],
 )
-def test_null_predecessor_prefix_requires_failed_or_stopped_run(owned, status, outcome):
+def test_null_predecessor_prefix_requires_failed_or_stopped_run(owned: Owned, status: str, outcome: str) -> None:
     context = prepare_inputs(owned)
     service = service_module().BuilderExecutionPolicyService(owned[0])
     run_id = native_rows(owned, context, status)
@@ -1026,7 +1125,7 @@ def test_null_predecessor_prefix_requires_failed_or_stopped_run(owned, status, o
         assert run is not None
         run.total_steps = 1
         nodes = list(db.scalars(select(WorkflowNodeExecutionModel).order_by(WorkflowNodeExecutionModel.index)))
-        nodes[0].status = "failed"
+        nodes[0].status = WorkflowNodeExecutionStatus.FAILED
         db.delete(nodes[1])
     assert service.seal(request_id=context.request_id, completion=completion(context, run_id)).safety_outcome == outcome
 
@@ -1042,8 +1141,8 @@ def test_null_predecessor_prefix_requires_failed_or_stopped_run(owned, status, o
     ],
 )
 def test_null_predecessor_http_retry_requires_all_attempt_proof(
-    owned, receipt_count, retry_index, total_steps, outcome
-):
+    owned: Owned, receipt_count: int, retry_index: int, total_steps: int, outcome: str
+) -> None:
     from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 
     factory, _, _, workflow, _, _ = owned
@@ -1077,7 +1176,7 @@ def test_null_predecessor_http_retry_requires_all_attempt_proof(
         run.exceptions_count = 1
         http = db.scalar(select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.node_id == "http"))
         assert http is not None
-        http.status = "exception"
+        http.status = WorkflowNodeExecutionStatus.EXCEPTION
         http.process_data = json.dumps(
             {
                 RETRY_HISTORY_PROCESS_DATA_KEY: [
@@ -1101,7 +1200,7 @@ def test_null_predecessor_http_retry_requires_all_attempt_proof(
 
 
 @pytest.mark.parametrize("invalid", ["no_refusal", "claim", "recorder", "finished", "exit"])
-def test_seal_revalidates_constructed_preworker_origin(owned, invalid):
+def test_seal_revalidates_constructed_preworker_origin(owned: Owned, invalid: str) -> None:
     context = prepare_inputs(owned)
     facts: dict[str, object] = {
         "context": context,

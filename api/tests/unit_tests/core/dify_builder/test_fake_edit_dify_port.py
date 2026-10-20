@@ -4,18 +4,18 @@ from core.dify_builder.models import Actor, MutationIntent
 from tests.unit_tests.core.dify_builder.fakes import FakeEditDifyPort
 
 
-def _actor():
+def _actor() -> Actor:
     return Actor(account_id="a", tenant_id="t")
 
 
-def test_seeded_graph_has_four_nodes_three_edges():
+def test_seeded_graph_has_four_nodes_three_edges() -> None:
     dify = FakeEditDifyPort()
     graph, _hash = dify.read_graph("app", _actor())
     assert {n["id"] for n in graph["nodes"]} == {"start", "knowledge_retrieval", "llm", "end"}
     assert len(graph["edges"]) == 3
 
 
-def test_set_node_config_edits_existing_node_and_reports_real_diff():
+def test_set_node_config_edits_existing_node_and_reports_real_diff() -> None:
     dify = FakeEditDifyPort()
     intents = [MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "risk_threshold", "value": "high"})]
     result = dify.apply_repair("app", _actor(), intents, on_canvas=None)

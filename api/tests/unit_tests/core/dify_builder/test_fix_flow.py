@@ -13,7 +13,9 @@ Mirrors the Go full-flow intent exercised piecemeal across
 one acceptance run plus a checklist-entry smoke test.
 """
 
+from dataclasses import replace
 from datetime import datetime
+from typing import Unpack
 
 import pytest
 
@@ -33,7 +35,7 @@ from core.dify_builder.models import (
 from core.dify_builder.placeholder_agent import FIXED_CODE, PlaceholderAgent
 from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState, canvas_read_only
-from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
+from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, SessionOverrides
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 
@@ -53,16 +55,17 @@ def _new_env() -> tuple[Env, InMemoryRepository, FakeDifyPort]:
     return env, repo, dify
 
 
-def _fix_session(**overrides) -> Session:
-    fields: dict = {
-        "app_id": "app",
-        "tenant_id": "tenant-1",
-        "owner_account_id": "acc-1",
-        "entry_mode": EntryMode.FIX,
-        "current_state": PcState.FIX_DIAGNOSE,
-    }
-    fields.update(overrides)
-    return Session(**fields)
+def _fix_session(**overrides: Unpack[SessionOverrides]) -> Session:
+    return replace(
+        Session(
+            app_id="app",
+            tenant_id="tenant-1",
+            owner_account_id="acc-1",
+            entry_mode=EntryMode.FIX,
+            current_state=PcState.FIX_DIAGNOSE,
+        ),
+        **overrides,
+    )
 
 
 def _seed_fix_session(repo: InMemoryRepository) -> Session:
@@ -82,7 +85,7 @@ def _seed_fix_session(repo: InMemoryRepository) -> Session:
 # ---- full happy-path acceptance --------------------------------------------
 
 
-def test_full_fix_flow_request_fix_to_publish_success():
+def test_full_fix_flow_request_fix_to_publish_success() -> None:
     env, repo, dify = _new_env()
     s = _seed_fix_session(repo)
 
@@ -186,7 +189,7 @@ def test_full_fix_flow_request_fix_to_publish_success():
     assert stored.version == out.version
 
 
-def test_full_fix_flow_stale_base_version_raises_conflict():
+def test_full_fix_flow_stale_base_version_raises_conflict() -> None:
     """CAS: each mutating action must carry the session's current version;
     a stale one is rejected and nothing is applied."""
     env, repo, _dify = _new_env()
@@ -228,7 +231,7 @@ def _seed_checklist_session(repo: InMemoryRepository, errors: list[ChecklistErro
     return s
 
 
-def test_checklist_entry_flow_wires_diagnose_through_await_recheck_to_decision():
+def test_checklist_entry_flow_wires_diagnose_through_await_recheck_to_decision() -> None:
     """Smoke test for the second entry path: checklist.diagnose ->
     checklist.propose -> fix.apply -> checklist.await_recheck, then a
     recheck(passed=True) action hands off to the shared fix.await_decision

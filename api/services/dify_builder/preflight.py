@@ -367,9 +367,10 @@ def _redacted_at_path(path: str, value: Any) -> Any:
     value is what the corrective re-prompt tells the model to correct.
     """
     segments = path.split(".")
-    wrapped: Any = value
-    for segment in reversed(segments):
-        wrapped = {segment: wrapped}
+    wrapped: dict[str, object] = {segments[-1]: value}
+    for segment in reversed(segments[:-1]):
+        layer: dict[str, object] = {segment: wrapped}
+        wrapped = layer
     unwrapped: Any = credentials.redact_node_config(wrapped)
     for segment in segments:
         if not isinstance(unwrapped, Mapping) or segment not in unwrapped:

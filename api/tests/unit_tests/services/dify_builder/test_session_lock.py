@@ -10,6 +10,8 @@ compare-del contract directly.
 
 from unittest.mock import patch
 
+import pytest
+
 from configs import dify_config
 from extensions.redis_names import serialize_redis_name
 from services.dify_builder import session_lock
@@ -174,7 +176,7 @@ def test_exists_reflects_held_and_free_state() -> None:
         assert session_lock.exists(SESSION_ID) is False
 
 
-def test_release_frees_the_lock_when_redis_key_prefix_is_set(monkeypatch) -> None:
+def test_release_frees_the_lock_when_redis_key_prefix_is_set(monkeypatch: pytest.MonkeyPatch) -> None:
     """Regression test for the release()/eval key-prefix bug: RedisClientWrapper prefixes
     .set/.get with REDIS_KEY_PREFIX internally, but .eval is delegated to the raw client, so
     release() must serialize the key itself to match the key acquire() actually wrote. Without

@@ -6,6 +6,7 @@ is its external translation boundary. Refusal routing must never propose repair.
 
 import json
 from dataclasses import asdict
+from typing import Never
 
 import pytest
 
@@ -21,11 +22,12 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.state import PcState
 from core.dify_builder.verification import is_execution_policy_blocker, publication_decision, result_card
+from services.dify_builder.presentation import BuilderCopy
 from tests.unit_tests.core.dify_builder.test_handlers_build import _actor, _new_env, _session
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 
-def refused_run(reason):
+def refused_run(reason: str) -> Run:
     return Run(
         id="refused",
         session_id="s",
@@ -56,7 +58,9 @@ def refused_run(reason):
         pytest.param("template_execution_limit", ("template", "size"), id="limit"),
     ],
 )
-def test_known_template_refusal_has_actionable_scene_without_native_content(reason, scope_terms):
+def test_known_template_refusal_has_actionable_scene_without_native_content(
+    reason: str, scope_terms: tuple[str, ...]
+) -> None:
     run = refused_run(reason)
     card = result_card(run)
     assert card.failure_reason is not None
@@ -70,11 +74,12 @@ def test_known_template_refusal_has_actionable_scene_without_native_content(reas
     assert card.terminal_outputs is None
     assert "SECRET-" not in json.dumps(asdict(card))
 
+    assert isinstance(card.failure_reason, BuilderCopy)
     assert asdict(card.failure_reason)["type"] == "copy"
     assert asdict(card.failure_reason)["params"] == {}
 
 
-def test_unknown_policy_reason_uses_fixed_sanitized_fallback():
+def test_unknown_policy_reason_uses_fixed_sanitized_fallback() -> None:
     first = result_card(refused_run("unknown_secret_template_reason"))
     second = result_card(refused_run("another_unknown_reason"))
     assert first.failure_reason == second.failure_reason
@@ -84,7 +89,7 @@ def test_unknown_policy_reason_uses_fixed_sanitized_fallback():
     assert first.terminal_outputs is None
 
 
-def test_generic_missing_coverage_keeps_workflow_editable():
+def test_generic_missing_coverage_keeps_workflow_editable() -> None:
     card = result_card(refused_run("unsupported_node_implementation"))
     assert english_text(card.failure_reason) == (
         "Builder does not yet have safe-test support for a node in this workflow. "
@@ -108,7 +113,7 @@ def test_generic_missing_coverage_keeps_workflow_editable():
         ("json_tool_installation_changed", "installed JSON Process version changed"),
     ],
 )
-def test_json_coverage_refusal_uses_only_static_actionable_copy(reason, expected_phrase):
+def test_json_coverage_refusal_uses_only_static_actionable_copy(reason: str, expected_phrase: str) -> None:
     card = result_card(refused_run(reason))
     assert card.failure_reason is not None
     assert expected_phrase in english_text(card.failure_reason)
@@ -118,7 +123,7 @@ def test_json_coverage_refusal_uses_only_static_actionable_copy(reason, expected
     assert card.terminal_outputs is None
 
 
-def test_template_refusal_clears_staged_repairs_and_cannot_publish():
+def test_template_refusal_clears_staged_repairs_and_cannot_publish() -> None:
     from core.dify_builder.handlers_build import handle_test_and_repair
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
 
@@ -127,7 +132,7 @@ def test_template_refusal_clears_staged_repairs_and_cannot_publish():
     dify.run_draft = lambda *_args, **_kwargs: run
     agent = StubAgent()
 
-    def forbidden(*_args, **_kwargs):
+    def forbidden(*_args: object, **_kwargs: object) -> Never:
         pytest.fail("policy refusal entered automatic diagnosis or repair")
 
     agent.diagnose = forbidden
@@ -144,6 +149,7 @@ def test_template_refusal_clears_staged_repairs_and_cannot_publish():
     )
     result = handle_test_and_repair(env, Turn(actor=_actor()), session, context)
     assert result.next == PcState.BUILD_AWAIT_REPAIR
+    assert result.context is not None
     assert result.context.diagnosis is None
     assert result.context.staged_repair == []
     assert dify.applied == []

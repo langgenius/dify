@@ -11,6 +11,7 @@ caller (P3b Task 4: the Flask controller + the Celery task's ``.delay``).
 import json
 import logging
 from collections.abc import Callable, Iterator
+from contextlib import suppress
 from dataclasses import asdict
 from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
@@ -1414,10 +1415,8 @@ class DifyBuilderService:
     def _publication_for_session(self, s: Session, fc: DifyBuilderContext, actor: Actor) -> PublicationDecision:
         run = None
         if fc.verify_run_id:
-            try:
+            with suppress(NotFoundError):
                 run = self._repo.get_run(fc.verify_run_id)
-            except NotFoundError:
-                pass
         revision, graph_revision = self._get_verification_identity_fn(s.app_id, actor)
         return publication_decision(
             run, session_id=s.id, current_revision=revision, current_graph_revision=graph_revision

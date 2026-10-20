@@ -1,5 +1,7 @@
 """Typed evidence governs result and publication without rewriting native status."""
 
+from typing import Literal
+
 import pytest
 
 from core.dify_builder import verification
@@ -7,7 +9,17 @@ from core.dify_builder.execution_policy import ExecutionEvidenceSummary
 from core.dify_builder.models import Run, RunVerification
 
 
-def sample(outcome, blocked=()):
+def sample(
+    outcome: Literal[
+        "restricted_execution_completed",
+        "simulation_completed",
+        "execution_blocked",
+        "native_failed",
+        "execution_evidence_unknown",
+    ]
+    | None,
+    blocked: tuple[str, ...] = (),
+) -> Run:
     run = Run(
         status="succeeded",
         session_id="s",
@@ -48,7 +60,17 @@ def sample(outcome, blocked=()):
         ("restricted_execution_completed", "eligible"),
     ],
 )
-def test_publication_requires_bound_sealed_restricted_evidence(outcome, reason):
+def test_publication_requires_bound_sealed_restricted_evidence(
+    outcome: Literal[
+        "restricted_execution_completed",
+        "simulation_completed",
+        "execution_blocked",
+        "native_failed",
+        "execution_evidence_unknown",
+    ]
+    | None,
+    reason: str,
+) -> None:
     decision = verification.publication_decision(
         sample(outcome), session_id="s", current_revision="r", current_graph_revision="g"
     )
@@ -57,7 +79,16 @@ def test_publication_requires_bound_sealed_restricted_evidence(outcome, reason):
 
 
 @pytest.mark.parametrize("outcome", ["native_failed", "execution_evidence_unknown", "execution_blocked"])
-def test_denial_ids_block_even_when_native_failed_or_proof_incomplete(outcome):
+def test_denial_ids_block_even_when_native_failed_or_proof_incomplete(
+    outcome: Literal[
+        "restricted_execution_completed",
+        "simulation_completed",
+        "execution_blocked",
+        "native_failed",
+        "execution_evidence_unknown",
+    ]
+    | None,
+) -> None:
     run = sample(outcome, ("http",))
     assert verification.is_execution_policy_blocker(run)
     card = verification.result_card(run)
@@ -70,7 +101,17 @@ def test_denial_ids_block_even_when_native_failed_or_proof_incomplete(outcome):
 @pytest.mark.parametrize(
     "outcome", ["execution_blocked", "native_failed", "execution_evidence_unknown", "simulation_completed"]
 )
-def test_handlers_keep_denials_out_of_review_and_repair(flow, outcome):
+def test_handlers_keep_denials_out_of_review_and_repair(
+    flow: str,
+    outcome: Literal[
+        "restricted_execution_completed",
+        "simulation_completed",
+        "execution_blocked",
+        "native_failed",
+        "execution_evidence_unknown",
+    ]
+    | None,
+) -> None:
     import importlib
     from unittest.mock import Mock
 
@@ -110,7 +151,7 @@ def test_handlers_keep_denials_out_of_review_and_repair(flow, outcome):
     env.agent.propose_repair.assert_not_called()
 
 
-def test_fix_diagnose_does_not_diagnose_persisted_policy_denial():
+def test_fix_diagnose_does_not_diagnose_persisted_policy_denial() -> None:
     from unittest.mock import Mock
 
     from core.dify_builder.handlers_fix import handle_diagnose
@@ -131,7 +172,7 @@ def test_fix_diagnose_does_not_diagnose_persisted_policy_denial():
 
 
 @pytest.mark.parametrize("flow", ["build", "edit", "fix"])
-def test_generic_verification_exception_never_enters_diagnosis(flow):
+def test_generic_verification_exception_never_enters_diagnosis(flow: str) -> None:
     import importlib
     from unittest.mock import Mock
 
@@ -162,7 +203,7 @@ def test_generic_verification_exception_never_enters_diagnosis(flow):
     env.agent.propose_repair.assert_not_called()
 
 
-def test_historical_original_failure_remains_diagnosable():
+def test_historical_original_failure_remains_diagnosable() -> None:
     run = sample(None)
     run.kind = "original-failed"
     run.status = "failed"

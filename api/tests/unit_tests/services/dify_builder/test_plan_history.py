@@ -15,7 +15,7 @@ from core.dify_builder.state import PcState
 from services.dify_builder.repository import SqlDifyBuilderRepository
 
 
-def test_plan_history_pages_preserve_snapshots_and_cursors(monkeypatch):
+def test_plan_history_pages_preserve_snapshots_and_cursors(monkeypatch: pytest.MonkeyPatch) -> None:
     repo = SqlDifyBuilderRepository(get_session_maker())
     session = Session(
         app_id="22222222-2222-2222-2222-222222222222",
@@ -38,17 +38,19 @@ def test_plan_history_pages_preserve_snapshots_and_cursors(monkeypatch):
         "output_summary": "An answer with references.",
         "reply_language": "en-US",
     }
-    items = []
+    items: list[ConversationItem] = []
     for index, payload in enumerate((previous_payload, new_payload)):
-        items.append(ConversationItem(seq=index * 2, kind="plan", at_version=index + 1, payload=deepcopy(payload)))
-        items.append(
-            AssistantTurnItem(
-                turn_id=f"turn-{index}",
-                stage_id="edit.plan_approval",
-                execution=ExecutionProgress(status="completed"),
-                cards=["plan"],
-                reply_mode="complete",
-            ).to_item(seq=index * 2 + 1, at_version=index + 1)
+        items.extend(
+            [
+                ConversationItem(seq=index * 2, kind="plan", at_version=index + 1, payload=deepcopy(payload)),
+                AssistantTurnItem(
+                    turn_id=f"turn-{index}",
+                    stage_id="edit.plan_approval",
+                    execution=ExecutionProgress(status="completed"),
+                    cards=["plan"],
+                    reply_mode="complete",
+                ).to_item(seq=index * 2 + 1, at_version=index + 1),
+            ]
         )
     repo.create_session(session, DifyBuilderContext(), items)
     service = MagicMock()
@@ -59,21 +61,25 @@ def test_plan_history_pages_preserve_snapshots_and_cursors(monkeypatch):
     actor = Actor(account_id=session.owner_account_id, tenant_id=session.tenant_id)
 
     combined = controller._conversation(session.id, {"limit": 2}, actor)
+    assert isinstance(combined, dict)
     assert [item["seq"] for item in combined["data"]] == [0, 1, 2, 3]
     assert combined["data"][0]["payload"] == previous_payload
     assert combined["data"][2]["payload"] == new_payload
 
     newest = controller._conversation(session.id, {"limit": 1}, actor)
+    assert isinstance(newest, dict)
     assert (newest["first_seq"], newest["last_seq"], newest["has_more"]) == (2, 3, True)
     older = controller._conversation(session.id, {"limit": 1, "before_seq": newest["first_seq"]}, actor)
+    assert isinstance(older, dict)
     assert (older["first_seq"], older["last_seq"], older["has_more"]) == (0, 1, False)
     after = controller._conversation(session.id, {"limit": 1, "after_seq": older["last_seq"]}, actor)
+    assert isinstance(after, dict)
     assert [item["seq"] for item in after["data"]] == [2, 3]
     assert repo.list_conversation(session.id)[0].payload == previous_payload
     assert repo.list_conversation(session.id)[2].payload == new_payload
 
 
-def test_plan_history_contract_requires_both_summaries():
+def test_plan_history_contract_requires_both_summaries() -> None:
     schema = DifyBuilderConversationPageResponse.model_json_schema(mode="serialization")["$defs"]["PlanCard"]
     for key in ("input_summary", "output_summary"):
         assert key in schema["required"]
@@ -82,8 +88,12 @@ def test_plan_history_contract_requires_both_summaries():
 
 @pytest.mark.parametrize("key", ["input_summary", "output_summary"])
 @pytest.mark.parametrize("invalid", [None, "missing"])
-def test_plan_history_rejects_incomplete_payloads(key, invalid):
-    payload = {"title": "Plan", "input_summary": "Source documents.", "output_summary": "A summary report."}
+def test_plan_history_rejects_incomplete_payloads(key: str, invalid: str | None) -> None:
+    payload: dict[str, str | None] = {
+        "title": "Plan",
+        "input_summary": "Source documents.",
+        "output_summary": "A summary report.",
+    }
     if invalid == "missing":
         del payload[key]
     else:

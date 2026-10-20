@@ -22,7 +22,7 @@ def _actor(account_id: str = "acc-1", tenant_id: str = "tenant-1") -> Actor:
     return Actor(account_id=account_id, tenant_id=tenant_id)
 
 
-def test_resolve_account_returns_account_on_hit():
+def test_resolve_account_returns_account_on_hit() -> None:
     account = SimpleNamespace(id="acc-1")
     session = Mock()
     session.get.return_value = account
@@ -33,7 +33,7 @@ def test_resolve_account_returns_account_on_hit():
     session.get.assert_called_once_with(Account, "acc-1")
 
 
-def test_resolve_account_raises_not_found_on_miss():
+def test_resolve_account_raises_not_found_on_miss() -> None:
     session = Mock()
     session.get.return_value = None
 
@@ -41,7 +41,7 @@ def test_resolve_account_raises_not_found_on_miss():
         resolve_account(session, _actor(account_id="acc-missing"))
 
 
-def test_load_app_returns_app_on_tenant_match():
+def test_load_app_returns_app_on_tenant_match() -> None:
     app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
     session = Mock()
     session.get.return_value = app
@@ -52,7 +52,7 @@ def test_load_app_returns_app_on_tenant_match():
     session.get.assert_called_once_with(App, "app-1")
 
 
-def test_load_app_raises_not_found_on_tenant_mismatch():
+def test_load_app_raises_not_found_on_tenant_mismatch() -> None:
     app = SimpleNamespace(id="app-1", tenant_id="other-tenant")
     session = Mock()
     session.get.return_value = app
@@ -61,7 +61,7 @@ def test_load_app_raises_not_found_on_tenant_mismatch():
         load_app(session, "app-1", _actor(tenant_id="tenant-1"))
 
 
-def test_load_app_raises_not_found_on_absent():
+def test_load_app_raises_not_found_on_absent() -> None:
     session = Mock()
     session.get.return_value = None
 

@@ -14,7 +14,7 @@ from services.dify_builder.agent import edit
 
 
 class Message:
-    def __init__(self, text: str):
+    def __init__(self, text: str) -> None:
         self.text = text
 
     def get_text_content(self) -> str:
@@ -22,12 +22,12 @@ class Message:
 
 
 class Reply:
-    def __init__(self, text: str):
+    def __init__(self, text: str) -> None:
         self.message = Message(text)
 
 
 class RecordingModel:
-    def __init__(self, replies: Sequence[str | Exception]):
+    def __init__(self, replies: Sequence[str | Exception]) -> None:
         self.replies = iter(replies)
         self.prompts: list[str] = []
 
@@ -71,7 +71,9 @@ def workflow(*inputs: dict[str, object]) -> Graph:
 
 @pytest.mark.parametrize("field", ["title", "input_summary", "output_summary"])
 @pytest.mark.parametrize("invalid", [None, "", "   ", 7, "missing"])
-def test_incomplete_edit_plan_never_discards_steps_into_an_approvable_placeholder(field, invalid):
+def test_incomplete_edit_plan_never_discards_steps_into_an_approvable_placeholder(
+    field: str, invalid: None | int | str
+) -> None:
     response = {**VALID_PLAN, field: invalid}
     if invalid == "missing":
         del response[field]
@@ -83,14 +85,14 @@ def test_incomplete_edit_plan_never_discards_steps_into_an_approvable_placeholde
 
 
 @pytest.mark.parametrize("bad_plan", [[], "steps", [""], ["valid", 7]])
-def test_invalid_steps_fail_after_one_correction(bad_plan):
+def test_invalid_steps_fail_after_one_correction(bad_plan: list[int | str] | list[object] | list[str] | str) -> None:
     model = RecordingModel([json.dumps({**VALID_PLAN, "plan": bad_plan})] * 2)
     assert edit.propose_edit_plan(model, {}, workflow()) is None
     assert len(model.prompts) == 2
 
 
 @pytest.mark.parametrize("first", ["not JSON", json.dumps({**VALID_PLAN, "output_summary": ""})])
-def test_one_correction_recovers_the_complete_plan_and_keeps_the_source(first):
+def test_one_correction_recovers_the_complete_plan_and_keeps_the_source(first: str) -> None:
     graph = workflow({"type": "start", "variables": [{"variable": "question", "type": "text-input"}]})
     model = RecordingModel([first, json.dumps(VALID_PLAN)])
     plan = edit.propose_edit_plan(model, {"references": True}, graph)
@@ -105,7 +107,7 @@ def test_one_correction_recovers_the_complete_plan_and_keeps_the_source(first):
     assert model.prompts[0] in model.prompts[1]
 
 
-def test_first_success_uses_one_call_and_provider_failure_does_not_invent_a_plan():
+def test_first_success_uses_one_call_and_provider_failure_does_not_invent_a_plan() -> None:
     model = RecordingModel([json.dumps(VALID_PLAN)])
     assert edit.propose_edit_plan(model, {}, workflow()) is not None
     assert len(model.prompts) == 1
@@ -115,13 +117,13 @@ def test_first_success_uses_one_call_and_provider_failure_does_not_invent_a_plan
     assert edit.propose_edit_plan(None, {}, workflow()) is None
 
 
-def test_invalid_json_and_schema_share_the_two_call_budget():
+def test_invalid_json_and_schema_share_the_two_call_budget() -> None:
     model = RecordingModel(["not JSON", json.dumps({"plan": ["A step"]}), json.dumps(VALID_PLAN)])
     assert edit.propose_edit_plan(model, {}, workflow()) is None
     assert len(model.prompts) == 2
 
 
-def test_webhook_fields_survive_graph_distance_and_keep_distinct_planning_sources():
+def test_webhook_fields_survive_graph_distance_and_keep_distinct_planning_sources() -> None:
     model = RecordingModel([json.dumps(VALID_PLAN)] * 2)
     for variable in ("order_id", "customer_email"):
         graph = workflow(
@@ -145,7 +147,7 @@ def test_webhook_fields_survive_graph_distance_and_keep_distinct_planning_source
             assert token in prompt
 
 
-def test_multiple_input_types_and_outputs_are_present_without_secrets_or_graph_mutation():
+def test_multiple_input_types_and_outputs_are_present_without_secrets_or_graph_mutation() -> None:
     graph = workflow(
         {"type": "start", "variables": [{"variable": "question", "label": "Question", "type": "text-input"}]},
         {
@@ -195,7 +197,7 @@ def test_multiple_input_types_and_outputs_are_present_without_secrets_or_graph_m
 
 
 @pytest.mark.parametrize("value_type", ["file", "object"])
-def test_end_output_types_reach_the_edit_planner(value_type):
+def test_end_output_types_reach_the_edit_planner(value_type: str) -> None:
     graph = workflow()
     end_node = next(node for node in graph["nodes"] if node["id"] == "end")
     outputs = [{"variable": "result", "value_type": value_type, "value_selector": ["b", "output"]}]
@@ -209,7 +211,7 @@ def test_end_output_types_reach_the_edit_planner(value_type):
     assert end_context["outputs"] == outputs
 
 
-def test_long_input_definitions_are_not_removed_by_the_generic_config_limit():
+def test_long_input_definitions_are_not_removed_by_the_generic_config_limit() -> None:
     variables = [{"variable": f"field_{index}", "type": "text-input", "label": f"Field {index}"} for index in range(50)]
     fields = [{"name": f"body_{index}", "type": "string", "required": True} for index in range(50)]
     model = RecordingModel([json.dumps(VALID_PLAN)])

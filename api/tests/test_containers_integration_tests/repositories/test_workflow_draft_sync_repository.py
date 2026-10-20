@@ -4,12 +4,13 @@ import uuid
 
 import pytest
 
+from core.dify_builder.models import Graph
 from repositories.workflow_draft_sync_repository import ServerDraftChange, WorkflowDraftSyncRepository
 
 pytestmark = pytest.mark.usefixtures("flask_app_with_containers")
 
 
-def test_only_the_current_lease_can_accept_one_update_for_the_current_revision():
+def test_only_the_current_lease_can_accept_one_update_for_the_current_revision() -> None:
     repository = WorkflowDraftSyncRepository()
     app_id = uuid.uuid4().hex
     first = ServerDraftChange(revision="1", hash="h1", updated_at=1, graph={"nodes": [], "edges": []})
@@ -36,11 +37,11 @@ def test_only_the_current_lease_can_accept_one_update_for_the_current_revision()
     assert stored.graph == {"nodes": [], "edges": []}
 
 
-def test_pending_changes_keep_the_original_baseline_and_whole_graph_restores_remain_explicit():
+def test_pending_changes_keep_the_original_baseline_and_whole_graph_restores_remain_explicit() -> None:
     repository = WorkflowDraftSyncRepository()
     app_id = uuid.uuid4().hex
-    before = {"nodes": [{"id": "a", "data": {"items": [], "seed": 9007199254740993}}], "edges": []}
-    after = {"nodes": [{"id": "b"}], "edges": []}
+    before: Graph = {"nodes": [{"id": "a", "data": {"items": [], "seed": 9007199254740993}}], "edges": []}
+    after: Graph = {"nodes": [{"id": "b"}], "edges": []}
     first = ServerDraftChange(revision="1", hash="h1", updated_at=1, graph=after, previous_graph=before)
     assert repository.announce(app_id, first)
     second = ServerDraftChange(revision="2", hash="h2", updated_at=2, graph=before, previous_graph=after)

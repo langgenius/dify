@@ -1,7 +1,10 @@
-def test_to_intents_translates_nodes_then_edges_preserving_ids():
+from core.dify_builder.models import Graph, MutationIntent
+
+
+def test_to_intents_translates_nodes_then_edges_preserving_ids() -> None:
     from services.dify_builder.agent.graph_translate import to_intents
 
-    graph = {
+    graph: Graph = {
         "nodes": [
             {
                 "id": "n_start",
@@ -28,7 +31,7 @@ def test_to_intents_translates_nodes_then_edges_preserving_ids():
     assert start.args["config"]["title"] == "Start"
 
 
-def test_to_intents_preserves_original_start_id_and_references():
+def test_to_intents_preserves_original_start_id_and_references() -> None:
     from services.dify_builder.agent.graph_translate import to_intents
 
     graph = {
@@ -62,14 +65,14 @@ def test_to_intents_preserves_original_start_id_and_references():
     assert connect.args["to_node"] == "node2"
 
 
-def test_to_intents_skips_malformed_nodes():
+def test_to_intents_skips_malformed_nodes() -> None:
     from services.dify_builder.agent.graph_translate import to_intents
 
-    graph = {"nodes": [{"id": "x", "data": {}}, {"id": "", "data": {"type": "llm"}}], "edges": []}
+    graph: Graph = {"nodes": [{"id": "x", "data": {}}, {"id": "", "data": {"type": "llm"}}], "edges": []}
     assert to_intents(graph) == []  # no type / no id -> dropped
 
 
-def test_to_intents_preserves_ids_and_order_for_multiple_nodes():
+def test_to_intents_preserves_ids_and_order_for_multiple_nodes() -> None:
     from services.dify_builder.agent.graph_translate import to_intents
 
     # Graph with two start-type nodes: neither is renamed, and creates/connects
@@ -104,7 +107,7 @@ def test_to_intents_preserves_ids_and_order_for_multiple_nodes():
     assert connects[1].args["to_node"] == "n_llm"
 
 
-def test_to_intents_carries_branch_handles_through_connect():
+def test_to_intents_carries_branch_handles_through_connect() -> None:
     from services.dify_builder.agent.graph_translate import to_intents
 
     graph = {
@@ -122,7 +125,7 @@ def test_to_intents_carries_branch_handles_through_connect():
     assert connect.args["target_handle"] == "target"
 
 
-def test_to_intents_connect_without_handles_has_no_handle_keys():
+def test_to_intents_connect_without_handles_has_no_handle_keys() -> None:
     from services.dify_builder.agent.graph_translate import to_intents
 
     graph = {
@@ -137,14 +140,14 @@ def test_to_intents_connect_without_handles_has_no_handle_keys():
     assert connect.args == {"from_node": "n1", "to_node": "n2"}
 
 
-def test_to_intents_carries_the_container_start_marker_with_its_flow_type():
+def test_to_intents_carries_the_container_start_marker_with_its_flow_type() -> None:
     """ESQ1-288: the marker is a REAL node the engine roots the body frame at.
     The crash was never the marker -- it was persisting it as a generic
     `custom` node, which the canvas has no component for (React error #130).
     Carry the generator's node-level type instead of dropping the node."""
     from services.dify_builder.agent.graph_translate import to_intents
 
-    graph = {
+    graph: Graph = {
         "nodes": [
             {"id": "iter1", "type": "custom", "data": {"type": "iteration", "title": "Loop over items"}},
             {"id": "iter1start", "type": "custom-iteration-start", "data": {"type": "iteration-start"}},
@@ -164,12 +167,12 @@ def test_to_intents_carries_the_container_start_marker_with_its_flow_type():
     assert "flow_type" not in creates["iter1"].args
 
 
-def test_to_intents_keeps_start_node_id_in_the_container_config():
+def test_to_intents_keeps_start_node_id_in_the_container_config() -> None:
     """`IterationNodeData.start_node_id` has no default: stripping it makes
     Graph.init fail for the WHOLE draft, not just the container."""
     from services.dify_builder.agent.graph_translate import to_intents
 
-    graph = {
+    graph: Graph = {
         "nodes": [
             {
                 "id": "iter1",
@@ -192,7 +195,7 @@ def test_to_intents_keeps_start_node_id_in_the_container_config():
     assert iter_create.args["config"]["other_field"] == "value"
 
 
-def test_to_intents_keeps_the_container_entry_edge():
+def test_to_intents_keeps_the_container_entry_edge() -> None:
     """The generator synthesizes `<container>start -> first child`
     (runner.py:1392-1397). Drop it and the body has no incoming edge."""
     from services.dify_builder.agent.graph_translate import to_intents
@@ -214,12 +217,12 @@ def test_to_intents_keeps_the_container_entry_edge():
     assert connects == [("iter1start", "llm1"), ("llm1", "llm2")]
 
 
-def test_to_intents_preserves_nesting_and_layout():
+def test_to_intents_preserves_nesting_and_layout() -> None:
     """Un-nested children make an iteration non-functional, and a discarded
     position throws away the generator's computed layout."""
     from services.dify_builder.agent.graph_translate import to_intents
 
-    graph = {
+    graph: Graph = {
         "nodes": [
             {
                 "id": "iter1",
@@ -247,7 +250,7 @@ def test_to_intents_preserves_nesting_and_layout():
     assert by_id["child1"].args["config"]["iteration_id"] == "iter1"
 
 
-def _apply_all(graph):
+def _apply_all(graph: Graph) -> tuple[Graph, list[MutationIntent]]:
     """Drive a generator-shaped graph all the way to a persisted draft graph:
     to_intents -> filter_applicable -> the real APPLY_FNS, exactly as
     build.py:409-416 and dify_port.apply_repair do."""
@@ -257,20 +260,20 @@ def _apply_all(graph):
     intents = to_intents(graph)
     applicable, rejected, _dry, _changed = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents)
     assert rejected == [], f"intents rejected: {[(i.op, r) for i, r in rejected]}"
-    persisted = {"nodes": [], "edges": []}
+    persisted: Graph = {"nodes": [], "edges": []}
     for intent in applicable:
         persisted, _changed = graph_ops.APPLY_FNS[intent.op](persisted, **intent.args)
     return persisted, intents
 
 
-def test_translated_iteration_graph_validates_against_the_engine():
+def test_translated_iteration_graph_validates_against_the_engine() -> None:
     """The regression this branch shipped and this test now blocks: dropping
     the marker / start_node_id / entry edge made EVERY container workflow fail
     `Graph.init` on a required-field ValidationError, which is worse than the
     canvas crash it was meant to fix (ESQ1-288)."""
     from graphon.nodes.iteration.entities import IterationNodeData
 
-    graph = {
+    graph: Graph = {
         "nodes": [
             {
                 "id": "node1",
@@ -330,11 +333,11 @@ def test_translated_iteration_graph_validates_against_the_engine():
     assert ("node2start", "node3") in [(e["source"], e["target"]) for e in persisted["edges"]]
 
 
-def test_translated_loop_graph_validates_against_the_engine():
+def test_translated_loop_graph_validates_against_the_engine() -> None:
     """Same contract for loops -- `LoopNodeData.start_node_id` is required too."""
     from graphon.nodes.loop.entities import LoopNodeData
 
-    graph = {
+    graph: Graph = {
         "nodes": [
             {
                 "id": "node1",

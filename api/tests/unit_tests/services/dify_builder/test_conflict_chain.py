@@ -7,7 +7,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import asdict
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, TypedDict, Unpack, cast
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -534,7 +534,7 @@ def test_canvas_presentation_survives_the_service_worker_port_and_native_admissi
     monkeypatch.setattr(native, "db", SimpleNamespace(engine=factory.kw["bind"]))
     monkeypatch.setattr(native, "TraceQueueManager", MagicMock())
     monkeypatch.setattr(native, "DifyCoreRepositoryFactory", MagicMock())
-    generator = native.WorkflowAppGenerator()
+    generator = native.WorkflowAppGenerator(execution_driver=Mock())
     monkeypatch.setattr(generator, "_generate", lambda **kwargs: kwargs)
     monkeypatch.setattr(port, "run_draft", _capture_run(port.run_draft, runs))
 
@@ -615,13 +615,12 @@ def test_canvas_presentation_survives_the_service_worker_port_and_native_admissi
         # The native factory and Graph.init recheck raw node bindings too.
         from core.app.entities.app_invoke_entities import UserFrom, build_dify_run_context
         from core.workflow.node_factory import DifyNodeFactory
-        from graphon.entities import GraphInitParams
         from graphon.graph import Graph
-        from graphon.runtime import GraphRuntimeState, VariablePool
+        from graphon.runtime import InitParams, RuntimeState, VariablePool
 
         configuration = current.graph_dict
         node_factory = DifyNodeFactory(
-            graph_init_params=GraphInitParams(
+            init_params=InitParams(
                 workflow_id=current.id,
                 graph_config=configuration,
                 call_depth=0,
@@ -634,7 +633,7 @@ def test_canvas_presentation_survives_the_service_worker_port_and_native_admissi
                     builder_execution=launch.context,
                 ),
             ),
-            graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0),
+            runtime_state=RuntimeState(variable_pool=VariablePool(), start_at=0, workflow_id=current.id),
             execution_recorder=launch.recorder,
         )
         Graph.init(graph_config=configuration, node_factory=node_factory, root_node_id="start")

@@ -15,11 +15,11 @@ from pydantic import ValidationError
 from core.dify_builder.node_defaults import default_config, default_config_or_empty
 
 
-def test_default_config_start_matches_fe_default():
+def test_default_config_start_matches_fe_default() -> None:
     assert default_config("start") == {"variables": []}
 
 
-def test_default_config_llm_matches_fe_default():
+def test_default_config_llm_matches_fe_default() -> None:
     assert default_config("llm") == {
         "model": {
             "provider": "",
@@ -33,7 +33,7 @@ def test_default_config_llm_matches_fe_default():
     }
 
 
-def test_default_config_knowledge_retrieval_matches_fe_default_without_dataset_ids():
+def test_default_config_knowledge_retrieval_matches_fe_default_without_dataset_ids() -> None:
     assert default_config("knowledge-retrieval") == {
         "query_variable_selector": [],
         "query_attachment_selector": [],
@@ -46,13 +46,13 @@ def test_default_config_knowledge_retrieval_matches_fe_default_without_dataset_i
     }
 
 
-def test_default_config_template_transform_keeps_variables_and_drops_template():
+def test_default_config_template_transform_keeps_variables_and_drops_template() -> None:
     """The F4 fix is ``variables`` -- structural, engine-required, and the exact
     field the live Edit omitted. ``template`` is the node's purpose."""
     assert default_config("template-transform") == {"variables": []}
 
 
-def test_default_config_code_matches_fe_default():
+def test_default_config_code_matches_fe_default() -> None:
     """Both empty values fail loudly (no ``main`` to call; ``CodeNodeError("Not
     all output parameters are validated.")``), so neither is a purpose field."""
     assert default_config("code") == {
@@ -63,13 +63,13 @@ def test_default_config_code_matches_fe_default():
     }
 
 
-def test_default_config_variable_aggregator_keeps_only_output_type():
+def test_default_config_variable_aggregator_keeps_only_output_type() -> None:
     """``nodes/variable-assigner/default.ts`` is the variable-AGGREGATOR's
     frontend directory; there is no ``nodes/variable-aggregator/``."""
     assert default_config("variable-aggregator") == {"output_type": "any"}
 
 
-def test_default_config_http_request_matches_fe_default():
+def test_default_config_http_request_matches_fe_default() -> None:
     """``nodes/http/default.ts``; there is no ``nodes/http-request/``. ``url``
     is kept: an empty one raises ``InvalidURLError("url is required")`` before
     any request goes out, so it is loud, not silent."""
@@ -87,7 +87,7 @@ def test_default_config_http_request_matches_fe_default():
     }
 
 
-def test_default_config_question_classifier_keeps_only_model_and_vision():
+def test_default_config_question_classifier_keeps_only_model_and_vision() -> None:
     default = default_config("question-classifier")
 
     assert default == {
@@ -102,7 +102,7 @@ def test_default_config_question_classifier_keeps_only_model_and_vision():
     assert "_targetBranches" not in default
 
 
-def test_default_config_tool_matches_fe_default():
+def test_default_config_tool_matches_fe_default() -> None:
     assert default_config("tool") == {
         "tool_parameters": {},
         "tool_configurations": {},
@@ -110,12 +110,12 @@ def test_default_config_tool_matches_fe_default():
     }
 
 
-def test_default_config_raises_for_unregistered_node_type():
+def test_default_config_raises_for_unregistered_node_type() -> None:
     with pytest.raises(ValueError, match="iteration"):
         default_config("iteration")
 
 
-def test_default_config_returns_a_fresh_copy_each_call():
+def test_default_config_returns_a_fresh_copy_each_call() -> None:
     first = default_config("start")
     first["variables"].append({"variable": "mutated"})
 
@@ -139,14 +139,14 @@ def test_default_config_returns_a_fresh_copy_each_call():
         ("knowledge-retrieval", "dataset_ids"),  # retrieves from no dataset, succeeds empty
     ],
 )
-def test_no_entry_fabricates_a_purpose_field(node_type: str, forbidden: str):
+def test_no_entry_fabricates_a_purpose_field(node_type: str, forbidden: str) -> None:
     """A field whose empty value produces a node that RUNS and yields nothing
     must be left to the caller. Supplying it turns a loud preflight refusal into
     a silent wrong answer -- the failure shape this module exists to prevent."""
     assert forbidden not in default_config(node_type)
 
 
-def test_if_else_has_no_entry_at_all():
+def test_if_else_has_no_entry_at_all() -> None:
     """The frontend default is one case with an empty ``conditions`` list, and
     graphon combines zero conditions with ``all([])`` -- so it always matches
     and the node silently routes everything down the IF arm. Omitting it costs
@@ -157,7 +157,7 @@ def test_if_else_has_no_entry_at_all():
         default_config("if-else")
 
 
-def test_an_if_else_without_cases_still_declares_both_branch_handles():
+def test_an_if_else_without_cases_still_declares_both_branch_handles() -> None:
     """Proof that dropping the entry did not weaken handle validation."""
     from core.workflow.graph_normalizers import declared_branch_handles
 
@@ -166,11 +166,12 @@ def test_an_if_else_without_cases_still_declares_both_branch_handles():
     assert declared_branch_handles(bare) == ["true", "false"]
 
 
-def test_an_empty_condition_group_always_matches_so_it_is_not_safe_to_default():
+def test_an_empty_condition_group_always_matches_so_it_is_not_safe_to_default() -> None:
     """The engine evidence behind the if-else decision."""
+    from graphon.runtime import VariablePool
     from graphon.utils.condition.processor import ConditionProcessor
 
-    result = ConditionProcessor().process_conditions(variable_pool=None, conditions=[], operator="and")
+    result = ConditionProcessor().process_conditions(variable_pool=VariablePool(), conditions=[], operator="and")
 
     assert result[2] is True
 
@@ -178,17 +179,17 @@ def test_an_empty_condition_group_always_matches_so_it_is_not_safe_to_default():
 # ---- default_config_or_empty ------------------------------------------------
 
 
-def test_default_config_or_empty_returns_no_defaults_for_an_unregistered_type():
+def test_default_config_or_empty_returns_no_defaults_for_an_unregistered_type() -> None:
     """A node type this module does not cover must contribute no defaults --
     never abort the edit that is creating it."""
     assert default_config_or_empty("iteration") == {}
 
 
-def test_default_config_or_empty_returns_the_same_values_as_default_config():
+def test_default_config_or_empty_returns_the_same_values_as_default_config() -> None:
     assert default_config_or_empty("template-transform") == default_config("template-transform")
 
 
-def test_default_config_or_empty_returns_a_fresh_copy_each_call():
+def test_default_config_or_empty_returns_a_fresh_copy_each_call() -> None:
     first = default_config_or_empty("code")
     first["outputs"]["mutated"] = {"type": "string"}
 
@@ -246,7 +247,7 @@ _ENGINE_EXPECTATIONS: list[tuple[str, str, str, set[str]]] = [
 @pytest.mark.parametrize(("node_type", "module_name", "class_name", "expected_missing"), _ENGINE_EXPECTATIONS)
 def test_the_engine_reports_exactly_the_purpose_fields_as_missing(
     node_type: str, module_name: str, class_name: str, expected_missing: set[str]
-):
+) -> None:
     data_class = getattr(importlib.import_module(module_name), class_name)
     payload = {"type": node_type, "title": "T", **default_config(node_type)}
 
@@ -260,13 +261,13 @@ def test_the_engine_reports_exactly_the_purpose_fields_as_missing(
     assert missing == expected_missing
 
 
-def test_an_if_else_needs_nothing_the_registry_would_have_to_supply():
+def test_an_if_else_needs_nothing_the_registry_would_have_to_supply() -> None:
     from graphon.nodes.if_else.entities import IfElseNodeData
 
     IfElseNodeData.model_validate({"type": "if-else", "title": "T"})  # must not raise
 
 
-def test_the_llm_defaults_fail_loudly_rather_than_silently():
+def test_the_llm_defaults_fail_loudly_rather_than_silently() -> None:
     """Why ``model`` and ``prompt_template`` are kept while other purpose fields
     are dropped: neither empty value lets the node run and yield nothing."""
     from graphon.nodes.llm.exc import NoPromptFoundError

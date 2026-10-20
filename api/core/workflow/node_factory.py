@@ -2,6 +2,7 @@ import importlib
 import pkgutil
 import secrets
 from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
+from copy import copy
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Protocol, cast, final, override, runtime_checkable
@@ -79,7 +80,7 @@ from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from extensions.application_services.data_sources import build_data_source_credentials
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.enums import BuiltinNodeTypes, NodeExecutionType, NodeType
 from graphon.file.file_manager import file_manager
 from graphon.graph.graph import NodeFactory
 from graphon.model_runtime.memory import PromptMessageMemory
@@ -104,8 +105,8 @@ from services.dify_builder.revision import node_config_digest
 from services.dify_builder.template_execution import MAX_OUTPUT_BYTES, BoundedJinja2TemplateRenderer
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from graphon.runtime import InitParams, RuntimeState
 
 LATEST_VERSION = "latest"
 _START_NODE_TYPES: frozenset[NodeType] = frozenset(
@@ -117,7 +118,7 @@ _START_NODE_TYPES: frozenset[NodeType] = frozenset(
 class DifyGraphInitContext:
     """Explicit graph-init values owned by the workflow layer.
 
-    Dify is gradually removing direct `GraphInitParams` construction from its
+    Dify is gradually removing direct `InitParams` construction from its
     production call sites. Keep the translation here until `graphon` exposes an
     equivalent explicit API.
     """
@@ -126,11 +127,12 @@ class DifyGraphInitContext:
     graph_config: Mapping[str, Any]
     run_context: Mapping[str, Any]
     call_depth: int
+    execution_driver: "WorkflowRunDriver | None" = None
 
-    def to_graph_init_params(self) -> "GraphInitParams":
-        from graphon.entities import GraphInitParams
+    def to_graph_init_params(self) -> "InitParams":
+        from graphon.runtime import InitParams
 
-        return GraphInitParams(
+        return InitParams(
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
             run_context=self.run_context,
@@ -367,27 +369,31 @@ class DifyNodeFactory(NodeFactory):
         cls,
         *,
         graph_init_context: DifyGraphInitContext,
-        graph_runtime_state: "GraphRuntimeState",
+        runtime_state: "RuntimeState",
         execution_recorder: BuilderExecutionRecorder | None = None,
     ) -> "DifyNodeFactory":
         """Bridge Dify's explicit init context into the current `graphon` API."""
         return cls(
+            init_params=graph_init_context.to_graph_init_params(),
+            runtime_state=runtime_state,
+            execution_driver=graph_init_context.execution_driver,
             execution_recorder=execution_recorder,
-            graph_init_params=graph_init_context.to_graph_init_params(),
-            graph_runtime_state=graph_runtime_state,
         )
 
     def __init__(
         self,
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        init_params: "InitParams",
+        runtime_state: "RuntimeState",
+        execution_driver: "WorkflowRunDriver | None" = None,
         *,
         execution_recorder: BuilderExecutionRecorder | None = None,
         _request_hmac_key: bytes | None = None,
     ) -> None:
-        self.graph_init_params = graph_init_params
-        self.graph_runtime_state = graph_runtime_state
-        self._dify_context = self._resolve_dify_context(graph_init_params.run_context)
+        self.init_params = init_params
+        self._builder_init_params = init_params
+        self.runtime_state = runtime_state
+        self._dify_context = self._resolve_dify_context(init_params.run_context)
+        self._execution_driver = execution_driver
         self.execution_recorder = execution_recorder
         context = self._dify_context.builder_execution
         # Exhaustive context dispatch, before ordinary eager setup. A Builder
@@ -438,12 +444,14 @@ class DifyNodeFactory(NodeFactory):
         self._human_input_runtime = DifyHumanInputNodeRuntime(
             self._dify_context,
             workflow_execution_id_getter=lambda: get_system_text(
-                self.graph_runtime_state.variable_pool,
+                self.runtime_state.variable_pool,
                 SystemVariableKey.WORKFLOW_EXECUTION_ID,
             ),
             conversation_id_getter=self._conversation_id,
         )
-        self._tool_runtime = DifyToolNodeRuntime(self._dify_context, workflow_id=self.graph_init_params.workflow_id)
+        self._tool_runtime = DifyToolNodeRuntime(
+            self._dify_context, workflow_id=self.init_params.workflow_id, execution_driver=execution_driver
+        )
         self._http_request_file_manager = file_manager
         self._document_extractor_unstructured_api_config = UnstructuredApiConfig(
             api_url=dify_config.UNSTRUCTURED_API_URL,
@@ -475,13 +483,13 @@ class DifyNodeFactory(NodeFactory):
             self._dify_context.tenant_id,
             self._dify_context.app_id,
             self._dify_context.user_id,
-            self.graph_init_params.workflow_id,
-            self.graph_init_params.call_depth,
+            self.init_params.workflow_id,
+            self.init_params.call_depth,
         ) != (context.tenant_id, context.app_id, context.actor_id, context.workflow_id, 0):
             raise BuilderExecutionPolicyError("execution_owner_mismatch")
 
     def _admission_snapshot(self) -> RestrictedAdmissionSnapshot:
-        graph = dict(self.graph_init_params.graph_config)
+        graph = dict(self.init_params.graph_config)
         return RestrictedAdmissionSnapshot(
             app_mode="workflow",
             workflow_kind="standard",
@@ -526,9 +534,7 @@ class DifyNodeFactory(NodeFactory):
             raise BuilderExecutionPolicyError("node_binding_mismatch")
 
         def issue_guard(node_id: str, node_execution_id: str) -> ConfirmedToolGuard:
-            native_run_id = get_system_text(
-                self.graph_runtime_state.variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID
-            )
+            native_run_id = get_system_text(self.runtime_state.variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID)
             if not native_run_id:
                 raise BuilderExecutionPolicyError("execution_launch_mismatch")
             return recorder.confirmed_guard(
@@ -553,7 +559,7 @@ class DifyNodeFactory(NodeFactory):
             self._validate_json_raw_config(node_config)
         if admit_json_workflow(snapshot).nodes != context.admitted_nodes:
             raise BuilderExecutionPolicyError("node_binding_mismatch")
-        native_run_id = get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID)
+        native_run_id = get_system_text(self.runtime_state.variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID)
         if not native_run_id:
             raise BuilderExecutionPolicyError("execution_launch_mismatch")
         self._json_tool_runtime = QualifiedJsonToolNodeRuntime(
@@ -563,13 +569,27 @@ class DifyNodeFactory(NodeFactory):
             issuer=recorder,
         )
 
-    def with_runtime_state(self, graph_runtime_state: "GraphRuntimeState") -> "DifyNodeFactory":
+    @override
+    def with_runtime_state(self, runtime_state: "RuntimeState") -> "DifyNodeFactory":
         return DifyNodeFactory(
+            init_params=self._builder_init_params
+            if self._dify_context.builder_execution is not None
+            else self.init_params,
+            runtime_state=runtime_state,
+            execution_driver=self._execution_driver,
             execution_recorder=self.execution_recorder,
             _request_hmac_key=getattr(self, "_request_hmac_key", None),
-            graph_init_params=self.graph_init_params,
-            graph_runtime_state=graph_runtime_state,
-        )
+        ).with_graph_config(self.init_params.graph_config)
+
+    @override
+    def with_graph_config(self, graph_config: Mapping[str, Any]) -> "DifyNodeFactory":
+        factory = copy(self)
+        factory.init_params = self.init_params.model_copy(update={"graph_config": graph_config})
+        return factory
+
+    @property
+    def execution_driver(self) -> "WorkflowRunDriver | None":
+        return self._execution_driver
 
     @staticmethod
     def _resolve_dify_context(run_context: Mapping[str, Any]) -> DifyRunContext:
@@ -581,7 +601,23 @@ class DifyNodeFactory(NodeFactory):
         return DifyRunContext.model_validate(raw_ctx)
 
     def _conversation_id(self) -> str | None:
-        return get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+        return get_system_text(self.runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+
+    def _raw_builder_node_config(self, node_config: Mapping[str, Any]) -> dict[str, Any]:
+        """Remove only Graphon's generated root ownership field before checking the original binding."""
+        data = node_config.get("data")
+        if self._dify_context.builder_execution is None or not isinstance(data, BaseNodeData):
+            return dict(node_config)
+        raw_data = data.model_dump(mode="json", by_alias=True, exclude_unset=True)
+        original = next(
+            (node for node in self._builder_init_params.graph_config["nodes"] if node["id"] == node_config["id"]),
+            None,
+        )
+        if original is None:
+            raise BuilderExecutionPolicyError("execution_binding_mismatch")
+        if "container_id" not in original["data"] and raw_data.get("container_id") == "":
+            del raw_data["container_id"]
+        return {**node_config, "data": raw_data}
 
     @override
     def create_node(self, node_config: dict[str, Any] | NodeConfigDict) -> Node:
@@ -595,14 +631,7 @@ class DifyNodeFactory(NodeFactory):
             if node type is unknown, or if no implementation exists for the resolved version
         """
         context = self._dify_context.builder_execution
-        if context is not None:
-            # Graph.init supplies its shared DTO. JSON restores native enum spellings
-            # while exclude_unset preserves the original raw config digest boundary.
-            if isinstance(node_config.get("data"), BaseNodeData):
-                node_config = {
-                    **node_config,
-                    "data": node_config["data"].model_dump(mode="json", by_alias=True, exclude_unset=True),
-                }
+        node_config = self._raw_builder_node_config(node_config)
         if isinstance(context, ConfirmedToolExecutionContext):
             return self._create_confirmed_node(node_config)
         if isinstance(context, JsonToolExecutionContext):
@@ -645,8 +674,8 @@ class DifyNodeFactory(NodeFactory):
             return node_class(
                 node_id=node_id,
                 data=resolved_node_data.model_dump(mode="python", by_alias=True),
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
+                init_params=self.init_params,
+                runtime_state=self.runtime_state,
                 **kwargs,
             )
         node_type = node_data.type
@@ -725,8 +754,8 @@ class DifyNodeFactory(NodeFactory):
         node = node_class(
             node_id=node_id,
             data=constructor_node_data,
-            graph_init_params=self.graph_init_params,
-            graph_runtime_state=self.graph_runtime_state,
+            init_params=self.init_params,
+            runtime_state=self.runtime_state,
             **node_init_kwargs,
         )
         return node
@@ -749,8 +778,8 @@ class DifyNodeFactory(NodeFactory):
         return node_class(
             node_id=node_id,
             data=resolved_node_data.model_dump(mode="python", by_alias=True),
-            graph_init_params=self.graph_init_params,
-            graph_runtime_state=self.graph_runtime_state,
+            init_params=self.init_params,
+            runtime_state=self.runtime_state,
             **kwargs,
         )
 
@@ -771,8 +800,8 @@ class DifyNodeFactory(NodeFactory):
         return node_class(
             node_id=node_id,
             data=resolved.model_dump(mode="python", by_alias=True),
-            graph_init_params=self.graph_init_params,
-            graph_runtime_state=self.graph_runtime_state,
+            init_params=self.init_params,
+            runtime_state=self.runtime_state,
             **kwargs,
         )
 
@@ -843,6 +872,31 @@ class DifyNodeFactory(NodeFactory):
             node_class = self._resolve_node_class(node_type=node_type, node_version=version, node_data=data)
         validate_restricted_raw_node(context=context, node_id=node_id, node_class=node_class, raw_node_data=data)
 
+    @override
+    def validate_node(self, node_config: NodeConfigDict) -> NodeExecutionType:
+        context = self._dify_context.builder_execution
+        raw_node_config = self._raw_builder_node_config(node_config)
+        validator = None
+        if isinstance(context, ConfirmedToolExecutionContext):
+            validator = self._validate_confirmed_raw_config
+        elif isinstance(context, JsonToolExecutionContext):
+            validator = self._validate_json_raw_config
+        elif isinstance(context, BuilderExecutionContext):
+            validator = self._validate_restricted_raw_config
+        if validator is not None:
+            validator(raw_node_config, None)
+        node_id, _, node_class, resolved_node_data = _validated_node_config(
+            adapt_node_config_for_graph(raw_node_config),
+            resolve_node_class=self._resolve_node_class,
+            validate_resolved_node_data=self._validate_resolved_node_data,
+            pre_validate_node_data=validator,
+        )
+        if isinstance(context, BuilderExecutionContext):
+            validate_restricted_node(
+                context=context, node_id=node_id, node_class=node_class, resolved_node_data=resolved_node_data
+            )
+        return node_class.execution_type
+
     @staticmethod
     def _validate_resolved_node_data(node_class: type[Node], node_data: BaseNodeData) -> BaseNodeData:
         """
@@ -876,7 +930,7 @@ class DifyNodeFactory(NodeFactory):
             return node_data
 
         selector = parse_llm_model_selector(model_selector)
-        variable = self.graph_runtime_state.variable_pool.get(selector)
+        variable = self.runtime_state.variable_pool.get(selector)
         if not isinstance(variable, ObjectSegment):
             raise ValueError(f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable")
 
@@ -1037,7 +1091,7 @@ class DifyNodeFactory(NodeFactory):
             if not context_variable_selector:
                 return False
 
-            context_value = self.graph_runtime_state.variable_pool.get(context_variable_selector)
+            context_value = self.runtime_state.variable_pool.get(context_variable_selector)
             if not isinstance(context_value, ArrayObjectSegment):
                 return False
 
@@ -1072,7 +1126,7 @@ class DifyNodeFactory(NodeFactory):
         if node_data.memory is None:
             return None
 
-        conversation_id = get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+        conversation_id = get_system_text(self.runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
         return fetch_memory(
             conversation_id=conversation_id,
             app_id=self._dify_context.app_id,

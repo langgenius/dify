@@ -41,7 +41,7 @@ class OAuthHandler(BasePluginClient):
                 return resp
             raise ValueError("No response received from plugin daemon for authorization URL request.")
         except Exception as e:
-            raise ValueError(f"Error getting authorization URL: {e}")
+            raise ValueError(f"Error getting authorization URL: {e}") from e
 
     def get_credentials(
         self,
@@ -83,7 +83,7 @@ class OAuthHandler(BasePluginClient):
                 return resp
             raise ValueError("No response received from plugin daemon for authorization URL request.")
         except Exception as e:
-            raise ValueError(f"Error getting credentials: {e}")
+            raise ValueError(f"Error getting credentials: {e}") from e
 
     def refresh_credentials(
         self,
@@ -129,7 +129,7 @@ class OAuthHandler(BasePluginClient):
                 return resp
             raise ValueError("No response received from plugin daemon for refresh credentials request.")
         except Exception as e:
-            raise ValueError(f"Error refreshing credentials: {e}")
+            raise ValueError(f"Error refreshing credentials: {e}") from e
 
     def _convert_request_to_raw_data(self, request: Request) -> bytes:
         """

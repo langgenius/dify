@@ -1,7 +1,8 @@
+from core.dify_builder.models import Graph
 from services.dify_builder.agent.form_schema import reconcile_form_fields
 
 
-def test_reconciles_all_concrete_json_value_types():
+def test_reconciles_all_concrete_json_value_types() -> None:
     fields = [
         {"key": "enabled", "type": "text"},
         {"key": "count", "type": "text"},
@@ -9,7 +10,7 @@ def test_reconciles_all_concrete_json_value_types():
         {"key": "config", "type": "text"},
         {"key": "tags", "type": "text"},
     ]
-    values = {
+    values: Graph = {
         "enabled": False,
         "count": 0,
         "ratio": 0.5,
@@ -35,7 +36,7 @@ def test_reconciles_all_concrete_json_value_types():
     ]
 
 
-def test_string_values_only_keep_string_compatible_field_types():
+def test_string_values_only_keep_string_compatible_field_types() -> None:
     fields = [
         {"key": "title", "type": "textarea"},
         {"key": "mode", "type": "select", "options": ["fast"]},
@@ -55,7 +56,7 @@ def test_string_values_only_keep_string_compatible_field_types():
     assert reconciled[1]["options"] == ["fast", "safe"]
 
 
-def test_select_does_not_duplicate_known_value_after_option_stringification():
+def test_select_does_not_duplicate_known_value_after_option_stringification() -> None:
     fields = [{"key": "choice", "type": "select", "options": [1, "2"]}]
 
     reconciled = reconcile_form_fields(fields, {"choice": "1"})
@@ -63,7 +64,7 @@ def test_select_does_not_duplicate_known_value_after_option_stringification():
     assert reconciled[0]["options"] == [1, "2"]
 
 
-def test_missing_and_null_values_do_not_override_declared_type():
+def test_missing_and_null_values_do_not_override_declared_type() -> None:
     marker = "not-a-field"
     fields = [
         {"key": "missing", "type": "number"},

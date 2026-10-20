@@ -1,41 +1,62 @@
 import json
 from copy import deepcopy
+from typing import Never
+from unittest.mock import MagicMock
 
 import pytest
 
-from core.dify_builder.models import ChecklistError, Diagnosis, NodeOutput, Run
+from core.dify_builder.models import Actor, ChecklistError, Diagnosis, Graph, NodeOutput, Run
+from graphon.model_runtime.entities.message_entities import PromptMessage
 from services.dify_builder import credentials
 from services.dify_builder.agent import fix, graph_prompt
 from services.dify_builder.preflight import preflight_errors
+from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
 
 class _Msg:
-    def __init__(self, text):
+    def __init__(self, text: str) -> None:
         self._t = text
 
-    def get_text_content(self):
+    def get_text_content(self) -> str:
         return self._t
 
 
 class _Result:
-    def __init__(self, text):
+    def __init__(self, text: str) -> None:
         self.message = _Msg(text)
 
 
-class _FakeInstance:
-    def __init__(self, replies):
+class _FakeInstance(MagicMock):
+    def __init__(self, replies: list[str]) -> None:
+        super().__init__()
         self._replies = list(replies)
 
-    def invoke_llm(self, *, prompt_messages, model_parameters=None, stop=None, stream=True, **kw):  # noqa: ARG002
+    def invoke_llm(
+        self,
+        *,
+        prompt_messages: list[PromptMessage],  # noqa: ARG002
+        model_parameters: dict[str, object] | None = None,  # noqa: ARG002
+        stop: list[str] | None = None,  # noqa: ARG002
+        stream: bool = True,  # noqa: ARG002
+        **_kw: object,
+    ) -> _Result:
         return _Result(self._replies.pop(0))
 
 
-class _BoomInstance:
-    def invoke_llm(self, *, prompt_messages, model_parameters=None, stop=None, stream=True, **kw):  # noqa: ARG002
+class _BoomInstance(MagicMock):
+    def invoke_llm(
+        self,
+        *,
+        prompt_messages: list[PromptMessage],  # noqa: ARG002
+        model_parameters: dict[str, object] | None = None,  # noqa: ARG002
+        stop: list[str] | None = None,  # noqa: ARG002
+        stream: bool = True,  # noqa: ARG002
+        **_kw: object,
+    ) -> Never:
         raise RuntimeError("provider down")
 
 
-_GRAPH = {
+_GRAPH: Graph = {
     "nodes": [
         {"id": "code1", "data": {"type": "code", "title": "Code"}},
         {"id": "end1", "data": {"type": "end", "title": "End"}},
@@ -45,11 +66,13 @@ _GRAPH = {
 _OUTPUTS = [NodeOutput(node_id="code1", title="Code", status="failed", error="NameError: x", inputs={}, outputs={})]
 
 
-def _bind_failed_native_fixture(monkeypatch, port, graph, node_id):
+def _bind_failed_native_fixture(
+    monkeypatch: pytest.MonkeyPatch, port: FakeBuildDifyPort, graph: Graph, node_id: str
+) -> str:
     """Explicit owned native identity for non-IF risk/approval tests only."""
     native_run_id = "risk-native-run"
 
-    def read_failed_context(app_id, actor, run_id):
+    def read_failed_context(app_id: str, actor: Actor, run_id: str) -> tuple[Graph, list[NodeOutput], str]:
         assert app_id == "app"
         assert actor.tenant_id == "tenant-1"
         assert actor.account_id == "acc-1"
@@ -60,7 +83,7 @@ def _bind_failed_native_fixture(monkeypatch, port, graph, node_id):
     return native_run_id
 
 
-def test_diagnose_valid():
+def test_diagnose_valid() -> None:
     m = _FakeInstance(['{"culprit_node_id": "code1", "root_cause": "x is undefined", "severity": "high"}'])
     d = fix.diagnose(m, Run(), _GRAPH, _OUTPUTS)
     assert d.culprit_node_id == "code1"
@@ -68,39 +91,39 @@ def test_diagnose_valid():
     assert "undefined" in d.root_cause
 
 
-def test_diagnose_nonexistent_culprit_falls_back():
+def test_diagnose_nonexistent_culprit_falls_back() -> None:
     m = _FakeInstance(['{"culprit_node_id": "ghost", "root_cause": "y", "severity": "medium"}'])
     d = fix.diagnose(m, Run(), _GRAPH, _OUTPUTS)
     assert d.culprit_node_id == "code1"  # LLM named a non-existent node -> real failed node
 
 
-def test_diagnose_bad_severity_coerced():
+def test_diagnose_bad_severity_coerced() -> None:
     m = _FakeInstance(['{"culprit_node_id": "code1", "root_cause": "y", "severity": "catastrophic"}'])
     assert fix.diagnose(m, Run(), _GRAPH, _OUTPUTS).severity == "medium"
 
 
-def test_diagnose_none_model_degrades_with_real_error():
+def test_diagnose_none_model_degrades_with_real_error() -> None:
     d = fix.diagnose(None, Run(), _GRAPH, _OUTPUTS)
     assert d.culprit_node_id == "code1"
     assert "NameError: x" in d.root_cause
 
 
-def test_diagnose_provider_error_degrades():
+def test_diagnose_provider_error_degrades() -> None:
     d = fix.diagnose(_BoomInstance(), Run(), _GRAPH, _OUTPUTS)
     assert d.culprit_node_id == "code1"
     assert "unavailable" in d.root_cause
 
 
-def test_diagnose_checklist_valid():
+def test_diagnose_checklist_valid() -> None:
     errs = [ChecklistError(node_id="llm1", node_type="llm", title="LLM", messages=["metrics required"])]
-    g = {"nodes": [{"id": "llm1", "data": {"type": "llm"}}], "edges": []}
+    g: Graph = {"nodes": [{"id": "llm1", "data": {"type": "llm"}}], "edges": []}
     m = _FakeInstance(['{"culprit_node_id": "llm1", "root_cause": "missing metrics", "severity": "medium"}'])
     d = fix.diagnose_checklist(m, errs, g)
     assert d.culprit_node_id == "llm1"
     assert "metrics" in d.root_cause
 
 
-def test_diagnose_checklist_none_model_degrades():
+def test_diagnose_checklist_none_model_degrades() -> None:
     errs = [ChecklistError(node_id="llm1", messages=["metrics required"])]
     d = fix.diagnose_checklist(None, errs, {"nodes": [], "edges": []})
     assert d.culprit_node_id == "llm1"
@@ -115,7 +138,7 @@ _DIAG = Diagnosis(culprit_node_id="code1", root_cause="x is undefined", severity
 # these tests are about (risk classification and the re-prompt budget). ``end1``
 # is only ever CONNECTED to, never written, so its defect must keep its
 # exemption -- which is exactly what these fixtures now also guard.
-_RG = {
+_RG: Graph = {
     "nodes": [
         {
             "id": "code1",
@@ -134,7 +157,7 @@ _RG = {
 }
 
 
-def test_propose_config_fix_auto_applies_low_risk():
+def test_propose_config_fix_auto_applies_low_risk() -> None:
     payload = (
         '{"intents":[{"op":"set_node_config","args":{"node_id":"code1","path":"code",'
         '"value":"def main():\\n    return {}"}}],'
@@ -147,7 +170,9 @@ def test_propose_config_fix_auto_applies_low_risk():
 
 
 @pytest.mark.parametrize("switch_model", [True, False], ids=["model-switch-needs-approval", "prompt-auto-applies"])
-def test_real_fix_cognition_routes_repairs_through_core_approval(monkeypatch, switch_model):
+def test_real_fix_cognition_routes_repairs_through_core_approval(
+    monkeypatch: pytest.MonkeyPatch, switch_model: bool
+) -> None:
     """Dropping deterministic risk shaping would write a model switch before approval."""
     from datetime import datetime
 
@@ -166,7 +191,7 @@ def test_real_fix_cognition_routes_repairs_through_core_approval(monkeypatch, sw
         model={"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
         prompt_template=[{"role": "user", "text": "old prompt"}],
     )
-    graph = {
+    graph: Graph = {
         "nodes": [
             {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
             {"id": "llm", "data": data},
@@ -223,11 +248,11 @@ def test_real_fix_cognition_routes_repairs_through_core_approval(monkeypatch, sw
     assert repo.get_run(original.id) == original
 
 
-def test_invalid_model_replacement_still_fails_native_preflight():
+def test_invalid_model_replacement_still_fails_native_preflight() -> None:
     from core.dify_builder.node_defaults import default_config
 
     data = {**default_config("llm"), "type": "llm", "title": "LLM"}
-    graph = {"nodes": [{"id": "llm", "data": data}], "edges": []}
+    graph: Graph = {"nodes": [{"id": "llm", "data": data}], "edges": []}
     payload = json.dumps(
         {
             "intents": [{"op": "set_node_config", "args": {"node_id": "llm", "path": "model", "value": "invalid"}}],
@@ -242,7 +267,9 @@ def test_invalid_model_replacement_still_fails_native_preflight():
 
 
 @pytest.mark.parametrize("grouped", [False, True], ids=["ordinary", "grouped"])
-def test_real_fix_aggregator_source_switch_waits_for_explicit_approval(monkeypatch, grouped):
+def test_real_fix_aggregator_source_switch_waits_for_explicit_approval(
+    monkeypatch: pytest.MonkeyPatch, grouped: bool
+) -> None:
     """A preflight-valid upstream selector switch must not auto-apply as a config repair."""
     from datetime import datetime
 
@@ -253,7 +280,7 @@ def test_real_fix_aggregator_source_switch_waits_for_explicit_approval(monkeypat
     from services.dify_builder.agent import llm_agent
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, InMemoryRepository
 
-    graph = {
+    graph: Graph = {
         "nodes": [
             {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
             {"id": "source-a", "data": {"type": "template-transform", "title": "A", "template": "A", "variables": []}},
@@ -666,7 +693,9 @@ def test_real_fix_aggregator_source_switch_waits_for_explicit_approval(monkeypat
         "v2-task-binding",
     ],
 )
-def test_real_fix_native_data_access_changes_wait_for_explicit_approval(monkeypatch, data, path, value):
+def test_real_fix_native_data_access_changes_wait_for_explicit_approval(
+    monkeypatch: pytest.MonkeyPatch, data: Graph, path: str, value: Graph | bool | int | list[str] | str
+) -> None:
     """Real native preflight accepts the repair; Fix must still require approval.
 
     Container and model/index fixtures establish accepted candidate/configuration
@@ -681,7 +710,7 @@ def test_real_fix_native_data_access_changes_wait_for_explicit_approval(monkeypa
     from services.dify_builder.agent import llm_agent
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, InMemoryRepository
 
-    graph = {
+    graph: Graph = {
         "nodes": [
             {"id": "s", "data": {"type": "start", "title": "Start", "variables": []}},
             {"id": "n", "data": {"title": "Node", **deepcopy(data)}},
@@ -752,7 +781,7 @@ def test_real_fix_native_data_access_changes_wait_for_explicit_approval(monkeypa
 
 # Same split as ``_RG``: the culprit is startable, ``end1`` is not and is never
 # written.
-_HTTP_GRAPH = {
+_HTTP_GRAPH: Graph = {
     "nodes": [
         {
             "id": "http1",
@@ -773,7 +802,7 @@ _HTTP_GRAPH = {
 }
 
 
-def test_propose_external_config_forced_high():
+def test_propose_external_config_forced_high() -> None:
     payload = (
         '{"intents":[{"op":"set_node_config","args":{"node_id":"http1","path":"url",'
         '"value":"https://example.com"}}],'
@@ -786,7 +815,7 @@ def test_propose_external_config_forced_high():
     assert risk.level == "high"  # http-request node touched -> external side effect, even config-only
 
 
-def test_propose_structural_forced_high():
+def test_propose_structural_forced_high() -> None:
     """Also the guard for the ``connect`` exclusion: ``end1`` is already refused
     by the engine and this batch only WIRES to it. Counting a connect's
     endpoints as written would make ``end1``'s pre-existing defect veto the
@@ -804,7 +833,7 @@ def test_propose_structural_forced_high():
     assert risk.level == "high"  # any structural op forces high -> human review
 
 
-def test_propose_dangling_ref_reprompts_then_recovers():
+def test_propose_dangling_ref_reprompts_then_recovers() -> None:
     bad = (
         '{"intents":[{"op":"connect","args":{"from_node":"code1","to_node":"ghost"}}],'
         '"risk":{"level":"low","reason":"x"}}'
@@ -819,7 +848,7 @@ def test_propose_dangling_ref_reprompts_then_recovers():
     assert risk.level == "high"  # connect is structural
 
 
-def test_propose_invalid_twice_surfaces_to_human():
+def test_propose_invalid_twice_surfaces_to_human() -> None:
     bad = '{"intents":[{"op":"connect","args":{"from_node":"code1","to_node":"ghost"}}],"risk":{"level":"low"}}'
     intents, risk = fix.propose_repair(_FakeInstance([bad, bad]), _DIAG, _RG)
     assert intents == []
@@ -827,19 +856,19 @@ def test_propose_invalid_twice_surfaces_to_human():
     assert "try again or finish" in risk.reason.lower()
 
 
-def test_propose_none_model_surfaces_to_human():
+def test_propose_none_model_surfaces_to_human() -> None:
     intents, risk = fix.propose_repair(None, _DIAG, _RG)
     assert intents == []
     assert risk.level == "high"
 
 
-def test_propose_provider_error_surfaces():
+def test_propose_provider_error_surfaces() -> None:
     intents, risk = fix.propose_repair(_BoomInstance(), _DIAG, _RG)
     assert intents == []
     assert risk.level == "high"
 
 
-def test_diagnose_none_model_surfaces_launch_error_when_no_failed_nodes():
+def test_diagnose_none_model_surfaces_launch_error_when_no_failed_nodes() -> None:
     """A launch failure (verify threw before any node ran: empty node_outputs,
     message on run.error) must surface that error in the degraded diagnosis
     instead of the blind 'Automatic diagnosis unavailable.'"""
@@ -855,20 +884,21 @@ def test_diagnose_none_model_surfaces_launch_error_when_no_failed_nodes():
 # services/dify_builder/credentials.py for the two halves of the guard.
 
 
-class _RecordingInstance:
+class _RecordingInstance(MagicMock):
     """Like ``_FakeInstance``, but keeps the prompt it was handed."""
 
-    def __init__(self, replies):
+    def __init__(self, replies: list[str]) -> None:
+        super().__init__()
         self._replies = list(replies)
-        self.calls: list[dict] = []
+        self.calls: list[Graph] = []
 
-    def invoke_llm(self, **kwargs):
+    def invoke_llm(self, **kwargs: object) -> _Result:
         self.calls.append(kwargs)
         return _Result(self._replies.pop(0))
 
 
-def test_diagnose_withholds_nested_runtime_credentials_without_changing_evidence():
-    graph = {
+def test_diagnose_withholds_nested_runtime_credentials_without_changing_evidence() -> None:
+    graph: Graph = {
         "nodes": [{"id": "http1", "data": {"type": "http-request", "title": "HTTP", "api_key": "graph-secret"}}],
         "edges": [],
     }
@@ -904,9 +934,9 @@ def test_diagnose_withholds_nested_runtime_credentials_without_changing_evidence
     assert (run, graph, outputs) == before
 
 
-def test_diagnose_redacts_known_graph_credentials_before_truncating_runtime_text():
+def test_diagnose_redacts_known_graph_credentials_before_truncating_runtime_text() -> None:
     secret = "long-credential-" + "Z" * 400
-    graph = {
+    graph: Graph = {
         "nodes": [{"id": "http1", "data": {"type": "http-request", "title": "HTTP", "api_key": secret}}],
         "edges": [],
     }
@@ -923,8 +953,8 @@ def test_diagnose_redacts_known_graph_credentials_before_truncating_runtime_text
     assert (run, graph, outputs) == before
 
 
-def test_diagnose_launch_failure_withholds_graph_credentials_and_preserves_safe_error():
-    graph = {
+def test_diagnose_launch_failure_withholds_graph_credentials_and_preserves_safe_error() -> None:
+    graph: Graph = {
         "nodes": [
             {
                 "id": "http1",
@@ -947,7 +977,7 @@ def test_diagnose_launch_failure_withholds_graph_credentials_and_preserves_safe_
 
 
 @pytest.mark.parametrize("credential_source", ["run", "outputs"])
-def test_diagnose_withholds_runtime_only_credentials_repeated_in_graph_labels(credential_source):
+def test_diagnose_withholds_runtime_only_credentials_repeated_in_graph_labels(credential_source: str) -> None:
     graph = {
         "nodes": [
             {"id": "http1", "data": {"type": "http-request", "title": "HTTP runtime-only-private"}},
@@ -1000,7 +1030,7 @@ _SECRET_HTTP_GRAPH = {
 }
 
 
-def test_culprit_config_withholds_the_nodes_secrets():
+def test_culprit_config_withholds_the_nodes_secrets() -> None:
     block = fix._culprit_config("http1", _SECRET_HTTP_GRAPH)
 
     assert "sk-live-9f3c-SECRET" not in block
@@ -1011,7 +1041,7 @@ def test_culprit_config_withholds_the_nodes_secrets():
     assert "https://example.test/score" in block
 
 
-def test_propose_repair_prompt_does_not_carry_the_culprits_credentials():
+def test_propose_repair_prompt_does_not_carry_the_culprits_credentials() -> None:
     payload = (
         '{"intents":[{"op":"set_node_config","args":{"node_id":"http1","path":"url",'
         '"value":"https://example.com"}}],'
@@ -1028,8 +1058,8 @@ def test_propose_repair_prompt_does_not_carry_the_culprits_credentials():
     assert credentials.REDACTED in prompt
 
 
-def test_culprit_config_survives_a_node_whose_data_is_not_a_mapping():
-    graph = {"nodes": [{"id": "odd", "data": "not-a-dict"}], "edges": []}
+def test_culprit_config_survives_a_node_whose_data_is_not_a_mapping() -> None:
+    graph: Graph = {"nodes": [{"id": "odd", "data": "not-a-dict"}], "edges": []}
 
     assert fix._culprit_config("odd", graph) == "{}"
 
@@ -1045,7 +1075,7 @@ def test_culprit_config_survives_a_node_whose_data_is_not_a_mapping():
 # instead.
 
 
-def _oversized_if_else_node() -> dict:
+def _oversized_if_else_node() -> Graph:
     """An if-else whose ``cases`` alone blows the budget several times over."""
     cases = [
         {
@@ -1066,8 +1096,8 @@ def _oversized_if_else_node() -> dict:
     return {"id": "branch1", "data": {"type": "if-else", "title": "Score", "cases": cases}}
 
 
-def test_an_over_budget_culprit_config_drops_the_whole_key_and_names_it():
-    graph = {"nodes": [_oversized_if_else_node()], "edges": []}
+def test_an_over_budget_culprit_config_drops_the_whole_key_and_names_it() -> None:
+    graph: Graph = {"nodes": [_oversized_if_else_node()], "edges": []}
 
     block = fix._culprit_config("branch1", graph)
 
@@ -1081,8 +1111,8 @@ def test_an_over_budget_culprit_config_drops_the_whole_key_and_names_it():
     assert "case_id" not in block
 
 
-def test_a_within_budget_culprit_config_is_rendered_whole_as_json():
-    graph = {"nodes": [{"id": "code1", "data": {"type": "code", "title": "Code", "code": "x = 1"}}], "edges": []}
+def test_a_within_budget_culprit_config_is_rendered_whole_as_json() -> None:
+    graph: Graph = {"nodes": [{"id": "code1", "data": {"type": "code", "title": "Code", "code": "x = 1"}}], "edges": []}
 
     block = fix._culprit_config("code1", graph)
 
@@ -1100,7 +1130,7 @@ def test_a_within_budget_culprit_config_is_rendered_whole_as_json():
 # ASCII form is ambiguous between them (``>=`` is unambiguous and IS healed, so
 # it can no longer prove anything).
 
-_IF_ELSE_GRAPH = {
+_IF_ELSE_GRAPH: Graph = {
     "nodes": [
         {
             "id": "start1",
@@ -1150,7 +1180,7 @@ def _operator_repair(operator: str) -> str:
     )
 
 
-def test_propose_repair_reprompts_on_a_node_the_engine_would_refuse_and_recovers():
+def test_propose_repair_reprompts_on_a_node_the_engine_would_refuse_and_recovers() -> None:
     m = _RecordingInstance([_operator_repair("=="), _operator_repair("≥")])
 
     intents, risk = fix.propose_repair(m, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
@@ -1160,7 +1190,7 @@ def test_propose_repair_reprompts_on_a_node_the_engine_would_refuse_and_recovers
     assert risk.level == "low"
 
 
-def test_the_fix_reprompt_quotes_the_engines_own_words():
+def test_the_fix_reprompt_quotes_the_engines_own_words() -> None:
     m = _RecordingInstance([_operator_repair("=="), _operator_repair("≥")])
 
     fix.propose_repair(m, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
@@ -1170,7 +1200,7 @@ def test_the_fix_reprompt_quotes_the_engines_own_words():
     assert "cases.0.conditions.0.comparison_operator" in retry_prompt
 
 
-def test_a_repair_the_engine_refuses_twice_surfaces_to_the_human():
+def test_a_repair_the_engine_refuses_twice_surfaces_to_the_human() -> None:
     m = _RecordingInstance([_operator_repair("=="), _operator_repair("==")])
 
     intents, risk = fix.propose_repair(m, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
@@ -1181,7 +1211,7 @@ def test_a_repair_the_engine_refuses_twice_surfaces_to_the_human():
     assert "try again or finish" in risk.reason.lower()
 
 
-def test_a_repair_the_engine_accepts_never_spends_the_reprompt():
+def test_a_repair_the_engine_accepts_never_spends_the_reprompt() -> None:
     m = _RecordingInstance([_operator_repair("≥")])
 
     intents, _risk = fix.propose_repair(m, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
@@ -1190,10 +1220,10 @@ def test_a_repair_the_engine_accepts_never_spends_the_reprompt():
     assert len(intents) == 1
 
 
-def test_a_pre_existing_broken_node_does_not_veto_a_repair_elsewhere():
+def test_a_pre_existing_broken_node_does_not_veto_a_repair_elsewhere() -> None:
     """New problems only: the bare ``code1`` stand-in is invalid before the
     repair and after it, so it must not cost the re-prompt or the fix."""
-    graph = {"nodes": [*_IF_ELSE_GRAPH["nodes"], {"id": "code1", "data": {"type": "code"}}], "edges": []}
+    graph: Graph = {"nodes": [*_IF_ELSE_GRAPH["nodes"], {"id": "code1", "data": {"type": "code"}}], "edges": []}
     m = _RecordingInstance([_operator_repair("≥")])
 
     intents, _risk = fix.propose_repair(m, _IF_ELSE_DIAG, graph)
@@ -1202,7 +1232,7 @@ def test_a_pre_existing_broken_node_does_not_veto_a_repair_elsewhere():
     assert len(intents) == 1
 
 
-def test_a_repair_that_breaks_its_already_invalid_culprit_further_is_rejected():
+def test_a_repair_that_breaks_its_already_invalid_culprit_further_is_rejected() -> None:
     """Fix's MAIN path, and the reason the new-problems rule is keyed on pydantic
     error locations rather than on node identity.
 
@@ -1214,7 +1244,7 @@ def test_a_repair_that_breaks_its_already_invalid_culprit_further_is_rejected():
     dry run AND the port and be written and reported as applied.
     """
     culprit = {"id": "code1", "type": "custom", "data": {"type": "code", "title": "Code", "code_language": "python3"}}
-    graph = {"nodes": [culprit], "edges": []}
+    graph: Graph = {"nodes": [culprit], "edges": []}
     assert len(preflight_errors(graph)) == 1  # already refused before the repair
     breaks_it_further = (
         '{"intents":[{"op":"set_node_config","args":{"node_id":"code1","path":"code_language",'
@@ -1248,7 +1278,7 @@ def test_a_repair_that_breaks_its_already_invalid_culprit_further_is_rejected():
 # accepting the connect the prompt now makes writable and refusing the one it
 # used to be the only way to write.
 
-_BRANCH_GRAPH = {
+_BRANCH_GRAPH: Graph = {
     "nodes": [
         {
             "id": "start1",
@@ -1306,7 +1336,7 @@ _BRANCH_DIAG = Diagnosis(culprit_node_id="branch1", root_cause="the else arm goe
 def _branch_connect(source_handle: str | None) -> str:
     """A repair wiring the orphan node onto the branch's ELSE arm, with or
     without the handle the engine demands."""
-    args: dict = {"from_node": "branch1", "to_node": "excellent1"}
+    args: Graph = {"from_node": "branch1", "to_node": "excellent1"}
     if source_handle is not None:
         args["source_handle"] = source_handle
     return json.dumps(
@@ -1317,7 +1347,7 @@ def _branch_connect(source_handle: str | None) -> str:
     )
 
 
-def test_a_branch_connect_with_a_declared_handle_is_accepted_first_time():
+def test_a_branch_connect_with_a_declared_handle_is_accepted_first_time() -> None:
     m = _RecordingInstance([_branch_connect("false")])
 
     intents, risk = fix.propose_repair(m, _BRANCH_DIAG, _BRANCH_GRAPH)
@@ -1327,7 +1357,7 @@ def test_a_branch_connect_with_a_declared_handle_is_accepted_first_time():
     assert risk.level == "high"  # a connect is structural -> the human still sees it
 
 
-def test_a_branch_connect_without_a_handle_is_refused_and_the_retry_recovers_it():
+def test_a_branch_connect_without_a_handle_is_refused_and_the_retry_recovers_it() -> None:
     m = _RecordingInstance([_branch_connect(None), _branch_connect("false")])
 
     intents, _risk = fix.propose_repair(m, _BRANCH_DIAG, _BRANCH_GRAPH)
@@ -1339,7 +1369,7 @@ def test_a_branch_connect_without_a_handle_is_refused_and_the_retry_recovers_it(
     assert [i.args["source_handle"] for i in intents] == ["false"]
 
 
-def test_a_handle_less_branch_connect_twice_still_surfaces_to_the_human():
+def test_a_handle_less_branch_connect_twice_still_surfaces_to_the_human() -> None:
     """The dead end itself is unchanged -- a model that ignores the rule twice
     still ends at ``_no_fix()``. What changed is that it is now reachable only
     by ignoring the rule: before, EVERY Fix branch connect landed here,
@@ -1354,7 +1384,7 @@ def test_a_handle_less_branch_connect_twice_still_surfaces_to_the_human():
     assert "try again or finish" in risk.reason.lower()
 
 
-def test_the_repair_prompt_states_the_handle_rule_and_shows_the_handles():
+def test_the_repair_prompt_states_the_handle_rule_and_shows_the_handles() -> None:
     """The prompt half of the three tests above, which are its behaviour.
 
     On its own ``assert "source_handle" in _OP_SCHEMA`` pins a wording and
@@ -1380,7 +1410,7 @@ def test_the_repair_prompt_states_the_handle_rule_and_shows_the_handles():
 # Edit explains and Fix merely implies is the inconsistency Task 8 exists to
 # stop.
 
-_REJOIN_GRAPH = {
+_REJOIN_GRAPH: Graph = {
     "nodes": [
         {
             "id": "node1",
@@ -1486,7 +1516,7 @@ _CLOBBERING_REPAIR = json.dumps(
 )
 
 
-def test_a_repair_that_leaves_an_aggregator_unfed_surfaces_with_the_reason():
+def test_a_repair_that_leaves_an_aggregator_unfed_surfaces_with_the_reason() -> None:
     """The rejoin guard through Fix. Nothing is staged, and the reason names
     the aggregator, the new node and the selector to append -- so the human at
     the gate has something to act on instead of "no safe fix found"."""
@@ -1501,7 +1531,7 @@ def test_a_repair_that_leaves_an_aggregator_unfed_surfaces_with_the_reason():
     assert '["node7", "output"]' in risk.reason
 
 
-def test_a_repair_that_clobbers_an_array_surfaces_with_the_reason():
+def test_a_repair_that_clobbers_an_array_surfaces_with_the_reason() -> None:
     """The identity guard through Fix, on the literal S6 rewrite: both cases
     keep their ``case_id`` and the surviving condition's ``id`` is gone."""
     m = _FakeInstance([_CLOBBERING_REPAIR, _CLOBBERING_REPAIR])
@@ -1513,7 +1543,7 @@ def test_a_repair_that_clobbers_an_array_surfaces_with_the_reason():
     assert "c1" in risk.reason
 
 
-def test_a_purely_structural_refusal_keeps_the_generic_surface_reason():
+def test_a_purely_structural_refusal_keeps_the_generic_surface_reason() -> None:
     """The distinction round 2 established, in the one place Fix has it: only a
     would-run-wrong verdict replaces the surface text. A structural refusal --
     which DROPPED its own intent and says nothing about what remains -- still
@@ -1533,7 +1563,7 @@ def test_a_purely_structural_refusal_keeps_the_generic_surface_reason():
     assert "node5" not in risk.reason
 
 
-def test_a_repair_that_answers_the_guard_on_the_retry_is_staged_as_normal():
+def test_a_repair_that_answers_the_guard_on_the_retry_is_staged_as_normal() -> None:
     """The corrective re-prompt still does its job: a second attempt that
     extends the aggregator is a real fix and is staged."""
     rejoined = json.dumps(

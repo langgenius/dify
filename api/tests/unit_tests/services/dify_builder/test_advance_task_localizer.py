@@ -1,14 +1,16 @@
 """The advance task builds a LanguageDetector bound to the agent's model provider."""
 
+import pytest
+
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 from services.dify_builder.agent.localize import LanguageDetector
 
 
-def test_localizer_uses_agent_model_provider(monkeypatch):
+def test_localizer_uses_agent_model_provider(monkeypatch: pytest.MonkeyPatch) -> None:
     agent = LlmBuilderAgent(tenant_id="t", model_config={})
     calls = {"n": 0}
 
-    def fake_model_or_none():
+    def fake_model_or_none() -> None:
         # implicitly returns None -> the provider yields "no model", so
         # detection defaults to English (the path this test pins).
         calls["n"] += 1

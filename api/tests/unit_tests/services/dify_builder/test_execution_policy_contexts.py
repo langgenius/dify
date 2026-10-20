@@ -11,9 +11,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import SystemVariableKey, system_variable_selector
-from graphon.entities import GraphInitParams
 from graphon.nodes.tool.tool_node import ToolNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.workflow import Workflow
 from services.dify_builder.execution_contracts import (
@@ -77,7 +76,7 @@ def test_native_json_factory_constructs_tool_with_typed_run_context(prepared_jso
     pool.add(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID), "native-run")
     graph = prepared_json.workflow.graph_dict
     factory = DifyNodeFactory(
-        graph_init_params=GraphInitParams(
+        init_params=InitParams(
             workflow_id=context.workflow_id,
             graph_config=graph,
             call_depth=0,
@@ -90,7 +89,7 @@ def test_native_json_factory_constructs_tool_with_typed_run_context(prepared_jso
                 builder_execution=context,
             ),
         ),
-        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=0),
+        runtime_state=RuntimeState(workflow_id=context.workflow_id, variable_pool=pool, start_at=0),
         execution_recorder=prepared_json.service.recorder(
             context=context, native_run_id="native-run", task_id="native-task"
         ),

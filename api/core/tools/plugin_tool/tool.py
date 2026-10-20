@@ -62,7 +62,7 @@ class PluginTool(Tool):
 
         tool_parameters = convert_parameters_to_plugin_format(tool_parameters)
 
-        def dispatch(confirmed_headers: Mapping[str, str] | None) -> Generator[ToolInvokeMessage, None, None]:
+        def dispatch(confirmed_headers: Mapping[str, str] | None) -> Generator[ToolInvokeMessage]:
             return manager.invoke(
                 tenant_id=self.tenant_id,
                 user_id=user_id,

@@ -1,6 +1,7 @@
 """Builder-driven app rename: usable proposals only, and never fatal."""
 
 import contextlib
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,7 +10,7 @@ from services.dify_builder import app_naming
 
 
 @pytest.fixture
-def db_stubbed():
+def db_stubbed() -> Iterator[MagicMock]:
     """Stub the engine so nothing here needs a Flask app context.
 
     Without it the real ``db.engine`` raises, ``rename_app_from_proposal``
@@ -23,7 +24,7 @@ def db_stubbed():
         yield factory
 
 
-def test_an_unusable_proposal_never_touches_the_database(db_stubbed):
+def test_an_unusable_proposal_never_touches_the_database(db_stubbed: MagicMock) -> None:
     # No session is opened at all -- the derived name simply stands.
     stored = app_naming.rename_app_from_proposal(app_id="a", tenant_id="t", account_id="acc", proposed='  ""  ')
 
@@ -32,7 +33,7 @@ def test_an_unusable_proposal_never_touches_the_database(db_stubbed):
 
 
 @pytest.mark.usefixtures("db_stubbed")
-def test_a_usable_proposal_is_normalized_before_it_is_stored():
+def test_a_usable_proposal_is_normalized_before_it_is_stored() -> None:
     app = MagicMock()
     app.name = "Set up an expense"
     with (
@@ -51,7 +52,7 @@ def test_a_usable_proposal_is_normalized_before_it_is_stored():
 
 
 @pytest.mark.usefixtures("db_stubbed")
-def test_a_proposal_equal_to_the_current_name_is_not_written():
+def test_a_proposal_equal_to_the_current_name_is_not_written() -> None:
     app = MagicMock()
     app.name = "Expense approval"
     with (
@@ -67,7 +68,7 @@ def test_a_proposal_equal_to_the_current_name_is_not_written():
 
 
 @pytest.mark.usefixtures("db_stubbed")
-def test_a_missing_app_is_not_an_error():
+def test_a_missing_app_is_not_an_error() -> None:
     with (
         patch.object(app_naming, "AppService") as app_service,
         patch.object(app_naming, "_load_app", return_value=None),
@@ -80,7 +81,7 @@ def test_a_missing_app_is_not_an_error():
 
 
 @pytest.mark.usefixtures("db_stubbed")
-def test_a_failing_rename_is_swallowed():
+def test_a_failing_rename_is_swallowed() -> None:
     # A cosmetic rename must never take the build down with it.
     with (
         patch.object(app_naming, "AppService", side_effect=RuntimeError("boom")),
@@ -94,7 +95,7 @@ def test_a_failing_rename_is_swallowed():
 
 
 @pytest.mark.usefixtures("db_stubbed")
-def test_current_app_name_reads_the_stored_name():
+def test_current_app_name_reads_the_stored_name() -> None:
     app = MagicMock()
     app.name = "Refund approval"
     with patch.object(app_naming, "_load_app", return_value=app):
@@ -102,13 +103,13 @@ def test_current_app_name_reads_the_stored_name():
 
 
 @pytest.mark.usefixtures("db_stubbed")
-def test_current_app_name_is_empty_for_an_app_it_cannot_read():
+def test_current_app_name_is_empty_for_an_app_it_cannot_read() -> None:
     with patch.object(app_naming, "_load_app", return_value=None):
         assert app_naming.current_app_name(app_id="gone", tenant_id="t") == ""
 
 
 @pytest.mark.usefixtures("db_stubbed")
-def test_current_app_name_swallows_a_failing_read():
+def test_current_app_name_swallows_a_failing_read() -> None:
     # An unnamed card beats a failed session start.
     with patch.object(app_naming, "_load_app", side_effect=RuntimeError("boom")):
         assert app_naming.current_app_name(app_id="a", tenant_id="t") == ""

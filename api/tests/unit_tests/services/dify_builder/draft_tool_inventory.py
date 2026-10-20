@@ -2,11 +2,13 @@
 
 from dataclasses import dataclass
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
+from core.dify_builder.models import Graph
 from repositories.credentials.query_repository import CredentialQueryRepository
 from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     OTHER_TENANT_ID,
@@ -56,7 +58,7 @@ def draft_tools(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Draft
         [FakeTool("post", "Post to Huddle", "Post a message to a channel.")],
         needs_credentials=True,
     )
-    declaration = auth["declaration"]
+    declaration = cast(Graph, auth["declaration"])
     declaration["tools"][0]["parameters"] = [
         {
             "name": "message",

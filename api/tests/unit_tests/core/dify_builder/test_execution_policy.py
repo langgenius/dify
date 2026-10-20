@@ -1,20 +1,25 @@
 """Pure restricted admission controls: no runtime transport is exercised here."""
 
 import importlib
-from typing import TYPE_CHECKING, cast
+from collections.abc import Mapping
+from types import ModuleType
+from typing import TYPE_CHECKING, NoReturn, cast
 
 import pytest
 from pydantic import ValidationError
+
+from core.dify_builder.execution_policy import HttpResponseFixtureV1, RestrictedAdmissionSnapshot
+from core.dify_builder.models import Graph
 
 if TYPE_CHECKING:
     from core.dify_builder.execution_policy import ExecutionEvidenceSummary
 
 
-def policy():
+def policy() -> ModuleType:
     return importlib.import_module("core.dify_builder.execution_policy")
 
 
-def fixture(**overrides):
+def fixture(**overrides: object) -> HttpResponseFixtureV1:
     return policy().HttpResponseFixtureV1(
         **{
             "node_id": "http",
@@ -27,8 +32,8 @@ def fixture(**overrides):
     )
 
 
-def graph(http=False):
-    nodes = [
+def graph(http: bool = False) -> Graph:
+    nodes: list[Graph] = [
         {"id": "start", "data": {"type": "start", "variables": []}},
         {"id": "end", "data": {"type": "end", "outputs": []}},
     ]
@@ -47,16 +52,20 @@ def graph(http=False):
                 },
             },
         )
-    return {"nodes": nodes, "edges": [{"source": a["id"], "target": b["id"]} for a, b in zip(nodes, nodes[1:])]}
+    return {
+        "nodes": nodes,
+        "edges": [{"source": a["id"], "target": b["id"]} for a, b in zip(nodes, nodes[1:], strict=False)],
+    }
 
 
-def test_fixture_strict_integer_and_immutable():
+def test_fixture_strict_integer_and_immutable() -> None:
     value = fixture()
     assert value.model_dump(mode="json")["status_code"] == 201
     with pytest.raises(ValidationError):
         fixture(status_code=True)
+    mutate = value.__setattr__
     with pytest.raises(ValidationError):
-        value.body = "changed"
+        mutate("body", "changed")
 
 
 @pytest.mark.parametrize(
@@ -72,17 +81,23 @@ def test_fixture_strict_integer_and_immutable():
         {"schema_version": True},
     ],
 )
-def test_invalid_fixture_rejected(overrides):
+def test_invalid_fixture_rejected(overrides: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
         fixture(**overrides)
 
 
-def test_untrusted_fixture_decoder_is_strict_and_sanitized():
+def test_untrusted_fixture_decoder_is_strict_and_sanitized() -> None:
     p = policy()
     sample = fixture().model_dump(mode="json")
     sample.pop("source")
     assert p.decode_http_fixture_submission([sample])[0].source == "user_sample"
-    for raw in (None, {}, [dict(sample, source="generated_sample")], [dict(sample, body="private", status_code=True)]):
+    invalid_cases: tuple[object, ...] = (
+        None,
+        {},
+        [dict(sample, source="generated_sample")],
+        [dict(sample, body="private", status_code=True)],
+    )
+    for raw in invalid_cases:
         with pytest.raises(p.BuilderExecutionPolicyError) as error:
             p.decode_http_fixture_submission(raw)
         assert "private" not in str(error.value)
@@ -90,7 +105,7 @@ def test_untrusted_fixture_decoder_is_strict_and_sanitized():
         p.decode_http_fixture_submission([sample, sample])
 
 
-def test_canonical_digests_reject_nonfinite_and_surrogates_preserve_array_order():
+def test_canonical_digests_reject_nonfinite_and_surrogates_preserve_array_order() -> None:
     p = policy()
     assert p.canonical_digest({"a": 1, "b": 2}) == p.canonical_digest({"b": 2, "a": 1})
     assert p.canonical_digest([1, 2]) != p.canonical_digest([2, 1])
@@ -100,7 +115,7 @@ def test_canonical_digests_reject_nonfinite_and_surrogates_preserve_array_order(
 
 
 @pytest.mark.parametrize("field", ["has_environment_variables", "has_conversation_variables", "has_external_tracing"])
-def test_raw_metadata_denied(field):
+def test_raw_metadata_denied(field: str) -> None:
     p = policy()
     snapshot = p.RestrictedAdmissionSnapshot(
         app_mode="workflow",
@@ -117,17 +132,19 @@ def test_raw_metadata_denied(field):
 
 
 @pytest.mark.parametrize("values", [{"extra": []}, {"extra": {}}, {"extra": float("inf")}, {"extra": "\ud800"}])
-def test_all_submitted_values_must_be_scalars(values):
+def test_all_submitted_values_must_be_scalars(values: dict[str, object]) -> None:
     with pytest.raises(policy().BuilderExecutionPolicyError):
         policy().scalar_inputs_digest(values)
 
 
-def snapshot(graph_value=None, features=None):
+def snapshot(
+    graph_value: Mapping[str, object] | None = None, features: dict[str, object] | None = None
+) -> RestrictedAdmissionSnapshot:
     p = policy()
     return p.RestrictedAdmissionSnapshot(
         app_mode="workflow",
         workflow_kind="standard",
-        graph=graph_value or graph(),
+        graph=dict(graph_value) if graph_value else graph(),
         input_schema={"variables": []},
         features=features or {},
         has_environment_variables=False,
@@ -153,7 +170,7 @@ def snapshot(graph_value=None, features=None):
         "file_default",
     ],
 )
-def test_admission_rejects_unsupported_effect_shapes(mutation):
+def test_admission_rejects_unsupported_effect_shapes(mutation: str) -> None:
     p = policy()
     value = graph(http=True)
     data = value["nodes"][1]["data"]
@@ -186,12 +203,12 @@ def test_admission_rejects_unsupported_effect_shapes(mutation):
     assert "private" not in str(error.value)
 
 
-def test_exact_implementation_identity_precedes_native_validation(monkeypatch):
+def test_exact_implementation_identity_precedes_native_validation(monkeypatch: pytest.MonkeyPatch) -> None:
     from core.workflow import node_factory
 
     class Unreviewed:
         @staticmethod
-        def validate_node_data(_data):
+        def validate_node_data(_data: object) -> NoReturn:
             pytest.fail("unreviewed node validated")
 
     monkeypatch.setattr(node_factory, "resolve_workflow_node_class", lambda **_kwargs: Unreviewed)
@@ -199,7 +216,7 @@ def test_exact_implementation_identity_precedes_native_validation(monkeypatch):
         policy().admitted_node_bindings(snapshot())
 
 
-def test_native_start_end_identity_and_raw_digest_binding():
+def test_native_start_end_identity_and_raw_digest_binding() -> None:
     p = policy()
     bindings = p.admitted_node_bindings(snapshot())
     assert bindings[0].implementation == "graphon.nodes.start.start_node.StartNode"
@@ -212,7 +229,9 @@ def test_native_start_end_identity_and_raw_digest_binding():
 @pytest.mark.parametrize(
     "value", [10**400, -(10**400), 10**309, -(10**309)], ids=["huge", "negative-huge", "overflow", "negative-overflow"]
 )
-def test_http_default_large_integer_refused_before_native_validation(monkeypatch, value):
+def test_http_default_large_integer_refused_before_native_validation(
+    monkeypatch: pytest.MonkeyPatch, value: int | float
+) -> None:
     from graphon.nodes.http_request.node import HttpRequestNode
 
     p = policy()
@@ -221,7 +240,7 @@ def test_http_default_large_integer_refused_before_native_validation(monkeypatch
     data["default_value"] = [{"type": "number", "key": "status_code", "value": value}]
     assert p.canonical_digest(raw_graph)
 
-    def forbidden(_data):
+    def forbidden(_data: object) -> NoReturn:
         pytest.fail("oversized default reached native validation")
 
     monkeypatch.setattr(HttpRequestNode, "validate_node_data", forbidden)
@@ -234,7 +253,7 @@ def test_http_default_large_integer_refused_before_native_validation(monkeypatch
 @pytest.mark.parametrize(
     "value", [599, 599.5, 10**308, -(10**308)], ids=["integer", "float", "large-finite", "negative-finite"]
 )
-def test_http_default_finite_number_preserves_raw_binding(value):
+def test_http_default_finite_number_preserves_raw_binding(value: int | float) -> None:
     p = policy()
     raw_graph = graph(http=True)
     data = cast(dict[str, object], raw_graph["nodes"][1]["data"])
@@ -256,7 +275,7 @@ def test_http_default_finite_number_preserves_raw_binding(value):
         {"sensitive_word_avoidance": {"enabled": False, "type": "", "configs": []}},
     ],
 )
-def test_known_native_disabled_defaults_pass(features):
+def test_known_native_disabled_defaults_pass(features: dict[str, object] | None) -> None:
     policy().admit_raw_execution_metadata(snapshot(features=features))
 
 
@@ -269,13 +288,13 @@ def test_known_native_disabled_defaults_pass(features):
         {"text_to_speech": {"enabled": False, "voice": []}},
     ],
 )
-def test_unknown_or_malformed_disabled_feature_forms_refuse(features):
+def test_unknown_or_malformed_disabled_feature_forms_refuse(features: dict[str, object] | None) -> None:
     with pytest.raises(policy().BuilderExecutionPolicyError, match="unsupported_features"):
         policy().admit_raw_execution_metadata(snapshot(features=features))
 
 
 @pytest.mark.parametrize("field", ["node_type", "edge_source", "selector_source"])
-def test_malformed_graph_identifiers_are_sanitized_refusals(field):
+def test_malformed_graph_identifiers_are_sanitized_refusals(field: str) -> None:
     value = graph()
     if field == "node_type":
         value["nodes"][0]["data"]["type"] = []
@@ -415,13 +434,14 @@ def test_json_evidence_variant_and_receipt_are_strict() -> None:
         native_run_id="run-1",
     )
     assert summary.policy_version == "builder-json-parse-v1"
-    for mutation in (
+    mutations: tuple[dict[str, object], ...] = (
         {"fixture_digest": "a" * 64},
         {"consent_id": "consent-1"},
         {"mode": "mock"},
         {"sandbox_profile": "network-disabled-v1"},
         {"native_run_id": None},
-    ):
+    )
+    for mutation in mutations:
         with pytest.raises(ValidationError):
             p.ExecutionEvidenceSummary.model_validate({**summary.model_dump(mode="json"), **mutation})
 
@@ -444,13 +464,14 @@ def test_json_evidence_variant_and_receipt_are_strict() -> None:
         text_messages=8,
     )
     assert receipt.kind == "qualified_json_completed"
-    for mutation in (
+    mutations: tuple[dict[str, object], ...] = (
         {"text_bytes": 65537},
         {"text_messages": 9},
         {"fixture_digest": "e" * 64},
         {"native_node_execution_id": None},
         {"kind": "fixture_served"},
-    ):
+    )
+    for mutation in mutations:
         with pytest.raises(ValidationError):
             p.BuilderExecutionObservation.model_validate({**receipt.model_dump(mode="json"), **mutation})
 
@@ -460,7 +481,7 @@ def test_json_evidence_variant_and_receipt_are_strict() -> None:
     [(True, True), (False, False), (1, False), ("true", False), (None, False)],
     ids=["true", "false", "integer-one", "string-true", "null"],
 )
-def test_json_success_evidence_requires_raw_boolean_seal(sealed, admitted):
+def test_json_success_evidence_requires_raw_boolean_seal(sealed: bool | int | str | None, admitted: bool) -> None:
     p = policy()
     values = {
         "request_id": "request-1",
@@ -478,7 +499,7 @@ def test_json_success_evidence_requires_raw_boolean_seal(sealed, admitted):
             p.ExecutionEvidenceSummary.model_validate(values)
 
 
-def test_json_non_success_evidence_allows_exact_false_seal_and_legacy_coercion_is_unchanged():
+def test_json_non_success_evidence_allows_exact_false_seal_and_legacy_coercion_is_unchanged() -> None:
     p = policy()
     json_values = {
         "request_id": "request-1",
@@ -507,7 +528,7 @@ def test_json_non_success_evidence_allows_exact_false_seal_and_legacy_coercion_i
         assert p.ExecutionEvidenceSummary.model_validate(confirmed).sealed is True
 
 
-def normal_workflow_features(*, citation=True):
+def normal_workflow_features(*, citation: bool = True) -> dict[str, object]:
     """Literal metadata produced by ordinary Workflow creation/save."""
     return {
         "retriever_resource": {"enabled": citation},
@@ -518,7 +539,7 @@ def normal_workflow_features(*, citation=True):
 
 
 @pytest.mark.parametrize("citation", [True, False], ids=["enabled", "disabled"])
-def test_normal_workflow_citation_display_metadata_admits_native_template(citation):
+def test_normal_workflow_citation_display_metadata_admits_native_template(citation: bool) -> None:
     from tests.unit_tests.services.dify_builder.test_template_execution import template_graph
 
     value = snapshot(template_graph(), features=normal_workflow_features(citation=citation))
@@ -529,7 +550,7 @@ def test_normal_workflow_citation_display_metadata_admits_native_template(citati
 
 
 @pytest.mark.parametrize("features", [{}, {"retriever_resource": {}}], ids=["absent", "empty"])
-def test_citation_display_absent_or_empty_metadata_compatibility(features):
+def test_citation_display_absent_or_empty_metadata_compatibility(features: dict[str, object] | None) -> None:
     value = snapshot(features=features)
     policy().admit_raw_execution_metadata(value)
     assert value.features == features
@@ -549,7 +570,7 @@ def test_citation_display_absent_or_empty_metadata_compatibility(features):
         pytest.param({"enabled": True, "config": {}}, id="extra-config"),
     ],
 )
-def test_citation_display_metadata_rejects_non_boolean_or_unknown_shape(citation):
+def test_citation_display_metadata_rejects_non_boolean_or_unknown_shape(citation: object) -> None:
     features = normal_workflow_features()
     features["retriever_resource"] = citation
     with pytest.raises(policy().BuilderExecutionPolicyError) as error:
@@ -561,7 +582,7 @@ def test_citation_display_metadata_rejects_non_boolean_or_unknown_shape(citation
 @pytest.mark.parametrize(
     "feature", ["file_upload", "text_to_speech", "speech_to_text", "sensitive_word_avoidance", "external_data_tools"]
 )
-def test_citation_display_flag_never_admits_enabled_external_features(feature):
+def test_citation_display_flag_never_admits_enabled_external_features(feature: str) -> None:
     features = normal_workflow_features()
     features[feature] = [{"endpoint": "PRIVATE-METADATA"}] if feature == "external_data_tools" else {"enabled": True}
     with pytest.raises(policy().BuilderExecutionPolicyError) as error:
@@ -571,7 +592,7 @@ def test_citation_display_flag_never_admits_enabled_external_features(feature):
 
 
 @pytest.mark.parametrize("node_type", ["knowledge-retrieval", "llm", "tool"])
-def test_citation_display_flag_never_admits_retrieval_model_or_tool_nodes(node_type):
+def test_citation_display_flag_never_admits_retrieval_model_or_tool_nodes(node_type: str) -> None:
     from tests.unit_tests.services.dify_builder.test_template_execution import template_graph
 
     raw_graph = template_graph()

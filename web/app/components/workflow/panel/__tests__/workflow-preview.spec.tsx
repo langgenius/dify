@@ -9,6 +9,7 @@ import {
   createStartNode,
   createWorkflowRunningData,
 } from '@/app/components/workflow/__tests__/fixtures'
+import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { submitHumanInputForm } from '@/service/workflow'
@@ -78,7 +79,7 @@ const createHumanInputFormData = (
       default: { type: 'constant', value: '', selector: [] },
     },
   ],
-  actions: [{ id: 'approve', title: 'Approve', button_style: 'primary' }],
+  actions: [{ id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary }],
   form_token: 'token-1',
   resolved_default_values: {},
   display_in_ui: true,
@@ -90,8 +91,8 @@ const createHumanInputFilledFormData = (
   overrides: Partial<HumanInputFilledFormData> = {},
 ): HumanInputFilledFormData => ({
   node_id: 'node-1',
-  node_title: 'Need Approval',
-  rendered_content: 'rendered',
+  node_title: 'Previous approval',
+  rendered_content: 'Already approved',
   action_id: 'approve',
   action_text: 'Approve',
   ...overrides,
@@ -177,7 +178,8 @@ it('opens pending human input on pause and submits the token with the entered re
       }),
     },
   })
-  expect(await screen.findByText('rendered')).toBeInTheDocument()
+  expect(screen.getByText('Need Approval')).toBeInTheDocument()
+  expect(await screen.findByText('Already approved', {}, { timeout: 5000 })).toBeInTheDocument()
   await user.type(screen.getByRole('textbox', { name: 'reason' }), 'Looks good')
   await user.click(screen.getByRole('button', { name: 'Approve' }))
   await waitFor(() =>

@@ -624,8 +624,8 @@ class PluginCategoryListApi(Resource):
 
         try:
             plugin_category = PluginCategory(category)
-        except ValueError:
-            raise InvalidArgumentError("invalid plugin category")
+        except ValueError as caught_error:
+            raise InvalidArgumentError("invalid plugin category") from caught_error
 
         try:
             plugins = PluginService.list_by_category(
@@ -810,7 +810,7 @@ class PluginUploadFromBundleApi(Resource):
         try:
             response = PluginService.upload_bundle(tenant_id, content)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            raise ValueError(e) from e
 
         return jsonable_encoder(response)
 

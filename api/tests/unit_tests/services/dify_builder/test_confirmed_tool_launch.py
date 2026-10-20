@@ -11,7 +11,7 @@ contents only; PostgreSQL locking and actual native allocated IDs are CI-owned.
 
 import json
 import logging
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import asdict
 from datetime import datetime, timedelta
 from types import ModuleType
@@ -413,8 +413,8 @@ class ConfirmedSpyPort(FakeDifyPort):
     @override
     def run_draft(
         self,
-        _app_id: str,
-        _actor: Actor,
+        app_id: str,
+        actor: Actor,
         inputs: Inputs,
         on_event: Callable[[NodeEvent], None],
         *,
@@ -470,15 +470,15 @@ class NoModelAgent(StubAgent):
     """Every cognition/localization entry point fails the test if reached."""
 
     @override
-    def diagnose(self, _failed_run: Run, _graph: Graph, _node_outputs: list[NodeOutput]) -> NoReturn:
+    def diagnose(self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> NoReturn:
         raise AssertionError("confirmed outcome must not be diagnosed")
 
     @override
-    def propose_repair(self, diagnosis: Diagnosis, _graph: Graph) -> NoReturn:
+    def propose_repair(self, diagnosis: Diagnosis, graph: Graph) -> NoReturn:
         raise AssertionError(f"confirmed outcome must not be repaired: {diagnosis.root_cause}")
 
     @override
-    def generate_mock_inputs(self, _schema: StartSchema, _prior_failed: Inputs) -> NoReturn:
+    def generate_mock_inputs(self, schema: StartSchema, prior_failed: Inputs) -> NoReturn:
         raise AssertionError("confirmed test must use the saved input")
 
 
@@ -634,8 +634,8 @@ def test_same_token_duplicate_delivery_cannot_release_or_settle_the_active_winne
         @override
         def run_draft(
             self,
-            _app_id: str,
-            _actor: Actor,
+            app_id: str,
+            actor: Actor,
             inputs: Inputs,
             on_event: Callable[[NodeEvent], None],
             *,
@@ -652,8 +652,8 @@ def test_same_token_duplicate_delivery_cannot_release_or_settle_the_active_winne
             observed["swept"] = sweeper.reconcile_interrupted_sessions()
             observed["grant_during_run"] = owner.consent_row(reserved.consent_id).state
             return super().run_draft(
-                _app_id,
-                _actor,
+                app_id,
+                actor,
                 inputs,
                 on_event,
                 session_id=session_id,
@@ -1597,7 +1597,6 @@ def install_native_generation(owner: Owner, monkeypatch: pytest.MonkeyPatch) -> 
     the port e2e test does. Returns the fixture native Run IDs (uuid4, not Graphon-allocated).
     """
     import threading
-    from collections.abc import Iterator
     from types import SimpleNamespace
 
     from sqlalchemy.orm import Session
@@ -1708,7 +1707,6 @@ def test_port_launches_reserved_command_natively_and_projects_sanitized_builder_
 ) -> None:
     """The actual port/admission/recorder/seal/settle chain on real rows; only native generation is faked."""
     import threading
-    from collections.abc import Iterator
     from types import SimpleNamespace
 
     from sqlalchemy.orm import Session
@@ -1918,7 +1916,6 @@ def _drive_generator_draft_saving(
     token sentinels. The mutable draft-variable writer is a recorder bound to the fixture SQLite engine.
     """
     import contextlib
-    from collections.abc import Iterator
     from types import SimpleNamespace
     from unittest.mock import Mock
 
@@ -1944,7 +1941,7 @@ def _drive_generator_draft_saving(
         assert app is not None
         assert workflow is not None
     monkeypatch.setattr(app_generator_module, "db", SimpleNamespace(engine=engine, session=Mock()))
-    generator = WorkflowAppGenerator()
+    generator = WorkflowAppGenerator(execution_driver=Mock())
     monkeypatch.setattr(generator, "_bind_file_access_scope", lambda **_kwargs: contextlib.nullcontext())
     monkeypatch.setattr(app_generator_module, "WorkflowAppQueueManager", lambda **kwargs: SimpleNamespace(**kwargs))
     monkeypatch.setattr(

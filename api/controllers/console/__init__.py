@@ -7,6 +7,7 @@ from typing import cast
 from flask import Blueprint, current_app, got_request_exception
 from flask_restx import Namespace
 
+from controllers.common.app_access_error import register_app_access_error_metadata
 from controllers.common.errors import (
     InternalServerError,
     InvalidArgumentError,
@@ -26,6 +27,7 @@ from services.retention.workflow_run.archive_log_service import (
 )
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
+register_app_access_error_metadata(bp, surface="console")
 
 api = ExternalApi(
     bp,
@@ -244,6 +246,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         members,
         model_providers,
         models,
+        network_access_group,
         plugin,
         rbac,
         skills,
@@ -338,6 +341,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         members,
         model_providers,
         models,
+        network_access_group,
         plugin,
         rbac,
         skills,
@@ -433,6 +437,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     members,
     model_providers,
     models,
+    network_access_group,
     plugin,
     rbac,
     skills,
@@ -498,6 +503,7 @@ __all__ = [
     "model_config",
     "model_providers",
     "models",
+    "network_access_group",
     "notification",
     "oauth",
     "oauth_server",

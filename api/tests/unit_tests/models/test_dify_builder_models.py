@@ -45,8 +45,8 @@ def session(engine: Engine) -> Iterator[Session]:
         yield session
 
 
-def _make_session(**overrides) -> DifyBuilderSession:
-    kwargs = {
+def _make_session(**overrides: object) -> DifyBuilderSession:
+    kwargs: dict[str, object] = {
         "app_id": APP_ID,
         "tenant_id": TENANT_ID,
         "owner_account_id": ACCOUNT_ID,

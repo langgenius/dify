@@ -1285,13 +1285,14 @@ class BuilderExecutionPolicyService:
                 or consent.native_node_execution_id != tool.node_execution_id
             ):
                 return False
-            if native.status == "succeeded" and (
-                len(nodes) != len(expected)
-                or native.exceptions_count != 0
-                or any(n.status != "succeeded" for n in nodes)
-            ):
-                return False
-            return True
+            return not (
+                native.status == "succeeded"
+                and (
+                    len(nodes) != len(expected)
+                    or native.exceptions_count != 0
+                    or any(n.status != "succeeded" for n in nodes)
+                )
+            )
         except (BuilderExecutionPolicyError, ValidationError, ValueError, TypeError, KeyError, IndexError):
             return False
 
@@ -1470,11 +1471,10 @@ class BuilderExecutionPolicyService:
                 expected is not None or len(nodes) != len(by_id)
             ):
                 return False
-            if native.status == "succeeded" and (
-                native.exceptions_count != 0 or any(n.status != "succeeded" for n in nodes)
-            ):
-                return False
-            return True
+            return not (
+                native.status == "succeeded"
+                and (native.exceptions_count != 0 or any(n.status != "succeeded" for n in nodes))
+            )
         except (BuilderExecutionPolicyError, ValidationError, ValueError, TypeError, KeyError, StopIteration):
             return False
 

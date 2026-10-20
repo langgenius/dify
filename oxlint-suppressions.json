@@ -288,19 +288,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/log/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/log/list.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 2
-    },
-    "typescript/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/app/log/var-panel.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
@@ -1744,11 +1731,6 @@
     }
   },
   "web/app/components/tools/edit-custom-collection-modal/test-api.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/mcp/mcp-server-param-item.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
     }
