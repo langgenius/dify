@@ -34,7 +34,12 @@ import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { ModelTypeEnum } from '../declarations'
 import { useInvalidateDefaultModel, useUpdateModelList } from '../hooks'
-import { ModelSelector } from '../model-selector'
+import {
+  ModelSelector,
+  ModelSelectorContent,
+  ModelSelectorRoot,
+  ModelSelectorTrigger,
+} from '../model-selector'
 
 type SystemModelSelectorProps = {
   className?: string
@@ -200,7 +205,7 @@ function SystemModelSession({
   const [clearConfirmation, setClearConfirmation] = useState<ClearConfirmation>()
   const { t } = useTranslation(['common', 'modelProvider'])
   const modelLabelId = useId()
-  const saveButtonRef = useRef<HTMLButtonElement>(null)
+  const modelTriggersRef = useRef<Partial<Record<ModelTypeEnum, HTMLButtonElement | null>>>({})
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageSystemDefaultModel = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const { data: textGenerationModelList = [], isPending: isTextGenerationModelListLoading } =
@@ -382,7 +387,7 @@ function SystemModelSession({
                 'modelProvider.systemReasoningModel.tip',
               )}
               <div>
-                <ModelSelector
+                <ModelSelectorRoot
                   disabled={isSaving}
                   {...getClearProps(
                     ModelTypeEnum.textGeneration,
@@ -397,7 +402,14 @@ function SystemModelSession({
                   onValueChange={(model) =>
                     handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)
                   }
-                />
+                >
+                  <ModelSelectorTrigger
+                    ref={(element) => {
+                      modelTriggersRef.current[ModelTypeEnum.textGeneration] = element
+                    }}
+                  />
+                  <ModelSelectorContent />
+                </ModelSelectorRoot>
               </div>
             </div>
             <div className="flex flex-col gap-1">
@@ -446,7 +458,7 @@ function SystemModelSession({
                 'modelProvider.speechToTextModel.tip',
               )}
               <div>
-                <ModelSelector
+                <ModelSelectorRoot
                   disabled={isSaving}
                   {...getClearProps(
                     ModelTypeEnum.speech2text,
@@ -461,13 +473,20 @@ function SystemModelSession({
                   onValueChange={(model) =>
                     handleChangeDefaultModel(ModelTypeEnum.speech2text, model)
                   }
-                />
+                >
+                  <ModelSelectorTrigger
+                    ref={(element) => {
+                      modelTriggersRef.current[ModelTypeEnum.speech2text] = element
+                    }}
+                  />
+                  <ModelSelectorContent />
+                </ModelSelectorRoot>
               </div>
             </div>
             <div className="flex flex-col gap-1">
               {renderModelLabel('modelProvider.ttsModel.key', 'modelProvider.ttsModel.tip')}
               <div>
-                <ModelSelector
+                <ModelSelectorRoot
                   disabled={isSaving}
                   {...getClearProps(ModelTypeEnum.tts, 'modelProvider.ttsModel.key')}
                   value={defaultModels?.[ModelTypeEnum.tts]}
@@ -477,7 +496,14 @@ function SystemModelSession({
                   onConfigureEmptyState={onClose}
                   showModelMeta={false}
                   onValueChange={(model) => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
-                />
+                >
+                  <ModelSelectorTrigger
+                    ref={(element) => {
+                      modelTriggersRef.current[ModelTypeEnum.tts] = element
+                    }}
+                  />
+                  <ModelSelectorContent />
+                </ModelSelectorRoot>
               </div>
             </div>
           </div>
@@ -493,7 +519,6 @@ function SystemModelSession({
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <Button
-          ref={saveButtonRef}
           className="min-w-18"
           variant="primary"
           type="submit"
@@ -513,7 +538,7 @@ function SystemModelSession({
           backdropProps={{ forceRender: true }}
           finalFocus={() =>
             clearConfirmation && !defaultModels?.[clearConfirmation.modelType]
-              ? saveButtonRef.current
+              ? (modelTriggersRef.current[clearConfirmation.modelType] ?? true)
               : true
           }
         >

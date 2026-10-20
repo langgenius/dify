@@ -1,3 +1,4 @@
+import type { ComponentProps, ReactNode } from 'react'
 import type {
   ModelSelectorModel,
   ModelSelectorModelPredicate,
@@ -7,14 +8,14 @@ import type {
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { useQueryState } from 'nuqs'
-import { useCallback, useState } from 'react'
+import { createContext, use, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { getCurrentProviderAndModel } from '../hooks'
-import { ModelSelectorTrigger } from './model-selector-trigger'
+import { ModelSelectorTrigger as ModelSelectorTriggerView } from './model-selector-trigger'
 import Popup from './popup'
 
 const getModelProviderPluginId = (provider: string) => {
@@ -54,7 +55,22 @@ type SplitModelSelectorProps = ModelSelectorBaseProps & {
   surface?: 'default' | 'workflow'
 }
 
+type ModelSelectorContextValue = {
+  triggerProps: ComponentProps<typeof ModelSelectorTriggerView>
+  popupProps: ComponentProps<typeof Popup>
+  popupClassName?: string
+}
+
+const ModelSelectorContext = createContext<ModelSelectorContextValue | null>(null)
+
+function useModelSelectorContext() {
+  const context = use(ModelSelectorContext)
+  if (!context) throw new Error('Model selector parts must be used within ModelSelectorRoot')
+  return context
+}
+
 function ModelSelectorRoot({
+  children,
   'aria-labelledby': labelledBy,
   value,
   models,
@@ -66,9 +82,9 @@ function ModelSelectorRoot({
   onHide,
   disabled,
   loading,
-  size,
-  surface,
-  shape,
+  size = 'medium',
+  surface = 'default',
+  shape = 'standalone',
   scopeFeatures = [],
   showDeprecatedWarnIcon = true,
   hideProviderSettingsFooter,
@@ -78,11 +94,11 @@ function ModelSelectorRoot({
   modelPredicate,
   modelSuggestionPredicate,
 }: ModelSelectorBaseProps & {
-  size: 'small' | 'medium'
-  surface: 'default' | 'workflow'
-  shape: 'standalone' | 'split'
+  children: ReactNode
+  size?: 'small' | 'medium'
+  surface?: 'default' | 'workflow'
+  shape?: 'standalone' | 'split'
 }) {
-  const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [settingsDestination, setSettingsDestination] = useQueryState(
@@ -144,66 +160,102 @@ function ModelSelectorRoot({
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
-      <ModelSelectorTrigger
-        aria-labelledby={labelledBy}
-        currentProvider={currentProvider}
-        currentModel={currentModel}
-        defaultModel={value}
-        onClear={onClear}
-        clearLabel={clearLabel}
-        disabled={disabled || loading}
-        loading={loading}
-        size={size}
-        surface={surface}
-        shape={shape}
-        className={className}
-        showDeprecatedWarnIcon={showDeprecatedWarnIcon}
-        showModelMeta={showModelMeta}
-        isModelCompatible={
-          currentProvider && currentModel
-            ? modelPredicate?.(currentProvider, currentModel)
-            : undefined
-        }
-      />
-      <PopoverContent
-        placement="bottom-start"
-        className={cn(
-          'flex max-h-[min(624px,var(--available-height,624px))] w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+      <ModelSelectorContext
+        value={{
+          triggerProps: {
+            'aria-labelledby': labelledBy,
+            currentProvider,
+            currentModel,
+            defaultModel: value,
+            onClear,
+            clearLabel,
+            disabled: disabled || loading,
+            loading,
+            size,
+            surface,
+            shape,
+            className,
+            showDeprecatedWarnIcon,
+            showModelMeta,
+            isModelCompatible:
+              currentProvider && currentModel
+                ? modelPredicate?.(currentProvider, currentModel)
+                : undefined,
+          },
+          popupProps: {
+            defaultModel: value,
+            inputValue,
+            modelList: models,
+            scopeFeatures,
+            modelPredicate,
+            modelSuggestionPredicate,
+            onOpenProviderSettings:
+              !hideProviderSettingsFooter && settingsDestination !== 'provider'
+                ? handleOpenSettings
+                : undefined,
+            onConfigureEmptyState: handleConfigureEmptyState,
+            onOpenMarketplace,
+            onInputValueChange: setInputValue,
+            onSelect: handleSelect,
+            onHide: handleHide,
+          },
           popupClassName,
-        )}
+        }}
       >
-        <PopoverTitle className="sr-only">
-          {t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
-        </PopoverTitle>
-        <Popup
-          defaultModel={value}
-          inputValue={inputValue}
-          modelList={models}
-          scopeFeatures={scopeFeatures}
-          modelPredicate={modelPredicate}
-          modelSuggestionPredicate={modelSuggestionPredicate}
-          onOpenProviderSettings={
-            !hideProviderSettingsFooter && settingsDestination !== 'provider'
-              ? handleOpenSettings
-              : undefined
-          }
-          onConfigureEmptyState={handleConfigureEmptyState}
-          onOpenMarketplace={onOpenMarketplace}
-          onInputValueChange={setInputValue}
-          onSelect={handleSelect}
-          onHide={handleHide}
-        />
-      </PopoverContent>
+        {children}
+      </ModelSelectorContext>
     </Popover>
   )
 }
 
+function ModelSelectorTrigger({
+  ref,
+}: Pick<ComponentProps<typeof ModelSelectorTriggerView>, 'ref'>) {
+  const { triggerProps } = useModelSelectorContext()
+  return <ModelSelectorTriggerView {...triggerProps} ref={ref} />
+}
+
+function ModelSelectorContent() {
+  const { t } = useTranslation(['plugin'])
+  const { popupProps, popupClassName } = useModelSelectorContext()
+  return (
+    <PopoverContent
+      placement="bottom-start"
+      className={cn(
+        'flex max-h-[min(624px,var(--available-height,624px))] w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+        popupClassName,
+      )}
+    >
+      <PopoverTitle className="sr-only">
+        {t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
+      </PopoverTitle>
+      <Popup {...popupProps} />
+    </PopoverContent>
+  )
+}
+
 function ModelSelector({ size = 'medium', surface = 'default', ...props }: ModelSelectorProps) {
-  return <ModelSelectorRoot {...props} shape="standalone" size={size} surface={surface} />
+  return (
+    <ModelSelectorRoot {...props} shape="standalone" size={size} surface={surface}>
+      <ModelSelectorTrigger />
+      <ModelSelectorContent />
+    </ModelSelectorRoot>
+  )
 }
 
 function SplitModelSelector({ surface = 'default', ...props }: SplitModelSelectorProps) {
-  return <ModelSelectorRoot {...props} shape="split" size="medium" surface={surface} />
+  return (
+    <ModelSelectorRoot {...props} shape="split" size="medium" surface={surface}>
+      <ModelSelectorTrigger />
+      <ModelSelectorContent />
+    </ModelSelectorRoot>
+  )
 }
 
-export { ModelSelector, SplitModelSelector }
+export {
+  ModelSelector,
+  ModelSelectorContent,
+  ModelSelectorRoot,
+  ModelSelectorTrigger,
+  SplitModelSelector,
+}

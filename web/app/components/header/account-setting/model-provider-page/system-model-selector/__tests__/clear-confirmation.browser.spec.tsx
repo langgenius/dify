@@ -21,7 +21,12 @@ vi.mock('@/service/console', async (importOriginal) => {
       }: {
         query: { model_type: string }
       }) => ({
-        data: model_type === 'llm' ? createDefaultModelFixture() : null,
+        data:
+          model_type === 'llm'
+            ? createDefaultModelFixture()
+            : model_type === 'tts'
+              ? createDefaultModelFixture({ model: 'speech-model', model_type: 'tts' })
+              : null,
       }),
     }),
   }
@@ -36,6 +41,7 @@ vi.mock('react-i18next', async () => {
       'modelProvider.systemModelSettings': 'System Model Settings',
       'modelProvider.systemModelSettingsTitle': 'Default Model Settings',
       'modelProvider.systemReasoningModel.key': 'System Reasoning Model',
+      'modelProvider.ttsModel.key': 'TTS Model',
       'modelProvider.clearDefaultModel.title': 'Clear {{modelType}}?',
       'operation.cancel': 'Cancel',
       'operation.clear': 'Clear',
@@ -56,6 +62,11 @@ it('keeps the settings behind its nested confirmation and restores focus without
     createModelCatalogFixture({
       models: [
         createCatalogModelFixture(),
+        createCatalogModelFixture({
+          model: 'speech-model',
+          model_type: 'tts',
+          label: { en_US: 'Speech model' },
+        }),
         createCatalogModelFixture({ model: 'edited-model', label: { en_US: 'Edited model' } }),
       ],
     }),
@@ -100,9 +111,20 @@ it('keeps the settings behind its nested confirmation and restores focus without
     await expect
       .element(settings.getByRole('button', { name: 'Clear System Reasoning Model' }))
       .not.toBeInTheDocument()
-    await expect.element(settings.getByRole('button', { name: 'Save' })).toHaveFocus()
+    await expect
+      .element(settings.getByRole('button', { name: 'plugin.detailPanel.configureModel' }).first())
+      .toHaveFocus()
     await userEvent.keyboard('{Tab}')
     expect(settingsPopup.contains(document.activeElement)).toBe(true)
+    await settings.getByRole('button', { name: /^Speech model/ }).hover()
+    await settings.getByRole('button', { name: 'Clear TTS Model' }).click()
+    const ttsConfirmation = screen.getByRole('alertdialog', { name: 'Clear TTS Model?' })
+    await expect.element(ttsConfirmation).toBeVisible()
+    await ttsConfirmation.getByRole('button', { name: 'Clear' }).click()
+    await expect.element(ttsConfirmation).not.toBeInTheDocument()
+    await expect
+      .element(settings.getByRole('button', { name: 'plugin.detailPanel.configureModel' }).last())
+      .toHaveFocus()
     await userEvent.keyboard('{Escape}')
     await expect.element(settings).not.toBeInTheDocument()
     await expect
