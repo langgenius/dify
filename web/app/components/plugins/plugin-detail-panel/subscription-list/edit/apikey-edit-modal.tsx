@@ -6,16 +6,16 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { isEqual } from 'es-toolkit/predicate'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { EncryptedBottom, EncryptedFooter } from '@/app/components/base/encrypted-bottom'
+import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
@@ -331,7 +331,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       <DialogContent backdropProps={{ forceRender: true }}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
           {pluginDetail && <ReadmeEntrance pluginDetail={pluginDetail} presentation="dialog" />}
@@ -342,6 +342,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
             <div className="mb-4">
               {credentialsFormSchemas.length > 0 && (
                 <BaseForm
+                  key="credentials"
                   formSchemas={credentialsFormSchemas}
                   ref={credentialsFormRef}
                   labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
@@ -353,6 +354,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
           ) : (
             <div className="max-h-[70vh]">
               <BaseForm
+                key="configuration"
                 formSchemas={basicFormSchemas}
                 ref={basicFormRef}
                 labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
@@ -370,25 +372,23 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
             </div>
           )}
         </DialogBody>
-        <EncryptedFooter>
-          <DialogFooter>
-            {currentStep === EditStep.EditConfiguration && (
-              <>
-                <Button variant="secondary" onClick={handleBack} disabled={isDisabled}>
-                  {t(($) => $['modal.common.back'], { ns: 'pluginTrigger' })}
-                </Button>
-                <div className="mx-1 h-4 w-px bg-divider-regular"></div>
-              </>
-            )}
-            <Button onClick={onClose} disabled={isDisabled}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            <Button variant="primary" onClick={handleConfirm} disabled={isDisabled}>
-              {confirmButtonText}
-            </Button>
-          </DialogFooter>
-          {currentStep === EditStep.EditCredentials && <EncryptedBottom />}
-        </EncryptedFooter>
+        <DialogFooter>
+          {currentStep === EditStep.EditConfiguration && (
+            <>
+              <Button variant="secondary" onClick={handleBack} disabled={isDisabled}>
+                {t(($) => $['modal.common.back'], { ns: 'pluginTrigger' })}
+              </Button>
+              <div className="mx-1 h-4 w-px bg-divider-regular"></div>
+            </>
+          )}
+          <Button onClick={onClose} disabled={isDisabled}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
+          <Button variant="primary" onClick={handleConfirm} disabled={isDisabled}>
+            {confirmButtonText}
+          </Button>
+        </DialogFooter>
+        {currentStep === EditStep.EditCredentials && <EncryptedBottom />}
       </DialogContent>
     </Dialog>
   )

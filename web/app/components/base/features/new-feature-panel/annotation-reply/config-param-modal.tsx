@@ -48,7 +48,10 @@ const ConfigParamModal: FC<Props> = ({
     defaultModel: embeddingsDefaultModel,
     currentModel: isEmbeddingsDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textEmbedding)
-  const [annotationConfig, setAnnotationConfig] = useState(oldAnnotationConfig)
+  const [annotationConfig, setAnnotationConfig] = useState({
+    ...oldAnnotationConfig,
+    score_threshold: oldAnnotationConfig.score_threshold ?? ANNOTATION_DEFAULT.score_threshold,
+  })
   const [isLoading, setLoading] = useState(false)
   const [embeddingModel, setEmbeddingModel] = useState(
     oldAnnotationConfig.embedding_model
@@ -76,14 +79,19 @@ const ConfigParamModal: FC<Props> = ({
       return
     }
     setLoading(true)
-    await onSave(
-      {
-        embedding_provider_name: embeddingModel.providerName,
-        embedding_model_name: embeddingModel.modelName,
-      },
-      annotationConfig.score_threshold,
-    )
-    setLoading(false)
+    try {
+      await onSave(
+        {
+          embedding_provider_name: embeddingModel.providerName,
+          embedding_model_name: embeddingModel.modelName,
+        },
+        annotationConfig.score_threshold,
+      )
+    } catch {
+      toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+    } finally {
+      setLoading(false)
+    }
   }
   return (
     <Dialog
@@ -92,7 +100,7 @@ const ConfigParamModal: FC<Props> = ({
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-160 max-w-none">
+      <DialogContent className="w-160">
         <DialogHeader>
           <DialogTitle>
             {t(($) => $[`initSetup.${isInit ? 'title' : 'configTitle'}`], { ns: 'appAnnotation' })}

@@ -8,11 +8,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
@@ -163,7 +163,7 @@ export function CliToolDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] w-160">
+      <DialogContent className="w-160">
         <DialogHeader>
           <DialogTitle>
             {t(
@@ -178,9 +178,9 @@ export function CliToolDialog({
           <DialogDescription>
             {t(($) => $['agentDetail.configure.tools.cliDialog.description'])}
           </DialogDescription>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
-        <Form<CliToolFormValues> onFormSubmit={handleSubmit}>
+        <Form<CliToolFormValues> className="contents" onFormSubmit={handleSubmit}>
           <DialogBody className="flex flex-col gap-4">
             <Field name="installCommand">
               <FieldLabel>

@@ -3,11 +3,37 @@
 import importlib.util
 from pathlib import Path
 
+import pytest
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
+from alembic.script import ScriptDirectory
 
 from models.application_trace import ApplicationTraceBatch, ApplicationTraceInvocation, ApplicationTraceRun
+
+
+@pytest.mark.parametrize(
+    ("starting_revision", "required_revisions"),
+    [
+        ("f1d3c5b7a902", ("a17c2980f3e6", "c6f4a90d8b31", "f7e2c9a6d481")),
+        ("a17c2980f3e6", ("c6f4a90d8b31", "f7e2c9a6d481")),
+        ("c6f4a90d8b31", ("a17c2980f3e6", "f7e2c9a6d481")),
+    ],
+)
+def test_tracing_and_workflow_pause_upgrade_paths_join(
+    starting_revision: str, required_revisions: tuple[str, ...]
+) -> None:
+    scripts = ScriptDirectory(str(Path(__file__).resolve().parents[3] / "migrations"))
+    merge = scripts.get_revision("f7e2c9a6d481")
+    assert merge is not None
+    assert isinstance(merge.down_revision, tuple)
+    assert set(merge.down_revision) == {"a17c2980f3e6", "c6f4a90d8b31"}
+
+    # Use Alembic's upgrade planner so either already-applied branch still runs
+    # its missing sibling before the merge, without rewriting either migration.
+    steps = scripts._upgrade_revs(merge.revision, starting_revision)
+    assert {step.revision.revision for step in steps} == set(required_revisions)
+    assert steps[-1].revision.revision == merge.revision
 
 
 def test_application_trace_migration_matches_models_and_roundtrips() -> None:
@@ -41,3 +67,15 @@ def test_application_trace_migration_matches_models_and_roundtrips() -> None:
             assert sa.inspect(connection).get_table_names() == []
     finally:
         engine.dispose()
+
+
+@pytest.mark.parametrize("starting_revision", ["a9d4c1e6f823", "f7e2c9a6d481"])
+def test_deployment_and_tracing_upgrade_paths_join(starting_revision: str) -> None:
+    scripts = ScriptDirectory(str(Path(__file__).resolve().parents[3] / "migrations"))
+    assert scripts.get_heads() == ["b8a7d3f9c621"]
+    steps = scripts._upgrade_revs("head", starting_revision)
+    assert steps[-1].revision.revision == "b8a7d3f9c621"
+    applied = {step.revision.revision for step in steps}
+    sibling = "f7e2c9a6d481" if starting_revision == "a9d4c1e6f823" else "a9d4c1e6f823"
+    assert sibling in applied
+    assert starting_revision not in applied

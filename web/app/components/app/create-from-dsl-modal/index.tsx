@@ -5,10 +5,11 @@ import type { Hotkey } from '@tanstack/react-hotkeys'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogBody,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -296,108 +297,106 @@ function CreateFromDSLModal({
           if (!open && !isImporting && !pendingImport) onClose()
         }}
       >
-        <DialogContent initialFocus={browseButtonRef}>
+        <DialogContent
+          initialFocus={browseButtonRef}
+          render={
+            <Form<ImportFormValues>
+              onFormSubmit={handleSubmit}
+              onKeyDown={(event) => {
+                if (
+                  !show ||
+                  createDisabled ||
+                  isImporting ||
+                  !!pendingImport ||
+                  event.defaultPrevented ||
+                  event.nativeEvent.isComposing ||
+                  !(event.target instanceof Node) ||
+                  !event.currentTarget.contains(event.target) ||
+                  !matchesKeyboardEvent(event.nativeEvent, CREATE_FROM_DSL_HOTKEY)
+                )
+                  return
+                event.preventDefault()
+                event.stopPropagation()
+                if (event.repeat) return
+                event.currentTarget.requestSubmit()
+              }}
+            />
+          }
+        >
           <DialogHeader>
             <DialogTitle>{t(($) => $.importApp, { ns: 'app' })}</DialogTitle>
-            <DialogCloseButton
+            <DialogHeaderCloseButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               disabled={isImporting}
             />
           </DialogHeader>
-          <Form<ImportFormValues>
-            onFormSubmit={handleSubmit}
-            onKeyDown={(event) => {
-              if (
-                !show ||
-                createDisabled ||
-                isImporting ||
-                !!pendingImport ||
-                event.defaultPrevented ||
-                event.nativeEvent.isComposing ||
-                !(event.target instanceof Node) ||
-                !event.currentTarget.contains(event.target) ||
-                !matchesKeyboardEvent(event.nativeEvent, CREATE_FROM_DSL_HOTKEY)
-              )
-                return
-              event.preventDefault()
-              event.stopPropagation()
-              if (event.repeat) return
-              event.currentTarget.requestSubmit()
-            }}
-          >
-            <Tabs value={currentTab} onValueChange={handleTabChange}>
-              <TabsList className="h-9 gap-6 border-b border-divider-subtle px-6">
-                <TabsTab
-                  value={CreateFromDSLModalTab.FROM_FILE}
-                  className="h-full pt-0 pb-0"
-                  disabled={isImporting}
-                >
-                  {t(($) => $.importFromFile, { ns: 'app' })}
-                </TabsTab>
-                <TabsTab
-                  value={CreateFromDSLModalTab.FROM_URL}
-                  className="h-full pt-0 pb-0"
-                  disabled={isImporting}
-                >
-                  {t(($) => $.importFromDSLUrl, { ns: 'app' })}
-                </TabsTab>
-              </TabsList>
-              <TabsPanel
+          <Tabs className="contents" value={currentTab} onValueChange={handleTabChange}>
+            <TabsList className="h-9 shrink-0 gap-6 border-b border-divider-subtle px-6">
+              <TabsTab
                 value={CreateFromDSLModalTab.FROM_FILE}
-                tabIndex={-1}
-                className="px-6 py-4"
+                className="h-full pt-0 pb-0"
+                disabled={isImporting}
               >
-                <Uploader
-                  importType="app"
-                  browseButtonRef={browseButtonRef}
-                  className="mt-0"
-                  file={currentFile}
-                  updateFile={setCurrentFile}
+                {t(($) => $.importFromFile, { ns: 'app' })}
+              </TabsTab>
+              <TabsTab
+                value={CreateFromDSLModalTab.FROM_URL}
+                className="h-full pt-0 pb-0"
+                disabled={isImporting}
+              >
+                {t(($) => $.importFromDSLUrl, { ns: 'app' })}
+              </TabsTab>
+            </TabsList>
+            <TabsPanel
+              value={CreateFromDSLModalTab.FROM_FILE}
+              tabIndex={-1}
+              render={<DialogBody />}
+            >
+              <Uploader
+                importType="app"
+                browseButtonRef={browseButtonRef}
+                className="mt-0"
+                file={currentFile}
+                updateFile={setCurrentFile}
+                disabled={isImporting}
+              />
+            </TabsPanel>
+            <TabsPanel value={CreateFromDSLModalTab.FROM_URL} tabIndex={-1} render={<DialogBody />}>
+              <Field name="dslUrl">
+                <FieldLabel>{t(($) => $.importFromDSLUrl, { ns: 'app' })}</FieldLabel>
+                <Input
+                  type="url"
+                  inputMode="url"
+                  autoComplete="off"
+                  required
                   disabled={isImporting}
+                  placeholder={t(($) => $.importAppUrlPlaceholder, { ns: 'app' }) || ''}
+                  defaultValue={dslUrl}
                 />
-              </TabsPanel>
-              <TabsPanel value={CreateFromDSLModalTab.FROM_URL} tabIndex={-1} className="px-6 py-4">
-                <Field name="dslUrl">
-                  <FieldLabel>{t(($) => $.importFromDSLUrl, { ns: 'app' })}</FieldLabel>
-                  <Input
-                    type="url"
-                    inputMode="url"
-                    autoComplete="off"
-                    required
-                    disabled={isImporting}
-                    placeholder={t(($) => $.importAppUrlPlaceholder, { ns: 'app' }) || ''}
-                    defaultValue={dslUrl}
-                  />
-                  <FieldError />
-                </Field>
-              </TabsPanel>
-            </Tabs>
-            {isAppsFull && (
-              <div className="px-6">
-                <AppsFull className="mt-0" loc="app-create-dsl" />
-              </div>
-            )}
-            <DialogFooter>
-              <Button disabled={isImporting} onClick={onClose}>
-                {t(($) => $['newApp.Cancel'], { ns: 'app' })}
-              </Button>
-              <Button
-                type="submit"
-                disabled={createDisabled}
-                loading={isImporting}
-                variant="primary"
-              >
-                <span>{t(($) => $['operation.create'], { ns: 'common' })}</span>
-                <KbdGroup>
-                  {formatForDisplay(CREATE_FROM_DSL_HOTKEY, { parts: true }).map((key) => (
-                    <Kbd key={key} color="white">
-                      {key}
-                    </Kbd>
-                  ))}
-                </KbdGroup>
-              </Button>
-            </DialogFooter>
-          </Form>
+                <FieldError />
+              </Field>
+            </TabsPanel>
+          </Tabs>
+          {isAppsFull && (
+            <div className="px-6">
+              <AppsFull className="mt-0" loc="app-create-dsl" />
+            </div>
+          )}
+          <DialogFooter>
+            <Button disabled={isImporting} onClick={onClose}>
+              {t(($) => $['newApp.Cancel'], { ns: 'app' })}
+            </Button>
+            <Button type="submit" disabled={createDisabled} loading={isImporting} variant="primary">
+              <span>{t(($) => $['operation.create'], { ns: 'common' })}</span>
+              <KbdGroup>
+                {formatForDisplay(CREATE_FROM_DSL_HOTKEY, { parts: true }).map((key) => (
+                  <Kbd key={key} color="white">
+                    {key}
+                  </Kbd>
+                ))}
+              </KbdGroup>
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       {pendingImport && (

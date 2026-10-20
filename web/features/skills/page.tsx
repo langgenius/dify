@@ -5,6 +5,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import type { DragEvent, UIEvent } from 'react'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
@@ -19,11 +20,11 @@ import {
   Dialog,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import {
@@ -329,6 +330,7 @@ function DeleteSkillDialog({
     >
       <AlertDialogContent>
         <form
+          className="contents"
           onSubmit={(event) => {
             event.preventDefault()
             handleDelete()
@@ -339,8 +341,10 @@ function DeleteSkillDialog({
               {t(($) => $['skillManagement.deleteDialog.title'], { name: skill.display_name })}
             </AlertDialogTitle>
             <AlertDialogDescription>{description}</AlertDialogDescription>
-            {referenceCount > 0 &&
-              (referencesQuery.isPending ? (
+          </AlertDialogHeader>
+          {referenceCount > 0 && (
+            <AlertDialogBody className="flex flex-col gap-2">
+              {referencesQuery.isPending ? (
                 <SkillReferencesListSkeleton compact />
               ) : (
                 <SkillReferencesList
@@ -350,8 +354,7 @@ function DeleteSkillDialog({
                   testId="skill-delete-reference-list"
                   visibleLimit={5}
                 />
-              ))}
-            {referenceCount > 0 && (
+              )}
               <Field name="confirm-skill-name">
                 <FieldLabel>
                   <Trans
@@ -387,8 +390,8 @@ function DeleteSkillDialog({
                   </InputGroupAddon>
                 </InputGroup>
               </Field>
-            )}
-          </AlertDialogHeader>
+            </AlertDialogBody>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancelButton disabled={deleteMutation.isPending}>
               {tCommon(($) => $['operation.cancel'])}
@@ -882,6 +885,7 @@ function ImportSkillDialogForm({
 
   return (
     <form
+      className="contents"
       onSubmit={(event) => {
         event.preventDefault()
         if (file && !importing) onImport(file)
@@ -889,7 +893,10 @@ function ImportSkillDialogForm({
     >
       <DialogHeader>
         <DialogTitle>{t(($) => $['skillManagement.importDialog.title'])}</DialogTitle>
-        <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} disabled={importing} />
+        <DialogHeaderCloseButton
+          aria-label={tCommon(($) => $['operation.close'])}
+          disabled={importing}
+        />
       </DialogHeader>
       <DialogBody>
         <div
@@ -1004,6 +1011,7 @@ function ImportSkillDialogForm({
 }
 
 export default function SkillsPage() {
+  const titleId = useId()
   const { t } = useTranslation(['skill'])
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -1199,7 +1207,10 @@ export default function SkillsPage() {
     <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
       <div className="shrink-0 bg-background-body px-8 pt-4 pb-2">
         <div className="flex h-6 min-w-0 items-center justify-between gap-4">
-          <h1 className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
+          <h1
+            id={titleId}
+            className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary"
+          >
             {t(($) => $['skillManagement.title'])}
           </h1>
         </div>
@@ -1218,6 +1229,8 @@ export default function SkillsPage() {
       <div className="min-h-0 flex-1">
         <ScrollArea className="h-full min-h-0 min-w-0 overflow-hidden">
           <ScrollAreaViewport
+            role="region"
+            aria-labelledby={titleId}
             ref={listViewportRef}
             tabIndex={-1}
             className="overscroll-contain"

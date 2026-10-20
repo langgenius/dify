@@ -20,11 +20,11 @@ import {
   Dialog,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -114,6 +114,7 @@ function DatasetScopeContent({
 
   return (
     <form
+      className="contents"
       onSubmit={(event) => {
         event.preventDefault()
         handleConfirm()
@@ -124,7 +125,7 @@ function DatasetScopeContent({
         <DialogDescription>
           {t(($) => $['apiKeyModal.addSubtitle'], { ns: 'appApi' })}
         </DialogDescription>
-        <DialogCloseButton
+        <DialogHeaderCloseButton
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           disabled={isCreating}
         />

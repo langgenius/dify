@@ -37,6 +37,7 @@ type HistoryMessageFile = Partial<FileResponse> & {
 type HistoryConversationMessage = {
   id: string
   answer?: string
+  status?: string
   message?: { role: string; text: string; files?: FileEntity[] }[]
   message_files?: HistoryMessageFile[]
   agent_thoughts?: ThoughtItem[] | null
@@ -84,6 +85,18 @@ function mergeStreamingThought(currentThought: ThoughtItem, nextThought: Thought
       ? nextThought.message_files
       : currentThought.message_files,
   }
+}
+
+// A tool result streams in under the id of the thought that made the call. With parallel tool
+// calls that thought is not always the last one, so it is looked up by id from the end.
+function upsertStreamingThought(thoughts: ThoughtItem[], thought: ThoughtItem) {
+  for (let index = thoughts.length - 1; index >= 0; index--) {
+    if (thoughts[index]!.id === thought.id) {
+      thoughts[index] = mergeStreamingThought(thoughts[index]!, thought)
+      return
+    }
+  }
+  thoughts.push(thought)
 }
 
 function appendAgentResponseMessagePart(responseItem: ChatItemInTree, message: string) {
@@ -192,13 +205,13 @@ export const useChat = (
     inputsForm: InputForm[]
   },
   prevChatTree?: ChatItemInTree[],
-  stopChat?: (taskId: string) => void,
+  stopChat?: (taskId: string) => void | Promise<unknown>,
   clearChatList?: boolean,
   clearChatListCallback?: (state: boolean) => void,
   initialConversationId?: string,
   options: UseChatOptions = {},
 ) => {
-  const { t } = useTranslation(['appDebug'])
+  const { t } = useTranslation(['appDebug', 'common'])
   const { formatTime } = useTimestamp({ timezone: options.timezone })
   const conversationIdRef = useRef(initialConversationId ?? '')
   const initialConversationIdRef = useRef(initialConversationId ?? '')
@@ -206,6 +219,7 @@ export const useChat = (
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
   const taskIdRef = useRef('')
+  const stopPendingRef = useRef(false)
   const pausedStateRef = useRef(false)
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
@@ -524,28 +538,57 @@ export const useChat = (
 
   useEffect(() => resetWorkflowEventsSubscription, [resetWorkflowEventsSubscription])
 
-  const handleStop = useCallback(() => {
+  const stopLocalResponse = useCallback(() => {
     hasStopRespondedRef.current = true
     handleResponding(false)
-    if (stopChat && taskIdRef.current && !pausedStateRef.current) stopChat(taskIdRef.current)
     if (conversationMessagesAbortControllerRef.current)
       conversationMessagesAbortControllerRef.current.abort()
     if (suggestedQuestionsAbortControllerRef.current)
       suggestedQuestionsAbortControllerRef.current.abort()
     if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
     resetWorkflowEventsSubscription()
-  }, [stopChat, handleResponding, resetWorkflowEventsSubscription])
+  }, [handleResponding, resetWorkflowEventsSubscription])
+
+  const handleStop = useCallback(async () => {
+    if (options.isNewAgent && isRespondingRef.current) {
+      if (stopPendingRef.current) return
+      const taskId = taskIdRef.current
+      if (!stopChat || !taskId) {
+        toast.error(
+          `${t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}: ${t(($) => $['api.actionFailed'], { ns: 'common' })}`,
+        )
+        return
+      }
+      stopPendingRef.current = true
+      const generation = workflowRequestGenerationRef.current
+      try {
+        await stopChat(taskId)
+      } catch {
+        toast.error(
+          `${t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}: ${t(($) => $['api.actionFailed'], { ns: 'common' })}`,
+        )
+        return
+      } finally {
+        stopPendingRef.current = false
+      }
+      if (generation !== workflowRequestGenerationRef.current) return
+    }
+    if (!options.isNewAgent && stopChat && taskIdRef.current && !pausedStateRef.current)
+      stopChat(taskIdRef.current)
+    stopLocalResponse()
+    return true
+  }, [stopChat, stopLocalResponse, options.isNewAgent, t])
 
   const handleRestart = useCallback(
     (cb?: () => void) => {
       conversationIdRef.current = initialConversationIdRef.current
       taskIdRef.current = ''
-      handleStop()
+      stopLocalResponse()
       setChatTree([])
       setSuggestedQuestions([])
       cb?.()
     },
-    [handleStop],
+    [stopLocalResponse],
   )
 
   const createAudioPlayerManager = useCallback(() => {
@@ -741,18 +784,7 @@ export const useChat = (
             if (thought.conversation_id) responseItem.conversationId = thought.conversation_id
 
             if (!responseItem.agent_thoughts) responseItem.agent_thoughts = []
-
-            if (responseItem.agent_thoughts.length === 0) {
-              responseItem.agent_thoughts.push(thought)
-            } else {
-              const lastThought = responseItem.agent_thoughts.at(-1)
-              if (lastThought?.id === thought.id) {
-                responseItem.agent_thoughts[responseItem.agent_thoughts.length - 1] =
-                  mergeStreamingThought(lastThought, thought)
-              } else {
-                responseItem.agent_thoughts.push(thought)
-              }
-            }
+            upsertStreamingThought(responseItem.agent_thoughts, thought)
             if (options.isNewAgent) {
               const currentThought =
                 responseItem.agent_thoughts.find((item) => item.id === thought.id) ?? thought
@@ -1106,6 +1138,7 @@ export const useChat = (
         return false
       }
 
+      taskIdRef.current = ''
       pausedStateRef.current = false
       resetWorkflowEventsSubscription()
       const requestGeneration = ++workflowRequestGenerationRef.current
@@ -1228,7 +1261,7 @@ export const useChat = (
 
           if (isFirstMessage && newConversationId) conversationIdRef.current = newConversationId
 
-          taskIdRef.current = taskId
+          if (taskId) taskIdRef.current = taskId
           if (messageId) responseItem.id = messageId
 
           updateCurrentQAOnTree({
@@ -1259,7 +1292,7 @@ export const useChat = (
           handleResponding(false)
 
           try {
-            if (hasError) return
+            if (hasError && !options.isNewAgent) return
 
             let completedWorkflowRunId = responseItem.workflow_run_id
 
@@ -1292,6 +1325,9 @@ export const useChat = (
               const historyAnswerFiles = getHistoryAnswerFiles(newResponseItem)
               updateChatTreeNode(responseItem.id, {
                 content: isUseAgentThought ? '' : historyAnswer,
+                isError:
+                  options.isNewAgent &&
+                  (newResponseItem.status === 'error' || (!!hasError && !newResponseItem.status)),
                 agent_thoughts: historyAgentThoughts,
                 agent_response_parts: undefined,
                 citation: newResponseItem.retriever_resources,
@@ -1335,6 +1371,7 @@ export const useChat = (
             notifyConversationComplete(completedWorkflowRunId)
 
             if (
+              !hasError &&
               config?.suggested_questions_after_answer?.enabled &&
               !hasStopRespondedRef.current &&
               onGetSuggestedQuestions
@@ -1422,22 +1459,13 @@ export const useChat = (
         },
         onThought(thought) {
           isAgentMode = true
+          if (thought.task_id) taskIdRef.current = thought.task_id
+          if (thought.conversation_id) conversationIdRef.current = thought.conversation_id
           const response = responseItem as any
           if (thought.message_id && !hasSetResponseId) response.id = thought.message_id
           if (thought.conversation_id) response.conversationId = thought.conversation_id
 
-          if (response.agent_thoughts.length === 0) {
-            response.agent_thoughts.push(thought)
-          } else {
-            const lastThought = response.agent_thoughts.at(-1)
-            // thought changed but still the same thought, so update.
-            if (lastThought.id === thought.id) {
-              responseItem.agent_thoughts![response.agent_thoughts.length - 1] =
-                mergeStreamingThought(lastThought, thought)
-            } else {
-              responseItem.agent_thoughts!.push(thought)
-            }
-          }
+          upsertStreamingThought(response.agent_thoughts, thought)
           if (options.isNewAgent) {
             const currentThought =
               responseItem.agent_thoughts?.find((item) => item.id === thought.id) ?? thought
@@ -1485,9 +1513,17 @@ export const useChat = (
         onMessageReplace: (messageReplace) => {
           responseItem.content = messageReplace.answer
         },
-        onError() {
+        onError(_message, _code, identity) {
           if (requestGeneration !== workflowRequestGenerationRef.current) return
 
+          if (identity?.conversationId) conversationIdRef.current = identity.conversationId
+          if (identity?.messageId) {
+            responseItem.id = identity.messageId
+            questionItem.id = `question-${identity.messageId}`
+            responseItem.parentMessageId = questionItem.id
+          }
+          if (options.isNewAgent && hasStopRespondedRef.current) return
+          if (options.isNewAgent) responseItem.isError = true
           handleResponding(false)
           settleSend(true)
           updateCurrentQAOnTree({

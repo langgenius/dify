@@ -1,77 +1,105 @@
-import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
+import type { ReactNode } from 'react'
 import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
-import { act, renderHook } from '@testing-library/react'
+import { ORPCError } from '@orpc/client'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { createElement } from 'react'
+import { toast } from '@/app/notifications'
+import { uploadRemoteFileInfo } from '@/service/common'
+import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } from '@/service/share'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { getFileSizeLimit, useFile } from '../hooks'
+import { createFileStore, FileContext, useStore } from '../store'
+import { FileUploadContext } from '../upload-context'
+import { fileUpload } from '../utils'
 
-const mockNotify = vi.fn()
-const mockNavigationState = vi.hoisted(() => ({
-  params: {} as { token?: string },
-  pathname: '/chat',
-}))
-const mockFileUploadContext = vi.hoisted(() => ({
-  localUploadUrl: undefined as string | undefined,
-  remoteUploadUrl: undefined as string | undefined,
-}))
-
+const navigation = vi.hoisted(() => ({ params: {} as { token?: string }, pathname: '/chat' }))
 vi.mock('@/next/navigation', () => ({
-  useParams: () => mockNavigationState.params,
-  usePathname: () => mockNavigationState.pathname,
+  useParams: () => navigation.params,
+  usePathname: () => navigation.pathname,
 }))
-
-vi.mock('../upload-context', () => ({
-  useFileUploadContext: () => mockFileUploadContext,
+vi.mock('../utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../utils')>()),
+  fileUpload: vi.fn(),
 }))
-
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    error: (message: string) => mockNotify({ type: 'error', message }),
-  },
-}))
-
-const mockSetFiles = vi.fn()
-let mockStoreFiles: FileEntity[] = []
-vi.mock('../store', () => ({
-  useFileStore: () => ({
-    getState: () => ({
-      files: mockStoreFiles,
-      setFiles: mockSetFiles,
-    }),
-  }),
-}))
-
-const mockFileUpload = vi.fn()
-const mockIsAllowedFileExtension = vi.fn().mockReturnValue(true)
-const mockGetSupportFileType = vi.fn().mockReturnValue('document')
-vi.mock('../utils', () => ({
-  fileUpload: (...args: unknown[]) => mockFileUpload(...args),
-  getFileUploadErrorMessage: vi.fn().mockReturnValue('Upload error'),
-  getSupportFileType: (...args: unknown[]) => mockGetSupportFileType(...args),
-  isAllowedFileExtension: (...args: unknown[]) => mockIsAllowedFileExtension(...args),
-}))
-
-const mockUploadRemoteFileInfo = vi.fn()
-vi.mock('@/service/common', () => ({
-  uploadRemoteFileInfo: (...args: unknown[]) => mockUploadRemoteFileInfo(...args),
-}))
-
-const mockUploadHumanInputFormLocalFile = vi.fn()
-const mockUploadHumanInputFormRemoteFileInfo = vi.fn()
+vi.mock('@/service/common', () => ({ uploadRemoteFileInfo: vi.fn() }))
 vi.mock('@/service/share', () => ({
-  uploadHumanInputFormLocalFile: (...args: unknown[]) => mockUploadHumanInputFormLocalFile(...args),
-  uploadHumanInputFormRemoteFileInfo: (...args: unknown[]) =>
-    mockUploadHumanInputFormRemoteFileInfo(...args),
+  uploadHumanInputFormLocalFile: vi.fn(),
+  uploadHumanInputFormRemoteFileInfo: vi.fn(),
 }))
 
-vi.mock('uuid', () => ({
-  v4: () => 'mock-uuid',
-}))
+const config: FileUpload = {
+  enabled: true,
+  allowed_file_types: ['image', 'document', 'audio', 'video'],
+  allowed_file_extensions: [],
+  allowed_file_upload_methods: ['local_file', 'remote_url'],
+  number_limits: 5,
+}
+const uploadResponse = {
+  id: 'uploaded-file',
+  name: 'report.pdf',
+  mime_type: 'application/pdf',
+  size: 100,
+  created_at: 0,
+  created_by: 'user-1',
+  extension: 'pdf',
+  preview_url: null,
+  source_url: '',
+  url: 'https://example.com/report.pdf',
+}
+const entity = (id: string): FileEntity => ({
+  id,
+  name: `${id}.txt`,
+  type: 'text/plain',
+  size: 1,
+  progress: 0,
+  transferMethod: 'local_file',
+  supportFileType: 'document',
+  originalFile: new File(['text'], `${id}.txt`, { type: 'text/plain' }),
+})
+function setup({
+  files = [],
+  fileConfig = config,
+  uploadUrls = {},
+  checkEnabled = false,
+}: {
+  files?: FileEntity[]
+  fileConfig?: FileUpload
+  uploadUrls?: { localUploadUrl?: string; remoteUploadUrl?: string }
+  checkEnabled?: boolean
+} = {}) {
+  const onChange = vi.fn()
+  const store = createFileStore(files, onChange)
+  const wrapper = ({ children }: { children: ReactNode }) =>
+    createElement(
+      FileContext,
+      { value: store },
+      createElement(FileUploadContext, { value: uploadUrls }, children),
+    )
+  return {
+    ...renderHook(
+      () => ({ ...useFile(fileConfig, !checkEnabled), files: useStore((state) => state.files) }),
+      { wrapper },
+    ),
+    store,
+    onChange,
+  }
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  navigation.params = {}
+  navigation.pathname = '/chat'
+  vi.spyOn(toast, 'error').mockReturnValue('toast-id')
+  vi.mocked(uploadRemoteFileInfo).mockResolvedValue(uploadResponse)
+  vi.mocked(uploadHumanInputFormRemoteFileInfo).mockResolvedValue(uploadResponse)
+})
+afterEach(() => {
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+})
 
 describe('getFileSizeLimit', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should return default limits when no config is provided', () => {
     const result = getFileSizeLimit()
 
@@ -84,14 +112,14 @@ describe('getFileSizeLimit', () => {
   })
 
   it('should use config values when provided', () => {
-    const config: UploadConfig = {
+    const config = createFileUploadConfigFixture({
       image_file_size_limit: 20,
       file_size_limit: 30,
       audio_file_size_limit: 100,
       video_file_size_limit: 200,
       skill_file_size_limit: 60,
       workflow_file_upload_limit: 20,
-    } as UploadConfig
+    })
 
     const result = getFileSizeLimit(config)
 
@@ -104,14 +132,14 @@ describe('getFileSizeLimit', () => {
   })
 
   it('should fall back to defaults when config values are zero', () => {
-    const config = {
+    const config = createFileUploadConfigFixture({
       image_file_size_limit: 0,
       file_size_limit: 0,
       audio_file_size_limit: 0,
       video_file_size_limit: 0,
       skill_file_size_limit: 0,
       workflow_file_upload_limit: 0,
-    } as UploadConfig
+    })
 
     const result = getFileSizeLimit(config)
 
@@ -124,894 +152,198 @@ describe('getFileSizeLimit', () => {
   })
 })
 
-describe('useFile', () => {
-  const defaultFileConfig: FileUpload = {
-    enabled: true,
-    allowed_file_types: ['image', 'document'],
-    allowed_file_extensions: [],
-    number_limits: 5,
-  } as FileUpload
+it('writes consecutive file edits to the real store and notifies subscribers', () => {
+  const { result, onChange } = setup()
+  act(() => result.current.handleAddFile(entity('one')))
+  act(() => result.current.handleAddFile(entity('two')))
+  act(() => result.current.handleUpdateFile({ ...entity('one'), progress: 50 }))
+  expect(result.current.files.map(({ id, progress }) => ({ id, progress }))).toEqual([
+    { id: 'one', progress: 50 },
+    { id: 'two', progress: 0 },
+  ])
+  act(() => result.current.handleUpdateFile(entity('missing')))
+  expect(result.current.files).toHaveLength(2)
+  act(() => result.current.handleRemoveFile('one'))
+  expect(result.current.files.map((file) => file.id)).toEqual(['two'])
+  act(() => result.current.handleClearFiles())
+  expect(result.current.files).toEqual([])
+  expect(onChange).toHaveBeenLastCalledWith([])
+})
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockStoreFiles = []
-    mockNavigationState.params = {}
-    mockNavigationState.pathname = '/chat'
-    mockFileUploadContext.localUploadUrl = undefined
-    mockFileUploadContext.remoteUploadUrl = undefined
-    mockIsAllowedFileExtension.mockReturnValue(true)
-    mockGetSupportFileType.mockReturnValue('document')
+it('keeps concurrent local uploads separate while progress, failure and retry update the store', async () => {
+  const { result } = setup()
+  act(() => {
+    result.current.handleLocalFileUpload(new File(['a'], 'one.txt', { type: 'text/plain' }))
+    result.current.handleLocalFileUpload(new File(['b'], 'two.txt', { type: 'text/plain' }))
   })
-
-  it('should return all file handler functions', () => {
-    const { result } = renderHook(() => useFile(defaultFileConfig))
-
-    expect(result.current.handleAddFile).toBeDefined()
-    expect(result.current.handleUpdateFile).toBeDefined()
-    expect(result.current.handleRemoveFile).toBeDefined()
-    expect(result.current.handleReUploadFile).toBeDefined()
-    expect(result.current.handleLoadFileFromLink).toBeDefined()
-    expect(result.current.handleLoadFileFromLinkSuccess).toBeDefined()
-    expect(result.current.handleLoadFileFromLinkError).toBeDefined()
-    expect(result.current.handleClearFiles).toBeDefined()
-    expect(result.current.handleLocalFileUpload).toBeDefined()
-    expect(result.current.handleClipboardPasteFile).toBeDefined()
-    expect(result.current.handleDragFileEnter).toBeDefined()
-    expect(result.current.handleDragFileOver).toBeDefined()
-    expect(result.current.handleDragFileLeave).toBeDefined()
-    expect(result.current.handleDropFile).toBeDefined()
-    expect(result.current.isDragActive).toBe(false)
+  await waitFor(() => expect(fileUpload).toHaveBeenCalledTimes(2))
+  const first = vi.mocked(fileUpload).mock.calls[0]![0]
+  const second = vi.mocked(fileUpload).mock.calls[1]![0]
+  const firstId = result.current.files.find((file) => file.name === first.file.name)!.id
+  act(() => {
+    first.onProgressCallback(40)
+    second.onSuccessCallback({ ...uploadResponse, id: 'second' })
   })
+  expect(result.current.files.find((file) => file.id === firstId)?.progress).toBe(40)
+  expect(result.current.files.find((file) => file.name === second.file.name)?.uploadedId).toBe(
+    'second',
+  )
+  act(() => first.onErrorCallback(new ORPCError('file_extension_blocked')))
+  expect(result.current.files.find((file) => file.id === firstId)?.progress).toBe(-1)
+  expect(toast.error).toHaveBeenCalledWith('common.fileUploader.fileExtensionBlocked')
+  act(() => result.current.handleReUploadFile(firstId))
+  expect(result.current.files.find((file) => file.id === firstId)?.progress).toBe(0)
+  act(() => vi.mocked(fileUpload).mock.calls[2]![0].onSuccessCallback(uploadResponse))
+  expect(result.current.files).toHaveLength(2)
+  expect(result.current.files.every((file) => file.progress === 100)).toBe(true)
+})
 
-  it('should add a file via handleAddFile', () => {
-    const { result } = renderHook(() => useFile(defaultFileConfig))
+it.each([
+  ['photo.png', 'image/png', 'image', 'image_file_size_limit'],
+  ['report.pdf', 'application/pdf', 'document', 'file_size_limit'],
+  ['voice.mp3', 'audio/mpeg', 'audio', 'audio_file_size_limit'],
+  ['movie.mp4', 'video/mp4', 'video', 'video_file_size_limit'],
+] as const)(
+  'applies the actual %s type and its configured size limit',
+  async (name, type, expectedType, sizeKey) => {
+    const { result } = setup({
+      fileConfig: { ...config, fileUploadConfig: createFileUploadConfigFixture({ [sizeKey]: 1 }) },
+    })
+    const oversized = new File(['a'], name, { type })
+    Object.defineProperty(oversized, 'size', { value: 2 * 1024 * 1024 })
+    act(() => result.current.handleLocalFileUpload(oversized))
+    expect(fileUpload).not.toHaveBeenCalled()
+    expect(result.current.files).toEqual([])
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringContaining('common.fileUploader.uploadFromComputerLimit'),
+    )
+    act(() => result.current.handleLocalFileUpload(new File(['a'], name, { type })))
+    await waitFor(() => expect(fileUpload).toHaveBeenCalledTimes(1))
+    expect(result.current.files[0]).toEqual(
+      expect.objectContaining({ name, supportFileType: expectedType, progress: 0 }),
+    )
+    expect(result.current.files[0]?.base64Url).toBe(
+      expectedType === 'image' ? 'data:image/png;base64,YQ==' : '',
+    )
+  },
+)
 
-    result.current.handleAddFile({
-      id: 'test-id',
-      name: 'test.txt',
-      type: 'text/plain',
-      size: 100,
-      progress: 0,
-      transferMethod: 'local_file',
+it('rejects unsupported extensions and accepts explicitly allowed custom files', async () => {
+  const file = new File(['data'], 'payload.xyz', { type: '' })
+  const rejected = setup()
+  act(() => rejected.result.current.handleLocalFileUpload(file))
+  expect(rejected.result.current.files).toEqual([])
+  expect(fileUpload).not.toHaveBeenCalled()
+  expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('fileExtensionNotSupport'))
+  const accepted = setup({
+    fileConfig: { ...config, allowed_file_types: ['custom'], allowed_file_extensions: ['.xyz'] },
+  })
+  act(() => accepted.result.current.handleLocalFileUpload(file))
+  await waitFor(() => expect(fileUpload).toHaveBeenCalledTimes(1))
+  expect(accepted.result.current.files[0]?.supportFileType).toBe('custom')
+})
+
+it('respects disabled uploads when the caller enables the check', () => {
+  const { result } = setup({ fileConfig: { ...config, enabled: false }, checkEnabled: true })
+  act(() =>
+    result.current.handleLocalFileUpload(new File(['data'], 'a.txt', { type: 'text/plain' })),
+  )
+  expect(fileUpload).not.toHaveBeenCalled()
+  expect(result.current.files).toEqual([])
+  expect(toast.error).toHaveBeenCalledWith('common.fileUploader.uploadDisabled')
+})
+
+it('uses resource-specific local and remote upload endpoints', async () => {
+  const { result } = setup({
+    uploadUrls: { localUploadUrl: '/resources/files', remoteUploadUrl: '/resources/remote-files' },
+  })
+  act(() =>
+    result.current.handleLocalFileUpload(new File(['data'], 'a.txt', { type: 'text/plain' })),
+  )
+  await waitFor(() =>
+    expect(fileUpload).toHaveBeenCalledWith(expect.any(Object), false, '/resources/files'),
+  )
+  await act(async () => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
+  expect(uploadRemoteFileInfo).toHaveBeenCalledWith(
+    'https://example.com/report.pdf',
+    false,
+    undefined,
+    '/resources/remote-files',
+  )
+  expect(result.current.files.find((file) => file.isRemote)?.uploadedId).toBe('uploaded-file')
+})
+
+it('routes human-input form uploads and retries through the form token', async () => {
+  navigation.params = { token: 'form-token' }
+  navigation.pathname = '/form/form-token'
+  const { result } = setup({ files: [entity('retry')] })
+  act(() => result.current.handleReUploadFile('retry'))
+  expect(uploadHumanInputFormLocalFile).toHaveBeenCalledWith(
+    expect.objectContaining({ formToken: 'form-token', file: expect.any(File) }),
+  )
+  act(() =>
+    result.current.handleLocalFileUpload(new File(['data'], 'a.txt', { type: 'text/plain' })),
+  )
+  await waitFor(() => expect(uploadHumanInputFormLocalFile).toHaveBeenCalledTimes(2))
+  await act(async () => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
+  expect(uploadHumanInputFormRemoteFileInfo).toHaveBeenCalledWith(
+    'form-token',
+    'https://example.com/report.pdf',
+  )
+  expect(fileUpload).not.toHaveBeenCalled()
+  expect(uploadRemoteFileInfo).not.toHaveBeenCalled()
+})
+
+it('keeps public chat tokens on the normal upload transport', async () => {
+  navigation.params = { token: 'chat-token' }
+  navigation.pathname = '/chat/chat-token'
+  const { result } = setup()
+  act(() =>
+    result.current.handleLocalFileUpload(new File(['data'], 'a.txt', { type: 'text/plain' })),
+  )
+  await waitFor(() => expect(fileUpload).toHaveBeenCalledWith(expect.any(Object), true, undefined))
+  await act(async () => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
+  expect(uploadRemoteFileInfo).toHaveBeenCalledWith('https://example.com/report.pdf', true)
+  expect(uploadHumanInputFormLocalFile).not.toHaveBeenCalled()
+})
+
+it.each(['unsupported', 'oversized', 'failed'] as const)(
+  'removes a remote file when it is %s',
+  async (condition) => {
+    if (condition === 'failed')
+      vi.mocked(uploadRemoteFileInfo).mockRejectedValueOnce(new Error('offline'))
+    else
+      vi.mocked(uploadRemoteFileInfo).mockResolvedValueOnce({
+        ...uploadResponse,
+        ...(condition === 'unsupported'
+          ? { name: 'file.xyz', mime_type: 'application/octet-stream' }
+          : { size: 100 * 1024 * 1024 }),
+      })
+    const { result } = setup()
+    await act(async () => result.current.handleLoadFileFromLink('https://example.com/file'))
+    expect(result.current.files).toEqual([])
+    expect(toast.error).toHaveBeenCalled()
+  },
+)
+
+it('advances pending remote progress only to 80 percent and completes from the response', async () => {
+  vi.useFakeTimers()
+  let resolve!: (value: typeof uploadResponse) => void
+  vi.mocked(uploadRemoteFileInfo).mockReturnValueOnce(
+    new Promise((done) => {
+      resolve = done
+    }),
+  )
+  const { result } = setup()
+  act(() => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
+  act(() => vi.advanceTimersByTime(2000))
+  expect(result.current.files[0]?.progress).toBe(80)
+  await act(async () => resolve(uploadResponse))
+  expect(result.current.files[0]).toEqual(
+    expect.objectContaining({
+      progress: 100,
+      uploadedId: 'uploaded-file',
       supportFileType: 'document',
-    } as FileEntity)
-    expect(mockSetFiles).toHaveBeenCalled()
-  })
-
-  it('should update a file via handleUpdateFile', () => {
-    mockStoreFiles = [{ id: 'file-1', name: 'a.txt', progress: 0 }] as FileEntity[]
-    const { result } = renderHook(() => useFile(defaultFileConfig))
-
-    result.current.handleUpdateFile({ id: 'file-1', name: 'a.txt', progress: 50 } as FileEntity)
-    expect(mockSetFiles).toHaveBeenCalled()
-  })
-
-  it('should not update file when id is not found', () => {
-    mockStoreFiles = [{ id: 'file-1', name: 'a.txt' }] as FileEntity[]
-    const { result } = renderHook(() => useFile(defaultFileConfig))
-
-    result.current.handleUpdateFile({ id: 'nonexistent' } as FileEntity)
-    expect(mockSetFiles).toHaveBeenCalled()
-  })
-
-  it('should remove a file via handleRemoveFile', () => {
-    mockStoreFiles = [{ id: 'file-1', name: 'a.txt' }] as FileEntity[]
-    const { result } = renderHook(() => useFile(defaultFileConfig))
-
-    result.current.handleRemoveFile('file-1')
-    expect(mockSetFiles).toHaveBeenCalled()
-  })
-
-  it('should clear all files via handleClearFiles', () => {
-    mockStoreFiles = [{ id: 'a' }] as FileEntity[]
-    const { result } = renderHook(() => useFile(defaultFileConfig))
-
-    result.current.handleClearFiles()
-    expect(mockSetFiles).toHaveBeenCalledWith([])
-  })
-
-  describe('handleReUploadFile', () => {
-    it('should re-upload a file and call fileUpload', () => {
-      const originalFile = new File(['content'], 'test.txt', { type: 'text/plain' })
-      mockStoreFiles = [
-        {
-          id: 'file-1',
-          name: 'test.txt',
-          type: 'text/plain',
-          size: 100,
-          progress: -1,
-          transferMethod: 'local_file',
-          supportFileType: 'document',
-          originalFile,
-        },
-      ] as FileEntity[]
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-
-      result.current.handleReUploadFile('file-1')
-      expect(mockSetFiles).toHaveBeenCalled()
-      expect(mockFileUpload).toHaveBeenCalled()
-    })
-
-    it('should use human input form local upload when re-uploading on form page', () => {
-      mockNavigationState.params = { token: 'form-token' }
-      mockNavigationState.pathname = '/form/form-token'
-      const originalFile = new File(['content'], 'test.txt', { type: 'text/plain' })
-      mockStoreFiles = [
-        {
-          id: 'file-1',
-          name: 'test.txt',
-          type: 'text/plain',
-          size: 100,
-          progress: -1,
-          transferMethod: 'local_file',
-          supportFileType: 'document',
-          originalFile,
-        },
-      ] as FileEntity[]
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleReUploadFile('file-1')
-
-      expect(mockUploadHumanInputFormLocalFile).toHaveBeenCalledWith(
-        expect.objectContaining({
-          formToken: 'form-token',
-          file: originalFile,
-        }),
-      )
-      expect(mockFileUpload).not.toHaveBeenCalled()
-    })
-
-    it('should not re-upload when file id is not found', () => {
-      mockStoreFiles = []
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-
-      result.current.handleReUploadFile('nonexistent')
-      expect(mockFileUpload).not.toHaveBeenCalled()
-    })
-
-    it('should handle progress callback during re-upload', () => {
-      const originalFile = new File(['content'], 'test.txt', { type: 'text/plain' })
-      mockStoreFiles = [
-        {
-          id: 'file-1',
-          name: 'test.txt',
-          type: 'text/plain',
-          size: 100,
-          progress: -1,
-          transferMethod: 'local_file',
-          supportFileType: 'document',
-          originalFile,
-        },
-      ] as FileEntity[]
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleReUploadFile('file-1')
-
-      const uploadCall = mockFileUpload.mock.calls[0]![0]
-      uploadCall.onProgressCallback(50)
-      expect(mockSetFiles).toHaveBeenCalled()
-    })
-
-    it('should handle success callback during re-upload', () => {
-      const originalFile = new File(['content'], 'test.txt', { type: 'text/plain' })
-      mockStoreFiles = [
-        {
-          id: 'file-1',
-          name: 'test.txt',
-          type: 'text/plain',
-          size: 100,
-          progress: -1,
-          transferMethod: 'local_file',
-          supportFileType: 'document',
-          originalFile,
-        },
-      ] as FileEntity[]
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleReUploadFile('file-1')
-
-      const uploadCall = mockFileUpload.mock.calls[0]![0]
-      uploadCall.onSuccessCallback({ id: 'uploaded-1' })
-      expect(mockSetFiles).toHaveBeenCalled()
-    })
-
-    it('should handle error callback during re-upload', () => {
-      const originalFile = new File(['content'], 'test.txt', { type: 'text/plain' })
-      mockStoreFiles = [
-        {
-          id: 'file-1',
-          name: 'test.txt',
-          type: 'text/plain',
-          size: 100,
-          progress: -1,
-          transferMethod: 'local_file',
-          supportFileType: 'document',
-          originalFile,
-        },
-      ] as FileEntity[]
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleReUploadFile('file-1')
-
-      const uploadCall = mockFileUpload.mock.calls[0]![0]
-      uploadCall.onErrorCallback(new Error('fail'))
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
-  })
-
-  describe('handleLoadFileFromLink', () => {
-    it('should run startProgressTimer to increment file progress', () => {
-      vi.useFakeTimers()
-      mockUploadRemoteFileInfo.mockReturnValue(new Promise(() => {})) // never resolves
-
-      // Set up a file in the store that has progress 0
-      mockStoreFiles = [
-        {
-          id: 'mock-uuid',
-          name: 'https://example.com/file.txt',
-          type: '',
-          size: 0,
-          progress: 0,
-          transferMethod: 'remote_url',
-          supportFileType: '',
-        },
-      ] as FileEntity[]
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLoadFileFromLink('https://example.com/file.txt')
-
-      // Advance timer to trigger the interval
-      vi.advanceTimersByTime(200)
-      expect(mockSetFiles).toHaveBeenCalled()
-
-      vi.useRealTimers()
-    })
-
-    it('should add file and call uploadRemoteFileInfo', () => {
-      mockUploadRemoteFileInfo.mockResolvedValue({
-        id: 'remote-1',
-        mime_type: 'text/plain',
-        size: 100,
-        name: 'remote.txt',
-        url: 'https://example.com/remote.txt',
-      })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLoadFileFromLink('https://example.com/file.txt')
-
-      expect(mockSetFiles).toHaveBeenCalled()
-      expect(mockUploadRemoteFileInfo).toHaveBeenCalledWith('https://example.com/file.txt', false)
-    })
-
-    it('should upload a remote file through the configured resource-scoped endpoint', () => {
-      mockFileUploadContext.remoteUploadUrl = '/trial-apps/app-id/remote-files/upload'
-      mockUploadRemoteFileInfo.mockReturnValue(new Promise(() => {}))
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLoadFileFromLink('https://example.com/file.txt')
-
-      expect(mockUploadRemoteFileInfo).toHaveBeenCalledWith(
-        'https://example.com/file.txt',
-        false,
-        undefined,
-        '/trial-apps/app-id/remote-files/upload',
-      )
-    })
-
-    it('should use human input form remote upload on form page', () => {
-      mockNavigationState.params = { token: 'form-token' }
-      mockNavigationState.pathname = '/form/form-token'
-      mockUploadHumanInputFormRemoteFileInfo.mockResolvedValue({
-        id: 'remote-1',
-        mime_type: 'text/plain',
-        size: 100,
-        name: 'remote.txt',
-        url: 'https://example.com/remote.txt',
-      })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLoadFileFromLink('https://example.com/file.txt')
-
-      expect(mockUploadHumanInputFormRemoteFileInfo).toHaveBeenCalledWith(
-        'form-token',
-        'https://example.com/file.txt',
-      )
-      expect(mockUploadRemoteFileInfo).not.toHaveBeenCalled()
-    })
-
-    it('should remove file when extension is not allowed', async () => {
-      mockIsAllowedFileExtension.mockReturnValue(false)
-      mockUploadRemoteFileInfo.mockResolvedValue({
-        id: 'remote-1',
-        mime_type: 'text/plain',
-        size: 100,
-        name: 'remote.txt',
-        url: 'https://example.com/remote.txt',
-      })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      await act(async () => {
-        result.current.handleLoadFileFromLink('https://example.com/file.txt')
-        await vi.waitFor(() => expect(mockUploadRemoteFileInfo).toHaveBeenCalled())
-      })
-
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
-
-    it('should use empty arrays when allowed_file_types and allowed_file_extensions are undefined', async () => {
-      mockIsAllowedFileExtension.mockReturnValue(false)
-      mockUploadRemoteFileInfo.mockResolvedValue({
-        id: 'remote-1',
-        mime_type: 'text/plain',
-        size: 100,
-        name: 'remote.txt',
-        url: 'https://example.com/remote.txt',
-      })
-
-      const configWithUndefined = {
-        ...defaultFileConfig,
-        allowed_file_types: undefined,
-        allowed_file_extensions: undefined,
-      } as unknown as FileUpload
-
-      const { result } = renderHook(() => useFile(configWithUndefined))
-      await act(async () => {
-        result.current.handleLoadFileFromLink('https://example.com/file.txt')
-        await vi.waitFor(() => expect(mockUploadRemoteFileInfo).toHaveBeenCalled())
-      })
-
-      expect(mockIsAllowedFileExtension).toHaveBeenCalledWith('remote.txt', 'text/plain', [], [])
-    })
-
-    it('should remove file when remote upload fails', async () => {
-      mockUploadRemoteFileInfo.mockRejectedValue(new Error('network error'))
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      await act(async () => {
-        result.current.handleLoadFileFromLink('https://example.com/file.txt')
-        await vi.waitFor(() => expect(mockNotify).toHaveBeenCalled())
-      })
-
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
-
-    it('should remove file when size limit is exceeded on remote upload', async () => {
-      mockGetSupportFileType.mockReturnValue('image')
-      mockUploadRemoteFileInfo.mockResolvedValue({
-        id: 'remote-1',
-        mime_type: 'image/png',
-        size: 20 * 1024 * 1024,
-        name: 'large.png',
-        url: 'https://example.com/large.png',
-      })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      await act(async () => {
-        result.current.handleLoadFileFromLink('https://example.com/large.png')
-        await vi.waitFor(() => expect(mockUploadRemoteFileInfo).toHaveBeenCalled())
-      })
-
-      // File should be removed because image exceeds 10MB limit
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
-
-    it('should update file on successful remote upload within limits', async () => {
-      mockUploadRemoteFileInfo.mockResolvedValue({
-        id: 'remote-1',
-        mime_type: 'text/plain',
-        size: 100,
-        name: 'remote.txt',
-        url: 'https://example.com/remote.txt',
-      })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      await act(async () => {
-        result.current.handleLoadFileFromLink('https://example.com/remote.txt')
-        await vi.waitFor(() => expect(mockUploadRemoteFileInfo).toHaveBeenCalled())
-      })
-
-      // setFiles should be called: once for add, once for update
-      expect(mockSetFiles).toHaveBeenCalled()
-    })
-
-    it('should stop progress timer when file reaches 80 percent', () => {
-      vi.useFakeTimers()
-      mockUploadRemoteFileInfo.mockReturnValue(new Promise(() => {}))
-
-      // Set up a file already at 80% progress
-      mockStoreFiles = [
-        {
-          id: 'mock-uuid',
-          name: 'https://example.com/file.txt',
-          type: '',
-          size: 0,
-          progress: 80,
-          transferMethod: 'remote_url',
-          supportFileType: '',
-        },
-      ] as FileEntity[]
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLoadFileFromLink('https://example.com/file.txt')
-
-      // At progress 80, the timer should stop (clearTimeout path)
-      vi.advanceTimersByTime(200)
-
-      vi.useRealTimers()
-    })
-
-    it('should stop progress timer when progress is negative', () => {
-      vi.useFakeTimers()
-      mockUploadRemoteFileInfo.mockReturnValue(new Promise(() => {}))
-
-      // Set up a file with negative progress (error state)
-      mockStoreFiles = [
-        {
-          id: 'mock-uuid',
-          name: 'https://example.com/file.txt',
-          type: '',
-          size: 0,
-          progress: -1,
-          transferMethod: 'remote_url',
-          supportFileType: '',
-        },
-      ] as FileEntity[]
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLoadFileFromLink('https://example.com/file.txt')
-
-      vi.advanceTimersByTime(200)
-
-      vi.useRealTimers()
-    })
-  })
-
-  describe('handleLocalFileUpload', () => {
-    let capturedListeners: Record<string, (() => void)[]>
-    let mockReaderResult: string | null
-
-    beforeEach(() => {
-      capturedListeners = {}
-      mockReaderResult = 'data:text/plain;base64,Y29udGVudA=='
-
-      class MockFileReader {
-        result: string | null = null
-        addEventListener(event: string, handler: () => void) {
-          if (!capturedListeners[event]) capturedListeners[event] = []
-          capturedListeners[event].push(handler)
-        }
-
-        readAsDataURL() {
-          this.result = mockReaderResult
-          capturedListeners.load?.forEach((handler) => handler())
-        }
-      }
-      vi.stubGlobal('FileReader', MockFileReader)
-    })
-
-    afterEach(() => {
-      vi.unstubAllGlobals()
-    })
-
-    it('should upload a local file', () => {
-      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockSetFiles).toHaveBeenCalled()
-    })
-
-    it('should reject file with unsupported extension', () => {
-      mockIsAllowedFileExtension.mockReturnValue(false)
-      const file = new File(['content'], 'test.xyz', { type: 'application/xyz' })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-      expect(mockSetFiles).not.toHaveBeenCalled()
-    })
-
-    it('should use empty arrays when allowed_file_types and allowed_file_extensions are undefined', () => {
-      mockIsAllowedFileExtension.mockReturnValue(false)
-      const file = new File(['content'], 'test.xyz', { type: 'application/xyz' })
-
-      const configWithUndefined = {
-        ...defaultFileConfig,
-        allowed_file_types: undefined,
-        allowed_file_extensions: undefined,
-      } as unknown as FileUpload
-
-      const { result } = renderHook(() => useFile(configWithUndefined))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockIsAllowedFileExtension).toHaveBeenCalledWith('test.xyz', 'application/xyz', [], [])
-    })
-
-    it('should reject file when upload is disabled and noNeedToCheckEnable is false', () => {
-      const disabledConfig = { ...defaultFileConfig, enabled: false } as FileUpload
-      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
-
-      const { result } = renderHook(() => useFile(disabledConfig, false))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
-
-    it('should reject image file exceeding size limit', () => {
-      mockGetSupportFileType.mockReturnValue('image')
-      const largeFile = new File([new ArrayBuffer(20 * 1024 * 1024)], 'large.png', {
-        type: 'image/png',
-      })
-      Object.defineProperty(largeFile, 'size', { value: 20 * 1024 * 1024 })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(largeFile)
-
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
-
-    it('should reject audio file exceeding size limit', () => {
-      mockGetSupportFileType.mockReturnValue('audio')
-      const largeFile = new File([], 'large.mp3', { type: 'audio/mpeg' })
-      Object.defineProperty(largeFile, 'size', { value: 60 * 1024 * 1024 })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(largeFile)
-
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
-
-    it('should reject video file exceeding size limit', () => {
-      mockGetSupportFileType.mockReturnValue('video')
-      const largeFile = new File([], 'large.mp4', { type: 'video/mp4' })
-      Object.defineProperty(largeFile, 'size', { value: 200 * 1024 * 1024 })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(largeFile)
-
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
-
-    it('should reject document file exceeding size limit', () => {
-      mockGetSupportFileType.mockReturnValue('document')
-      const largeFile = new File([], 'large.pdf', { type: 'application/pdf' })
-      Object.defineProperty(largeFile, 'size', { value: 20 * 1024 * 1024 })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(largeFile)
-
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
-
-    it('should reject custom file exceeding document size limit', () => {
-      mockGetSupportFileType.mockReturnValue('custom')
-      const largeFile = new File([], 'large.xyz', { type: 'application/octet-stream' })
-      Object.defineProperty(largeFile, 'size', { value: 20 * 1024 * 1024 })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(largeFile)
-
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
-
-    it('should allow custom file within document size limit', () => {
-      mockGetSupportFileType.mockReturnValue('custom')
-      const file = new File(['content'], 'file.xyz', { type: 'application/octet-stream' })
-      Object.defineProperty(file, 'size', { value: 1024 })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockNotify).not.toHaveBeenCalled()
-      expect(mockSetFiles).toHaveBeenCalled()
-    })
-
-    it('should allow document file within size limit', () => {
-      mockGetSupportFileType.mockReturnValue('document')
-      const file = new File(['content'], 'small.pdf', { type: 'application/pdf' })
-      Object.defineProperty(file, 'size', { value: 1024 })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockNotify).not.toHaveBeenCalled()
-      expect(mockSetFiles).toHaveBeenCalled()
-    })
-
-    it('should allow file with unknown type (default case)', () => {
-      mockGetSupportFileType.mockReturnValue('unknown')
-      const file = new File(['content'], 'test.bin', { type: 'application/octet-stream' })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      // Should not be rejected - unknown type passes checkSizeLimit
-      expect(mockNotify).not.toHaveBeenCalled()
-    })
-
-    it('should allow image file within size limit', () => {
-      mockGetSupportFileType.mockReturnValue('image')
-      const file = new File(['content'], 'small.png', { type: 'image/png' })
-      Object.defineProperty(file, 'size', { value: 1024 })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockNotify).not.toHaveBeenCalled()
-      expect(mockSetFiles).toHaveBeenCalled()
-    })
-
-    it('should allow audio file within size limit', () => {
-      mockGetSupportFileType.mockReturnValue('audio')
-      const file = new File(['content'], 'small.mp3', { type: 'audio/mpeg' })
-      Object.defineProperty(file, 'size', { value: 1024 })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockNotify).not.toHaveBeenCalled()
-      expect(mockSetFiles).toHaveBeenCalled()
-    })
-
-    it('should allow video file within size limit', () => {
-      mockGetSupportFileType.mockReturnValue('video')
-      const file = new File(['content'], 'small.mp4', { type: 'video/mp4' })
-      Object.defineProperty(file, 'size', { value: 1024 })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockNotify).not.toHaveBeenCalled()
-      expect(mockSetFiles).toHaveBeenCalled()
-    })
-
-    it('should set base64Url for image files during upload', () => {
-      mockGetSupportFileType.mockReturnValue('image')
-      const file = new File(['content'], 'photo.png', { type: 'image/png' })
-      Object.defineProperty(file, 'size', { value: 1024 })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockSetFiles).toHaveBeenCalled()
-      // The file should have been added with base64Url set (for image type)
-      const addedFiles = mockSetFiles.mock.calls[0]![0]
-      expect(addedFiles[0].base64Url).toBe('data:text/plain;base64,Y29udGVudA==')
-    })
-
-    it('should set empty base64Url for non-image files during upload', () => {
-      mockGetSupportFileType.mockReturnValue('document')
-      const file = new File(['content'], 'doc.pdf', { type: 'application/pdf' })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockSetFiles).toHaveBeenCalled()
-      const addedFiles = mockSetFiles.mock.calls[0]![0]
-      expect(addedFiles[0].base64Url).toBe('')
-    })
-
-    it('should call fileUpload with callbacks after FileReader loads', () => {
-      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockFileUpload).toHaveBeenCalled()
-      const uploadCall = mockFileUpload.mock.calls[0]![0]
-
-      // Test progress callback
-      uploadCall.onProgressCallback(50)
-      expect(mockSetFiles).toHaveBeenCalled()
-
-      // Test success callback
-      uploadCall.onSuccessCallback({ id: 'uploaded-1' })
-      expect(mockSetFiles).toHaveBeenCalled()
-    })
-
-    it('should upload through the configured resource-scoped endpoint', () => {
-      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
-      mockFileUploadContext.localUploadUrl = '/trial-apps/app-id/files/upload'
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockFileUpload).toHaveBeenCalledWith(
-        expect.any(Object),
-        false,
-        '/trial-apps/app-id/files/upload',
-      )
-    })
-
-    it('should use human input form local upload on form page', () => {
-      mockNavigationState.params = { token: 'form-token' }
-      mockNavigationState.pathname = '/form/form-token'
-      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockUploadHumanInputFormLocalFile).toHaveBeenCalledWith(
-        expect.objectContaining({
-          formToken: 'form-token',
-          file,
-        }),
-      )
-      expect(mockFileUpload).not.toHaveBeenCalled()
-    })
-
-    it('should handle fileUpload error callback', () => {
-      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      const uploadCall = mockFileUpload.mock.calls[0]![0]
-      uploadCall.onErrorCallback(new Error('upload failed'))
-
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
-
-    it('should handle FileReader error event', () => {
-      capturedListeners = {}
-      const errorListeners: (() => void)[] = []
-
-      class ErrorFileReader {
-        result: string | null = null
-        addEventListener(event: string, handler: () => void) {
-          if (event === 'error') errorListeners.push(handler)
-          if (!capturedListeners[event]) capturedListeners[event] = []
-          capturedListeners[event].push(handler)
-        }
-
-        readAsDataURL() {
-          // Simulate error instead of load
-          errorListeners.forEach((handler) => handler())
-        }
-      }
-      vi.stubGlobal('FileReader', ErrorFileReader)
-
-      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
-  })
-
-  describe('handleClipboardPasteFile', () => {
-    it('should handle file paste from clipboard', () => {
-      const file = new File(['content'], 'pasted.png', { type: 'image/png' })
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-
-      const event = {
-        clipboardData: {
-          files: [file],
-          getData: () => '',
-        },
-        preventDefault: vi.fn(),
-      } as unknown as React.ClipboardEvent<HTMLTextAreaElement>
-
-      result.current.handleClipboardPasteFile(event)
-      expect(event.preventDefault).toHaveBeenCalled()
-    })
-
-    it('should not handle paste when text is present', () => {
-      const file = new File(['content'], 'pasted.png', { type: 'image/png' })
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-
-      const event = {
-        clipboardData: {
-          files: [file],
-          getData: () => 'some text',
-        },
-        preventDefault: vi.fn(),
-      } as unknown as React.ClipboardEvent<HTMLTextAreaElement>
-
-      result.current.handleClipboardPasteFile(event)
-      expect(event.preventDefault).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('drag and drop handlers', () => {
-    it('should set isDragActive on drag enter', () => {
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-
-      const event = {
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-      } as unknown as React.DragEvent<HTMLElement>
-      act(() => {
-        result.current.handleDragFileEnter(event)
-      })
-
-      expect(result.current.isDragActive).toBe(true)
-    })
-
-    it('should call preventDefault on drag over', () => {
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-
-      const event = {
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-      } as unknown as React.DragEvent<HTMLElement>
-      result.current.handleDragFileOver(event)
-
-      expect(event.preventDefault).toHaveBeenCalled()
-    })
-
-    it('should unset isDragActive on drag leave', () => {
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-
-      const enterEvent = {
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-      } as unknown as React.DragEvent<HTMLElement>
-      act(() => {
-        result.current.handleDragFileEnter(enterEvent)
-      })
-      expect(result.current.isDragActive).toBe(true)
-
-      const leaveEvent = {
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-      } as unknown as React.DragEvent<HTMLElement>
-      act(() => {
-        result.current.handleDragFileLeave(leaveEvent)
-      })
-      expect(result.current.isDragActive).toBe(false)
-    })
-
-    it('should handle file drop', () => {
-      const file = new File(['content'], 'dropped.txt', { type: 'text/plain' })
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-
-      const event = {
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-        dataTransfer: { files: [file] },
-      } as unknown as React.DragEvent<HTMLElement>
-
-      act(() => {
-        result.current.handleDropFile(event)
-      })
-
-      expect(event.preventDefault).toHaveBeenCalled()
-      expect(result.current.isDragActive).toBe(false)
-    })
-
-    it('should not upload when no file is dropped', () => {
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-
-      const event = {
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-        dataTransfer: { files: [] },
-      } as unknown as React.DragEvent<HTMLElement>
-
-      act(() => {
-        result.current.handleDropFile(event)
-      })
-
-      // No file upload should be triggered
-      expect(mockSetFiles).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('noop handlers', () => {
-    it('should have handleLoadFileFromLinkSuccess as noop', () => {
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-
-      expect(() => result.current.handleLoadFileFromLinkSuccess()).not.toThrow()
-    })
-
-    it('should have handleLoadFileFromLinkError as noop', () => {
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-
-      expect(() => result.current.handleLoadFileFromLinkError()).not.toThrow()
-    })
-  })
+    }),
+  )
 })

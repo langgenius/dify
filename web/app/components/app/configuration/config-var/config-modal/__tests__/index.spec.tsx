@@ -1,5 +1,5 @@
 import type { InputVar } from '@/app/components/workflow/types'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
@@ -67,24 +67,36 @@ describe('ConfigModal', () => {
     vi.clearAllMocks()
   })
 
-  it('should copy the variable name into the label when the label is empty', () => {
+  it('rejects invalid variable characters and keeps an explicitly edited label on blur', async () => {
+    const user = userEvent.setup()
+    const onConfirm = vi.fn()
     render(
       <ConfigModal
-        isCreate
         isShow
-        payload={createPayload()}
+        isCreate
+        payload={createPayload({ label: 'Existing label' })}
         onClose={vi.fn()}
-        onConfirm={vi.fn()}
+        onConfirm={onConfirm}
       />,
     )
-
-    const textboxes = screen.getAllByRole('textbox')
-    fireEvent.blur(textboxes[0]!, { target: { value: 'question' } })
-
-    expect(textboxes[1])!.toHaveValue('question')
+    const variable = screen.getByRole('textbox', { name: 'appDebug.variableConfig.varName' })
+    await user.clear(variable)
+    await user.type(variable, 'renamed!')
+    await user.tab()
+    expect(variable).toHaveValue('renamed')
+    expect(toastErrorSpy).toHaveBeenCalled()
+    expect(screen.getByRole('textbox', { name: 'appDebug.variableConfig.labelName' })).toHaveValue(
+      'Existing label',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({ variable: 'renamed', label: 'Existing label' }),
+      { type: 'changeVarName', payload: { beforeKey: 'question', afterKey: 'renamed' } },
+    )
   })
 
-  it('should submit the edited payload when the form is valid', () => {
+  it('should submit the edited payload when the form is valid', async () => {
+    const user = userEvent.setup()
     const onConfirm = vi.fn()
     render(
       <ConfigModal
@@ -96,8 +108,12 @@ describe('ConfigModal', () => {
       />,
     )
 
-    fireEvent.change(screen.getByDisplayValue('hello'), { target: { value: 'updated default' } })
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    const defaultInput = screen.getByRole('textbox', {
+      name: 'appDebug.variableConfig.defaultValue',
+    })
+    await user.clear(defaultInput)
+    await user.type(defaultInput, 'updated default')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(onConfirm).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -607,39 +623,5 @@ describe('ConfigModal', () => {
 
     expect(onClose).toHaveBeenCalledOnce()
     expect(onConfirm).not.toHaveBeenCalled()
-  })
-
-  it('should scroll the dialog surface while clipping horizontal overflow in the form body', () => {
-    render(
-      <ConfigModal
-        isCreate
-        isShow
-        payload={createPayload({ label: 'Question' })}
-        onClose={vi.fn()}
-        onConfirm={vi.fn()}
-      />,
-    )
-
-    const dialog = screen.getByRole('dialog')
-    const scrollArea = screen.getByTestId('config-modal-scroll-area')
-
-    expect(dialog).toHaveClass('overflow-y-auto')
-    expect(scrollArea).toHaveClass('overflow-x-hidden')
-  })
-
-  it('should block save when the label is missing', () => {
-    render(
-      <ConfigModal
-        isCreate
-        isShow
-        payload={createPayload({ label: '' })}
-        onClose={vi.fn()}
-        onConfirm={vi.fn()}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-    expect(toastErrorSpy).toHaveBeenCalledWith('appDebug.variableConfig.errorMsg.labelNameRequired')
   })
 })

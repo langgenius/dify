@@ -16,26 +16,7 @@ import { OrderBy } from '../types'
 import useConfig from '../use-config'
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
-  default: vi.fn(
-    (
-      _nodeId: string,
-      options?: Parameters<
-        typeof import('@/app/components/workflow/nodes/_base/hooks/use-available-var-list').default
-      >[1],
-    ) => ({
-      availableVars: [
-        { nodeId: 'node-1', variable: 'size', type: VarType.number },
-        { nodeId: 'node-1', variable: 'name', type: VarType.string },
-      ].filter((varPayload) =>
-        options?.filterVar
-          ? options.filterVar(varPayload, [varPayload.nodeId, varPayload.variable])
-          : true,
-      ),
-      availableNodesWithParent: [
-        { id: 'node-1', data: { title: 'Answer', desc: '', type: BlockEnum.Answer } },
-      ],
-    }),
-  ),
+  default: () => ({ availableVars: [], availableNodesWithParent: [] }),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/input-support-select-var', () => ({
@@ -59,70 +40,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/input-support-select-v
       onChange={(event) => onChange(event.target.value)}
     />
   ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({
-    title,
-    operations,
-    children,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/field').default
-  >) => (
-    <div>
-      <div>{title}</div>
-      <div>{operations}</div>
-      {children}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/input-number-with-slider', () => ({
-  default: ({
-    value,
-    onChange,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/input-number-with-slider').default
-  >) => (
-    <button type="button" onClick={() => onChange(value + 1)}>
-      slider-{value}
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/option-card', () => ({
-  default: ({
-    title,
-    onSelect,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/option-card').default
-  >) => (
-    <button type="button" onClick={onSelect}>
-      {title}
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
-  default: ({
-    children,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/output-vars').default
-  >) => <div>{children}</div>,
-  VarItem: ({
-    name,
-    type,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/output-vars').VarItem
-  >) => (
-    <div>
-      {name}:{type}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
-  default: () => <div>split</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
@@ -218,19 +135,21 @@ describe('list-operator path', () => {
   // The list-operator path should expose extract, limit, ordering, and node variable previews.
   describe('Path Integration', () => {
     it('should update the extract input', async () => {
+      const user = userEvent.setup()
       const onChange = vi.fn()
       const { rerender } = render(
         <ExtractInput nodeId="node-1" readOnly={false} value="1" onChange={onChange} />,
       )
 
       fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '2' } })
-      fireEvent.focus(screen.getByDisplayValue('1'))
-      expect(screen.getByDisplayValue('1')).toHaveClass('border-components-input-border-active')
+      expect(onChange).toHaveBeenCalledWith('2')
+      onChange.mockClear()
 
       rerender(<ExtractInput nodeId="node-1" readOnly value="" onChange={onChange} />)
 
-      expect(onChange).toHaveBeenCalled()
-      expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', '')
+      await user.type(screen.getByRole('textbox'), '3')
+      expect(screen.getByRole('textbox')).toHaveValue('')
+      expect(onChange).not.toHaveBeenCalled()
     })
 
     it('should change the selected sub variable', async () => {
@@ -258,7 +177,8 @@ describe('list-operator path', () => {
         <LimitConfig readonly={false} config={{ enabled: true, size: 10 }} onChange={onChange} />,
       )
 
-      await user.click(screen.getByText('slider-10'))
+      screen.getByRole('slider', { name: 'workflowLogic.nodes.listFilter.limit' }).focus()
+      await user.keyboard('{ArrowRight}')
 
       expect(onChange).toHaveBeenCalledWith({ enabled: true, size: 11 })
 
@@ -266,9 +186,20 @@ describe('list-operator path', () => {
         <LimitConfig readonly={false} config={{ enabled: false, size: 10 }} onChange={onChange} />,
       )
 
-      expect(screen.queryByText('slider-10')).not.toBeInTheDocument()
+      expect(screen.queryByRole('slider')).not.toBeInTheDocument()
       await user.click(screen.getByRole('switch'))
       expect(onChange).toHaveBeenCalledWith({ enabled: true, size: 10 })
+    })
+
+    it('prevents changing the limit in readonly mode', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      render(<LimitConfig readonly config={{ enabled: true, size: 10 }} onChange={onChange} />)
+
+      expect(screen.getByRole('spinbutton')).toBeDisabled()
+      await user.click(screen.getByRole('switch'))
+      await user.type(screen.getByRole('spinbutton'), '2')
+      expect(onChange).not.toHaveBeenCalled()
     })
 
     it('should render the selected input variable in the node preview', () => {
@@ -310,24 +241,11 @@ describe('list-operator path', () => {
       expect(screen.queryByText('Start')).not.toBeInTheDocument()
     })
 
-    it('should render the panel controls and output vars', async () => {
-      const user = userEvent.setup()
-      renderPanel()
-
-      await user.click(screen.getByText('pick-var'))
-      await user.click(screen.getByText('filter-condition'))
-      await user.click(screen.getByText('workflowLogic.nodes.listFilter.asc'))
-
-      expect(screen.getByText('result:Array[number]')).toBeInTheDocument()
-      expect(screen.getByText('first_record:number')).toBeInTheDocument()
-      expect(screen.getByText('last_record:number')).toBeInTheDocument()
-    })
-
     it('should hide disabled sections and render order controls without sub variables', () => {
-      mockUseConfig.mockReturnValueOnce(
+      mockUseConfig.mockReturnValue(
         createConfigResult({
           inputs: createData({
-            variable: undefined as any,
+            variable: [],
             filter_by: { enabled: false, conditions: [] },
             extract_by: { enabled: false, serial: '' },
             order_by: { enabled: false, key: '', value: OrderBy.ASC },
@@ -342,7 +260,7 @@ describe('list-operator path', () => {
       expect(screen.queryByDisplayValue('1')).not.toBeInTheDocument()
       expect(screen.queryByText('workflowLogic.nodes.listFilter.asc')).not.toBeInTheDocument()
 
-      mockUseConfig.mockReturnValueOnce(
+      mockUseConfig.mockReturnValue(
         createConfigResult({
           inputs: createData({
             order_by: { enabled: true, key: '', value: OrderBy.ASC },

@@ -2,6 +2,7 @@
 import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
@@ -20,14 +21,16 @@ type AppExportConfirmModalProps = {
   envList: Pick<EnvironmentVariableItemResponse, 'name' | 'value'>[]
   onConfirm: (includeSecret: boolean) => Promise<boolean>
   isExporting: boolean
+  errorMessage?: string
   onClose: () => void
 }
 
-export const AppExportConfirmContent = ({
+const AppExportConfirmContent = ({
   envList,
   onConfirm,
   onClose,
   isExporting,
+  errorMessage,
 }: AppExportConfirmModalProps) => {
   const { t } = useTranslation(['app', 'workflow', 'common'])
 
@@ -48,7 +51,7 @@ export const AppExportConfirmContent = ({
           {t(($) => $['exportSecret.description'], { ns: 'app' })}
         </AlertDialogDescription>
       </AlertDialogHeader>
-      <div className="px-6">
+      <AlertDialogBody>
         <div className="relative">
           <table className="w-full border-separate border-spacing-0 rounded-lg border border-divider-regular shadow-xs">
             <thead className="system-xs-medium-uppercase text-text-tertiary">
@@ -118,7 +121,12 @@ export const AppExportConfirmContent = ({
             {t(($) => $['env.export.checkbox'], { ns: 'workflow' })}
           </span>
         </label>
-      </div>
+        {errorMessage && (
+          <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
+            {errorMessage}
+          </p>
+        )}
+      </AlertDialogBody>
       <AlertDialogFooter>
         <AlertDialogCancelButton disabled={isExporting}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}

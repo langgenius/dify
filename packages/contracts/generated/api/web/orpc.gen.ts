@@ -383,7 +383,7 @@ export const get = oc
     path: '/conversations',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetConversationsQuery.optional() }))
+  .input(z.object({ query: zGetConversationsQuery.optional() }).optional())
   .output(zGetConversationsResponse)
   .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
@@ -731,7 +731,7 @@ export const get3 = oc
     path: '/login/status',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetLoginStatusQuery.optional() }))
+  .input(z.object({ query: zGetLoginStatusQuery.optional() }).optional())
   .output(zGetLoginStatusResponse)
 
 export const status = {
@@ -956,7 +956,7 @@ export const get9 = oc
     path: '/passport',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetPassportQuery.optional() }))
+  .input(z.object({ query: zGetPassportQuery.optional() }).optional())
   .output(zGetPassportResponse)
 
 export const passport = {
@@ -1103,7 +1103,7 @@ export const get11 = oc
     path: '/saved-messages',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetSavedMessagesQuery.optional() }))
+  .input(z.object({ query: zGetSavedMessagesQuery.optional() }).optional())
   .output(zGetSavedMessagesResponse)
   .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
@@ -1217,7 +1217,7 @@ export const get14 = oc
     path: '/webapp/access-mode',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetWebappAccessModeQuery.optional() }))
+  .input(z.object({ query: zGetWebappAccessModeQuery.optional() }).optional())
   .output(zGetWebappAccessModeResponse)
   .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 

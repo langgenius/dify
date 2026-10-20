@@ -11,14 +11,15 @@ describe('execution time offset label', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-30T12:00:00Z'))
 
-    const data = {
+    const data: ScheduleTriggerNodeType = {
       type: BlockEnum.TriggerSchedule,
       title: 'schedule',
+      desc: '',
       mode: 'visual',
       frequency: 'daily',
       timezone: 'America/New_York',
       visual_config: { time: '12:00 AM' },
-    } as ScheduleTriggerNodeType
+    }
 
     const times = getFormattedExecutionTimes(data, 4)
 
@@ -34,13 +35,14 @@ describe('execution time offset label', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-11-01T03:00:00Z'))
 
-    const data = {
+    const data: ScheduleTriggerNodeType = {
       type: BlockEnum.TriggerSchedule,
       title: 'schedule',
+      desc: '',
       mode: 'cron',
       cron_expression: '30 * * * *',
       timezone: 'America/New_York',
-    } as ScheduleTriggerNodeType
+    }
 
     const times = getFormattedExecutionTimes(data, 5)
 
@@ -52,14 +54,15 @@ describe('execution time offset label', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-11-01T06:05:00Z'))
 
-    const data = {
+    const data: ScheduleTriggerNodeType = {
       type: BlockEnum.TriggerSchedule,
       title: 'schedule',
+      desc: '',
       mode: 'visual',
       frequency: 'daily',
       timezone: 'America/New_York',
       visual_config: { time: '1:30 AM' },
-    } as ScheduleTriggerNodeType
+    }
 
     const times = getFormattedExecutionTimes(data, 2)
 
@@ -70,14 +73,15 @@ describe('execution time offset label', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-11-01T06:05:00Z'))
 
-    const data = {
+    const data: ScheduleTriggerNodeType = {
       type: BlockEnum.TriggerSchedule,
       title: 'schedule',
+      desc: '',
       mode: 'visual',
       frequency: 'hourly',
       timezone: 'America/New_York',
       visual_config: { on_minute: 30 },
-    } as ScheduleTriggerNodeType
+    }
 
     const times = getFormattedExecutionTimes(data, 1)
 
@@ -88,14 +92,15 @@ describe('execution time offset label', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-04-04T08:00:00Z'))
 
-    const data = {
+    const data: ScheduleTriggerNodeType = {
       type: BlockEnum.TriggerSchedule,
       title: 'schedule',
+      desc: '',
       mode: 'visual',
       frequency: 'daily',
       timezone: 'Pacific/Auckland',
       visual_config: { time: '2:00 AM' },
-    } as ScheduleTriggerNodeType
+    }
 
     const times = getFormattedExecutionTimes(data, 1)
 

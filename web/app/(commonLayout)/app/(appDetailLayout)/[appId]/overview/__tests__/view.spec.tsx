@@ -19,21 +19,12 @@ const testState = vi.hoisted(() => ({
     maintainer: 'maintainer-1',
     permission_keys: [] as string[],
   },
-  currentUserId: 'user-1',
-  workspacePermissionKeys: [] as string[],
 }))
 
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   request: testState.request,
 }))
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    currentWorkspace: { id: 'workspace-1' },
-  }))
-})
 
 vi.mock('../chart-view', () => ({
   default: ({ appId, headerRight }: { appId: string; headerRight: ReactNode }) => (
@@ -48,14 +39,6 @@ vi.mock('@/app/components/app/tracing/configuration', () => ({
   TracingConfiguration: () => <button type="button">tracing</button>,
 }))
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: [],
-  }))
-})
-
 const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
   const queryClient = createConsoleQueryClient()
   const detail = createAppDetailFixture({ ...testState.appDetail, mode: 'chat' })
@@ -63,7 +46,11 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: detail.id } } }),
     detail,
   )
-  return renderWithConsoleQuery(ui, { queryClient })
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    currentWorkspace: { id: 'workspace-1' },
+    workspacePermissionKeys: [],
+  })
 }
 
 describe('OverviewView monitor permission', () => {
@@ -75,8 +62,6 @@ describe('OverviewView monitor permission', () => {
       maintainer: 'maintainer-1',
       permission_keys: [],
     }
-    testState.currentUserId = 'user-1'
-    testState.workspacePermissionKeys = []
   })
 
   // The overview page should be controlled as one monitor-permission surface.

@@ -18,6 +18,7 @@ from dify_trace_mlflow.oss_configuration import (
     project_url,
     verify_configuration,
 )
+from pydantic import ValidationError
 
 from core.helper import ssrf_proxy
 from tests.unit_tests.services.tracing.test_databricks_configuration import ExperimentAPI, response
@@ -111,14 +112,18 @@ def test_anonymous_request_does_not_inherit_previous_or_environment_credentials(
 
 def test_concurrent_destinations_keep_experiment_and_auth_together(experiment_api: ExperimentAPI) -> None:
     barrier = Barrier(2)
+    expected_destinations = {
+        "https://first.test/prefix/api/2.0/mlflow/experiments/get": ("first", "12"),
+        "https://second.test/prefix/api/2.0/mlflow/experiments/get": ("second", "34"),
+    }
 
     def read(_method: str, url: str, options: dict[str, object]) -> httpx.Response:
         params = options["params"]
         headers = options["headers"]
         assert isinstance(params, dict)
         assert isinstance(headers, dict)
-        label = "first" if url.startswith("https://first.test") else "second"
-        assert params["experiment_id"] == ("12" if label == "first" else "34")
+        label, experiment_id = expected_destinations[url]
+        assert params["experiment_id"] == experiment_id
         assert headers["Authorization"] == "Basic " + base64.b64encode(f"{label}:{label}-secret".encode()).decode()
         barrier.wait(timeout=5)
         return response(url, {"experiment": {"experiment_id": params["experiment_id"], "lifecycle_stage": "active"}})
@@ -138,6 +143,7 @@ def test_concurrent_destinations_keep_experiment_and_auth_together(experiment_ap
             for label, experiment in (("first", "12"), ("second", "34"))
         ]
         assert [item.result().experiment_id for item in pending] == ["12", "34"]
+    assert sorted(url for _method, url, _options in experiment_api.calls) == sorted(expected_destinations)
 
 
 @pytest.mark.parametrize(
@@ -170,14 +176,14 @@ def test_concurrent_destinations_keep_experiment_and_auth_together(experiment_ap
     ],
 )
 def test_ambiguous_destinations_fail_before_request(experiment_api: ExperimentAPI, uri: str) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises((MLflowConfigurationError, ValidationError)):
         verify_configuration(normalize_configuration({"tracking_uri": uri, "experiment_id": "12"}))
     assert experiment_api.calls == []
 
 
 @pytest.mark.parametrize("experiment", ["", "-1", "1.5", "１２", "abc"])
 def test_experiment_ids_are_ascii_integer_identifiers(experiment_api: ExperimentAPI, experiment: str) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises((MLflowConfigurationError, ValidationError)):
         normalize_configuration({"tracking_uri": "https://server.test", "experiment_id": experiment})
     assert experiment_api.calls == []
 

@@ -17,7 +17,6 @@ export type FeedbackType = {
 }
 
 export type FeedbackFunc = (messageId: string, feedback: FeedbackType) => Promise<void>
-export type SubmitAnnotationFunc = (messageId: string, content: string) => Promise<unknown>
 
 export type ToolInfoInThought = {
   name: string
@@ -28,6 +27,7 @@ export type ToolInfoInThought = {
 }
 
 export type ThoughtItem = {
+  task_id?: string
   id: string
   tool: string // plugin or dataset. May has multi.
   thought: string
@@ -85,6 +85,7 @@ type SubmittedHumanInputExtraContent = {
 export type ExtraContent = PendingHumanInputExtraContent | SubmittedHumanInputExtraContent
 
 export type IChatItem = {
+  isError?: boolean
   id: string
   content: string
   citation?: CitationItem[]

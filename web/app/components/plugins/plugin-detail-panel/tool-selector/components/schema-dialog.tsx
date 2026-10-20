@@ -3,9 +3,10 @@ import type { Field } from '@/app/components/workflow/nodes/llm/types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogBody,
   DialogContent,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -63,20 +64,20 @@ export function SchemaDialog({ schema, rootName, compact = false }: SchemaDialog
   return (
     <Dialog>
       {entry}
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-240 min-w-0 flex-col overflow-hidden">
+      <DialogContent className="w-240">
         <DialogHeader>
           <DialogTitle>
             {t(($) => $['nodes.agent.parameterSchema'], { ns: 'workflowAgent' })}
           </DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
-        <div className="min-h-0 overflow-y-auto px-6 pt-2 pb-6">
+        <DialogBody>
           <MittProvider>
             <VisualEditorContextProvider>
               <SchemaPreview schema={schema} rootName={rootName} />
             </VisualEditorContextProvider>
           </MittProvider>
-        </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

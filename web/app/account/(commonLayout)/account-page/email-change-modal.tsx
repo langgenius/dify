@@ -2,10 +2,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -197,6 +197,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="w-105">
         <form
+          className="contents"
           onSubmit={(event) => {
             event.preventDefault()
             if (step === STEP.start) void sendCodeToOriginEmail()
@@ -211,7 +212,9 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
                 <DialogTitle>
                   {t(($) => $['account.changeEmail.title'], { ns: 'accountSettings' })}
                 </DialogTitle>
-                <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+                <DialogHeaderCloseButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                />
               </DialogHeader>
               <DialogBody>
                 <div className="space-y-0.5 pt-1 pb-2">
@@ -231,10 +234,10 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
                 </div>
               </DialogBody>
               <DialogFooter className="flex-col items-stretch">
-                <Button className="w-full!" variant="primary" type="submit">
+                <Button variant="primary" type="submit">
                   {t(($) => $['account.changeEmail.sendVerifyCode'], { ns: 'accountSettings' })}
                 </Button>
-                <Button className="w-full!" onClick={onClose}>
+                <Button onClick={onClose}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </Button>
               </DialogFooter>
@@ -246,7 +249,9 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
                 <DialogTitle>
                   {t(($) => $['account.changeEmail.verifyEmail'], { ns: 'accountSettings' })}
                 </DialogTitle>
-                <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+                <DialogHeaderCloseButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                />
               </DialogHeader>
               <DialogBody>
                 <div className="space-y-0.5 pt-1 pb-2">
@@ -278,15 +283,10 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
                 </Field>
               </DialogBody>
               <DialogFooter className="flex-col items-stretch">
-                <Button
-                  disabled={code.length !== 6}
-                  className="w-full!"
-                  variant="primary"
-                  type="submit"
-                >
+                <Button disabled={code.length !== 6} variant="primary" type="submit">
                   {t(($) => $['account.changeEmail.continue'], { ns: 'accountSettings' })}
                 </Button>
-                <Button className="w-full!" onClick={onClose}>
+                <Button onClick={onClose}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </Button>
                 <div className="flex items-center gap-1 system-xs-regular text-text-tertiary">
@@ -320,7 +320,9 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
                 <DialogTitle>
                   {t(($) => $['account.changeEmail.newEmail'], { ns: 'accountSettings' })}
                 </DialogTitle>
-                <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+                <DialogHeaderCloseButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                />
               </DialogHeader>
               <DialogBody>
                 <div className="space-y-0.5 pt-1 pb-2">
@@ -357,15 +359,10 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
                 </Field>
               </DialogBody>
               <DialogFooter className="flex-col items-stretch">
-                <Button
-                  disabled={isSendCodeDisabled}
-                  className="w-full!"
-                  variant="primary"
-                  type="submit"
-                >
+                <Button disabled={isSendCodeDisabled} variant="primary" type="submit">
                   {t(($) => $['account.changeEmail.sendVerifyCode'], { ns: 'accountSettings' })}
                 </Button>
-                <Button className="w-full!" onClick={onClose}>
+                <Button onClick={onClose}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </Button>
               </DialogFooter>
@@ -377,7 +374,9 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
                 <DialogTitle>
                   {t(($) => $['account.changeEmail.verifyNew'], { ns: 'accountSettings' })}
                 </DialogTitle>
-                <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+                <DialogHeaderCloseButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                />
               </DialogHeader>
               <DialogBody>
                 <div className="space-y-0.5 pt-1 pb-2">
@@ -409,18 +408,13 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
                 </Field>
               </DialogBody>
               <DialogFooter className="flex-col items-stretch">
-                <Button
-                  disabled={code.length !== 6}
-                  className="w-full!"
-                  variant="primary"
-                  type="submit"
-                >
+                <Button disabled={code.length !== 6} variant="primary" type="submit">
                   {t(($) => $['account.changeEmail.changeTo'], {
                     ns: 'accountSettings',
                     email: mail,
                   })}
                 </Button>
-                <Button className="w-full!" onClick={onClose}>
+                <Button onClick={onClose}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </Button>
                 <div className="flex items-center gap-1 system-xs-regular text-text-tertiary">

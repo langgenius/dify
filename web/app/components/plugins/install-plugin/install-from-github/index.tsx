@@ -6,11 +6,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -209,7 +209,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
               {t(($) => $['installFromGitHub.installNote'], { ns: 'plugin' })}
             </DialogDescription>
           )}
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         {completedSteps.includes(state.step) ? (
           <Installed
@@ -220,7 +220,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
             onCancel={onClose}
           />
         ) : state.step === InstallStepFromGitHub.setUrl ? (
-          <Form onFormSubmit={handleUrlSubmit}>
+          <Form className="contents" onFormSubmit={handleUrlSubmit}>
             <DialogBody>
               <Field name="repoUrl" className="gap-4">
                 <FieldLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">

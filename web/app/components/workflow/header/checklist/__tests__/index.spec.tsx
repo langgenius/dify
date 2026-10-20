@@ -1,7 +1,7 @@
 import type { ChecklistItem } from '../../../hooks/use-checklist'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { renderWorkflowFlowComponent as render } from '../../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../../types'
 import WorkflowChecklist from '../index'
 
@@ -25,15 +25,6 @@ let mockChecklistItems: ChecklistItem[] = [
 ]
 
 const mockHandleNodeSelect = vi.fn()
-const mockSetOpenInlineAgentPanelNodeId = vi.fn()
-
-vi.mock('reactflow', () => ({
-  useEdges: () => [],
-}))
-
-vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
-  default: () => [],
-}))
 
 vi.mock('../../../hooks/use-checklist', () => ({
   useChecklist: () => mockChecklistItems,
@@ -43,46 +34,6 @@ vi.mock('../../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({
     handleNodeSelect: mockHandleNodeSelect,
   }),
-}))
-
-vi.mock('../../../store', () => ({
-  useStore: (
-    selector: (state: {
-      setOpenInlineAgentPanelNodeId: typeof mockSetOpenInlineAgentPanelNodeId
-    }) => unknown,
-  ) =>
-    selector({
-      setOpenInlineAgentPanelNodeId: mockSetOpenInlineAgentPanelNodeId,
-    }),
-}))
-
-vi.mock('../../../hooks-store/store', () => ({
-  useHooksStore: (selector: (state: { configsMap: { resourceKind: string } }) => unknown) =>
-    selector({
-      configsMap: {
-        resourceKind: 'workflow',
-      },
-    }),
-}))
-
-vi.mock('../plugin-group', () => ({
-  ChecklistPluginGroup: ({ items }: { items: Array<{ title: string }> }) => (
-    <div data-testid="plugin-group">{items.map((item) => item.title).join(',')}</div>
-  ),
-}))
-
-vi.mock('../node-group', () => ({
-  ChecklistNodeGroup: ({
-    item,
-    onItemClick,
-  }: {
-    item: { title: string }
-    onItemClick: (item: { title: string }) => void
-  }) => (
-    <button data-testid={`node-group-${item.title}`} onClick={() => onItemClick(item)}>
-      {item.title}
-    </button>
-  ),
 }))
 
 describe('WorkflowChecklist', () => {
@@ -116,11 +67,10 @@ describe('WorkflowChecklist', () => {
 
     expect(screen.getByText('2')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
-    expect(screen.getByTestId('plugin-group')).toHaveTextContent('Missing Plugin')
-    await user.click(screen.getByTestId('node-group-Broken Node'))
+    expect(screen.getByText('Missing Plugin')).toHaveTextContent('Missing Plugin')
+    await user.click(screen.getByRole('button', { name: /Needs configuration/ }))
 
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1')
-    expect(mockSetOpenInlineAgentPanelNodeId).not.toHaveBeenCalled()
   })
 
   it('should use the custom item click handler when provided', async () => {
@@ -131,7 +81,7 @@ describe('WorkflowChecklist', () => {
     })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
-    await user.click(screen.getByTestId('node-group-Broken Node'))
+    await user.click(screen.getByRole('button', { name: /Needs configuration/ }))
 
     expect(onItemClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'node-1' }))
     expect(mockHandleNodeSelect).not.toHaveBeenCalled()
@@ -149,7 +99,7 @@ describe('WorkflowChecklist', () => {
     expect(await screen.findByText('workflow.panel.checklist', { selector: 'div' })).toBeVisible()
     expect(trigger).toHaveAccessibleName('workflow.panel.checklist 2')
     await user.click(trigger)
-    expect(screen.getByTestId('plugin-group')).toBeInTheDocument()
+    expect(screen.getByText('Missing Plugin')).toBeInTheDocument()
   })
 
   it('should open the inline agent editor after selecting an inline agent reference warning', async () => {
@@ -160,15 +110,15 @@ describe('WorkflowChecklist', () => {
       title: 'Inline Agent',
       openInlineAgentPanel: true,
     }
-    render(<WorkflowChecklist disabled={false} />, {
+    const { store } = render(<WorkflowChecklist disabled={false} />, {
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
-    await user.click(screen.getByTestId('node-group-Inline Agent'))
+    await user.click(screen.getByRole('button', { name: /Needs configuration/ }))
 
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1')
-    expect(mockSetOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('node-1')
+    expect(store.getState().openInlineAgentPanelNodeId).toBe('node-1')
   })
 
   it('should render the resolved state when there are no checklist warnings', async () => {

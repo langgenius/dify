@@ -61,10 +61,20 @@ clipped, `display: none` or unmounted, and the shared positioner class turns tha
 
 ## Primitive semantics
 
-- Use `Dialog` for modal content that needs focus containment and scroll locking.
+- Use `Dialog` for modal content that needs focus containment and scroll locking. `DialogContent`
+  is the centered modal surface: compose `DialogHeader`, `DialogBody` and `DialogFooter` in it, and
+  `DialogBody` scrolls between the other two. A wrapper between the surface and its parts, such as
+  a form, keeps the flex chain with `contents`. `DialogPopup` is the bare dialog element for a
+  surface that places and dresses itself.
+  `DialogContent` and `AlertDialogContent` allow `transition-none`, including state variants,
+  without requiring custom popup composition.
+  `DialogHeaderCloseButton` is the optional standard close icon inside `DialogHeader`; the header
+  reserves inline-end space when it contains the button. Without it, the header keeps its normal
+  gutters. Use the unstyled `DialogClose` with `render` for footer actions and custom close controls.
 - Use `AlertDialog` only for a destructive or must-confirm decision requiring an explicit answer.
   It blocks outside-press dismissal but still closes on Escape; cancel that close in
-  `onOpenChange` when the answer must be explicit.
+  `onOpenChange` when the answer must be explicit. `AlertDialogHeader` holds the title and
+  description; anything the user fills in or reviews before answering goes in `AlertDialogBody`.
 - Use `Drawer` for side-panel interactions that follow the drawer model.
 - Use `DropdownMenu` for button-triggered action lists and `ContextMenu` for context actions.
   A long action list filters with `DropdownMenuFilterProvider`; choosing a value is

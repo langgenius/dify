@@ -25,11 +25,9 @@ class _Storage:
         self.saves.append((key, data))
 
 
+@dataclass(eq=False, repr=False)
 class _DatabaseBinding:
     session: Session
-
-    def __init__(self, session: Session) -> None:
-        self.session = session
 
 
 @dataclass(frozen=True)

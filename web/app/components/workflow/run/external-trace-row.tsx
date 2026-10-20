@@ -10,6 +10,7 @@ import { MetaDataRow } from './meta'
 export type ExternalTraceSource =
   | { appId: string; kind: 'workflow'; workflowRunId: string; nodeExecutionId?: string }
   | { appId: string; kind: 'node'; nodeExecutionId: string }
+  | { agentId: string; kind: 'agent'; messageId: string }
 
 type TraceRunStatus = GetAppsByAppIdTraceRunsBySourceKindBySourceIdResponse['status']
 
@@ -44,31 +45,39 @@ export function ExternalTraceRow({
   const { t } = useTranslation(['app', 'common'])
   const hintId = useId()
   const { data: run } = useQuery(
-    consoleQuery.apps.byAppId.traceRuns.bySourceKind.bySourceId.get.queryOptions({
-      input:
-        source.kind === 'workflow'
-          ? {
-              params: {
-                app_id: source.appId,
-                source_kind: 'workflow',
-                source_id: source.workflowRunId,
-              },
-              ...(source.nodeExecutionId
-                ? { query: { node_execution_id: source.nodeExecutionId } }
-                : {}),
-            }
-          : {
-              params: {
-                app_id: source.appId,
-                source_kind: 'node',
-                source_id: source.nodeExecutionId,
-              },
-            },
-      refetchInterval: (query) => {
-        const status = query.state.data?.status
-        return status && isPending(status) ? 3000 : false
-      },
-    }),
+    source.kind === 'agent'
+      ? consoleQuery.agent.byAgentId.traceRuns.byMessageId.get.queryOptions({
+          input: { params: { agent_id: source.agentId, message_id: source.messageId } },
+          refetchInterval: (query) => {
+            const status = query.state.data?.status
+            return status && isPending(status) ? 3000 : false
+          },
+        })
+      : consoleQuery.apps.byAppId.traceRuns.bySourceKind.bySourceId.get.queryOptions({
+          input:
+            source.kind === 'workflow'
+              ? {
+                  params: {
+                    app_id: source.appId,
+                    source_kind: 'workflow',
+                    source_id: source.workflowRunId,
+                  },
+                  ...(source.nodeExecutionId
+                    ? { query: { node_execution_id: source.nodeExecutionId } }
+                    : {}),
+                }
+              : {
+                  params: {
+                    app_id: source.appId,
+                    source_kind: 'node',
+                    source_id: source.nodeExecutionId,
+                  },
+                },
+          refetchInterval: (query) => {
+            const status = query.state.data?.status
+            return status && isPending(status) ? 3000 : false
+          },
+        }),
   )
 
   if (!run || run.status === 'not_collected') return null

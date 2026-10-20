@@ -6,39 +6,16 @@ import type {
 import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { AgentLogsPage } from '../page'
-
-type AgentLogsQueryInput = {
-  input: {
-    params: {
-      agent_id: string
-    }
-    query?: Record<string, unknown>
-  }
-}
 
 const mocks = vi.hoisted(() => ({
   logsQueryFn: vi.fn(),
   logSourcesQueryFn: vi.fn(),
   messagesQueryFn: vi.fn(),
   feedbackMutationFn: vi.fn(),
-  logsQueryOptions: vi.fn((input: AgentLogsQueryInput) => ({
-    queryKey: ['agent-logs', input],
-    queryFn: () => mocks.logsQueryFn(input),
-  })),
-  logSourcesQueryOptions: vi.fn((input: AgentLogsQueryInput) => ({
-    queryKey: ['agent-log-sources', input],
-    queryFn: () => mocks.logSourcesQueryFn(input),
-  })),
-  messagesQueryOptions: vi.fn((input: AgentLogsQueryInput) => ({
-    queryKey: ['agent-log-messages', input],
-    queryFn: () => mocks.messagesQueryFn(input),
-  })),
-  feedbackMutationOptions: vi.fn(() => ({
-    mutationFn: mocks.feedbackMutationFn,
-  })),
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -47,48 +24,31 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    systemFeatures: {
-      get: {
-        queryKey: () => ['console', 'systemFeatures', 'get'],
-        queryOptions: (options?: Record<string, unknown>) => ({
-          queryKey: ['console', 'systemFeatures', 'get'],
-          queryFn: () => new Promise(() => {}),
-          ...options,
-        }),
-      },
-    },
-    agent: {
-      byAgentId: {
-        feedbacks: {
-          post: {
-            mutationOptions: mocks.feedbackMutationOptions,
-          },
-        },
-        logSources: {
-          get: {
-            queryOptions: mocks.logSourcesQueryOptions,
-          },
-        },
-        logs: {
-          get: {
-            key: () => ['agent-logs'],
-            queryOptions: mocks.logsQueryOptions,
-          },
-          byConversationId: {
-            messages: {
-              get: {
-                key: () => ['agent-log-messages'],
-                queryOptions: mocks.messagesQueryOptions,
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'systemFeatures.get': async () =>
+        createSystemFeaturesFixture({ deployment_edition: 'COMMUNITY' }),
+      'agent.byAgentId.logs.get': mocks.logsQueryFn,
+      'agent.byAgentId.logSources.get': mocks.logSourcesQueryFn,
+      'agent.byAgentId.logs.byConversationId.messages.get': mocks.messagesQueryFn,
+      'agent.byAgentId.traceRuns.byMessageId.get': async () => ({
+        status: 'not_collected',
+        source_kind: 'message',
+        source_id: 'message-1',
+      }),
+      'apps.byAppId.traceRuns.bySourceKind.bySourceId.get': async () => ({
+        status: 'not_collected',
+        source_kind: 'workflow',
+        source_id: 'message-1',
+      }),
+      'agent.byAgentId.feedbacks.post': mocks.feedbackMutationFn,
+    }),
+  }
+})
 
 const emptyLogsResponse: AgentLogListResponse = {
   data: [],
@@ -241,7 +201,7 @@ const renderPage = () => {
     },
   })
   queryClient.setQueryData(
-    ['console', 'systemFeatures', 'get'],
+    consoleQuery.systemFeatures.get.queryKey(),
     createSystemFeaturesFixture({ deployment_edition: 'COMMUNITY' }),
   )
 
@@ -255,16 +215,16 @@ const renderPage = () => {
 }
 
 const getLatestLogsQueryInput = () => {
-  const latestCall = mocks.logsQueryOptions.mock.calls.at(-1)
+  const latestCall = mocks.logsQueryFn.mock.calls.at(-1)
 
-  if (!latestCall) throw new Error('Expected logs query options to be called')
+  if (!latestCall) throw new Error('Expected a logs request')
 
   return latestCall[0]
 }
 
 describe('AgentLogsPage', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     mocks.logsQueryFn.mockResolvedValue(emptyLogsResponse)
     mocks.logSourcesQueryFn.mockResolvedValue(logSourcesResponse)
     mocks.messagesQueryFn.mockResolvedValue(messagesResponse)
@@ -276,25 +236,23 @@ describe('AgentLogsPage', () => {
       renderPage()
 
       await waitFor(() => {
-        expect(mocks.logsQueryOptions).toHaveBeenCalled()
+        expect(mocks.logsQueryFn).toHaveBeenCalled()
       })
 
       expect(getLatestLogsQueryInput()).toEqual({
-        input: {
-          params: {
-            agent_id: 'agent-1',
-          },
-          query: expect.objectContaining({
-            keyword: undefined,
-            limit: 25,
-            page: 1,
-            sort_by: 'created_at',
-            sort_order: 'desc',
-          }),
+        params: {
+          agent_id: 'agent-1',
         },
+        query: expect.objectContaining({
+          keyword: undefined,
+          limit: 25,
+          page: 1,
+          sort_by: 'created_at',
+          sort_order: 'desc',
+        }),
       })
-      expect(getLatestLogsQueryInput().input.query).not.toHaveProperty('source')
-      expect(getLatestLogsQueryInput().input.query).not.toHaveProperty('sources')
+      expect(getLatestLogsQueryInput().query).not.toHaveProperty('source')
+      expect(getLatestLogsQueryInput().query).not.toHaveProperty('sources')
     })
 
     it('should send multiple source ids through the sources array filter', async () => {
@@ -311,7 +269,7 @@ describe('AgentLogsPage', () => {
       await user.click(await screen.findByRole('option', { name: /SVG Logo Design/ }))
 
       await waitFor(() => {
-        expect(getLatestLogsQueryInput().input.query).toEqual(
+        expect(getLatestLogsQueryInput().query).toEqual(
           expect.objectContaining({
             sources: [
               'webapp:webapp-app-id',
@@ -321,7 +279,7 @@ describe('AgentLogsPage', () => {
         )
       })
 
-      expect(getLatestLogsQueryInput().input.query).not.toHaveProperty('source')
+      expect(getLatestLogsQueryInput().query).not.toHaveProperty('source')
     })
 
     it('should translate Sort selection into sort_by and sort_order query params', async () => {
@@ -346,7 +304,7 @@ describe('AgentLogsPage', () => {
       )
 
       await waitFor(() => {
-        expect(getLatestLogsQueryInput().input.query).toEqual(
+        expect(getLatestLogsQueryInput().query).toEqual(
           expect.objectContaining({
             sort_by: 'updated_at',
             sort_order: 'desc',
@@ -360,7 +318,7 @@ describe('AgentLogsPage', () => {
       await user.click(screen.getByRole('button', { name: 'appLog.filter.ascending' }))
 
       await waitFor(() => {
-        expect(getLatestLogsQueryInput().input.query).toEqual(
+        expect(getLatestLogsQueryInput().query).toEqual(
           expect.objectContaining({
             sort_by: 'updated_at',
             sort_order: 'asc',
@@ -433,7 +391,7 @@ describe('AgentLogsPage', () => {
       await user.click(await screen.findByRole('option', { name: /Book Translation/ }))
 
       await waitFor(() => {
-        expect(getLatestLogsQueryInput().input.query).toEqual(
+        expect(getLatestLogsQueryInput().query).toEqual(
           expect.objectContaining({
             sources: ['webapp:webapp-app-id'],
           }),
@@ -461,19 +419,17 @@ describe('AgentLogsPage', () => {
       expect(screen.getByRole('dialog', { name: 'Previous conversation' })).toBeInTheDocument()
 
       await waitFor(() => {
-        expect(mocks.messagesQueryOptions).toHaveBeenCalledWith({
-          input: {
-            params: {
-              agent_id: 'agent-1',
-              conversation_id: 'conversation-1',
-            },
-            query: {
-              limit: 100,
-              page: 1,
-              sort_by: 'created_at',
-              sort_order: 'asc',
-              sources: ['webapp:webapp-app-id'],
-            },
+        expect(mocks.messagesQueryFn).toHaveBeenCalledWith({
+          params: {
+            agent_id: 'agent-1',
+            conversation_id: 'conversation-1',
+          },
+          query: {
+            limit: 100,
+            page: 1,
+            sort_by: 'created_at',
+            sort_order: 'asc',
+            sources: ['webapp:webapp-app-id'],
           },
         })
       })
@@ -490,19 +446,17 @@ describe('AgentLogsPage', () => {
       await user.click(await screen.findByRole('button', { name: 'Workflow agent execution' }))
 
       await waitFor(() => {
-        expect(mocks.messagesQueryOptions).toHaveBeenCalledWith({
-          input: {
-            params: {
-              agent_id: 'agent-1',
-              conversation_id: 'execution-1',
-            },
-            query: {
-              limit: 100,
-              page: 1,
-              sort_by: 'created_at',
-              sort_order: 'asc',
-              sources: ['workflow:workflow-app-id:workflow-id:v3:agent-node-id'],
-            },
+        expect(mocks.messagesQueryFn).toHaveBeenCalledWith({
+          params: {
+            agent_id: 'agent-1',
+            conversation_id: 'execution-1',
+          },
+          query: {
+            limit: 100,
+            page: 1,
+            sort_by: 'created_at',
+            sort_order: 'asc',
+            sources: ['workflow:workflow-app-id:workflow-id:v3:agent-node-id'],
           },
         })
       })

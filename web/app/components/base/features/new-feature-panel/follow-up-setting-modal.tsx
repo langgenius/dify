@@ -9,10 +9,10 @@ import {
   Dialog,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -88,7 +88,7 @@ export function FollowUpSettingsDialog({ data, onSave, disabled }: FollowUpSetti
           {t(($) => $['operation.settings'], { ns: 'common' })}
         </DialogTrigger>
       </div>
-      <DialogContent className="w-160 max-w-none">
+      <DialogContent className="w-160">
         <FollowUpSettingsForm
           data={data}
           onSave={(value) => {
@@ -160,6 +160,7 @@ function FollowUpSettingsForm({ data, onSave }: Omit<FollowUpSettingsDialogProps
 
   return (
     <form
+      className="contents"
       onSubmit={(event) => {
         event.preventDefault()
         if (!isCustomPromptInvalid) handleSave()
@@ -169,7 +170,7 @@ function FollowUpSettingsForm({ data, onSave }: Omit<FollowUpSettingsDialogProps
         <DialogTitle>
           {t(($) => $['feature.suggestedQuestionsAfterAnswer.modal.title'], { ns: 'appDebug' })}
         </DialogTitle>
-        <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
       </DialogHeader>
       <DialogBody className="space-y-4">
         <div>

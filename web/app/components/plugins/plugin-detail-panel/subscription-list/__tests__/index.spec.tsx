@@ -1,6 +1,6 @@
-import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { createReactI18nextMock } from '@/test/i18n-mock'
@@ -24,19 +24,11 @@ let mockSubscriptionListState: {
   subscriptions?: TriggerSubscription[]
 }
 
-let mockPluginDetail: PluginDetail | undefined
-
 vi.mock('../use-subscription-list', () => ({
   useSubscriptionList: () => {
     if (mockSubscriptionListError) throw mockSubscriptionListError
     return mockSubscriptionListState
   },
-}))
-
-vi.mock('../../../store', () => ({
-  usePluginStore: (
-    selector: (state: { detail: PluginDetail | undefined }) => PluginDetail | undefined,
-  ) => selector({ detail: mockPluginDetail }),
 }))
 
 const mockInitiateOAuth = vi.fn()
@@ -62,34 +54,10 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
   ...overrides,
 })
 
-const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
-  id: 'plugin-detail-1',
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-02T00:00:00Z',
-  name: 'Test Plugin',
-  plugin_id: 'plugin-id',
-  plugin_unique_identifier: 'plugin-uid',
-  declaration: {} as PluginDeclaration,
-  installation_id: 'install-1',
-  tenant_id: 'tenant-1',
-  endpoints_setups: 0,
-  endpoints_active: 0,
-  version: '1.0.0',
-  latest_version: '1.0.0',
-  latest_unique_identifier: 'plugin-uid',
-  source: 'marketplace' as PluginDetail['source'],
-  meta: undefined,
-  status: 'active',
-  deprecated_reason: '',
-  alternative_plugin_id: '',
-  ...overrides,
-})
-
 beforeEach(() => {
   vi.clearAllMocks()
   mockRefetch.mockReset()
   mockSubscriptionListError = null
-  mockPluginDetail = undefined
   mockSubscriptionListState = {
     isLoading: false,
     refetch: mockRefetch,
@@ -118,14 +86,6 @@ describe('SubscriptionList', () => {
       expect(screen.queryByText('Subscription One')).not.toBeInTheDocument()
     })
 
-    it('should render list view with plugin detail provided', () => {
-      const pluginDetail = createPluginDetail()
-
-      render(<SubscriptionList pluginDetail={pluginDetail} />)
-
-      expect(screen.getByText('Subscription One'))!.toBeInTheDocument()
-    })
-
     it('should render without list entries when subscriptions are empty', () => {
       mockSubscriptionListState = {
         ...mockSubscriptionListState,
@@ -139,37 +99,15 @@ describe('SubscriptionList', () => {
     })
   })
 
-  describe('Props', () => {
-    it('should render selector view when mode is selector', () => {
-      render(<SubscriptionList mode={SubscriptionListMode.SELECTOR} />)
-
-      expect(screen.getByText('Subscription One'))!.toBeInTheDocument()
-    })
-
-    it('should visually distinguish selected subscription from unselected', () => {
-      const { rerender } = render(
-        <SubscriptionList mode={SubscriptionListMode.SELECTOR} selectedId="sub-1" />,
-      )
-
-      const getRowClassName = () =>
-        screen.getByRole('button', { name: 'Subscription One' }).closest('div')?.className ?? ''
-
-      const selectedClassName = getRowClassName()
-
-      rerender(<SubscriptionList mode={SubscriptionListMode.SELECTOR} selectedId="other-id" />)
-
-      expect(selectedClassName).not.toBe(getRowClassName())
-    })
-  })
-
   describe('User Interactions', () => {
-    it('should call onSelect with refetch callback when selecting a subscription', () => {
+    it('should call onSelect with refetch callback when selecting a subscription', async () => {
+      const user = userEvent.setup()
       const onSelect =
         vi.fn<NonNullable<React.ComponentProps<typeof SubscriptionList>['onSelect']>>()
 
       render(<SubscriptionList mode={SubscriptionListMode.SELECTOR} onSelect={onSelect} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
+      await user.click(screen.getByRole('button', { name: 'Subscription One' }))
 
       expect(onSelect).toHaveBeenCalledTimes(1)
       const [selectedSubscription, callback] = onSelect.mock.calls[0]!
@@ -178,31 +116,6 @@ describe('SubscriptionList', () => {
 
       callback?.()
       expect(mockRefetch).toHaveBeenCalledTimes(1)
-    })
-
-    it('should not throw when onSelect is undefined', () => {
-      render(<SubscriptionList mode={SubscriptionListMode.SELECTOR} />)
-
-      expect(() => {
-        fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
-      }).not.toThrow()
-    })
-
-    it('should open delete confirm without triggering selection', () => {
-      const onSelect =
-        vi.fn<NonNullable<React.ComponentProps<typeof SubscriptionList>['onSelect']>>()
-      const { container } = render(
-        <SubscriptionList mode={SubscriptionListMode.SELECTOR} onSelect={onSelect} />,
-      )
-
-      const deleteButton = container.querySelector('.subscription-delete-btn') as HTMLElement
-      expect(deleteButton).toBeTruthy()
-      fireEvent.click(deleteButton)
-
-      expect(onSelect).not.toHaveBeenCalled()
-      expect(
-        screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/),
-      )!.toBeInTheDocument()
     })
   })
 

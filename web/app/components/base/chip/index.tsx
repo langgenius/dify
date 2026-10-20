@@ -23,6 +23,7 @@ export type Item<T extends ItemValue = ItemValue> = {
 
 type Props<T extends ItemValue> = {
   id?: string
+  disabled?: boolean
   label?: string
   'aria-labelledby'?: string
   className?: string
@@ -38,6 +39,7 @@ type Props<T extends ItemValue> = {
 
 function Chip<T extends ItemValue>({
   id,
+  disabled = false,
   label,
   'aria-labelledby': ariaLabelledBy,
   className,
@@ -61,6 +63,7 @@ function Chip<T extends ItemValue>({
 
   return (
     <Select<T>
+      disabled={disabled}
       value={selectedItem?.value ?? null}
       itemToStringLabel={(itemValue: T) =>
         items.find((item) => Object.is(item.value, itemValue))?.name ?? ''
@@ -132,8 +135,9 @@ function Chip<T extends ItemValue>({
         {hasValue && (
           <button
             type="button"
+            disabled={disabled}
             aria-label={clearLabel}
-            className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+            className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
             onClick={onClear}
           >
             <span

@@ -7,10 +7,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -77,7 +77,7 @@ export function CustomizeDialog({
         <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
         {triggerLabel ?? t(($) => $['overview.appInfo.customize.entry'], { ns: 'appOverview' })}
       </DialogTrigger>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] w-160">
+      <DialogContent className="w-160">
         <DialogHeader>
           <DialogTitle>
             {t(($) => $[`${prefixCustomize}.title`], { ns: 'appOverview' })}
@@ -85,7 +85,7 @@ export function CustomizeDialog({
           <DialogDescription>
             {t(($) => $[`${prefixCustomize}.explanation`], { ns: 'appOverview' })}
           </DialogDescription>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
           <div className="w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">

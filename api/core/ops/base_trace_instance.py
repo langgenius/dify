@@ -12,7 +12,7 @@ from core.ops.entities.config_entity import BaseTracingConfig
 from core.ops.entities.trace_entity import BaseTraceInfo
 from core.ops.exceptions import RetryableTraceDispatchError
 from extensions.ext_database import db
-from models import Account, App, TenantAccountJoin
+from models import Account, App
 
 if TYPE_CHECKING:
     from dify_agent.layers.execution_context import ApplicationTracingContext
@@ -109,16 +109,19 @@ class BaseTraceInstance(ABC):
 
     def get_service_account_with_tenant(self, app_id: str) -> Account:
         """
-        Get service account for an app and set up its tenant.
+        Get the app creator with the app's tenant and membership role.
+
+        Trace tasks may run after the creator switches workspaces. Bind only the
+        returned account's context without changing the creator's current workspace.
 
         Args:
             app_id: The ID of the app
 
         Returns:
-            Account: The service account with tenant set up
+            Account: The service account with the app's tenant set up
 
         Raises:
-            ValueError: If app, creator account or tenant cannot be found
+            ValueError: If the app, creator account, app tenant or membership cannot be found
         """
         with Session(db.engine, expire_on_commit=False) as session:
             # Get the app to find its creator
@@ -134,13 +137,8 @@ class BaseTraceInstance(ABC):
             if not service_account:
                 raise ValueError(f"Creator account with id {app.created_by} not found for app {app_id}")
 
-            current_tenant = session.scalar(
-                select(TenantAccountJoin)
-                .where(TenantAccountJoin.account_id == service_account.id, TenantAccountJoin.current.is_(True))
-                .limit(1)
-            )
-            if not current_tenant:
-                raise ValueError(f"Current tenant not found for account {service_account.id}")
-            service_account.set_tenant_id_with_session(current_tenant.tenant_id, session=session)
+            service_account.set_tenant_id_with_session(app.tenant_id, session=session)
+            if service_account.current_tenant_id != app.tenant_id:
+                raise ValueError(f"App tenant {app.tenant_id} not found for account {service_account.id}")
 
             return service_account

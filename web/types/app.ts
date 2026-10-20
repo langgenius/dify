@@ -153,7 +153,7 @@ export type AgentTool = {
   credential_id?: string
 }
 
-export type ToolItem =
+type ToolItem =
   | {
       dataset: {
         enabled: boolean

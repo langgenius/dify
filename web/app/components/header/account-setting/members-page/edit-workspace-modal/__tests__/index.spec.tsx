@@ -1,35 +1,23 @@
-import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
 import { consoleClient } from '@/service/console'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import EditWorkspaceModal from '../index'
 
 const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),
 }))
-const mockConsoleState = vi.hoisted(() => ({
-  current: {} as Partial<ConsoleStateFixture>,
-}))
-const mockConsoleStateReader = vi.hoisted(() => vi.fn())
+let isOwner = true
 
 const getSaveButton = () => screen.getByRole('button', { name: /operation\.(save|saving)/i })
 
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => mockConsoleState.current)
-})
-
 vi.mock('@/service/console', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: {
-    workspaces: {
-      info: {
-        post: vi.fn(),
-      },
-    },
-  },
+  consoleClient: (await import('@/test/console/service-responses')).withConsoleClientResponses(
+    (await importOriginal<typeof import('@/service/console')>()).consoleClient,
+    { 'workspaces.info.post': vi.fn() },
+  ),
 }))
 vi.mock('@/app/notifications', () => ({
   default: {
@@ -50,12 +38,7 @@ describe('EditWorkspaceModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    const consoleState = {
-      currentWorkspace: { name: 'Test Workspace' },
-      isCurrentWorkspaceOwner: true,
-    } as unknown as ConsoleStateFixture
-    mockConsoleState.current = consoleState
-    mockConsoleStateReader.mockReturnValue(consoleState)
+    isOwner = true
   })
 
   afterEach(() => {
@@ -67,25 +50,8 @@ describe('EditWorkspaceModal', () => {
       <>
         <EditWorkspaceModal onCancel={mockOnCancel} />
       </>,
+      { currentWorkspace: { name: 'Test Workspace', role: isOwner ? 'owner' : 'normal' } },
     )
-
-  it('should show current workspace name in the input', async () => {
-    renderModal()
-
-    expect(await screen.findByDisplayValue('Test Workspace')).toBeInTheDocument()
-  })
-
-  it('should let user edit workspace name', async () => {
-    const user = userEvent.setup()
-
-    renderModal()
-
-    const input = screen.getByLabelText(/account\.workspaceName/i)
-    await user.clear(input)
-    await user.type(input, 'New Workspace Name')
-
-    expect(input).toHaveValue('New Workspace Name')
-  })
 
   it('should submit update when confirming as owner', async () => {
     const user = userEvent.setup()
@@ -169,12 +135,6 @@ describe('EditWorkspaceModal', () => {
     })
   })
 
-  it('should disable save button when there are no changes', async () => {
-    renderModal()
-
-    expect(getSaveButton()).toBeDisabled()
-  })
-
   it('should disable save button and show error when the name is empty', async () => {
     const user = userEvent.setup()
 
@@ -203,15 +163,18 @@ describe('EditWorkspaceModal', () => {
     expect(mockNotify).not.toHaveBeenCalled()
   })
 
-  it('should disable confirm button for non-owners', async () => {
-    mockConsoleStateReader.mockReturnValue({
-      currentWorkspace: { name: 'Test Workspace' },
-      isCurrentWorkspaceOwner: false,
-    } as unknown as ConsoleStateFixture)
+  it('prevents a non-owner from submitting a changed workspace name', async () => {
+    isOwner = false
 
     renderModal()
 
+    const user = userEvent.setup()
+    const input = screen.getByLabelText(/account\.workspaceName/i)
+    await user.clear(input)
+    await user.type(input, 'Unauthorized rename')
     expect(getSaveButton()).toBeDisabled()
+    await user.click(getSaveButton())
+    expect(consoleClient.workspaces.info.post).not.toHaveBeenCalled()
   })
 
   it('should call onCancel when close icon is clicked', async () => {

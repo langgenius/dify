@@ -874,7 +874,7 @@ class ProviderManager:
 
     def get_default_model(self, tenant_id: str, model_type: ModelType) -> DefaultModelEntity | None:
         """
-        Get default model.
+        Get the configured default model, or None when no default is saved.
 
         :param tenant_id: workspace id
         :param model_type: model type
@@ -885,31 +885,6 @@ class ProviderManager:
             TenantDefaultModel.model_type == model_type,
         )
         default_model = db.session.scalar(stmt)
-
-        # If it does not exist, get the first available provider model from get_configurations
-        # and update the TenantDefaultModel record
-        if not default_model:
-            model_billing = ModelBillingProfileService.resolve(tenant_id)
-            if model_billing.uses_tokener:
-                return None
-
-            # Get provider configurations
-            provider_configurations = self.get_configurations(tenant_id)
-
-            # get available models from provider_configurations
-            available_models = provider_configurations.get_models(model_type=model_type, only_active=True)
-
-            if available_models:
-                available_model = available_models[0]
-
-                default_model = TenantDefaultModel(
-                    tenant_id=tenant_id,
-                    model_type=model_type,
-                    provider_name=available_model.provider.provider,
-                    model_name=available_model.model,
-                )
-                db.session.add(default_model)
-                db.session.commit()
 
         if not default_model:
             return None

@@ -198,12 +198,55 @@ it('keeps centered dialogs on DialogContent while DialogPopup places custom surf
   const diagnostics = lintFixture(`
     import { DialogContent, DialogPopup } from '@langgenius/dify-ui/dialog'
     const examples = <>
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden" />
+      <DialogContent className="max-h-[calc(100dvh-2rem)] w-160 overflow-hidden" />
       <DialogPopup className="fixed top-2 right-2 bottom-2 flex w-160 flex-col overflow-hidden rounded-xl" />
       <DialogPopup className="fixed top-1/2 left-1/2 w-120 -translate-x-1/2 -translate-y-1/2" />
     </>
   `)
   expect(diagnostics).toHaveLength(4)
   for (const className of ['top-1/2', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2'])
+    expect(diagnostics.some(({ message }) => message.includes(`"${className}"`))).toBe(true)
+})
+
+it('keeps centered dialog layout owned by the surface', () => {
+  const diagnostics = lintFixture(`
+    import { DialogContent } from '@langgenius/dify-ui/dialog'
+    import { AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
+    const examples = <>
+      <DialogContent className="flex flex-col" />
+      <AlertDialogContent className="flex flex-col" />
+    </>
+  `)
+  expect(diagnostics).toHaveLength(4)
+  for (const component of ['DialogContent', 'AlertDialogContent']) {
+    for (const className of ['flex', 'flex-col']) {
+      expect(
+        diagnostics.some(
+          ({ message }) => message.includes(`"${className}"`) && message.includes(component),
+        ),
+      ).toBe(true)
+    }
+  }
+})
+
+it('allows disabling dialog transitions without allowing surface or animation restyling', () => {
+  const diagnostics = lintFixture(`
+    import { DialogContent as Content } from '@langgenius/dify-ui/dialog'
+    import { AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
+    const examples = <>
+      <Content className="w-160 data-open:transition-none" />
+      <AlertDialogContent className="transition-none" />
+      <Content className="motion-reduce:transition-none" />
+      <Content className="data-open:scale-95 bg-transparent transition-all" />
+      <AlertDialogContent className="data-open:opacity-0" />
+    </>
+  `)
+  expect(diagnostics).toHaveLength(4)
+  for (const className of [
+    'data-open:scale-95',
+    'bg-transparent',
+    'transition-all',
+    'data-open:opacity-0',
+  ])
     expect(diagnostics.some(({ message }) => message.includes(`"${className}"`))).toBe(true)
 })

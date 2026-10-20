@@ -308,8 +308,6 @@ class TestWorkflowDraftVariableGetValue:
             name: str
             value: Segment
 
-        tenant_id = "test_tenant_id"
-
         test_file = File(
             file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
@@ -378,7 +376,6 @@ class TestWorkflowDraftVariableGetValue:
 
     def test_file_variable_preserves_all_fields(self):
         """Test that File type variables preserve all fields during encoding/decoding."""
-        tenant_id = "test_tenant_id"
 
         # Create a File with specific field values
         test_file = File(

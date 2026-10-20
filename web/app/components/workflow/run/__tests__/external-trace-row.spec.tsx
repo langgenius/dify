@@ -111,6 +111,28 @@ describe('ExternalTraceRow', () => {
     forbidden.unmount()
   })
 
+  it('stops retrying an uncertain delivery and keeps its project available for inspection', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      setup(workflowRun, [
+        { ...accepted, status: 'retrying', trace_url: null },
+        { ...accepted, status: 'uncertain', trace_url: null },
+      ])
+      expect(await screen.findByText(`app.tracing.run.pending:${PROVIDER}`)).toBeInTheDocument()
+      await act(() => vi.advanceTimersByTimeAsync(3000))
+      expect(await screen.findByText(`app.tracing.run.uncertain:${PROVIDER}`)).toBeInTheDocument()
+      expect(screen.queryByText(`app.tracing.run.accepted:${PROVIDER}`)).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'app.tracing.run.viewProject' })).toHaveAttribute(
+        'href',
+        accepted.project_url,
+      )
+      await act(() => vi.advanceTimersByTimeAsync(9000))
+      expect(request).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('keeps polling while the export is pending and stops once it is accepted', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     try {
@@ -126,4 +148,23 @@ describe('ExternalTraceRow', () => {
       vi.useRealTimers()
     }
   })
+})
+
+it('uses the Agent message identity and changes destination when the message changes', async () => {
+  const { rerender, urls } = setup({ kind: 'agent', agentId: 'agent-1', messageId: 'message-1' }, [
+    accepted,
+  ])
+  expect(await screen.findByRole('link', { name: 'app.tracing.run.viewTrace' })).toHaveAttribute(
+    'href',
+    accepted.trace_url,
+  )
+  expect(urls[0]!.pathname).toMatch(/\/agent\/agent-1\/trace-runs\/message-1$/)
+  rerender(
+    <dl>
+      <ExternalTraceRow source={{ kind: 'agent', agentId: 'agent-2', messageId: 'message-2' }} />
+    </dl>,
+  )
+  await vi.waitFor(() =>
+    expect(urls.at(-1)!.pathname).toMatch(/\/agent\/agent-2\/trace-runs\/message-2$/),
+  )
 })

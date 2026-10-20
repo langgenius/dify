@@ -4,11 +4,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
@@ -33,7 +33,7 @@ type RoleModalProps = {
   open: boolean
   role?: Role
   onClose: () => void
-  onSubmit?: (data: submitRoleData) => void
+  onSubmit?: (data: submitRoleData) => void | Promise<void>
 }
 
 const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
@@ -44,6 +44,7 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
   const [desc, setDesc] = useState(role?.description ?? '')
   const [permissionKeys, setPermissionKeys] = useState<string[]>(role?.permission_keys ?? [])
 
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const readonly = mode === 'view'
 
   const onRoleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,9 +55,17 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
     setDesc(value)
   }, [])
 
-  const handleSubmit = () => {
-    onSubmit?.({ name: name.trim(), description: desc.trim(), permissionKeys })
-    onClose()
+  const handleSubmit = async () => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      await onSubmit?.({ name: name.trim(), description: desc.trim(), permissionKeys })
+      onClose()
+    } catch {
+      // The mutation reports the error; keep the draft available for retry.
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -66,15 +75,15 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
         if (!nextOpen) onClose()
       }}
     >
-      <DialogContent className="flex h-[85vh] w-140 flex-col" backdropProps={{ forceRender: true }}>
+      <DialogContent className="h-[85vh] w-140" backdropProps={{ forceRender: true }}>
         <DialogHeader>
           <DialogTitle>{t(($) => $[`role.modal.${mode}.title`], { ns: 'permission' })}</DialogTitle>
           <DialogDescription>
             {t(($) => $[`role.modal.${mode}.description`], { ns: 'permission' })}
           </DialogDescription>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
-        <DialogBody className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-hidden">
+        <DialogBody className="flex flex-col gap-5">
           <div className="flex shrink-0 flex-col gap-1">
             <label htmlFor="role-name" className="system-sm-medium text-text-secondary">
               {t(($) => $['role.modal.nameLabel'], { ns: 'permission' })}
@@ -122,7 +131,11 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
               : t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
           {!readonly && (
-            <Button variant="primary" disabled={!name.trim()} onClick={handleSubmit}>
+            <Button
+              variant="primary"
+              disabled={!name.trim() || isSubmitting}
+              onClick={handleSubmit}
+            >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </Button>
           )}

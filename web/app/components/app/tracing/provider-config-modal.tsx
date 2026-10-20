@@ -21,18 +21,18 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { EncryptedBottom, EncryptedFooter } from '@/app/components/base/encrypted-bottom'
+import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { consoleQuery } from '@/service/console'
 import { tracingProviders } from './providers'
 
@@ -125,13 +125,13 @@ export function ProviderConfigModal({
           {t(($) => $[`${I18N_PREFIX}.title`], { ns: 'app' })}
           {t(($) => $[`tracing.${type}.title`], { ns: 'app' })}
         </DialogTitle>
-        <DialogCloseButton
+        <DialogHeaderCloseButton
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           disabled={pending}
         />
       </DialogHeader>
 
-      <Form<TraceConfigPayload['tracing_config']> onFormSubmit={handleSave}>
+      <Form<TraceConfigPayload['tracing_config']> className="contents" onFormSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
             {type === 'arize' && (
@@ -203,15 +203,9 @@ export function ProviderConfigModal({
             {type === 'phoenix' && (
               <>
                 <Field disabled={pending} name="api_key">
-                  <FieldLabel>
-                    API Key
-                    <span aria-hidden className="text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
+                  <FieldLabel>API Key</FieldLabel>
                   <Input
                     ref={firstInputRef}
-                    required
                     defaultValue={payload?.api_key ?? ''}
                     placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                       ns: 'app',
@@ -331,8 +325,11 @@ export function ProviderConfigModal({
                     pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
                     required
                     defaultValue={payload?.endpoint ?? ''}
-                    placeholder="https://your-region.cls.tencentcs.com"
+                    placeholder="https://ap-guangzhou.apm.tencentcs.com:4320"
                   />
+                  <FieldDescription>
+                    {t(($) => $['tracing.tencent.endpointHelp'], { ns: 'app' })}
+                  </FieldDescription>
                   <FieldError />
                 </Field>
                 <Field disabled={pending} name="service_name">
@@ -344,9 +341,14 @@ export function ProviderConfigModal({
                   </FieldLabel>
                   <Input
                     required
+                    maxLength={63}
+                    pattern="[a-z]([a-z0-9\-]*[a-z0-9])?"
                     defaultValue={payload?.service_name ?? ''}
-                    placeholder="dify_app"
+                    placeholder="dify-app"
                   />
+                  <FieldDescription>
+                    {t(($) => $['tracing.tencent.serviceNameHelp'], { ns: 'app' })}
+                  </FieldDescription>
                   <FieldError />
                 </Field>
               </>
@@ -716,81 +718,79 @@ export function ProviderConfigModal({
             </p>
           )}
         </DialogBody>
-        <EncryptedFooter>
-          <DialogFooter>
-            <a
-              className="me-auto flex items-center space-x-1 text-xs leading-4.5 font-normal text-primary-600"
-              target="_blank"
-              href={tracingProviders[type].docUrl}
-            >
-              <span>
-                {t(($) => $[`${I18N_PREFIX}.viewDocsLink`], {
-                  ns: 'app',
-                  key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }),
-                })}
-              </span>
-              <span aria-hidden className="i-custom-vender-line-general-link-external-02 size-3" />
-            </a>
-            {isEdit && (
-              <>
-                <AlertDialog
-                  onOpenChange={(open, details) => {
-                    if (!open && removeConfig.isPending) details.cancel()
-                  }}
-                >
-                  <AlertDialogTrigger render={<Button tone="destructive" disabled={pending} />}>
-                    {t(($) => $['operation.remove'], { ns: 'common' })}
-                  </AlertDialogTrigger>
-                  <AlertDialogContent backdropProps={{ forceRender: true }}>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        {t(($) => $[`${I18N_PREFIX}.removeConfirmTitle`], {
-                          ns: 'app',
-                          key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }),
-                        })}
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {t(
-                          ($) =>
-                            $[
-                              `${I18N_PREFIX}.${inUse ? 'removeConfirmContentInUse' : 'removeConfirmContentNotInUse'}`
-                            ],
-                          { ns: 'app', key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }) },
-                        )}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    {removeConfig.error && (
-                      <p role="alert" className="px-6 system-sm-regular text-text-destructive">
-                        {removeConfig.error.message}
-                      </p>
-                    )}
-                    <AlertDialogFooter>
-                      <AlertDialogCancelButton disabled={removeConfig.isPending}>
-                        {t(($) => $['operation.cancel'], { ns: 'common' })}
-                      </AlertDialogCancelButton>
-                      <AlertDialogConfirmButton onClick={handleRemove} loading={pending}>
-                        {t(($) => $['operation.remove'], { ns: 'common' })}
-                      </AlertDialogConfirmButton>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-                <Separator orientation="vertical" className="mx-1 h-4.5" />
-              </>
-            )}
-            <DialogClose disabled={pending} render={<Button />}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </DialogClose>
-            <Button variant="primary" type="submit" loading={pending}>
-              {t(($) => $[`operation.${isEdit ? 'save' : 'saveAndEnable'}`], {
-                ns: 'common',
+        <DialogFooter>
+          <a
+            className="me-auto flex items-center space-x-1 text-xs leading-4.5 font-normal text-primary-600"
+            target="_blank"
+            href={tracingProviders[type].docUrl}
+          >
+            <span>
+              {t(($) => $[`${I18N_PREFIX}.viewDocsLink`], {
+                ns: 'app',
+                key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }),
               })}
-            </Button>
-          </DialogFooter>
-          <EncryptedBottom
-            front={t(($) => $['modelProvider.encrypted.front'], { ns: 'modelProvider' })}
-            back={t(($) => $['modelProvider.encrypted.back'], { ns: 'modelProvider' })}
-          />
-        </EncryptedFooter>
+            </span>
+            <span aria-hidden className="i-custom-vender-line-general-link-external-02 size-3" />
+          </a>
+          {isEdit && (
+            <>
+              <AlertDialog
+                onOpenChange={(open, details) => {
+                  if (!open && removeConfig.isPending) details.cancel()
+                }}
+              >
+                <AlertDialogTrigger render={<Button tone="destructive" disabled={pending} />}>
+                  {t(($) => $['operation.remove'], { ns: 'common' })}
+                </AlertDialogTrigger>
+                <AlertDialogContent backdropProps={{ forceRender: true }}>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {t(($) => $[`${I18N_PREFIX}.removeConfirmTitle`], {
+                        ns: 'app',
+                        key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }),
+                      })}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t(
+                        ($) =>
+                          $[
+                            `${I18N_PREFIX}.${inUse ? 'removeConfirmContentInUse' : 'removeConfirmContentNotInUse'}`
+                          ],
+                        { ns: 'app', key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }) },
+                      )}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  {removeConfig.error && (
+                    <p role="alert" className="px-6 system-sm-regular text-text-destructive">
+                      {removeConfig.error.message}
+                    </p>
+                  )}
+                  <AlertDialogFooter>
+                    <AlertDialogCancelButton disabled={removeConfig.isPending}>
+                      {t(($) => $['operation.cancel'], { ns: 'common' })}
+                    </AlertDialogCancelButton>
+                    <AlertDialogConfirmButton onClick={handleRemove} loading={pending}>
+                      {t(($) => $['operation.remove'], { ns: 'common' })}
+                    </AlertDialogConfirmButton>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <Separator orientation="vertical" className="mx-1 h-4.5" />
+            </>
+          )}
+          <DialogClose disabled={pending} render={<Button />}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </DialogClose>
+          <Button variant="primary" type="submit" loading={pending}>
+            {t(($) => $[`operation.${isEdit ? 'save' : 'saveAndEnable'}`], {
+              ns: 'common',
+            })}
+          </Button>
+        </DialogFooter>
+        <EncryptedBottom
+          front={t(($) => $['modelProvider.encrypted.front'], { ns: 'modelProvider' })}
+          back={t(($) => $['modelProvider.encrypted.back'], { ns: 'modelProvider' })}
+        />
       </Form>
     </>
   )

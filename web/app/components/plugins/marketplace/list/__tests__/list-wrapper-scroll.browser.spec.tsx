@@ -82,7 +82,9 @@ describe('Marketplace result scroll anchoring', () => {
   it('does not move the page when the first search result header appears', async () => {
     await page.viewport(1280, 720)
     const screen = await render(<SearchResultsHarness />)
-    const scrollContainer = screen.getByTestId('marketplace-scroll-container').element()
+    const container = screen.getByTestId('marketplace-scroll-container')
+    await expect.element(container).toBeVisible()
+    const scrollContainer = container.element()
 
     scrollContainer.scrollTop = 260
     await new Promise(requestAnimationFrame)

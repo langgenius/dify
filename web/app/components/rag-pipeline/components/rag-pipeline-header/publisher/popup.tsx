@@ -373,7 +373,11 @@ export function Popup({
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton disabled={publishing} onClick={() => void handlePublish()}>
+            <AlertDialogConfirmButton
+              tone="default"
+              disabled={publishing}
+              onClick={() => void handlePublish()}
+            >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>

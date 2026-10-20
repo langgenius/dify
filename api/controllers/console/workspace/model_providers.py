@@ -291,7 +291,7 @@ class ModelProviderCredentialApi(Resource):
                 credential_name=args.name,
             )
         except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+            raise ValueError(str(ex)) from ex
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 201
 
@@ -316,7 +316,7 @@ class ModelProviderCredentialApi(Resource):
                 credential_name=args.name,
             )
         except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+            raise ValueError(str(ex)) from ex
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 

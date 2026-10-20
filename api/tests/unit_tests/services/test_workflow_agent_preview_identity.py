@@ -15,8 +15,8 @@ from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from extensions.ext_database import db
+from graphon.engine_events import NodeRunFailedEvent, NodeRunStartedEvent, NodeRunSucceededEvent
 from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
@@ -69,12 +69,23 @@ def test_agent_preview_commits_runtime_identity_and_updates_same_row(sqlite_engi
     observed_created_at = []
     execution_ids: list[str] = []
 
-    def events(node: DifyAgentNode) -> Generator[NodeRunSucceededEvent | NodeRunFailedEvent]:
-        # This is the real scoped lookup that failed in dev: a separate transaction
-        # must see the committed caller before any runtime request is dispatched.
+    def events(node: DifyAgentNode) -> Generator[NodeRunStartedEvent | NodeRunSucceededEvent | NodeRunFailedEvent]:
         execution_id = node.execution_id
         execution_ids.append(execution_id)
-        variable_pool = node.graph_runtime_state.variable_pool
+        started_at = naive_utc_now()
+        # Node.run now emits its typed start before entering the node body. The
+        # service observer must commit that event before resuming this generator.
+        yield NodeRunStartedEvent(
+            id=execution_id,
+            node_id=node_id,
+            node_type="agent",
+            node_version="2",
+            node_title="Agent",
+            start_at=started_at,
+        )
+        # A separate transaction must see the committed caller before any
+        # Agent workspace or tracing request can be dispatched.
+        variable_pool = node.runtime_state.variable_pool
         workflow_run_id = get_system_text(variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID)
         assert workflow_run_id is None
         with sessions.begin() as session:
@@ -105,7 +116,7 @@ def test_agent_preview_commits_runtime_identity_and_updates_same_row(sqlite_engi
         )
         if outcome == "success":
             yield NodeRunSucceededEvent(
-                id=execution_id, node_id=node_id, node_type="agent", node_run_result=result, start_at=naive_utc_now()
+                id=execution_id, node_id=node_id, node_type="agent", node_run_result=result, start_at=started_at
             )
         else:
             yield NodeRunFailedEvent(
@@ -113,7 +124,7 @@ def test_agent_preview_commits_runtime_identity_and_updates_same_row(sqlite_engi
                 node_id=node_id,
                 node_type="agent",
                 node_run_result=result,
-                start_at=naive_utc_now(),
+                start_at=started_at,
                 error="failed",
             )
 

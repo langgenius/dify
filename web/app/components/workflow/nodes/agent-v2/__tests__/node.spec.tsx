@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 import type { AgentV2NodeType } from '../types'
 import { screen } from '@testing-library/react'
-import { renderWorkflowFlowComponent as render } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { ErrorHandleTypeEnum } from '../../_base/components/error-handle/types'
 import BaseNode from '../../_base/node'
 import { AgentV2Node } from '../node'
@@ -53,11 +54,10 @@ vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () =>
   useCollaboration: () => ({ nodePanelPresence: {} }),
 }))
 
-// BaseNode reads plugin permissions even when rendering an Agent node.
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({ workspacePermissionKeys: [] }))
-})
+const render: typeof renderWorkflowFlowComponent = (ui, options) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  return renderWorkflowFlowComponent(ui, { ...options, queryClient })
+}
 
 const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType => ({
   title: 'Agent',
@@ -107,22 +107,6 @@ describe('agent/node', () => {
     )
   })
 
-  it('renders the selected roster agent', () => {
-    render(<AgentV2Node id="agent-node" data={createData()} />)
-
-    expect(screen.getByText('workflow.nodes.agent.roster.label')).toBeInTheDocument()
-    expect(screen.getByText('Nadia')).toBeInTheDocument()
-  })
-
-  it('renders a stable roster placeholder while agent detail is loading', () => {
-    mockUseAgentRosterDetail.mockReturnValue({ data: undefined })
-
-    render(<AgentV2Node id="agent-node" data={createData()} />)
-
-    expect(screen.getByText('workflow.nodes.agent.roster.label')).toBeInTheDocument()
-    expect(screen.queryByText('Nadia')).not.toBeInTheDocument()
-  })
-
   it('renders the fixed inline setup name when workflow composer state is loaded', () => {
     render(
       <AgentV2Node
@@ -170,7 +154,6 @@ describe('agent/node', () => {
     expect(
       screen.queryByText('workflowAgent.nodes.agent.roster.inlineSetup.name'),
     ).not.toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.roster.label')).toBeInTheDocument()
   })
 
   it('renders an error state when no roster agent is selected', () => {
@@ -204,6 +187,7 @@ describe('agent/node', () => {
         handle.getAttribute('data-handleid'),
       ).sort()
 
+    expect(screen.getByText('Nadia')).toBeInTheDocument()
     expect(sourceHandles()).toEqual(['accepted', 'fail-branch', 'rejected'])
     rerender(
       card({

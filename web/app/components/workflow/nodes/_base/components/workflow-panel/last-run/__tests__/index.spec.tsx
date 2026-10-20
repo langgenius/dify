@@ -1,21 +1,16 @@
 import { act, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { createHttpError } from '@/service/http-error'
 import LastRun from '../index'
 
-const mockUseHooksStore = vi.hoisted(() => vi.fn())
 const mockUseLastRun = vi.hoisted(() => vi.fn())
 const mockResultPanel = vi.hoisted(() => vi.fn())
 
-vi.mock('@remixicon/react', () => ({
+vi.mock('@remixicon/react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@remixicon/react')>()),
   RiLoader2Line: () => <div data-testid="loading-icon" />,
-}))
-
-vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (
-    selector: (state: { configsMap?: { resourceKind?: string; flowId?: string } }) => unknown,
-  ) => mockUseHooksStore(selector),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
@@ -30,31 +25,13 @@ vi.mock('@/app/components/workflow/run/result-panel', () => ({
   },
 }))
 
-vi.mock('../no-data', () => ({
-  __esModule: true,
-  default: ({ onSingleRun }: { onSingleRun: () => void }) => (
-    <button type="button" onClick={onSingleRun}>
-      no-data
-    </button>
-  ),
-}))
-
 describe('LastRun', () => {
   const updateNodeRunningStatus = vi.fn()
   const onSingleRunClicked = vi.fn()
   let visibilityState = 'visible'
-
+  const originalVisibility = Object.getOwnPropertyDescriptor(document, 'visibilityState')
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseHooksStore.mockImplementation(
-      (selector: (state: { configsMap?: { resourceKind?: string; flowId?: string } }) => unknown) =>
-        selector({
-          configsMap: {
-            resourceKind: 'appFlow',
-            flowId: 'flow-1',
-          },
-        }),
-    )
     mockUseLastRun.mockReturnValue({
       data: undefined,
       isFetching: false,
@@ -65,6 +42,11 @@ describe('LastRun', () => {
       configurable: true,
       get: () => visibilityState,
     })
+  })
+
+  afterEach(() => {
+    if (originalVisibility) Object.defineProperty(document, 'visibilityState', originalVisibility)
+    else Reflect.deleteProperty(document, 'visibilityState')
   })
 
   it('should show a loader while fetching the last run before any single run starts', () => {
@@ -111,7 +93,8 @@ describe('LastRun', () => {
     )
   })
 
-  it('should render the no-data state for 404 last-run responses and forward single-run clicks', () => {
+  it('should render the no-data state for 404 last-run responses and forward single-run clicks', async () => {
+    const user = userEvent.setup()
     mockUseLastRun.mockReturnValue({
       data: undefined,
       isFetching: false,
@@ -129,9 +112,7 @@ describe('LastRun', () => {
       { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
     )
 
-    act(() => {
-      screen.getByText('no-data').click()
-    })
+    await user.click(screen.getByRole('button', { name: 'workflowDebug.debug.noData.runThisNode' }))
 
     expect(onSingleRunClicked).toHaveBeenCalledTimes(1)
   })

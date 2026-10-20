@@ -23,6 +23,7 @@ from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResultChunk,
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from models.model import App, Conversation, Message, MessageAgentThought, MessageAnnotation
+from services.workflow_run_agg import WorkflowRunAgg
 
 
 def _assert_direct_output(agent_queue_manager: MessageBasedAppQueueManager, text: str) -> None:
@@ -41,7 +42,7 @@ def runner(
 ) -> AgentChatAppRunner:
     assert agent_records[0].id == "conv"
     begin_message_billing(agent_generate_entity, agent_records[1].id)
-    return AgentChatAppRunner()
+    return AgentChatAppRunner(execution_driver=WorkflowRunAgg.run)
 
 
 def _records(session: Session) -> tuple[Conversation, Message]:

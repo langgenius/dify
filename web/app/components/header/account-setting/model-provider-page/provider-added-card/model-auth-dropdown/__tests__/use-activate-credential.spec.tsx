@@ -1,30 +1,15 @@
 import type { Credential, ModelProvider } from '../../../declarations'
-import { act, renderHook } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
+import { createProviderMeta } from '@/app/components/workflow/__tests__/model-provider-fixtures'
 import { toast } from '@/app/notifications'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { CustomConfigurationStatusEnum, ModelTypeEnum } from '../../../declarations'
 import { useActivateCredential } from '../use-activate-credential'
 
-const mockMutate =
-  vi.fn<(_variables: unknown, callbacks: { onSuccess: () => void; onError: () => void }) => void>()
+const switchCredential = vi.fn()
 const mockUpdateModelProviders = vi.fn()
 const mockUpdateModelList = vi.fn()
-let mockIsPending = false
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    workspaces: {
-      current: {
-        modelProviders: {
-          byProvider: { credentials: { switch: { post: { mutationOptions: () => ({}) } } } },
-        },
-      },
-    },
-  },
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-  useMutation: () => ({ mutate: mockMutate, isPending: mockIsPending }),
-}))
 
 vi.mock('../../../hooks', () => ({
   useUpdateModelProviders: () => mockUpdateModelProviders,
@@ -32,10 +17,11 @@ vi.mock('../../../hooks', () => ({
 }))
 
 const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
-  ({
+  createProviderMeta({
     provider: 'langgenius/openai/openai',
-    supported_model_types: ['llm', 'text-embedding'],
+    supported_model_types: [ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding],
     custom_configuration: {
+      status: CustomConfigurationStatusEnum.active,
       current_credential_id: 'cred-1',
       available_credentials: [
         { credential_id: 'cred-1', credential_name: 'Primary' },
@@ -43,38 +29,21 @@ const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =
       ],
     },
     ...overrides,
-  }) as unknown as ModelProvider
+  })
 
-const createCredential = (overrides: Partial<Credential> = {}): Credential =>
-  ({
-    credential_id: 'cred-2',
-    credential_name: 'Backup',
-    ...overrides,
-  }) as Credential
+const createCredential = (overrides: Partial<Credential> = {}): Credential => ({
+  credential_id: 'cred-2',
+  credential_name: 'Backup',
+  ...overrides,
+})
 
 describe('useActivateCredential', () => {
-  const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
-
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockIsPending = false
-    toastErrorSpy.mockClear()
+    vi.spyOn(toast, 'error').mockReturnValue('toast-error')
+    switchCredential.mockReset().mockResolvedValue({ result: 'success' })
   })
 
-  it('should expose the current credential id by default', () => {
-    const { result } = renderHook(() => useActivateCredential(createProvider()))
-
-    expect(result.current.selectedCredentialId).toBe('cred-1')
-    expect(result.current.isActivating).toBe(false)
-  })
-
-  it('should expose the pending mutation state', () => {
-    mockIsPending = true
-
-    const { result } = renderHook(() => useActivateCredential(createProvider()))
-
-    expect(result.current.isActivating).toBe(true)
-  })
+  afterEach(() => vi.restoreAllMocks())
 
   it('should skip mutation when the selected credential is already active', () => {
     const { result } = renderHook(() => useActivateCredential(createProvider()))
@@ -83,53 +52,53 @@ describe('useActivateCredential', () => {
       result.current.activate(createCredential({ credential_id: 'cred-1' }))
     })
 
-    expect(mockMutate).not.toHaveBeenCalled()
+    expect(switchCredential).not.toHaveBeenCalled()
     expect(result.current.selectedCredentialId).toBe('cred-1')
   })
 
-  it('should optimistically select the credential and refresh provider data on success', () => {
+  it('optimistically selects the credential and refreshes provider data after success', async () => {
+    const request = createDeferred<unknown>()
+    switchCredential.mockReturnValue(request.promise)
     const { result } = renderHook(() => useActivateCredential(createProvider()))
-
-    act(() => {
-      result.current.activate(createCredential())
-    })
-
+    act(() => result.current.activate(createCredential()))
     expect(result.current.selectedCredentialId).toBe('cred-2')
-    expect(mockMutate).toHaveBeenCalledWith(
-      { params: { provider: 'langgenius/openai/openai' }, body: { credential_id: 'cred-2' } },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-        onError: expect.any(Function),
+    await waitFor(() => expect(result.current.isActivating).toBe(true))
+    await waitFor(() =>
+      expect(switchCredential).toHaveBeenCalledWith({
+        params: { provider: 'langgenius/openai/openai' },
+        body: { credential_id: 'cred-2' },
       }),
     )
-
-    const [, callbacks] = mockMutate.mock.calls[0]!
-
-    act(() => {
-      callbacks.onSuccess()
-    })
-
-    expect(mockUpdateModelProviders).toHaveBeenCalledTimes(1)
+    expect(mockUpdateModelProviders).not.toHaveBeenCalled()
+    await act(async () => request.resolve({ result: 'success' }))
+    await waitFor(() => expect(mockUpdateModelProviders).toHaveBeenCalledTimes(1))
     expect(mockUpdateModelList).toHaveBeenNthCalledWith(1, 'llm')
     expect(mockUpdateModelList).toHaveBeenNthCalledWith(2, 'text-embedding')
-  })
-
-  it('should reset the optimistic selection and show an error toast when activation fails', () => {
-    const { result } = renderHook(() => useActivateCredential(createProvider()))
-
-    act(() => {
-      result.current.activate(createCredential())
-    })
-
+    expect(result.current.isActivating).toBe(false)
     expect(result.current.selectedCredentialId).toBe('cred-2')
-
-    const [, callbacks] = mockMutate.mock.calls[0]!
-
-    act(() => {
-      callbacks.onError()
-    })
-
-    expect(result.current.selectedCredentialId).toBe('cred-1')
-    expect(toastErrorSpy).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
   })
+
+  it('rolls back optimistic selection and reports a failed activation', async () => {
+    const request = createDeferred<unknown>()
+    switchCredential.mockReturnValue(request.promise)
+    const { result } = renderHook(() => useActivateCredential(createProvider()))
+    act(() => result.current.activate(createCredential()))
+    expect(result.current.selectedCredentialId).toBe('cred-2')
+    await act(async () => request.reject(new Error('Activation failed')))
+    await waitFor(() => expect(result.current.selectedCredentialId).toBe('cred-1'))
+    expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+    expect(mockUpdateModelProviders).not.toHaveBeenCalled()
+  })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.credentials.switch.post': (input) =>
+        switchCredential(input),
+    }),
+  }
 })

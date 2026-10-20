@@ -2,10 +2,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
@@ -132,7 +132,9 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               <DialogTitle>
                 {t(($) => $['members.transferModal.title'], { ns: 'workspaceMembers' })}
               </DialogTitle>
-              <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+              <DialogHeaderCloseButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              />
             </DialogHeader>
             <DialogBody>
               <div className="space-y-1 pt-1 pb-2">
@@ -158,12 +160,10 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               </div>
             </DialogBody>
             <DialogFooter className="flex-col items-stretch">
-              <Button className="w-full!" variant="primary" onClick={sendCodeToOriginEmail}>
+              <Button variant="primary" onClick={sendCodeToOriginEmail}>
                 {t(($) => $['members.transferModal.sendVerifyCode'], { ns: 'workspaceMembers' })}
               </Button>
-              <Button className="w-full!" onClick={onClose}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
+              <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
             </DialogFooter>
           </>
         )}
@@ -173,7 +173,9 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               <DialogTitle>
                 {t(($) => $['members.transferModal.verifyEmail'], { ns: 'workspaceMembers' })}
               </DialogTitle>
-              <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+              <DialogHeaderCloseButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              />
             </DialogHeader>
             <DialogBody>
               <div className="pt-1 pb-2">
@@ -216,15 +218,12 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
             <DialogFooter className="flex-col items-stretch">
               <Button
                 disabled={code.length !== 6}
-                className="w-full!"
                 variant="primary"
                 onClick={handleVerifyOriginEmail}
               >
                 {t(($) => $['members.transferModal.continue'], { ns: 'workspaceMembers' })}
               </Button>
-              <Button className="w-full!" onClick={onClose}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
+              <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
               <div className="flex items-center gap-1 system-xs-regular text-text-tertiary">
                 <span>
                   {t(($) => $['members.transferModal.resendTip'], { ns: 'workspaceMembers' })}
@@ -256,7 +255,9 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               <DialogTitle>
                 {t(($) => $['members.transferModal.title'], { ns: 'workspaceMembers' })}
               </DialogTitle>
-              <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+              <DialogHeaderCloseButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              />
             </DialogHeader>
             <DialogBody>
               <div className="space-y-1 pt-1 pb-2">
@@ -284,16 +285,13 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
             <DialogFooter className="flex-col items-stretch">
               <Button
                 disabled={!newOwner || isTransfer}
-                className="w-full!"
                 variant="primary"
                 tone="destructive"
                 onClick={handleTransfer}
               >
                 {t(($) => $['members.transferModal.transfer'], { ns: 'workspaceMembers' })}
               </Button>
-              <Button className="w-full!" onClick={onClose}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
+              <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
             </DialogFooter>
           </>
         )}

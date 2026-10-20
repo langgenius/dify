@@ -6,10 +6,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -128,7 +128,7 @@ export default function ResourceAccessTokenDialog({
                 ? t(($) => $['resourceAccessToken.createdToken'], { ns: 'accountSettings' })
                 : t(($) => $['resourceAccessToken.createTitle'], { ns: 'accountSettings' })}
           </DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
 
         {createdToken ? (
@@ -159,7 +159,7 @@ export default function ResourceAccessTokenDialog({
             </DialogFooter>
           </>
         ) : (
-          <form onSubmit={handleSubmit}>
+          <form className="contents" onSubmit={handleSubmit}>
             <DialogBody className="grid gap-5">
               <Field name="name">
                 <FieldLabel>{nameLabel}</FieldLabel>

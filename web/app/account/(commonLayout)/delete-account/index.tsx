@@ -1,5 +1,5 @@
 'use client'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
@@ -38,12 +38,11 @@ export default function DeleteAccount(props: DeleteAccountProps) {
       }}
     >
       <DialogContent
-        className="max-w-120 overflow-hidden p-6"
         backdropProps={{ className: 'bg-background-overlay-backdrop backdrop-blur-[6px]' }}
       >
-        <DialogTitle className="pr-8 pb-3">
-          {t(($) => $['account.delete'], { ns: 'accountSettings' })}
-        </DialogTitle>
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['account.delete'], { ns: 'accountSettings' })}</DialogTitle>
+        </DialogHeader>
         {!showVerifyEmail && (
           <CheckEmail onCancel={props.onCancel} onConfirm={handleEmailCheckSuccess} />
         )}

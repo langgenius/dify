@@ -84,7 +84,7 @@ export default function MarketplaceDetailDialogFrame({
             an invisible cross-origin frame. */}
       <DialogContent
         initialFocus={closeButtonRef}
-        className="h-[min(800px,calc(100dvh-48px))] max-h-none w-[min(1200px,calc(100vw-48px))] overflow-hidden"
+        className="h-[min(800px,calc(100dvh-48px))] w-[min(1200px,calc(100vw-48px))] overflow-hidden"
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>
         <div

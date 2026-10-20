@@ -3,7 +3,7 @@ import type {
   ExternalHitTestingResponse,
   HitTestingResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import type { UseMutateAsyncFunction } from '@tanstack/react-query'
+import type { UseMutateFunction } from '@tanstack/react-query'
 import type { ChangeEvent } from 'react'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type {
@@ -39,8 +39,8 @@ type QueryInputProps = {
   isEconomy: boolean
   canRunRetrievalRecall?: boolean
   onSubmit?: () => void
-  hitTestingMutation: UseMutateAsyncFunction<HitTestingResponse, Error, HitTestingRequest, unknown>
-  externalKnowledgeBaseHitTestingMutation: UseMutateAsyncFunction<
+  hitTestingMutation: UseMutateFunction<HitTestingResponse, Error, HitTestingRequest, unknown>
+  externalKnowledgeBaseHitTestingMutation: UseMutateFunction<
     ExternalHitTestingResponse,
     Error,
     ExternalKnowledgeBaseHitTestingRequest,
@@ -159,10 +159,10 @@ const QueryInput = ({
     [queries, setQueries],
   )
 
-  const onSubmit = useCallback(async () => {
+  const onSubmit = useCallback(() => {
     if (isSubmitDisabled || loading) return
 
-    await hitTestingMutation(
+    hitTestingMutation(
       {
         query: text,
         attachment_ids: images.map((image) => image.uploadedId),
@@ -192,10 +192,10 @@ const QueryInput = ({
     setHitResult,
   ])
 
-  const externalRetrievalTestingOnSubmit = useCallback(async () => {
+  const externalRetrievalTestingOnSubmit = useCallback(() => {
     if (isSubmitDisabled || loading) return
 
-    await externalKnowledgeBaseHitTestingMutation(
+    externalKnowledgeBaseHitTestingMutation(
       {
         query: text,
         external_retrieval_model: {

@@ -7,11 +7,11 @@ import {
   Dialog,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -92,6 +92,7 @@ function FeedbackForm({ isSubmitting, onSubmit }: FeedbackFormProps) {
   const feedbackTextareaId = useId()
   return (
     <form
+      className="contents"
       onSubmit={(event) => {
         event.preventDefault()
         const content = new FormData(event.currentTarget).get('feedback-content')
@@ -106,7 +107,7 @@ function FeedbackForm({ isSubmitting, onSubmit }: FeedbackFormProps) {
           {t(($) => $['feedback.subtitle'], { ns: 'common' }) ||
             'Please tell us what went wrong with this response'}
         </DialogDescription>
-        <DialogCloseButton
+        <DialogHeaderCloseButton
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           disabled={isSubmitting}
         />

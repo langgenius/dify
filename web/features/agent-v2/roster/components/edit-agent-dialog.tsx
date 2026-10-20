@@ -5,11 +5,11 @@ import type { AgentFormSource, AgentFormValues, AgentIconSelection } from './age
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
@@ -86,9 +86,13 @@ function EditAgentFormSession({
         <DialogDescription className="sr-only">
           {t(($) => $['roster.editDialog.description'], { ns: 'agentRoster' })}
         </DialogDescription>
-        <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} disabled={pending} />
+        <DialogHeaderCloseButton
+          aria-label={tCommon(($) => $['operation.close'])}
+          disabled={pending}
+        />
       </DialogHeader>
       <Form<AgentFormValues>
+        className="contents"
         onChange={handleFormChange}
         onFormSubmit={(formValues) => {
           if (hasChanges) onSubmit(formValues, agentIcon)
@@ -160,7 +164,7 @@ export function EditAgentDialog({ agent, open, onOpenChange }: EditAgentDialogPr
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-        <DialogContent initialFocus={nameInputRef} className="max-h-[calc(100dvh-2rem)] w-130">
+        <DialogContent initialFocus={nameInputRef} className="w-130">
           <EditAgentFormSession
             key={agent.id}
             agent={agent}

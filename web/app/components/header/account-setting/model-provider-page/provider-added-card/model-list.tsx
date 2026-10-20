@@ -28,7 +28,7 @@ const ModelLoadBalancingLoadingDialog = ({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose?.()}>
-      <DialogContent className="w-160 max-w-none">
+      <DialogContent className="w-160">
         <DialogHeader>
           <DialogTitle>
             {t(($) => $['modelProvider.auth.configModel'], { ns: 'modelProvider' })}

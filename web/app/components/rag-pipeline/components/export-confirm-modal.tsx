@@ -2,6 +2,7 @@
 import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
@@ -44,7 +45,7 @@ const PipelineExportConfirmContent = ({
       <AlertDialogHeader>
         <AlertDialogTitle>{t(($) => $['env.export.title'], { ns: 'workflow' })}</AlertDialogTitle>
       </AlertDialogHeader>
-      <div className="px-6">
+      <AlertDialogBody>
         <div className="relative">
           <table className="w-full border-separate border-spacing-0 rounded-lg border border-divider-regular shadow-xs">
             <thead className="system-xs-medium-uppercase text-text-tertiary">
@@ -114,7 +115,7 @@ const PipelineExportConfirmContent = ({
             {t(($) => $['env.export.checkbox'], { ns: 'workflow' })}
           </span>
         </label>
-      </div>
+      </AlertDialogBody>
       <AlertDialogFooter>
         <AlertDialogCancelButton disabled={isExporting}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}

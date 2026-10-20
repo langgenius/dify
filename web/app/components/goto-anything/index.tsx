@@ -432,7 +432,8 @@ export function GotoAnything() {
       >
         <DialogContent
           initialFocus={inputRef}
-          className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden"
+          className="w-160 data-open:transition-none"
+          backdropProps={{ className: 'bg-background-overlay-alt data-open:transition-none' }}
         >
           <div
             aria-hidden

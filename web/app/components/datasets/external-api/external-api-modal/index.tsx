@@ -15,17 +15,17 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiBook2Line, RiInformation2Line } from '@remixicon/react'
 import { memo, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { EncryptedBottom, EncryptedFooter } from '@/app/components/base/encrypted-bottom'
+import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { toast } from '@/app/notifications'
 import { createExternalAPI } from '@/service/datasets'
 import Form from './Form'
@@ -145,7 +145,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
         if (!open) onCancel()
       }}
     >
-      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-none">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>
             {isEditMode
@@ -196,7 +196,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
               </span>
             </div>
           )}
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
           <Form
@@ -210,26 +210,24 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
             formSchemas={formSchemas}
           />
         </DialogBody>
-        <EncryptedFooter>
-          <DialogFooter>
-            <Button type="button" variant="secondary" onClick={onCancel}>
-              {t(($) => $['externalAPIForm.cancel'], { ns: 'dataset' })}
-            </Button>
-            <Button
-              form={formId}
-              type="submit"
-              variant="primary"
-              loading={loading}
-              disabled={hasEmptyInputs}
-            >
-              {t(($) => $['externalAPIForm.save'], { ns: 'dataset' })}
-            </Button>
-          </DialogFooter>
-          <EncryptedBottom
-            front={t(($) => $['externalAPIForm.encrypted.front'], { ns: 'dataset' })}
-            back={t(($) => $['externalAPIForm.encrypted.end'], { ns: 'dataset' })}
-          />
-        </EncryptedFooter>
+        <DialogFooter>
+          <Button type="button" variant="secondary" onClick={onCancel}>
+            {t(($) => $['externalAPIForm.cancel'], { ns: 'dataset' })}
+          </Button>
+          <Button
+            form={formId}
+            type="submit"
+            variant="primary"
+            loading={loading}
+            disabled={hasEmptyInputs}
+          >
+            {t(($) => $['externalAPIForm.save'], { ns: 'dataset' })}
+          </Button>
+        </DialogFooter>
+        <EncryptedBottom
+          front={t(($) => $['externalAPIForm.encrypted.front'], { ns: 'dataset' })}
+          back={t(($) => $['externalAPIForm.encrypted.end'], { ns: 'dataset' })}
+        />
         <AlertDialog
           open={showConfirm && (datasetBindings?.length ?? 0) > 0}
           onOpenChange={(open) => !open && setShowConfirm(false)}

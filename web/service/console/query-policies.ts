@@ -84,6 +84,23 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
       },
+      notion: {
+        pages: {
+          byPageId: {
+            byPageType: {
+              preview: {
+                get: {
+                  queryOptions: {
+                    context: { silent: true },
+                    retry: false,
+                    staleTime: 0,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       rag: {
         pipeline: {
           templates: {

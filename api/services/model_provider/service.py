@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import and_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from services.credentials.query import CredentialQuery
@@ -889,6 +890,49 @@ class ModelProviderService:
                 label=I18nObject(en_US=saved_model.provider_name, zh_Hans=saved_model.provider_name),
                 supported_model_types=[],
             ),
+        )
+
+    def initialize_default_llm(self, tenant_id: str) -> None:
+        """Save the first active LLM during onboarding without replacing a configured default."""
+        saved_default = select(TenantDefaultModel.id).where(
+            TenantDefaultModel.tenant_id == tenant_id,
+            TenantDefaultModel.model_type == ModelType.LLM,
+        )
+        with session_factory.create_session() as session:
+            if session.scalar(saved_default) is not None:
+                return
+
+        configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
+        available_models = configurations.get_models(model_type=ModelType.LLM, only_active=True)
+        if not available_models:
+            logger.info("No active LLM available for default model initialization, tenant_id: %s", tenant_id)
+            return
+
+        model = available_models[0]
+        try:
+            with session_factory.create_session() as session, session.begin():
+                if session.scalar(saved_default) is not None:
+                    return
+                session.add(
+                    TenantDefaultModel(
+                        tenant_id=tenant_id,
+                        model_type=ModelType.LLM,
+                        provider_name=model.provider.provider,
+                        model_name=model.model,
+                    )
+                )
+        except IntegrityError:
+            # A concurrent initializer or user selection may have saved the default first.
+            with session_factory.create_session() as session:
+                if session.scalar(saved_default) is None:
+                    raise
+            return
+
+        logger.info(
+            "Initialized default LLM for tenant %s: provider=%s model=%s",
+            tenant_id,
+            model.provider.provider,
+            model.model,
         )
 
     def update_default_model_of_model_type(self, tenant_id: str, model_type: str, provider: str, model: str):

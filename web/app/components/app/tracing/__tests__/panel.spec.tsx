@@ -6,7 +6,9 @@ import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.g
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createDeferred } from '@/test/deferred'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { createTestQueryClient } from '@/test/query-client'
 import { TracingConfiguration as Panel } from '../configuration'
@@ -373,7 +375,7 @@ describe('Tracing overview panel', () => {
   })
 
   it.each([true, false])(
-    'shows no Agent tracing section before a provider is selected (Agent tracing enabled: %s)',
+    'shows deployment availability before a provider is selected (Agent tracing enabled: %s)',
     async (enabled) => {
       agentTracingEnabled = enabled
       mockServer(false)
@@ -381,7 +383,8 @@ describe('Tracing overview panel', () => {
       expect(
         await screen.findByRole('group', { name: 'app.tracing.langfuse.title' }),
       ).toBeInTheDocument()
-      expect(screen.queryByRole('note')).not.toBeInTheDocument()
+      if (enabled) expect(screen.queryByRole('note')).not.toBeInTheDocument()
+      else expect(screen.getByRole('note')).toHaveTextContent('app.tracing.agentTracingUnavailable')
       expect(
         screen.queryByRole('button', { name: 'app.tracing.captureTitle' }),
       ).not.toBeInTheDocument()
@@ -399,12 +402,13 @@ describe('Tracing overview panel', () => {
   })
 
   it('offers retry when tracing cannot load instead of remaining in a loading state', async () => {
+    const user = userEvent.setup()
     request.mockRejectedValue(new Error('Tracing unavailable'))
     renderPanel()
     const retry = await screen.findByRole('button', { name: /common.errorBoundary.tryAgain/ })
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
     mockServer(false)
-    await userEvent.setup().click(retry)
+    await user.click(retry)
     expect(await screen.findByText('app.tracing.title')).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /common.errorBoundary.tryAgain/ }),
@@ -414,12 +418,10 @@ describe('Tracing overview panel', () => {
   it('keeps the loading placeholder until configs are ready, then shows an enabled trigger', async () => {
     mockServer()
     const server = request.getMockImplementation()!
-    let resolveConfigs!: () => void
-    const configsReady = new Promise<void>((resolve) => {
-      resolveConfigs = resolve
-    })
+    const configsReady = createDeferred()
     request.mockImplementation(async (...args) => {
-      if (new URL(args[2].request.url).pathname.endsWith('/trace-config')) await configsReady
+      if (new URL(args[2].request.url).pathname.endsWith('/trace-config'))
+        await configsReady.promise
       return server(...args)
     })
     const { client } = renderPanel()
@@ -432,7 +434,7 @@ describe('Tracing overview panel', () => {
     )
     expect(screen.getByRole('status', { name: 'app.tracing.title' })).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
-    resolveConfigs()
+    await act(async () => configsReady.resolve())
     expect(await screen.findByRole('button', { name: 'app.tracing.enabled' })).toBeEnabled()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
@@ -468,10 +470,7 @@ describe('Tracing overview panel', () => {
     const writes = mockServer()
     const server = request.getMockImplementation()!
     let unavailable = true
-    let resolveRetry!: () => void
-    const retryReady = new Promise<void>((resolve) => {
-      resolveRetry = resolve
-    })
+    const retryReady = createDeferred()
     request.mockImplementation(async (...args) => {
       const url = new URL(args[2].request.url)
       if (url.searchParams.get('tracing_provider') === 'langsmith')
@@ -482,7 +481,7 @@ describe('Tracing overview panel', () => {
             { code: 'tracing_provider_unavailable', message: 'Unavailable' },
             { status: 400 },
           )
-        await retryReady
+        await retryReady.promise
       }
       return server(...args)
     })
@@ -525,7 +524,7 @@ describe('Tracing overview panel', () => {
     expect(phoenix.getByRole('button', { name: 'common.errorBoundary.tryAgain' })).toBeDisabled()
     expect(phoenix.queryByRole('button', { name: 'app.tracing.config' })).not.toBeInTheDocument()
     expect(screen.getByRole('switch')).not.toHaveAttribute('aria-disabled', 'true')
-    resolveRetry()
+    await act(async () => retryReady.resolve())
     expect(await phoenix.findByRole('button', { name: 'app.tracing.config' })).toBeEnabled()
     expect(request).toHaveBeenCalledTimes(1)
     expect(
@@ -608,25 +607,6 @@ describe('Tracing overview panel', () => {
     expect(screen.getByRole('switch')).toHaveAttribute('aria-readonly', 'true')
     expect(screen.getByRole('switch')).toHaveAccessibleDescription('app.tracing.readOnly')
     expect(screen.queryByText('app.tracing.config')).not.toBeInTheDocument()
-  })
-
-  it('refreshes status after toggling without changing the selected provider', async () => {
-    const writes = mockServer()
-    renderPanel()
-    const user = await openConfiguredPanel()
-    await user.click(screen.getByRole('switch'))
-    await waitFor(() => expect(screen.getByRole('switch')).not.toBeChecked())
-    expect(writes).toEqual([
-      {
-        method: 'POST',
-        body: {
-          capture_agent: true,
-          capture_content: false,
-          enabled: false,
-          tracing_provider: 'langfuse',
-        },
-      },
-    ])
   })
 
   it('opens configuration without selecting the provider and supports keyboard selection', async () => {
@@ -868,6 +848,108 @@ describe('Tracing overview panel', () => {
     expect(onUrlUpdate).toHaveBeenLastCalledWith(
       expect.objectContaining({ queryString: '?tracing=configure' }),
     )
+  })
+
+  it('does not carry a pending policy change or its failure into another app', async () => {
+    mockServer()
+    const server = request.getMockImplementation()!
+    const save = createDeferred<Response>()
+    request.mockImplementation(async (...args) => {
+      if (args[2].request.method === 'POST') return save.promise
+      return server(...args)
+    })
+    const { rerender } = renderPanel()
+    const user = await openConfiguredPanel()
+    await user.click(screen.getByRole('switch', { name: 'app.tracing.tracing' }))
+    expect(screen.getByRole('switch', { name: 'app.tracing.tracing' })).not.toBeChecked()
+    await waitFor(() =>
+      expect(request.mock.calls.some(([, , { request: sent }]) => sent.method === 'POST')).toBe(
+        true,
+      ),
+    )
+
+    rerender(<Panel resource={{ kind: 'app', appId: 'app-2', mode: 'chat' }} readOnly={false} />)
+    expect(await screen.findByRole('switch', { name: 'app.tracing.tracing' })).toBeChecked()
+    await act(async () => {
+      save.reject(
+        await httpErrorFromResponse(
+          Response.json({ code: 'save_failed', message: 'App 1 save failed' }, { status: 500 }),
+        ),
+      )
+    })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'app.tracing.tracing' })).toBeChecked()
+
+    rerender(<Panel resource={{ kind: 'app', appId: 'app-1', mode: 'chat' }} readOnly={false} />)
+    expect(await screen.findByRole('alert')).toHaveTextContent('App 1 save failed')
+    expect(screen.getByRole('switch', { name: 'app.tracing.tracing' })).toBeChecked()
+    expect(
+      request.mock.calls
+        .filter(([, , { request: sent }]) => sent.method === 'POST')
+        .map(([, , { request: sent }]) => new URL(sent.url).pathname),
+    ).toEqual([expect.stringMatching(/\/apps\/app-1\/trace$/)])
+  })
+
+  it('refreshes a concurrently removed provider after a selection conflict and lets the user retry', async () => {
+    const writes = mockServer()
+    const server = request.getMockImplementation()!
+    let removed = false
+    request.mockImplementation(async (...args) => {
+      const sent = args[2].request
+      const url = new URL(sent.url)
+      if (sent.method === 'POST' && url.pathname.endsWith('/trace') && !removed) {
+        removed = true
+        throw await httpErrorFromResponse(
+          Response.json(
+            {
+              code: 'tracing_config_conflict',
+              message: 'Provider was removed. Choose another provider.',
+            },
+            { status: 409 },
+          ),
+        )
+      }
+      if (
+        sent.method === 'GET' &&
+        url.pathname.endsWith('/trace-config') &&
+        url.searchParams.get('tracing_provider') === 'langsmith'
+      ) {
+        return Response.json({
+          has_not_configured: removed,
+          tracing_config: removed ? null : { api_key: '[__MASKED__]', project: 'project' },
+        })
+      }
+      return server(...args)
+    })
+    renderPanel()
+    const user = await openConfiguredPanel()
+    await user.click(screen.getByRole('button', { name: 'app.tracing.langsmith.title' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Provider was removed')
+    const provider = within(screen.getByRole('group', { name: 'app.tracing.langsmith.title' }))
+    await waitFor(() =>
+      expect(
+        provider.queryByRole('button', {
+          name: 'app.tracing.langsmith.title',
+        }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(provider.getByRole('button', { name: 'app.tracing.config' })).toBeEnabled()
+    expect(screen.getByRole('switch', { name: 'app.tracing.tracing' })).toBeChecked()
+
+    await user.click(screen.getByRole('switch', { name: 'app.tracing.tracing' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(screen.getByRole('switch', { name: 'app.tracing.tracing' })).not.toBeChecked()
+    expect(writes).toEqual([
+      {
+        method: 'POST',
+        body: {
+          enabled: false,
+          tracing_provider: 'langfuse',
+          capture_content: false,
+          capture_agent: true,
+        },
+      },
+    ])
   })
 
   it('keeps an open draft across config refreshes and starts a new session for another app', async () => {

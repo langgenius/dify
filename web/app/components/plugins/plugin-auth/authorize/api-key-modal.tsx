@@ -5,16 +5,16 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { EncryptedBottom, EncryptedFooter } from '@/app/components/base/encrypted-bottom'
+import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -28,7 +28,7 @@ import {
 import { CredentialTypeEnum } from '../types'
 import PermissionSelector from './permission-selector'
 
-export type ApiKeyModalProps = {
+type ApiKeyModalProps = {
   pluginPayload: PluginPayload
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -161,7 +161,7 @@ const ApiKeyModal = ({
           <DialogDescription>
             {t(($) => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
           </DialogDescription>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
           {pluginPayload.detail && (
@@ -193,25 +193,23 @@ const ApiKeyModal = ({
             </div>
           )}
         </DialogBody>
-        <EncryptedFooter>
-          <DialogFooter>
-            {editValues && (
-              <>
-                <Button variant="primary" onClick={onRemove} disabled={isDisabled}>
-                  {t(($) => $['operation.remove'], { ns: 'common' })}
-                </Button>
-                <div className="mx-1 h-4 w-px bg-divider-regular"></div>
-              </>
-            )}
-            <Button onClick={() => handleOpenChange(false)} disabled={isDisabled}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            <Button variant="primary" onClick={handleConfirm} disabled={isDisabled}>
-              {t(($) => $['operation.save'], { ns: 'common' })}
-            </Button>
-          </DialogFooter>
-          <EncryptedBottom />
-        </EncryptedFooter>
+        <DialogFooter>
+          {editValues && (
+            <>
+              <Button variant="primary" onClick={onRemove} disabled={isDisabled}>
+                {t(($) => $['operation.remove'], { ns: 'common' })}
+              </Button>
+              <div className="mx-1 h-4 w-px bg-divider-regular"></div>
+            </>
+          )}
+          <Button onClick={() => handleOpenChange(false)} disabled={isDisabled}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
+          <Button variant="primary" onClick={handleConfirm} disabled={isDisabled}>
+            {t(($) => $['operation.save'], { ns: 'common' })}
+          </Button>
+        </DialogFooter>
+        <EncryptedBottom />
       </DialogContent>
     </Dialog>
   )

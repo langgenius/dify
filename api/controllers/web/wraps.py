@@ -104,16 +104,16 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
     except Unauthorized as e:
         if webapp_auth_enabled:
             if not app_code:
-                raise Unauthorized("Please re-login to access the web app.")
+                raise Unauthorized("Please re-login to access the web app.") from e
             app_id = resolve_web_app_id(app_code)
             app_web_auth_enabled = (
                 EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id).access_mode
                 != WebAppAccessMode.PUBLIC
             )
             if app_web_auth_enabled:
-                raise WebAppAuthRequiredError()
+                raise WebAppAuthRequiredError() from e
 
-        raise Unauthorized(e.description)
+        raise Unauthorized(e.description) from e
 
 
 def _validate_webapp_token(decoded, app_web_auth_enabled: bool, system_webapp_auth_enabled: bool):

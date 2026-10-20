@@ -122,7 +122,7 @@ def _bind_db_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
 class TestChatAppGenerator:
     def test_generate_requires_query(self, unbound_session: Session):
         generator = ChatAppGenerator()
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="query is required"):
             generator.generate(
                 session=unbound_session,
                 app_model=_app(),
@@ -134,7 +134,7 @@ class TestChatAppGenerator:
 
     def test_generate_rejects_non_string_query(self, unbound_session: Session):
         generator = ChatAppGenerator()
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="query must be a string"):
             generator.generate(
                 session=unbound_session,
                 app_model=_app(),
@@ -235,7 +235,7 @@ class TestChatAppGenerator:
 
     def test_generate_rejects_model_config_override_for_non_debugger(self, unbound_session: Session):
         generator = ChatAppGenerator()
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Only in App debug mode can override model config"):
             with (
                 patch.object(ChatAppGenerator, "_get_app_model_config", return_value=AppModelConfig(app_id="app-1")),
                 patch.object(AppModelConfig, "to_dict", return_value={}),
@@ -302,7 +302,7 @@ class TestChatAppRunner:
             invoke_from=InvokeFrom.SERVICE_API,
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="App not found"):
             runner.run(
                 app_generate_entity,
                 DummyQueueManager(),

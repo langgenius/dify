@@ -4,10 +4,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
@@ -66,6 +66,7 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
     >
       <DialogContent backdropProps={{ forceRender: true }}>
         <form
+          className="contents"
           onSubmit={(e) => {
             e.preventDefault()
             void changeWorkspaceInfo()
@@ -75,7 +76,9 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
             <DialogTitle>
               {t(($) => $['account.editWorkspaceInfo'], { ns: 'accountSettings' })}
             </DialogTitle>
-            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
           </DialogHeader>
 
           <DialogBody className="space-y-2">

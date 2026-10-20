@@ -157,7 +157,7 @@ def test_workflow_emits_four_real_sdk_calls_with_original_ids_payload_and_status
     tenant = make_tenant(tenant_id="tenant")
     account = make_account(account_id="owner", tenant=tenant)
     app = make_app(app_id="app", tenant_id=tenant.id, mode=AppMode.WORKFLOW, created_by=account.id)
-    membership = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.OWNER, current=True)
+    membership = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.OWNER)
     sqlite_session.add_all([tenant, account, app, membership])
     nodes = [
         WorkflowNodeExecutionModel(
