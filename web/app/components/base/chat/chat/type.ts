@@ -17,7 +17,6 @@ export type FeedbackType = {
 }
 
 export type FeedbackFunc = (messageId: string, feedback: FeedbackType) => Promise<void>
-export type SubmitAnnotationFunc = (messageId: string, content: string) => Promise<any>
 
 export type ToolInfoInThought = {
   name: string
@@ -78,7 +77,7 @@ type SubmittedHumanInputExtraContent = {
   type: 'human_input'
   submitted: true
   form_definition?: HumanInputFormData
-  form_submission_data: HumanInputFilledFormData
+  form_submission_data: Omit<HumanInputFilledFormData, 'form_id'>
   workflow_run_id?: string
 }
 
@@ -134,7 +133,7 @@ export type IChatItem = {
   extra_contents?: ExtraContent[]
 }
 
-export type Metadata = {
+type Metadata = {
   retriever_resources?: CitationItem[]
   annotation_reply: {
     id: string

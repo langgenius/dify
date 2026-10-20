@@ -99,7 +99,7 @@ export const getHasChildren = (schema: Field) => {
     )
 }
 
-const getTypeOf = (target: any) => {
+const getTypeOf = (target: unknown) => {
   if (target === null) return 'null'
   if (typeof target !== 'object') {
     return typeof target
@@ -108,7 +108,7 @@ const getTypeOf = (target: any) => {
   }
 }
 
-const inferType = (value: any): Type => {
+const inferType = (value: unknown): Type => {
   const type = getTypeOf(value)
   if (type === 'array') return Type.array
   // type boolean will be treated as string

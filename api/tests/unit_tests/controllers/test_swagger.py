@@ -262,6 +262,36 @@ def test_agent_tts_routes_document_voice_queries_and_binary_audio(openapi_json: 
         assert _response_content_types(preview, status) == {"application/json"}
 
 
+def test_workflow_config_contracts_describe_node_defaults_and_unpublished_pipelines(
+    openapi_json: OpenAPIJSONLoader,
+) -> None:
+    from controllers.console import bp as console_bp
+
+    payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", False))
+    schemas = payload["components"]["schemas"]
+    for resource in ("apps/{app_id}", "rag/pipelines/{pipeline_id}", "snippets/{snippet_id}"):
+        operation = payload["paths"][f"/{resource}/workflows/default-workflow-block-configs"]["get"]
+        assert operation["responses"]["200"]["content"]["application/json"]["schema"] == {
+            "$ref": "#/components/schemas/DefaultBlockConfigsResponse"
+        }
+    assert schemas["DefaultBlockConfigsResponse"]["items"] == {
+        "$ref": "#/components/schemas/DefaultBlockConfigItemResponse"
+    }
+    item = schemas["DefaultBlockConfigItemResponse"]
+    assert set(item["required"]) == {"type", "config"}
+    assert item["properties"]["type"]["type"] == "string"
+    assert item["properties"]["config"]["type"] == "object"
+
+    published = payload["paths"]["/rag/pipelines/{pipeline_id}/workflows/publish"]["get"]
+    assert published["responses"]["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/RagPipelinePublishedWorkflowResponse"
+    }
+    assert schemas["RagPipelinePublishedWorkflowResponse"]["anyOf"] == [
+        {"$ref": "#/components/schemas/WorkflowResponse"},
+        {"type": "null"},
+    ]
+
+
 def test_console_segment_mutation_contracts_survive_admission(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.console import bp as console_bp
 
@@ -288,7 +318,7 @@ def test_console_segment_mutation_contracts_survive_admission(openapi_json: Open
         }
 
     delete_operation = paths[f"{document_path}/segments"]["delete"]
-    assert set(delete_operation["responses"]) == {"204"}
+    assert {status for status in delete_operation["responses"] if status.startswith("2")} == {"204"}
     parameters = _parameters_by_name(delete_operation)
     assert parameters["segment_id"]["in"] == "query"
     assert parameters["segment_id"]["schema"]["type"] == "array"
@@ -700,7 +730,14 @@ def test_console_member_invite_documents_bad_request_response(openapi_json: Open
     operation = payload["paths"]["/workspaces/current/members/invite-email"]["post"]
     response_schema = operation["responses"]["400"]["content"]["application/json"]["schema"]
 
-    assert response_schema["$ref"] == "#/components/schemas/MemberInviteErrorResponse"
+    # The declared invite body and the operation's documented business errors can all answer 400.
+    assert response_schema["anyOf"][0] == {"$ref": "#/components/schemas/MemberInviteErrorResponse"}
+    documented = {option["$ref"].rsplit("/", 1)[-1] for option in response_schema["anyOf"][1:]}
+    assert {"InvalidRoleError", "LimitExceededError"} <= documented
+    assert payload["components"]["schemas"]["InvalidRoleError"]["allOf"][1]["properties"]["code"] == {
+        "const": "invalid_role",
+        "type": "string",
+    }
     assert payload["components"]["schemas"]["MemberInviteErrorResponse"] == {
         "properties": {
             "code": {
@@ -743,12 +780,14 @@ def test_console_billing_routes_document_error_responses(openapi_json: OpenAPIJS
         operation = payload["paths"][path][method]
         for status, model_name in responses.items():
             schema = operation["responses"][status]["content"]["application/json"]["schema"]
-            assert schema["$ref"] == f"#/components/schemas/{model_name}"
+            # The declared model is unioned with the error body the handlers can still send.
+            assert schema["anyOf"][0] == {"$ref": f"#/components/schemas/{model_name}"}
 
         if path.startswith("/billing/"):
             forbidden_response = operation["responses"]["403"]
             assert forbidden_response["description"] == "Forbidden"
-            assert "content" not in forbidden_response
+            forbidden_schema = forbidden_response["content"]["application/json"]["schema"]
+            assert forbidden_schema == {"$ref": "#/components/schemas/ErrorResponse"}
 
     expected_error_contracts = {
         "BillingUnprocessableEntityErrorResponse": ("unprocessable_entity", 422),
@@ -881,7 +920,7 @@ def test_console_datasource_catalog_exports_domain_response_schema(exported_cons
     ]
     recommended = payload["paths"]["/rag/pipelines/recommended-plugins"]["get"]
     assert recommended["responses"]["200"]["content"]["application/json"]["schema"] == {
-        "$ref": "#/components/schemas/RagPipelineOpaqueResponse"
+        "$ref": "#/components/schemas/RagPipelineRecommendedPluginsResponse"
     }
 
 

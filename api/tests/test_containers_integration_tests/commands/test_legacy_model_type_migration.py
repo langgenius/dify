@@ -141,7 +141,7 @@ def _insert_load_balancing_model_config(
 def migration_module():
     try:
         return importlib.import_module("services.legacy_model_type_migration")
-    except ModuleNotFoundError as exc:  # pragma: no cover - explicit TDD failure path
+    except ModuleNotFoundError:  # pragma: no cover - explicit TDD failure path
         pytest.fail(
             "services.legacy_model_type_migration is missing. "
             "Implement LegacyModelTypeMigrationService before running these tests."

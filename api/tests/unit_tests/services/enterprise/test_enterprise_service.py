@@ -184,6 +184,15 @@ class TestWebAppAuth:
         with pytest.raises(ValueError, match="access_mode must be"):
             EnterpriseService.WebAppAuth.update_app_access_mode("a1", "invalid")
 
+    def test_update_access_mode_accepts_sso_verified(self) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"result": True}
+            EnterpriseService.WebAppAuth.update_app_access_mode("a1", "sso_verified")
+
+        req.send_request.assert_called_once_with(
+            "POST", "/webapp/access-mode", json={"appId": "a1", "accessMode": "sso_verified"}
+        )
+
     def test_update_access_mode_delegates_and_returns(self) -> None:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.return_value = {"result": True}
@@ -262,7 +271,7 @@ class TestJoinDefaultWorkspace:
                 EnterpriseService.join_default_workspace(account_id=account_id)
 
     def test_join_default_workspace_invalid_account_id_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="account_id must be a valid UUID: not\\-a\\-uuid"):
             EnterpriseService.join_default_workspace(account_id="not-a-uuid")
 
     def test_join_default_workspace_missing_required_fields_raises(self) -> None:

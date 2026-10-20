@@ -1,5 +1,5 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
 
 export const isDatasetAvailable = (
-  dataset: Pick<DataSet, 'embedding_available' | 'reranking_available'>,
-) => dataset.embedding_available && dataset.reranking_available !== false
+  dataset: Pick<DatasetDetailResponse, 'embedding_available' | 'reranking_available'>,
+) => !!dataset.embedding_available && dataset.reranking_available !== false

@@ -54,12 +54,25 @@ class AwsS3Storage(BaseStorage):
         self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
 
     @override
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        if not files and not directories:
+            raise ValueError("At least one of files or directories must be True")
+        keys: list[str] = []
+        paginator = self.client.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=self.bucket_name, Prefix=path):
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
+                if (key.endswith("/") and directories) or (not key.endswith("/") and files):
+                    keys.append(key)
+        return keys
+
+    @override
     def load_once(self, filename: str) -> bytes:
         try:
             data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].read()
         except ClientError as ex:
             if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
-                raise FileNotFoundError("File not found")
+                raise FileNotFoundError("File not found") from ex
             else:
                 raise
         return data
@@ -71,9 +84,9 @@ class AwsS3Storage(BaseStorage):
             yield from response["Body"].iter_chunks()
         except ClientError as ex:
             if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
-                raise FileNotFoundError("file not found")
+                raise FileNotFoundError("file not found") from ex
             elif "reached max retries" in str(ex):
-                raise ValueError("please do not request the same file too frequently")
+                raise ValueError("please do not request the same file too frequently") from ex
             else:
                 raise
 

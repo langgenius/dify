@@ -166,27 +166,27 @@ class TestSegmentCreatePayload:
 
     def test_payload_with_none_segments(self):
         """Test payload with None segments is rejected."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for SegmentCreatePayload\\\nsegments"):
             SegmentCreatePayload.model_validate({"segments": None})
 
     def test_payload_with_empty_segments(self):
         """Test payload with empty segments list is rejected."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for SegmentCreatePayload\\\nsegments"):
             SegmentCreatePayload.model_validate({"segments": []})
 
     def test_payload_requires_segments(self):
         """Test payload requires a segments field."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for SegmentCreatePayload\\\nsegments"):
             SegmentCreatePayload.model_validate({})
 
     def test_payload_rejects_segment_without_content(self):
         """Test each segment requires content."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for SegmentCreatePayload\\\nsegments\\.0\\.content"):
             SegmentCreatePayload.model_validate({"segments": [{"answer": "Answer only"}]})
 
     def test_payload_rejects_blank_content(self):
         """Test content cannot be whitespace-only."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for SegmentCreateItemPayload\\\ncontent"):
             SegmentCreateItemPayload.model_validate({"content": "   "})
 
     def test_payload_with_complex_segment_data(self):
@@ -245,7 +245,7 @@ class TestChildChunkCreatePayload:
 
     def test_payload_requires_content(self):
         """Test that content is required."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for ChildChunkCreatePayload\\\ncontent"):
             ChildChunkCreatePayload.model_validate({})
 
     def test_payload_with_long_content(self):
@@ -285,12 +285,12 @@ class TestChildChunkListQuery:
 
     def test_query_limit_minimum(self):
         """Test query limit minimum validation."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for ChildChunkListQuery\\\nlimit"):
             ChildChunkListQuery.model_validate({"limit": 0})
 
     def test_query_page_minimum(self):
         """Test query page minimum validation."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for ChildChunkListQuery\\\npage"):
             ChildChunkListQuery.model_validate({"page": 0})
 
     def test_query_with_keyword(self):

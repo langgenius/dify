@@ -2,7 +2,6 @@ import type { GeneratedGraph } from '../types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { createHttpError } from '@/service/http-error'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import {
   applyToCurrentApp,
   applyToNewApp,
@@ -18,7 +17,28 @@ const mockDeleteApp = vi.fn()
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   request: async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
-    if (request.method === 'POST') return Response.json(await mockCreateApp(await request.json()))
+    if (request.method === 'GET' && new URL(request.url).pathname.endsWith('/workflows/draft')) {
+      const draft = await mockFetchWorkflowDraft(
+        new URL(request.url).pathname.replace(/^.*\/apps\//, 'apps/'),
+      )
+      return draft
+        ? Response.json(draft)
+        : Response.json(
+            { code: 'draft_workflow_not_exist', message: 'Draft not found', status: 404 },
+            { status: 404 },
+          )
+    }
+    if (request.method === 'POST') {
+      if (new URL(request.url).pathname.endsWith('/workflows/draft')) {
+        return Response.json(
+          await mockSyncWorkflowDraft({
+            url: new URL(request.url).pathname.replace(/^.*\/apps\//, 'apps/'),
+            body: await request.json(),
+          }),
+        )
+      }
+      return Response.json(await mockCreateApp(await request.json()))
+    }
     if (request.method === 'DELETE') {
       await mockDeleteApp(new URL(request.url).pathname.split('/').at(-1))
       return new Response(null, { status: 204 })
@@ -27,19 +47,14 @@ vi.mock('@/service/base', async (importOriginal) => ({
   },
 }))
 
-vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (url: string) => mockFetchWorkflowDraft(url),
-  syncWorkflowDraft: (params: unknown) => mockSyncWorkflowDraft(params),
-}))
-
 const makeGraph = (): GeneratedGraph => ({
   nodes: [
     {
       id: 'node-1',
       type: 'custom',
       position: { x: 0, y: 0 },
-      data: { type: 'start', title: 'Start' },
-    } as never,
+      data: { type: BlockEnum.Start, title: 'Start', desc: '' },
+    },
   ],
   edges: [],
   viewport: { x: 0, y: 0, zoom: 0.7 },
@@ -67,9 +82,10 @@ const makeGraphWithMemory = (): GeneratedGraph => {
 
 describe('applyToNewApp', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
+    mockFetchWorkflowDraft.mockResolvedValue(undefined)
     mockCreateApp.mockResolvedValue(
-      createAppDetailFixture({ id: 'new-app-1', mode: AppModeEnum.WORKFLOW }),
+      createAppDetailFixture({ id: 'new-app-1', mode: 'workflow' as const }),
     )
     mockSyncWorkflowDraft.mockResolvedValue({})
   })
@@ -78,17 +94,21 @@ describe('applyToNewApp', () => {
   // its draft and return the routing context the caller uses to navigate.
   it('should create the app, sync the draft and return the new app id and mode', async () => {
     const graph = makeGraph()
-    const result = await applyToNewApp({ mode: 'workflow', graph, instruction: 'Summarize a URL' })
+    const result = await applyToNewApp({
+      mode: 'workflow',
+      graph,
+      instruction: 'Summarize a URL',
+    })
 
     expect(mockCreateApp).toHaveBeenCalledWith(
       expect.objectContaining({
-        mode: AppModeEnum.WORKFLOW,
+        mode: 'workflow',
         icon_type: 'emoji',
       }),
     )
     expect(mockSyncWorkflowDraft).toHaveBeenCalledWith({
       url: 'apps/new-app-1/workflows/draft',
-      params: {
+      body: {
         graph,
         features: {},
         conversation_variables: [],
@@ -96,16 +116,16 @@ describe('applyToNewApp', () => {
     })
     expect(result).toEqual({
       appId: 'new-app-1',
-      appMode: AppModeEnum.WORKFLOW,
+      appMode: 'workflow' as const,
       permissionKeys: [],
     })
   })
 
-  // Mode → AppModeEnum must round-trip for chatflow; the type-level guarantee
+  // Mode → AppMode must round-trip for chatflow; the type-level guarantee
   // is verified at runtime so a regression here is caught before users hit it.
-  it('should map advanced-chat mode to AppModeEnum.ADVANCED_CHAT', async () => {
+  it('should map advanced-chat mode to Chatflow', async () => {
     mockCreateApp.mockResolvedValueOnce(
-      createAppDetailFixture({ id: 'cf-1', mode: AppModeEnum.ADVANCED_CHAT }),
+      createAppDetailFixture({ id: 'cf-1', mode: 'advanced-chat' as const }),
     )
 
     const result = await applyToNewApp({
@@ -115,9 +135,9 @@ describe('applyToNewApp', () => {
     })
 
     expect(mockCreateApp).toHaveBeenCalledWith(
-      expect.objectContaining({ mode: AppModeEnum.ADVANCED_CHAT }),
+      expect.objectContaining({ mode: 'advanced-chat' as const }),
     )
-    expect(result.appMode).toBe(AppModeEnum.ADVANCED_CHAT)
+    expect(result.appMode).toBe('advanced-chat')
   })
 
   it('should remove LLM memory before saving a generated Workflow draft', async () => {
@@ -127,7 +147,7 @@ describe('applyToNewApp', () => {
       instruction: 'Summarize a URL',
     })
 
-    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph
+    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].body.graph
     expect(savedGraph.nodes[1].data).not.toHaveProperty('memory')
   })
 
@@ -140,7 +160,7 @@ describe('applyToNewApp', () => {
       instruction: 'Answer questions in a conversation',
     })
 
-    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph
+    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].body.graph
     expect(savedGraph.nodes[1].data).toHaveProperty('memory')
     expect(savedGraph).toEqual(graph)
   })
@@ -159,8 +179,6 @@ describe('applyToNewApp', () => {
     )
   })
 
-  // Instruction-only-of-punctuation must still produce a usable, non-empty
-  // app name so create-app doesn't fail validation.
   it('should reject an empty instruction before creating an app', async () => {
     await expect(
       applyToNewApp({ mode: 'workflow', graph: makeGraph(), instruction: '   ' }),
@@ -214,7 +232,7 @@ describe('applyToNewApp', () => {
   // and the original sync error is re-thrown so the caller can toast it.
   it('should delete the new app when syncWorkflowDraft fails', async () => {
     mockCreateApp.mockResolvedValueOnce(
-      createAppDetailFixture({ id: 'doomed', mode: AppModeEnum.WORKFLOW }),
+      createAppDetailFixture({ id: 'doomed', mode: 'workflow' as const }),
     )
     const syncErr = new Error('sync exploded')
     mockSyncWorkflowDraft.mockRejectedValueOnce(syncErr)
@@ -237,7 +255,7 @@ describe('applyToNewApp', () => {
   // carries the orphan app id so the toast can name it.
   it('should throw WorkflowApplyOrphanError when both sync and rollback fail', async () => {
     mockCreateApp.mockResolvedValueOnce(
-      createAppDetailFixture({ id: 'orphan-7', mode: AppModeEnum.WORKFLOW }),
+      createAppDetailFixture({ id: 'orphan-7', mode: 'workflow' as const }),
     )
     mockSyncWorkflowDraft.mockRejectedValueOnce(new Error('sync exploded'))
     mockDeleteApp.mockRejectedValueOnce(new Error('delete also exploded'))
@@ -255,29 +273,30 @@ describe('applyToNewApp', () => {
 
 describe('applyToCurrentApp', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
+    mockFetchWorkflowDraft.mockResolvedValue(undefined)
     mockSyncWorkflowDraft.mockResolvedValue({})
   })
 
   it('should remove LLM memory before replacing the current Workflow draft', async () => {
     await applyToCurrentApp({
       appId: 'app-42',
-      appMode: AppModeEnum.WORKFLOW,
+      appMode: 'workflow' as const,
       graph: makeGraphWithMemory(),
     })
 
-    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph
+    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].body.graph
     expect(savedGraph.nodes[1].data).not.toHaveProperty('memory')
   })
 
-  it.each([AppModeEnum.ADVANCED_CHAT, undefined])(
+  it.each(['advanced-chat', undefined] as const)(
     'should preserve LLM memory when the current app mode is %s',
     async (appMode) => {
       const graph = makeGraphWithMemory()
 
       await applyToCurrentApp({ appId: 'app-42', appMode, graph })
 
-      const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph
+      const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].body.graph
       expect(savedGraph.nodes[1].data).toHaveProperty('memory')
       expect(savedGraph).toEqual(graph)
     },
@@ -300,7 +319,7 @@ describe('applyToCurrentApp', () => {
     expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('apps/app-42/workflows/draft')
     expect(mockSyncWorkflowDraft).toHaveBeenCalledWith({
       url: 'apps/app-42/workflows/draft',
-      params: expect.objectContaining({
+      body: expect.objectContaining({
         graph,
         features: { file_upload: { enabled: true } },
         hash: 'h-existing',
@@ -308,13 +327,15 @@ describe('applyToCurrentApp', () => {
     })
     // Environment variables are preserved server-side; conversation variables
     // must still be forwarded verbatim.
-    const params = mockSyncWorkflowDraft.mock.calls[0]![0].params
+    const params = mockSyncWorkflowDraft.mock.calls[0]![0].body
     expect(params).not.toHaveProperty('environment_variables')
-    expect(params.conversation_variables).toHaveLength(1)
+    expect(params.conversation_variables).toEqual([
+      { id: 'c1', name: 'memory', value_type: 'string', value: '' },
+    ])
   })
 
   // First-apply path: a freshly created Workflow app has no draft yet, so the
-  // fetch resolves to undefined and we must sync without a hash field so the
+  // fetch returns 404 and we must sync without a hash field so the
   // backend lazy-creates the draft instead of raising.
   it('should sync without a hash when no draft yet exists', async () => {
     mockFetchWorkflowDraft.mockResolvedValue(undefined)
@@ -322,7 +343,7 @@ describe('applyToCurrentApp', () => {
     await applyToCurrentApp({ appId: 'fresh-app', graph: makeGraph() })
 
     expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-    const params = mockSyncWorkflowDraft.mock.calls[0]![0].params
+    const params = mockSyncWorkflowDraft.mock.calls[0]![0].body
     expect(params).not.toHaveProperty('hash')
     expect(params.features).toEqual({})
     expect(params).not.toHaveProperty('environment_variables')
@@ -337,7 +358,7 @@ describe('applyToCurrentApp', () => {
     await applyToCurrentApp({ appId: 'app-7', graph: makeGraph() })
 
     expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-    const params = mockSyncWorkflowDraft.mock.calls[0]![0].params
+    const params = mockSyncWorkflowDraft.mock.calls[0]![0].body
     expect(params).not.toHaveProperty('hash')
   })
 

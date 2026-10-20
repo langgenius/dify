@@ -115,7 +115,6 @@ export function PublisherContent({
   const marketplace = useMarketplacePublish(appDetail.id)
   const versionInfo = useVersionInfo({
     appId: appDetail.id,
-    appMode: appDetail.mode,
     publishedWorkflow: publish.publishedWorkflow,
     onClosePublisher: closePublisher,
   })

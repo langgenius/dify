@@ -20,6 +20,7 @@ from extensions.ext_database import db
 from fields.dataset_fields import (
     DatasetDetailResponse,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
@@ -42,6 +43,7 @@ register_response_schema_models(console_ns, DatasetDetailResponse, RagPipelineIm
 
 @console_ns.route("/rag/pipeline/dataset")
 class CreateRagPipelineDatasetApi(Resource):
+    @error_responses(DatasetNameDuplicateError)
     @console_ns.expect(console_ns.models[RagPipelineDatasetImportPayload.__name__])
     @console_ns.response(
         201,
@@ -91,8 +93,8 @@ class CreateRagPipelineDatasetApi(Resource):
                     db.session(),
                 )
             db.session.commit()
-        except services.errors.dataset.DatasetNameDuplicateError:
-            raise DatasetNameDuplicateError()
+        except services.errors.dataset.DatasetNameDuplicateError as caught_error:
+            raise DatasetNameDuplicateError() from caught_error
 
         if dify_config.RBAC_ENABLED and dataset_id is not None:
             enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(

@@ -29,10 +29,6 @@ const createInputVar = (overrides: Partial<InputVar> = {}): InputVar => ({
 
 describe('config-modal utils', () => {
   describe('payload helpers', () => {
-    beforeEach(() => {
-      vi.clearAllMocks()
-    })
-
     it('should clear the default value when options no longer include it', () => {
       const payload = createInputVar({
         type: InputVarType.select,
@@ -104,10 +100,6 @@ describe('config-modal utils', () => {
   })
 
   describe('derived values', () => {
-    beforeEach(() => {
-      vi.clearAllMocks()
-    })
-
     it('should expose upload and json options only when supported', () => {
       const options = buildSelectOptions({
         isBasicApp: false,
@@ -142,10 +134,6 @@ describe('config-modal utils', () => {
   })
 
   describe('validation', () => {
-    beforeEach(() => {
-      vi.clearAllMocks()
-    })
-
     it('should reject duplicate select options', () => {
       const result = validateConfigModalPayload({
         tempPayload: createInputVar({

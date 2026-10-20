@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -6,6 +6,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -17,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -28,10 +29,8 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
-import { datasetDetailQueryKeyPrefix, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import { useInvalid } from '@/service/use-base'
-import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -49,7 +48,9 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   const [confirmMessage, setConfirmMessage] = useState<string>('')
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
-  const dataset = useDatasetDetailContextWithSelector((state) => state.dataset) as DataSet
+  const dataset = useDatasetDetailContextWithSelector(
+    (state) => state.dataset,
+  ) as DatasetDetailWithPartialMembersResponse
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -79,8 +80,17 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
     datasetACLCapabilities.canAccessConfig ||
     datasetACLCapabilities.canDelete
 
-  const invalidDatasetList = useInvalidDatasetList()
-  const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, dataset.id])
+  const queryClient = useQueryClient()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
+  const invalidDatasetDetail = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.get.queryKey({
+        input: { params: { dataset_id: dataset.id } },
+      }),
+    })
+  }, [queryClient, dataset.id])
 
   const refreshDataset = useCallback(() => {
     invalidDatasetList()
@@ -93,7 +103,9 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
     })
   }, [])
 
-  const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
+  const { mutateAsync: exportPipelineConfig } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.exports.get.mutationOptions(),
+  )
 
   const handleExportPipeline = useCallback(
     async (include = false) => {
@@ -101,8 +113,8 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
       if (!pipeline_id) return
       try {
         const { data } = await exportPipelineConfig({
-          pipelineId: pipeline_id,
-          include,
+          params: { pipeline_id },
+          query: { include_secret: String(include) },
         })
         const file = new Blob([data], { type: 'application/yaml' })
         downloadBlob({ data: file, fileName: `${name}.pipeline` })
@@ -206,14 +218,12 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
         onOpenChange={(open) => !open && setShowConfirmDelete(false)}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $.deleteDatasetConfirmTitle, { ns: 'dataset' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {confirmMessage}
-            </AlertDialogDescription>
-          </div>
+            <AlertDialogDescription>{confirmMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

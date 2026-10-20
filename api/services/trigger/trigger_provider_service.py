@@ -224,7 +224,7 @@ class TriggerProviderService:
 
         except Exception as e:
             logger.exception("Failed to add trigger provider")
-            raise ValueError(str(e))
+            raise ValueError(str(e)) from e
 
     @classmethod
     def update_trigger_subscription(
@@ -641,7 +641,7 @@ class TriggerProviderService:
                 try:
                     oauth_params = decrypt_system_params(system_client.encrypted_oauth_params)
                 except Exception as e:
-                    raise ValueError(f"Error decrypting system oauth params: {e}")
+                    raise ValueError(f"Error decrypting system oauth params: {e}") from e
 
             return oauth_params
 

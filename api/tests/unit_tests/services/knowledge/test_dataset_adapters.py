@@ -1,5 +1,4 @@
 from collections.abc import Callable
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -12,8 +11,11 @@ from controllers.console.datasets.datasets import (
     DatasetQueryListResponse,
     RelatedAppListResponse,
 )
+from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from machinery.context import RequestContext
 from models import Account, App, Dataset, Document
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
@@ -58,7 +60,22 @@ def test_model_availability_uses_active_workspace_models(
     with patch("services.knowledge.datasets.adapters.create_plugin_provider_manager") as factory:
         configurations = factory.return_value.get_configurations.return_value
         configurations.get_models.return_value = [
-            SimpleNamespace(model="model", provider=SimpleNamespace(provider="langgenius/jina/jina")),
+            ModelWithProviderEntity(
+                model="model",
+                label=I18nObject(en_US="Model"),
+                model_type=model_type,
+                fetch_from=FetchFrom.PREDEFINED_MODEL,
+                model_properties={},
+                status=ModelStatus.ACTIVE,
+                provider=SimpleModelProviderEntity(
+                    ProviderEntity(
+                        provider="langgenius/jina/jina",
+                        label=I18nObject(en_US="Jina"),
+                        supported_model_types=[model_type],
+                        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+                    )
+                ),
+            ),
         ]
 
         assert method(operations, CONTEXT.active_workspace_id) == {"model:langgenius/jina/jina"}
@@ -98,18 +115,18 @@ def test_dataset_reads_normalize_reranking_provider_without_changing_storage(
 
 
 def dataset(**values: object) -> Dataset:
-    return Dataset(
-        **{
-            "id": "dataset",
-            "tenant_id": "tenant",
-            "name": "Dataset",
-            "created_by": "actor",
-            "maintainer": "actor",
-            "indexing_technique": "economy",
-            "permission": "all_team_members",
-            **values,
-        }
+    row = Dataset(
+        id="dataset",
+        tenant_id="tenant",
+        name="Dataset",
+        created_by="actor",
+        maintainer="actor",
+        indexing_technique="economy",
+        permission="all_team_members",
     )
+    for key, value in values.items():
+        setattr(row, key, value)
+    return row
 
 
 def document(**values: object) -> Document:

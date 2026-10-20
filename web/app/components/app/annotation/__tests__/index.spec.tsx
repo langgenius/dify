@@ -1,514 +1,364 @@
-import type { ReactElement } from 'react'
-import type { Mock } from 'vite-plus/test'
-import type { AnnotationItem } from '../type'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
+import type {
+  Annotation as AnnotationData,
+  AnnotationSettingResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { consoleClient } from '@/service/console'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
 import {
-  addAnnotation,
-  delAnnotation,
-  delAnnotations,
-  editAnnotation,
-  fetchAnnotationConfig,
-  fetchAnnotationList,
-  queryAnnotationJobStatus,
-  updateAnnotationScore,
-  updateAnnotationStatus,
-} from '@/service/annotation'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import Annotation from '../index'
-import { AnnotationEnableStatus, JobStatus } from '../type'
 
-let annotationQuota = { size: 0, limit: 10 }
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+const api = vi.hoisted(() => ({
+  list: vi.fn<typeof consoleClient.apps.byAppId.annotations.get>(),
+  add: vi.fn<typeof consoleClient.apps.byAppId.annotations.post>(),
+  remove: vi.fn<typeof consoleClient.apps.byAppId.annotations.byAnnotationId.delete>(),
+  batchRemove: vi.fn<typeof consoleClient.apps.byAppId.annotations.delete>(),
+  edit: vi.fn<typeof consoleClient.apps.byAppId.annotations.byAnnotationId.post>(),
+  config: vi.fn<typeof consoleClient.apps.byAppId.annotationSetting.get>(),
+  status: vi.fn<typeof consoleClient.apps.byAppId.annotationReply.byAction.post>(),
+  job: vi.fn<typeof consoleClient.apps.byAppId.annotationReply.byAction.status.byJobId.get>(),
+  score: vi.fn<typeof consoleClient.apps.byAppId.annotationSettings.byAnnotationSettingId.post>(),
 }))
 
-vi.mock('ahooks', () => ({
-  useDebounce: (value: any) => value,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.annotations.count.get': () => ({ count: 0 }),
+      'apps.byAppId.annotations.byAnnotationId.delete': (input) => api.remove(input),
+      'apps.byAppId.annotations.delete': (input) => api.batchRemove(input),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.annotations.get': (input) => api.list(input),
+      'apps.byAppId.annotations.export.get': () => ({ data: [] }),
+      'apps.byAppId.annotations.post': (input) => api.add(input),
+      'apps.byAppId.annotations.delete': (input) => api.batchRemove(input),
+      'apps.byAppId.annotations.byAnnotationId.delete': (input) => api.remove(input),
+      'apps.byAppId.annotations.byAnnotationId.post': (input) => api.edit(input),
+      'apps.byAppId.annotations.byAnnotationId.hitHistories.get': () => ({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 10,
+        has_more: false,
+      }),
+      'apps.byAppId.annotationSetting.get': (input) => api.config(input),
+      'apps.byAppId.annotationReply.byAction.post': (input) => api.status(input),
+      'apps.byAppId.annotationReply.byAction.status.byJobId.get': (input) => api.job(input),
+      'apps.byAppId.annotationSettings.byAnnotationSettingId.post': (input) => api.score(input),
+    }),
+  }
+})
 
-vi.mock('@/service/annotation', () => ({
-  addAnnotation: vi.fn(),
-  delAnnotation: vi.fn(),
-  delAnnotations: vi.fn(),
-  fetchAnnotationConfig: vi.fn(),
-  editAnnotation: vi.fn(),
-  fetchAnnotationList: vi.fn(),
-  queryAnnotationJobStatus: vi.fn(),
-  updateAnnotationScore: vi.fn(),
-  updateAnnotationStatus: vi.fn(),
-}))
-
-vi.mock('../filter', () => ({
-  default: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="filter">{children}</div>
-  ),
-}))
-
-vi.mock('../empty-element', () => ({
-  default: () => <div data-testid="empty-element" />,
-}))
-
-vi.mock('../header-opts', () => ({
-  default: (props: any) => (
-    <div data-testid="header-opts">
-      <button
-        data-testid="trigger-add"
-        onClick={() => props.onAdd({ question: 'new question', answer: 'new answer' })}
-      >
-        add
-      </button>
-      <button data-testid="trigger-added" onClick={() => props.onAdded()}>
-        added
-      </button>
-    </div>
-  ),
-}))
-
-let latestListProps: any
-
-vi.mock('../list', () => ({
-  List: (props: any) => {
-    latestListProps = props
-    if (!props.list.length) return <div data-testid="list-empty" />
-    return (
-      <div data-testid="list">
-        <button data-testid="list-view" onClick={() => props.onView(props.list[0])}>
-          view
-        </button>
-        <button data-testid="list-remove" onClick={() => props.onRemoved()}>
-          remove
-        </button>
-        <button data-testid="list-batch-delete" onClick={() => props.onBatchDelete()}>
-          batch-delete
-        </button>
-      </div>
-    )
+const item: AnnotationData = {
+  id: 'annotation-1',
+  question: 'Question 1',
+  answer: 'Answer 1',
+  created_at: 1700000000,
+  hit_count: 0,
+}
+const initialConfig: AnnotationSettingResponse = {
+  id: 'config-id',
+  enabled: false,
+  score_threshold: 0.5,
+  embedding_model: {
+    embedding_provider_name: 'openai',
+    embedding_model_name: 'text-embedding-ada-002',
   },
-}))
+}
+let annotations: AnnotationData[]
+let config: AnnotationSettingResponse
 
-vi.mock('../view-annotation-modal', () => ({
-  default: (props: any) => {
-    if (!props.isShow) return null
-    return (
-      <div data-testid="view-modal">
-        <div>{props.item.question}</div>
-        <button data-testid="view-modal-remove" onClick={props.onRemove}>
-          remove
-        </button>
-        <button
-          data-testid="view-modal-save"
-          onClick={() => props.onSave('Edited question', 'Edited answer')}
-        >
-          save
-        </button>
-        <button data-testid="view-modal-close" onClick={props.onHide}>
-          close
-        </button>
-      </div>
-    )
-  },
-}))
-
-vi.mock(
-  '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal',
-  () => ({
-    default: (props: any) =>
-      props.isShow ? (
-        <div data-testid="config-modal">
-          <button
-            data-testid="config-save"
-            onClick={() =>
-              props.onSave(
-                {
-                  embedding_model_name: 'next-model',
-                  embedding_provider_name: 'next-provider',
-                },
-                0.7,
-              )
-            }
-          >
-            save-config
-          </button>
-          <button data-testid="config-hide" onClick={props.onHide}>
-            hide-config
-          </button>
-        </div>
-      ) : null,
-  }),
-)
-vi.mock('@/app/components/billing/annotation-full/modal', () => ({
-  default: (props: any) =>
-    props.show ? (
-      <div data-testid="annotation-full-modal">
-        <button data-testid="hide-annotation-full-modal" onClick={props.onHide}>
-          hide-full
-        </button>
-      </div>
-    ) : null,
-}))
-
-const mockNotify = vi.fn()
-vi.spyOn(toast, 'success').mockImplementation((message, options) => {
-  mockNotify({ type: 'success', message, ...options })
-  return 'toast-success-id'
-})
-vi.spyOn(toast, 'error').mockImplementation((message, options) => {
-  mockNotify({ type: 'error', message, ...options })
-  return 'toast-error-id'
-})
-vi.spyOn(toast, 'warning').mockImplementation((message, options) => {
-  mockNotify({ type: 'warning', message, ...options })
-  return 'toast-warning-id'
-})
-vi.spyOn(toast, 'info').mockImplementation((message, options) => {
-  mockNotify({ type: 'info', message, ...options })
-  return 'toast-info-id'
-})
-const addAnnotationMock = addAnnotation as Mock
-const delAnnotationMock = delAnnotation as Mock
-const delAnnotationsMock = delAnnotations as Mock
-const editAnnotationMock = editAnnotation as Mock
-const fetchAnnotationConfigMock = fetchAnnotationConfig as Mock
-const fetchAnnotationListMock = fetchAnnotationList as Mock
-const queryAnnotationJobStatusMock = queryAnnotationJobStatus as Mock
-const updateAnnotationScoreMock = updateAnnotationScore as Mock
-const updateAnnotationStatusMock = updateAnnotationStatus as Mock
-
-const appDetail = createAppDetailFixture({
-  id: 'app-id',
-  mode: AppModeEnum.CHAT,
-})
-
-const createAnnotation = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({
-  id: overrides.id ?? 'annotation-1',
-  question: overrides.question ?? 'Question 1',
-  answer: overrides.answer ?? 'Answer 1',
-  created_at: overrides.created_at ?? 1700000000,
-  hit_count: overrides.hit_count ?? 0,
-})
-
-const renderComponent = () => render(<Annotation appDetail={appDetail} />)
-
-function render(ui: ReactElement) {
-  return renderWithConsoleQuery(ui, {
-    systemFeatures: { deployment_edition: 'CLOUD' },
-    features: { annotation_quota_limit: annotationQuota },
-  })
+function setup(quota = { size: 0, limit: 10 }) {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [
+        createCatalogModelFixture({
+          model: 'text-embedding-ada-002',
+          label: { en_US: 'Ada Embedding' },
+          model_type: 'text-embedding',
+        }),
+      ],
+    }),
+    createModelCatalogFixture({
+      provider: 'cohere',
+      models: [
+        createCatalogModelFixture({
+          model: 'embed-english',
+          label: { en_US: 'English Embedding' },
+          model_type: 'text-embedding',
+        }),
+      ],
+    }),
+  ])
+  renderWithConsoleQuery(
+    <NuqsTestingAdapter>
+      <Annotation appDetail={createAppDetailFixture({ id: 'app-id', mode: 'chat' })} />
+      <AppToastHost />
+    </NuqsTestingAdapter>,
+    {
+      queryClient,
+      systemFeatures: { deployment_edition: 'CLOUD' },
+      features: { annotation_quota_limit: quota },
+    },
+  )
+  return userEvent.setup()
 }
 
-describe('Annotation', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    latestListProps = undefined
-    fetchAnnotationConfigMock.mockResolvedValue({
-      id: 'config-id',
-      enabled: false,
+beforeEach(() => {
+  for (const mock of Object.values(api)) mock.mockReset()
+  annotations = []
+  config = { ...initialConfig }
+  api.list.mockImplementation(async () => ({
+    data: [...annotations],
+    total: annotations.length,
+    has_more: false,
+    limit: 10,
+    page: 1,
+  }))
+  api.config.mockImplementation(async () => config)
+  api.add.mockImplementation(async ({ body }) => {
+    const added = { ...item, question: body.question, answer: body.answer }
+    annotations.push(added)
+    return added
+  })
+  api.remove.mockImplementation(async () => {
+    annotations = []
+    return { result: 'success' }
+  })
+  api.batchRemove.mockImplementation(async () => {
+    annotations = []
+    return { result: 'success' }
+  })
+  api.edit.mockImplementation(async ({ body }) => {
+    const edited = { ...item, question: body.question, answer: body.answer }
+    annotations = [edited]
+    return edited
+  })
+  api.status.mockImplementation(async ({ params, body }) => {
+    config = {
+      ...config,
+      enabled: params.action === 'enable',
+      id: params.action === 'enable' ? 'enabled-config-id' : config.id,
       embedding_model: {
-        embedding_model_name: 'model',
-        embedding_provider_name: 'provider',
+        embedding_model_name: body.embedding_model_name,
+        embedding_provider_name: body.embedding_provider_name,
       },
+    }
+    return { job_id: 'job-1', job_status: 'completed' }
+  })
+  api.job.mockResolvedValue({ job_id: 'job-1', job_status: 'completed', error_msg: '' })
+  api.score.mockImplementation(async ({ body }) => {
+    config = { ...config, score_threshold: body.score_threshold }
+    return config
+  })
+})
+
+afterEach(() => toast.dismiss())
+
+it('creates an annotation from the empty page and displays the saved record', async () => {
+  const user = setup()
+  expect(await screen.findByText('appAnnotation.noData.title')).toBeVisible()
+  await user.click(
+    await screen.findByRole('button', { name: 'appAnnotation.table.header.addAnnotation' }),
+  )
+  const dialog = await screen.findByRole('dialog', { name: 'appAnnotation.addModal.title' })
+  await user.type(
+    within(dialog).getByRole('textbox', { name: 'appAnnotation.addModal.queryName' }),
+    'New question',
+  )
+  await user.type(
+    within(dialog).getByRole('textbox', { name: 'appAnnotation.addModal.answerName' }),
+    'New answer',
+  )
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.add' }))
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(await screen.findByRole('checkbox', { name: 'New question' })).toBeVisible()
+  expect(screen.getByRole('cell', { name: 'New answer' })).toBeVisible()
+  expect(screen.queryByText('common.api.actionSuccess')).not.toBeInTheDocument()
+  expect(api.add).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-id' },
+    body: { question: 'New question', answer: 'New answer' },
+  })
+})
+
+it('removes a row after confirmation and refreshes the empty state', async () => {
+  annotations = [item]
+  const user = setup()
+  await user.click(
+    await screen.findByRole('button', { name: 'appDebug.feature.annotation.remove' }),
+  )
+  const dialog = await screen.findByRole('alertdialog')
+  expect(api.remove).not.toHaveBeenCalled()
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(await screen.findByText('appAnnotation.noData.title')).toBeVisible()
+  expect(api.remove).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-id', annotation_id: item.id },
+  })
+})
+
+it('keeps a failed batch deletion open for retry and clears the selection after success', async () => {
+  annotations = [item]
+  api.batchRemove.mockRejectedValueOnce(new Error('Delete failed'))
+  const user = setup()
+  await user.click(await screen.findByRole('checkbox', { name: 'Question 1' }))
+  await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+  const dialog = await screen.findByRole('alertdialog', { name: 'appAnnotation.list.delete.title' })
+  expect(api.batchRemove).not.toHaveBeenCalled()
+  const confirm = within(dialog).getByRole('button', { name: 'common.operation.delete' })
+  await user.click(confirm)
+  expect(await screen.findByText('Delete failed')).toBeVisible()
+  expect(dialog).toBeVisible()
+  await user.click(confirm)
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(await screen.findByText('appAnnotation.noData.title')).toBeVisible()
+  expect(screen.queryByText('appAnnotation.batchAction.selected')).not.toBeInTheDocument()
+  expect(screen.queryByText('common.api.actionSuccess')).not.toBeInTheDocument()
+  expect(api.batchRemove).toHaveBeenCalledTimes(2)
+  expect(api.batchRemove).toHaveBeenLastCalledWith({
+    params: { app_id: 'app-id' },
+    query: { annotation_id: [item.id] },
+  })
+})
+
+it('saves edits from the detail drawer and shows them when reopened', async () => {
+  annotations = [item]
+  const user = setup()
+  await user.click(await screen.findByRole('button', { name: 'appDebug.feature.annotation.edit' }))
+  const dialog = await screen.findByRole('dialog', {
+    name: 'appAnnotation.viewModal.annotatedResponse',
+  })
+  await user.click(within(dialog).getAllByRole('button', { name: 'common.operation.edit' })[0]!)
+  await user.type(
+    within(dialog).getByRole('textbox', { name: 'appAnnotation.editModal.yourQuery' }),
+    'Edited question',
+  )
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() =>
+    expect(api.edit).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-id', annotation_id: item.id },
+      body: { question: 'Edited question', answer: 'Answer 1' },
+    }),
+  )
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(await screen.findByRole('checkbox', { name: 'Edited question' })).toBeVisible()
+  expect(screen.queryByText('common.api.actionSuccess')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }))
+  expect(
+    within(
+      await screen.findByRole('dialog', { name: 'appAnnotation.viewModal.annotatedResponse' }),
+    ).getByText('Edited question'),
+  ).toBeVisible()
+})
+
+it('removes an annotation through its detail drawer and closes it', async () => {
+  annotations = [item]
+  const user = setup()
+  await user.click(await screen.findByRole('button', { name: 'appDebug.feature.annotation.edit' }))
+  const dialog = await screen.findByRole('dialog', {
+    name: 'appAnnotation.viewModal.annotatedResponse',
+  })
+  await user.click(
+    within(dialog).getByRole('button', {
+      name: 'appAnnotation.editModal.removeThisCache',
+    }),
+  )
+  const confirm = await screen.findByRole('alertdialog')
+  await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(await screen.findByText('appAnnotation.noData.title')).toBeVisible()
+  expect(screen.queryByText('common.api.actionSuccess')).not.toBeInTheDocument()
+  expect(api.remove).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-id', annotation_id: item.id },
+  })
+})
+
+it('refreshes annotations after the header clear-all action', async () => {
+  annotations = [item]
+  const user = setup()
+  await screen.findByRole('checkbox', { name: 'Question 1' })
+  await user.click(await screen.findByRole('button', { name: 'common.operation.more' }))
+  await user.click(
+    await screen.findByRole('menuitem', { name: 'appAnnotation.table.header.clearAll' }),
+  )
+  const dialog = await screen.findByRole('alertdialog')
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+  expect(await screen.findByText('appAnnotation.noData.title')).toBeVisible()
+  expect(api.batchRemove).toHaveBeenCalledExactlyOnceWith({ params: { app_id: 'app-id' } })
+})
+
+it('shows the quota dialog without enabling annotated replies when the plan is full', async () => {
+  const user = setup({ size: 10, limit: 10 })
+  await user.click(await screen.findByRole('switch'))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText('billing.annotatedResponse.fullTipLine1')).toBeVisible()
+  expect(api.status).not.toHaveBeenCalled()
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(screen.getByRole('switch')).not.toBeChecked()
+})
+
+it('disables annotated replies and reloads settings after the job completes', async () => {
+  config = { ...initialConfig, enabled: true }
+  const user = setup()
+  await waitFor(() => expect(screen.getByRole('switch')).toBeChecked())
+  await user.click(screen.getByRole('switch'))
+  await waitFor(() => expect(screen.getByRole('switch')).not.toBeChecked())
+  expect(api.status).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-id', action: 'disable' },
+    body: {
+      embedding_provider_name: 'openai',
+      embedding_model_name: 'text-embedding-ada-002',
       score_threshold: 0.5,
-    })
-    fetchAnnotationListMock.mockResolvedValue({ data: [], total: 0 })
-    queryAnnotationJobStatusMock.mockResolvedValue({ job_status: JobStatus.completed })
-    updateAnnotationStatusMock.mockResolvedValue({ job_id: 'job-1' })
-    updateAnnotationScoreMock.mockResolvedValue(undefined)
-    editAnnotationMock.mockResolvedValue(undefined)
-    annotationQuota = { size: 0, limit: 10 }
+    },
   })
-
-  it('should render empty element when no annotations are returned', async () => {
-    renderComponent()
-
-    expect(screen.getByRole('heading', { name: 'appAnnotation.title' })).toBeInTheDocument()
-    expect(screen.getByText('appAnnotation.noData.description')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'common.operation.learnMore' })).toHaveAttribute(
-      'href',
-      'https://docs.example.com/use-dify/monitor/annotation-reply',
-    )
-    expect(await screen.findByTestId('empty-element')).toBeInTheDocument()
-    expect(fetchAnnotationListMock).toHaveBeenCalledWith(
-      appDetail.id,
-      expect.objectContaining({
-        page: 1,
-        keyword: '',
-      }),
-    )
+  expect(api.job).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-id', action: 'disable', job_id: 'job-1' },
   })
+})
 
-  it('should handle annotation creation and refresh list data', async () => {
-    const annotation = createAnnotation()
-    fetchAnnotationListMock.mockResolvedValue({ data: [annotation], total: 1 })
-    addAnnotationMock.mockResolvedValue(undefined)
-
-    renderComponent()
-
-    await screen.findByTestId('list')
-    fireEvent.click(screen.getByTestId('trigger-add'))
-
-    await waitFor(() => {
-      expect(addAnnotationMock).toHaveBeenCalledWith(appDetail.id, {
-        question: 'new question',
-        answer: 'new answer',
-      })
-      expect(mockNotify).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'common.api.actionSuccess',
-          type: 'success',
-        }),
-      )
-    })
-    expect(fetchAnnotationListMock).toHaveBeenCalledTimes(2)
+it('enables replies with the selected model and saves the score to the returned settings id', async () => {
+  const user = setup()
+  await user.click(await screen.findByRole('switch'))
+  const dialog = await screen.findByRole('dialog', { name: 'appAnnotation.initSetup.title' })
+  await user.click(within(dialog).getByRole('button', { name: /Ada Embedding/ }))
+  await user.click(await screen.findByRole('button', { name: /English Embedding/ }))
+  within(dialog).getByRole('slider').focus()
+  await user.keyboard('{ArrowRight}')
+  expect(within(dialog).getByRole('slider')).toHaveAttribute('aria-valuenow', '0.51')
+  await user.click(
+    within(dialog).getByRole('button', { name: 'appAnnotation.initSetup.confirmBtn' }),
+  )
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(screen.getByRole('switch')).toBeChecked()
+  expect(api.status).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-id', action: 'enable' },
+    body: {
+      embedding_provider_name: 'cohere',
+      embedding_model_name: 'embed-english',
+      score_threshold: 0.51,
+    },
   })
-
-  it('should refetch the list after a row is removed', async () => {
-    fetchAnnotationListMock.mockResolvedValue({ data: [createAnnotation()], total: 1 })
-
-    renderComponent()
-    await screen.findByTestId('list')
-    const fetchCount = fetchAnnotationListMock.mock.calls.length
-
-    fireEvent.click(screen.getByTestId('list-remove'))
-
-    await waitFor(() => {
-      expect(fetchAnnotationListMock.mock.calls.length).toBeGreaterThan(fetchCount)
-    })
+  expect(api.job).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-id', action: 'enable', job_id: 'job-1' },
   })
-
-  it('should support viewing items and running batch deletion success flow', async () => {
-    const annotation = createAnnotation()
-    fetchAnnotationListMock.mockResolvedValue({ data: [annotation], total: 1 })
-    delAnnotationsMock.mockResolvedValue(undefined)
-    delAnnotationMock.mockResolvedValue(undefined)
-
-    renderComponent()
-    await screen.findByTestId('list')
-
-    await act(async () => {
-      latestListProps.onSelectedIdsChange([annotation.id])
-    })
-    await waitFor(() => {
-      expect(latestListProps.selectedIds).toEqual([annotation.id])
-    })
-
-    await act(async () => {
-      await latestListProps.onBatchDelete()
-    })
-    await waitFor(() => {
-      expect(delAnnotationsMock).toHaveBeenCalledWith(appDetail.id, [annotation.id])
-      expect(mockNotify).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'success',
-        }),
-      )
-      expect(latestListProps.selectedIds).toEqual([])
-    })
-
-    fireEvent.click(screen.getByTestId('list-view'))
-    expect(screen.getByTestId('view-modal')).toBeInTheDocument()
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('view-modal-remove'))
-    })
-    await waitFor(() => {
-      expect(delAnnotationMock).toHaveBeenCalledWith(appDetail.id, annotation.id)
-    })
-  })
-
-  it('should show an error notification when batch deletion fails', async () => {
-    const annotation = createAnnotation()
-    fetchAnnotationListMock.mockResolvedValue({ data: [annotation], total: 1 })
-    const error = new Error('failed')
-    delAnnotationsMock.mockRejectedValue(error)
-
-    renderComponent()
-    await screen.findByTestId('list')
-
-    await act(async () => {
-      latestListProps.onSelectedIdsChange([annotation.id])
-    })
-    await waitFor(() => {
-      expect(latestListProps.selectedIds).toEqual([annotation.id])
-    })
-
-    await act(async () => {
-      await expect(latestListProps.onBatchDelete()).rejects.toThrow(error.message)
-    })
-
-    await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: error.message,
-      })
-      expect(latestListProps.selectedIds).toEqual([annotation.id])
-    })
-  })
-
-  it('should show the annotation-full modal when enabling annotations exceeds the plan quota', async () => {
-    annotationQuota = { size: 10, limit: 10 }
-
-    renderComponent()
-
-    const toggle = await screen.findByRole('switch')
-    fireEvent.click(toggle)
-
-    expect(screen.getByTestId('annotation-full-modal')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByTestId('hide-annotation-full-modal'))
-    expect(screen.queryByTestId('annotation-full-modal')).not.toBeInTheDocument()
-  })
-
-  it('should disable annotations and refetch config after the async job completes', async () => {
-    fetchAnnotationConfigMock
-      .mockResolvedValueOnce({
-        id: 'config-id',
-        enabled: true,
-        embedding_model: {
-          embedding_model_name: 'model',
-          embedding_provider_name: 'provider',
-        },
-        score_threshold: 0.5,
-      })
-      .mockResolvedValueOnce({
-        id: 'config-id',
-        enabled: false,
-        embedding_model: {
-          embedding_model_name: 'model',
-          embedding_provider_name: 'provider',
-        },
-        score_threshold: 0.5,
-      })
-
-    renderComponent()
-
-    const toggle = await screen.findByRole('switch')
-    await waitFor(() => {
-      expect(toggle).toHaveAttribute('aria-checked', 'true')
-    })
-    fireEvent.click(toggle)
-
-    await waitFor(() => {
-      expect(updateAnnotationStatusMock).toHaveBeenCalledWith(
-        appDetail.id,
-        AnnotationEnableStatus.disable,
-        expect.objectContaining({
-          embedding_model_name: 'model',
-          embedding_provider_name: 'provider',
-        }),
-        0.5,
-      )
-      expect(queryAnnotationJobStatusMock).toHaveBeenCalledWith(
-        appDetail.id,
-        AnnotationEnableStatus.disable,
-        'job-1',
-      )
-      expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false')
-    })
-  })
-
-  it('should save annotation config changes and update the score when the modal confirms', async () => {
-    fetchAnnotationConfigMock.mockResolvedValue({
-      id: 'config-id',
-      enabled: false,
-      embedding_model: {
-        embedding_model_name: 'model',
-        embedding_provider_name: 'provider',
-      },
-      score_threshold: 0.5,
-    })
-
-    renderComponent()
-
-    const toggle = await screen.findByRole('switch')
-    fireEvent.click(toggle)
-
-    expect(screen.getByTestId('config-modal')).toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('config-save'))
-
-    await waitFor(() => {
-      expect(updateAnnotationStatusMock).toHaveBeenCalledWith(
-        appDetail.id,
-        AnnotationEnableStatus.enable,
-        {
-          embedding_model_name: 'next-model',
-          embedding_provider_name: 'next-provider',
-        },
-        0.7,
-      )
-      expect(updateAnnotationScoreMock).toHaveBeenCalledWith(appDetail.id, 'config-id', 0.7)
-      expect(mockNotify).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'common.api.actionSuccess',
-          type: 'success',
-        }),
-      )
-    })
-  })
-
-  it('should refresh the list from the header shortcut and allow saving or closing the view modal', async () => {
-    const annotation = createAnnotation()
-    fetchAnnotationListMock.mockResolvedValue({ data: [annotation], total: 1 })
-
-    renderComponent()
-
-    await screen.findByTestId('list')
-    fireEvent.click(screen.getByTestId('list-view'))
-
-    fireEvent.click(screen.getByTestId('view-modal-save'))
-
-    await waitFor(() => {
-      expect(editAnnotationMock).toHaveBeenCalledWith(appDetail.id, annotation.id, {
-        question: 'Edited question',
-        answer: 'Edited answer',
-      })
-    })
-
-    fireEvent.click(screen.getByTestId('view-modal-close'))
-    expect(screen.queryByTestId('view-modal')).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByTestId('trigger-added'))
-
-    expect(fetchAnnotationListMock).toHaveBeenCalled()
-  })
-
-  it('should clear selections on cancel and hide the config modal when requested', async () => {
-    const annotation = createAnnotation()
-    fetchAnnotationConfigMock.mockResolvedValue({
-      id: 'config-id',
-      enabled: true,
-      embedding_model: {
-        embedding_model_name: 'model',
-        embedding_provider_name: 'provider',
-      },
-      score_threshold: 0.5,
-    })
-    fetchAnnotationListMock.mockResolvedValue({ data: [annotation], total: 1 })
-
-    renderComponent()
-
-    await screen.findByTestId('list')
-
-    await act(async () => {
-      latestListProps.onSelectedIdsChange([annotation.id])
-    })
-    await act(async () => {
-      latestListProps.onSelectedIdsChange([])
-    })
-
-    expect(latestListProps.selectedIds).toEqual([])
-
-    const configButton = screen.getByRole('button', {
-      name: 'appAnnotation.initSetup.configTitle',
-    })
-    fireEvent.click(configButton)
-    expect(await screen.findByTestId('config-modal')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByTestId('config-hide'))
-    expect(screen.queryByTestId('config-modal')).not.toBeInTheDocument()
+  expect(api.score).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-id', annotation_setting_id: 'enabled-config-id' },
+    body: { score_threshold: 0.51 },
   })
 })

@@ -4,9 +4,9 @@ import type {
   AppPartial,
   EnvironmentVariableItemResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { FormEventHandler, MouseEvent, ReactElement } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
-import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import {
   AlertDialog,
@@ -15,6 +15,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -26,6 +27,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@langgenius/dify-ui/context-menu'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,8 +43,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { AppMetadataForm } from '@/app/components/app/app-metadata'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import {
@@ -58,14 +61,10 @@ import { AccessMode } from '@/models/access-control'
 import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 
-const EditAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
-  ssr: false,
-})
 const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), {
   ssr: false,
 })
@@ -78,9 +77,9 @@ const AppExportConfirmModal = dynamic(() => import('@/app/components/app/export-
 
 const OPERATIONS_MENU_POPUP_CLASS_NAME = 'min-w-[216px]'
 const APP_MODES_REQUIRING_PUBLISHED_WORKFLOW_IN_EXPLORE = new Set<AppPartial['mode']>([
-  AppModeEnum.ADVANCED_CHAT,
-  AppModeEnum.WORKFLOW,
-])
+  'advanced-chat',
+  'workflow',
+] as const)
 
 function requiresPublishedWorkflowInExplore(app: AppPartial) {
   return APP_MODES_REQUIRING_PUBLISHED_WORKFLOW_IN_EXPLORE.has(app.mode)
@@ -274,7 +273,6 @@ export function AppCardInteractions({
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { push } = useRouter()
   const { mutate: copyApp } = useMutation(consoleQuery.apps.byAppId.copy.post.mutationOptions())
-  const { mutateAsync: updateApp } = useMutation(consoleQuery.apps.byAppId.put.mutationOptions())
   const { mutate: deleteApp, isPending: isDeleting } = useMutation(
     consoleQuery.apps.byAppId.delete.mutationOptions(),
   )
@@ -285,6 +283,11 @@ export function AppCardInteractions({
     consoleQuery.apps.byAppId.star.delete.mutationOptions(),
   )
 
+  const editActionsRef = useRef<DialogActions>(null)
+  const edit = useMutation(
+    consoleQuery.apps.byAppId.put.mutationOptions({ context: { silent: true } }),
+  )
+  const editNameRef = useRef<HTMLInputElement>(null)
   const [activeDialog, setActiveDialog] = useState<
     'delete' | 'duplicate' | 'edit' | 'switch' | null
   >(null)
@@ -296,7 +299,12 @@ export function AppCardInteractions({
   const isOperationsMenuOpen = operationsMenu.open
   const setIsOperationsMenuOpen = operationsMenu.onOpenChange
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariableItemResponse[]>([])
-  const { exportAppDsl, isExporting: isAppDslExporting } = useExportAppDsl()
+  const {
+    exportAppDsl,
+    isExporting: isAppDslExporting,
+    errorMessage: exportError,
+    reset: resetExport,
+  } = useExportAppDsl()
   const { exportWorkflowAppDsl, isExporting: isWorkflowAppDslExporting } = useExportWorkflowAppDsl()
   const isExporting = isAppDslExporting || isWorkflowAppDslExporting
   const isTogglingStar = isStarring || isUnstarring
@@ -396,37 +404,6 @@ export function AppCardInteractions({
     push(`/app/${app.id}/access-config`)
   }, [app.id, push, setIsOperationsMenuOpen])
 
-  const onEdit: CreateAppModalProps['onConfirm'] = useCallback(
-    async ({
-      name,
-      icon_type,
-      icon,
-      icon_background,
-      description,
-      use_icon_as_answer_icon,
-      max_active_requests,
-    }) => {
-      try {
-        await updateApp({
-          params: { app_id: app.id },
-          body: {
-            name,
-            icon_type,
-            icon,
-            icon_background,
-            description,
-            use_icon_as_answer_icon,
-            max_active_requests,
-          },
-        })
-        setActiveDialog(null)
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : t(($) => $.editFailed, { ns: 'app' }))
-      }
-    },
-    [app.id, t, updateApp],
-  )
-
   const onCopy: DuplicateAppModalProps['onConfirm'] = ({
     name,
     icon_type,
@@ -469,16 +446,21 @@ export function AppCardInteractions({
   }
 
   const onExport = async (include = false) => {
-    const result = await exportAppDsl({ appId: app.id, appName: app.name, includeSecret: include })
+    const result = await exportAppDsl({
+      appId: app.id,
+      appName: app.name,
+      includeSecret: include,
+      feedback: 'dialog',
+    })
     return result.status === 'downloaded'
   }
 
   const exportCheck = async () => {
     if (isExporting) return
 
+    resetExport()
     setIsOperationsMenuOpen(false)
-    const isWorkflowApp =
-      app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT
+    const isWorkflowApp = app.mode === 'workflow' || app.mode === 'advanced-chat'
     const result = isWorkflowApp
       ? await exportWorkflowAppDsl({ appId: app.id, appName: app.name })
       : await exportAppDsl({ appId: app.id, appName: app.name })
@@ -515,8 +497,7 @@ export function AppCardInteractions({
   const shouldShowDuplicateOption = canCreateApp
   const shouldShowExportOption = appACLCapabilities.canImportExportDSL
   const shouldShowSwitchOption =
-    appACLCapabilities.canEdit &&
-    (app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT)
+    appACLCapabilities.canEdit && (app.mode === 'completion' || app.mode === 'chat')
   const shouldShowAccessConfigOption = appACLCapabilities.canAccessConfig
   const shouldShowDeleteOption = appACLCapabilities.canDelete
   const shouldShowOperationsMenu =
@@ -607,26 +588,13 @@ export function AppCardInteractions({
                 render={
                   <IconButton
                     size="lg"
-                    aria-label={
-                      isExporting
-                        ? t(($) => $['operation.exporting'], { ns: 'common' })
-                        : t(($) => $['operation.moreActionsFor'], {
-                            ns: 'common',
-                            name: app.name,
-                          })
-                    }
-                    disabled={isExporting}
+                    aria-label={t(($) => $['operation.moreActionsFor'], {
+                      ns: 'common',
+                      name: app.name,
+                    })}
                     className="data-popup-open:bg-state-base-hover"
                   >
-                    <span
-                      aria-hidden
-                      className={cn(
-                        'size-4.5 text-text-tertiary',
-                        isExporting
-                          ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
-                          : 'i-ri-more-fill',
-                      )}
-                    />
+                    <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
                   </IconButton>
                 }
               />
@@ -645,23 +613,39 @@ export function AppCardInteractions({
           )}
         </div>
       </div>
-      {activeDialog === 'edit' && (
-        <EditAppModal
-          isEditModal
-          appName={app.name}
-          appIconType={appIconType}
-          appIcon={app.icon ?? ''}
-          appIconBackground={app.icon_background}
-          appIconUrl={app.icon_url}
-          appDescription={app.description ?? ''}
-          appMode={app.mode}
-          appUseIconAsAnswerIcon={app.use_icon_as_answer_icon ?? false}
-          max_active_requests={app.max_active_requests ?? null}
-          show
-          onConfirm={onEdit}
-          onHide={() => setActiveDialog(null)}
-        />
-      )}
+      <Dialog
+        actionsRef={editActionsRef}
+        open={activeDialog === 'edit'}
+        disablePointerDismissal
+        onOpenChange={(open, details) => {
+          if (!open && edit.isPending && details.reason !== 'imperative-action') details.cancel()
+          else if (!open) setActiveDialog(null)
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            edit.reset()
+          }
+        }}
+      >
+        <DialogContent initialFocus={editNameRef}>
+          <AppMetadataForm
+            appDetail={app}
+            nameInputRef={editNameRef}
+            operation="edit"
+            isPending={edit.isPending}
+            error={edit.error?.message}
+            onSubmit={(body) => {
+              if (edit.isPending) return
+              edit.mutate(
+                { params: { app_id: app.id }, body },
+                {
+                  onSuccess: () => editActionsRef.current?.close(),
+                },
+              )
+            }}
+          />
+        </DialogContent>
+      </Dialog>
       {activeDialog === 'duplicate' && (
         <DuplicateAppModal
           appName={app.name}
@@ -675,20 +659,26 @@ export function AppCardInteractions({
         />
       )}
       {activeDialog === 'switch' && (
-        <SwitchAppModal show sourceApp={app} onClose={() => setActiveDialog(null)} />
+        <SwitchAppModal
+          open
+          sourceApp={app}
+          onOpenChange={(open) => {
+            if (!open) setActiveDialog(null)
+          }}
+        />
       )}
       <AlertDialog open={activeDialog === 'delete'} onOpenChange={onDeleteDialogOpenChange}>
         <AlertDialogContent>
-          <form className="flex flex-col" onSubmit={onDeleteDialogSubmit}>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <form onSubmit={onDeleteDialogSubmit}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
                 {t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}
               </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              <AlertDialogDescription>
                 {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
-              <Field name="confirm-app-name" className="mt-2">
-                <FieldLabel className="system-sm-regular">
+              <Field name="confirm-app-name">
+                <FieldLabel>
                   <Trans
                     i18nKey={($) => $.deleteAppConfirmInputLabel}
                     ns="app"
@@ -700,7 +690,7 @@ export function AppCardInteractions({
                     }}
                   />
                 </FieldLabel>
-                <InputGroup className="border-components-input-border-hover">
+                <InputGroup>
                   <InputGroupInput
                     type="text"
                     autoComplete="off"
@@ -709,19 +699,18 @@ export function AppCardInteractions({
                     value={confirmDeleteInput}
                     onValueChange={setConfirmDeleteInput}
                   />
-                  <InputGroupAddon align="inline-end" className="min-w-20 justify-end pe-1.75">
+                  <InputGroupAddon align="inline-end">
                     <Button
                       variant="tertiary"
                       size="small"
                       onClick={() => setConfirmDeleteInput(app.name)}
-                      className="rounded-full px-2.5"
                     >
                       {t(($) => $['operation.fill'], { ns: 'common' })}
                     </Button>
                   </InputGroupAddon>
                 </InputGroup>
               </Field>
-            </div>
+            </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancelButton type="button" disabled={isDeleting}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
@@ -740,6 +729,7 @@ export function AppCardInteractions({
       {secretEnvList.length > 0 && (
         <AppExportConfirmModal
           envList={secretEnvList}
+          errorMessage={exportError}
           isExporting={isExporting}
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}

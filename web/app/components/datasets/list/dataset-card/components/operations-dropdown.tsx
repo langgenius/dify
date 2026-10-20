@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -22,7 +22,7 @@ import { getDatasetACLCapabilities } from '@/utils/permission'
 import { isDatasetAvailable } from '../availability'
 
 type OperationsDropdownProps = {
-  dataset: DataSet
+  dataset: DatasetDetailWithPartialMembersResponse
   openRenameModal: () => void
   handleExportPipeline: (include?: boolean) => void
   detectIsUsedByApp: () => void

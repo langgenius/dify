@@ -12,13 +12,6 @@ from flask import Flask
 from flask.views import MethodView as FlaskMethodView
 from werkzeug.exceptions import UnprocessableEntity
 
-from tests.unit_tests.config_override import apply_config_overrides
-
-_NEEDS_METHOD_VIEW_CLEANUP = False
-if not hasattr(builtins, "MethodView"):
-    builtins.__dict__["MethodView"] = FlaskMethodView
-    _NEEDS_METHOD_VIEW_CLEANUP = True
-
 import controllers.console.extension as module
 from constants import HIDDEN_VALUE
 from controllers.console.extension import (
@@ -28,9 +21,6 @@ from controllers.console.extension import (
     CodeBasedExtensionAPI,
 )
 from enums import DeploymentEdition
-
-if _NEEDS_METHOD_VIEW_CLEANUP:
-    del builtins.__dict__["MethodView"]
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant
 from services.api_based_extension_application_service import (
@@ -40,6 +30,15 @@ from services.api_based_extension_application_service import (
     APIBasedExtensionRecord,
     APIBasedExtensionUpdate,
 )
+from tests.unit_tests.config_override import apply_config_overrides
+
+_NEEDS_METHOD_VIEW_CLEANUP = False
+if not hasattr(builtins, "MethodView"):
+    builtins.__dict__["MethodView"] = FlaskMethodView
+    _NEEDS_METHOD_VIEW_CLEANUP = True
+
+if _NEEDS_METHOD_VIEW_CLEANUP:
+    del builtins.__dict__["MethodView"]
 
 
 def unwrap(func: Callable[..., object]) -> Callable[..., object]:
@@ -120,7 +119,8 @@ def extensions_service() -> Iterator[MagicMock]:
 
 
 def test_code_based_extension_get_returns_service_data(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    service_result = [{"entrypoint": "main:agent"}]
+    form_schema: list[dict[str, object]] = []
+    service_result = [{"name": "custom_tool", "label": {"en-US": "Custom tool"}, "form_schema": form_schema}]
     service_mock = MagicMock(return_value=service_result)
     monkeypatch.setattr(
         "controllers.console.extension.CodeBasedExtensionService.get_code_based_extension",

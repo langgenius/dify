@@ -20,6 +20,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound
 
 import models.workflow as workflow_models
 import services
+import services.rag_pipeline.rag_pipeline as rag_pipeline_service
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as workflow_controller
 from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
@@ -53,6 +54,7 @@ from models.dataset import Pipeline
 from models.enums import CreatorUserRole
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from tests.unit_tests.controllers.error_body import raised_error
 
 pytestmark = pytest.mark.usefixtures("pipeline_application")
 
@@ -82,6 +84,7 @@ def sqlite_database(
     database = SQLiteDatabase(engine=sqlite_engine, session=database_session)
     monkeypatch.setattr(workflow_controller, "db", database)
     monkeypatch.setattr(workflow_models, "db", database)
+    monkeypatch.setattr(rag_pipeline_service, "db", database)
 
     with database_session() as session:
         default_author = Account(name="Default Author", email="default-author@example.com")
@@ -336,7 +339,7 @@ class TestDraftWorkflowApi:
         with (
             app.test_request_context("/", data="bad-json", headers={"Content-Type": "text/plain"}),
         ):
-            response, status = method(api, user, pipeline)
+            response, status = raised_error(lambda: method(api, user, pipeline))
             assert status == 400
 
     def test_restore_published_workflow_to_draft_success(self, app: Flask) -> None:
@@ -489,11 +492,46 @@ class TestDraftNodeRun:
                 return_value=service,
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="Workflow node execution not found"):
                 method(api, NodeRunRequiredPayload(inputs={}), user, pipeline, "node")
 
 
 class TestPublishedPipelineApis:
+    def test_get_published_workflow_preserves_response_fields(
+        self, app: Flask, workflow_author: Account, sqlite_database: scoped_session[Session]
+    ) -> None:
+        workflow = make_workflow(id=str(uuid4()), created_by=workflow_author.id)
+        sqlite_database.add(workflow)
+        sqlite_database.commit()
+        pipeline = make_pipeline(
+            id=workflow.app_id,
+            tenant_id=workflow.tenant_id,
+            workflow_id=workflow.id,
+            is_published=True,
+        )
+
+        with app.test_request_context("/"):
+            result = unwrap(PublishedRagPipelineApi.get)(PublishedRagPipelineApi(), pipeline)
+
+        assert result["id"] == workflow.id
+        assert result["graph"] == {"nodes": [], "edges": []}
+        assert result["hash"] == workflow.unique_hash
+        assert result["created_by"]["id"] == workflow_author.id
+
+    @pytest.mark.parametrize("is_published", [False, True])
+    def test_get_without_published_workflow_returns_null(self, app: Flask, is_published: bool) -> None:
+        pipeline = make_pipeline(
+            id=DEFAULT_WORKFLOW_APP_ID,
+            tenant_id=DEFAULT_WORKFLOW_TENANT_ID,
+            workflow_id=str(uuid4()),
+            is_published=is_published,
+        )
+
+        with app.test_request_context("/"):
+            result = unwrap(PublishedRagPipelineApi.get)(PublishedRagPipelineApi(), pipeline)
+
+        assert result is None
+
     def test_publish_success(self, app: Flask) -> None:
         api = PublishedRagPipelineApi()
         method = unwrap(api.post)
@@ -549,7 +587,27 @@ class TestMiscApis:
 
         service = MagicMock()
         recommended_plugins = {
-            "installed_recommended_plugins": [{"id": "p1"}],
+            "installed_recommended_plugins": [
+                {
+                    "id": "p1",
+                    "author": "langgenius",
+                    "name": "p1",
+                    "description": {
+                        "en_US": "Plugin one",
+                        "zh_Hans": "Plugin one",
+                        "pt_BR": "Plugin one",
+                        "ja_JP": "Plugin one",
+                    },
+                    "icon": "/icon.svg",
+                    "label": {
+                        "en_US": "Plugin one",
+                        "zh_Hans": "Plugin one",
+                        "pt_BR": "Plugin one",
+                        "ja_JP": "Plugin one",
+                    },
+                    "type": "builtin",
+                }
+            ],
             "uninstalled_recommended_plugins": [{"id": "p2"}],
         }
         service.get_recommended_plugins.return_value = recommended_plugins
@@ -595,7 +653,7 @@ class TestDefaultBlockConfigApi:
         pipeline = make_pipeline()
 
         with app.test_request_context("/?q=bad-json"):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="Invalid filters"):
                 method(api, DefaultBlockConfigQuery(q="bad-json"), pipeline, "llm")
 
 
@@ -673,8 +731,9 @@ class TestRagPipelineByIdApi:
         user = make_account()
 
         with app.test_request_context("/", json={}):
-            result, status = method(api, WorkflowUpdatePayload(), user, pipeline, "w1")
+            result, status = raised_error(lambda: method(api, WorkflowUpdatePayload(), user, pipeline, "w1"))
             assert status == 400
+            assert result == {"code": "invalid_param", "message": "No valid fields to update"}
 
     @pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])
     def test_delete_retires_candidates_only_after_transaction_exit(

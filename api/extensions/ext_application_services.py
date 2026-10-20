@@ -69,6 +69,7 @@ from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
+from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
@@ -139,6 +140,11 @@ from services.knowledge.api_key_service import DatasetApiKeyService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
 from services.message_suggested_questions_service import MessageSuggestedQuestions
+from services.network_access_group_gateway import (
+    BillingNetworkAccessGroupEntitlementGateway,
+    NetworkAccessGroupGateway,
+)
+from services.network_access_group_service import NetworkAccessGroupService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.oauth_device_adapters import (
@@ -167,6 +173,7 @@ from services.recommended_app_query_service import RecommendedAppQueryService
 from services.remote_file_service import RemoteFileService
 from services.resource_access_token_service import ResourceAccessTokenService
 from services.retention.workflow_run.archive_download_adapters import (
+    dispatch_workflow_run_archive_deletion_task,
     dispatch_workflow_run_archive_download_task,
     sign_workflow_run_archive_download_url,
 )
@@ -292,6 +299,7 @@ class ApplicationServices:
     init_validation: InitValidationService
     installed_apps: InstalledAppServices
     notifications: NotificationService
+    network_access_groups: NetworkAccessGroupService
     step_by_step_tour: StepByStepTourService
     recommended_app_queries: RecommendedAppQueryService
     recommended_app_packages: RecommendedAppPackageService
@@ -504,6 +512,7 @@ def build_application_services(
         activation_accounts=activation_accounts,
     )
     workspace_services = build_workspace_services(
+        database_client=database_client,
         workspaces=workspace_repository,
         accounts=accounts,
         files=file_service,
@@ -657,6 +666,16 @@ def build_application_services(
         notifications=NotificationService(
             notifications=BillingNotificationGateway(),
         ),
+        network_access_groups=NetworkAccessGroupService(
+            control_plane=NetworkAccessGroupGateway(
+                base_url=dify_config.NETWORK_ACCESS_API_URL,
+                fallback_base_url=BillingService.base_url,
+                secret_key=BillingService.secret_key,
+            ),
+            apps=SQLAlchemyNetworkAccessGroupAppRepository(session_factory=database_client),
+            memberships=workspace_repository,
+            entitlement=BillingNetworkAccessGroupEntitlementGateway(),
+        ),
         step_by_step_tour=StepByStepTourService(
             accounts=accounts,
             states=SQLAlchemyStepByStepTourStateRepository(session_factory=database_client),
@@ -677,6 +696,7 @@ def build_application_services(
             tasks=WorkflowRunArchiveDownloadTaskCache(redis=redis),
             dispatcher=dispatch_workflow_run_archive_download_task,
             sign_download_url=sign_workflow_run_archive_download_url,
+            deletion_dispatcher=dispatch_workflow_run_archive_deletion_task,
         ),
         workflow_runs=WorkflowRunService(
             workflow_runs=workflow_run_repository,

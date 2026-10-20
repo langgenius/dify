@@ -1,9 +1,10 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { toChunkingMode } from '@/app/components/datasets/dataset-fields'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { DOC_FORM_ICON_CLASS_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
 import { isDatasetAvailable } from '../availability'
@@ -13,13 +14,13 @@ const docModeInfoClassName =
   'flex min-h-3 items-center gap-x-3 system-2xs-medium-uppercase text-text-tertiary'
 
 type DatasetCardHeaderProps = {
-  dataset: DataSet
+  dataset: DatasetDetailWithPartialMembersResponse
   nameId?: string
 }
 
 // DocModeInfo component - placed before usage
 type DocModeInfoProps = {
-  dataset: DataSet
+  dataset: DatasetDetailWithPartialMembersResponse
   isExternalProvider: boolean
   isShowDocModeInfo: boolean
 }
@@ -42,12 +43,11 @@ const DocModeInfo = ({ dataset, isExternalProvider, isShowDocModeInfo }: DocMode
 
   const indexingText = dataset.indexing_technique
     ? formatIndexingTechniqueAndMethod(
-        dataset.indexing_technique as 'economy' | 'high_quality',
-        dataset.retrieval_model_dict?.search_method as Parameters<
-          typeof formatIndexingTechniqueAndMethod
-        >[1],
+        dataset.indexing_technique,
+        dataset.retrieval_model_dict.search_method,
       )
     : ''
+  const chunkingMode = toChunkingMode(dataset.doc_form)
 
   return (
     <div className={docModeInfoClassName}>
@@ -56,12 +56,12 @@ const DocModeInfo = ({ dataset, isExternalProvider, isShowDocModeInfo }: DocMode
           {t(($) => $['cornerLabel.pipeline'], { ns: 'dataset' })}
         </span>
       )}
-      {isShowDocModeInfo && !!dataset.doc_form && (
+      {isShowDocModeInfo && !!chunkingMode && (
         <span
           className="max-w-full min-w-0 truncate"
-          title={t(($) => $[`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`], { ns: 'dataset' })}
+          title={t(($) => $[`chunkingMode.${DOC_FORM_TEXT[chunkingMode]}`], { ns: 'dataset' })}
         >
-          {t(($) => $[`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`], { ns: 'dataset' })}
+          {t(($) => $[`chunkingMode.${DOC_FORM_TEXT[chunkingMode]}`], { ns: 'dataset' })}
         </span>
       )}
       {isShowDocModeInfo && dataset.indexing_technique && indexingText && (
@@ -94,9 +94,8 @@ const DatasetCardHeader = ({ dataset, nameId }: DatasetCardHeaderProps) => {
     (dataset.runtime_mode !== 'rag_pipeline' || dataset.is_published),
   )
 
-  const chunkingModeIcon = dataset.doc_form
-    ? DOC_FORM_ICON_CLASS_WITH_BG[dataset.doc_form]
-    : React.Fragment
+  const chunkingMode = toChunkingMode(dataset.doc_form)
+  const chunkingModeIcon = chunkingMode ? DOC_FORM_ICON_CLASS_WITH_BG[chunkingMode] : React.Fragment
   const iconClassName = isExternalProvider ? DOC_FORM_ICON_CLASS_WITH_BG.external : chunkingModeIcon
 
   const iconInfo = useMemo(
@@ -118,13 +117,7 @@ const DatasetCardHeader = ({ dataset, nameId }: DatasetCardHeaderProps) => {
       )}
     >
       <div className="relative shrink-0">
-        <AppIcon
-          size="large"
-          iconType={iconInfo.icon_type}
-          icon={iconInfo.icon}
-          background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
-          imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
-        />
+        <AppIcon size="large" icon={iconInfo} />
         {(isShowChunkingModeIcon || isExternalProvider) && (
           <div className="absolute -right-1 -bottom-1 z-5">
             <span aria-hidden className={cn(iconClassName, 'size-4')} />

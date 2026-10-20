@@ -1,9 +1,9 @@
 import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { selectPipelineDependencies } from '@/app/components/rag-pipeline/utils/query-select'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { useCheckPipelineDependencies } from '@/service/use-pipeline'
 import { getErrorMessage } from '@/utils/error-message'
 import { useStore as usePluginDependenciesStore } from './store'
 
@@ -14,14 +14,19 @@ export const usePluginDependencies = () => {
       context: { silent: true },
     }),
   )
-  const { mutateAsync: checkPipelineDependencies } = useCheckPipelineDependencies()
+  const { mutateAsync: checkPipelineDependencies } = useMutation(
+    consoleQuery.rag.pipelines.imports.byPipelineId.checkDependencies.get.mutationOptions(),
+  )
 
   const handleCheckPluginDependencies = useCallback(
     async (id: string, isPipeline = false) => {
       const { setDependencies } = usePluginDependenciesStore.getState()
       if (isPipeline) {
-        const { leaked_dependencies } = await checkPipelineDependencies(id)
-        setDependencies(leaked_dependencies)
+        setDependencies(
+          selectPipelineDependencies(
+            await checkPipelineDependencies({ params: { pipeline_id: id } }),
+          ),
+        )
         return true
       }
 

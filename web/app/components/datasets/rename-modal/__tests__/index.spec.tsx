@@ -1,9 +1,11 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import RenameDatasetModal from '../index'
 
 const { mockToast } = vi.hoisted(() => {
@@ -30,36 +32,37 @@ vi.mock('@/service/datasets', () => ({
 
 // The mock returns 'ns.key' format, e.g., 'common.operation.cancel'
 
+mockEmojiData()
+
 describe('RenameDatasetModal', () => {
   // Create a base dataset with emoji icon
-  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+  const createMockDataset = (
+    overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+  ): DatasetDetailWithPartialMembersResponse => ({
+    ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'Test Dataset',
     description: 'Test description',
-    indexing_status: 'completed',
     icon_info: {
       icon: '📊',
       icon_type: 'emoji',
       icon_background: '#FFEAD5',
       icon_url: undefined,
     },
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     data_source_type: DataSourceType.FILE,
     indexing_technique: IndexingType.QUALIFIED,
     created_by: 'user-1',
     updated_by: 'user-1',
-    updated_at: Date.now(),
+    updated_at: 1700000000,
     app_count: 0,
     doc_form: ChunkingMode.text,
     document_count: 5,
-    total_document_count: 5,
     word_count: 1000,
     provider: 'openai',
     embedding_model: 'text-embedding-ada-002',
     embedding_model_provider: 'openai',
     embedding_available: true,
-    retrieval_model_dict: {} as DataSet['retrieval_model_dict'],
-    retrieval_model: {} as DataSet['retrieval_model'],
     tags: [],
     external_knowledge_info: {
       external_knowledge_id: '',
@@ -80,7 +83,7 @@ describe('RenameDatasetModal', () => {
   })
 
   // Create a dataset with image icon
-  const createMockDatasetWithImageIcon = (): DataSet =>
+  const createMockDatasetWithImageIcon = (): DatasetDetailWithPartialMembersResponse =>
     createMockDataset({
       icon_info: {
         icon: 'file-id-123',
@@ -91,7 +94,7 @@ describe('RenameDatasetModal', () => {
     })
 
   // Create a dataset with external knowledge info
-  const createMockExternalDataset = (): DataSet =>
+  const createMockExternalDataset = (): DatasetDetailWithPartialMembersResponse =>
     createMockDataset({
       external_knowledge_info: {
         external_knowledge_id: 'ext-knowledge-1',
@@ -118,158 +121,26 @@ describe('RenameDatasetModal', () => {
       render(<RenameDatasetModal {...defaultProps} show={true} />)
       expect(screen.getByRole('dialog', { name: 'datasetSettings.title' })).toBeInTheDocument()
     })
-
-    it('should render name input with dataset name', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-      expect(nameInput)!.toBeInTheDocument()
-    })
-
-    it('should render description textarea with dataset description', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      const descriptionTextarea = screen.getByDisplayValue('Test description')
-      expect(descriptionTextarea)!.toBeInTheDocument()
-    })
-
-    it('should render cancel and save buttons', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      expect(screen.getByText('common.operation.cancel'))!.toBeInTheDocument()
-      expect(screen.getByText('common.operation.save'))!.toBeInTheDocument()
-    })
-
-    it('should render close icon button', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      expect(screen.getByRole('button', { name: /operation\.close$/ }))!.toBeInTheDocument()
-    })
-
-    it('should render form labels', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      expect(screen.getByText('datasetSettings.form.name'))!.toBeInTheDocument()
-      expect(screen.getByText('datasetSettings.form.desc'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Props Variations', () => {
-    it('should render with emoji icon dataset', () => {
-      const dataset = createMockDataset()
-      render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
-      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
-    })
-
-    it('should render with image icon dataset', () => {
-      const dataset = createMockDatasetWithImageIcon()
-      render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
-      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
-    })
-
-    it('should render with empty description', () => {
-      const dataset = createMockDataset({ description: '' })
-      render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
-      // Find the textarea by its placeholder
-      const descriptionTextarea = screen.getByPlaceholderText(
-        'datasetSettings.form.descPlaceholder',
-      )
-      expect(descriptionTextarea)!.toHaveValue('')
-    })
-
-    it('should render with external knowledge dataset', () => {
-      const dataset = createMockExternalDataset()
-      render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
-      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
-    })
-
-    it('should handle undefined onSuccess callback', () => {
-      render(<RenameDatasetModal {...defaultProps} onSuccess={undefined} />)
-      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('State Management', () => {
-    it('should initialize name state with dataset name', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
-    })
-
-    it('should initialize description state with dataset description', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      expect(screen.getByDisplayValue('Test description'))!.toBeInTheDocument()
-    })
-
-    it('should update name state when input changes', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-
-      fireEvent.change(nameInput, { target: { value: 'New Dataset Name' } })
-
-      expect(screen.getByDisplayValue('New Dataset Name'))!.toBeInTheDocument()
-    })
-
-    it('should update description state when textarea changes', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      const descriptionTextarea = screen.getByDisplayValue('Test description')
-
-      fireEvent.change(descriptionTextarea, { target: { value: 'New description' } })
-
-      expect(screen.getByDisplayValue('New description'))!.toBeInTheDocument()
-    })
-
-    it('should clear name when input is cleared', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-
-      fireEvent.change(nameInput, { target: { value: '' } })
-
-      expect(nameInput)!.toHaveValue('')
-    })
-
-    it('should handle special characters in name', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-
-      fireEvent.change(nameInput, { target: { value: 'Dataset <script>alert("xss")</script>' } })
-
-      expect(screen.getByDisplayValue('Dataset <script>alert("xss")</script>'))!.toBeInTheDocument()
-    })
-
-    it('should handle very long name input', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-      const longName = 'A'.repeat(500)
-
-      fireEvent.change(nameInput, { target: { value: longName } })
-
-      expect(screen.getByDisplayValue(longName))!.toBeInTheDocument()
-    })
-
-    it('should handle multiline description', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      const descriptionTextarea = screen.getByDisplayValue('Test description')
-      const multilineDesc = 'Line 1\nLine 2\nLine 3'
-
-      fireEvent.change(descriptionTextarea, { target: { value: multilineDesc } })
-
-      // Verify the textarea contains the multiline value
-      // Verify the textarea contains the multiline value
-      expect(descriptionTextarea)!.toHaveValue(multilineDesc)
-    })
   })
 
   describe('User Interactions', () => {
-    it('should call onClose when cancel button is clicked', () => {
+    it('should call onClose when cancel button is clicked', async () => {
+      const user = userEvent.setup()
       const handleClose = vi.fn()
       render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
 
       const cancelButton = screen.getByText('common.operation.cancel')
-      fireEvent.click(cancelButton)
+      await user.click(cancelButton)
 
       expect(handleClose).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onClose when close icon is clicked', () => {
+    it('should call onClose when close icon is clicked', async () => {
+      const user = userEvent.setup()
       const handleClose = vi.fn()
       render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
 
-      fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
+      await user.click(screen.getByRole('button', { name: /operation\.close$/ }))
 
       expect(handleClose).toHaveBeenCalledTimes(1)
     })
@@ -300,148 +171,23 @@ describe('RenameDatasetModal', () => {
         })
       })
     })
-
-    it('should call API when save button is clicked with valid name', async () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
-        expect(mockUpdateDatasetSetting).toHaveBeenCalledWith({
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            name: 'Test Dataset',
-            description: 'Test description',
-          }),
-        })
-      })
-    })
-
-    it('should disable save button while loading', async () => {
-      // Create a promise that we can control
-      let resolvePromise: (value: DataSet) => void
-      mockUpdateDatasetSetting.mockImplementation(
-        () =>
-          new Promise((resolve) => {
-            resolvePromise = resolve
-          }),
-      )
-
-      render(<RenameDatasetModal {...defaultProps} />)
-
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
-        expect(saveButton).toHaveAttribute('aria-disabled', 'true')
-      })
-
-      // Resolve the promise to clean up
-      await act(async () => {
-        resolvePromise!(createMockDataset())
-      })
-    })
-
-    it('should handle name input focus', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-
-      // Verify the input can receive focus
-      nameInput.focus()
-
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
-      expect(nameInput).not.toBeDisabled()
-    })
-
-    it('should handle description textarea focus', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      const descriptionTextarea = screen.getByDisplayValue('Test description')
-
-      // Verify the textarea can receive focus
-      descriptionTextarea.focus()
-
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      // Just verify the element is focusable
-      expect(descriptionTextarea).not.toBeDisabled()
-    })
   })
 
   describe('API Calls', () => {
     it('should call updateDatasetSetting with correct parameters', async () => {
       render(<RenameDatasetModal {...defaultProps} />)
 
+      const user = userEvent.setup()
       const nameInput = screen.getByDisplayValue('Test Dataset')
-      fireEvent.change(nameInput, { target: { value: 'Updated Name' } })
+      await user.clear(nameInput)
+      await user.type(nameInput, 'Updated Name')
+      const description = screen.getByRole('textbox', { name: 'datasetSettings.form.desc' })
+      await user.clear(description)
+      await user.type(description, '多语言描述\nSecond line')
 
-      const saveButton = screen.getByText('common.operation.save')
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        fireEvent.click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
@@ -449,7 +195,7 @@ describe('RenameDatasetModal', () => {
           datasetId: 'dataset-1',
           body: {
             name: 'Updated Name',
-            description: 'Test description',
+            description: '多语言描述\nSecond line',
             icon_info: {
               icon: '📊',
               icon_type: 'emoji',
@@ -459,15 +205,18 @@ describe('RenameDatasetModal', () => {
           },
         })
       })
+      expect(defaultProps.onSuccess).toHaveBeenCalledOnce()
+      expect(defaultProps.onClose).toHaveBeenCalledOnce()
     })
 
     it('should include external knowledge IDs when present', async () => {
+      const user = userEvent.setup()
       const dataset = createMockExternalDataset()
       render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
 
-      const saveButton = screen.getByText('common.operation.save')
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        fireEvent.click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
@@ -481,29 +230,14 @@ describe('RenameDatasetModal', () => {
       })
     })
 
-    it('should not include external knowledge IDs when not present', async () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
-        expect(mockUpdateDatasetSetting).toHaveBeenCalled()
-        const callArgs = mockUpdateDatasetSetting.mock.calls[0]![0]
-        expect(callArgs.body.external_knowledge_id).toBeUndefined()
-        expect(callArgs.body.external_knowledge_api_id).toBeUndefined()
-      })
-    })
-
     it('should handle image icon correctly in API call', async () => {
+      const user = userEvent.setup()
       const dataset = createMockDatasetWithImageIcon()
       render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
 
-      const saveButton = screen.getByText('common.operation.save')
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        fireEvent.click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
@@ -518,321 +252,71 @@ describe('RenameDatasetModal', () => {
             },
           }),
         })
-      })
-    })
-
-    it('should call onSuccess and onClose after successful save', async () => {
-      const handleSuccess = vi.fn()
-      const handleClose = vi.fn()
-      render(
-        <RenameDatasetModal {...defaultProps} onSuccess={handleSuccess} onClose={handleClose} />,
-      )
-
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
-        expect(handleSuccess).toHaveBeenCalledTimes(1)
-        expect(handleClose).toHaveBeenCalledTimes(1)
       })
     })
   })
 
   describe('Error Handling', () => {
     it('should show error toast when name is empty', async () => {
+      const user = userEvent.setup()
       render(<RenameDatasetModal {...defaultProps} />)
 
       const nameInput = screen.getByDisplayValue('Test Dataset')
       fireEvent.change(nameInput, { target: { value: '' } })
 
-      const saveButton = screen.getByText('common.operation.save')
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        fireEvent.click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
         expect(mockToast.error).toHaveBeenCalledWith('datasetSettings.form.nameError')
+        expect(mockUpdateDatasetSetting).not.toHaveBeenCalled()
       })
     })
 
     it('should show error toast when name is only whitespace', async () => {
+      const user = userEvent.setup()
       render(<RenameDatasetModal {...defaultProps} />)
 
       const nameInput = screen.getByDisplayValue('Test Dataset')
       fireEvent.change(nameInput, { target: { value: '   ' } })
 
-      const saveButton = screen.getByText('common.operation.save')
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        fireEvent.click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
         expect(mockToast.error).toHaveBeenCalledWith('datasetSettings.form.nameError')
-      })
-    })
-
-    it('should not call API when name is invalid', async () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-      fireEvent.change(nameInput, { target: { value: '' } })
-
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
         expect(mockUpdateDatasetSetting).not.toHaveBeenCalled()
       })
     })
 
     it('should show error toast when API call fails', async () => {
+      const user = userEvent.setup()
       mockUpdateDatasetSetting.mockRejectedValueOnce(new Error('API Error'))
 
       render(<RenameDatasetModal {...defaultProps} />)
 
-      const saveButton = screen.getByText('common.operation.save')
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        fireEvent.click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
         expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
       })
-    })
-
-    it('should not call onSuccess when API call fails', async () => {
-      mockUpdateDatasetSetting.mockRejectedValueOnce(new Error('API Error'))
-      const handleSuccess = vi.fn()
-
-      render(<RenameDatasetModal {...defaultProps} onSuccess={handleSuccess} />)
-
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
-      })
-
-      expect(handleSuccess).not.toHaveBeenCalled()
-    })
-
-    it('should not call onClose when API call fails', async () => {
-      mockUpdateDatasetSetting.mockRejectedValueOnce(new Error('API Error'))
-      const handleClose = vi.fn()
-
-      render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
-
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalled()
-      })
-
-      expect(handleClose).not.toHaveBeenCalled()
-    })
-
-    it('should reset loading state after API error', async () => {
-      mockUpdateDatasetSetting.mockRejectedValueOnce(new Error('API Error'))
-
-      render(<RenameDatasetModal {...defaultProps} />)
-
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      // Wait for error handling to complete
-      await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalled()
-      })
-
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      // Save button should be enabled again
-      expect(saveButton).not.toBeDisabled()
-    })
-  })
-
-  describe('Callback Stability', () => {
-    it('should call onClose exactly once per click', () => {
-      const handleClose = vi.fn()
-      render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
-
-      const cancelButton = screen.getByText('common.operation.cancel')
-      fireEvent.click(cancelButton)
-      fireEvent.click(cancelButton)
-
-      expect(handleClose).toHaveBeenCalledTimes(2)
-    })
-
-    it('should not call onSuccess when undefined', async () => {
-      render(<RenameDatasetModal {...defaultProps} onSuccess={undefined} />)
-
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
-        expect(mockUpdateDatasetSetting).toHaveBeenCalled()
-      })
-
-      // Should not throw error when onSuccess is undefined
-      await waitFor(() => {
-        expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
-      })
-    })
-
-    it('should maintain callback identity across renders', async () => {
-      const handleClose = vi.fn()
-      const { rerender } = render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
-
-      // Change input to trigger re-render
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-      fireEvent.change(nameInput, { target: { value: 'New Name' } })
-
-      // Re-render with same callback
-      rerender(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
-
-      const cancelButton = screen.getByText('common.operation.cancel')
-      fireEvent.click(cancelButton)
-
-      expect(handleClose).toHaveBeenCalledTimes(1)
+      expect(defaultProps.onClose).not.toHaveBeenCalled()
+      expect(defaultProps.onSuccess).not.toHaveBeenCalled()
+      expect(screen.getByRole('dialog', { name: 'datasetSettings.title' })).toBeInTheDocument()
+      await user.click(saveButton)
+      await waitFor(() => expect(mockUpdateDatasetSetting).toHaveBeenCalledTimes(2))
+      expect(defaultProps.onSuccess).toHaveBeenCalledOnce()
     })
   })
 
   describe('Icon Picker Integration', () => {
-    it('should render app icon component', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      expect(
-        screen.getByRole('button', {
-          name: 'common.operation.edit datasetSettings.form.nameAndIcon',
-        }),
-      ).toContainElement(screen.getByRole('button', { name: /form.nameAndIcon/ }))
-    })
-
-    it('should initialize icon state from dataset', () => {
-      // Test with emoji icon
-      render(<RenameDatasetModal {...defaultProps} />)
-      // The component initializes with the dataset's icon_info
-      // This is verified by checking the form renders correctly
-      // The component initializes with the dataset's icon_info
-      // This is verified by checking the form renders correctly
-      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
-    })
-
-    it('should initialize icon state from image icon dataset', () => {
-      // Test with image icon - this triggers the icon_type === 'image' branch
-      const imageDataset = createMockDatasetWithImageIcon()
-      render(<RenameDatasetModal {...defaultProps} dataset={imageDataset} />)
-      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
-      // The component should render successfully with image icon dataset
-    })
-
-    it('should save with image icon data when dataset has image icon', async () => {
-      // Verify icon state is correctly initialized from image icon dataset
-      const imageDataset = createMockDatasetWithImageIcon()
-      render(<RenameDatasetModal {...defaultProps} dataset={imageDataset} />)
-
-      // Save directly to verify the icon data is correctly passed
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
-        expect(mockUpdateDatasetSetting).toHaveBeenCalledWith({
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            icon_info: {
-              icon: 'file-id-123',
-              icon_type: 'image',
-              icon_background: undefined,
-              icon_url: 'https://example.com/icon.png',
-            },
-          }),
-        })
-      })
-    })
-
-    it('should save with emoji icon data when dataset has emoji icon', async () => {
-      // Verify icon state is correctly initialized from emoji icon dataset
-      render(<RenameDatasetModal {...defaultProps} />)
-
-      // Save directly to verify the icon data is correctly passed
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
-        expect(mockUpdateDatasetSetting).toHaveBeenCalledWith({
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            icon_info: {
-              icon: '📊',
-              icon_type: 'emoji',
-              icon_background: '#FFEAD5',
-              icon_url: undefined,
-            },
-          }),
-        })
-      })
-    })
-
-    it('should open icon picker when app icon is clicked (handleOpenAppIconPicker)', async () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-
-      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
-
-      const appIcon = screen.getByRole('button', { name: /form.nameAndIcon/ })
-      await act(async () => {
-        fireEvent.click(appIcon)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
-      })
-    })
-
     it('should select emoji style and close picker (handleSelectAppIcon)', async () => {
       const user = userEvent.setup()
       render(<RenameDatasetModal {...defaultProps} />)
@@ -853,9 +337,9 @@ describe('RenameDatasetModal', () => {
       expect(mockUpdateDatasetSetting).not.toHaveBeenCalled()
 
       // Save and verify new icon is used
-      const saveButton = screen.getByText('common.operation.save')
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        fireEvent.click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
@@ -873,62 +357,29 @@ describe('RenameDatasetModal', () => {
       })
     })
 
-    it('should update emoji style through the picker (handleSelectAppIcon)', async () => {
-      const user = userEvent.setup()
-      render(<RenameDatasetModal {...defaultProps} />)
-
-      await user.click(screen.getByRole('button', { name: /form.nameAndIcon/ }))
-      await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
-      })
-      await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.blue' }))
-      await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
-      await waitFor(() => {
-        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
-      })
-
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
-        expect(mockUpdateDatasetSetting).toHaveBeenCalledWith({
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            icon_info: {
-              icon: '📊',
-              icon_type: 'emoji',
-              icon_background: '#E9F0FF',
-              icon_url: undefined,
-            },
-          }),
-        })
-      })
-    })
-
     it('should restore previous icon when picker is closed (handleCloseAppIconPicker)', async () => {
+      const user = userEvent.setup()
       render(<RenameDatasetModal {...defaultProps} />)
 
       // Open picker
       const appIcon = screen.getByRole('button', { name: /form.nameAndIcon/ })
       await act(async () => {
-        fireEvent.click(appIcon)
+        await user.click(appIcon)
       })
 
-      const user = userEvent.setup()
       await waitFor(() => {
         expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
+      await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.blue' }))
       await user.keyboard('{Escape}')
       await waitFor(() => {
         expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
       })
 
       // Save and verify original icon is preserved
-      const saveButton = screen.getByText('common.operation.save')
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        fireEvent.click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
@@ -948,21 +399,8 @@ describe('RenameDatasetModal', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle dataset with null icon_info', () => {
-      const dataset = createMockDataset({
-        icon_info: {
-          icon: '',
-          icon_type: 'emoji',
-          icon_background: '',
-          icon_url: undefined,
-        },
-      })
-
-      render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
-      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
-    })
-
     it('should handle image icon with empty icon_url', async () => {
+      const user = userEvent.setup()
       // Test the || '' fallback for icon_url in image icon
       const dataset = createMockDataset({
         icon_info: {
@@ -977,9 +415,9 @@ describe('RenameDatasetModal', () => {
       expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
 
       // Save and verify the icon_url is handled correctly
-      const saveButton = screen.getByText('common.operation.save')
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        fireEvent.click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
@@ -996,74 +434,10 @@ describe('RenameDatasetModal', () => {
       })
     })
 
-    it('should handle image icon with undefined icon', async () => {
-      // Test the || '' fallback for icon (fileId) in image icon
-      const dataset = createMockDataset({
-        icon_info: {
-          icon: '', // Empty string - triggers || '' fallback
-          icon_type: 'image',
-          icon_background: undefined,
-          icon_url: 'https://example.com/icon.png',
-        },
-      })
-
-      render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
-      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
-
-      // Save and verify the icon is handled correctly
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
-        expect(mockUpdateDatasetSetting).toHaveBeenCalledWith({
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({
-            icon_info: expect.objectContaining({
-              icon: '',
-              icon_type: 'image',
-              icon_url: 'https://example.com/icon.png',
-            }),
-          }),
-        })
-      })
-    })
-
-    it('should handle dataset with empty external knowledge info', () => {
-      const dataset = createMockDataset({
-        external_knowledge_info: {
-          external_knowledge_id: '',
-          external_knowledge_api_id: '',
-          external_knowledge_api_name: '',
-          external_knowledge_api_endpoint: '',
-        },
-      })
-
-      render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
-      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
-    })
-
-    it('should handle rapid input changes', async () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-
-      // Simulate rapid typing
-      fireEvent.change(nameInput, { target: { value: 'N' } })
-      fireEvent.change(nameInput, { target: { value: 'Ne' } })
-      fireEvent.change(nameInput, { target: { value: 'New' } })
-      fireEvent.change(nameInput, { target: { value: 'New ' } })
-      fireEvent.change(nameInput, { target: { value: 'New N' } })
-      fireEvent.change(nameInput, { target: { value: 'New Na' } })
-      fireEvent.change(nameInput, { target: { value: 'New Nam' } })
-      fireEvent.change(nameInput, { target: { value: 'New Name' } })
-
-      expect(screen.getByDisplayValue('New Name'))!.toBeInTheDocument()
-    })
-
     it('should handle double click on save button', async () => {
+      const user = userEvent.setup()
       // Use a promise we can control to ensure the first click is still "loading"
-      let resolvePromise: (value: DataSet) => void
+      let resolvePromise: (value: DatasetDetailWithPartialMembersResponse) => void
       mockUpdateDatasetSetting.mockImplementationOnce(
         () =>
           new Promise((resolve) => {
@@ -1073,11 +447,11 @@ describe('RenameDatasetModal', () => {
 
       render(<RenameDatasetModal {...defaultProps} />)
 
-      const saveButton = screen.getByText('common.operation.save')
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
 
       // First click
       await act(async () => {
-        fireEvent.click(saveButton)
+        await user.click(saveButton)
       })
 
       // Button should be disabled now
@@ -1086,7 +460,7 @@ describe('RenameDatasetModal', () => {
 
       // Second click should not trigger another API call because button is disabled
       await act(async () => {
-        fireEvent.click(saveButton)
+        await user.click(saveButton)
       })
 
       // Only one API call should have been made
@@ -1097,55 +471,9 @@ describe('RenameDatasetModal', () => {
         resolvePromise!(createMockDataset())
       })
     })
-
-    it('should handle unicode characters in name', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-
-      fireEvent.change(nameInput, { target: { value: '数据集 🎉 Dataset' } })
-
-      expect(screen.getByDisplayValue('数据集 🎉 Dataset'))!.toBeInTheDocument()
-    })
-
-    it('should handle unicode characters in description', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      const descriptionTextarea = screen.getByDisplayValue('Test description')
-
-      fireEvent.change(descriptionTextarea, { target: { value: '这是一个测试描述 🚀' } })
-
-      expect(screen.getByDisplayValue('这是一个测试描述 🚀'))!.toBeInTheDocument()
-    })
-
-    it('should preserve whitespace in description', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      const descriptionTextarea = screen.getByDisplayValue('Test description')
-
-      const testValue = 'Leading spaces with content'
-      fireEvent.change(descriptionTextarea, { target: { value: testValue } })
-
-      expect(descriptionTextarea)!.toHaveValue(testValue)
-    })
   })
 
   describe('Component Re-rendering', () => {
-    it('should update when dataset prop changes', () => {
-      const { rerender } = render(<RenameDatasetModal {...defaultProps} />)
-
-      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
-
-      const newDataset = createMockDataset({
-        name: 'Different Dataset',
-        description: 'Different description',
-      })
-      rerender(<RenameDatasetModal {...defaultProps} dataset={newDataset} />)
-
-      // Note: The component uses useState with initial value, so it won't update
-      // This tests that the initial render works correctly with different props
-      // Note: The component uses useState with initial value, so it won't update
-      // This tests that the initial render works correctly with different props
-      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
-    })
-
     it('should handle show prop toggle', () => {
       const { rerender } = render(<RenameDatasetModal {...defaultProps} show={true} />)
 
@@ -1157,129 +485,4 @@ describe('RenameDatasetModal', () => {
       // The modal content may still be in DOM but hidden
     })
   })
-
-  describe('Accessibility', () => {
-    it('should have accessible input elements', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-
-      // Check that inputs are present and accessible
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-      expect(nameInput.tagName.toLowerCase()).toBe('input')
-
-      const descriptionTextarea = screen.getByDisplayValue('Test description')
-      expect(descriptionTextarea.tagName.toLowerCase()).toBe('textarea')
-    })
-
-    it('should have clickable buttons', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-
-      const cancelButton = screen.getByText('common.operation.cancel')
-      const saveButton = screen.getByText('common.operation.save')
-
-      expect(cancelButton)!.toBeEnabled()
-      expect(saveButton)!.toBeEnabled()
-    })
-  })
-
-  describe('Loading State', () => {
-    it('should show loading state during API call', async () => {
-      let resolvePromise: (value: DataSet) => void
-      mockUpdateDatasetSetting.mockImplementation(
-        () =>
-          new Promise((resolve) => {
-            resolvePromise = resolve
-          }),
-      )
-
-      render(<RenameDatasetModal {...defaultProps} />)
-
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      // Button should be disabled during loading
-      await waitFor(() => {
-        expect(saveButton).toHaveAttribute('aria-disabled', 'true')
-      })
-
-      // Resolve promise to complete the test
-      await act(async () => {
-        resolvePromise!(createMockDataset())
-      })
-
-      await waitFor(() => {
-        expect(saveButton).not.toBeDisabled()
-      })
-    })
-
-    it('should re-enable save button after successful save', async () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
-        expect(mockUpdateDatasetSetting).toHaveBeenCalled()
-      })
-
-      // After success, the modal closes, but if it didn't, button would be re-enabled
-      await waitFor(() => {
-        expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
-      })
-    })
-
-    it('should re-enable save button after failed save', async () => {
-      mockUpdateDatasetSetting.mockRejectedValueOnce(new Error('API Error'))
-
-      render(<RenameDatasetModal {...defaultProps} />)
-
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
-      })
-
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      // Button should be re-enabled after error
-      expect(saveButton).not.toBeDisabled()
-    })
-  })
 })
-
-mockEmojiData()

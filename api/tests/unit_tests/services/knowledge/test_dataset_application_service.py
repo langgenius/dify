@@ -156,6 +156,7 @@ def test_list_reports_unavailable_reranking_dependency(
         ({"indexing_technique": "economy"}, {}, set(), True, False),
         ({"provider": "external"}, {}, set(), True, False),
         ({}, {"reranking_model": {}}, set(), False, True),
+        ({}, {"reranking_model": None}, set(), False, True),
         (
             {},
             {"reranking_model": {"reranking_provider_name": "bad/provider", "reranking_model_name": "reranker"}},
@@ -176,6 +177,7 @@ def test_list_reports_unavailable_reranking_dependency(
         "economy",
         "external",
         "unconfigured-model",
+        "null-model",
         "invalid-provider-id",
         "semantic-reranking",
         "full-text-reranking",
@@ -287,5 +289,7 @@ def test_tidb_retrieval_setting(fulltext: bool) -> None:
 
 @pytest.mark.parametrize("store", [None, "unsupported"])
 def test_invalid_vector_store(store: str | None) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError, match=("(?:Unsupported vector db type unsupported\\.|Vector store type is not configured\\.)")
+    ):
         retrieval_methods(store)

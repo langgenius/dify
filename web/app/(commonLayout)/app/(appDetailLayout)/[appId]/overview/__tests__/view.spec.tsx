@@ -19,24 +19,11 @@ const testState = vi.hoisted(() => ({
     maintainer: 'maintainer-1',
     permission_keys: [] as string[],
   },
-  currentUserId: 'user-1',
-  workspacePermissionKeys: [] as string[],
 }))
 
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   request: testState.request,
-}))
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    currentWorkspace: { id: 'workspace-1' },
-  }))
-})
-
-vi.mock('@/app/components/app/overview/apikey-info-panel', () => ({
-  default: () => <div>api key info panel</div>,
 }))
 
 vi.mock('../chart-view', () => ({
@@ -52,14 +39,6 @@ vi.mock('../tracing/panel', () => ({
   default: () => <button type="button">tracing</button>,
 }))
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: [],
-  }))
-})
-
 const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
   const queryClient = createConsoleQueryClient()
   const detail = createAppDetailFixture({ ...testState.appDetail, mode: 'chat' })
@@ -67,7 +46,11 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: detail.id } } }),
     detail,
   )
-  return renderWithConsoleQuery(ui, { queryClient })
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    currentWorkspace: { id: 'workspace-1' },
+    workspacePermissionKeys: [],
+  })
 }
 
 describe('OverviewView monitor permission', () => {
@@ -79,8 +62,6 @@ describe('OverviewView monitor permission', () => {
       maintainer: 'maintainer-1',
       permission_keys: [],
     }
-    testState.currentUserId = 'user-1'
-    testState.workspacePermissionKeys = []
   })
 
   // The overview page should be controlled as one monitor-permission surface.
@@ -88,7 +69,6 @@ describe('OverviewView monitor permission', () => {
     it('should not render overview page content when app monitor permission is missing', () => {
       render(<OverviewView appId="app-1" />)
 
-      expect(screen.queryByText('api key info panel')).not.toBeInTheDocument()
       expect(screen.queryByText(/chart view app-1/)).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'tracing' })).not.toBeInTheDocument()
     })
@@ -98,7 +78,6 @@ describe('OverviewView monitor permission', () => {
 
       render(<OverviewView appId="app-1" />)
 
-      expect(screen.getByText('api key info panel')).toBeInTheDocument()
       expect(screen.getByText(/chart view app-1/)).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'tracing' })).not.toBeInTheDocument()
     })
@@ -111,7 +90,6 @@ describe('OverviewView monitor permission', () => {
 
       render(<OverviewView appId="app-1" />)
 
-      expect(screen.getByText('api key info panel')).toBeInTheDocument()
       expect(screen.getByText(/chart view app-1/)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'tracing' })).toBeInTheDocument()
     })
@@ -121,7 +99,6 @@ describe('OverviewView monitor permission', () => {
 
       render(<OverviewView appId="app-1" />)
 
-      expect(screen.queryByText('api key info panel')).not.toBeInTheDocument()
       expect(screen.queryByText(/chart view app-1/)).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'tracing' })).not.toBeInTheDocument()
     })
@@ -139,7 +116,6 @@ describe('Overview app identity', () => {
     expect(screen.getByRole('button', { name: 'tracing' })).toBeInTheDocument()
 
     rerender(<OverviewView appId="app-2" />)
-    expect(screen.queryByText('api key info panel')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'tracing' })).not.toBeInTheDocument()
 
     act(() => {
@@ -155,7 +131,7 @@ describe('Overview app identity', () => {
         createAppDetailFixture({ id: 'app-2', permission_keys: [] }),
       )
     })
-    await waitFor(() => expect(screen.queryByText('api key info panel')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText(/chart view app-2/)).not.toBeInTheDocument())
   })
 })
 
@@ -172,7 +148,6 @@ it('shows the page fallback until required app details resolve', async () => {
     </Suspense>,
   )
   expect(screen.getByText('Loading overview')).toBeInTheDocument()
-  expect(screen.queryByText('api key info panel')).not.toBeInTheDocument()
   await act(async () => {
     resolveRequest(
       Response.json(
@@ -204,7 +179,6 @@ it('recovers an initial detail failure through the existing route error action',
       </QueryErrorResetBoundary>,
     )
     const retry = await screen.findByRole('button', { name: 'common.errorBoundary.tryAgain' })
-    expect(screen.queryByText('api key info panel')).not.toBeInTheDocument()
     testState.request.mockResolvedValue(
       Response.json(
         createAppDetailFixture({

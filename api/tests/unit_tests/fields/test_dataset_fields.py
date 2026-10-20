@@ -433,6 +433,7 @@ def test_dataset_detail_prefetch_matches_per_dataset_lookups(sqlite_session: Ses
     assert plain["total_documents"] == 3
     assert plain["total_available_documents"] == 1
     assert plain["word_count"] == 35
+    assert plain["keyword_number"] == 10
     assert plain["author_name"] == "Ada"
     assert [tag["name"] for tag in plain["tags"]] == ["tag"]
     assert plain["doc_form"] == IndexStructureType.PARAGRAPH_INDEX

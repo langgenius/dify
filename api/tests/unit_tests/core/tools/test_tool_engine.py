@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from dataclasses import dataclass
 from typing import Any
 from unittest.mock import patch
 from uuid import uuid4
@@ -34,11 +35,9 @@ from core.tools.tool_engine import ToolEngine
 from models.model import AppMode, Message, MessageFile
 
 
+@dataclass(eq=False, repr=False)
 class _DatabaseBinding:
     engine: Engine
-
-    def __init__(self, engine: Engine) -> None:
-        self.engine = engine
 
 
 def _message() -> Message:

@@ -6,7 +6,7 @@ objects retain their stored keys; this boundary does not apply response defaults
 
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import NotRequired, TypedDict
+from typing import NamedTuple, NotRequired, TypedDict
 
 from pydantic import JsonValue
 
@@ -25,6 +25,7 @@ class DatasetDetailRecord(TypedDict):
     permission: str
     data_source_type: str | None
     indexing_technique: str | None
+    keyword_number: int | None
     app_count: int
     document_count: int
     word_count: int
@@ -69,3 +70,16 @@ class DatasetPage(TypedDict):
     total: int
     page: int
     limit: int
+
+
+class DatasetCleanupRecord(NamedTuple):
+    """Dataset state needed to schedule index cleanup after the row is deleted."""
+
+    id: str
+    workspace_id: str
+    indexing_technique: str | None
+    index_struct: str | None
+    collection_binding_id: str | None
+    # None means neither the dataset nor any of its documents declares a form.
+    doc_form: str | None
+    pipeline_id: str | None

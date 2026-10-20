@@ -207,7 +207,7 @@ class TestSpanHandlerWrapper:
         def test_func() -> None:
             raise ValueError("test error")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="test error"):
             handler.wrapper(tracer, test_func)
 
         spans = memory_span_exporter.get_finished_spans()
@@ -227,9 +227,7 @@ class TestSpanHandlerWrapper:
         with pytest.raises(ValueError, match="test error"):
             handler.wrapper(tracer, test_func)
 
-    def test_wrapper_passes_arguments_correctly(
-        self, tracer_provider_with_memory_exporter: TracerProvider, memory_span_exporter: InMemorySpanExporter
-    ) -> None:
+    def test_wrapper_passes_arguments_correctly(self, tracer_provider_with_memory_exporter: TracerProvider) -> None:
         """Test that wrapper correctly passes arguments to wrapped function."""
         handler = SpanHandler()
         tracer = tracer_provider_with_memory_exporter.get_tracer(__name__)

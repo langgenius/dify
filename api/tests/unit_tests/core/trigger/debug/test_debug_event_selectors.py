@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
+from typing_extensions import TypedDict
 
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.trigger.constants import (
@@ -28,6 +29,7 @@ from core.trigger.debug.event_selectors import (
     select_trigger_debug_events,
 )
 from core.trigger.debug.events import PluginTriggerDebugEvent, WebhookDebugEvent
+from graphon.entities.graph_config import NodeConfigDict
 from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowType
 from models.model import App, AppMode
 from models.workflow import Workflow
@@ -35,17 +37,26 @@ from tests.unit_tests.core.trigger.conftest import VALID_PROVIDER_ID
 from tests.unit_tests.model_factories import make_app
 
 
-def _make_poller_args(node_config: dict[str, Any] | None = None) -> dict[str, Any]:
+class _PollerArgs(TypedDict, closed=True):
+    tenant_id: str
+    user_id: str
+    app_id: str
+    node_config: NodeConfigDict
+    node_id: str
+
+
+def _make_poller_args(node_config: dict[str, object] | None = None) -> _PollerArgs:
     return {
         "tenant_id": "t1",
         "user_id": "u1",
         "app_id": "a1",
-        "node_config": node_config or {"data": {}},
+        # The pollers only read node_config["data"]; the tests do not build a full graph node config.
+        "node_config": cast(NodeConfigDict, node_config or {"data": {}}),
         "node_id": "n1",
     }
 
 
-def _plugin_node_config(provider_id: str = VALID_PROVIDER_ID) -> dict[str, Any]:
+def _plugin_node_config(provider_id: str = VALID_PROVIDER_ID) -> dict[str, object]:
     """Valid node config for TriggerEventNodeData.model_validate."""
     return {
         "data": {
@@ -190,17 +201,6 @@ class TestWebhookTriggerDebugEventPoller:
 
 
 class TestScheduleTriggerDebugEventPoller:
-    def _make_schedule_poller(
-        self, mock_redis: MagicMock, mock_schedule_svc: MagicMock, next_run_at: datetime
-    ) -> ScheduleTriggerDebugEventPoller:
-        """Set up mocks and create a schedule poller."""
-        mock_redis.get.return_value = None
-        mock_schedule_config = MagicMock()
-        mock_schedule_config.cron_expression = "0 * * * *"
-        mock_schedule_config.timezone = "UTC"
-        mock_schedule_svc.to_schedule_config.return_value = mock_schedule_config
-        return ScheduleTriggerDebugEventPoller(**_make_poller_args())
-
     @patch("core.trigger.debug.event_selectors.redis_client")
     @patch("core.trigger.debug.event_selectors.naive_utc_now")
     @patch("core.trigger.debug.event_selectors.calculate_next_run_at")
@@ -271,7 +271,7 @@ class TestCreateEventPoller:
     def test_raises_for_unknown_type(self) -> None:
         wf = _workflow_with_node(BuiltinNodeTypes.START)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="unable to create event poller for node type start") as exc_info:
             create_event_poller(wf, "t1", "u1", "a1", "n1")
 
         assert str(exc_info.value) == "unable to create event poller for node type start"
@@ -281,7 +281,7 @@ class TestCreateEventPoller:
 
         with (
             patch.object(Workflow, "get_node_config_by_id", return_value=None),
-            pytest.raises(ValueError),
+            pytest.raises(ValueError, match="\\('Node data not found for node %s', 'n1'\\)"),
         ):
             create_event_poller(wf, "t1", "u1", "a1", "n1")
 
