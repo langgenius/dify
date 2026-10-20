@@ -199,6 +199,33 @@ const RecipientsContent = ({
     void loadOptions(searchQueryRef.current, searchPage + 1)
   }
 
+  useEffect(() => {
+    // The editor-safe endpoint paginates all sources together. Keep looking until the
+    // selected source has a result, or the server confirms that no later page exists.
+    if (
+      !open ||
+      sourceFilter === 'all' ||
+      visibleOptions.length > 0 ||
+      !hasMore ||
+      loading ||
+      loadingMore ||
+      loadError
+    )
+      return
+
+    void loadOptions(searchQueryRef.current, searchPage + 1)
+  }, [
+    hasMore,
+    loadError,
+    loadOptions,
+    loading,
+    loadingMore,
+    open,
+    searchPage,
+    sourceFilter,
+    visibleOptions.length,
+  ])
+
   const handleOpenChange = (nextOpen: boolean) => {
     if (readonly) return
     setOpen(nextOpen)

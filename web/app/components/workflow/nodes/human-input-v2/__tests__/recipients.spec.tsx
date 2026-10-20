@@ -539,6 +539,178 @@ describe('Human Input v2 Recipients', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('finds workspace contacts beyond a full external page when switching source tabs', async () => {
+    const user = userEvent.setup()
+    const externalContacts: ContactRecipientOption[] = Array.from({ length: 20 }, (_, index) => ({
+      id: `external-${index}`,
+      name: `External ${index}`,
+      email: `external-${index}@example.com`,
+      source: 'external',
+    }))
+    const searchPage = vi
+      .fn()
+      .mockResolvedValueOnce({ data: externalContacts, page: 1, hasMore: true })
+      .mockResolvedValueOnce({ data: [contact], page: 2, hasMore: false })
+    render(<Harness optionProvider={provider({ searchPage })} />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    await screen.findByRole('button', { name: 'External 0 · external-0@example.com' })
+    await user.click(
+      screen.getByRole('tab', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSource.workspace',
+      }),
+    )
+
+    expect(
+      await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).toBeInTheDocument()
+    expect(searchPage).toHaveBeenLastCalledWith('', 2)
+    expect(
+      screen.queryByRole('button', { name: 'workflow.common.loadMore' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps loaded sources and manual pagination after finding a filtered contact', async () => {
+    const user = userEvent.setup()
+    const laterContact = {
+      ...contact,
+      id: 'contact-jane',
+      name: 'Jane Workspace',
+      email: 'jane@example.com',
+    }
+    const searchPage = vi
+      .fn()
+      .mockResolvedValueOnce({ data: [organizationContact], page: 1, hasMore: true })
+      .mockResolvedValueOnce({ data: [contact], page: 2, hasMore: true })
+      .mockResolvedValueOnce({ data: [laterContact], page: 3, hasMore: false })
+    render(<Harness optionProvider={provider({ searchPage })} />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    await screen.findByRole('button', { name: 'Amanda Lin · amanda@example.com' })
+    await user.click(
+      screen.getByRole('tab', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSource.workspace',
+      }),
+    )
+    await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+    expect(searchPage).toHaveBeenCalledTimes(2)
+
+    await user.click(screen.getByRole('button', { name: 'workflow.common.loadMore' }))
+    expect(
+      await screen.findByRole('button', { name: 'Jane Workspace · jane@example.com' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('tab', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSource.all',
+      }),
+    )
+    expect(
+      screen.getByRole('button', { name: 'Amanda Lin · amanda@example.com' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Jane Workspace · jane@example.com' }),
+    ).toBeInTheDocument()
+    expect(searchPage).toHaveBeenLastCalledWith('', 3)
+  })
+
+  it('checks remaining pages before showing an empty source and lets failed pages retry', async () => {
+    const user = userEvent.setup()
+    const searchPage = vi
+      .fn()
+      .mockResolvedValueOnce({ data: [organizationContact], page: 1, hasMore: true })
+      .mockRejectedValueOnce(new Error('Page unavailable'))
+      .mockResolvedValueOnce({ data: [], page: 2, hasMore: true })
+      .mockResolvedValueOnce({ data: [organizationContact], page: 3, hasMore: false })
+    render(<Harness optionProvider={provider({ searchPage })} />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    await screen.findByRole('button', { name: 'Amanda Lin · amanda@example.com' })
+    await user.click(
+      screen.getByRole('tab', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSource.workspace',
+      }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'workflow.nodes.humanInputV2.recipients.loadError',
+    )
+    expect(searchPage).toHaveBeenCalledTimes(2)
+    expect(
+      screen.queryByText('workflow.nodes.humanInputV2.recipients.noResults'),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'workflow.common.loadMore' }))
+    expect(
+      await screen.findByText('workflow.nodes.humanInputV2.recipients.noResults'),
+    ).toBeInTheDocument()
+    expect(searchPage.mock.calls.map(([, page]) => page)).toEqual([1, 2, 2, 3])
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'workflow.common.loadMore' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('ignores an older filtered page after the search query changes', async () => {
+    const user = userEvent.setup()
+    let finishOldPage: (result: {
+      data: ContactRecipientOption[]
+      page: number
+      hasMore: boolean
+    }) => void = () => undefined
+    const newContact = { ...contact, id: 'new-contact', name: 'Zoe Workspace' }
+    const searchPage = vi.fn((query: string, page: number) => {
+      if (query === 'Z') return Promise.resolve({ data: [newContact], page: 1, hasMore: false })
+      if (page === 1)
+        return Promise.resolve({ data: [organizationContact], page: 1, hasMore: true })
+      return new Promise<{ data: ContactRecipientOption[]; page: number; hasMore: boolean }>(
+        (resolve) => {
+          finishOldPage = resolve
+        },
+      )
+    })
+    render(<Harness optionProvider={provider({ searchPage })} />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    await screen.findByRole('button', { name: 'Amanda Lin · amanda@example.com' })
+    await user.click(
+      screen.getByRole('tab', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSource.workspace',
+      }),
+    )
+    await waitFor(() => expect(searchPage).toHaveBeenLastCalledWith('', 2))
+    await user.type(
+      screen.getByRole('textbox', { name: 'workflow.nodes.humanInputV2.recipients.search' }),
+      'Z',
+    )
+    expect(
+      await screen.findByRole('button', { name: 'Zoe Workspace · evan@example.com' }),
+    ).toBeInTheDocument()
+
+    await act(async () => {
+      finishOldPage({ data: [contact], page: 2, hasMore: false })
+    })
+    expect(
+      screen.getByRole('button', { name: 'Zoe Workspace · evan@example.com' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).not.toBeInTheDocument()
+    expect(searchPage).toHaveBeenLastCalledWith('Z', 1)
+  })
+
   it('keeps the latest search results when an older response arrives last', async () => {
     const user = userEvent.setup()
     let finishInitial: (options: ContactRecipientOption[]) => void = () => undefined
