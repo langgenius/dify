@@ -1,14 +1,17 @@
+import type { Rule } from 'eslint'
+import type { AST } from 'jsonc-eslint-parser'
+import type { JsonRuleModule } from '../utils.ts'
 import fs from 'node:fs'
 import path, { normalize, sep } from 'node:path'
 import { getTranslationSourceKey } from '../../../i18n-plurals.ts'
-import { cleanJsonText } from '../utils.js'
+import { cleanJsonText } from '../utils.ts'
 
-function extractPlaceholders(str) {
+function extractPlaceholders(str: string) {
   const matches = str.match(/\{\{\w+\}\}/g) || []
   return matches.map((m) => m.slice(2, -2)).sort()
 }
 
-function extractTagMarkers(str) {
+function extractTagMarkers(str: string) {
   const matches = Array.from(str.matchAll(/<\/?([A-Z][\w-]*)\b[^>]*>/gi))
   const markers = matches.map((match) => {
     const fullMatch = match[0]
@@ -24,27 +27,31 @@ function extractTagMarkers(str) {
   return markers.sort()
 }
 
-function formatTagMarker(marker) {
+function formatTagMarker(marker: string) {
   if (marker.startsWith('close:')) return marker.slice('close:'.length)
   if (marker.startsWith('self:')) return marker.slice('self:'.length)
   return marker.slice('open:'.length)
 }
 
-function arraysEqual(arr1, arr2) {
+function arraysEqual(arr1: string[], arr2: string[]) {
   if (arr1.length !== arr2.length) return false
   return arr1.every((val, i) => val === arr2[i])
 }
 
-function uniqueSorted(items) {
+function uniqueSorted(items: string[]) {
   return Array.from(new Set(items)).sort()
 }
 
-function getJsonLiteralValue(node) {
+function getJsonLiteralValue(node: AST.JSONNode | undefined) {
   if (!node) return undefined
   return node.type === 'JSONLiteral' ? node.value : undefined
 }
 
-function buildPlaceholderMessage(key, englishPlaceholders, currentPlaceholders) {
+function buildPlaceholderMessage(
+  key: string,
+  englishPlaceholders: string[],
+  currentPlaceholders: string[],
+) {
   const missing = englishPlaceholders.filter((p) => !currentPlaceholders.includes(p))
   const extra = currentPlaceholders.filter((p) => !englishPlaceholders.includes(p))
 
@@ -58,7 +65,7 @@ function buildPlaceholderMessage(key, englishPlaceholders, currentPlaceholders) 
   )
 }
 
-function buildTagMessage(key, englishTagMarkers, currentTagMarkers) {
+function buildTagMessage(key: string, englishTagMarkers: string[], currentTagMarkers: string[]) {
   const missing = englishTagMarkers.filter((p) => !currentTagMarkers.includes(p))
   const extra = currentTagMarkers.filter((p) => !englishTagMarkers.includes(p))
 
@@ -73,7 +80,7 @@ function buildTagMessage(key, englishTagMarkers, currentTagMarkers) {
   )
 }
 
-export default {
+const rule: JsonRuleModule = {
   meta: {
     type: 'problem',
     docs: {
@@ -81,22 +88,25 @@ export default {
     },
   },
   create(context) {
-    const state = {
+    const state: {
+      enabled: boolean
+      englishJson: Record<string, unknown> | null
+      englishKeys: Set<string>
+      language: string
+    } = {
       enabled: false,
       englishJson: null,
       englishKeys: new Set(),
       language: 'en-US',
     }
 
-    function isTopLevelProperty(node) {
+    function isTopLevelProperty(node: AST.JSONProperty) {
       const objectNode = node.parent
       if (!objectNode || objectNode.type !== 'JSONObjectExpression') return false
       const expressionNode = objectNode.parent
       return (
         !!expressionNode &&
-        (expressionNode.type === 'JSONExpressionStatement' ||
-          expressionNode.type === 'Program' ||
-          expressionNode.type === 'JSONProgram')
+        ['JSONExpressionStatement', 'Program', 'JSONProgram'].includes(expressionNode.type)
       )
     }
 
@@ -118,23 +128,23 @@ export default {
         try {
           const englishFilePath = path.join(path.dirname(filename), '..', 'en-US', jsonFile ?? '')
           const englishText = fs.readFileSync(englishFilePath, 'utf8')
-          state.englishJson = JSON.parse(cleanJsonText(englishText))
+          state.englishJson = JSON.parse(cleanJsonText(englishText)) as Record<string, unknown>
           state.englishKeys = new Set(Object.keys(state.englishJson))
         } catch (error) {
           state.enabled = false
           context.report({
-            node,
+            node: node as unknown as Rule.Node,
             message: `Error parsing JSON: ${error instanceof Error ? error.message : String(error)}`,
           })
         }
       },
-      JSONProperty(node) {
+      JSONProperty(node: AST.JSONProperty) {
         if (!state.enabled) return
 
         if (!state.englishJson || !isTopLevelProperty(node)) return
 
-        const key = node.key.value ?? node.key.name
-        if (!key) return
+        const key = node.key.type === 'JSONIdentifier' ? node.key.name : node.key.value
+        if (typeof key !== 'string' || !key) return
 
         const sourceKey = getTranslationSourceKey(state.englishKeys, key, state.language)
         if (!sourceKey) return
@@ -152,14 +162,14 @@ export default {
 
         if (!arraysEqual(currentPlaceholders, englishPlaceholders)) {
           context.report({
-            node: currentNode,
+            node: currentNode as unknown as Rule.Node,
             message: buildPlaceholderMessage(key, englishPlaceholders, currentPlaceholders),
           })
         }
 
         if (!arraysEqual(currentTagMarkers, englishTagMarkers)) {
           context.report({
-            node: currentNode,
+            node: currentNode as unknown as Rule.Node,
             message: buildTagMessage(key, englishTagMarkers, currentTagMarkers),
           })
         }
@@ -167,3 +177,6 @@ export default {
     }
   },
 }
+
+// JSON listeners receive jsonc-eslint-parser nodes rather than ESTree nodes.
+export default rule as unknown as Rule.RuleModule

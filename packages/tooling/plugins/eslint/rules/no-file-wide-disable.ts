@@ -1,4 +1,6 @@
-export default {
+import type { Rule } from 'eslint'
+import { getDisableDirectives } from '../utils.ts'
+const rule: Rule.RuleModule = {
   meta: {
     type: 'problem',
     docs: { description: 'Require block disables to end with a matching enable.' },
@@ -11,8 +13,11 @@ export default {
   create(context) {
     return {
       Program() {
-        const pending = new Map()
-        for (const directive of context.sourceCode.getDisableDirectives().directives) {
+        const pending = new Map<
+          ReturnType<typeof getDisableDirectives>[number],
+          Set<string> | null
+        >()
+        for (const directive of getDisableDirectives(context.sourceCode)) {
           const rules = directive.value
             .split(',')
             .map((rule) => rule.trim())
@@ -43,3 +48,5 @@ export default {
     }
   },
 }
+
+export default rule

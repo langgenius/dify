@@ -6,10 +6,12 @@ import path from 'node:path'
 import { Linter } from 'eslint'
 import jsonc from 'eslint-plugin-jsonc'
 import { expect, it } from 'vite-plus/test'
-import consistentPlaceholders from './consistent-placeholders.js'
-import noExtraKeys from './no-extra-keys.js'
+import consistentPlaceholders from './consistent-placeholders.ts'
+import noExtraKeys from './no-extra-keys.ts'
 
-function lintTranslation(translation, fix = false) {
+function lintTranslation(translation: Record<string, string>, fix: true): Linter.FixReport
+function lintTranslation(translation: Record<string, string>, fix?: false): Linter.LintMessage[]
+function lintTranslation(translation: Record<string, string>, fix = false) {
   const directory = mkdtempSync(path.join(tmpdir(), 'dify-i18n-lint-'))
   try {
     mkdirSync(path.join(directory, 'en-US'))
@@ -22,7 +24,7 @@ function lintTranslation(translation, fix = false) {
       }),
     )
     const linter = new Linter({ cwd: directory })
-    const config = [
+    const config: Linter.Config[] = [
       ...jsonc.configs['flat/base'],
       {
         files: ['**/*.json'],
@@ -68,6 +70,6 @@ it('checks interpolation and tags in locale-specific variants', () => {
     'dify/consistent-placeholders',
     'dify/consistent-placeholders',
   ])
-  expect(messages[0].message).toContain('missing {{count}}')
-  expect(messages[1].message).toContain('Trans tag mismatch')
+  expect(messages[0]!.message).toContain('missing {{count}}')
+  expect(messages[1]!.message).toContain('Trans tag mismatch')
 })

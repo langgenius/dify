@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { expect, it } from 'vite-plus/test'
 
-function lintFixture(source, rules) {
+function lintFixture(source: string, rules: Record<string, string>) {
   const require = createRequire(import.meta.url)
   const viteRequire = createRequire(require.resolve('vite-plus/package.json'))
   const oxlintBin = join(dirname(dirname(viteRequire.resolve('oxlint'))), 'bin', 'oxlint')
@@ -13,7 +13,7 @@ function lintFixture(source, rules) {
   try {
     writeFileSync(
       join(directory, 'plugin.mjs'),
-      `export { default } from ${JSON.stringify(require.resolve('../index.js'))};`,
+      `export { default } from ${JSON.stringify(require.resolve('../index.ts'))};`,
     )
     writeFileSync(
       join(directory, '.oxlintrc.json'),
@@ -35,7 +35,11 @@ function lintFixture(source, rules) {
     )
     expect(result.error).toBeUndefined()
     expect([0, 1], result.stderr + result.stdout).toContain(result.status)
-    return JSON.parse(result.stdout).diagnostics
+    return JSON.parse(result.stdout).diagnostics as Array<{
+      code: string
+      severity: string
+      labels: { span: { line: number } }[]
+    }>
   } finally {
     rmSync(directory, { recursive: true, force: true })
   }
@@ -60,7 +64,7 @@ it('rejects missing, broad, and non-tuple namespaces through imported TFunction 
     "type Union = TFunction<['common' | 'workflow']>",
   ].join('\n')
   const diagnostics = lintFixture(source, { 'dify/require-t-function-namespace': 'error' })
-  expect(diagnostics.map(({ code, labels }) => ({ code, line: labels[0].span.line }))).toEqual(
+  expect(diagnostics.map(({ code, labels }) => ({ code, line: labels[0]!.span.line }))).toEqual(
     Array.from({ length: 13 }, (_, index) => ({
       code: 'dify(require-t-function-namespace)',
       line: index + 3,

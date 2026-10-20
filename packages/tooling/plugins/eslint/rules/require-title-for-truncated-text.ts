@@ -1,8 +1,12 @@
+import type { TSESLint, TSESTree } from '@typescript-eslint/utils'
+import type { Rule } from 'eslint'
 import { readFileSync, statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 
 const DEFAULT_TRUNCATION_CLASSES = new Set(['text-ellipsis', 'truncate'])
-const cssModuleClassCache = new Map()
+type CssModuleBindings = Map<TSESLint.Scope.Variable, Set<string>>
+
+const cssModuleClassCache = new Map<string, { classNames: Set<string>; modifiedTime: number }>()
 const UNSAFE_TITLE_EXPRESSION = Symbol('unsafe-title-expression')
 const STYLE_WRAPPER_TYPES = new Set([
   'ChainExpression',
@@ -13,7 +17,7 @@ const STYLE_WRAPPER_TYPES = new Set([
   'TSTypeAssertion',
 ])
 
-function getJsxName(node) {
+function getJsxName(node: TSESTree.Node | undefined): string | null {
   if (!node) return null
   if (node.type === 'JSXIdentifier') return node.name
   if (node.type === 'JSXMemberExpression') {
@@ -29,22 +33,28 @@ function getJsxName(node) {
   return null
 }
 
-function getAttribute(openingElement, attributeName) {
+function getAttribute(openingElement: TSESTree.JSXOpeningElement, attributeName: string) {
   return openingElement.attributes.find(
-    (attribute) =>
+    (attribute): attribute is TSESTree.JSXAttribute =>
       attribute.type === 'JSXAttribute' &&
       attribute.name.type === 'JSXIdentifier' &&
       attribute.name.name === attributeName,
   )
 }
 
-function unwrapExpression(node) {
+function unwrapExpression(node: TSESTree.Node | undefined) {
   let current = node
-  while (current && STYLE_WRAPPER_TYPES.has(current.type)) current = current.expression
+  while (
+    current &&
+    STYLE_WRAPPER_TYPES.has(current.type) &&
+    'expression' in current &&
+    typeof current.expression !== 'boolean'
+  )
+    current = current.expression
   return current
 }
 
-function getStaticString(node) {
+function getStaticString(node: TSESTree.Node | undefined) {
   const current = unwrapExpression(node)
   if (!current) return null
   if (current.type === 'Literal' && typeof current.value === 'string') return current.value
@@ -53,7 +63,7 @@ function getStaticString(node) {
   return null
 }
 
-function getUnprefixedClassName(token) {
+function getUnprefixedClassName(token: string) {
   let bracketDepth = 0
   let lastVariantSeparator = -1
 
@@ -70,7 +80,7 @@ function getUnprefixedClassName(token) {
     .replace(/!$/u, '')
 }
 
-function isTruncationClassToken(token) {
+function isTruncationClassToken(token: string) {
   const className = getUnprefixedClassName(token)
   if (DEFAULT_TRUNCATION_CLASSES.has(className)) return true
   if (className.startsWith('line-clamp-') && className !== 'line-clamp-none') return true
@@ -82,11 +92,11 @@ function isTruncationClassToken(token) {
   )
 }
 
-function stringContainsTruncationClass(value) {
+function stringContainsTruncationClass(value: string) {
   return value.split(/\s+/u).some((token) => token && isTruncationClassToken(token))
 }
 
-function hasActiveLineClampDeclaration(cssText) {
+function hasActiveLineClampDeclaration(cssText: string) {
   const lineClampPattern = /(?:-webkit-)?line-clamp\s*:\s*([^;}]+)/giu
   return [...cssText.matchAll(lineClampPattern)].some((match) => {
     const value = (match[1] ?? '').trim()
@@ -94,12 +104,12 @@ function hasActiveLineClampDeclaration(cssText) {
   })
 }
 
-function getTruncatingCssModuleClassNames(cssText) {
-  const classNames = new Set()
+function getTruncatingCssModuleClassNames(cssText: string) {
+  const classNames = new Set<string>()
   const classBlockPattern = /\.([A-Z_a-z][\w-]*)\s*\{([^{}]*)\}/gu
 
   for (const match of cssText.matchAll(classBlockPattern)) {
-    const [, className, body = ''] = match
+    const [, className = '', body = ''] = match
     const hasTextEllipsis = /text-overflow\s*:\s*ellipsis\b/iu.test(body)
     const hasLineClamp = hasActiveLineClampDeclaration(body)
     const hasTruncationApply = [...body.matchAll(/@apply\s+([^;}]+)/gu)].some((applyMatch) =>
@@ -112,7 +122,7 @@ function getTruncatingCssModuleClassNames(cssText) {
   return classNames
 }
 
-function getCssModuleClassNames(cssModulePath) {
+function getCssModuleClassNames(cssModulePath: string) {
   try {
     const modifiedTime = statSync(cssModulePath).mtimeMs
     const cached = cssModuleClassCache.get(cssModulePath)
@@ -122,11 +132,11 @@ function getCssModuleClassNames(cssModulePath) {
     cssModuleClassCache.set(cssModulePath, { classNames, modifiedTime })
     return classNames
   } catch {
-    return new Set()
+    return new Set<string>()
   }
 }
 
-function getPropertyName(property) {
+function getPropertyName(property: TSESTree.Node | undefined) {
   if (!property || property.type !== 'Property') return null
   if (!property.computed && property.key.type === 'Identifier') return property.key.name
   if (property.key.type === 'Literal' && typeof property.key.value === 'string')
@@ -134,7 +144,7 @@ function getPropertyName(property) {
   return null
 }
 
-function getVariableByName(scope, name) {
+function getVariableByName(scope: TSESLint.Scope.Scope | null, name: string) {
   let currentScope = scope
   while (currentScope) {
     const variable = currentScope.set.get(name)
@@ -144,12 +154,13 @@ function getVariableByName(scope, name) {
   return null
 }
 
-function getVariableInitializer(identifier, sourceCode) {
+function getVariableInitializer(identifier: TSESTree.Identifier, sourceCode: TSESLint.SourceCode) {
   const variable = getVariableByName(sourceCode.getScope(identifier), identifier.name)
   if (!variable || variable.defs.length !== 1) return null
 
   const [definition] = variable.defs
   if (
+    !definition ||
     definition.type !== 'Variable' ||
     definition.node.type !== 'VariableDeclarator' ||
     definition.node.id.type !== 'Identifier' ||
@@ -161,11 +172,11 @@ function getVariableInitializer(identifier, sourceCode) {
 }
 
 function expressionContainsTruncationClass(
-  node,
-  sourceCode,
-  cssModuleBindings,
-  seenVariables = new Set(),
-) {
+  node: TSESTree.Node | undefined,
+  sourceCode: TSESLint.SourceCode,
+  cssModuleBindings: CssModuleBindings,
+  seenVariables = new Set<TSESLint.Scope.Variable>(),
+): boolean {
   const current = unwrapExpression(node)
   if (!current) return false
 
@@ -194,7 +205,11 @@ function expressionContainsTruncationClass(
           ? current.property.name
           : null
       const variable = getVariableByName(sourceCode.getScope(object), object.name)
-      return propertyName !== null && cssModuleBindings.get(variable)?.has(propertyName)
+      return (
+        propertyName !== null &&
+        variable !== null &&
+        (cssModuleBindings.get(variable)?.has(propertyName) ?? false)
+      )
     }
     case 'TemplateLiteral':
       return (
@@ -321,7 +336,7 @@ function expressionContainsTruncationClass(
   }
 }
 
-function isActiveLineClampValue(node) {
+function isActiveLineClampValue(node: TSESTree.Node | undefined) {
   const current = unwrapExpression(node)
   if (!current) return false
   if (current.type === 'Literal') {
@@ -333,7 +348,11 @@ function isActiveLineClampValue(node) {
   return current.type !== 'Identifier' || current.name !== 'undefined'
 }
 
-function expressionContainsTruncationStyle(node, sourceCode, seenVariables = new Set()) {
+function expressionContainsTruncationStyle(
+  node: TSESTree.Node | undefined,
+  sourceCode: TSESLint.SourceCode,
+  seenVariables = new Set<TSESLint.Scope.Variable>(),
+): boolean {
   const current = unwrapExpression(node)
   if (!current) return false
 
@@ -386,7 +405,7 @@ function expressionContainsTruncationStyle(node, sourceCode, seenVariables = new
       return getStaticString(property.value)?.trim().toLowerCase() === 'ellipsis'
     if (
       ['WebkitLineClamp', 'webkitLineClamp', 'lineClamp', '-webkit-line-clamp'].includes(
-        propertyName,
+        propertyName ?? '',
       )
     )
       return isActiveLineClampValue(property.value)
@@ -394,7 +413,11 @@ function expressionContainsTruncationStyle(node, sourceCode, seenVariables = new
   })
 }
 
-function hasTruncation(openingElement, sourceCode, cssModuleBindings) {
+function hasTruncation(
+  openingElement: TSESTree.JSXOpeningElement,
+  sourceCode: TSESLint.SourceCode,
+  cssModuleBindings: CssModuleBindings,
+) {
   const classAttribute =
     getAttribute(openingElement, 'className') ?? getAttribute(openingElement, 'class')
   if (classAttribute?.value) {
@@ -422,7 +445,7 @@ function hasTruncation(openingElement, sourceCode, cssModuleBindings) {
   )
 }
 
-function isEmptyTitleAttribute(attribute) {
+function isEmptyTitleAttribute(attribute: TSESTree.JSXAttribute | undefined) {
   if (!attribute || !attribute.value) return true
   if (attribute.value.type === 'Literal')
     return typeof attribute.value.value !== 'string' || attribute.value.value.trim() === ''
@@ -437,7 +460,7 @@ function isEmptyTitleAttribute(attribute) {
   return expression.type === 'Identifier' && expression.name === 'undefined'
 }
 
-function isRenderableTitleExpression(node) {
+function isRenderableTitleExpression(node: TSESTree.Node | undefined) {
   const current = unwrapExpression(node)
   if (!current) return false
   return ![
@@ -451,7 +474,7 @@ function isRenderableTitleExpression(node) {
   ].includes(current.type)
 }
 
-function isSafeToDuplicateTitleExpression(node) {
+function isSafeToDuplicateTitleExpression(node: TSESTree.Node | undefined) {
   const current = unwrapExpression(node)
   if (!current) return false
 
@@ -465,7 +488,7 @@ function isSafeToDuplicateTitleExpression(node) {
   return false
 }
 
-function getMeaningfulChildren(element) {
+function getMeaningfulChildren(element: TSESTree.JSXElement | TSESTree.JSXFragment) {
   return element.children.filter((child) => {
     if (child.type === 'JSXText') return child.value.trim() !== ''
     if (child.type === 'JSXExpressionContainer')
@@ -474,16 +497,18 @@ function getMeaningfulChildren(element) {
   })
 }
 
-function getSingleTextChild(element) {
+function getSingleTextChild(
+  element: TSESTree.JSXElement | TSESTree.JSXFragment,
+): TSESTree.JSXChild | null {
   const meaningfulChildren = getMeaningfulChildren(element)
   if (meaningfulChildren.length !== 1) return null
 
-  const child = meaningfulChildren[0]
+  const child = meaningfulChildren[0]!
   if (child.type === 'JSXElement') return getSingleTextChild(child)
   return child
 }
 
-function getExpressionTextChildCount(node) {
+function getExpressionTextChildCount(node: TSESTree.Node | undefined): number {
   const current = unwrapExpression(node)
   if (!current) return 0
 
@@ -522,7 +547,7 @@ function getExpressionTextChildCount(node) {
   return isRenderableTitleExpression(current) ? 1 : 0
 }
 
-function getTextChildCount(element) {
+function getTextChildCount(element: TSESTree.JSXElement | TSESTree.JSXFragment): number {
   let count = 0
 
   for (const child of getMeaningfulChildren(element)) {
@@ -538,12 +563,15 @@ function getTextChildCount(element) {
   return count
 }
 
-function hasMultipleTextChildren(openingElement) {
+function hasMultipleTextChildren(openingElement: TSESTree.JSXOpeningElement) {
   const element = openingElement.parent
   return element?.type === 'JSXElement' && getTextChildCount(element) > 1
 }
 
-function getTitleFixTextFromAttribute(attribute, sourceCode) {
+function getTitleFixTextFromAttribute(
+  attribute: TSESTree.JSXAttribute | undefined,
+  sourceCode: TSESLint.SourceCode,
+) {
   if (!attribute?.value) return null
   if (attribute.value.type === 'Literal') {
     if (typeof attribute.value.value !== 'string' || attribute.value.value.trim() === '')
@@ -555,7 +583,10 @@ function getTitleFixTextFromAttribute(attribute, sourceCode) {
   return `title={${sourceCode.getText(attribute.value.expression)}}`
 }
 
-function getTitleFixText(openingElement, sourceCode) {
+function getTitleFixText(
+  openingElement: TSESTree.JSXOpeningElement,
+  sourceCode: TSESLint.SourceCode,
+) {
   const element = openingElement.parent
   if (!element || element.type !== 'JSXElement') return null
 
@@ -586,22 +617,28 @@ function getTitleFixText(openingElement, sourceCode) {
   return hasUnsafeTitleExpression ? UNSAFE_TITLE_EXPRESSION : null
 }
 
-function hasTitledSingleChild(openingElement) {
+function hasTitledSingleChild(openingElement: TSESTree.JSXOpeningElement) {
   const element = openingElement.parent
   if (!element || element.type !== 'JSXElement') return false
   const meaningfulChildren = getMeaningfulChildren(element)
-  if (meaningfulChildren.length !== 1 || meaningfulChildren[0].type !== 'JSXElement') return null
-  const titleAttribute = getAttribute(meaningfulChildren[0].openingElement, 'title')
+  if (meaningfulChildren.length !== 1 || meaningfulChildren[0]!.type !== 'JSXElement') return null
+  const titleAttribute = getAttribute(meaningfulChildren[0]!.openingElement, 'title')
   return !!titleAttribute && !isEmptyTitleAttribute(titleAttribute)
 }
 
-function isTooltipTriggerOpening(openingElement, tooltipTriggerNames) {
+function isTooltipTriggerOpening(
+  openingElement: TSESTree.JSXOpeningElement,
+  tooltipTriggerNames: Set<string>,
+) {
   const name = getJsxName(openingElement.name)
   return name !== null && tooltipTriggerNames.has(name)
 }
 
-function isInsideTooltipTrigger(openingElement, tooltipTriggerNames) {
-  let current = openingElement.parent
+function isInsideTooltipTrigger(
+  openingElement: TSESTree.JSXOpeningElement,
+  tooltipTriggerNames: Set<string>,
+) {
+  let current: TSESTree.Node | undefined = openingElement.parent
   while (current) {
     if (
       current.type === 'JSXElement' &&
@@ -621,8 +658,8 @@ function isInsideTooltipTrigger(openingElement, tooltipTriggerNames) {
   return false
 }
 
-function getOwningVariableName(openingElement) {
-  let current = openingElement.parent
+function getOwningVariableName(openingElement: TSESTree.JSXOpeningElement) {
+  let current: TSESTree.Node | undefined = openingElement.parent
   while (current) {
     if (current.type === 'VariableDeclarator')
       return current.id.type === 'Identifier' ? current.id.name : null
@@ -637,7 +674,7 @@ function getOwningVariableName(openingElement) {
   return null
 }
 
-function collectReferencedIdentifiers(node, names) {
+function collectReferencedIdentifiers(node: TSESTree.Node | undefined, names: Set<string>) {
   const current = unwrapExpression(node)
   if (!current) return
   if (current.type === 'Identifier') {
@@ -653,8 +690,7 @@ function collectReferencedIdentifiers(node, names) {
   }
 }
 
-/** @type {import('eslint').Rule.RuleModule} */
-export default {
+const rule: TSESLint.RuleModule<string, []> = {
   meta: {
     type: 'suggestion',
     docs: {
@@ -668,13 +704,14 @@ export default {
     },
     schema: [],
   },
+  defaultOptions: [],
   create(context) {
-    const candidates = []
-    const renderIdentifiers = new Set()
-    const tooltipTriggerNames = new Set()
-    const cssModuleBindings = new Map()
+    const candidates: TSESTree.JSXOpeningElement[] = []
+    const renderIdentifiers = new Set<string>()
+    const tooltipTriggerNames = new Set<string>()
+    const cssModuleBindings: CssModuleBindings = new Map()
 
-    function recordCssModuleImport(node) {
+    function recordCssModuleImport(node: TSESTree.ImportDeclaration) {
       if (typeof node.source.value !== 'string' || !node.source.value.endsWith('.module.css'))
         return
       const defaultSpecifier = node.specifiers.find(
@@ -696,7 +733,9 @@ export default {
         for (const specifier of node.specifiers) {
           if (
             specifier.type === 'ImportSpecifier' &&
-            (specifier.imported.name ?? specifier.imported.value) === 'TooltipTrigger'
+            (specifier.imported.type === 'Identifier'
+              ? specifier.imported.name
+              : specifier.imported.value) === 'TooltipTrigger'
           )
             tooltipTriggerNames.add(specifier.local.name)
         }
@@ -741,3 +780,6 @@ export default {
     }
   },
 }
+
+// ESLint and Oxlint supply the parser-specific AST used by these typed listeners.
+export default rule as unknown as Rule.RuleModule

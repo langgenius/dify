@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./eslint": "./eslint.mjs",
+    "./eslint": "./eslint.ts",
     "./oxlint": "./lint.config.ts",
     "./tsslint": "./tsslint.config.ts",
     "./knip": "./knip.config.ts",
     "./repository": "./repository.config.ts",
-    "./eslint-plugin": "./plugins/eslint/index.js",
+    "./eslint-plugin": "./plugins/eslint/index.ts",
     "./i18n-plurals": "./i18n-plurals.ts"
   },
   "scripts": {
@@ -44,6 +44,8 @@
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
     "@types/node": "catalog:",
+    "@typescript-eslint/utils": "catalog:",
+    "jsonc-eslint-parser": "catalog:",
     "vite": "catalog:"
   },
   "peerDependencies": {

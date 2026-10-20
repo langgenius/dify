@@ -257,7 +257,7 @@ export const lintConfig = {
     ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
     {
       name: 'dify',
-      specifier: './plugins/eslint/index.js',
+      specifier: './plugins/eslint/index.ts',
     },
     {
       name: 'eslint-react',

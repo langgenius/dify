@@ -1,4 +1,6 @@
-export default {
+import type { Rule } from 'eslint'
+import { getDisableDirectives } from '../utils.ts'
+const rule: Rule.RuleModule = {
   meta: {
     type: 'suggestion',
     docs: {
@@ -12,7 +14,7 @@ export default {
   create(context) {
     return {
       Program() {
-        for (const directive of context.sourceCode.getDisableDirectives().directives) {
+        for (const directive of getDisableDirectives(context.sourceCode)) {
           if (directive.type !== 'enable' && !directive.justification.trim()) {
             context.report({
               node: directive.node,
@@ -24,3 +26,5 @@ export default {
     }
   },
 }
+
+export default rule

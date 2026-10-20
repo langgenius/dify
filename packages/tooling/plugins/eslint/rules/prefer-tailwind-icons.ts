@@ -1,3 +1,21 @@
+import type { TSESLint, TSESTree } from '@typescript-eslint/utils'
+import type { Rule } from 'eslint'
+type LibraryConfig = { source: string; name?: string; prefix?: string }
+type ResolvedLibraryConfig = { sourceRegex: RegExp; nameRegex: RegExp; prefix?: string }
+type Options = {
+  libraries?: LibraryConfig[]
+  prefix?: string
+  propMappings?: Record<string, string>
+}
+type IconImport = {
+  node: TSESTree.ImportSpecifier
+  importedName: string
+  localName: string
+  config: ResolvedLibraryConfig
+  source: string
+  used: boolean
+}
+
 const CAMEL_TO_KEBAB_UPPERCASE_REGEX = /([A-Z]+)([A-Z][a-z])/gu
 const CAMEL_TO_KEBAB_LETTER_DIGIT_REGEX = /([a-z])(\d)/giu
 const CAMEL_TO_KEBAB_DIGIT_LETTER_REGEX = /(\d)([a-z])/giu
@@ -9,13 +27,13 @@ const REGEX_FLAGS_PATTERN = /^[a-z]*$/iu
 const NORMALIZE_SEGMENT_SPACES_REGEX = /\s+/gu
 const warned = new Set()
 
-function warnOnce(message) {
+function warnOnce(message: string) {
   if (warned.has(message)) return
   warned.add(message)
   console.warn(message)
 }
 
-function camelToKebab(value) {
+function camelToKebab(value: string) {
   return value
     .replace(CAMEL_TO_KEBAB_UPPERCASE_REGEX, '$1-$2')
     .replace(CAMEL_TO_KEBAB_LETTER_DIGIT_REGEX, '$1-$2')
@@ -27,12 +45,12 @@ function camelToKebab(value) {
     .toLowerCase()
 }
 
-function pixelToClass(pixels, classPrefix) {
+function pixelToClass(pixels: number, classPrefix: string) {
   if (pixels % 4 === 0) return `${classPrefix}-${pixels / 4}`
   return `${classPrefix}-[${pixels}px]`
 }
 
-function parseRegexPattern(pattern) {
+function parseRegexPattern(pattern: string) {
   if (!pattern.startsWith('/')) return null
   let closingSlashIndex = -1
   for (let i = pattern.length - 1; i > 0; i--) {
@@ -55,7 +73,7 @@ function parseRegexPattern(pattern) {
   }
 }
 
-function createRegex(pattern, optionName) {
+function createRegex(pattern: string, optionName: string) {
   if (pattern.startsWith('/') && pattern.lastIndexOf('/') > 0) {
     const literalRegex = parseRegexPattern(pattern)
     if (literalRegex) return literalRegex
@@ -70,12 +88,12 @@ function createRegex(pattern, optionName) {
   }
 }
 
-function hasRegexMatch(value, regex) {
+function hasRegexMatch(value: string, regex: RegExp) {
   regex.lastIndex = 0
   return regex.test(value)
 }
 
-function normalizeSegment(value) {
+function normalizeSegment(value: string) {
   return value
     .replaceAll('/', '-')
     .replaceAll('_', '-')
@@ -85,13 +103,18 @@ function normalizeSegment(value) {
     .toLowerCase()
 }
 
-function getIconClass(importName, source, config, globalPrefix) {
+function getIconClass(
+  importName: string,
+  source: string,
+  config: ResolvedLibraryConfig,
+  globalPrefix: string,
+) {
   const prefix = config.prefix ?? globalPrefix
   config.sourceRegex.lastIndex = 0
   config.nameRegex.lastIndex = 0
   const sourceMatch = source.match(config.sourceRegex)
   const nameMatch = importName.match(config.nameRegex)
-  const getGroup = (...keys) => {
+  const getGroup = (...keys: string[]) => {
     for (const key of keys) {
       const fromName = nameMatch?.groups?.[key]
       if (fromName) return fromName
@@ -110,7 +133,7 @@ function getIconClass(importName, source, config, globalPrefix) {
     .replace(REPEATED_DASH_REGEX, '-')
 }
 
-function normalizeLibraryConfig(config) {
+function normalizeLibraryConfig(config: LibraryConfig) {
   const sourceRegex = createRegex(config.source, 'libraries[].source')
   if (!sourceRegex) return null
   const nameRegex = createRegex(config.name ?? '.*', 'libraries[].name')
@@ -122,7 +145,7 @@ function normalizeLibraryConfig(config) {
   }
 }
 
-function normalizeLibraryConfigs(configs) {
+function normalizeLibraryConfigs(configs: LibraryConfig[]) {
   const resolved = []
   for (const config of configs) {
     const normalized = normalizeLibraryConfig(config)
@@ -131,7 +154,9 @@ function normalizeLibraryConfigs(configs) {
   return resolved
 }
 
-function isNamedImportSpecifier(specifier) {
+function isNamedImportSpecifier(
+  specifier: TSESTree.ImportClause,
+): specifier is TSESTree.ImportSpecifier & { imported: TSESTree.Identifier } {
   return (
     specifier.type === 'ImportSpecifier' &&
     specifier.imported.type === 'Identifier' &&
@@ -139,7 +164,10 @@ function isNamedImportSpecifier(specifier) {
   )
 }
 
-function isJsxAttributeNamed(attribute, name) {
+function isJsxAttributeNamed(
+  attribute: TSESTree.JSXAttribute | TSESTree.JSXSpreadAttribute,
+  name: string,
+): attribute is TSESTree.JSXAttribute {
   return (
     attribute.type === 'JSXAttribute' &&
     attribute.name.type === 'JSXIdentifier' &&
@@ -147,7 +175,7 @@ function isJsxAttributeNamed(attribute, name) {
   )
 }
 
-function getNumericJsxAttributeValue(attribute) {
+function getNumericJsxAttributeValue(attribute: TSESTree.JSXAttribute) {
   if (!attribute.value) return null
   if (attribute.value.type === 'Literal' && typeof attribute.value.value === 'number')
     return attribute.value.value
@@ -161,7 +189,11 @@ function getNumericJsxAttributeValue(attribute) {
   return null
 }
 
-function getClassNameValueText(classNames, classNameAttribute, sourceCode) {
+function getClassNameValueText(
+  classNames: string,
+  classNameAttribute: TSESTree.JSXAttribute | undefined,
+  sourceCode: TSESLint.SourceCode,
+) {
   if (!classNameAttribute?.value) return `{${JSON.stringify(classNames)}}`
   if (
     classNameAttribute.value.type === 'Literal' &&
@@ -192,7 +224,7 @@ function getClassNameValueText(classNames, classNameAttribute, sourceCode) {
   return null
 }
 
-function hasRuntimeReference(sourceCode, specifier) {
+function hasRuntimeReference(sourceCode: TSESLint.SourceCode, specifier: TSESTree.ImportClause) {
   try {
     const variable = sourceCode.getDeclaredVariables(specifier)[0]
     if (!variable) return false
@@ -207,8 +239,7 @@ function hasRuntimeReference(sourceCode, specifier) {
   }
 }
 
-/** @type {import('eslint').Rule.RuleModule} */
-export default {
+const rule: TSESLint.RuleModule<string, [Options?]> = {
   meta: {
     type: 'suggestion',
     hasSuggestions: true,
@@ -252,6 +283,7 @@ export default {
         'Icon "{{importedName}}" from "{{source}}" can be replaced with Tailwind CSS class "{{iconClass}}"',
     },
   },
+  defaultOptions: [],
   create(context) {
     const [options = {}] = context.options
     const resolvedConfigs = normalizeLibraryConfigs(options.libraries ?? [])
@@ -259,7 +291,7 @@ export default {
 
     const globalPrefix = options.prefix ?? ''
     const propMappings = options.propMappings ?? {}
-    const iconImports = new Map()
+    const iconImports = new Map<string, IconImport>()
     const sourceCode = context.sourceCode
 
     return {
@@ -302,7 +334,7 @@ export default {
           isJsxAttributeNamed(attribute, 'className'),
         )
         const mappedClasses = []
-        const consumedMappedAttributes = new Set()
+        const consumedMappedAttributes = new Set<TSESTree.JSXAttribute>()
         for (const [propName, classPrefix] of Object.entries(propMappings)) {
           const mappedAttribute = node.attributes.find((attribute) =>
             isJsxAttributeNamed(attribute, propName),
@@ -316,7 +348,8 @@ export default {
 
         const classesToAdd = [iconClass, ...mappedClasses].filter(Boolean).join(' ')
         const classValue = getClassNameValueText(classesToAdd, classNameAttribute, sourceCode)
-        if (node.parent.type !== 'JSXElement') return
+        const element = node.parent
+        if (element.type !== 'JSXElement') return
 
         context.report({
           node,
@@ -349,10 +382,10 @@ export default {
                         ? `className=${classValue} ${otherAttributes}`
                         : `className=${classValue}`
                       if (node.selfClosing)
-                        return fixer.replaceText(node.parent, `<span ${attrsText} />`)
+                        return fixer.replaceText(element, `<span ${attrsText} />`)
                       const fixes = [fixer.replaceText(node, `<span ${attrsText}>`)]
-                      if (node.parent.closingElement)
-                        fixes.push(fixer.replaceText(node.parent.closingElement, '</span>'))
+                      if (element.closingElement)
+                        fixes.push(fixer.replaceText(element.closingElement, '</span>'))
                       return fixes
                     },
                   },
@@ -384,3 +417,6 @@ export default {
     }
   },
 }
+
+// ESLint and Oxlint supply the parser-specific AST used by these typed listeners.
+export default rule as unknown as Rule.RuleModule

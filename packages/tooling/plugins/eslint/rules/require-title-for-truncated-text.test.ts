@@ -4,7 +4,7 @@ import tsParser from '@typescript-eslint/parser'
 import { Linter } from 'eslint'
 import { it } from 'vite-plus/test'
 import { repositoryRoot } from '../../../paths.ts'
-import rule from './require-title-for-truncated-text.js'
+import rule from './require-title-for-truncated-text.ts'
 import './fixtures/truncation.module.css'
 
 const plugin = {
@@ -13,7 +13,7 @@ const plugin = {
   },
 }
 
-function verifyAndFix(code, filename = 'test.tsx') {
+function verifyAndFix(code: string, filename = 'test.tsx') {
   const linter = new Linter({ cwd: repositoryRoot })
   return linter.verifyAndFix(
     code,
@@ -121,8 +121,8 @@ it('reports an empty title without replacing it', () => {
 
   assert.equal(result.fixed, false)
   assert.equal(result.messages.length, 1)
-  assert.equal(result.messages[0].severity, 1)
-  assert.equal(result.messages[0].messageId, 'emptyTitle')
+  assert.equal(result.messages[0]!.severity, 1)
+  assert.equal(result.messages[0]!.messageId, 'emptyTitle')
   assert.equal(result.output, code)
 })
 
@@ -136,7 +136,7 @@ it('reports custom components without fixing them', () => {
 
   assert.equal(result.fixed, false)
   assert.equal(result.messages.length, 1)
-  assert.equal(result.messages[0].severity, 1)
+  assert.equal(result.messages[0]!.severity, 1)
   assert.equal(result.output, code)
 })
 
@@ -190,7 +190,7 @@ it('checks Dify UI single text but ignores multiple text children', () => {
 
   assert.equal(result.fixed, false)
   assert.equal(result.messages.length, 1)
-  assert.equal(result.messages[0].severity, 1)
+  assert.equal(result.messages[0]!.severity, 1)
 })
 
 it('does not count non-text conditional children as additional text', () => {
@@ -205,7 +205,7 @@ it('does not count non-text conditional children as additional text', () => {
 
   assert.equal(result.fixed, false)
   assert.equal(result.messages.length, 1)
-  assert.equal(result.messages[0].messageId, 'missingTitle')
+  assert.equal(result.messages[0]!.messageId, 'missingTitle')
 })
 
 it('resolves truncation classes imported from CSS modules', () => {
