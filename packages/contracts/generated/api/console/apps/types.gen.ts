@@ -6387,6 +6387,7 @@ export type GetAppsByAppIdNetworkAccessGroupData = {
 }
 
 export type GetAppsByAppIdNetworkAccessGroupErrors = {
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6410,6 +6411,7 @@ export type PutAppsByAppIdNetworkAccessGroupData = {
 }
 
 export type PutAppsByAppIdNetworkAccessGroupErrors = {
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6433,6 +6435,7 @@ export type GetAppsByAppIdNetworkAccessGroupStatusData = {
 }
 
 export type GetAppsByAppIdNetworkAccessGroupStatusErrors = {
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

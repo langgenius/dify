@@ -1,7 +1,7 @@
 'use client'
 
+import type { RelatedAppResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { RelatedApp } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import * as React from 'react'
@@ -10,11 +10,11 @@ import Link from '@/next/link'
 
 type ILikedItemProps = Readonly<{
   appStatus?: boolean
-  detail: RelatedApp
+  detail: RelatedAppResponse
   isMobile: boolean
 }>
 
-const appTypeMap: Partial<Record<RelatedApp['mode'], string>> = {
+const appTypeMap: Partial<Record<RelatedAppResponse['mode'], string>> = {
   chat: 'Chatbot',
   completion: 'Completion',
   'agent-chat': 'Agent',
@@ -50,7 +50,7 @@ const LikedItem = ({ detail, isMobile }: ILikedItemProps) => {
 }
 
 type Props = Readonly<{
-  relatedApps: RelatedApp[]
+  relatedApps: RelatedAppResponse[]
   isMobile: boolean
 }>
 

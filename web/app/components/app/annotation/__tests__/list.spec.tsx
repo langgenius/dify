@@ -1,5 +1,5 @@
-import type { AnnotationItem } from '../type'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import type { Annotation } from '@dify/contracts/api/console/apps/types.gen'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -23,7 +23,7 @@ vi.mock('@/service/base', async (importOriginal) => ({
   request: mockedRequest,
 }))
 
-const createAnnotation = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({
+const createAnnotation = (overrides: Partial<Annotation> = {}): Annotation => ({
   id: overrides.id ?? 'annotation-id',
   question: overrides.question ?? 'question 1',
   answer: overrides.answer ?? 'answer 1',
@@ -36,7 +36,8 @@ describe('List', () => {
     vi.clearAllMocks()
   })
 
-  it('should render annotation rows and call onView when clicking a row', () => {
+  it('should render annotation rows and call onView when clicking a row', async () => {
+    const user = userEvent.setup()
     const item = createAnnotation()
     const onView = vi.fn()
 
@@ -52,52 +53,51 @@ describe('List', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(item.question!))
+    await user.click(screen.getByText(item.question!))
 
     expect(onView).toHaveBeenCalledWith(item)
     expect(mockFormatTime).toHaveBeenCalledWith(item.created_at, 'appLog.dateTimeFormat')
   })
 
-  it('should toggle single and bulk selection states', () => {
+  it('selects individual rows and all rows without opening their detail', async () => {
+    const user = userEvent.setup()
     const list = [
       createAnnotation({ id: 'a', question: 'A' }),
       createAnnotation({ id: 'b', question: 'B' }),
     ]
+    const onView = vi.fn()
     const onSelectedIdsChange = vi.fn()
-    const { rerender } = render(
-      <List
-        appId="app-1"
-        list={list}
-        onView={vi.fn()}
-        onRemoved={vi.fn()}
-        selectedIds={[]}
-        onSelectedIdsChange={onSelectedIdsChange}
-        onBatchDelete={vi.fn()}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('checkbox', { name: 'A' }))
-    expect(onSelectedIdsChange.mock.calls.at(-1)?.[0]).toEqual(['a'])
-
-    rerender(
-      <List
-        appId="app-1"
-        list={list}
-        onView={vi.fn()}
-        onRemoved={vi.fn()}
-        selectedIds={['a']}
-        onSelectedIdsChange={onSelectedIdsChange}
-        onBatchDelete={vi.fn()}
-      />,
-    )
-    fireEvent.click(screen.getByRole('checkbox', { name: 'A' }))
-    expect(onSelectedIdsChange.mock.calls.at(-1)?.[0]).toEqual([])
-
-    fireEvent.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
-    expect(onSelectedIdsChange.mock.calls.at(-1)?.[0]).toEqual(['a', 'b'])
+    function ControlledList() {
+      const [selectedIds, setSelectedIds] = React.useState<string[]>([])
+      return (
+        <List
+          appId="app-1"
+          list={list}
+          onView={onView}
+          onRemoved={vi.fn()}
+          selectedIds={selectedIds}
+          onSelectedIdsChange={(next) => {
+            setSelectedIds(next)
+            onSelectedIdsChange(next)
+          }}
+          onBatchDelete={vi.fn()}
+        />
+      )
+    }
+    render(<ControlledList />)
+    await user.click(screen.getByRole('checkbox', { name: 'A' }))
+    expect(onSelectedIdsChange).toHaveBeenLastCalledWith(['a'])
+    await user.click(screen.getByRole('checkbox', { name: 'A' }))
+    expect(onSelectedIdsChange).toHaveBeenLastCalledWith([])
+    await user.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
+    expect(onSelectedIdsChange).toHaveBeenLastCalledWith(['a', 'b'])
+    await user.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
+    expect(onSelectedIdsChange).toHaveBeenLastCalledWith([])
+    expect(onView).not.toHaveBeenCalled()
   })
 
   it('should confirm before removing an annotation and expose batch actions', async () => {
+    const user = userEvent.setup()
     const item = createAnnotation({ id: 'to-delete', question: 'Delete me' })
     const onRemoved = vi.fn()
     mockedRequest.mockResolvedValue(Response.json({ result: 'success' }))
@@ -113,15 +113,14 @@ describe('List', () => {
       />,
     )
 
-    const row = screen.getByText(item.question!).closest('tr') as HTMLTableRowElement
-    const actionButtons = within(row).getAllByRole('button')
-    fireEvent.click(actionButtons[1]!)
+    await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.remove' }))
 
     expect(
       await screen.findByText('appDebug.feature.annotation.removeConfirm'),
     )!.toBeInTheDocument()
     const confirmButton = await screen.findByRole('button', { name: 'common.operation.confirm' })
-    fireEvent.click(confirmButton)
+    expect(mockedRequest).not.toHaveBeenCalled()
+    await user.click(confirmButton)
     await waitFor(() => {
       expect(onRemoved).toHaveBeenCalledTimes(1)
     })

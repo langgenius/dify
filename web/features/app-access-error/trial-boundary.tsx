@@ -3,10 +3,10 @@
 import type { PropsWithChildren } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValueRawSync } from 'jotai/react'
+import dynamic from 'next/dynamic'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import AppNotAccessible from './page'
 import {
   appAccessStore,
   beginTrialAppAccess,
@@ -14,6 +14,10 @@ import {
   trialAppAccessErrorAtom,
   trialAppAccessScopeAtom,
 } from './state'
+
+const AppNotAccessible = dynamic(() => import('./page'), {
+  loading: () => <LoadingPlaceholder className="h-full" />,
+})
 
 export default function TrialAppAccessBoundary({
   appId,

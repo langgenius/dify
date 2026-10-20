@@ -252,7 +252,8 @@ function TryApp(props: Props) {
     >
       <DialogContent
         initialFocus={detailTabRef}
-        className="h-[calc(100dvh-16px)] max-h-[calc(100dvh-16px)] w-full max-w-[calc(100vw-16px)] overflow-hidden border-none p-2 text-left align-middle"
+        // oxlint-disable-next-line shadcn/no-restyle -- Full-page Try App surface keeps its 8px inset.
+        className="h-[calc(100dvh-16px)] max-h-[calc(100dvh-16px)] w-full max-w-[calc(100vw-16px)] overflow-hidden p-2"
       >
         <TrialAppAccessBoundary key={props.appId} appId={props.appId} onClose={props.onClose}>
           <TryAppContent {...props} detailTabRef={detailTabRef} />
@@ -261,5 +262,4 @@ function TryApp(props: Props) {
     </Dialog>
   )
 }
-
 export default React.memo(TryApp)

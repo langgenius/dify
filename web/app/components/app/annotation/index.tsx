@@ -1,9 +1,9 @@
 'use client'
 
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { Annotation, AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { QueryParam } from './filter'
-import type { AnnotationItem, AnnotationItemBasic } from './type'
+import type { AnnotationItemBasic } from './type'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -65,12 +65,12 @@ const Annotation: FC<Props> = (props) => {
   const [queryParams, setQueryParams] = useState<QueryParam>({})
   const [currPage, setCurrPage] = useState(0)
   const [limit, setLimit] = useState(APP_PAGE_LIMIT)
-  const [list, setList] = useState<AnnotationItem[]>([])
+  const [list, setList] = useState<Annotation[]>([])
   const [total, setTotal] = useState(0)
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
   const [isLoading, setIsLoading] = useState(false)
   const [controlUpdateList, setControlUpdateList] = useState(() => Date.now())
-  const [currItem, setCurrItem] = useState<AnnotationItem | null>(null)
+  const [currItem, setCurrItem] = useState<Annotation | null>(null)
   const [isShowViewModal, setIsShowViewModal] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
@@ -120,7 +120,6 @@ const Annotation: FC<Props> = (props) => {
       params: { app_id: appDetail.id },
       body: payload,
     })
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
@@ -129,7 +128,6 @@ const Annotation: FC<Props> = (props) => {
     await consoleClient.apps.byAppId.annotations.byAnnotationId.delete({
       params: { app_id: appDetail.id, annotation_id: id },
     })
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
@@ -140,7 +138,6 @@ const Annotation: FC<Props> = (props) => {
         params: { app_id: appDetail.id },
         query: { annotation_id: selectedIds },
       })
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       fetchList()
       setControlUpdateList(Date.now())
       setSelectedIds([])
@@ -150,7 +147,7 @@ const Annotation: FC<Props> = (props) => {
     }
   }
 
-  const handleView = (item: AnnotationItem) => {
+  const handleView = (item: Annotation) => {
     setCurrItem(item)
     setIsShowViewModal(true)
   }
@@ -161,7 +158,6 @@ const Annotation: FC<Props> = (props) => {
       params: { app_id: appDetail.id, annotation_id: currItem.id },
       body: { question, answer },
     })
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
@@ -302,9 +298,9 @@ const Annotation: FC<Props> = (props) => {
             isShow={isShowViewModal}
             onHide={() => setIsShowViewModal(false)}
             onRemove={async () => {
-              await handleRemove((currItem as AnnotationItem)?.id)
+              await handleRemove((currItem as Annotation)?.id)
             }}
-            item={currItem as AnnotationItem}
+            item={currItem as Annotation}
             onSave={handleSave}
           />
         )}

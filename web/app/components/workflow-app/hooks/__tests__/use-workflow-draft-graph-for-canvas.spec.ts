@@ -1,37 +1,10 @@
 import type { Node } from '@/app/components/workflow/types'
 import { renderHook } from '@testing-library/react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useWorkflowDraftGraphForCanvas } from '../use-workflow-draft-graph-for-canvas'
 
-let generateNewNodeCalls: Array<Record<string, unknown>> = []
-
-vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
-  return {
-    ...actual,
-    generateNewNode: (args: {
-      data: Record<string, unknown>
-      position: Record<string, unknown>
-    }) => {
-      generateNewNodeCalls.push(args)
-      return {
-        newNode: {
-          id: `generated-${generateNewNodeCalls.length}`,
-          type: 'custom',
-          data: args.data,
-          position: args.position,
-        },
-      }
-    },
-  }
-})
-
 describe('useWorkflowDraftGraphForCanvas', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    generateNewNodeCalls = []
-  })
-
   it('should restore a local start placeholder for workflow graphs without an entry node', () => {
     const { result } = renderHook(() => useWorkflowDraftGraphForCanvas('workflow'))
 
@@ -62,16 +35,15 @@ describe('useWorkflowDraftGraphForCanvas', () => {
     BlockEnum.TriggerPlugin,
     BlockEnum.StartPlaceholder,
   ])('should preserve existing %s entry nodes', (type) => {
-    const node = { id: 'entry', data: { type } }
+    const node = createNode({ id: 'entry', data: { type } })
     const { result } = renderHook(() => useWorkflowDraftGraphForCanvas('workflow'))
 
     const graph = result.current.getWorkflowDraftGraphForCanvas({
-      nodes: [node] as never,
+      nodes: [node],
       edges: [],
     })
 
     expect(graph.nodes).toEqual([node])
-    expect(generateNewNodeCalls).toHaveLength(0)
   })
 
   it('should not restore a start placeholder for non-workflow app modes', () => {
@@ -83,31 +55,29 @@ describe('useWorkflowDraftGraphForCanvas', () => {
     })
 
     expect(graph.nodes).toEqual([])
-    expect(generateNewNodeCalls).toHaveLength(0)
   })
 
   it('should reuse the provided local start placeholder template when available', () => {
-    const localStartPlaceholder = {
+    const localStartPlaceholder = createNode({
       id: 'start-placeholder',
       data: { type: BlockEnum.StartPlaceholder },
-    }
-    const draftNode = { id: 'llm', data: { type: BlockEnum.LLM } }
+    })
+    const draftNode = createNode({ id: 'llm', data: { type: BlockEnum.LLM } })
     const { result } = renderHook(() => useWorkflowDraftGraphForCanvas('workflow'))
 
     const graph = result.current.getWorkflowDraftGraphForCanvas(
       {
-        nodes: [draftNode] as never,
+        nodes: [draftNode],
         edges: [],
         viewport: { x: 1, y: 2, zoom: 0.5 },
       },
       {
-        localStartPlaceholderNodes: [localStartPlaceholder] as never,
+        localStartPlaceholderNodes: [localStartPlaceholder],
       },
     )
 
     expect(graph.nodes).toEqual([localStartPlaceholder, draftNode])
     expect(graph.viewport).toEqual({ x: 1, y: 2, zoom: 0.5 })
-    expect(generateNewNodeCalls).toHaveLength(0)
   })
 
   it('removes residual LLM memory from workflow drafts, including container children', () => {

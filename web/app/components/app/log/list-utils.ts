@@ -24,9 +24,9 @@ dayjs.extend(timezone)
 
 type LogDetailMessage = {
   answer?: string | number | null
-  inputs?: Record<string, unknown>
-  message_files?: Array<{ url?: string | null }>
-  query?: string
+  inputs?: Record<string, unknown> | null
+  message_files?: Array<{ url?: string | null }> | null
+  query?: string | null
 }
 
 type ConversationLogDetail = {
@@ -38,7 +38,7 @@ type ConversationLogDetail = {
     // Untyped JSON in the console API response.
     user_input_form?: unknown
   } | null
-  name?: string
+  name?: string | null
 }
 
 const getUserInputVariable = (item: unknown) => {
@@ -49,13 +49,11 @@ const getUserInputVariable = (item: unknown) => {
   return typeof variable === 'string' ? variable : undefined
 }
 
-type LogMessage = MessageDetailResponse
-
 const isTransferMethod = (value: string): value is TransferMethod =>
   (Object.values(TransferMethod) as string[]).includes(value)
 
 // Agent thoughts keep raw message files; the agent content renderer converts them once.
-const toThoughtFiles = (item: LogMessage): VisionFile[] =>
+const toThoughtFiles = (item: MessageDetailResponse): VisionFile[] =>
   item.message_files.map((file) => ({
     id: file.id,
     type: file.type,
@@ -67,7 +65,7 @@ const toThoughtFiles = (item: LogMessage): VisionFile[] =>
     belongs_to: file.belongs_to ?? undefined,
   }))
 
-const toFileResponse = (file: LogMessage['message_files'][number]): FileResponse => ({
+const toFileResponse = (file: MessageDetailResponse['message_files'][number]): FileResponse => ({
   related_id: file.id ?? file.upload_file_id,
   extension: '',
   filename: '',
@@ -85,19 +83,21 @@ const toFileResponse = (file: LogMessage['message_files'][number]): FileResponse
 const toText = (value: unknown) => (typeof value === 'string' && value ? value : undefined)
 
 // `inputs` values are untyped JSON in the console API response.
-export const getStringInputs = (inputs: LogMessage['inputs']) =>
+export const getStringInputs = (inputs: MessageDetailResponse['inputs']) =>
   Object.fromEntries(
     Object.entries(inputs).filter(
       (entry): entry is [string, string] => typeof entry[1] === 'string',
     ),
   )
 
-const toFeedback = (feedback?: LogMessage['feedbacks'][number]): FeedbackType | undefined =>
+const toFeedback = (
+  feedback?: MessageDetailResponse['feedbacks'][number],
+): FeedbackType | undefined =>
   feedback?.rating === 'like' || feedback?.rating === 'dislike'
     ? { rating: feedback.rating, content: feedback.content }
     : undefined
 
-const toThoughtItems = (message: LogMessage): ThoughtItem[] =>
+const toThoughtItems = (message: MessageDetailResponse): ThoughtItem[] =>
   message.agent_thoughts.map((thought) => ({
     id: thought.id,
     tool: thought.tool ?? '',
@@ -116,15 +116,15 @@ const toThoughtItems = (message: LogMessage): ThoughtItem[] =>
   }))
 
 // `message` and `metadata` are untyped JSON in the console API response.
-const getPromptLog = (message: LogMessage) =>
+const getPromptLog = (message: MessageDetailResponse) =>
   (Array.isArray(message.message) ? message.message : []) as NonNullable<IChatItem['log']>
 
-const getCitations = (message: LogMessage) =>
+const getCitations = (message: MessageDetailResponse) =>
   isPlainObject(message.metadata) && Array.isArray(message.metadata.retriever_resources)
     ? (message.metadata.retriever_resources as CitationItem[])
     : undefined
 
-const getAnnotation = (message: LogMessage): Annotation | undefined => {
+const getAnnotation = (message: MessageDetailResponse): Annotation | undefined => {
   if (message.annotation_hit_history) {
     return {
       id: message.annotation_hit_history.annotation_id,
@@ -152,7 +152,7 @@ const getAnnotation = (message: LogMessage): Annotation | undefined => {
 }
 
 export const getFormattedChatList = (
-  messages: LogMessage[],
+  messages: MessageDetailResponse[],
   conversationId: string,
   timezone: string,
   format: string,
@@ -217,40 +217,6 @@ export const mergeUniqueChatItems = (prevItems: IChatItem[], newItems: IChatItem
   const uniqueNewItems = newItems.filter((item) => !existingIds.has(item.id))
 
   return [...uniqueNewItems, ...prevItems]
-}
-
-export const mergePaginatedChatItems = ({
-  maxRetryCount,
-  newItems,
-  prevItems,
-  retryCount,
-}: {
-  maxRetryCount: number
-  newItems: IChatItem[]
-  prevItems: IChatItem[]
-  retryCount: number
-}) => {
-  const existingIds = new Set(prevItems.map((item) => item.id))
-  const uniqueNewItems = newItems.filter((item) => !existingIds.has(item.id))
-
-  if (!uniqueNewItems.length) {
-    if (retryCount < maxRetryCount && prevItems.length > 1) {
-      return {
-        items: prevItems,
-        retryCount: retryCount + 1,
-      }
-    }
-
-    return {
-      items: prevItems,
-      retryCount: 0,
-    }
-  }
-
-  return {
-    items: [...uniqueNewItems, ...prevItems],
-    retryCount: 0,
-  }
 }
 
 export const buildChatThreadState = ({
@@ -361,6 +327,19 @@ export const applyAnnotationRemoved = (items: IChatItem[], index: number) =>
 
     return item
   })
+
+// The chat reports indexes within the displayed thread, which can differ from
+// allChatItems when a conversation has regenerated branches or an opening statement.
+export const getAllChatItemIndex = (
+  allChatItems: IChatItem[],
+  threadChatItems: IChatItem[],
+  threadIndex: number,
+) => {
+  const itemId = threadChatItems[threadIndex]?.id
+  if (!itemId) return -1
+  return allChatItems.findIndex((item) => item.id === itemId)
+}
+
 export const isNearTopLoadMore = ({
   clientHeight,
   scrollHeight,
@@ -378,7 +357,7 @@ export const getConversationRowValues = ({
   noOutputLabel,
 }: {
   isChatMode: boolean
-  log: ConversationLogDetail
+  log: Omit<ConversationLogDetail, 'model_config'>
   noChatLabel: string
   noOutputLabel: string
 }) => {

@@ -93,6 +93,10 @@ const extractTextFromEvent = (data: unknown): string => {
   if (!isRecord(data)) {
     return ''
   }
+  // Workflow apps stream their text output as `text_chunk` events, which nest it under `data`.
+  if (data.event === 'text_chunk') {
+    return isRecord(data.data) && typeof data.data.text === 'string' ? data.data.text : ''
+  }
   if (typeof data.answer === 'string') {
     return data.answer
   }
@@ -120,6 +124,11 @@ export const createSseStream = <T>(
     toText: async () => {
       let text = ''
       for await (const event of iterable) {
+        // Output moderation sends `message_replace` with the full answer that replaces everything streamed so far.
+        if (isRecord(event.data) && event.data.event === 'message_replace') {
+          text = typeof event.data.answer === 'string' ? event.data.answer : ''
+          continue
+        }
         text += extractTextFromEvent(event.data)
       }
       return text

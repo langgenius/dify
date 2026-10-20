@@ -3,9 +3,9 @@
 import io
 import json
 import logging
-from collections.abc import Generator
+from collections.abc import Buffer, Generator
 from contextlib import contextmanager
-from types import SimpleNamespace
+from dataclasses import dataclass
 from typing import Literal, Never, cast, override
 from unittest.mock import MagicMock
 
@@ -13,7 +13,9 @@ import pytest
 from flask import Blueprint, Flask, Response, jsonify, request
 from flask.testing import FlaskClient
 from flask_restx import Namespace, Resource
+from pytest_mock import MockerFixture
 from sqlalchemy import Table
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound, Unauthorized
 
 import controllers.service_api.wraps as token_wraps
@@ -30,12 +32,46 @@ from controllers.trigger import webhook
 from extensions import ext_request_logging
 from libs.external_api import ExternalApi
 from models.engine import db
-from models.model import ApiToken
+from models.model import ApiToken, App, AppMCPServer
 from services.app.mcp_server_service import AppMCPServerStatus
 from tests.unit_tests.config_override import apply_config_overrides
 
 type TokenClient = tuple[FlaskClient, MagicMock, MagicMock, MagicMock]
-type MCPClient = tuple[FlaskClient, MagicMock, MagicMock, MagicMock]
+
+
+@dataclass
+class SessionCalls:
+    session: Session
+    scalar: MagicMock
+    add: MagicMock
+    execute: MagicMock
+
+
+def _session_calls(mocker: MockerFixture) -> SessionCalls:
+    session = Session()
+    return SessionCalls(
+        session=session,
+        scalar=mocker.patch.object(session, "scalar"),
+        add=mocker.patch.object(session, "add"),
+        execute=mocker.patch.object(session, "execute"),
+    )
+
+
+def _mcp_server(app_id: str) -> AppMCPServer:
+    server = AppMCPServer(
+        app_id=app_id,
+        tenant_id="tenant",
+        status=AppMCPServerStatus.ACTIVE,
+        name="Fixture",
+        description="",
+        server_code="fixture",
+        parameters="{}",
+    )
+    server.id = "server"
+    return server
+
+
+type MCPClient = tuple[FlaskClient, SessionCalls, MagicMock, MagicMock]
 
 
 @pytest.fixture
@@ -47,7 +83,7 @@ def http_app() -> Flask:
 
 
 @pytest.fixture
-def token_client(http_app: Flask, monkeypatch: pytest.MonkeyPatch) -> TokenClient:
+def token_client(http_app: Flask, mocker: MockerFixture) -> TokenClient:
     bp = Blueprint("service_test", __name__, url_prefix="/v1")
     register_auth_error_response(bp, www_authenticate='Bearer realm="api"')
     api = ExternalApi(bp)
@@ -68,12 +104,11 @@ def token_client(http_app: Flask, monkeypatch: pytest.MonkeyPatch) -> TokenClien
 
     other_api.add_resource(OtherResource, "/info")
     http_app.register_blueprint(other)
-    cache_get = MagicMock(return_value=None)
-    fetch = MagicMock(side_effect=Unauthorized("Access token is invalid"))
-    usage = MagicMock()
-    monkeypatch.setattr(token_wraps.ApiTokenCache, "get", cache_get)
-    monkeypatch.setattr(token_wraps, "fetch_token_with_single_flight", fetch)
-    monkeypatch.setattr(token_wraps, "record_token_usage", usage)
+    cache_get = mocker.patch.object(token_wraps.ApiTokenCache, "get", return_value=None)
+    fetch = mocker.patch.object(
+        token_wraps, "fetch_token_with_single_flight", side_effect=Unauthorized("Access token is invalid")
+    )
+    usage = mocker.patch.object(token_wraps, "record_token_usage")
     return http_app.test_client(), cache_get, fetch, usage
 
 
@@ -122,10 +157,9 @@ def test_invalid_token_final_response_and_no_usage(token_client: TokenClient) ->
     usage.assert_not_called()
 
 
-def test_invalid_token_database_path_does_not_record_usage(http_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    usage = MagicMock()
-    monkeypatch.setattr(token_service.ApiTokenCache, "set", MagicMock())
-    monkeypatch.setattr(token_service, "record_token_usage", usage)
+def test_invalid_token_database_path_does_not_record_usage(http_app: Flask, mocker: MockerFixture) -> None:
+    usage = mocker.patch.object(token_service, "record_token_usage")
+    mocker.patch.object(token_service.ApiTokenCache, "set")
     with http_app.app_context():
         cast(Table, ApiToken.__table__).create(db.engine)
         with pytest.raises(Unauthorized, match="Access token is invalid"):
@@ -135,7 +169,7 @@ def test_invalid_token_database_path_does_not_record_usage(http_app: Flask, monk
 
 def test_success_token_and_other_surface_are_not_rewritten(token_client: TokenClient) -> None:
     client, cache_get, _fetch, usage = token_client
-    cache_get.return_value = SimpleNamespace(id="existing")
+    cache_get.return_value = ApiToken(id="existing")
     response = client.get("/v1/info", headers={"Authorization": "bEaReR\tvalid-token"})
     assert response.status_code == 200
     assert response.get_json() == {"ok": True}
@@ -148,7 +182,7 @@ def test_success_token_and_other_surface_are_not_rewritten(token_client: TokenCl
 
 
 @pytest.fixture
-def mcp_client(http_app: Flask, monkeypatch: pytest.MonkeyPatch) -> MCPClient:
+def mcp_client(http_app: Flask, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture) -> MCPClient:
     bp = Blueprint("mcp_test", __name__, url_prefix="/mcp")
     api = ExternalApi(bp)
     namespace = Namespace("mcp_test", path="/")
@@ -157,15 +191,18 @@ def mcp_client(http_app: Flask, monkeypatch: pytest.MonkeyPatch) -> MCPClient:
     api.add_namespace(namespace)
     http_app.register_blueprint(bp)
     monkeypatch.setattr(mcp, "mcp_ns", namespace)
-    session = MagicMock()  # guard-ignore: no-new-session-mock -- controls HTTP query results
-    maker = MagicMock()
-    maker.begin.return_value.__enter__.return_value = session
+    calls = _session_calls(mocker)
+    maker = sessionmaker()
+
+    @contextmanager
+    def begin() -> Generator[Session]:
+        yield calls.session
+
+    mocker.patch.object(maker, "begin", side_effect=begin)
     monkeypatch.setattr(mcp.session_factory, "get_session_maker", lambda: maker)
-    execute = MagicMock()
-    end_user = MagicMock()
-    monkeypatch.setattr(mcp, "handle_mcp_request", execute)
-    monkeypatch.setattr(mcp.MCPAppApi, "_retrieve_end_user", end_user)
-    return http_app.test_client(), session, execute, end_user
+    execute = mocker.patch.object(mcp, "handle_mcp_request")
+    end_user = mocker.patch.object(mcp.MCPAppApi, "_retrieve_end_user")
+    return http_app.test_client(), calls, execute, end_user
 
 
 @pytest.mark.parametrize("cached", [False, True])
@@ -212,7 +249,7 @@ def test_mcp_missing_identity_final_response_is_bounded_and_opaque(
     expected_id: bytes,
 ) -> None:
     client, session, execute, end_user = mcp_client
-    server = SimpleNamespace(app_id="private-app", tenant_id="tenant", status=AppMCPServerStatus.ACTIVE)
+    server = _mcp_server("private-app")
     if cached:
 
         @client.application.before_request
@@ -225,7 +262,7 @@ def test_mcp_missing_identity_final_response_is_bounded_and_opaque(
         session.scalar.side_effect = [server, None]
     else:
         server.status = "inactive"
-        session.scalar.side_effect = [server, SimpleNamespace(id="private-app")]
+        session.scalar.side_effect = [server, App(id="private-app")]
     response = client.post("/mcp/server/missing-fixture/mcp", data=body, content_type="application/json")
     assert response.status_code == 404
     assert (
@@ -280,17 +317,18 @@ def test_mcp_debug_request_logging_preserves_raw_error_id(
     end_user.assert_not_called()
 
 
-def test_existing_mcp_keeps_normal_large_payload_and_response(
-    mcp_client: MCPClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_existing_mcp_keeps_normal_large_payload_and_response(mcp_client: MCPClient, mocker: MockerFixture) -> None:
     client, session, _execute, _end_user = mcp_client
-    server = SimpleNamespace(id="server", tenant_id="tenant", app_id="existing-app", status=AppMCPServerStatus.ACTIVE)
-    app = SimpleNamespace(id="existing-app", tenant_id="tenant")
+    server = _mcp_server("existing-app")
+    app = App(id="existing-app", tenant_id="tenant")
     session.scalar.side_effect = [server, app, server, app]
-    monkeypatch.setattr(mcp.MCPAppApi, "_get_user_input_form", MagicMock(return_value=[]))
+    mocker.patch.object(mcp.MCPAppApi, "_get_user_input_form", return_value=[])
     expected_body = b'{"id":2,"jsonrpc":"2.0","result":{}}'
-    process = MagicMock(return_value=Response(expected_body, status=200, content_type="application/json"))
-    monkeypatch.setattr(mcp.MCPAppApi, "_process_mcp_message", process)
+    process = mocker.patch.object(
+        mcp.MCPAppApi,
+        "_process_mcp_message",
+        return_value=Response(expected_body, status=200, content_type="application/json"),
+    )
     payload = {
         "jsonrpc": "2.0",
         "method": "initialize",
@@ -311,8 +349,8 @@ def test_existing_mcp_keeps_normal_large_payload_and_response(
 def test_existing_mcp_still_validates_malformed_payload(mcp_client: MCPClient) -> None:
     client, session, execute, end_user = mcp_client
     session.scalar.side_effect = [
-        SimpleNamespace(id="server", tenant_id="tenant", app_id="existing-app", status=AppMCPServerStatus.ACTIVE),
-        SimpleNamespace(id="existing-app", tenant_id="tenant"),
+        _mcp_server("existing-app"),
+        App(id="existing-app", tenant_id="tenant"),
     ]
     response = client.post("/mcp/server/existing-fixture/mcp", data=b"{", content_type="application/json")
     assert response.status_code == 400
@@ -334,16 +372,16 @@ def test_existing_mcp_still_validates_malformed_payload(mcp_client: MCPClient) -
     ],
 )
 def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
-    mcp_client: MCPClient, monkeypatch: pytest.MonkeyPatch, change: str
+    mcp_client: MCPClient, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, change: str
 ) -> None:
     client, _session, execute, end_user = mcp_client
-    active_sessions: list[MagicMock] = []
-    opened: list[MagicMock] = []
+    active_sessions: list[Session] = []
+    opened: list[Session] = []
     read_sessions: list[bool] = []
-    initial_server = SimpleNamespace(id="server", tenant_id="tenant", app_id="app", status=AppMCPServerStatus.ACTIVE)
-    initial_app = SimpleNamespace(id="app", tenant_id="tenant")
-    fresh_server = SimpleNamespace(**vars(initial_server))
-    fresh_app = SimpleNamespace(**vars(initial_app))
+    initial_server = _mcp_server("app")
+    initial_app = App(id="app", tenant_id="tenant")
+    fresh_server = _mcp_server("app")
+    fresh_app = App(id="app", tenant_id="tenant")
     if change == "inactive":
         fresh_server.status = "inactive"
     elif change == "server-replaced":
@@ -352,16 +390,18 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
         fresh_server.app_id = fresh_app.id = "other-app"
     elif change == "tenant-changed":
         fresh_server.tenant_id = fresh_app.tenant_id = "other-tenant"
-    initial = MagicMock()
-    initial.scalar.side_effect = [None] if change == "initial-missing" else [initial_server, initial_app]
-    execution = MagicMock()
-    execution.scalar.side_effect = (
+    initial_calls = _session_calls(mocker)
+    initial = initial_calls.session
+    initial_calls.scalar.side_effect = [None] if change == "initial-missing" else [initial_server, initial_app]
+    execution_calls = _session_calls(mocker)
+    execution = execution_calls.session
+    execution_calls.scalar.side_effect = (
         [None] if change == "missing-server" else [fresh_server, None if change == "missing-app" else fresh_app]
     )
     remaining = iter((initial, execution))
 
     @contextmanager
-    def begin() -> Generator[MagicMock]:
+    def begin() -> Generator[Session]:
         session = next(remaining)
         opened.append(session)
         active_sessions.append(session)
@@ -370,11 +410,11 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
         finally:
             active_sessions.pop()
 
-    monkeypatch.setattr(mcp.session_factory, "get_session_maker", lambda: SimpleNamespace(begin=begin))
-    form = MagicMock(return_value=[])
-    process = MagicMock(return_value=Response("ok", status=200))
-    monkeypatch.setattr(mcp.MCPAppApi, "_get_user_input_form", form)
-    monkeypatch.setattr(mcp.MCPAppApi, "_process_mcp_message", process)
+    maker = sessionmaker()
+    mocker.patch.object(maker, "begin", side_effect=begin)
+    monkeypatch.setattr(mcp.session_factory, "get_session_maker", lambda: maker)
+    form = mocker.patch.object(mcp.MCPAppApi, "_get_user_input_form", return_value=[])
+    process = mocker.patch.object(mcp.MCPAppApi, "_process_mcp_message", return_value=Response("ok", status=200))
     original_error = mcp.mcp_server_not_found_response
 
     def error_response() -> Response:
@@ -390,11 +430,9 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
             return super().read(size)
 
         @override
-        def readinto(self, buffer: object) -> int:
-            writable = cast(bytearray, buffer)
-            data = self.read(len(writable))
-            writable[: len(data)] = data
-            return len(data)
+        def readinto(self, buffer: Buffer) -> int:
+            read_sessions.append(bool(active_sessions))
+            return super().readinto(buffer)
 
     payload = b'{"jsonrpc":"2.0","method":"ping","id":900719925474099312345678901234567890}'
     response = client.post(
@@ -416,20 +454,22 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
         process.assert_not_called()
     execute.assert_not_called()
     end_user.assert_not_called()
-    initial.add.assert_not_called()
-    execution.add.assert_not_called()
+    initial_calls.add.assert_not_called()
+    execution_calls.add.assert_not_called()
 
 
 @pytest.mark.parametrize("route", ["webhook", "webhook-debug"])
 def test_webhook_missing_identity_uses_native_html_without_disclosing_id(
-    http_app: Flask, monkeypatch: pytest.MonkeyPatch, route: Literal["webhook", "webhook-debug"]
+    http_app: Flask, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, route: Literal["webhook", "webhook-debug"]
 ) -> None:
     monkeypatch.setattr(webhook, "request", request)
     monkeypatch.setattr(webhook, "jsonify", jsonify)
-    lookup = MagicMock(side_effect=ValueError("Webhook not found: private-fixture"))
-    execute = MagicMock()
-    monkeypatch.setattr(webhook.WebhookService, "get_webhook_trigger_and_workflow", lookup)
-    monkeypatch.setattr(webhook.WebhookService, "trigger_workflow_execution", execute)
+    mocker.patch.object(
+        webhook.WebhookService,
+        "get_webhook_trigger_and_workflow",
+        side_effect=ValueError("Webhook not found: private-fixture"),
+    )
+    execute = mocker.patch.object(webhook.WebhookService, "trigger_workflow_execution")
     handler = webhook.handle_webhook if route == "webhook" else webhook.handle_webhook_debug
     http_app.add_url_rule(f"/triggers/{route}/<string:webhook_id>", view_func=handler, methods=["POST"])
     response = http_app.test_client().post(f"/triggers/{route}/private-fixture", json={})
@@ -443,15 +483,15 @@ def test_webhook_missing_identity_uses_native_html_without_disclosing_id(
 
 @pytest.mark.parametrize("endpoint", ["123e4567-e89b-42d3-a456-426614174000", "invalid-id"])
 def test_plugin_callback_retains_its_json_error_contract(
-    http_app: Flask, monkeypatch: pytest.MonkeyPatch, endpoint: str
+    http_app: Flask, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, endpoint: str
 ) -> None:
     monkeypatch.setattr(plugin_trigger, "request", request)
     monkeypatch.setattr(plugin_trigger, "jsonify", jsonify)
-    monkeypatch.setattr(plugin_trigger.TriggerService, "process_endpoint", MagicMock(return_value=None))
-    monkeypatch.setattr(
+    mocker.patch.object(plugin_trigger.TriggerService, "process_endpoint", return_value=None)
+    mocker.patch.object(
         plugin_trigger.TriggerSubscriptionBuilderService,
         "process_builder_validation_endpoint",
-        MagicMock(return_value=None),
+        return_value=None,
     )
     http_app.add_url_rule(
         "/triggers/plugin/<string:endpoint_id>", view_func=plugin_trigger.trigger_endpoint, methods=["POST"]

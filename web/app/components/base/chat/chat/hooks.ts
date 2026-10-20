@@ -91,6 +91,18 @@ function mergeStreamingThought(currentThought: ThoughtItem, nextThought: Thought
   }
 }
 
+// A tool result streams in under the id of the thought that made the call. With parallel tool
+// calls that thought is not always the last one, so it is looked up by id from the end.
+function upsertStreamingThought(thoughts: ThoughtItem[], thought: ThoughtItem) {
+  for (let index = thoughts.length - 1; index >= 0; index--) {
+    if (thoughts[index]!.id === thought.id) {
+      thoughts[index] = mergeStreamingThought(thoughts[index]!, thought)
+      return
+    }
+  }
+  thoughts.push(thought)
+}
+
 function appendAgentResponseMessagePart(responseItem: ChatItemInTree, message: string) {
   if (!responseItem.agent_response_parts) responseItem.agent_response_parts = []
 
@@ -550,7 +562,7 @@ export const useChat = (
   }, [stopChat, handleResponding, resetWorkflowEventsSubscription])
 
   const handleRestart = useCallback(
-    (cb?: any) => {
+    (cb?: () => void) => {
       conversationIdRef.current = initialConversationIdRef.current
       taskIdRef.current = ''
       handleStop()
@@ -754,18 +766,7 @@ export const useChat = (
             if (thought.conversation_id) responseItem.conversationId = thought.conversation_id
 
             if (!responseItem.agent_thoughts) responseItem.agent_thoughts = []
-
-            if (responseItem.agent_thoughts.length === 0) {
-              responseItem.agent_thoughts.push(thought)
-            } else {
-              const lastThought = responseItem.agent_thoughts.at(-1)
-              if (lastThought?.id === thought.id) {
-                responseItem.agent_thoughts[responseItem.agent_thoughts.length - 1] =
-                  mergeStreamingThought(lastThought, thought)
-              } else {
-                responseItem.agent_thoughts.push(thought)
-              }
-            }
+            upsertStreamingThought(responseItem.agent_thoughts, thought)
             if (options.isNewAgent) {
               const currentThought =
                 responseItem.agent_thoughts.find((item) => item.id === thought.id) ?? thought
@@ -909,7 +910,7 @@ export const useChat = (
               )
             })
             if (currentIndex > -1)
-              responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData as any
+              responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData
           })
         },
         onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
@@ -1459,18 +1460,7 @@ export const useChat = (
           if (thought.message_id && !hasSetResponseId) response.id = thought.message_id
           if (thought.conversation_id) response.conversationId = thought.conversation_id
 
-          if (response.agent_thoughts.length === 0) {
-            response.agent_thoughts.push(thought)
-          } else {
-            const lastThought = response.agent_thoughts.at(-1)
-            // thought changed but still the same thought, so update.
-            if (lastThought.id === thought.id) {
-              responseItem.agent_thoughts![response.agent_thoughts.length - 1] =
-                mergeStreamingThought(lastThought, thought)
-            } else {
-              responseItem.agent_thoughts!.push(thought)
-            }
-          }
+          upsertStreamingThought(response.agent_thoughts, thought)
           if (options.isNewAgent) {
             const currentThought =
               responseItem.agent_thoughts?.find((item) => item.id === thought.id) ?? thought
@@ -1660,7 +1650,7 @@ export const useChat = (
                 nodeFinishedData.execution_metadata?.parallel_id
             )
           })
-          responseItem.workflowProcess!.tracing[currentIndex] = nodeFinishedData as any
+          responseItem.workflowProcess!.tracing[currentIndex] = nodeFinishedData
 
           updateCurrentQAOnTree({
             placeholderQuestionId,

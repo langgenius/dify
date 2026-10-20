@@ -1,26 +1,31 @@
-import type { DataSet } from '@/models/datasets'
-import { QueryClient } from '@tanstack/react-query'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { isEqual } from 'es-toolkit/compat'
 import * as React from 'react'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import DatasetDetailContext from '@/context/dataset-detail'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetInfo from '..'
 import Dropdown from '../dropdown'
 
-let mockDataset: DataSet
+let mockDataset: ReturnType<typeof createDatasetFixture>
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
-const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
-const datasetListKey = consoleQuery.datasets.get.key()
+const datasetListKey = consoleQuery.datasets.get.queryKey({
+  input: { query: { page: 1, limit: 20 } },
+})
+const datasetDetailKey = consoleQuery.datasets.byDatasetId.get.queryKey({
+  input: { params: { dataset_id: 'dataset-1' } },
+})
 const mockExportPipeline = vi.fn()
 const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
+const mockUpdateDataset = vi.fn()
 let mockIsRbacEnabled = true
 const mockConsoleState = vi.hoisted(() => ({
   current: {
@@ -29,72 +34,87 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
-const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
-  renderWithConsoleQuery(ui, {
-    systemFeatures: {
-      rbac_enabled: mockIsRbacEnabled,
-    },
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(datasetListKey, {
+    data: [mockDataset],
+    has_more: false,
+    page: 1,
+    limit: 20,
+    total: 1,
   })
-
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
-  ...createDatasetFixture(),
-  id: 'dataset-1',
-  name: 'Dataset Name',
-  icon_info: {
-    icon: '📙',
-    icon_background: '#FFF4ED',
-    icon_type: 'emoji',
-    icon_url: '',
-  },
-  description: 'Dataset description',
-  permission: DatasetPermission.onlyMe,
-  data_source_type: DataSourceType.FILE,
-  indexing_technique: 'high_quality' as DataSet['indexing_technique'],
-  created_by: 'user-1',
-  updated_by: 'user-1',
-  updated_at: 1690000000,
-  app_count: 0,
-  doc_form: ChunkingMode.text,
-  document_count: 1,
-  word_count: 1000,
-  provider: 'internal',
-  embedding_model: 'text-embedding-3',
-  embedding_model_provider: 'openai',
-  embedding_available: true,
-  retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
+  queryClient.setQueryData(datasetDetailKey, mockDataset)
+  return renderWithConsoleQuery(
+    <DatasetDetailContext.Provider value={{ dataset: mockDataset }}>
+      {ui}
+    </DatasetDetailContext.Provider>,
+    {
+      queryClient,
+      systemFeatures: { rbac_enabled: mockIsRbacEnabled },
     },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  tags: [],
-  external_knowledge_info: {
-    external_knowledge_id: '',
-    external_knowledge_api_id: '',
-    external_knowledge_api_name: '',
-    external_knowledge_api_endpoint: '',
-  },
-  external_retrieval_model: {
-    top_k: 0,
-    score_threshold: 0,
-    score_threshold_enabled: false,
-  },
-  built_in_field_enabled: false,
-  runtime_mode: 'rag_pipeline',
-  enable_api: false,
-  is_multimodal: false,
-  permission_keys: [
-    DatasetACLPermission.Edit,
-    DatasetACLPermission.Delete,
-    DatasetACLPermission.ImportExportDSL,
-  ],
-  ...overrides,
-})
+  )
+}
+
+const createDataset = (overrides: Partial<DatasetDetailWithPartialMembersResponse> = {}) =>
+  createDatasetFixture({
+    ...createDatasetFixture(),
+    id: 'dataset-1',
+    name: 'Dataset Name',
+    icon_info: {
+      icon: '📙',
+      icon_background: '#FFF4ED',
+      icon_type: 'emoji',
+      icon_url: '',
+    },
+    description: 'Dataset description',
+    permission: PermissionLevel.onlyMe,
+    data_source_type: DataSourceType.FILE,
+    indexing_technique: 'high_quality',
+    created_by: 'user-1',
+    updated_by: 'user-1',
+    updated_at: 1690000000,
+    app_count: 0,
+    doc_form: ChunkingMode.text,
+    document_count: 1,
+    word_count: 1000,
+    provider: 'internal',
+    embedding_model: 'text-embedding-3',
+    embedding_model_provider: 'openai',
+    embedding_available: true,
+    retrieval_model_dict: {
+      search_method: RETRIEVE_METHOD.semantic,
+      reranking_enable: false,
+      reranking_model: {
+        reranking_provider_name: '',
+        reranking_model_name: '',
+      },
+      top_k: 5,
+      score_threshold_enabled: false,
+      score_threshold: 0,
+    },
+    tags: [],
+    external_knowledge_info: {
+      external_knowledge_id: '',
+      external_knowledge_api_id: '',
+      external_knowledge_api_name: '',
+      external_knowledge_api_endpoint: '',
+    },
+    external_retrieval_model: {
+      top_k: 0,
+      score_threshold: 0,
+      score_threshold_enabled: false,
+    },
+    built_in_field_enabled: false,
+    runtime_mode: 'rag_pipeline',
+    enable_api: false,
+    is_multimodal: false,
+    permission_keys: [
+      DatasetACLPermission.Edit,
+      DatasetACLPermission.Delete,
+      DatasetACLPermission.ImportExportDSL,
+    ],
+    ...overrides,
+  })
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -103,62 +123,30 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) =>
-    selector({ dataset: mockDataset }),
-}))
-
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'rag.pipelines.byPipelineId.exports.get': () => ({
-      mutateAsync: mockExportPipeline,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.exports.get': (input) => mockExportPipeline(input),
     }),
-  })
+  }
 })
 
 vi.mock('@/service/datasets', () => ({
   checkIsUsedInApp: (...args: unknown[]) => mockCheckIsUsedInApp(...args),
   deleteDataset: (...args: unknown[]) => mockDeleteDataset(...args),
-}))
-
-vi.mock('@/hooks/use-knowledge', () => ({
-  useKnowledge: () => ({
-    formatIndexingTechniqueAndMethod: () => 'indexing-technique',
-  }),
-}))
-
-vi.mock('@/app/components/datasets/rename-modal', () => ({
-  default: ({
-    show,
-    onClose,
-    onSuccess,
-  }: {
-    show: boolean
-    onClose: () => void
-    onSuccess?: () => void
-  }) => {
-    if (!show) return null
-    return (
-      <div data-testid="rename-modal">
-        <button type="button" onClick={onSuccess}>
-          Success
-        </button>
-        <button type="button" onClick={onClose}>
-          Close
-        </button>
-      </div>
-    )
-  },
+  updateDatasetSetting: (...args: unknown[]) => mockUpdateDataset(...args),
 }))
 
 const openMenu = async (user: ReturnType<typeof userEvent.setup>) => {
-  const trigger = screen.getByRole('button')
+  const trigger = screen.getByRole('button', { name: 'common.operation.more' })
   await user.click(trigger)
 }
 
@@ -180,7 +168,7 @@ describe('DatasetInfo', () => {
       expect(screen.getByText('Dataset Name')).toBeInTheDocument()
       expect(screen.queryByText('Dataset description')).not.toBeInTheDocument()
       expect(screen.getByText('dataset.chunkingMode.general')).toBeInTheDocument()
-      expect(screen.getByText('indexing-technique')).toBeInTheDocument()
+      expect(screen.getByText(/dataset.indexingTechnique.high_quality/)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.more' })).toBeInTheDocument()
     })
 
@@ -213,6 +201,7 @@ describe('Dropdown', () => {
     mockExportPipeline.mockResolvedValue({ data: 'pipeline-content' })
     mockCheckIsUsedInApp.mockResolvedValue({ is_using: false })
     mockDeleteDataset.mockResolvedValue({})
+    mockUpdateDataset.mockResolvedValue({})
     if (!('createObjectURL' in URL)) {
       Object.defineProperty(URL, 'createObjectURL', {
         value: vi.fn(),
@@ -285,23 +274,43 @@ describe('Dropdown', () => {
 
   // User interactions that trigger modals and exports.
   describe('Interactions', () => {
-    it('should open rename modal when edit is clicked', async () => {
+    it('renames the dataset and invalidates cached list and detail', async () => {
       const user = userEvent.setup()
       // Arrange
-      render(<Dropdown expand />)
+      const { queryClient } = render(<Dropdown expand />)
 
       // Act
       await openMenu(user)
       await user.click(screen.getByText('common.operation.edit'))
 
       // Assert
-      expect(screen.getByTestId('rename-modal')).toBeInTheDocument()
+      const input = await screen.findByRole('textbox', { name: 'datasetSettings.form.name' })
+      await user.clear(input)
+      await user.type(input, 'Renamed Dataset{Enter}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(mockUpdateDataset).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          name: 'Renamed Dataset',
+          description: 'Dataset description',
+        }),
+      })
+      expect(queryClient.getQueryState(datasetListKey)?.isInvalidated).toBe(true)
+      expect(queryClient.getQueryState(datasetDetailKey)?.isInvalidated).toBe(true)
     })
 
     it('should export pipeline when export is clicked', async () => {
       const user = userEvent.setup()
-      const anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click')
-      const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL')
+      const downloads: Array<{ href: string; name: string }> = []
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+        this: HTMLAnchorElement,
+      ) {
+        downloads.push({ href: this.href, name: this.download })
+      })
+      const createObjectURLSpy = vi
+        .spyOn(URL, 'createObjectURL')
+        .mockReturnValue('blob:pipeline-export')
+      const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL')
       // Arrange
       render(<Dropdown expand />)
 
@@ -317,28 +326,14 @@ describe('Dropdown', () => {
         })
       })
       expect(createObjectURLSpy).toHaveBeenCalledTimes(1)
-      expect(anchorClickSpy).toHaveBeenCalledTimes(1)
-    })
-
-    it('should show delete confirmation when delete is clicked', async () => {
-      const user = userEvent.setup()
-      // Arrange
-      render(<Dropdown expand />)
-
-      // Act
-      await openMenu(user)
-      await user.click(screen.getByText('common.operation.delete'))
-
-      // Assert
-      await waitFor(() => {
-        expect(screen.getByText('dataset.deleteDatasetConfirmContent')).toBeInTheDocument()
-      })
+      expect(downloads).toEqual([{ href: 'blob:pipeline-export', name: 'Dataset Name.pipeline' }])
+      expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:pipeline-export')
     })
 
     it('should delete dataset and redirect when confirm is clicked', async () => {
       const user = userEvent.setup()
       // Arrange
-      render(<Dropdown expand />)
+      const { queryClient } = render(<Dropdown expand />)
 
       // Act
       await openMenu(user)
@@ -349,11 +344,7 @@ describe('Dropdown', () => {
       await waitFor(() => {
         expect(mockDeleteDataset).toHaveBeenCalledWith('dataset-1')
       })
-      expect(
-        invalidateQueries.mock.calls.filter(([filters]) =>
-          isEqual(filters, { queryKey: datasetListKey }),
-        ),
-      ).toHaveLength(1)
+      expect(queryClient.getQueryState(datasetListKey)?.isInvalidated).toBe(true)
       expect(mockReplace).toHaveBeenCalledWith('/datasets')
     })
 
@@ -375,3 +366,5 @@ describe('Dropdown', () => {
     })
   })
 })
+
+afterEach(() => vi.restoreAllMocks())

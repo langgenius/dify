@@ -3144,6 +3144,7 @@ Check if app name is available
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | App network access group binding retrieved successfully | **application/json**: [AppNetworkAccessGroupResponse](#appnetworkaccessgroupresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/network-access-group
@@ -3164,6 +3165,7 @@ Check if app name is available
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | App network access group binding updated successfully | **application/json**: [AppNetworkAccessGroupMutationResponse](#appnetworkaccessgroupmutationresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/network-access-group/status
@@ -3178,6 +3180,7 @@ Check if app name is available
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | App network access control entry status retrieved successfully | **application/json**: [AppNetworkAccessGroupStatusResponse](#appnetworkaccessgroupstatusresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/publish-to-creators-platform
@@ -9475,10 +9478,7 @@ Generate structured output rules using LLM
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflow-runs/tasks/{task_id}/stop
-**Stop a running snippet workflow task**
-
-Uses both the legacy stop flag mechanism and the graph engine
-command channel for backward compatibility.
+**Stop a running or paused task belonging to this snippet**
 
 #### Parameters
 

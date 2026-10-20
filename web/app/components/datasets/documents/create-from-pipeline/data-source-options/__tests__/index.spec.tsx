@@ -1,23 +1,21 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import DataSourceOptions from '../index'
 
-const mockUseDatasourceOptions = vi.fn()
-
-vi.mock('../../hooks', () => ({
-  useDatasourceOptions: (nodes: Node<DataSourceNodeType>[]) => mockUseDatasourceOptions(nodes),
-}))
-
-vi.mock('../option-card', () => ({
-  default: ({ label, onClick }: { label: string; onClick: () => void }) => (
-    <button type="button" onClick={onClick}>
-      {label}
-    </button>
-  ),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.datasourcePlugins.get': () => Promise.resolve([]),
+    }),
+  }
+})
 
 const createNode = (id: string, title: string): Node<DataSourceNodeType> => ({
   id,
@@ -38,18 +36,7 @@ const createNode = (id: string, title: string): Node<DataSourceNodeType> => ({
 })
 
 const nodes = [createNode('node-1', 'Local files'), createNode('node-2', 'Notion')]
-const options = nodes.map((node) => ({
-  label: node.data.title,
-  value: node.id,
-  data: node.data,
-}))
-
 describe('DataSourceOptions', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseDatasourceOptions.mockReturnValue(options)
-  })
-
   it('selects the first data source when none is selected', () => {
     const onSelect = vi.fn()
 
@@ -78,7 +65,7 @@ describe('DataSourceOptions', () => {
       <DataSourceOptions pipelineNodes={nodes} datasourceNodeId="node-1" onSelect={onSelect} />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Notion' }))
+    await user.click(screen.getByText('Notion'))
 
     expect(onSelect).toHaveBeenCalledWith({
       nodeId: 'node-2',
@@ -88,7 +75,6 @@ describe('DataSourceOptions', () => {
 
   it('does not select anything when the pipeline has no data sources', () => {
     const onSelect = vi.fn()
-    mockUseDatasourceOptions.mockReturnValue([])
 
     render(<DataSourceOptions pipelineNodes={[]} datasourceNodeId="" onSelect={onSelect} />)
 

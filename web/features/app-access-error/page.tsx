@@ -138,7 +138,7 @@ export default function AppNotAccessible(props: AppNotAccessibleProps) {
     // A private instance keeps browser-language selection and menu changes off the console cookie.
     const instance = createInstance()
     void instance.use(resourcesToBackend(loadI18nResource)).init({
-      ...getInitOptions(['share', 'common', 'login']),
+      ...getInitOptions(),
       lng:
         props.initialLocale ??
         getBrowserLocale(typeof navigator === 'undefined' ? [] : navigator.languages),

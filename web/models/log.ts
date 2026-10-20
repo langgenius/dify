@@ -1,12 +1,7 @@
-import type {
-  AgentIterationLogResponse,
-  AgentLogResponse,
-  AgentToolCallResponse,
-} from '@dify/contracts/api/console/apps/types.gen'
 import type { Viewport } from 'reactflow'
 import type { Edge, Node } from '@/app/components/workflow/types'
 
-export type LogAnnotation = {
+type LogAnnotation = {
   id: string
   content: string
   account: {
@@ -100,7 +95,3 @@ export type WorkflowRunDetailResponse = {
   finished_at: number
   exceptions_count?: number
 }
-
-export type AgentLogDetailResponse = AgentLogResponse
-export type AgentIteration = AgentIterationLogResponse
-export type ToolCall = AgentToolCallResponse

@@ -106,6 +106,7 @@ function renderAccessPoints({
   seedAppDetail(
     queryClient,
     createAppDetailFixture({
+      id: 'app-1',
       mode,
       site: createAppSiteFixture(),
       workflow: published ? { id: 'published-workflow' } : null,

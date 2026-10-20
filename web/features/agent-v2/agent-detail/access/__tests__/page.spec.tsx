@@ -29,7 +29,7 @@ vi.mock('react-i18next', async () => {
     ...translations,
     'studio.accessControl.entryLabel': 'Access Control',
     'studio.accessControl.chipOff': 'Off',
-    'studio.accessControl.chipOn': 'On',
+    'studio.accessControl.chipOn': 'ON',
     'studio.accessControl.chipPartial': '{{n}} of {{m}}',
     'studio.accessControl.restrictByIp': 'Restrict by IP address',
     'studio.accessControl.protectingAll': 'Protecting all {{count}} access points.',
@@ -123,7 +123,7 @@ describe('Agent IP access configuration', () => {
     expect(screen.getByRole('switch', { name: 'Backend Service API' })).toBeChecked()
     expect(screen.queryByRole('switch', { name: 'MCP Server' })).not.toBeInTheDocument()
     expect(screen.queryByRole('switch', { name: 'Trigger' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('option', { name: /Internal Network/ }))
+    await user.click(screen.getByRole('button', { name: /Internal Network/ }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
@@ -155,7 +155,7 @@ describe('Agent IP access configuration', () => {
     const user = userEvent.setup()
     setup({ permission_keys: [AgentPermission.AccessPointView] }, true)
     const chip = await screen.findByRole('button', { name: /Access Control/ })
-    expect(chip).toHaveTextContent('On')
+    expect(chip).toHaveTextContent('ON')
     await user.click(chip)
     expect(screen.getByText('Protecting all 2 access points.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
@@ -175,7 +175,7 @@ describe('Agent IP access configuration', () => {
     const user = userEvent.setup()
     const { queryClient, rerender, renderPage } = setup()
     await user.click(await screen.findByRole('button', { name: /Access Control/ }))
-    await user.click(screen.getByRole('option', { name: /Internal Network/ }))
+    await user.click(screen.getByRole('button', { name: /Internal Network/ }))
     await user.click(screen.getByRole('switch', { name: 'Backend Service API' }))
 
     const second = createAgentFixture({ id: 'agent-2', app_id: 'second-app' })
@@ -202,7 +202,7 @@ describe('Agent IP access configuration', () => {
       Response.json({ allowed: false, client_ip: '203.0.113.42', policy_version: 1 }),
     )
     await user.click(screen.getByRole('button', { name: /Access Control/ }))
-    await user.click(screen.getByRole('option', { name: /Internal Network/ }))
+    await user.click(screen.getByRole('button', { name: /Internal Network/ }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
     await user.click(screen.getByRole('button', { name: 'Save' }))
     expect(

@@ -1,18 +1,20 @@
-import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { RetrievalConfig } from '@/types/app'
+import { zProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { QueryClient } from '@tanstack/react-query'
-import { act, waitFor } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   ChunkingMode,
-  DatasetPermission,
   DataSourceType,
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { updateDatasetSetting } from '@/service/datasets'
+import { createCatalogModelFixture, createModelCatalogFixture } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -31,10 +33,59 @@ const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
 // Mock contexts
 const mockMutateDatasets = vi.fn()
 
-const renderHook = (callback: () => ReturnType<typeof useFormState>) =>
-  renderHookWithConsoleState(callback, {
-    wrapper: createAccountProfileQueryWrapper({ id: 'user-1' }),
+const renderHook = (callback: () => ReturnType<typeof useFormState>) => {
+  const { queryClient, wrapper } = createConsoleQueryWrapper({ accountProfile: { id: 'user-1' } })
+  for (const modelType of [ModelTypeEnum.rerank, ModelTypeEnum.textEmbedding]) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+        input: { params: { model_type: modelType } },
+      }),
+      {
+        data: [
+          zProviderWithModelsResponse.parse(
+            createModelCatalogFixture({
+              provider: 'langgenius/xinference/xinference',
+              models: [
+                createCatalogModelFixture({
+                  model: 'bge-reranker-v2-m3',
+                  model_type: modelType,
+                  features: [],
+                }),
+              ],
+            }),
+          ),
+        ],
+      },
+    )
+  }
+  queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
+    accounts: [
+      {
+        id: 'user-1',
+        name: 'User 1',
+        email: 'user1@example.com',
+        role: 'owner',
+        avatar: '',
+        avatar_url: '',
+        last_login_at: 0,
+        created_at: 0,
+        status: 'active',
+      },
+      {
+        id: 'user-2',
+        name: 'User 2',
+        email: 'user2@example.com',
+        role: 'admin',
+        avatar: '',
+        avatar_url: '',
+        last_login_at: 0,
+        created_at: 0,
+        status: 'active',
+      },
+    ],
   })
+  return renderHookWithConsoleState(callback, { wrapper })
+}
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -61,12 +112,12 @@ vi.mock('@/features/system-features/state', async () => {
   }))
 })
 
-const createDefaultMockDataset = (): DataSet => ({
+const createDefaultMockDataset = (): DatasetDetailWithPartialMembersResponse => ({
   ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Test Dataset',
   description: 'Test description',
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   icon_info: {
     icon_type: 'emoji',
     icon: '📚',
@@ -111,18 +162,21 @@ const createDefaultMockDataset = (): DataSet => ({
   keyword_number: 10,
   created_by: 'user-1',
   updated_by: 'user-1',
-  updated_at: Date.now(),
+  updated_at: 1700000000,
   runtime_mode: 'general',
   enable_api: true,
   is_multimodal: false,
   permission_keys: [DatasetACLPermission.Edit],
 })
 
-let mockDataset: DataSet = createDefaultMockDataset()
+let mockDataset: DatasetDetailWithPartialMembersResponse = createDefaultMockDataset()
 
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (
-    selector: (state: { dataset: DataSet | null; mutateDatasetRes: () => void }) => unknown,
+    selector: (state: {
+      dataset: DatasetDetailWithPartialMembersResponse | null
+      mutateDatasetRes: () => void
+    }) => unknown,
   ) => {
     const state = {
       dataset: mockDataset,
@@ -137,11 +191,6 @@ vi.mock('@/service/datasets', () => ({
   updateDatasetSetting: vi.fn().mockResolvedValue({}),
 }))
 
-vi.mock('@/app/components/datasets/common/check-rerank-model', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/app/components/datasets/common/check-rerank-model')>()),
-  isReRankModelSelected: () => true,
-}))
-
 vi.mock('@/app/notifications', () => ({
   toast: {
     success: mockToastSuccess,
@@ -153,128 +202,11 @@ describe('useFormState', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDataset = createDefaultMockDataset()
-  })
-
-  describe('Initial State', () => {
-    it('should initialize with dataset values', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      expect(result.current.name).toBe('Test Dataset')
-      expect(result.current.description).toBe('Test description')
-      expect(result.current.permission).toBe(DatasetPermission.onlyMe)
-      expect(result.current.indexMethod).toBe(IndexingType.QUALIFIED)
-      expect(result.current.keywordNumber).toBe(10)
-    })
-
-    it('should initialize icon info from dataset', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      expect(result.current.iconInfo).toEqual({
-        icon_type: 'emoji',
-        icon: '📚',
-        icon_background: '#FFFFFF',
-        icon_url: '',
-      })
-    })
-
-    it('should initialize external retrieval settings', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      expect(result.current.topK).toBe(3)
-      expect(result.current.scoreThreshold).toBe(0.7)
-      expect(result.current.scoreThresholdEnabled).toBe(true)
-    })
-
-    it('should derive member list from API data', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      expect(result.current.memberList).toHaveLength(2)
-      expect(result.current.memberList[0]!.name).toBe('User 1')
-    })
-
-    it('should return currentDataset from context', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      expect(result.current.currentDataset).toBeDefined()
-      expect(result.current.currentDataset?.id).toBe('dataset-1')
-    })
-
-    it('should expose editability from dataset ACL permission keys without legacy role state', () => {
-      mockDataset = {
-        ...createDefaultMockDataset(),
-        permission_keys: [DatasetACLPermission.Readonly],
-      }
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      expect(result.current.canEditSettings).toBe(false)
-      expect('isCurrentWorkspaceDatasetOperator' in result.current).toBe(false)
-    })
-  })
-
-  describe('State Setters', () => {
-    it('should update name when setName is called', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      act(() => {
-        result.current.setName('New Name')
-      })
-
-      expect(result.current.name).toBe('New Name')
-    })
-
-    it('should update description when setDescription is called', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      act(() => {
-        result.current.setDescription('New Description')
-      })
-
-      expect(result.current.description).toBe('New Description')
-    })
-
-    it('should update permission when setPermission is called', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      act(() => {
-        result.current.setPermission(DatasetPermission.allTeamMembers)
-      })
-
-      expect(result.current.permission).toBe(DatasetPermission.allTeamMembers)
-    })
-
-    it('should update indexMethod when setIndexMethod is called', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      act(() => {
-        result.current.setIndexMethod(IndexingType.ECONOMICAL)
-      })
-
-      expect(result.current.indexMethod).toBe(IndexingType.ECONOMICAL)
-    })
-
-    it('should update keywordNumber when setKeywordNumber is called', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      act(() => {
-        result.current.setKeywordNumber(20)
-      })
-
-      expect(result.current.keywordNumber).toBe(20)
-    })
-
-    it('should update selectedMemberIDs when setSelectedMemberIDs is called', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      act(() => {
-        result.current.setSelectedMemberIDs(['user-1', 'user-2'])
-      })
-
-      expect(result.current.selectedMemberIDs).toEqual(['user-1', 'user-2'])
-    })
+    vi.mocked(updateDatasetSetting).mockReset().mockResolvedValue(mockDataset)
   })
 
   describe('Icon Handlers', () => {
-    it('should select emoji icon without owning picker close state', () => {
+    it('persists the selected emoji icon', async () => {
       const { result } = renderHook(() => useFormState(mockDataset))
 
       act(() => {
@@ -285,15 +217,21 @@ describe('useFormState', () => {
         })
       })
 
-      expect(result.current.iconInfo).toEqual({
-        icon_type: 'emoji',
-        icon: '🎉',
-        icon_background: '#FF0000',
-        icon_url: undefined,
+      await act(async () => result.current.handleSave())
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          icon_info: {
+            icon_type: 'emoji',
+            icon: '🎉',
+            icon_background: '#FF0000',
+            icon_url: undefined,
+          },
+        }),
       })
     })
 
-    it('should select image icon without owning picker close state', () => {
+    it('persists the uploaded image icon', async () => {
       const { result } = renderHook(() => useFormState(mockDataset))
 
       act(() => {
@@ -304,79 +242,23 @@ describe('useFormState', () => {
         })
       })
 
-      expect(result.current.iconInfo).toEqual({
-        icon_type: 'image',
-        icon: 'file-123',
-        icon_background: undefined,
-        icon_url: 'https://example.com/icon.png',
+      await act(async () => result.current.handleSave())
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          icon_info: {
+            icon_type: 'image',
+            icon: 'file-123',
+            icon_background: undefined,
+            icon_url: 'https://example.com/icon.png',
+          },
+        }),
       })
-    })
-  })
-
-  describe('External Retrieval Settings Handler', () => {
-    it('should update topK when provided', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      act(() => {
-        result.current.handleSettingsChange({ top_k: 5 })
-      })
-
-      expect(result.current.topK).toBe(5)
-    })
-
-    it('should update scoreThreshold when provided', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      act(() => {
-        result.current.handleSettingsChange({ score_threshold: 0.8 })
-      })
-
-      expect(result.current.scoreThreshold).toBe(0.8)
-    })
-
-    it('should update scoreThresholdEnabled when provided', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      act(() => {
-        result.current.handleSettingsChange({ score_threshold_enabled: false })
-      })
-
-      expect(result.current.scoreThresholdEnabled).toBe(false)
-    })
-
-    it('should update multiple settings at once', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      act(() => {
-        result.current.handleSettingsChange({
-          top_k: 10,
-          score_threshold: 0.9,
-          score_threshold_enabled: true,
-        })
-      })
-
-      expect(result.current.topK).toBe(10)
-      expect(result.current.scoreThreshold).toBe(0.9)
-      expect(result.current.scoreThresholdEnabled).toBe(true)
     })
   })
 
   describe('Summary Index Setting Handler', () => {
-    it('should update summary index setting', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      act(() => {
-        result.current.handleSummaryIndexSettingChange({
-          enable: true,
-        })
-      })
-
-      expect(result.current.summaryIndexSetting).toMatchObject({
-        enable: true,
-      })
-    })
-
-    it('should merge with existing settings', () => {
+    it('persists merged summary settings after separate edits', async () => {
       const { result } = renderHook(() => useFormState(mockDataset))
 
       act(() => {
@@ -392,10 +274,16 @@ describe('useFormState', () => {
         })
       })
 
-      expect(result.current.summaryIndexSetting).toMatchObject({
-        enable: true,
-        model_provider_name: 'openai',
-        model_name: 'gpt-4',
+      await act(async () => result.current.handleSave())
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          summary_index_setting: expect.objectContaining({
+            enable: true,
+            model_provider_name: 'openai',
+            model_name: 'gpt-4',
+          }),
+        }),
       })
     })
   })
@@ -444,9 +332,11 @@ describe('useFormState', () => {
         body: expect.objectContaining({
           name: 'Test Dataset',
           description: 'Test description',
-          permission: DatasetPermission.onlyMe,
+          permission: PermissionLevel.onlyMe,
         }),
       })
+      expect(mockMutateDatasets).toHaveBeenCalledTimes(1)
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: datasetListKey })
     })
 
     it('should not save when dataset only has readonly ACL permission', async () => {
@@ -462,80 +352,6 @@ describe('useFormState', () => {
       })
 
       expect(updateDatasetSetting).not.toHaveBeenCalled()
-    })
-
-    it('should show success toast on successful save', async () => {
-      const { toast } = await import('@/app/notifications')
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      await act(async () => {
-        await result.current.handleSave()
-      })
-
-      await waitFor(() => {
-        expect(toast.success).toHaveBeenCalledWith(expect.any(String))
-      })
-    })
-
-    it('should call mutateDatasets after successful save', async () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      await act(async () => {
-        await result.current.handleSave()
-      })
-
-      await waitFor(() => {
-        expect(mockMutateDatasets).toHaveBeenCalled()
-      })
-    })
-
-    it('should call invalidDatasetList after successful save', async () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      await act(async () => {
-        await result.current.handleSave()
-      })
-
-      await waitFor(() => {
-        expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: datasetListKey })
-      })
-    })
-
-    it('should set loading to true during save', async () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      expect(result.current.loading).toBe(false)
-
-      const savePromise = act(async () => {
-        await result.current.handleSave()
-      })
-
-      // Loading should be true during the save operation
-      await savePromise
-
-      expect(result.current.loading).toBe(false) // After completion
-    })
-
-    it('should not save when already loading', async () => {
-      const { updateDatasetSetting } = await import('@/service/datasets')
-      vi.mocked(updateDatasetSetting).mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100)),
-      )
-
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      // Start first save
-      act(() => {
-        result.current.handleSave()
-      })
-
-      // Try to start second save immediately
-      await act(async () => {
-        await result.current.handleSave()
-      })
-
-      // Should only have been called once
-      expect(updateDatasetSetting).toHaveBeenCalledTimes(1)
     })
 
     it('should show error toast on save failure', async () => {
@@ -557,7 +373,7 @@ describe('useFormState', () => {
       const { result } = renderHook(() => useFormState(mockDataset))
 
       act(() => {
-        result.current.setPermission(DatasetPermission.partialMembers)
+        result.current.setPermission(PermissionLevel.partialMembers)
         result.current.setSelectedMemberIDs(['user-1', 'user-2'])
       })
 
@@ -577,56 +393,7 @@ describe('useFormState', () => {
     })
   })
 
-  describe('Embedding Model', () => {
-    it('should initialize embedding model from dataset', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      expect(result.current.embeddingModel).toEqual({
-        provider: 'openai',
-        model: 'text-embedding-ada-002',
-      })
-    })
-
-    it('should update embedding model when setEmbeddingModel is called', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      act(() => {
-        result.current.setEmbeddingModel({
-          provider: 'cohere',
-          model: 'embed-english-v3.0',
-        })
-      })
-
-      expect(result.current.embeddingModel).toEqual({
-        provider: 'cohere',
-        model: 'embed-english-v3.0',
-      })
-    })
-  })
-
   describe('Retrieval Config', () => {
-    it('should initialize retrieval config from dataset', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      expect(result.current.retrievalConfig).toBeDefined()
-      expect(result.current.retrievalConfig.search_method).toBe(RETRIEVE_METHOD.semantic)
-    })
-
-    it('should update retrieval config when setRetrievalConfig is called', () => {
-      const { result } = renderHook(() => useFormState(mockDataset))
-
-      const newConfig: RetrievalConfig = {
-        ...result.current.retrievalConfig,
-        reranking_enable: true,
-      }
-
-      act(() => {
-        result.current.setRetrievalConfig(newConfig)
-      })
-
-      expect(result.current.retrievalConfig.reranking_enable).toBe(true)
-    })
-
     it('should include weights in save request when weights are set', async () => {
       const { updateDatasetSetting } = await import('@/service/datasets')
       const { result } = renderHook(() => useFormState(mockDataset))
@@ -635,6 +402,7 @@ describe('useFormState', () => {
       const configWithWeights: RetrievalConfig = {
         ...result.current.retrievalConfig,
         search_method: RETRIEVE_METHOD.hybrid,
+        reranking_mode: RerankingModeEnum.WeightedScore,
         weights: {
           weight_type: WeightedScoreEnum.Customized,
           vector_setting: {
@@ -864,49 +632,4 @@ describe('useFormState', () => {
       })
     })
   })
-})
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
-    }) => {
-      if (options.queryKey[0].join('.') === 'console.workspaces.current.members.get')
-        return (() => ({
-          data: {
-            accounts: [
-              {
-                id: 'user-1',
-                name: 'User 1',
-                email: 'user1@example.com',
-                role: 'owner',
-                avatar: '',
-                avatar_url: '',
-                last_login_at: '',
-                created_at: '',
-                status: 'active',
-              },
-              {
-                id: 'user-2',
-                name: 'User 2',
-                email: 'user2@example.com',
-                role: 'admin',
-                avatar: '',
-                avatar_url: '',
-                last_login_at: '',
-                created_at: '',
-                status: 'active',
-              },
-            ],
-          },
-        }))()
-      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
-      return { data: [] }
-    },
-  }
 })

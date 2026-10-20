@@ -3,11 +3,13 @@
 import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -24,9 +26,9 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackNetworkAccessEvent } from '@/features/network-access/analytics'
+import { PolicyReferencedApps } from '@/features/network-access/policy-references'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
-import { PolicyReferencedApps } from './referenced-apps'
 
 export const policyRowClassName = 'flex items-center pl-3 pr-1'
 export const policyNameColClassName = 'min-w-0 flex-1 truncate'
@@ -170,30 +172,34 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
           if (!deleteGroup.isPending) setConfirmDelete(open)
         }}
       >
-        <AlertDialogContent
-          backdropProps={{ forceRender: true }}
-          className="flex w-120 flex-col gap-6 p-6 shadow-xl"
-        >
-          <div className="flex items-start gap-4">
-            <AlertDialogTitle className="min-w-0 flex-1 title-2xl-semi-bold wrap-anywhere text-text-primary">
-              {t(($) => $['settings.ipPolicyDeleteConfirm'], { ns: 'common', name: group.name })}
-            </AlertDialogTitle>
-            <IconButton
-              size="lg"
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              disabled={deleteGroup.isPending}
-              onClick={() => setConfirmDelete(false)}
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          </div>
-          <div className="flex flex-col gap-4">
-            <AlertDialogDescription className="text-sm leading-5.5 wrap-anywhere text-text-tertiary">
+        <AlertDialogContent backdropProps={{ forceRender: true }} className="w-120">
+          <AlertDialogHeader>
+            <div className="flex items-start gap-4">
+              <div className="min-w-0 flex-1">
+                <AlertDialogTitle>
+                  {t(($) => $['settings.ipPolicyDeleteConfirm'], {
+                    ns: 'common',
+                    name: group.name,
+                  })}
+                </AlertDialogTitle>
+              </div>
+              <IconButton
+                size="lg"
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                disabled={deleteGroup.isPending}
+                onClick={() => setConfirmDelete(false)}
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            </div>
+            <AlertDialogDescription>
               {isBound
                 ? t(($) => $['settings.ipPolicyDeleteBoundDescription'], { ns: 'common' })
                 : t(($) => $['settings.ipPolicyDeleteDescription'], { ns: 'common' })}
             </AlertDialogDescription>
-            {isBound && (
+          </AlertDialogHeader>
+          {isBound && (
+            <AlertDialogBody>
               <div className="flex flex-col gap-3">
                 <p className="system-sm-medium text-text-secondary">
                   {t(($) => $['settings.ipPolicyUsedBy'], {
@@ -205,9 +211,9 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
                   <PolicyReferencedApps apps={group.apps} usedByCount={group.used_by_count} />
                 )}
               </div>
-            )}
-          </div>
-          <AlertDialogFooter className="p-0 pt-2">
+            </AlertDialogBody>
+          )}
+          <AlertDialogFooter>
             <AlertDialogCancelButton
               variant="secondary"
               disabled={deleteGroup.isPending}

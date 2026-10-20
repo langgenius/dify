@@ -1,5 +1,6 @@
+import type { DocumentDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { StepTwoFile, StepTwoNotionPage } from '../types'
-import type { CrawlResultItem, DocumentItem, FullDocumentDetail } from '@/models/datasets'
+import type { CrawlResultItem, DocumentItem } from '@/models/datasets'
 import { useCallback, useState } from 'react'
 import { DataSourceType } from '@/models/datasets'
 
@@ -8,7 +9,7 @@ type UsePreviewStateOptions = {
   files: StepTwoFile[]
   notionPages: StepTwoNotionPage[]
   websitePages: CrawlResultItem[]
-  documentDetail?: FullDocumentDetail
+  documentDetail?: DocumentDetailResponse
   datasetId?: string
 }
 
@@ -90,7 +91,7 @@ export const usePreviewState = (options: UsePreviewStateOptions) => {
   const handlePreviewChange = useCallback(
     (selected: { id: string; name: string }) => {
       if (dataSourceType === DataSourceType.FILE) {
-        setPreviewFile(selected as DocumentItem)
+        setPreviewFile(files.find((file) => file.id === selected.id))
       } else if (dataSourceType === DataSourceType.NOTION) {
         const selectedPage = notionPages.find((page) => page.page_id === selected.id)
         if (selectedPage) setPreviewNotionPage(selectedPage)
@@ -99,7 +100,7 @@ export const usePreviewState = (options: UsePreviewStateOptions) => {
         if (selectedPage) setPreviewWebsitePage(selectedPage)
       }
     },
-    [dataSourceType, notionPages, websitePages],
+    [dataSourceType, files, notionPages, websitePages],
   )
 
   return {

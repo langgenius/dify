@@ -7,7 +7,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { Tabs, TabsList, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useSuspenseQueries, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
@@ -15,9 +15,9 @@ import { useTranslation } from 'react-i18next'
 import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { AccessControlEntry } from '@/features/network-access/app-binding'
 import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
-import { AccessControlEntry } from './access-control'
 import { BuiltInAccessPoints } from './built-in-access-points'
 import { DeployedEnvironmentAccessPoints } from './deployed-environment-access-points'
 import {
@@ -72,7 +72,11 @@ function AccessPointContent({
     environment === selectedEnvironment ? highlightedAccessPoint : null
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-components-panel-bg">
+    <Tabs
+      value={selectedEnvironment}
+      onValueChange={(environment) => void setQueryStates({ accessPoint: null, environment })}
+      className="flex h-full min-h-0 flex-col bg-components-panel-bg"
+    >
       <header className="flex shrink-0 flex-col gap-3 px-6 pt-3 pb-2">
         <div className="flex flex-col gap-0.5">
           <div className="flex min-h-8 items-center justify-between gap-3">
@@ -89,7 +93,7 @@ function AccessPointContent({
                     ? appInfo.workflow?.id
                     : appInfo.model_config),
                 )}
-                appIcon={{ icon: appInfo }}
+                appIcon={appInfo}
                 canEditBinding={canManageAccessPoint}
               />
             )}
@@ -99,42 +103,41 @@ function AccessPointContent({
           </p>
         </div>
         {showEnvironmentTabs && (
-          <Tabs
-            value={selectedEnvironment}
-            onValueChange={(environment) => void setQueryStates({ accessPoint: null, environment })}
+          <TabsList
+            activateOnFocus={false}
+            aria-label={t(($) => $['studio.environments'], { ns: 'deployments' })}
+            className="relative -m-0.5 scroll-p-0.5 gap-1 overflow-x-auto p-0.5"
           >
-            <div className="overflow-x-auto">
-              <TabsList
-                aria-label={t(($) => $['studio.environments'], { ns: 'deployments' })}
-                className="min-w-max gap-1"
+            <TabsTab
+              value={BUILT_IN_ENVIRONMENT_ID}
+              className="h-8 shrink-0 rounded-lg border-b-0 px-2.5 py-0 system-sm-medium data-active:border-transparent data-active:bg-state-base-active data-active:system-sm-semibold data-active:text-text-secondary"
+            >
+              {t(($) => $['nodes.common.memories.builtIn'], { ns: 'workflow' })}
+            </TabsTab>
+            {environments.map((environment) => (
+              <TabsTab
+                key={environment.id}
+                value={environment.id}
+                className="h-8 shrink-0 rounded-lg border-b-0 px-2.5 py-0 system-sm-medium data-active:border-transparent data-active:bg-state-base-active data-active:system-sm-semibold data-active:text-text-secondary"
               >
-                <TabsTab
-                  value={BUILT_IN_ENVIRONMENT_ID}
-                  className="h-8 rounded-lg border-b-0 px-2.5 py-0 system-sm-medium data-active:border-transparent data-active:bg-state-base-active data-active:system-sm-semibold data-active:text-text-secondary"
-                >
-                  {t(($) => $['nodes.common.memories.builtIn'], { ns: 'workflow' })}
-                </TabsTab>
-                {environments.map((environment) => (
-                  <TabsTab
-                    key={environment.id}
-                    value={environment.id}
-                    className="h-8 rounded-lg border-b-0 px-2.5 py-0 system-sm-medium data-active:border-transparent data-active:bg-state-base-active data-active:system-sm-semibold data-active:text-text-secondary"
-                  >
-                    {environment.display_name}
-                  </TabsTab>
-                ))}
-              </TabsList>
-            </div>
-          </Tabs>
+                {environment.display_name}
+              </TabsTab>
+            ))}
+          </TabsList>
         )}
       </header>
 
       <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
         <ScrollAreaViewport
-          aria-labelledby="access-point-title"
+          render={
+            showEnvironmentTabs ? (
+              // ScrollArea paints the focus indicator above the viewport contents.
+              <TabsPanel value={selectedEnvironment} className="focus-visible:inset-ring-0" />
+            ) : undefined
+          }
+          {...(!showEnvironmentTabs && { 'aria-labelledby': 'access-point-title', role: 'region' })}
           className="overscroll-contain"
           data-environment={selectedEnvironment}
-          role="region"
           style={{ overflowX: 'hidden' }}
         >
           <ScrollAreaContent
@@ -164,7 +167,7 @@ function AccessPointContent({
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
       </ScrollArea>
-    </div>
+    </Tabs>
   )
 }
 

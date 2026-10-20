@@ -103,14 +103,15 @@ def test_disabled_auth_returns_public_before_resolving_app() -> None:
 
 
 @pytest.mark.parametrize("enabled", [True, False])
-def test_management_can_read_access_settings_before_publication(enabled: bool) -> None:
+def test_management_reads_configured_policy_without_publication_admission(enabled: bool) -> None:
     fixture = _service(access=AccessQueryStub(available=False), enabled=enabled)
 
-    mode = fixture.service.get_configured_access_mode("authorized-app")
+    result = fixture.service.get_configured_access_mode(app_id="draft-app")
 
-    assert mode is (WebAppAccessMode.PRIVATE if enabled else WebAppAccessMode.PUBLIC)
+    assert result is (WebAppAccessMode.PRIVATE if enabled else WebAppAccessMode.PUBLIC)
+    assert fixture.access.calls == []
     assert fixture.access.availability_calls == []
-    assert fixture.policy.access_mode_calls == (["authorized-app"] if enabled else [])
+    assert fixture.policy.access_mode_calls == (["draft-app"] if enabled else [])
 
 
 @pytest.mark.parametrize("enabled", [True, False])

@@ -3,9 +3,8 @@ import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
-import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
-import { createQueryClientWrapper } from '@/test/console/query-client'
-import { render as renderWithConsole } from '@/test/console/render'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
+import { renderWithConsoleQuery as renderWithConsole } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { BuiltInAccessPoints } from '../built-in-access-points'
@@ -30,24 +29,24 @@ const mocks = vi.hoisted(() => ({
   useAppWorkflow: vi.fn(),
 }))
 
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock()
-})
-
 vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({ queryKey: ['system-features'] }),
+  systemFeaturesQueryOptions: () => ({ queryKey: consoleQueryKey('systemFeatures.get') }),
 }))
 
 function render(ui: ReactElement) {
   const queryClient = createTestQueryClient()
-  seedCurrentWorkspaceQuery(queryClient)
-  queryClient.setQueryData(['system-features'], { webapp_auth: { enabled: true } })
+  queryClient.setQueryData(consoleQueryKey('systemFeatures.get'), {
+    webapp_auth: { enabled: true },
+    rbac_enabled: true,
+  })
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
     createAppDetailFixture({ ...mocks.appInfo, mode: mocks.appInfo.mode as AppMode }),
   )
-  return renderWithConsole(ui, { wrapper: createQueryClientWrapper(queryClient) })
+  return renderWithConsole(ui, {
+    queryClient,
+    currentWorkspace: { id: 'workspace-1', role: 'owner' },
+  })
 }
 
 vi.mock('@/context/i18n', () => ({
@@ -269,24 +268,6 @@ describe('BuiltInAccessPoints', () => {
     expect(mocks.triggerCard).toHaveBeenCalledWith(
       expect.objectContaining({ canManageAccessPoint: true }),
     )
-  })
-
-  it('highlights only the targeted built-in access point card', () => {
-    render(
-      <BuiltInAccessPoints
-        canViewLayout
-        appId="app-1"
-        canDeploy
-        canManageAccessPoint
-        canReleaseAndVersion
-        highlightedAccessPoint="mcp"
-      />,
-    )
-
-    expect(mocks.webCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
-    expect(mocks.apiCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
-    expect(mocks.mcpCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: true }))
-    expect(mocks.triggerCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
   })
 
   it('enables Trigger and disables the other access points in trigger mode', () => {

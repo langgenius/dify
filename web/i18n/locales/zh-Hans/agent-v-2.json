@@ -363,5 +363,6 @@
   "agentDetail.versionHistory.filter": "筛选版本",
   "agentDetail.versionHistory.restore": "还原",
   "agentDetail.versionHistory.versionName": "版本 {{version}}",
-  "agentDetail.versionHistory.viewOnly": "只读"
+  "agentDetail.versionHistory.viewOnly": "只读",
+  "exportAgent": "导出 Agent"
 }

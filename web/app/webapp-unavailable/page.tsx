@@ -1,7 +1,7 @@
 import type { Metadata } from '@/next'
 import { createInstance } from 'i18next'
 import Negotiator from 'negotiator'
-import { APP_UNAVAILABLE_IP_HEADER } from '@/features/app-access-error/document-response'
+import { APP_UNAVAILABLE_IP_HEADER } from '@/features/app-access-error/document-constants'
 import { getBrowserLocale } from '@/features/app-access-error/locale'
 import AppNotAccessible from '@/features/app-access-error/page'
 import { loadI18nResource } from '@/i18n/load-resource'

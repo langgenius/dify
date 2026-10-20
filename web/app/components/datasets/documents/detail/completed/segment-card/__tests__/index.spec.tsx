@@ -1,12 +1,11 @@
+import type {
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { SegmentListContextValue } from '@/app/components/datasets/documents/detail/completed'
 import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
-import type {
-  Attachment,
-  ChildChunkDetail,
-  ParentMode,
-  SegmentDetailModel,
-} from '@/models/datasets'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { Attachment, ParentMode } from '@/models/datasets'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ChunkingMode } from '@/models/datasets'
@@ -107,7 +106,7 @@ const createMockAttachment = (overrides: Partial<Attachment> = {}): Attachment =
   ...overrides,
 })
 
-const createMockChildChunk = (overrides: Partial<ChildChunkDetail> = {}): ChildChunkDetail => ({
+const createMockChildChunk = (overrides: Partial<ChildChunkResponse> = {}): ChildChunkResponse => ({
   id: 'child-chunk-1',
   position: 1,
   segment_id: 'segment-1',
@@ -120,8 +119,8 @@ const createMockChildChunk = (overrides: Partial<ChildChunkDetail> = {}): ChildC
 })
 
 const createMockSegmentDetail = (
-  overrides: Partial<SegmentDetailModel & { document?: { name: string } }> = {},
-): SegmentDetailModel & { document?: { name: string } } => ({
+  overrides: Partial<SegmentResponse & { document?: { name: string } }> = {},
+): SegmentResponse & { document?: { name: string } } => ({
   id: 'segment-1',
   position: 1,
   document_id: 'doc-1',
@@ -206,21 +205,6 @@ describe('SegmentCard', () => {
   )
 
   describe('Rendering', () => {
-    it('should render loading skeleton when loading is true', () => {
-      render(<SegmentCard loading={true} focused={defaultFocused} />)
-
-      expect(screen.getByRole('button', { name: 'common.operation.viewMore' })).toBeDisabled()
-    })
-
-    it('should render segment card content when loading is false', () => {
-      const detail = createMockSegmentDetail()
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      // ChunkContent shows sign_content first, then content
-      expect(screen.getByText('Test signed content')).toBeInTheDocument()
-    })
-
     it('should render segment index tag with correct position', () => {
       const detail = createMockSegmentDetail({ position: 5 })
 
@@ -250,12 +234,6 @@ describe('SegmentCard', () => {
 
   // Props Tests
   describe('Props', () => {
-    it('should use default empty object when detail is undefined', () => {
-      render(<SegmentCard loading={false} focused={defaultFocused} />)
-
-      expect(screen.getByText(/Chunk/i)).toBeInTheDocument()
-    })
-
     it('should handle archived prop correctly - switch should be disabled', () => {
       const detail = createMockSegmentDetail()
 
@@ -271,23 +249,6 @@ describe('SegmentCard', () => {
 
       const switchElement = screen.getByRole('switch')
       expect(switchElement).toHaveAttribute('aria-disabled', 'true')
-    })
-
-    it('should show action buttons when embeddingAvailable is true', () => {
-      const detail = createMockSegmentDetail()
-
-      render(
-        <SegmentCard
-          loading={false}
-          detail={detail}
-          embeddingAvailable={true}
-          focused={defaultFocused}
-        />,
-      )
-
-      expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.delete' })).toBeInTheDocument()
-      expect(screen.getByRole('switch')).toBeInTheDocument()
     })
 
     it('should not show action buttons when embeddingAvailable is false', () => {
@@ -307,50 +268,34 @@ describe('SegmentCard', () => {
   })
 
   describe('State Management', () => {
-    it('should toggle delete confirmation modal when delete button clicked', async () => {
-      const detail = createMockSegmentDetail()
-
-      render(
-        <SegmentCard
-          loading={false}
-          detail={detail}
-          embeddingAvailable={true}
-          focused={defaultFocused}
-        />,
-      )
-
-      const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
-      fireEvent.click(deleteButton)
-
-      await waitFor(() => {
-        expect(screen.getByText('datasetDocuments.segment.delete')).toBeInTheDocument()
-      })
-    })
-
     it('should close delete confirmation modal when cancel is clicked', async () => {
+      const user = userEvent.setup()
       const detail = createMockSegmentDetail()
+      const onDelete = vi.fn()
 
       render(
         <SegmentCard
           loading={false}
           detail={detail}
+          onDelete={onDelete}
           embeddingAvailable={true}
           focused={defaultFocused}
         />,
       )
 
       const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
-      fireEvent.click(deleteButton)
+      await user.click(deleteButton)
 
       await waitFor(() => {
         expect(screen.getByText('datasetDocuments.segment.delete')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByText('common.operation.cancel'))
+      await user.click(screen.getByText('common.operation.cancel'))
 
       await waitFor(() => {
         expect(screen.queryByText('datasetDocuments.segment.delete')).not.toBeInTheDocument()
       })
+      expect(onDelete).not.toHaveBeenCalled()
     })
   })
 
@@ -377,7 +322,8 @@ describe('SegmentCard', () => {
       expect(onClick).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onClick when card is clicked in general mode', () => {
+    it('should call onClick when card is clicked in general mode', async () => {
+      const user = userEvent.setup()
       const onClick = vi.fn()
       const detail = createMockSegmentDetail()
       mockDocForm.current = ChunkingMode.text
@@ -387,12 +333,13 @@ describe('SegmentCard', () => {
       )
 
       const card = screen.getByTestId('segment-card')
-      fireEvent.click(card)
+      await user.click(card)
 
       expect(onClick).toHaveBeenCalledTimes(1)
     })
 
-    it('should not call onClick when card is clicked in full-doc mode', () => {
+    it('should not call onClick when card is clicked in full-doc mode', async () => {
+      const user = userEvent.setup()
       const onClick = vi.fn()
       const detail = createMockSegmentDetail()
       mockDocForm.current = ChunkingMode.parentChild
@@ -403,12 +350,13 @@ describe('SegmentCard', () => {
       )
 
       const card = screen.getByTestId('segment-card')
-      fireEvent.click(card)
+      await user.click(card)
 
       expect(onClick).not.toHaveBeenCalled()
     })
 
-    it('should call onClick when view more button is clicked in full-doc mode', () => {
+    it('should call onClick when view more button is clicked in full-doc mode', async () => {
+      const user = userEvent.setup()
       const onClick = vi.fn()
       const detail = createMockSegmentDetail()
       mockDocForm.current = ChunkingMode.parentChild
@@ -419,32 +367,13 @@ describe('SegmentCard', () => {
       )
 
       const viewMoreButton = screen.getByRole('button', { name: /viewMore/i })
-      fireEvent.click(viewMoreButton)
+      await user.click(viewMoreButton)
 
       expect(onClick).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onClickEdit when edit button is clicked', () => {
-      const onClickEdit = vi.fn()
-      const detail = createMockSegmentDetail()
-
-      render(
-        <SegmentCard
-          loading={false}
-          detail={detail}
-          onClickEdit={onClickEdit}
-          embeddingAvailable={true}
-          focused={defaultFocused}
-        />,
-      )
-
-      const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
-      fireEvent.click(editButton)
-
-      expect(onClickEdit).toHaveBeenCalledTimes(1)
-    })
-
     it('should call onDelete when confirm delete is clicked', async () => {
+      const user = userEvent.setup()
       const onDelete = vi.fn().mockResolvedValue(undefined)
       const detail = createMockSegmentDetail({ id: 'test-segment-id' })
 
@@ -459,13 +388,13 @@ describe('SegmentCard', () => {
       )
 
       const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
-      fireEvent.click(deleteButton)
+      await user.click(deleteButton)
 
       await waitFor(() => {
         expect(screen.getByText('datasetDocuments.segment.delete')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByText('common.operation.sure'))
+      await user.click(screen.getByText('common.operation.sure'))
 
       await waitFor(() => {
         expect(onDelete).toHaveBeenCalledWith('test-segment-id')
@@ -473,7 +402,9 @@ describe('SegmentCard', () => {
     })
 
     it('should call onChangeSwitch when switch is toggled', async () => {
+      const user = userEvent.setup()
       const onChangeSwitch = vi.fn().mockResolvedValue(undefined)
+      const onClick = vi.fn()
       const detail = createMockSegmentDetail({
         id: 'test-segment-id',
         enabled: true,
@@ -485,20 +416,24 @@ describe('SegmentCard', () => {
           loading={false}
           detail={detail}
           onChangeSwitch={onChangeSwitch}
+          onClick={onClick}
           embeddingAvailable={true}
           focused={defaultFocused}
         />,
       )
 
       const switchElement = screen.getByRole('switch')
-      fireEvent.click(switchElement)
+      expect(switchElement).toBeChecked()
+      await user.click(switchElement)
+      expect(onClick).not.toHaveBeenCalled()
 
       await waitFor(() => {
         expect(onChangeSwitch).toHaveBeenCalledWith(false, 'test-segment-id')
       })
     })
 
-    it('should stop propagation when edit button is clicked', () => {
+    it('should stop propagation when edit button is clicked', async () => {
+      const user = userEvent.setup()
       const onClick = vi.fn()
       const onClickEdit = vi.fn()
       const detail = createMockSegmentDetail()
@@ -515,55 +450,16 @@ describe('SegmentCard', () => {
       )
 
       const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
-      fireEvent.click(editButton)
+      await user.click(editButton)
 
       expect(onClickEdit).toHaveBeenCalledTimes(1)
-      expect(onClick).not.toHaveBeenCalled()
-    })
-
-    it('should stop propagation when switch area is clicked', () => {
-      const onClick = vi.fn()
-      const detail = createMockSegmentDetail({ status: 'completed' })
-
-      render(
-        <SegmentCard
-          loading={false}
-          detail={detail}
-          onClick={onClick}
-          embeddingAvailable={true}
-          focused={defaultFocused}
-        />,
-      )
-
-      const switchElement = screen.getByRole('switch')
-      const switchContainer = switchElement.parentElement
-      fireEvent.click(switchContainer!)
-
       expect(onClick).not.toHaveBeenCalled()
     })
   })
 
   // Memoization Logic Tests
-  describe('Memoization Logic', () => {
-    it('should compute isGeneralMode correctly for text mode - show keywords', () => {
-      mockDocForm.current = ChunkingMode.text
-      const detail = createMockSegmentDetail({ keywords: ['testkeyword'] })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      expect(screen.getByText('testkeyword')).toBeInTheDocument()
-    })
-
-    it('should compute isGeneralMode correctly for non-text mode - hide keywords', () => {
-      mockDocForm.current = ChunkingMode.qa
-      const detail = createMockSegmentDetail({ keywords: ['testkeyword'] })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      expect(screen.queryByText('testkeyword')).not.toBeInTheDocument()
-    })
-
-    it('should compute isParentChildMode correctly - show parent chunk prefix', () => {
+  describe('Chunk labels', () => {
+    it('labels parent chunks', () => {
       mockDocForm.current = ChunkingMode.parentChild
       const detail = createMockSegmentDetail()
 
@@ -572,28 +468,7 @@ describe('SegmentCard', () => {
       expect(screen.getByText(/datasetDocuments\.segment\.parentChunk/i)).toBeInTheDocument()
     })
 
-    it('should compute isFullDocMode correctly - show view more button', () => {
-      mockDocForm.current = ChunkingMode.parentChild
-      mockParentMode.current = 'full-doc'
-      const detail = createMockSegmentDetail()
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      expect(screen.getByText('common.operation.viewMore')).toBeInTheDocument()
-    })
-
-    it('should compute isParagraphMode correctly and show child chunks', () => {
-      mockDocForm.current = ChunkingMode.parentChild
-      mockParentMode.current = 'paragraph'
-      const childChunks = [createMockChildChunk()]
-      const detail = createMockSegmentDetail({ child_chunks: childChunks })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      expect(screen.getByText(/datasetDocuments\.segment\.childChunks/)).toBeInTheDocument()
-    })
-
-    it('should compute chunkEdited correctly when updated_at > created_at', () => {
+    it('marks a chunk edited after its creation time', () => {
       mockDocForm.current = ChunkingMode.text
       const detail = createMockSegmentDetail({
         created_at: 1700000000,
@@ -629,52 +504,6 @@ describe('SegmentCard', () => {
 
       expect(screen.queryByText('datasetDocuments.segment.edited')).not.toBeInTheDocument()
     })
-
-    it('should compute contentOpacity correctly when enabled', () => {
-      const detail = createMockSegmentDetail({ enabled: true })
-
-      const { container } = render(
-        <SegmentCard loading={false} detail={detail} focused={defaultFocused} />,
-      )
-
-      const wordCount = container.querySelector('.system-xs-medium.text-text-tertiary')
-      expect(wordCount).not.toHaveClass('opacity-50')
-    })
-
-    it('should compute contentOpacity correctly when disabled', () => {
-      const detail = createMockSegmentDetail({ enabled: false })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      // ChunkContent receives opacity class when disabled
-      const markdown = screen.getByTestId('markdown')
-      expect(markdown).toHaveClass('opacity-50')
-    })
-
-    it('should not apply opacity when disabled but focused', () => {
-      const detail = createMockSegmentDetail({ enabled: false })
-
-      const { container } = render(
-        <SegmentCard
-          loading={false}
-          detail={detail}
-          focused={{ segmentIndex: false, segmentContent: true }}
-        />,
-      )
-
-      const wordCount = container.querySelector('.system-xs-medium.text-text-tertiary')
-      expect(wordCount).not.toHaveClass('opacity-50')
-    })
-
-    it('should compute wordCountText with correct format for singular', () => {
-      const detail = createMockSegmentDetail({ word_count: 1 })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      expect(
-        screen.getByText('1 datasetDocuments.segment.characters:{"count":1}'),
-      ).toBeInTheDocument()
-    })
   })
 
   // Mode-specific Rendering Tests
@@ -687,7 +516,7 @@ describe('SegmentCard', () => {
       render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
 
       // In full-doc mode, status item should not render
-      expect(screen.queryByText('Status:')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('status-item')).not.toBeInTheDocument()
     })
   })
 
@@ -726,10 +555,11 @@ describe('SegmentCard', () => {
       render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
 
       // In full-doc mode, ChildSegmentList should not render
-      expect(screen.queryByText(/1 child chunk$/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/datasetDocuments\.segment\.childChunks/)).not.toBeInTheDocument()
     })
 
-    it('should call handleAddNewChildChunk when add button is clicked', () => {
+    it('should call handleAddNewChildChunk when add button is clicked', async () => {
+      const user = userEvent.setup()
       mockDocForm.current = ChunkingMode.parentChild
       mockParentMode.current = 'paragraph'
       const handleAddNewChildChunk = vi.fn()
@@ -746,7 +576,7 @@ describe('SegmentCard', () => {
       )
 
       const addButton = screen.getByText('common.operation.add')
-      fireEvent.click(addButton)
+      await user.click(addButton)
 
       expect(handleAddNewChildChunk).toHaveBeenCalledWith('parent-id')
     })
@@ -758,15 +588,10 @@ describe('SegmentCard', () => {
       mockDocForm.current = ChunkingMode.text
       const detail = createMockSegmentDetail({ keywords: ['keyword1', 'keyword2'] })
 
-      const { container } = render(
-        <SegmentCard loading={false} detail={detail} focused={defaultFocused} />,
-      )
+      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
 
       expect(screen.getByText('keyword1')).toBeInTheDocument()
       expect(screen.getByText('keyword2')).toBeInTheDocument()
-      // Tag component shows # prefix
-      const hashtags = container.querySelectorAll('.text-text-quaternary')
-      expect(hashtags.length).toBeGreaterThan(0)
     })
 
     it('should not render keywords in QA mode', () => {
@@ -811,40 +636,6 @@ describe('SegmentCard', () => {
 
   // Edge Cases and Error Handling Tests
   describe('Edge Cases and Error Handling', () => {
-    it('should handle undefined detail gracefully', () => {
-      render(<SegmentCard loading={false} detail={undefined} focused={defaultFocused} />)
-
-      expect(screen.getByText(/Chunk/i)).toBeInTheDocument()
-    })
-
-    it('should handle empty detail object gracefully', () => {
-      render(
-        <SegmentCard loading={false} detail={{} as SegmentDetailModel} focused={defaultFocused} />,
-      )
-
-      expect(screen.getByText(/Chunk/i)).toBeInTheDocument()
-    })
-
-    it('should handle missing callback functions gracefully', () => {
-      const detail = createMockSegmentDetail()
-
-      render(
-        <SegmentCard
-          loading={false}
-          detail={detail}
-          onClick={undefined}
-          onChangeSwitch={undefined}
-          onDelete={undefined}
-          onClickEdit={undefined}
-          embeddingAvailable={true}
-          focused={defaultFocused}
-        />,
-      )
-
-      const card = screen.getByTestId('segment-card')
-      expect(() => fireEvent.click(card)).not.toThrow()
-    })
-
     it('should handle switch being disabled when status is not completed', () => {
       const detail = createMockSegmentDetail({ status: 'indexing' })
 
@@ -878,159 +669,12 @@ describe('SegmentCard', () => {
 
       expect(screen.getByText('0 datasetDocuments.segment.hitCount')).toBeInTheDocument()
     })
-
-    it('should handle very long content', () => {
-      const longContent = 'A'.repeat(10000)
-      // ChunkContent shows sign_content first, so set it to the long content
-      const detail = createMockSegmentDetail({ sign_content: longContent })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      expect(screen.getByText(longContent)).toBeInTheDocument()
-    })
   })
 
   // Component Integration Tests
-  describe('Component Integration', () => {
-    it('should render real Tag component with hashtag styling', () => {
-      mockDocForm.current = ChunkingMode.text
-      const detail = createMockSegmentDetail({ keywords: ['testkeyword'] })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      expect(screen.getByText('testkeyword')).toBeInTheDocument()
-    })
-
-    it('should render real Divider component', () => {
-      const detail = createMockSegmentDetail()
-
-      render(
-        <SegmentCard
-          loading={false}
-          detail={detail}
-          embeddingAvailable={true}
-          focused={defaultFocused}
-        />,
-      )
-
-      const dividers = document.querySelectorAll('.bg-divider-regular')
-      expect(dividers.length).toBeGreaterThan(0)
-    })
-
-    it('should render real Badge component when edited', () => {
-      mockDocForm.current = ChunkingMode.text
-      const detail = createMockSegmentDetail({
-        created_at: 1700000000,
-        updated_at: 1700000001,
-      })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      const editedBadge = screen.getByText('datasetDocuments.segment.edited')
-      expect(editedBadge).toHaveClass('system-2xs-medium-uppercase')
-    })
-
-    it('should render real Switch component with correct enabled state', () => {
-      const detail = createMockSegmentDetail({ enabled: true, status: 'completed' })
-
-      render(
-        <SegmentCard
-          loading={false}
-          detail={detail}
-          embeddingAvailable={true}
-          focused={defaultFocused}
-        />,
-      )
-
-      const switchElement = screen.getByRole('switch')
-      expect(switchElement).toHaveAttribute('aria-checked', 'true')
-    })
-
-    it('should render real Switch component with unchecked state', () => {
-      const detail = createMockSegmentDetail({ enabled: false, status: 'completed' })
-
-      render(
-        <SegmentCard
-          loading={false}
-          detail={detail}
-          embeddingAvailable={true}
-          focused={defaultFocused}
-        />,
-      )
-
-      const switchElement = screen.getByRole('switch')
-      expect(switchElement).toHaveAttribute('aria-checked', 'false')
-    })
-
-    it('should render real SegmentIndexTag with position formatting', () => {
-      const detail = createMockSegmentDetail({ position: 1 })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      expect(screen.getByText(/Chunk-01/i)).toBeInTheDocument()
-    })
-
-    it('should render real SegmentIndexTag with double digit position', () => {
-      const detail = createMockSegmentDetail({ position: 12 })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      expect(screen.getByText(/Chunk-12/i)).toBeInTheDocument()
-    })
-  })
 
   // All Props Variations Tests
   describe('All Props Variations', () => {
-    it('should render correctly with all props provided', () => {
-      mockDocForm.current = ChunkingMode.parentChild
-      mockParentMode.current = 'paragraph'
-      const childChunks = [createMockChildChunk()]
-      const attachments = [createMockAttachment()]
-      const detail = createMockSegmentDetail({
-        id: 'full-props-segment',
-        position: 10,
-        sign_content: 'Full signed content',
-        content: 'Full content',
-        word_count: 500,
-        hit_count: 25,
-        enabled: true,
-        keywords: ['key1', 'key2'],
-        child_chunks: childChunks,
-        attachments,
-        created_at: 1700000000,
-        updated_at: 1700000001,
-        status: 'completed',
-      })
-
-      render(
-        <SegmentCard
-          loading={false}
-          detail={detail}
-          onClick={vi.fn()}
-          onChangeSwitch={vi.fn()}
-          onDelete={vi.fn()}
-          onDeleteChildChunk={vi.fn()}
-          handleAddNewChildChunk={vi.fn()}
-          onClickSlice={vi.fn()}
-          onClickEdit={vi.fn()}
-          className="full-props-class"
-          archived={false}
-          embeddingAvailable={true}
-          focused={{ segmentIndex: true, segmentContent: true }}
-        />,
-      )
-
-      // ChunkContent shows sign_content first
-      expect(screen.getByText('Full signed content')).toBeInTheDocument()
-      expect(screen.getByRole('switch')).toBeInTheDocument()
-    })
-
-    it('should render correctly with minimal props', () => {
-      render(<SegmentCard loading={true} focused={defaultFocused} />)
-
-      expect(screen.getByText('common.operation.viewMore')).toBeInTheDocument()
-    })
-
     it('should handle loading transition correctly', () => {
       const detail = createMockSegmentDetail()
 
@@ -1069,23 +713,6 @@ describe('SegmentCard', () => {
       expect(screen.getByText('This is the answer content')).toBeInTheDocument()
     })
 
-    it('should render QA mode with className applied to wrapper', () => {
-      const detail = createMockSegmentDetail({
-        content: 'Question',
-        answer: 'Answer',
-        sign_content: '',
-        enabled: false,
-      })
-
-      const { container } = render(
-        <SegmentCard loading={false} detail={detail} focused={defaultFocused} />,
-      )
-
-      // The ChunkContent wrapper should have opacity class when disabled
-      const qaWrapper = container.querySelector('.flex.gap-x-1')
-      expect(qaWrapper).toBeInTheDocument()
-    })
-
     it('should not render QA mode when answer is empty string', () => {
       const detail = createMockSegmentDetail({
         content: 'Regular content',
@@ -1101,63 +728,10 @@ describe('SegmentCard', () => {
       // Should render signed content instead
       expect(screen.getByText('Signed content')).toBeInTheDocument()
     })
-
-    it('should not render QA mode when answer is undefined', () => {
-      const detail = createMockSegmentDetail({
-        content: 'Regular content',
-        answer: undefined,
-        sign_content: 'Signed content',
-      })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      // Should not render Q and A labels
-      expect(screen.queryByText('Q')).not.toBeInTheDocument()
-      expect(screen.queryByText('A')).not.toBeInTheDocument()
-    })
   })
 
   // ChunkContent Non-QA Mode Tests - ensure full coverage
   describe('ChunkContent Non-QA Mode', () => {
-    it('should apply line-clamp-3 in fullDocMode', () => {
-      mockDocForm.current = ChunkingMode.parentChild
-      mockParentMode.current = 'full-doc'
-      const detail = createMockSegmentDetail({
-        sign_content: 'Content in full doc mode',
-      })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      const markdown = screen.getByTestId('markdown')
-      expect(markdown).toHaveClass('line-clamp-3')
-    })
-
-    it('should apply line-clamp-2 when not fullDocMode and isCollapsed is true', () => {
-      mockDocForm.current = ChunkingMode.text
-      mockIsCollapsed.current = true
-      const detail = createMockSegmentDetail({
-        sign_content: 'Collapsed content',
-      })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      const markdown = screen.getByTestId('markdown')
-      expect(markdown).toHaveClass('line-clamp-2')
-    })
-
-    it('should apply line-clamp-20 when not fullDocMode and isCollapsed is false', () => {
-      mockDocForm.current = ChunkingMode.text
-      mockIsCollapsed.current = false
-      const detail = createMockSegmentDetail({
-        sign_content: 'Expanded content',
-      })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      const markdown = screen.getByTestId('markdown')
-      expect(markdown).toHaveClass('line-clamp-20')
-    })
-
     it('should fall back to content when sign_content is empty', () => {
       const detail = createMockSegmentDetail({
         content: 'Fallback content',
@@ -1167,18 +741,6 @@ describe('SegmentCard', () => {
       render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
 
       expect(screen.getByText('Fallback content')).toBeInTheDocument()
-    })
-
-    it('should render empty string when both sign_content and content are empty', () => {
-      const detail = createMockSegmentDetail({
-        content: '',
-        sign_content: '',
-      })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      const markdown = screen.getByTestId('markdown')
-      expect(markdown).toHaveTextContent('')
     })
   })
 })

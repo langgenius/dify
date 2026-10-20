@@ -595,7 +595,7 @@ export const get2 = oc
     path: '/apps/recent',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAppsRecentQuery.optional() }))
+  .input(z.object({ query: zGetAppsRecentQuery.optional() }).optional())
   .output(zGetAppsRecentResponse)
 
 export const recent = {
@@ -614,7 +614,7 @@ export const get3 = oc
     path: '/apps/starred',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAppsStarredQuery.optional() }))
+  .input(z.object({ query: zGetAppsStarredQuery.optional() }).optional())
   .output(zGetAppsStarredResponse)
 
 export const starred = {
@@ -2149,6 +2149,7 @@ export const get33 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdNetworkAccessGroupStatusPath }))
   .output(zGetAppsByAppIdNetworkAccessGroupStatusResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const status2 = {
   get: get33,
@@ -2164,6 +2165,7 @@ export const get34 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdNetworkAccessGroupPath }))
   .output(zGetAppsByAppIdNetworkAccessGroupResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const put = oc
   .route({
@@ -2180,6 +2182,7 @@ export const put = oc
     }),
   )
   .output(zPutAppsByAppIdNetworkAccessGroupResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const networkAccessGroup = {
   get: get34,
@@ -5063,7 +5066,7 @@ export const get87 = oc
     path: '/apps',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAppsQuery.optional() }))
+  .input(z.object({ query: zGetAppsQuery.optional() }).optional())
   .output(zGetAppsResponse)
 
 /**

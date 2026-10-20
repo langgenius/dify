@@ -446,22 +446,20 @@ def validate_and_get_api_token(scope: str | None = None):
 
 
 def extract_service_api_bearer_token() -> str:
-    # Match the Gateway's HTTP whitespace rules before resolving policy identity.
-    auth_header = request.headers.get("Authorization") or ""
-    auth_parts = [part for part in auth_header.replace("\t", " ").split(" ") if part]
-    if len(auth_parts) != 2 or auth_parts[0].lower() != "bearer":
+    auth_token = peek_service_api_bearer_token()
+    if auth_token is None:
         raise Unauthorized(MISSING_BEARER_MESSAGE)
-    return auth_parts[1]
+    return auth_token
 
 
 def peek_service_api_bearer_token() -> str | None:
-    auth_header = request.headers.get("Authorization")
-    if auth_header is None or " " not in auth_header:
+    # Match the Gateway's HTTP SP/HTAB parser for both API keys and resource
+    # access tokens. Unicode whitespace must not bypass policy identity lookup.
+    auth_header = request.headers.get("Authorization") or ""
+    auth_parts = [part for part in auth_header.replace("\t", " ").split(" ") if part]
+    if len(auth_parts) != 2 or auth_parts[0].lower() != "bearer":
         return None
-    auth_scheme, auth_token = auth_header.split(None, 1)
-    if auth_scheme.lower() != "bearer":
-        return None
-    return auth_token
+    return auth_parts[1]
 
 
 class DatasetApiResource(Resource):

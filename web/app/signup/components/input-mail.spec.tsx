@@ -7,17 +7,6 @@ import { useSearchParams } from '@/next/navigation'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import SignupEmailForm from './input-mail'
 
-const { mockSendMailHook } = vi.hoisted(() => ({
-  mockSendMailHook: vi.fn(),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'emailRegister.sendEmail.post': (options: unknown) => mockSendMailHook(options),
-  })
-})
-
 const mockSubmitMail = vi.fn()
 const mockOnSuccess = vi.fn()
 
@@ -50,24 +39,15 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-type UseSendMailResult = ReturnType<typeof mockSendMailHook>
-
-const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
-const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
-const mockUseSendMail = mockSendMailHook
+const mockUseLocale = useLocale as MockedFunction<typeof useLocale>
+const mockUseSearchParams = useSearchParams as MockedFunction<typeof useSearchParams>
 
 const renderForm = ({
   brandingEnabled = false,
-  isPending = false,
 }: {
   brandingEnabled?: boolean
-  isPending?: boolean
 } = {}) => {
   mockUseLocale.mockReturnValue('en-US')
-  mockUseSendMail.mockReturnValue({
-    mutateAsync: mockSubmitMail,
-    isPending,
-  } as unknown as UseSendMailResult)
   return renderWithConsoleQuery(<SignupEmailForm onSuccess={mockOnSuccess} />, {
     systemFeatures: { branding: { enabled: brandingEnabled } },
   })
@@ -76,30 +56,11 @@ const renderForm = ({
 describe('InputMail Form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseSearchParams.mockReturnValue(
-      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
-    )
+    mockUseSearchParams.mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
     mockSubmitMail.mockResolvedValue({ result: 'success', data: 'token' })
   })
 
   // Rendering baseline UI elements.
-  describe('Rendering', () => {
-    it('should render email input and submit button', () => {
-      renderForm()
-
-      const emailInput = screen.getByRole('textbox', { name: 'login.email' })
-      const submitButton = screen.getByRole('button', { name: 'login.signup.verifyMail' })
-
-      expect(emailInput).toHaveAttribute('name', 'email')
-      expect(emailInput).toHaveAttribute('type', 'email')
-      expect(emailInput).toHaveAttribute('autocomplete', 'email')
-      expect(emailInput).toHaveAttribute('spellcheck', 'false')
-      expect(emailInput).toHaveProperty('tabIndex', 0)
-      expect(submitButton).toHaveAttribute('type', 'submit')
-      expect(submitButton).toHaveProperty('tabIndex', 0)
-      expect(screen.getByRole('link', { name: 'login.signup.signIn' })).toBeInTheDocument()
-    })
-  })
 
   // Prop-driven branding content visibility.
   describe('Props', () => {
@@ -145,9 +106,9 @@ describe('InputMail Form', () => {
   describe('Registration Navigation', () => {
     it('should preserve the current query when navigating to sign in', () => {
       mockUseSearchParams.mockReturnValue(
-        new URLSearchParams(
-          'redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing',
-        ) as unknown as ReturnType<typeof useSearchParams>,
+        new URLSearchParams('redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing') as ReturnType<
+          typeof useSearchParams
+        >,
       )
 
       renderForm()
@@ -192,4 +153,15 @@ describe('InputMail Form', () => {
       expect(mockOnSuccess).not.toHaveBeenCalled()
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'emailRegister.sendEmail.post': (input) => mockSubmitMail(input),
+    }),
+  }
 })

@@ -63,7 +63,7 @@ def dirty_fixture(sqlite_engine: sa.Engine) -> DirtyDataFixture:
 def command_module() -> ModuleType:
     try:
         return importlib.import_module("commands.data_migration")
-    except ModuleNotFoundError as exc:  # pragma: no cover - explicit TDD failure path
+    except ModuleNotFoundError:  # pragma: no cover - explicit TDD failure path
         pytest.fail(
             "commands.data_migration is missing. "
             "Implement the `flask data-migrate legacy-model-types` command group before running these tests."

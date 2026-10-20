@@ -8,9 +8,6 @@ from typing import TYPE_CHECKING, Any, override
 
 import httpx
 import qdrant_client
-from sqlalchemy.orm import Session
-
-logger = logging.getLogger(__name__)
 from flask import current_app
 from httpx import DigestAuth
 from pydantic import BaseModel
@@ -25,6 +22,7 @@ from qdrant_client.http.models import (
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -38,6 +36,8 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
@@ -406,6 +406,7 @@ class TidbOnQdrantVector(BaseVector):
 
         seen_ids: set[str | int] = set()
         documents: list[Document] = []
+        keyword_results: list[list[rest.Record]] = []
         # MatchText combines tokens with AND; separate searches provide OR between keywords.
         for keyword in keywords:
             scroll_filter = models.Filter(
@@ -424,13 +425,30 @@ class TidbOnQdrantVector(BaseVector):
                 with_payload=True,
                 with_vectors=True,
             )
-            for result in results:
-                if result and result.id not in seen_ids:
-                    seen_ids.add(result.id)
-                    document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
-                    documents.append(document)
-                    if len(documents) >= top_k:
-                        return documents
+            keyword_results.append(results)
+
+        # Select round-robin so a common first keyword cannot fill top_k before
+        # later keywords contribute their matches.
+        result_indexes = [0] * len(keyword_results)
+        while True:
+            found_result = False
+            for index, results in enumerate(keyword_results):
+                while result_indexes[index] < len(results):
+                    result = results[result_indexes[index]]
+                    result_indexes[index] += 1
+                    if result.id not in seen_ids:
+                        seen_ids.add(result.id)
+                        documents.append(
+                            self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
+                        )
+                        found_result = True
+                        break
+                if len(documents) >= top_k:
+                    break
+            if len(documents) >= top_k:
+                break
+            if not found_result:
+                break
 
         return documents
 

@@ -2,6 +2,7 @@ import { atom, createStore } from 'jotai/vanilla'
 import { z } from 'zod'
 import { env } from '@/env'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
+import { registerRequestGuard } from '@/service/request-guard'
 import { parseWebAppAddress } from '@/service/webapp-address'
 import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 
@@ -113,7 +114,8 @@ export function handleAppAccessError(
   error?: object,
   appIdentity = false,
 ) {
-  if (scope?.key.startsWith('form:') && status === 404) return false
+  // Console resource layouts own their missing-resource redirects; forms own expiration.
+  if (status === 404 && scope && /^(?:form|app|agent):/.test(scope.key)) return false
   if (!scope || !isAppAccessErrorResponse(status, data, appIdentity)) return false
   if (isScopeBeingDeleted(scope)) return false
 
@@ -146,7 +148,7 @@ export function getClientIp(data: unknown): string | undefined {
   return ipAddressSchema.safeParse(value).success ? value : undefined
 }
 
-export function isAppAccessErrorResponse(status: number, data: unknown, appIdentity = false) {
+function isAppAccessErrorResponse(status: number, data: unknown, appIdentity = false) {
   return (
     isIpAccessDeniedResponse(status, data) ||
     (status === 404 &&
@@ -202,7 +204,7 @@ export function captureAppAccessRequest(url: string, isPublicAPI = false, method
   }
 }
 
-export function throwIfAppAccessBlocked(scope: AppAccessScope | null) {
+function throwIfAppAccessBlocked(scope: AppAccessScope | null) {
   if (!hasAppAccessError(scope)) return
   const error = new DOMException('The app is no longer accessible.', 'AbortError')
   handledErrors.add(error)
@@ -230,3 +232,14 @@ export function endTrialAppAccess(scope: AppAccessScope) {
   appAccessStore.set(trialAppAccessScopeAtom, null)
   appAccessStore.set(trialAppAccessErrorAtom, null)
 }
+
+registerRequestGuard((url, isPublicAPI, method) => {
+  const { scope, appIdentity } = captureAppAccessRequest(url, isPublicAPI, method)
+  if (!scope) return undefined
+  return {
+    beforeRequest: () => throwIfAppAccessBlocked(scope),
+    isActive: () => isAppAccessScopeCurrent(scope) && !hasAppAccessError(scope),
+    handleError: (status, data, error) =>
+      handleAppAccessError(status, data, scope, error, appIdentity),
+  }
+})

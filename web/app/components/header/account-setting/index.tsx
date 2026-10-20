@@ -116,6 +116,12 @@ export default function AccountSetting({
       activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
     },
     {
+      key: ACCOUNT_SETTING_TAB.IP_POLICIES,
+      name: t(($) => $['settings.ipPolicies'], { ns: 'common' }),
+      icon: <span className={cn('i-ri-shield-keyhole-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-shield-keyhole-fill', iconClassName)} />,
+    },
+    {
       key: ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS,
       name: t(($) => $['settings.rolesAndPermissions'], { ns: 'navigation' }),
       icon: <span className={cn('i-ri-shield-user-line', iconClassName)} />,
@@ -156,12 +162,6 @@ export default function AccountSetting({
       activeIcon: <span className={cn('i-ri-color-filter-fill', iconClassName)} />,
     },
     {
-      key: ACCOUNT_SETTING_TAB.IP_POLICIES,
-      name: t(($) => $['settings.ipPolicies'], { ns: 'common' }),
-      icon: <span className={cn('i-ri-shield-keyhole-line', iconClassName)} />,
-      activeIcon: <span className={cn('i-ri-shield-keyhole-fill', iconClassName)} />,
-    },
-    {
       key: ACCOUNT_SETTING_TAB.PREFERENCES,
       name: t(($) => $['settings.preferences'], { ns: 'navigation' }),
       title: t(($) => $['account.general'], { ns: 'accountSettings' }),
@@ -175,6 +175,7 @@ export default function AccountSetting({
     const visibleTabs: AccountSettingTab[] = []
 
     visibleTabs.push(ACCOUNT_SETTING_TAB.MEMBERS)
+    if (canViewIpPolicies) visibleTabs.push(ACCOUNT_SETTING_TAB.IP_POLICIES)
 
     if (canManageWorkspaceRoles) {
       visibleTabs.push(ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS)
@@ -189,8 +190,6 @@ export default function AccountSetting({
       visibleTabs.push(ACCOUNT_SETTING_TAB.CUSTOM)
 
     if (canViewWorkflowLogArchives) visibleTabs.push(ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES)
-
-    if (canViewIpPolicies) visibleTabs.push(ACCOUNT_SETTING_TAB.IP_POLICIES)
 
     return visibleTabs
       .map((tab) => settingItems.find((item) => item.key === tab))
@@ -294,13 +293,13 @@ export default function AccountSetting({
                 <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
                   {/* First-use translations and queries must not suspend the dialog shell. */}
                   <Suspense fallback={<LoadingPlaceholder className="py-10" />}>
-                    {activeMenu === ACCOUNT_SETTING_TAB.ACCESS_TOKEN && <ResourceAccessTokenPage />}
                     {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
                     {activeMenu === ACCOUNT_SETTING_TAB.IP_POLICIES && <IpPoliciesPage />}
                     {activeMenu === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS && (
                       <PermissionsPage containerRef={scrollContainerRef} />
                     )}
                     {activeMenu === ACCOUNT_SETTING_TAB.PERMISSION_SET && <AccessRulesPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.ACCESS_TOKEN && <ResourceAccessTokenPage />}
                     {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
                     {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && (
                       <WorkflowLogArchivesPage />

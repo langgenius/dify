@@ -1,4 +1,3 @@
-import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { CommonResponse } from '@/models/common'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
@@ -15,8 +14,6 @@ const commonQueryKeys = {
   forgotPasswordValidity: (token?: string | null) =>
     [NAME_SPACE, 'forgot-password-validity', token] as const,
 }
-
-export type SchemaTypeDefinition = SchemaDefinitionItemResponse
 
 export const useLogout = ({ redirectTo = '/signin' }: { redirectTo?: string } = {}) => {
   return useMutation(

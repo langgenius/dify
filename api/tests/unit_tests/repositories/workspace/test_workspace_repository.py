@@ -142,7 +142,6 @@ def test_writes_commit_and_other_accounts_cannot_mutate(
 def test_write_rolls_back_on_commit_failure(
     seeded: WorkspaceRepository, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
-
     def fail_flush(_session: Session, _flush_context: object, _instances: object) -> None:
         raise RuntimeError("write failed")
 

@@ -2,7 +2,6 @@ import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.g
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import { Suspense } from 'react'
-import { markAppDeletionFailed, markAppDeletionStarted } from '@/service/app-deletion'
 import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
@@ -16,13 +15,8 @@ import AppDetailLayout from '../layout-main'
 const mockAppResponse = vi.fn()
 let mockPathname = '/app/app-1/workflow'
 let mockIsRbacEnabled = true
-const mockConsoleState = vi.hoisted(() => ({
-  currentWorkspace: { id: 'workspace-1' },
-  isLoadingCurrentWorkspace: false,
-  isLoadingWorkspacePermissionKeys: false,
-  userProfile: { id: 'user-1' },
-  workspacePermissionKeys: [] as string[],
-}))
+let permissionsPending = false
+let resolvePermissions: (() => void) | undefined
 const mockNavigation = vi.hoisted(() => ({
   usePathname: vi.fn(),
   // Like Next.js, a redirect stops rendering the current route.
@@ -39,6 +33,9 @@ const render = (
   if (cachedAppDetail) seedAppDetail(queryClient, cachedAppDetail)
   return renderWithConsoleQuery(ui, {
     queryClient,
+    currentWorkspace: { id: 'workspace-1' },
+    accountProfile: { id: 'user-1' },
+    workspacePermissionKeys: permissionsPending ? null : [],
     systemFeatures: {
       rbac_enabled: mockIsRbacEnabled,
     },
@@ -46,15 +43,6 @@ const render = (
 }
 
 vi.mock('@/next/navigation', () => mockNavigation)
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => mockConsoleState)
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState)
-})
 
 const mockUsePathname = mockNavigation.usePathname
 const mockRedirect = mockNavigation.redirect
@@ -80,15 +68,25 @@ describe('AppDetailLayout', () => {
     document.title = ''
     mockPathname = '/app/app-1/workflow'
     mockIsRbacEnabled = true
-    mockConsoleState.currentWorkspace = { id: 'workspace-1' }
-    mockConsoleState.isLoadingCurrentWorkspace = false
-    mockConsoleState.isLoadingWorkspacePermissionKeys = false
-    mockConsoleState.userProfile = { id: 'user-1' }
-    mockConsoleState.workspacePermissionKeys = []
+    permissionsPending = false
+    resolvePermissions = undefined
     mockUsePathname.mockImplementation(() => mockPathname)
     mockAppResponse.mockResolvedValue(createAppDetail())
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-      const response = await mockAppResponse(input instanceof Request ? input.url : String(input))
+      const url = input instanceof Request ? input.url : String(input)
+      const path = new URL(url).pathname
+      if (path.includes('/rbac/')) {
+        await new Promise<void>((resolve) => {
+          resolvePermissions = resolve
+        })
+        return Response.json({
+          workspace: { permission_keys: [] },
+          app: { default_permission_keys: [], overrides: [] },
+          dataset: { default_permission_keys: [], overrides: [] },
+        })
+      }
+      if (!/\/apps\/app-[12]$/.test(path)) throw new Error(`Unexpected request: ${url}`)
+      const response = await mockAppResponse(url)
       return response instanceof Response ? response : Response.json(response)
     })
   })
@@ -205,31 +203,24 @@ describe('AppDetailLayout', () => {
     mockAppResponse.mockImplementation(async () =>
       Response.json({ message: 'App not found' }, { status: 404 }),
     )
-    markAppDeletionStarted('app-1')
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
 
-    try {
-      render(
-        <AppDetailLayout appId="app-1">
-          <div>App page content</div>
-        </AppDetailLayout>,
-      )
-
-      await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith('/apps'))
-      expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    } finally {
-      markAppDeletionFailed('app-1')
-    }
+    await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith('/apps'))
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
   })
 
   it('should keep app detail data when navigating between pages in the same app', async () => {
-    const { rerender, unmount } = render(
+    const { rerender } = render(
       <AppDetailLayout appId="app-1">
         <div>App page content</div>
       </AppDetailLayout>,
     )
     await waitForAppContent()
     expect(mockAppResponse).toHaveBeenCalledWith(expect.stringMatching(/\/apps\/app-1$/))
-    expect(mockAppResponse).toHaveBeenCalled()
 
     mockPathname = '/app/app-1/overview'
     rerender(
@@ -240,16 +231,6 @@ describe('AppDetailLayout', () => {
 
     expect(screen.getByText('App page content')).toBeInTheDocument()
     expect(mockAppResponse).toHaveBeenCalledTimes(1)
-
-    unmount()
-    render(
-      <AppDetailLayout appId="app-1">
-        <div>App page content</div>
-      </AppDetailLayout>,
-    )
-
-    await waitForAppContent()
-    expect(mockAppResponse).toHaveBeenCalled()
   })
 
   it('renders cached app detail content on the first render without a loading frame', () => {
@@ -465,7 +446,7 @@ describe('AppDetailLayout', () => {
 
     await waitForAppContent()
 
-    expect(mockRedirect).not.toHaveBeenCalledWith('/app/app-1/overview')
+    expect(mockRedirect).not.toHaveBeenCalled()
   })
 
   it('should redirect workflow pages when layout access is missing', async () => {
@@ -503,13 +484,13 @@ describe('AppDetailLayout', () => {
   })
 
   it('should wait for workspace permission keys before redirecting restricted pages', async () => {
-    mockConsoleState.isLoadingWorkspacePermissionKeys = true
+    permissionsPending = true
     mockPathname = '/app/app-1/overview'
     mockAppResponse.mockResolvedValue(
       createAppDetail({ permission_keys: [AppACLPermission.ViewLayout] }),
     )
 
-    const { rerender } = render(
+    render(
       <AppDetailLayout appId="app-1">
         <div>App page content</div>
       </AppDetailLayout>,
@@ -521,12 +502,10 @@ describe('AppDetailLayout', () => {
     expect(mockRedirect).not.toHaveBeenCalled()
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
 
-    mockConsoleState.isLoadingWorkspacePermissionKeys = false
-    rerender(
-      <AppDetailLayout appId="app-1">
-        <div>App page content</div>
-      </AppDetailLayout>,
-    )
+    await waitFor(() => expect(resolvePermissions).toBeDefined())
+    await act(async () => {
+      resolvePermissions!()
+    })
 
     await waitFor(() => {
       expect(mockRedirect).toHaveBeenCalledWith('/app/app-1/workflow')
@@ -690,4 +669,28 @@ describe('AppDetailLayout', () => {
 
     expect(mockRedirect).not.toHaveBeenCalled()
   })
+
+  it.each([
+    ['agent-1', '/agents/agent-1/access'],
+    [null, '/agents'],
+  ])(
+    'redirects legacy Agent access-point URLs to the Agent owner (%s)',
+    async (boundAgentId, target) => {
+      mockPathname = '/app/app-1/access-point'
+      mockAppResponse.mockResolvedValue(
+        createAppDetail({
+          mode: 'agent',
+          bound_agent_id: boundAgentId,
+          permission_keys: [AppACLPermission.AccessPointView],
+        }),
+      )
+      render(
+        <AppDetailLayout appId="app-1">
+          <div>App page content</div>
+        </AppDetailLayout>,
+      )
+      await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith(target))
+      expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    },
+  )
 })

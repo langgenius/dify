@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +15,7 @@ type ModalState = {
 }
 
 type UseDatasetCardStateOptions = {
-  dataset: DataSet
+  dataset: DatasetDetailWithPartialMembersResponse
   onSuccess?: () => void
 }
 

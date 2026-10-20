@@ -8,9 +8,8 @@ import { NextResponse } from 'next/server'
 import { env } from '@/env'
 import { isAccessMode } from '@/models/access-control'
 import { parseWebAppAddress } from '@/service/webapp-address'
+import { APP_UNAVAILABLE_IP_HEADER, APP_UNAVAILABLE_PATH } from './document-constants'
 
-export const APP_UNAVAILABLE_PATH = '/webapp-unavailable'
-export const APP_UNAVAILABLE_IP_HEADER = 'x-dify-app-unavailable-ip'
 const PROXY_SECRET_HEADER = 'x-dify-webapp-proxy-secret'
 const VERIFIED_IP_HEADER = 'x-dify-webapp-client-ip'
 const MAX_PREFLIGHT_BYTES = 8192

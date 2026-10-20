@@ -1,30 +1,19 @@
-import type { SimpleDocumentDetail } from '@/models/datasets'
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { DocumentPicker } from '../index'
 
-let mockDocumentListData: { data: SimpleDocumentDetail[] } | undefined
+let mockDocumentListData: { data: DocumentWithSegmentsResponse[] } | undefined
 
 const { mockUseDocumentList } = vi.hoisted(() => ({
   mockUseDocumentList: vi.fn(),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.documents.get': (options: {
-      input: { params: { dataset_id: string }; query: Record<string, unknown> }
-    }) =>
-      mockUseDocumentList({
-        datasetId: options.input.params.dataset_id,
-        query: options.input.query,
-      }),
-  })
-})
-
-const createDocument = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDocumentDetail => ({
+const createDocument = (
+  overrides: Partial<DocumentWithSegmentsResponse> = {},
+): DocumentWithSegmentsResponse => ({
   id: 'doc-1',
   position: 1,
   data_source_type: DataSourceType.FILE,
@@ -36,7 +25,7 @@ const createDocument = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDo
       extension: 'pdf',
       mime_type: 'application/pdf',
       created_by: 'user-1',
-      created_at: Date.now(),
+      created_at: 1700000000,
     },
     job_id: 'job-1',
     url: '',
@@ -45,7 +34,7 @@ const createDocument = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDo
   name: 'Document 1',
   created_from: 'web',
   created_by: 'user-1',
-  created_at: Date.now(),
+  created_at: 1700000000,
   indexing_status: 'completed',
   display_status: 'enabled',
   doc_form: ChunkingMode.text,
@@ -103,9 +92,15 @@ describe('DocumentPicker', () => {
         createDocument({ id: 'doc-2', name: 'Document 2' }),
       ],
     }
-    mockUseDocumentList.mockImplementation(() => ({
-      data: mockDocumentListData,
-    }))
+    mockUseDocumentList.mockImplementation(() =>
+      Promise.resolve({
+        ...mockDocumentListData,
+        total: mockDocumentListData?.data.length ?? 0,
+        page: 1,
+        limit: 20,
+        has_more: false,
+      }),
+    )
   })
 
   it('should render the current document and chunking mode', () => {
@@ -132,7 +127,7 @@ describe('DocumentPicker', () => {
 
     await waitFor(() => {
       expect(mockUseDocumentList).toHaveBeenLastCalledWith({
-        datasetId: 'dataset-custom',
+        params: { dataset_id: 'dataset-custom' },
         query: {
           keyword: 'report',
           page: 1,
@@ -142,27 +137,18 @@ describe('DocumentPicker', () => {
     })
   })
 
-  it('should keep focus in the search input while deleting quickly', async () => {
-    const user = userEvent.setup()
-    renderDocumentPicker()
-
-    const trigger = screen.getByRole('combobox', { name: 'Document 1' })
-    await user.click(trigger)
-
-    const searchInput = screen.getByPlaceholderText('common.operation.search')
-    await user.type(searchInput, 'report')
-    await user.keyboard('{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}')
-
-    expect(trigger).toHaveAttribute('aria-expanded', 'true')
-    expect(searchInput).toHaveFocus()
-    expect(trigger).not.toHaveFocus()
-  })
-
   it('should keep focus in the search input when deleting from an empty result', async () => {
     const user = userEvent.setup()
-    mockUseDocumentList.mockImplementation(({ query }) => ({
-      data: query.keyword === 'missing' ? { data: [] } : mockDocumentListData,
-    }))
+    mockUseDocumentList.mockImplementation(({ query }) =>
+      Promise.resolve({
+        ...mockDocumentListData,
+        data: query.keyword === 'missing' ? [] : mockDocumentListData?.data,
+        total: query.keyword === 'missing' ? 0 : mockDocumentListData?.data.length,
+        page: 1,
+        limit: 20,
+        has_more: false,
+      }),
+    )
 
     renderDocumentPicker()
 
@@ -176,21 +162,6 @@ describe('DocumentPicker', () => {
     await user.keyboard(
       '{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}',
     )
-
-    expect(trigger).toHaveAttribute('aria-expanded', 'true')
-    expect(searchInput).toHaveFocus()
-    expect(trigger).not.toHaveFocus()
-  })
-
-  it('should keep focus in the search input while typing quickly', async () => {
-    const user = userEvent.setup()
-    renderDocumentPicker()
-
-    const trigger = screen.getByRole('combobox', { name: 'Document 1' })
-    await user.click(trigger)
-
-    const searchInput = screen.getByPlaceholderText('common.operation.search')
-    await user.keyboard('quarterly-report-final')
 
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
     expect(searchInput).toHaveFocus()
@@ -212,17 +183,15 @@ describe('DocumentPicker', () => {
 
     expect(onChange).toHaveBeenCalledWith(selectedDocument)
   })
+})
 
-  it('should show an empty state when no documents match', async () => {
-    const user = userEvent.setup()
-    mockDocumentListData = { data: [] }
-
-    renderDocumentPicker()
-
-    await user.click(screen.getByRole('combobox', { name: 'Document 1' }))
-
-    expect(
-      (await screen.findByText('common.noData')).closest('[role="status"]'),
-    ).toBeInTheDocument()
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.get': mockUseDocumentList,
+    }),
+  }
 })

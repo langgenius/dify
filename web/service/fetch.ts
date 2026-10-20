@@ -1,6 +1,6 @@
 import type { AfterResponseHook, BeforeRequestHook, Hooks } from 'ky'
 import type { IOtherOptions } from './base'
-import type { AppAccessScope } from '@/features/app-access-error/state'
+import type { RequestGuard } from './request-guard'
 import Cookies from 'js-cookie'
 import ky from 'ky'
 import {
@@ -14,16 +14,10 @@ import {
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
-import {
-  captureAppAccessRequest,
-  hasAppAccessError,
-  isAppAccessErrorResponse,
-  isAppAccessScopeCurrent,
-  throwIfAppAccessBlocked,
-} from '@/features/app-access-error/state'
 import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
 import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
+import { captureRequestGuard } from './request-guard'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
@@ -40,8 +34,8 @@ export const ContentType = {
 }
 
 export type FetchOptionType = Omit<RequestInit, 'body'> & {
-  params?: Record<string, any>
-  body?: BodyInit | Record<string, any> | null
+  params?: Record<string, string | number | boolean | undefined>
+  body?: BodyInit | Record<string, unknown> | null
 }
 
 const afterResponse204: AfterResponseHook = async ({ response }) => {
@@ -55,27 +49,19 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
 
 const afterResponseErrorCode = (
   otherOptions: IOtherOptions,
-  appAccessScope: AppAccessScope | null,
-  appIdentity: boolean,
+  requestGuard: RequestGuard | undefined,
 ): AfterResponseHook => {
   return async ({ request, response }) => {
     if (isHttpErrorStatus(response.status)) {
       const error = await httpErrorFromResponse(response)
       const errorData = error.data
+      const handled = requestGuard?.handleError(response.status, errorData, error)
+      if (handled || requestGuard?.isActive() === false) throw error
       const shouldNotifyError =
         response.status >= 400 &&
         response.status !== 401 &&
         errorData &&
         !otherOptions.silent &&
-        !(
-          appAccessScope &&
-          (!isAppAccessScopeCurrent(appAccessScope) || hasAppAccessError(appAccessScope))
-        ) &&
-        !(
-          appAccessScope &&
-          (response.status !== 404 || !appAccessScope.key.startsWith('form:')) &&
-          isAppAccessErrorResponse(response.status, errorData, appIdentity)
-        ) &&
         !shouldSuppressAppDeletionErrorToast(request.url, response.status)
 
       const errorMessage = [errorData?.message, errorData?.error].find(
@@ -157,12 +143,8 @@ async function base<T>(
     fetchCompat = false,
     request,
   } = otherOptions
-  const { scope: appAccessScope, appIdentity } = captureAppAccessRequest(
-    url,
-    isPublicAPI,
-    request?.method || init.method,
-  )
-  throwIfAppAccessBlocked(appAccessScope)
+  const requestGuard = captureRequestGuard(url, isPublicAPI, request?.method || init.method)
+  requestGuard?.beforeRequest()
 
   const headers = new Headers(headersFromProps || {})
 
@@ -196,7 +178,7 @@ async function base<T>(
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
       afterResponse: [
         ...(baseHooks.afterResponse || []),
-        afterResponseErrorCode(otherOptions, appAccessScope, appIdentity),
+        afterResponseErrorCode(otherOptions, requestGuard),
       ],
     },
   })

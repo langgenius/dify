@@ -862,7 +862,7 @@ export const get7 = oc
     summary: 'List customized snippets with pagination and search',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentCustomizedSnippetsQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentCustomizedSnippetsQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentCustomizedSnippetsResponse)
 
 /**
@@ -1287,7 +1287,7 @@ export const get12 = oc
     path: '/workspaces/current/members',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentMembersQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentMembersQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentMembersResponse)
 
 export const members = {
@@ -1782,7 +1782,7 @@ export const get20 = oc
     path: '/workspaces/current/model-providers',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentModelProvidersQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentModelProvidersQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentModelProvidersResponse)
 
 export const modelProviders = {
@@ -2165,7 +2165,7 @@ export const get33 = oc
     path: '/workspaces/current/plugin/list',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentPluginListQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentPluginListQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentPluginListResponse)
   .errors({ plugin_error: { status: 400, data: zPluginError } })
 
@@ -2360,7 +2360,7 @@ export const get39 = oc
     path: '/workspaces/current/plugin/tasks',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentPluginTasksQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentPluginTasksQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentPluginTasksResponse)
   .errors({ plugin_error: { status: 400, data: zPluginError } })
 
@@ -3456,7 +3456,7 @@ export const get69 = oc
     path: '/workspaces/current/rbac/roles',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentRbacRolesQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentRbacRolesQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentRbacRolesResponse)
 
 export const post48 = oc
@@ -4166,7 +4166,7 @@ export const get87 = oc
     path: '/workspaces/current/skills',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentSkillsQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentSkillsQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentSkillsResponse)
 
 export const post56 = oc
@@ -4780,7 +4780,9 @@ export const get104 = oc
     path: '/workspaces/current/tool-provider/workflow/get',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentToolProviderWorkflowGetQuery.optional() }))
+  .input(
+    z.object({ query: zGetWorkspacesCurrentToolProviderWorkflowGetQuery.optional() }).optional(),
+  )
   .output(zGetWorkspacesCurrentToolProviderWorkflowGetResponse)
 
 export const get105 = {
@@ -4846,7 +4848,7 @@ export const get107 = oc
     path: '/workspaces/current/tool-providers',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentToolProvidersQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentToolProvidersQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentToolProvidersResponse)
 
 export const toolProviders = {

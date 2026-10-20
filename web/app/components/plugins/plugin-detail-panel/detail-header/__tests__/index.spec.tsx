@@ -1,222 +1,415 @@
-import type { ReactElement } from 'react'
-import type { PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
-import { createAccountProfileQueryClient } from '@/test/console/account-profile'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import type { PluginVersionsResponse } from '@dify/contracts/marketplace'
+import type { ComponentProps, ReactElement } from 'react'
+import type { consoleClient } from '@/service/console'
+import {
+  zPluginDecodeResponse,
+  zPluginEntity,
+} from '@dify/contracts/api/console/workspaces/zod.gen'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { PluginSource } from '@/app/components/plugins/types'
+import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
+import { ModalContextProvider } from '@/context/modal-context-provider'
+import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createPluginEntity } from '@/test/fixtures/plugin'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import DetailHeader from '../index'
 
-const mockSetTargetVersion = vi.fn()
-const mockSetVersionPickerOpen = vi.fn()
-const mockHandleUpdate = vi.fn()
-const mockHandleUpdatedFromMarketplace = vi.fn()
-const mockHandleDelete = vi.fn()
-
-const render = (ui: ReactElement) => {
-  const queryClient = createAccountProfileQueryClient({ timezone: 'UTC' })
-  return renderWithConsoleQuery(ui, {
-    queryClient,
-    systemFeatures: { enable_marketplace: true },
-  })
-}
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: 'light' }),
+const api = vi.hoisted(() => ({
+  releases: vi.fn<typeof fetch>(),
+  uninstall: vi.fn<typeof consoleClient.workspaces.current.plugin.uninstall.post>(),
+  versions: vi.fn<() => Promise<PluginVersionsResponse>>(),
+  autoUpgrade: vi.fn<typeof consoleClient.workspaces.current.plugin.autoUpgrade.fetch.get>(),
+  upload: vi.fn<typeof consoleClient.workspaces.current.plugin.upload.github.post>(),
+  upgrade: vi.fn<typeof consoleClient.workspaces.current.plugin.upgrade.github.post>(),
+  marketplaceUpgrade:
+    vi.fn<typeof consoleClient.workspaces.current.plugin.upgrade.marketplace.post>(),
+  models: vi.fn<typeof consoleClient.workspaces.current.models.modelTypes.byModelType.get>(),
 }))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.toolProviders.get': () => ({
-      data: [
-        {
-          name: 'tool-plugin/provider-a',
-          type: 'builtin',
-          allow_delete: true,
-        },
-      ],
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.uninstall.post': api.uninstall,
+      'workspaces.current.plugin.upgrade.marketplace.post': api.marketplaceUpgrade,
+      'workspaces.current.models.modelTypes.byModelType.get': api.models,
+      'workspaces.current.modelProviders.summary.get': async () => ({ data: [], plugins: {} }),
+      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
     }),
-  })
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.upload.github.post': api.upload,
+      'workspaces.current.plugin.upgrade.github.post': api.upgrade,
+      'workspaces.current.plugin.upgrade.marketplace.post': api.marketplaceUpgrade,
+      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.plugin.permission.fetch.get': async () => ({
+        install_permission: 'everyone',
+        debug_permission: 'everyone',
+      }),
+      'workspaces.current.plugin.autoUpgrade.fetch.get': api.autoUpgrade,
+    }),
+  }
 })
 
-vi.mock('@/service/use-plugins', () => ({
-  useVersionListOfPlugin: () => ({ data: { data: { versions: [] } } }),
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
+  return {
+    ...actual,
+    marketplaceQuery: createTanstackQueryUtils(
+      {
+        ...actual.marketplaceClient,
+        pluginVersions: api.versions,
+      },
+      { path: ['marketplace'] },
+    ),
+  }
+})
 
-vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: (path: string) => `https://marketplace.example.com${path}`,
-}))
+const autoUpgrade = {
+  strategy_setting: 'disabled',
+  upgrade_mode: 'all',
+  upgrade_time_of_day: 0,
+  include_plugins: [],
+  exclude_plugins: [],
+} as const
 
-vi.mock('@/app/components/base/badge', () => ({
-  default: ({ text, children }: { text?: React.ReactNode; children?: React.ReactNode }) => (
-    <div data-testid="badge">{text ?? children}</div>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/plugin-auth', () => ({
-  AuthCategory: {
-    tool: 'tool',
+const installed = zPluginEntity.parse({
+  ...createPluginEntity(),
+  installation_id: 'plugin-entity-id',
+  name: 'plugin-entity',
+})
+const manifest = { ...installed.declaration, category: 'model', version: '2.0.0', tags: [] }
+const detail = normalizeInstalledPluginDetail(
+  zPluginEntity.parse({
+    ...installed,
+    source: 'github',
+    declaration: { ...installed.declaration, category: 'model' },
+    meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'plugin.difypkg' },
+  }),
+)
+const uploadedPackage = zPluginDecodeResponse.parse({
+  unique_identifier: 'langgenius/plugin-entity:2.0.0@test',
+  manifest,
+})
+const releases = [
+  {
+    tag: 'v2.0.0',
+    assets: [
+      { downloadUrl: 'https://github.com/owner/repo/releases/download/v2.0.0/plugin.difypkg' },
+    ],
   },
-  PluginAuth: ({ pluginPayload }: { pluginPayload: { provider: string } }) => (
-    <div data-testid="plugin-auth">{pluginPayload.provider}</div>
-  ),
-}))
-
-vi.mock('@/app/components/base/badges/verified', () => ({
-  default: () => <div data-testid="verified" />,
-}))
-
-vi.mock('@/app/components/base/deprecation-notice', () => ({
-  default: () => <div data-testid="deprecation-notice" />,
-}))
-
-vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
-  default: ({ src }: { src: string }) => <div data-testid="card-icon">{src}</div>,
-}))
-
-vi.mock('@/app/components/plugins/card/base/description', () => ({
-  default: ({ text }: { text: string }) => <div data-testid="description">{text}</div>,
-}))
-
-vi.mock('@/app/components/plugins/card/base/org-info', () => ({
-  default: ({ orgName }: { orgName: string }) => <div data-testid="org-info">{orgName}</div>,
-}))
-
-vi.mock('@/app/components/plugins/card/base/title', () => ({
-  default: ({ title }: { title: string }) => <div data-testid="title">{title}</div>,
-}))
-
-vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
-  default: () => ({
-    referenceSetting: {
-      auto_upgrade: {
-        upgrade_time_of_day: 0,
-      },
-    },
-    canUpdate: true,
-  }),
-}))
-
-vi.mock('@/app/components/plugins/reference-setting-modal/auto-update-setting/utils', () => ({
-  convertUTCDaySecondsToLocalSeconds: (value: number) => value,
-  timeOfDayToDayjs: () => ({
-    format: () => '10:00 AM',
-  }),
-}))
-
-vi.mock('../components', () => ({
-  HeaderModals: () => <div data-testid="header-modals" />,
-  PluginSourceBadge: ({ source }: { source: string }) => (
-    <div data-testid="source-badge">{source}</div>
-  ),
-}))
-
-vi.mock('../hooks', () => ({
-  useDetailHeaderState: () => ({
-    modalStates: {
-      isShowUpdateModal: false,
-      showUpdateModal: vi.fn(),
-      hideUpdateModal: vi.fn(),
-      isShowPluginInfo: false,
-      showPluginInfo: vi.fn(),
-      hidePluginInfo: vi.fn(),
-      isShowDeleteConfirm: false,
-      showDeleteConfirm: vi.fn(),
-      hideDeleteConfirm: vi.fn(),
-      deleting: false,
-      showDeleting: vi.fn(),
-      hideDeleting: vi.fn(),
-    },
-    versionPicker: {
-      isShow: false,
-      setIsShow: mockSetVersionPickerOpen,
-      targetVersion: {
-        version: '1.0.0',
-        unique_identifier: 'uid-1',
-      },
-      setTargetVersion: mockSetTargetVersion,
-      isDowngrade: false,
-      setIsDowngrade: vi.fn(),
-    },
-    hasNewVersion: true,
-    isAutoUpgradeEnabled: true,
-    isFromGitHub: false,
-    isFromMarketplace: true,
-  }),
-  usePluginOperations: () => ({
-    handleUpdate: mockHandleUpdate,
-    handleUpdatedFromMarketplace: mockHandleUpdatedFromMarketplace,
-    handleDelete: mockHandleDelete,
-  }),
-}))
-
-const createDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail =>
-  ({
-    id: 'plugin-1',
-    created_at: '2024-01-01',
-    updated_at: '2024-01-02',
-    name: 'tool-plugin',
-    plugin_id: 'tool-plugin',
-    plugin_unique_identifier: 'tool-plugin@1.0.0',
-    declaration: {
-      author: 'acme',
-      category: PluginCategoryEnum.tool,
-      name: 'provider-a',
-      label: { en_US: 'Tool Plugin' },
-      description: { en_US: 'Tool plugin description' },
-      icon: 'icon.png',
-      icon_dark: 'icon-dark.png',
-      verified: true,
-      tool: {
-        identity: {
-          name: 'provider-a',
-        },
-      },
-    } as PluginDetail['declaration'],
-    installation_id: 'install-1',
-    tenant_id: 'tenant-1',
-    endpoints_setups: 0,
-    endpoints_active: 0,
-    version: '1.0.0',
-    latest_version: '2.0.0',
-    latest_unique_identifier: 'uid-2',
-    source: PluginSource.marketplace,
-    status: 'active',
-    deprecated_reason: 'Deprecated',
-    alternative_plugin_id: 'plugin-2',
-    meta: undefined,
-    ...overrides,
-  }) as PluginDetail
-
-describe('DetailHeader', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+]
+const render = createNuqsTestRenderer((ui: ReactElement, enableMarketplace: boolean = true) => {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    features: {},
+    systemFeatures: { enable_marketplace: enableMarketplace },
   })
+})
+function setup(props: Partial<ComponentProps<typeof DetailHeader>> = {}, enableMarketplace = true) {
+  const onUpdate = vi.fn<() => void | Promise<void>>()
+  render(
+    <ModalContextProvider>
+      <DetailHeader detail={detail} onUpdate={onUpdate} {...props} />
+      <AppToastHost timeout={0} />
+    </ModalContextProvider>,
+    enableMarketplace,
+  )
+  return { user: userEvent.setup(), onUpdate }
+}
+beforeEach(() => {
+  api.releases.mockReset().mockImplementation(async (url) => {
+    if (url !== 'https://ungh.cc/repos/owner/repo/releases')
+      throw new Error(`Unexpected request: ${url instanceof Request ? url.url : url}`)
+    return Response.json({ releases })
+  })
+  vi.stubGlobal('fetch', api.releases)
+  api.uninstall.mockReset().mockResolvedValue({ success: true })
+  api.upload.mockReset().mockResolvedValue(uploadedPackage)
+  api.upgrade.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
+  api.marketplaceUpgrade.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
+  api.models.mockReset().mockResolvedValue({ data: [] })
+  api.autoUpgrade.mockReset().mockResolvedValue({
+    category: 'model',
+    auto_upgrade: { ...autoUpgrade, include_plugins: [], exclude_plugins: [] },
+  })
+  api.versions.mockReset().mockResolvedValue({
+    data: {
+      versions: ['2.0.0', '1.0.0', '0.5.0'].map((version) => ({
+        plugin_org: 'langgenius',
+        plugin_name: 'plugin-entity',
+        version,
+        file_name: 'plugin.difypkg',
+        checksum: version,
+        created_at: '2026-06-01T00:00:00Z',
+        unique_identifier: `langgenius/plugin-entity:${version}@test`,
+      })),
+    },
+  })
+})
+afterEach(() => {
+  vi.unstubAllGlobals()
+  act(() => toast.dismiss())
+})
 
-  it('renders the plugin summary, source badge, auth section, and modal container', () => {
-    render(<DetailHeader detail={createDetail()} onHide={vi.fn()} onUpdate={vi.fn()} />)
+it('updates the selected GitHub package, refreshes model catalogs, and keeps the modal pending until its consumer finishes', async () => {
+  const refresh = createDeferred<void>()
+  const onUpdate = vi.fn(() => refresh.promise)
+  const { user } = setup({ onUpdate })
+  await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
+  const dialog = await screen.findByRole('dialog', {
+    name: 'plugin.installFromGitHub.updatePlugin',
+  })
+  await user.click(
+    within(dialog).getByRole('combobox', { name: 'plugin.installFromGitHub.selectVersion' }),
+  )
+  await user.click(await screen.findByRole('option', { name: 'v2.0.0' }))
+  await user.click(
+    within(dialog).getByRole('combobox', { name: 'plugin.installFromGitHub.selectPackage' }),
+  )
+  await user.click(await screen.findByRole('option', { name: 'plugin.difypkg' }))
+  await user.click(within(dialog).getByRole('button', { name: 'plugin.installModal.next' }))
+  await user.click(
+    await within(dialog).findByRole('button', { name: 'plugin.installModal.install' }),
+  )
+  await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce())
+  expect(api.releases).toHaveBeenCalledExactlyOnceWith('https://ungh.cc/repos/owner/repo/releases')
+  expect(api.upload).toHaveBeenCalledWith({
+    body: { repo: 'owner/repo', version: 'v2.0.0', package: 'plugin.difypkg' },
+  })
+  expect(api.upgrade).toHaveBeenCalledWith({
+    body: {
+      repo: 'owner/repo',
+      version: 'v2.0.0',
+      package: 'plugin.difypkg',
+      original_plugin_unique_identifier: detail.plugin_unique_identifier,
+      new_plugin_unique_identifier: uploadedPackage.unique_identifier,
+    },
+  })
+  expect(
+    within(dialog).getByRole('button', { name: 'plugin.installModal.installing' }),
+  ).toHaveAttribute('aria-disabled', 'true')
+  expect(dialog).toBeInTheDocument()
+  await waitFor(() => expect(api.models).toHaveBeenCalledWith({ params: { model_type: 'llm' } }))
+  await act(async () => refresh.resolve())
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(
+    screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }),
+  ).toBeInTheDocument()
+})
 
-    expect(screen.getByTestId('title')).toHaveTextContent('Tool Plugin')
-    expect(screen.getByTestId('description')).toHaveTextContent('Tool plugin description')
-    expect(screen.getByTestId('source-badge')).toHaveTextContent('marketplace')
-    expect(screen.getByTestId('plugin-auth')).toHaveTextContent('tool-plugin/provider-a')
-    fireEvent.click(
-      screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
-    )
+it.each([{ availableReleases: [] }, { availableReleases: [{ tag: 'v1.0.0', assets: [] }] }])(
+  'keeps the installed plugin usable when GitHub has no newer release: %j',
+  async ({ availableReleases }) => {
+    api.releases.mockResolvedValueOnce(Response.json({ releases: availableReleases }))
+    const { user, onUpdate } = setup()
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
+    if (availableReleases.length) await screen.findByText('No new version available')
     expect(
-      screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.viewDetail' }),
-    ).toHaveAttribute('href', 'https://marketplace.example.com/plugins/acme/provider-a')
-    expect(screen.getByTestId('header-modals')).toBeInTheDocument()
+      screen.queryByRole('dialog', { name: 'plugin.installFromGitHub.updatePlugin' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }),
+    ).toBeEnabled()
+    expect(api.upload).not.toHaveBeenCalled()
+    expect(api.upgrade).not.toHaveBeenCalled()
+    expect(onUpdate).not.toHaveBeenCalled()
+  },
+)
+
+it('keeps marketplace confirmation open until the updated plugin list is available', async () => {
+  const refresh = createDeferred<void>()
+  const onUpdate = vi.fn(() => refresh.promise)
+  const { user } = setup({
+    onUpdate,
+    detail: {
+      ...detail,
+      source: PluginSource.marketplace,
+      latest_version: '2.0.0',
+      latest_unique_identifier: uploadedPackage.unique_identifier,
+    },
   })
+  await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
+  const dialog = await screen.findByRole('dialog', { name: 'plugin.upgrade.title' })
+  await user.click(within(dialog).getByRole('button', { name: 'plugin.upgrade.upgrade' }))
+  await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce())
+  expect(dialog).toBeInTheDocument()
+  await act(async () => refresh.resolve())
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+})
 
-  it('wires latest update and hide actions', () => {
-    const onHide = vi.fn()
-    render(<DetailHeader detail={createDetail()} onHide={onHide} onUpdate={vi.fn()} />)
+it.each([
+  { strategy: 'disabled', mode: 'all', listed: false, warning: false },
+  { strategy: 'latest', mode: 'all', listed: false, warning: true },
+  { strategy: 'latest', mode: 'partial', listed: true, warning: true },
+  { strategy: 'latest', mode: 'partial', listed: false, warning: false },
+  { strategy: 'latest', mode: 'exclude', listed: true, warning: false },
+  { strategy: 'latest', mode: 'exclude', listed: false, warning: true },
+  { strategy: 'latest', mode: 'all', listed: false, warning: false, marketplace: false },
+] as const)(
+  'warns before downgrading only when this plugin is eligible for automatic updates: %j',
+  async ({ strategy, mode, listed, warning, ...options }) => {
+    api.autoUpgrade.mockResolvedValue({
+      category: 'model',
+      auto_upgrade: {
+        ...autoUpgrade,
+        strategy_setting: strategy,
+        upgrade_mode: mode,
+        include_plugins: listed ? [detail.plugin_id] : ['other-plugin'],
+        exclude_plugins: listed ? [detail.plugin_id] : ['other-plugin'],
+      },
+    })
+    const { user } = setup(
+      { detail: { ...detail, source: PluginSource.marketplace } },
+      'marketplace' in options ? options.marketplace : true,
+    )
+    await user.click(screen.getByRole('button', { name: '1.0.0' }))
+    await user.click(await screen.findByRole('menuitem', { name: /^0\.5\.0/ }))
+    const dialog = await screen.findByRole(warning ? 'alertdialog' : 'dialog', {
+      name: warning ? 'plugin.autoUpdate.pluginDowngradeWarning.title' : 'plugin.upgrade.title',
+    })
+    if (warning)
+      expect(
+        within(dialog).getByRole('button', {
+          name: 'plugin.autoUpdate.pluginDowngradeWarning.exclude',
+        }),
+      ).toBeInTheDocument()
+    else
+      expect(
+        within(dialog).getByRole('button', { name: 'plugin.upgrade.upgrade' }),
+      ).toBeInTheDocument()
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: warning ? 'app.newApp.Cancel' : 'common.operation.cancel',
+      }),
+    )
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    expect(api.marketplaceUpgrade).not.toHaveBeenCalled()
+  },
+)
 
-    fireEvent.click(screen.getByText('plugin.detailPanel.operation.update'))
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
-
-    expect(mockHandleUpdate).toHaveBeenCalledTimes(1)
-    expect(onHide).toHaveBeenCalled()
+it('uses the newly selected target after cancelling a downgrade', async () => {
+  api.autoUpgrade.mockResolvedValue({
+    category: 'model',
+    auto_upgrade: {
+      ...autoUpgrade,
+      strategy_setting: 'latest',
+      include_plugins: [],
+      exclude_plugins: [],
+    },
   })
+  const { user } = setup({ detail: { ...detail, source: PluginSource.marketplace } })
+  await user.click(screen.getByRole('button', { name: '1.0.0' }))
+  await user.click(await screen.findByRole('menuitem', { name: /^0\.5\.0/ }))
+  const downgrade = await screen.findByRole('alertdialog', {
+    name: 'plugin.autoUpdate.pluginDowngradeWarning.title',
+  })
+  await user.click(within(downgrade).getByRole('button', { name: 'app.newApp.Cancel' }))
+  await waitFor(() => expect(downgrade).not.toBeInTheDocument())
+  await user.click(screen.getByRole('button', { name: '1.0.0' }))
+  await user.click(await screen.findByRole('menuitem', { name: /^2\.0\.0/ }))
+  const upgrade = await screen.findByRole('dialog', { name: 'plugin.upgrade.title' })
+  expect(
+    within(upgrade).queryByRole('button', {
+      name: 'plugin.autoUpdate.pluginDowngradeWarning.exclude',
+    }),
+  ).not.toBeInTheDocument()
+  await user.click(within(upgrade).getByRole('button', { name: 'plugin.upgrade.upgrade' }))
+  expect(api.marketplaceUpgrade).toHaveBeenCalledWith({
+    body: {
+      original_plugin_unique_identifier: detail.plugin_unique_identifier,
+      new_plugin_unique_identifier: uploadedPackage.unique_identifier,
+    },
+  })
+  await waitFor(() => expect(upgrade).not.toBeInTheDocument())
+})
+
+it.each([
+  [PluginSource.marketplace, '2.0.0', true],
+  [PluginSource.marketplace, '1.0.0', false],
+  [PluginSource.marketplace, '', false],
+  [PluginSource.local, '2.0.0', false],
+] as const)(
+  'offers an update for source %s and latest version %s only when actionable',
+  (source, latest_version, available) => {
+    setup({ detail: { ...detail, source, latest_version } })
+    const button = screen.queryByRole('button', { name: 'plugin.detailPanel.operation.update' })
+    if (available) expect(button).toBeEnabled()
+    else expect(button).not.toBeInTheDocument()
+  },
+)
+
+it('opens GitHub repository and package information from the real action menu', async () => {
+  const { user } = setup()
+  await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))
+  await user.click(
+    await screen.findByRole('menuitem', { name: 'plugin.detailPanel.operation.info' }),
+  )
+  const dialog = await screen.findByRole('dialog', { name: 'plugin.pluginInfoModal.title' })
+  expect(within(dialog).getByText('https://github.com/owner/repo')).toBeInTheDocument()
+  expect(within(dialog).getByText('1.0.0')).toBeInTheDocument()
+  expect(within(dialog).getByText('plugin.difypkg')).toBeInTheDocument()
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(
+    screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
+  ).toBeEnabled()
+})
+
+it('waits for the automatic update policy before exposing version actions', async () => {
+  const policy = createDeferred<Awaited<ReturnType<typeof api.autoUpgrade>>>()
+  api.autoUpgrade.mockReturnValueOnce(policy.promise)
+  const { user } = setup({ detail: { ...detail, source: PluginSource.marketplace } })
+  const trigger = await screen.findByRole('button', { name: '1.0.0' })
+  await user.click(trigger)
+  await waitFor(() => expect(api.versions).toHaveBeenCalledOnce())
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  await act(async () =>
+    policy.resolve({
+      category: 'model',
+      auto_upgrade: {
+        ...autoUpgrade,
+        include_plugins: [],
+        exclude_plugins: [],
+        strategy_setting: 'latest',
+      },
+    }),
+  )
+  await user.click(await screen.findByRole('menuitem', { name: /^0\.5\.0/ }))
+  expect(
+    await screen.findByRole('alertdialog', {
+      name: 'plugin.autoUpdate.pluginDowngradeWarning.title',
+    }),
+  ).toHaveAccessibleDescription('plugin.autoUpdate.pluginDowngradeWarning.description')
+})
+
+it('restores the removal confirmation after a failed request and permits retry', async () => {
+  const removal = createDeferred<Awaited<ReturnType<typeof api.uninstall>>>()
+  api.uninstall.mockReturnValueOnce(removal.promise)
+  const { user, onUpdate } = setup()
+  await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))
+  await user.click(
+    await screen.findByRole('menuitem', { name: 'plugin.detailPanel.operation.remove' }),
+  )
+  const dialog = await screen.findByRole('alertdialog', { name: 'plugin.action.delete' })
+  const confirm = within(dialog).getByRole('button', { name: 'common.operation.confirm' })
+  await user.click(confirm)
+  await user.keyboard('{Escape}')
+  expect(dialog).toBeInTheDocument()
+  await act(async () => removal.reject(new Error('Removal failed')))
+  await waitFor(() => expect(confirm).not.toHaveAttribute('aria-disabled'))
+  expect(onUpdate).not.toHaveBeenCalled()
+  await user.click(confirm)
+  await waitFor(() => expect(onUpdate).toHaveBeenCalledExactlyOnceWith(true))
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(api.uninstall).toHaveBeenCalledTimes(2)
 })

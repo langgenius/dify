@@ -1,13 +1,13 @@
 import json
 from collections.abc import Callable, Iterator
 from typing import Literal
-from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
 from flask import Blueprint, Flask, Response
 from flask.typing import ResponseReturnValue
 from flask_restx import Resource
+from pytest_mock import MockerFixture
 from werkzeug.exceptions import NotFound
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -326,15 +326,17 @@ def test_success_and_non_404_errors_are_unchanged(prefix: str, status: int) -> N
     assert "Cache-Control" not in response.headers
 
 
+# These sentinel responses intentionally omit contract fields and forbid JSON
+# reads; the global schema checker would itself violate the behavior under test.
+@pytest.mark.allow_error_contract_violations
 @pytest.mark.parametrize("path", ["/api/site", f"/console/api/apps/{APP_ID}"])
 @pytest.mark.parametrize("status", [200, 201, 204, 301, 302, 303, 304, 307, 308, 401, 500, 503])
-# The contract observer parses responses; this test verifies that the metadata hook never does.
-@pytest.mark.allow_error_contract_violations
-def test_non_candidate_statuses_do_not_parse_json(monkeypatch: pytest.MonkeyPatch, path: str, status: int) -> None:
+def test_non_candidate_statuses_do_not_parse_json(mocker: MockerFixture, path: str, status: int) -> None:
     body = b'{"code":"app_not_found","message":"unchanged","data":[1,2,3]}'
     original = Response(body, status=status, mimetype="application/json")
-    parse = MagicMock(side_effect=AssertionError("Non-candidate response must not be parsed"))
-    monkeypatch.setattr(original, "get_json", parse)
+    parse = mocker.patch.object(
+        original, "get_json", side_effect=AssertionError("Non-candidate response must not be parsed")
+    )
     app = _create_app(lambda: original)
 
     with app.test_request_context(path):
@@ -363,15 +365,13 @@ def test_non_candidate_statuses_do_not_parse_json(monkeypatch: pytest.MonkeyPatc
         ("/api/human-input-forms/files", "POST", 404),
     ],
 )
-# The contract observer parses responses; this test verifies that the metadata hook never does.
 @pytest.mark.allow_error_contract_violations
 def test_route_and_surface_ineligible_errors_do_not_parse_json(
-    monkeypatch: pytest.MonkeyPatch, path: str, method: str, status: int
+    mocker: MockerFixture, path: str, method: str, status: int
 ) -> None:
     body = b'{"code":"app_not_found","message":"unchanged"}'
     original = Response(body, status=status, mimetype="application/json")
-    parse = MagicMock(side_effect=AssertionError("Ineligible error must not be parsed"))
-    monkeypatch.setattr(original, "get_json", parse)
+    parse = mocker.patch.object(original, "get_json", side_effect=AssertionError("Ineligible error must not be parsed"))
     app = _create_app(lambda: original)
 
     with app.test_request_context(path, method=method):
@@ -386,10 +386,9 @@ def test_route_and_surface_ineligible_errors_do_not_parse_json(
 
 @pytest.mark.parametrize("status", [200, 400, 403, 404])
 @pytest.mark.parametrize("direct_passthrough", [False, True])
-# The contract observer parses responses; this test verifies that the metadata hook never does.
 @pytest.mark.allow_error_contract_violations
 def test_candidate_and_success_streams_never_parse_or_consume_response(
-    monkeypatch: pytest.MonkeyPatch, status: int, direct_passthrough: bool
+    mocker: MockerFixture, status: int, direct_passthrough: bool
 ) -> None:
     consumed: list[bool] = []
 
@@ -398,8 +397,7 @@ def test_candidate_and_success_streams_never_parse_or_consume_response(
         yield '{"code":"app_not_found"}'
 
     original = Response(stream(), status, mimetype="application/json", direct_passthrough=direct_passthrough)
-    parse = MagicMock(side_effect=AssertionError("Stream must not be parsed"))
-    monkeypatch.setattr(original, "get_json", parse)
+    parse = mocker.patch.object(original, "get_json", side_effect=AssertionError("Stream must not be parsed"))
     app = _create_app(lambda: original)
     with app.test_request_context("/api/site"):
         response = app.full_dispatch_request()
@@ -457,7 +455,6 @@ def test_typed_service_api_error_is_unchanged() -> None:
 
 
 @pytest.mark.parametrize("kind", ["stream", "passthrough", "html", "list", "null", "invalid-json"])
-# Deliberately malformed and streaming bodies exercise the metadata hook outside the JSON error contract.
 @pytest.mark.allow_error_contract_violations
 def test_non_json_object_and_streamed_responses_are_not_consumed(kind: str) -> None:
     consumed: list[bool] = []

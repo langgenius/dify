@@ -18,7 +18,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { redirect, usePathname } from '@/next/navigation'
-import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { consoleQuery } from '@/service/console'
 import { isNotFoundError } from '@/service/http-error'
 import { getRedirectionPath } from '@/utils/app-redirection'
@@ -117,7 +116,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   )
 
   if (appDetailError && !appDetail) {
-    if (isNotFoundError(appDetailError) && isAppDeletingOrDeleted(appId)) redirect('/apps')
+    if (isNotFoundError(appDetailError)) redirect('/apps')
     throw appDetailError
   }
   if (redirectPath) redirect(redirectPath)

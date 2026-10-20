@@ -1181,8 +1181,7 @@ export function FileEditor({
                       <div
                         className="w-full space-y-0.5"
                         onBlurCapture={(event) => {
-                          if (event.currentTarget.contains(event.relatedTarget as Node | null))
-                            return
+                          if (event.currentTarget.contains(event.relatedTarget)) return
 
                           handleAddMetadata(
                             metadataKeyDraftRef.current,

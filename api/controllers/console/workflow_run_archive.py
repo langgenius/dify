@@ -137,6 +137,7 @@ class WorkflowRunArchiveMonthApi(Resource):
     )
     @console_account_admission(
         editions=frozenset({DeploymentEdition.CLOUD}),
+        # shortcut: allowed_roles only applies with RBAC disabled; add RBAC checks here when enabling it.
         allowed_roles=frozenset({TenantAccountRole.OWNER}),
     )
     @cloud_edition_billing_paid_plan_required

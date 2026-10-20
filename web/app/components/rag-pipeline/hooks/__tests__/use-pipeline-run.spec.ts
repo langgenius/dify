@@ -1,75 +1,56 @@
-import type { VersionHistory } from '@/types/workflow'
-import { act } from 'react'
+import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store/workflow'
+import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { act } from '@testing-library/react'
+import { useNodes } from 'reactflow'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { createDeferred } from '@/test/deferred'
+import { createRagPipelineSliceSlice } from '../../store'
 import { usePipelineRunByCanEdit } from '../use-pipeline-run'
 
-const mockStoreGetState = vi.fn()
-const mockGetViewport = vi.fn()
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: mockStoreGetState,
-  }),
-  useReactFlow: () => ({
-    getViewport: mockGetViewport,
-  }),
-}))
-
-const mockUseStore = vi.fn()
-const mockWorkflowStoreGetState = vi.fn()
-const mockWorkflowStoreSetState = vi.fn()
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => mockUseStore(selector),
-  useWorkflowStore: () => ({
-    getState: mockWorkflowStoreGetState,
-    setState: mockWorkflowStoreSetState,
-  }),
-}))
-
+// Draft persistence, canvas replacement and run-event reducers all have their own suites.
 const mockDoSyncWorkflowDraft = vi.fn()
 vi.mock('../use-nodes-sync-draft', () => ({
-  useNodesSyncDraftByCanEdit: () => ({
-    doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () => ({
-  useSetWorkflowVarsWithValue: () => ({
-    fetchInspectVars: vi.fn(),
-  }),
+  useNodesSyncDraftByCanEdit: () => ({ doSyncWorkflowDraft: mockDoSyncWorkflowDraft }),
 }))
 
 const mockHandleUpdateWorkflowCanvas = vi.fn()
 vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
-  useWorkflowUpdate: () => ({
-    handleUpdateWorkflowCanvas: mockHandleUpdateWorkflowCanvas,
-  }),
+  useWorkflowUpdate: () => ({ handleUpdateWorkflowCanvas: mockHandleUpdateWorkflowCanvas }),
 }))
 
+const runEvents = vi.hoisted(() => ({
+  handleWorkflowStarted: vi.fn(),
+  handleWorkflowFinished: vi.fn(),
+  handleWorkflowFailed: vi.fn(),
+  handleWorkflowNodeStarted: vi.fn(),
+  handleWorkflowNodeFinished: vi.fn(),
+  handleWorkflowNodeIterationStarted: vi.fn(),
+  handleWorkflowNodeIterationNext: vi.fn(),
+  handleWorkflowNodeIterationFinished: vi.fn(),
+  handleWorkflowNodeLoopStarted: vi.fn(),
+  handleWorkflowNodeLoopNext: vi.fn(),
+  handleWorkflowNodeLoopFinished: vi.fn(),
+  handleWorkflowNodeRetry: vi.fn(),
+  handleWorkflowAgentLog: vi.fn(),
+  handleWorkflowTextChunk: vi.fn(),
+  handleWorkflowTextReplace: vi.fn(),
+}))
 vi.mock('@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event', () => ({
-  useWorkflowRunEvent: () => ({
-    handleWorkflowStarted: vi.fn(),
-    handleWorkflowFinished: vi.fn(),
-    handleWorkflowFailed: vi.fn(),
-    handleWorkflowNodeStarted: vi.fn(),
-    handleWorkflowNodeFinished: vi.fn(),
-    handleWorkflowNodeIterationStarted: vi.fn(),
-    handleWorkflowNodeIterationNext: vi.fn(),
-    handleWorkflowNodeIterationFinished: vi.fn(),
-    handleWorkflowNodeLoopStarted: vi.fn(),
-    handleWorkflowNodeLoopNext: vi.fn(),
-    handleWorkflowNodeLoopFinished: vi.fn(),
-    handleWorkflowNodeRetry: vi.fn(),
-    handleWorkflowAgentLog: vi.fn(),
-    handleWorkflowTextChunk: vi.fn(),
-    handleWorkflowTextReplace: vi.fn(),
-  }),
+  useWorkflowRunEvent: () => runEvents,
+}))
+
+const mockFetchInspectVars = vi.fn()
+vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () => ({
+  useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
 }))
 
 const mockSsePost = vi.fn()
 vi.mock('@/service/base', () => ({
-  ssePost: (url: string, ...args: unknown[]) => mockSsePost(url, ...args),
+  ssePost: (...args: unknown[]) => mockSsePost(...args),
 }))
 
 const mockStopWorkflowRun = vi.fn()
@@ -84,802 +65,303 @@ vi.mock('@/service/use-workflow', () => ({
   useInvalidateWorkflowRunHistory: () => mockInvalidateRunHistory,
 }))
 
-describe('usePipelineRunByCanEdit', () => {
-  const mockSetNodes = vi.fn()
-  const mockGetNodes = vi.fn()
-  const mockSetBackupDraft = vi.fn()
-  const mockSetEnvironmentVariables = vi.fn()
-  const mockSetRagPipelineVariables = vi.fn()
-  const mockSetWorkflowRunningData = vi.fn()
+type PipelineRun = ReturnType<typeof usePipelineRunByCanEdit>
+type IOtherOptions = NonNullable<Parameters<PipelineRun['handleRun']>[1]>
 
+const RUN_HISTORY_URL = '/rag/pipelines/test-pipeline-id/workflow-runs'
+
+const envVar = (id: string, value: string): EnvironmentVariable => ({
+  id,
+  name: id.toUpperCase(),
+  value,
+  value_type: 'string',
+  description: '',
+})
+
+const renderPipelineRun = (initialStoreState: Record<string, unknown> = {}) =>
+  renderWorkflowCanvasHook(() => ({ run: usePipelineRunByCanEdit(true), nodes: useNodes() }), {
+    resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+    injectWorkflowStoreSliceFn: createRagPipelineSliceSlice as InjectWorkflowStoreSliceFn,
+    nodes: [
+      createNode({
+        id: 'source',
+        selected: true,
+        data: {
+          type: BlockEnum.DataSource,
+          selected: true,
+          _runningStatus: WorkflowRunningStatus.Succeeded,
+        },
+      }),
+      createNode({ id: 'kb', data: { type: BlockEnum.KnowledgeBase } }),
+    ],
+    edges: [createEdge({ id: 'source-kb', source: 'source', target: 'kb' })],
+    initialStoreState,
+  })
+
+const startRun = async (run: PipelineRun, callback?: IOtherOptions) => {
+  await act(async () => {
+    await run.handleRun({ inputs: { query: 'test' } }, callback)
+  })
+  return mockSsePost.mock.calls.at(-1)![2] as Required<IOtherOptions>
+}
+
+describe('usePipelineRunByCanEdit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-
-    const mockWorkflowContainer = document.createElement('div')
-    mockWorkflowContainer.id = 'workflow-container'
-    Object.defineProperty(mockWorkflowContainer, 'clientWidth', { value: 1000 })
-    Object.defineProperty(mockWorkflowContainer, 'clientHeight', { value: 800 })
-    document.body.appendChild(mockWorkflowContainer)
-
-    mockStoreGetState.mockReturnValue({
-      getNodes: mockGetNodes,
-      setNodes: mockSetNodes,
-      edges: [],
-    })
-
-    mockGetNodes.mockReturnValue([
-      {
-        id: 'node-1',
-        data: { type: 'start', selected: true, _runningStatus: WorkflowRunningStatus.Running },
-      },
-    ])
-
-    mockGetViewport.mockReturnValue({ x: 0, y: 0, zoom: 1 })
-
-    mockWorkflowStoreGetState.mockReturnValue({
-      pipelineId: 'test-pipeline-id',
-      backupDraft: undefined,
-      environmentVariables: [],
-      setBackupDraft: mockSetBackupDraft,
-      setEnvironmentVariables: mockSetEnvironmentVariables,
-      setRagPipelineVariables: mockSetRagPipelineVariables,
-      setWorkflowRunningData: mockSetWorkflowRunningData,
-    })
-
-    mockUseStore.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
-      return selector({ pipelineId: 'test-pipeline-id' })
-    })
-
     mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
+    const container = document.createElement('div')
+    container.id = 'workflow-container'
+    Object.defineProperty(container, 'clientWidth', { value: 1000 })
+    Object.defineProperty(container, 'clientHeight', { value: 800 })
+    document.body.appendChild(container)
   })
 
   afterEach(() => {
-    const container = document.getElementById('workflow-container')
-    if (container) {
-      document.body.removeChild(container)
-    }
-    vi.clearAllMocks()
+    document.getElementById('workflow-container')?.remove()
   })
 
-  describe('hook initialization', () => {
-    it('should return handleBackupDraft function', () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
+  describe('draft backup', () => {
+    it('snapshots the current canvas once and persists the draft', () => {
+      const env = [envVar('env-1', 'value')]
+      const { result, store } = renderPipelineRun({ environmentVariables: env })
 
-      expect(result.current.handleBackupDraft).toBeDefined()
-      expect(typeof result.current.handleBackupDraft).toBe('function')
+      act(() => result.current.run.handleBackupDraft())
+      const firstBackup = store.getState().backupDraft
+      act(() => result.current.run.handleBackupDraft())
+
+      expect(firstBackup).toMatchObject({
+        nodes: [expect.objectContaining({ id: 'source' }), expect.objectContaining({ id: 'kb' })],
+        edges: [expect.objectContaining({ id: 'source-kb' })],
+        // useReactFlow().getViewport needs a mounted d3 zoom; the hook-only canvas reports the default.
+        viewport: { x: 0, y: 0, zoom: 1 },
+        environmentVariables: env,
+      })
+      expect(store.getState().backupDraft).toBe(firstBackup)
+      expect(mockDoSyncWorkflowDraft).toHaveBeenCalledOnce()
     })
 
-    it('should return handleLoadBackupDraft function', () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      expect(result.current.handleLoadBackupDraft).toBeDefined()
-      expect(typeof result.current.handleLoadBackupDraft).toBe('function')
-    })
-
-    it('should return handleRun function', () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      expect(result.current.handleRun).toBeDefined()
-      expect(typeof result.current.handleRun).toBe('function')
-    })
-
-    it('should return handleStopRun function', () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      expect(result.current.handleStopRun).toBeDefined()
-      expect(typeof result.current.handleStopRun).toBe('function')
-    })
-
-    it('should return handleRestoreFromPublishedWorkflow function', () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      expect(result.current.handleRestoreFromPublishedWorkflow).toBeDefined()
-      expect(typeof result.current.handleRestoreFromPublishedWorkflow).toBe('function')
-    })
-  })
-
-  describe('handleBackupDraft', () => {
-    it('should backup draft when no backup exists', () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      act(() => {
-        result.current.handleBackupDraft()
-      })
-
-      expect(mockSetBackupDraft).toHaveBeenCalled()
-      expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
-    })
-
-    it('should not backup draft when backup already exists', () => {
-      mockWorkflowStoreGetState.mockReturnValue({
-        pipelineId: 'test-pipeline-id',
-        backupDraft: { nodes: [], edges: [], viewport: {}, environmentVariables: [] },
-        environmentVariables: [],
-        setBackupDraft: mockSetBackupDraft,
-        setEnvironmentVariables: mockSetEnvironmentVariables,
-        setRagPipelineVariables: mockSetRagPipelineVariables,
-        setWorkflowRunningData: mockSetWorkflowRunningData,
-      })
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      act(() => {
-        result.current.handleBackupDraft()
-      })
-
-      expect(mockSetBackupDraft).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('handleLoadBackupDraft', () => {
-    it('should load backup draft when exists', () => {
+    it('restores the backup canvas and environment, then discards the backup', () => {
       const backupDraft = {
-        nodes: [{ id: 'backup-node' }],
-        edges: [{ id: 'backup-edge' }],
+        nodes: [createNode({ id: 'backup-node' })],
+        edges: [],
         viewport: { x: 100, y: 100, zoom: 1.5 },
-        environmentVariables: [{ key: 'ENV', value: 'test' }],
+        environmentVariables: [envVar('env-1', 'from-backup')],
       }
+      const { result, store } = renderPipelineRun({ backupDraft })
 
-      mockWorkflowStoreGetState.mockReturnValue({
-        pipelineId: 'test-pipeline-id',
-        backupDraft,
-        environmentVariables: [],
-        setBackupDraft: mockSetBackupDraft,
-        setEnvironmentVariables: mockSetEnvironmentVariables,
-        setRagPipelineVariables: mockSetRagPipelineVariables,
-        setWorkflowRunningData: mockSetWorkflowRunningData,
-      })
+      act(() => result.current.run.handleLoadBackupDraft())
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      act(() => {
-        result.current.handleLoadBackupDraft()
-      })
-
-      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
+      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledExactlyOnceWith({
         nodes: backupDraft.nodes,
         edges: backupDraft.edges,
         viewport: backupDraft.viewport,
       })
-      expect(mockSetEnvironmentVariables).toHaveBeenCalledWith(backupDraft.environmentVariables)
-      expect(mockSetBackupDraft).toHaveBeenCalledWith(undefined)
+      expect(store.getState()).toMatchObject({
+        environmentVariables: backupDraft.environmentVariables,
+        backupDraft: undefined,
+      })
     })
 
-    it('should not load when no backup exists', () => {
-      mockWorkflowStoreGetState.mockReturnValue({
-        pipelineId: 'test-pipeline-id',
-        backupDraft: undefined,
-        environmentVariables: [],
-        setBackupDraft: mockSetBackupDraft,
-        setEnvironmentVariables: mockSetEnvironmentVariables,
-        setRagPipelineVariables: mockSetRagPipelineVariables,
-        setWorkflowRunningData: mockSetWorkflowRunningData,
-      })
+    it('leaves the canvas alone when there is no backup to restore', () => {
+      const { result } = renderPipelineRun()
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      act(() => {
-        result.current.handleLoadBackupDraft()
-      })
+      act(() => result.current.run.handleLoadBackupDraft())
 
       expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
     })
   })
 
-  describe('handleStopRun', () => {
-    it('should call stop workflow run service', () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      act(() => {
-        result.current.handleStopRun('task-123')
-      })
-
-      expect(mockStopWorkflowRun).toHaveBeenCalledWith(
-        '/rag/pipelines/test-pipeline-id/workflow-runs/tasks/task-123/stop',
-      )
-    })
-  })
-
-  describe('handleRestoreFromPublishedWorkflow', () => {
-    it('should restore workflow from published version', () => {
+  describe('restore from published workflow', () => {
+    it('loads the published graph unselected along with its variables', () => {
       const publishedWorkflow = {
         graph: {
-          nodes: [{ id: 'pub-node', data: { type: 'start' } }],
-          edges: [{ id: 'pub-edge' }],
+          nodes: [createNode({ id: 'pub-node', selected: true, data: { selected: true } })],
+          edges: [],
           viewport: { x: 50, y: 50, zoom: 1 },
         },
-        environment_variables: [{ key: 'PUB_ENV', value: 'pub' }],
+        environment_variables: [envVar('pub', 'published')],
         rag_pipeline_variables: [{ variable: 'input', type: 'text-input' }],
-      }
+      } as unknown as FetchWorkflowDraftResponse
+      const { result, store } = renderPipelineRun()
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
+      act(() => result.current.run.handleRestoreFromPublishedWorkflow(publishedWorkflow))
 
-      act(() => {
-        result.current.handleRestoreFromPublishedWorkflow(
-          publishedWorkflow as unknown as VersionHistory,
-        )
-      })
-
-      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-        nodes: [{ id: 'pub-node', data: { type: 'start', selected: false }, selected: false }],
-        edges: publishedWorkflow.graph.edges,
+      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledExactlyOnceWith({
+        nodes: [
+          expect.objectContaining({
+            id: 'pub-node',
+            selected: false,
+            data: expect.objectContaining({ selected: false }),
+          }),
+        ],
+        edges: [],
         viewport: publishedWorkflow.graph.viewport,
       })
+      expect(store.getState()).toMatchObject({
+        environmentVariables: publishedWorkflow.environment_variables,
+        ragPipelineVariables: publishedWorkflow.rag_pipeline_variables,
+      })
     })
 
-    it('should set environment variables from published workflow', () => {
-      const publishedWorkflow = {
-        graph: {
-          nodes: [],
-          edges: [],
-          viewport: { x: 0, y: 0, zoom: 1 },
-        },
-        environment_variables: [{ key: 'ENV', value: 'value' }],
-        rag_pipeline_variables: [],
-      }
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+    it('clears variables the published version does not define', () => {
+      const { result, store } = renderPipelineRun({
+        environmentVariables: [envVar('stale', 'x')],
+        ragPipelineVariables: [{ variable: 'stale' }],
       })
 
-      act(() => {
-        result.current.handleRestoreFromPublishedWorkflow(
-          publishedWorkflow as unknown as VersionHistory,
-        )
-      })
+      act(() =>
+        result.current.run.handleRestoreFromPublishedWorkflow({
+          graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+        } as unknown as FetchWorkflowDraftResponse),
+      )
 
-      expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([{ key: 'ENV', value: 'value' }])
-    })
-
-    it('should set rag pipeline variables from published workflow', () => {
-      const publishedWorkflow = {
-        graph: {
-          nodes: [],
-          edges: [],
-          viewport: { x: 0, y: 0, zoom: 1 },
-        },
-        environment_variables: [],
-        rag_pipeline_variables: [{ variable: 'query', type: 'text-input' }],
-      }
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      act(() => {
-        result.current.handleRestoreFromPublishedWorkflow(
-          publishedWorkflow as unknown as VersionHistory,
-        )
-      })
-
-      expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([
-        { variable: 'query', type: 'text-input' },
-      ])
-    })
-
-    it('should handle empty environment and rag pipeline variables', () => {
-      const publishedWorkflow = {
-        graph: {
-          nodes: [],
-          edges: [],
-          viewport: { x: 0, y: 0, zoom: 1 },
-        },
-        environment_variables: undefined,
-        rag_pipeline_variables: undefined,
-      }
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      act(() => {
-        result.current.handleRestoreFromPublishedWorkflow(
-          publishedWorkflow as unknown as VersionHistory,
-        )
-      })
-
-      expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([])
-      expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([])
+      expect(store.getState()).toMatchObject({ environmentVariables: [], ragPipelineVariables: [] })
     })
   })
 
-  describe('handleRun', () => {
-    it('should sync workflow draft before running', async () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+  describe('running', () => {
+    it('resets canvas run state, saves the draft, then streams the run', async () => {
+      const pending = createDeferred<void>()
+      mockDoSyncWorkflowDraft.mockReturnValue(pending.promise)
+      const { result, store } = renderPipelineRun({
+        historyWorkflowData: { id: 'old-run' },
       })
+
+      let running!: Promise<void>
+      act(() => {
+        running = result.current.run.handleRun({ inputs: { query: 'test' } })
+      })
+
+      expect(result.current.nodes.find((node) => node.id === 'source')?.data).toMatchObject({
+        selected: false,
+        _runningStatus: undefined,
+      })
+      expect(mockSsePost).not.toHaveBeenCalled()
 
       await act(async () => {
-        await result.current.handleRun({ inputs: {} })
+        pending.resolve()
+        await running
       })
 
-      expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
-    })
-
-    it('should reset node selection and running status', async () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} })
-      })
-
-      expect(mockSetNodes).toHaveBeenCalled()
-    })
-
-    it('should clear history workflow data', async () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} })
-      })
-
-      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ historyWorkflowData: undefined })
-    })
-
-    it('should set initial running data', async () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} })
-      })
-
-      expect(mockSetWorkflowRunningData).toHaveBeenCalledWith({
-        result: {
-          inputs_truncated: false,
-          process_data_truncated: false,
-          outputs_truncated: false,
-          status: WorkflowRunningStatus.Running,
+      expect(store.getState()).toMatchObject({
+        historyWorkflowData: undefined,
+        workflowRunningData: {
+          result: { status: WorkflowRunningStatus.Running },
+          tracing: [],
+          resultText: '',
         },
-        tracing: [],
-        resultText: '',
       })
-    })
-
-    it('should call ssePost with correct URL', async () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: { query: 'test' } })
-      })
-
-      expect(mockSsePost).toHaveBeenCalledWith(
+      expect(mockSsePost).toHaveBeenCalledExactlyOnceWith(
         '/rag/pipelines/test-pipeline-id/workflows/draft/run',
-        expect.any(Object),
+        { body: { inputs: { query: 'test' } } },
         expect.any(Object),
       )
     })
 
-    it('should call onWorkflowStarted callback when provided', async () => {
-      const onWorkflowStarted = vi.fn()
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
+    it.each([
+      ['onWorkflowStarted', 'handleWorkflowStarted'],
+      ['onWorkflowFinished', 'handleWorkflowFinished'],
+      ['onError', 'handleWorkflowFailed'],
+      ['onNodeStarted', 'handleWorkflowNodeStarted'],
+      ['onNodeFinished', 'handleWorkflowNodeFinished'],
+      ['onIterationStart', 'handleWorkflowNodeIterationStarted'],
+      ['onIterationNext', 'handleWorkflowNodeIterationNext'],
+      ['onIterationFinish', 'handleWorkflowNodeIterationFinished'],
+      ['onLoopStart', 'handleWorkflowNodeLoopStarted'],
+      ['onLoopNext', 'handleWorkflowNodeLoopNext'],
+      ['onLoopFinish', 'handleWorkflowNodeLoopFinished'],
+      ['onNodeRetry', 'handleWorkflowNodeRetry'],
+      ['onAgentLog', 'handleWorkflowAgentLog'],
+    ] as const)(
+      'applies %s to the canvas and forwards it to the caller',
+      async (event, handler) => {
+        const callerCallback = vi.fn()
+        const { result } = renderPipelineRun()
+        const stream = await startRun(result.current.run, { [event]: callerCallback })
+        const payload = { event }
 
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
+        act(() => (stream[event] as (params: unknown) => void)(payload))
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
+        expect(runEvents[handler]).toHaveBeenCalledOnce()
+        expect(runEvents[handler].mock.calls[0]![0]).toBe(event === 'onError' ? undefined : payload)
+        expect(callerCallback).toHaveBeenCalledExactlyOnceWith(payload)
+      },
+    )
 
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} }, { onWorkflowStarted })
-      })
+    it('positions started nodes against the workflow container size', async () => {
+      const { result } = renderPipelineRun()
+      const stream = await startRun(result.current.run)
 
-      await act(async () => {
-        capturedCallbacks.onWorkflowStarted?.({ task_id: 'task-1' })
-      })
+      act(() => stream.onNodeStarted({ node_id: 'kb' } as never))
 
-      expect(onWorkflowStarted).toHaveBeenCalledWith({ task_id: 'task-1' })
-      expect(mockInvalidateRunHistory).toHaveBeenCalled()
+      expect(runEvents.handleWorkflowNodeStarted).toHaveBeenCalledWith(
+        { node_id: 'kb' },
+        { clientWidth: 1000, clientHeight: 800 },
+      )
     })
 
-    it('should call onWorkflowFinished callback when provided', async () => {
-      const onWorkflowFinished = vi.fn()
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
+    it.each([
+      ['onTextChunk', 'handleWorkflowTextChunk'],
+      ['onTextReplace', 'handleWorkflowTextReplace'],
+    ] as const)('applies %s to the run output', async (event, handler) => {
+      const { result } = renderPipelineRun()
+      const stream = await startRun(result.current.run)
 
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
+      act(() => (stream[event] as (params: unknown) => void)({ text: 'chunk' }))
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} }, { onWorkflowFinished })
-      })
-
-      await act(async () => {
-        capturedCallbacks.onWorkflowFinished?.({ status: 'succeeded' })
-      })
-
-      expect(onWorkflowFinished).toHaveBeenCalledWith({ status: 'succeeded' })
-      expect(mockInvalidateRunHistory).toHaveBeenCalled()
+      expect(runEvents[handler]).toHaveBeenCalledExactlyOnceWith({ text: 'chunk' })
     })
 
-    it('should call onError callback when provided', async () => {
-      const onError = vi.fn()
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
+    it('refreshes run history on lifecycle events and inspect data when the run finishes', async () => {
+      const { result } = renderPipelineRun()
+      const stream = await startRun(result.current.run)
 
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
+      act(() => stream.onWorkflowStarted({} as never))
+      expect(mockInvalidateRunHistory).toHaveBeenLastCalledWith(RUN_HISTORY_URL)
+      expect(mockFetchInspectVars).not.toHaveBeenCalled()
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
+      act(() => stream.onWorkflowFinished({} as never))
+      expect(mockFetchInspectVars).toHaveBeenCalledExactlyOnceWith({})
+      expect(mockInvalidAllLastRun).toHaveBeenCalledOnce()
 
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} }, { onError })
-      })
-
-      await act(async () => {
-        capturedCallbacks.onError?.({ message: 'error' })
-      })
-
-      expect(onError).toHaveBeenCalledWith({ message: 'error' })
-      expect(mockInvalidateRunHistory).toHaveBeenCalled()
+      act(() => stream.onError({} as never))
+      expect(mockInvalidateRunHistory).toHaveBeenCalledTimes(3)
     })
 
-    it('should call onNodeStarted callback when provided', async () => {
-      const onNodeStarted = vi.fn()
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
+    it('passes other stream callbacks through untouched', async () => {
+      const onData = vi.fn()
+      const { result } = renderPipelineRun()
 
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
+      const stream = await startRun(result.current.run, { onData } as IOtherOptions)
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
+      expect(stream.onData).toBe(onData)
+    })
+  })
 
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} }, { onNodeStarted })
-      })
+  describe('stopping', () => {
+    it('stops the server task and aborts the open stream', async () => {
+      const { result } = renderPipelineRun()
+      const stream = await startRun(result.current.run)
+      const controller = new AbortController()
+      stream.getAbortController(controller)
 
-      await act(async () => {
-        capturedCallbacks.onNodeStarted?.({ node_id: 'node-1' })
-      })
+      act(() => result.current.run.handleStopRun('task-123'))
 
-      expect(onNodeStarted).toHaveBeenCalledWith({ node_id: 'node-1' })
+      expect(mockStopWorkflowRun).toHaveBeenCalledExactlyOnceWith(
+        '/rag/pipelines/test-pipeline-id/workflow-runs/tasks/task-123/stop',
+      )
+      expect(controller.signal.aborted).toBe(true)
     })
 
-    it('should call onNodeFinished callback when provided', async () => {
-      const onNodeFinished = vi.fn()
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
-
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} }, { onNodeFinished })
-      })
-
-      await act(async () => {
-        capturedCallbacks.onNodeFinished?.({ node_id: 'node-1' })
-      })
-
-      expect(onNodeFinished).toHaveBeenCalledWith({ node_id: 'node-1' })
-    })
-
-    it('should call onIterationStart callback when provided', async () => {
-      const onIterationStart = vi.fn()
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
-
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} }, { onIterationStart })
-      })
-
-      await act(async () => {
-        capturedCallbacks.onIterationStart?.({ iteration_id: 'iter-1' })
-      })
-
-      expect(onIterationStart).toHaveBeenCalledWith({ iteration_id: 'iter-1' })
-    })
-
-    it('should call onIterationNext callback when provided', async () => {
-      const onIterationNext = vi.fn()
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
-
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} }, { onIterationNext })
-      })
-
-      await act(async () => {
-        capturedCallbacks.onIterationNext?.({ index: 1 })
-      })
-
-      expect(onIterationNext).toHaveBeenCalledWith({ index: 1 })
-    })
-
-    it('should call onIterationFinish callback when provided', async () => {
-      const onIterationFinish = vi.fn()
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
-
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} }, { onIterationFinish })
-      })
-
-      await act(async () => {
-        capturedCallbacks.onIterationFinish?.({ iteration_id: 'iter-1' })
-      })
-
-      expect(onIterationFinish).toHaveBeenCalledWith({ iteration_id: 'iter-1' })
-    })
-
-    it('should call onLoopStart callback when provided', async () => {
-      const onLoopStart = vi.fn()
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
-
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} }, { onLoopStart })
-      })
-
-      await act(async () => {
-        capturedCallbacks.onLoopStart?.({ loop_id: 'loop-1' })
-      })
-
-      expect(onLoopStart).toHaveBeenCalledWith({ loop_id: 'loop-1' })
-    })
-
-    it('should call onLoopNext callback when provided', async () => {
-      const onLoopNext = vi.fn()
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
-
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} }, { onLoopNext })
-      })
-
-      await act(async () => {
-        capturedCallbacks.onLoopNext?.({ index: 2 })
-      })
-
-      expect(onLoopNext).toHaveBeenCalledWith({ index: 2 })
-    })
-
-    it('should call onLoopFinish callback when provided', async () => {
-      const onLoopFinish = vi.fn()
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
-
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} }, { onLoopFinish })
-      })
-
-      await act(async () => {
-        capturedCallbacks.onLoopFinish?.({ loop_id: 'loop-1' })
-      })
-
-      expect(onLoopFinish).toHaveBeenCalledWith({ loop_id: 'loop-1' })
-    })
-
-    it('should call onNodeRetry callback when provided', async () => {
-      const onNodeRetry = vi.fn()
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
-
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} }, { onNodeRetry })
-      })
-
-      await act(async () => {
-        capturedCallbacks.onNodeRetry?.({ node_id: 'node-1', retry: 1 })
-      })
-
-      expect(onNodeRetry).toHaveBeenCalledWith({ node_id: 'node-1', retry: 1 })
-    })
-
-    it('should call onAgentLog callback when provided', async () => {
-      const onAgentLog = vi.fn()
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
-
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} }, { onAgentLog })
-      })
-
-      await act(async () => {
-        capturedCallbacks.onAgentLog?.({ message: 'agent log' })
-      })
-
-      expect(onAgentLog).toHaveBeenCalledWith({ message: 'agent log' })
-    })
-
-    it('should handle onTextChunk callback', async () => {
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
-
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} })
-      })
-
-      await act(async () => {
-        capturedCallbacks.onTextChunk?.({ text: 'chunk' })
-      })
-
-      expect(capturedCallbacks.onTextChunk).toBeDefined()
-    })
-
-    it('should handle onTextReplace callback', async () => {
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
-
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} })
-      })
-
-      await act(async () => {
-        capturedCallbacks.onTextReplace?.({ text: 'replaced' })
-      })
-
-      expect(capturedCallbacks.onTextReplace).toBeDefined()
-    })
-
-    it('should pass rest callback to ssePost', async () => {
-      const customCallback = vi.fn()
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
-
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} }, {
-          onData: customCallback,
-        } as unknown as Parameters<typeof result.current.handleRun>[1])
-      })
-
-      expect(capturedCallbacks.onData).toBeDefined()
-    })
-
-    it('should handle callbacks without optional handlers', async () => {
-      let capturedCallbacks: Record<string, (params: unknown) => void> = {}
-
-      mockSsePost.mockImplementation((_url, _body, callbacks) => {
-        capturedCallbacks = callbacks
-      })
-
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.handleRun({ inputs: {} })
-      })
-
-      await act(async () => {
-        capturedCallbacks.onWorkflowStarted?.({ task_id: 'task-1' })
-        capturedCallbacks.onWorkflowFinished?.({ status: 'succeeded' })
-        capturedCallbacks.onError?.({ message: 'error' })
-        capturedCallbacks.onNodeStarted?.({ node_id: 'node-1' })
-        capturedCallbacks.onNodeFinished?.({ node_id: 'node-1' })
-        capturedCallbacks.onIterationStart?.({ iteration_id: 'iter-1' })
-        capturedCallbacks.onIterationNext?.({ index: 1 })
-        capturedCallbacks.onIterationFinish?.({ iteration_id: 'iter-1' })
-        capturedCallbacks.onLoopStart?.({ loop_id: 'loop-1' })
-        capturedCallbacks.onLoopNext?.({ index: 2 })
-        capturedCallbacks.onLoopFinish?.({ loop_id: 'loop-1' })
-        capturedCallbacks.onNodeRetry?.({ node_id: 'node-1', retry: 1 })
-        capturedCallbacks.onAgentLog?.({ message: 'agent log' })
-        capturedCallbacks.onTextChunk?.({ text: 'chunk' })
-        capturedCallbacks.onTextReplace?.({ text: 'replaced' })
-      })
-
-      expect(mockSsePost).toHaveBeenCalled()
+    it('aborts the previous stream when a new run starts', async () => {
+      const { result } = renderPipelineRun()
+      const firstStream = await startRun(result.current.run)
+      const firstController = new AbortController()
+      firstStream.getAbortController(firstController)
+
+      await startRun(result.current.run)
+
+      expect(firstController.signal.aborted).toBe(true)
     })
   })
 })

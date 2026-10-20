@@ -1,6 +1,6 @@
 'use client'
 
-import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -47,17 +47,17 @@ type IStepOneProps = {
   onWebsiteCrawlJobIdChange: (jobId: string) => void
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
-  authedDataSourceList: DataSourceAuth[]
+  authedDataSourceList: DatasourceProviderAuthResponse[]
 }
 
 // Helper function to check if notion is authenticated
-function checkNotionAuth(authedDataSourceList: DataSourceAuth[]): boolean {
+function checkNotionAuth(authedDataSourceList: DatasourceProviderAuthResponse[]): boolean {
   const notionSource = authedDataSourceList.find((item) => item.provider === 'notion_datasource')
   return Boolean(notionSource && notionSource.credentials_list.length > 0)
 }
 
 // Helper function to get notion credential list
-function getNotionCredentialList(authedDataSourceList: DataSourceAuth[]) {
+function getNotionCredentialList(authedDataSourceList: DatasourceProviderAuthResponse[]) {
   return (
     authedDataSourceList.find((item) => item.provider === 'notion_datasource')?.credentials_list ||
     []

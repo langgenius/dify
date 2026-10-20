@@ -220,8 +220,8 @@ class ConversationApi(Resource):
                 return ConversationInfiniteScrollPagination(
                     limit=pagination.limit, has_more=pagination.has_more, data=conversations
                 ).model_dump(mode="json")
-        except services.errors.conversation.LastConversationNotExistsError:
-            raise NotFound("Last Conversation Not Exists.")
+        except services.errors.conversation.LastConversationNotExistsError as caught_error:
+            raise NotFound("Last Conversation Not Exists.") from caught_error
 
 
 @service_api_ns.route("/conversations/<uuid:conversation_id>")
@@ -259,8 +259,8 @@ class ConversationDetailApi(Resource):
 
         try:
             ConversationService.delete(app_model, conversation_id_str, end_user, session=db.session())
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
         return "", 204
 
 
@@ -312,8 +312,8 @@ class ConversationRenameApi(Resource):
                 app_model, conversation_id_str, end_user, payload.name, payload.auto_generate, session=session
             )
             return dump_response(SimpleConversation, ConversationResponseSource(conversation, session=session))
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
 
 
 @service_api_ns.route("/conversations/<uuid:conversation_id>/variables")
@@ -373,8 +373,8 @@ class ConversationVariablesApi(Resource):
                 session=db.session(),
             )
             return dump_response(ConversationVariableInfiniteScrollPaginationResponse, pagination)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
 
 
 @service_api_ns.route("/conversations/<uuid:conversation_id>/variables/<uuid:variable_id>")
@@ -439,9 +439,9 @@ class ConversationVariableDetailApi(Resource):
                 app_model, conversation_id_str, variable_id_str, end_user, payload.value, session=db.session()
             )
             return dump_response(ConversationVariableResponse, variable)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationVariableNotExistsError:
-            raise NotFound("Conversation Variable Not Exists.")
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationVariableNotExistsError as caught_error:
+            raise NotFound("Conversation Variable Not Exists.") from caught_error
         except services.errors.conversation.ConversationVariableTypeMismatchError as e:
-            raise BadRequest(str(e))
+            raise BadRequest(str(e)) from e

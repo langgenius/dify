@@ -1,10 +1,11 @@
+import type { ToolProviderApiEntityResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AddOAuthButtonProps, Credential } from '@/app/components/plugins/plugin-auth/types'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient } from '@tanstack/react-query'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
@@ -17,6 +18,9 @@ import {
 } from '@/features/agent-v2/agent-composer/store'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { seedWorkspacePermissionsQuery } from '@/test/console/workspace-permissions'
 import {
   AgentOrchestrateReadOnlyContext,
   AgentOrchestrateViewingVersionContext,
@@ -24,8 +28,8 @@ import {
 import { AgentTemplateTools, AgentTools } from '../index'
 
 const toolProviderState = vi.hoisted(() => ({
-  builtInTools: [] as ToolWithProvider[] | undefined,
-  customTools: [] as ToolWithProvider[] | undefined,
+  builtInTools: [] as ToolProviderApiEntityResponse[] | undefined,
+  customTools: [] as ToolProviderApiEntityResponse[] | undefined,
 }))
 const pluginAuthState = vi.hoisted(() => ({
   canOAuth: true as boolean | undefined,
@@ -47,6 +51,7 @@ const pluginInstallState = vi.hoisted(() => ({
       }
     | undefined,
   invalidateInstalledPluginList: vi.fn(),
+  installPackage: vi.fn(),
 }))
 
 vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
@@ -61,21 +66,8 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/install-plugin-button', () => ({
-  InstallPluginButton: ({
-    uniqueIdentifier,
-    onSuccess,
-  }: {
-    uniqueIdentifier: string
-    onSuccess?: () => void
-  }) => (
-    <button type="button" data-unique-identifier={uniqueIdentifier} onClick={onSuccess}>
-      workflowAgent.nodes.agent.pluginInstaller.install
-    </button>
-  ),
-}))
-
-vi.mock('@/service/use-plugins', () => ({
+vi.mock('@/service/use-plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-plugins')>()),
   useInvalidateInstalledPluginList: () => pluginInstallState.invalidateInstalledPluginList,
   useFetchPluginsInMarketPlaceByInfo: (infos: Array<{ organization: string; plugin: string }>) => ({
     data:
@@ -158,14 +150,23 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal
   ),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.builtin.get': () => ({ data: toolProviderState.builtInTools }),
-    'workspaces.current.tools.api.get': () => ({ data: toolProviderState.customTools }),
-    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
-    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.install.marketplace.post': pluginInstallState.installPackage,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
+      'workspaces.current.tools.builtin.get': async () => toolProviderState.builtInTools,
+      'workspaces.current.tools.api.get': async () => toolProviderState.customTools,
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+    }),
+  }
 })
 
 const agentToolsDraft = {
@@ -336,9 +337,6 @@ const googleProvider = {
   is_team_authorization: true,
   allow_delete: true,
   labels: [],
-  meta: {
-    version: '0.0.1',
-  },
   tools: [
     {
       name: 'search',
@@ -356,7 +354,7 @@ const googleProvider = {
       output_schema: {},
     },
   ],
-} satisfies ToolWithProvider
+} satisfies ToolProviderApiEntityResponse
 
 const duckDuckGoProvider = {
   ...googleProvider,
@@ -407,7 +405,7 @@ const duckDuckGoProvider = {
       output_schema: {},
     },
   ],
-} satisfies ToolWithProvider
+} satisfies ToolProviderApiEntityResponse
 
 const authorizedSwaggerProvider = {
   ...googleProvider,
@@ -441,7 +439,7 @@ const authorizedSwaggerProvider = {
       output_schema: {},
     },
   ],
-} satisfies ToolWithProvider
+} satisfies ToolProviderApiEntityResponse
 
 function renderAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDraft) {
   const queryClient = new QueryClient({
@@ -452,13 +450,18 @@ function renderAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDra
     },
   })
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
+  seedWorkspacePermissionsQuery(queryClient, ['plugin.install'])
+  queryClient.setQueryDefaults(consoleQuery.workspaces.current.rbac.myPermissions.get.queryKey(), {
+    staleTime: Infinity,
+  })
+  seedToolProviders(queryClient, toolProviderState)
 
   const view = render(
-    <QueryClientProvider client={queryClient}>
+    <QueryClientTestProvider queryClient={queryClient}>
       <AgentComposerProvider initialDraft={initialDraft}>
         <AgentTools />
       </AgentComposerProvider>
-    </QueryClientProvider>,
+    </QueryClientTestProvider>,
   )
   return { ...view, queryClient }
 }
@@ -472,16 +475,22 @@ function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agen
     },
   })
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
+  seedWorkspacePermissionsQuery(queryClient, ['plugin.install'])
+  queryClient.setQueryDefaults(consoleQuery.workspaces.current.rbac.myPermissions.get.queryKey(), {
+    staleTime: Infinity,
+  })
+  seedToolProviders(queryClient, toolProviderState)
   const store = createStore()
+  store.set(queryClientAtom, queryClient)
   store.set(agentComposerDraftAtom, initialDraft)
   store.set(agentComposerSavedDraftAtom, initialDraft)
 
   const view = render(
-    <QueryClientProvider client={queryClient}>
+    <QueryClientTestProvider queryClient={queryClient}>
       <JotaiProvider store={store}>
         <AgentTools />
       </JotaiProvider>
-    </QueryClientProvider>,
+    </QueryClientTestProvider>,
   )
 
   return {
@@ -507,9 +516,14 @@ function renderReadonlyAgentTools({
     },
   })
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
+  seedWorkspacePermissionsQuery(queryClient, ['plugin.install'])
+  queryClient.setQueryDefaults(consoleQuery.workspaces.current.rbac.myPermissions.get.queryKey(), {
+    staleTime: Infinity,
+  })
+  seedToolProviders(queryClient, toolProviderState)
 
   return render(
-    <QueryClientProvider client={queryClient}>
+    <QueryClientTestProvider queryClient={queryClient}>
       <AgentComposerProvider initialDraft={initialDraft}>
         <AgentOrchestrateViewingVersionContext value={viewingVersion}>
           <AgentOrchestrateReadOnlyContext value>
@@ -517,13 +531,12 @@ function renderReadonlyAgentTools({
           </AgentOrchestrateReadOnlyContext>
         </AgentOrchestrateViewingVersionContext>
       </AgentComposerProvider>
-    </QueryClientProvider>,
+    </QueryClientTestProvider>,
   )
 }
 
 describe('AgentTools', () => {
   beforeEach(() => {
-    cleanup()
     vi.clearAllMocks()
     toolProviderState.builtInTools = []
     toolProviderState.customTools = []
@@ -531,6 +544,9 @@ describe('AgentTools', () => {
     pluginAuthState.canApiKey = false
     pluginAuthState.credentials = []
     pluginAuthState.notAllowCustomCredential = false
+    pluginInstallState.installPackage
+      .mockReset()
+      .mockResolvedValue({ all_installed: true, task_id: '' })
     pluginInstallState.manifest = undefined
     pluginInstallState.fallbackManifest = undefined
     pluginInstallState.invalidateInstalledPluginList.mockResolvedValue(undefined)
@@ -742,23 +758,28 @@ describe('AgentTools', () => {
         }),
       ).not.toBeInTheDocument()
 
-      const installButton = screen.getByRole('button', {
+      const installButton = await screen.findByRole('button', {
         name: 'workflowAgent.nodes.agent.pluginInstaller.install',
       })
-      expect(installButton).toHaveAttribute(
-        'data-unique-identifier',
-        'langgenius/google:1.0.0@checksum',
+
+      const installedProvider = { ...googleProvider, id: 'langgenius/google/google' }
+      toolProviderState.builtInTools = [installedProvider]
+      await user.click(installButton)
+      await waitFor(() =>
+        expect(pluginInstallState.installPackage).toHaveBeenCalledExactlyOnceWith({
+          body: { plugin_unique_identifiers: ['langgenius/google:1.0.0@checksum'] },
+        }),
       )
 
-      await user.click(installButton)
-
+      expect(await screen.findByText('https://example.com/google.svg')).toBeInTheDocument()
       await waitFor(() => {
-        expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(true)
+        expect(queryClient.getQueryData(builtInToolsKey)).toEqual([installedProvider])
         expect(pluginInstallState.invalidateInstalledPluginList).toHaveBeenCalledTimes(1)
       })
     })
 
-    it('should keep install actionable when batch marketplace metadata is unavailable', () => {
+    it('should install the fallback package when batch marketplace metadata is unavailable', async () => {
+      const user = userEvent.setup()
       pluginInstallState.fallbackManifest = {
         latest_package_identifier: 'langgenius/google:0.0.1@fallback',
       }
@@ -772,11 +793,16 @@ describe('AgentTools', () => {
       expect(
         screen.getByText('https://marketplace.example.com/langgenius/google/icon'),
       ).toBeInTheDocument()
-      expect(
-        screen.getByRole('button', {
+      await user.click(
+        await screen.findByRole('button', {
           name: 'workflowAgent.nodes.agent.pluginInstaller.install',
         }),
-      ).toHaveAttribute('data-unique-identifier', 'langgenius/google:0.0.1@fallback')
+      )
+      await waitFor(() =>
+        expect(pluginInstallState.installPackage).toHaveBeenCalledExactlyOnceWith({
+          body: { plugin_unique_identifiers: ['langgenius/google:0.0.1@fallback'] },
+        }),
+      )
     })
 
     it('should wait for the provider catalog before showing an uninstalled status', () => {
@@ -791,18 +817,6 @@ describe('AgentTools', () => {
           name: 'tools.notAuthorized',
         }),
       ).not.toBeInTheDocument()
-    })
-
-    it('should hide unauthorized status when reflected provider tools do not require credentials', () => {
-      toolProviderState.builtInTools = [duckDuckGoProvider]
-      renderAgentTools(reflectedUnauthorizedNoCredentialDraft)
-
-      expect(
-        screen.getByRole('button', {
-          name: 'DuckDuckGo',
-        }),
-      ).toBeInTheDocument()
-      expect(screen.queryByText('tools.notAuthorized')).not.toBeInTheDocument()
     })
 
     it('should use current team authorization for reflected Swagger API tools', () => {

@@ -9,9 +9,9 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { AccessControlEntry } from '@/app/components/app/access-point/access-control'
 import { useDocLink } from '@/context/i18n'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
+import { AccessControlEntry } from '@/features/network-access/app-binding'
 import { consoleQuery } from '@/service/console'
 import { AgentDetailSectionSurface } from '../section-surface'
 import { ServiceApiAccessCard } from './components/service-api-access-card'
@@ -62,7 +62,7 @@ export function AgentAccessPage({ agentId }: AgentAccessPageProps) {
             appId={agent.app_id}
             appMode="agent"
             isPublished={agent.access_ready === true}
-            appIcon={{ icon: agent }}
+            appIcon={agent}
             canEditBinding={capabilities.canManageAccessPoint}
           />
         )}

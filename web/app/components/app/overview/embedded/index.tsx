@@ -8,17 +8,25 @@ import type {
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import {
-  DialogClose,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  ScrollArea,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
-import { Suspense, use, useMemo, useRef, useState } from 'react'
+import { Suspense, use, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createTheme } from '@/app/components/base/chat/embedded-chatbot/theme/theme'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -128,6 +136,7 @@ const EmbeddedContent = ({
     () => createWorkflowLaunchInitialValues(supportedHiddenInputs),
     [supportedHiddenInputs],
   )
+  const previewLabelId = useId()
   const [option, setOption] = useState<Option>('iframe')
   const [copiedOption, setCopiedOption] = useState<Option | null>(null)
   const [hiddenInputValues, setHiddenInputValues] = useState<
@@ -215,9 +224,6 @@ const EmbeddedContent = ({
 
   return (
     <>
-      <DialogDescription className="mt-8 mb-4 system-sm-medium text-text-primary">
-        {t(($) => $[`${prefixEmbedded}.explanation`], { ns: 'appOverview' })}
-      </DialogDescription>
       {supportedHiddenInputs.length > 0 && (
         <Collapsible className="mb-6 rounded-xl border-[0.5px] border-components-panel-border bg-background-section">
           <CollapsibleTrigger className="group flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left">
@@ -304,13 +310,17 @@ const EmbeddedContent = ({
                 )}
               >
                 <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1 pr-1 pl-3">
-                  <div className="shrink-0 grow system-sm-medium text-text-secondary">
+                  <div
+                    id={`${previewLabelId}-${v}`}
+                    className="min-w-0 flex-1 system-sm-medium wrap-break-word text-text-secondary"
+                  >
                     {t(($) => $[`${prefixEmbedded}.${v}`], { ns: 'appOverview' })}
                   </div>
                   <Tooltip>
                     <TooltipTrigger
                       render={
                         <IconButton
+                          className="shrink-0"
                           aria-label={
                             (copiedOption === v
                               ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
@@ -333,23 +343,36 @@ const EmbeddedContent = ({
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                <div className="flex max-h-[clamp(180px,calc(100dvh-320px),360px)] w-full items-start justify-start gap-2 overflow-auto p-3">
-                  <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
-                    <pre className="select-text">
-                      {v === 'scripts' ? (
-                        scriptsContent
-                      ) : (
-                        <Suspense fallback={previewFallback}>
-                          <AsyncEmbeddedOptionContent
-                            option={v}
-                            iframeUrlPromise={previewIframeUrlPromise}
-                            latestResolvedIframeUrlRef={latestResolvedIframeUrlRef}
-                          />
-                        </Suspense>
-                      )}
-                    </pre>
-                  </div>
-                </div>
+                <ScrollArea className="relative w-full rounded-b-lg">
+                  <ScrollAreaViewport
+                    role="region"
+                    aria-labelledby={`${previewLabelId}-${v}`}
+                    tabIndex={0}
+                    className="flex max-h-[clamp(180px,calc(100dvh-320px),360px)] items-start justify-start gap-2 p-3"
+                  >
+                    <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
+                      <pre className="select-text">
+                        {v === 'scripts' ? (
+                          scriptsContent
+                        ) : (
+                          <Suspense fallback={previewFallback}>
+                            <AsyncEmbeddedOptionContent
+                              option={v}
+                              iframeUrlPromise={previewIframeUrlPromise}
+                              latestResolvedIframeUrlRef={latestResolvedIframeUrlRef}
+                            />
+                          </Suspense>
+                        )}
+                      </pre>
+                    </div>
+                  </ScrollAreaViewport>
+                  <ScrollAreaScrollbar orientation="vertical" className="right-0">
+                    <ScrollAreaThumb />
+                  </ScrollAreaScrollbar>
+                  <ScrollAreaScrollbar orientation="horizontal" className="bottom-0">
+                    <ScrollAreaThumb />
+                  </ScrollAreaScrollbar>
+                </ScrollArea>
               </div>
             </TabsPanel>
           )
@@ -369,22 +392,15 @@ export function EmbeddedDialogContent({
   const { t } = useTranslation(['appOverview', 'common'])
 
   return (
-    <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden">
-      <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
-        {t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}
-      </DialogTitle>
-      <DialogClose
-        render={
-          <IconButton
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            size="lg"
-            className="absolute inset-e-6 top-6"
-          >
-            <span aria-hidden className="i-ri-close-line size-4" />
-          </IconButton>
-        }
-      />
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+    <DialogContent className="w-160">
+      <DialogHeader>
+        <DialogTitle>{t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}</DialogTitle>
+        <DialogDescription>
+          {t(($) => $[`${prefixEmbedded}.explanation`], { ns: 'appOverview' })}
+        </DialogDescription>
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
+      <DialogBody>
         <Suspense
           fallback={
             <div className="py-8 text-text-tertiary">{t(($) => $.loading, { ns: 'common' })}</div>
@@ -399,7 +415,7 @@ export function EmbeddedDialogContent({
             hiddenInputs={hiddenInputs}
           />
         </Suspense>
-      </div>
+      </DialogBody>
     </DialogContent>
   )
 }

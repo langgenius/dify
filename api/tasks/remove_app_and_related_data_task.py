@@ -92,7 +92,7 @@ def cleanup_app_network_access_group_binding_task(self, tenant_id: str, app_id: 
             "Failed to clean up App network access group binding",
             extra={"tenant_id": tenant_id, "app_id": app_id, "retry_countdown": countdown},
         )
-        raise self.retry(exc=e, countdown=countdown)
+        raise self.retry(exc=e, countdown=countdown) from e
 
 
 def _schedule_app_network_access_group_binding_cleanup(tenant_id: str, app_id: str) -> None:
@@ -154,10 +154,10 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         logger.info(click.style(f"App and related data deleted: {app_id} latency: {end_at - start_at}", fg="green"))
     except SQLAlchemyError as e:
         logger.exception(click.style(f"Database error occurred while deleting app {app_id} and related data", fg="red"))
-        raise self.retry(exc=e, countdown=60)  # Retry after 60 seconds
+        raise self.retry(exc=e, countdown=60) from e  # Retry after 60 seconds
     except Exception as e:
         logger.exception(click.style(f"Error occurred while deleting app {app_id} and related data", fg="red"))
-        raise self.retry(exc=e, countdown=60)  # Retry after 60 seconds
+        raise self.retry(exc=e, countdown=60) from e  # Retry after 60 seconds
 
 
 def _delete_app_model_configs(tenant_id: str, app_id: str):

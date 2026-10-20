@@ -1,11 +1,2 @@
-import { defineConfig, importESLintRules } from '@tsslint/config'
-
-// Run `npx tsslint-docgen` to generate documentation for the configured rules.
-
-export default defineConfig({
-  rules: {
-    ...(await importESLintRules({
-      'react-x/no-leaked-conditional-rendering': 'error',
-    })),
-  },
-})
+// oxlint-disable-next-line no-barrel-files/no-barrel-files -- TSSLint discovers this project entry point; the rules are owned by the tooling package.
+export { default } from '@dify/tooling/tsslint'

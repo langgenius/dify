@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import Engine, event, select, text
@@ -261,25 +261,26 @@ def test_find_active_session_rejects_missing_records(
     assert repository.find_active_session(app_id=app_id, app_code=app_code, end_user_id=end_user_id) is None
 
 
-def test_find_app_id_by_code_maps_database_failures_to_unavailable() -> None:
+def test_find_app_id_by_code_maps_database_failures_to_unavailable(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     database_error = OperationalError("select", {}, RuntimeError("connection failed"))
-    session = MagicMock()
-    session.__enter__.return_value.scalar.side_effect = database_error
-    repository = WebAppAccessQueryRepository(session_factory=MagicMock(return_value=session))
+    repository = WebAppAccessQueryRepository(session_factory=sqlite_session_factory)
 
-    with pytest.raises(WebAppAccessUnavailableError) as raised:
+    with (
+        patch.object(Session, "scalar", side_effect=database_error),
+        pytest.raises(WebAppAccessUnavailableError) as raised,
+    ):
         repository.find_app_id_by_code("site-code")
 
     assert raised.value.__cause__ is database_error
 
 
-def test_find_app_id_by_code_does_not_hide_unknown_errors() -> None:
+def test_find_app_id_by_code_does_not_hide_unknown_errors(sqlite_session_factory: sessionmaker[Session]) -> None:
     failure = TypeError("repository bug")
-    session = MagicMock()
-    session.__enter__.return_value.scalar.side_effect = failure
-    repository = WebAppAccessQueryRepository(session_factory=MagicMock(return_value=session))
+    repository = WebAppAccessQueryRepository(session_factory=sqlite_session_factory)
 
-    with pytest.raises(TypeError) as raised:
+    with patch.object(Session, "scalar", side_effect=failure), pytest.raises(TypeError) as raised:
         repository.find_app_id_by_code("site-code")
 
     assert raised.value is failure

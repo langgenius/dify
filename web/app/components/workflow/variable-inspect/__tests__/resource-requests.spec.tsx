@@ -27,7 +27,10 @@ const request = vi.hoisted(() =>
     (url: string, init: RequestInit | undefined, options: { request: Request }) => Promise<Response>
   >(),
 )
-vi.mock('@/service/base', () => ({ request }))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request,
+}))
 
 const summary: WorkflowDraftVariableWithoutValueResponse = {
   id: 'variable-1',

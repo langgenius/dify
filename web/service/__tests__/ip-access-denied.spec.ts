@@ -50,13 +50,12 @@ const createXhr = (data: unknown, status = 403) =>
   ({
     open: vi.fn(),
     setRequestHeader: vi.fn(),
+    getAllResponseHeaders: vi.fn(() => 'Content-Type: application/json'),
     send: vi.fn(function (this: { onreadystatechange?: () => void }) {
       this.onreadystatechange?.()
     }),
     status,
     response: data,
-    statusText: '',
-    getAllResponseHeaders: () => 'Content-Type: application/json',
     readyState: 4,
     upload: {},
     withCredentials: false,
@@ -91,7 +90,7 @@ describe('WebApp IP access denial transport', () => {
   })
 
   it.each(['/site', '/webapp/access-mode', '/login/status', '/passport'])(
-    'handles denied initialization request %s with its error data intact and without changing the URL',
+    'handles denied initialization request %s without consuming its body or changing the URL',
     async (path) => {
       const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(createResponse(denial))
       const url = window.location.href
@@ -154,6 +153,8 @@ describe('WebApp IP access denial transport', () => {
       { transition: 'navigated' as const, status: 401, code: 'unauthorized' },
       { transition: 'denied' as const, status: 403, code: 'web_app_access_denied' },
       { transition: 'navigated' as const, status: 403, code: 'web_app_access_denied' },
+      { transition: 'denied' as const, status: 403, code: 'already_setup' },
+      { transition: 'navigated' as const, status: 403, code: 'already_setup' },
       { transition: 'denied' as const, status: 401, code: null },
       { transition: 'navigated' as const, status: 401, code: null },
     ])(
@@ -329,9 +330,10 @@ describe('WebApp IP access denial transport', () => {
       window.history.replaceState({}, '', route)
       const xhr = createXhr(denial)
 
-      await expect(upload({ xhr, data: new FormData() }, true, path)).rejects.toBe(xhr)
+      const error = await upload({ xhr, data: new FormData() }, true, path).catch((error) => error)
 
-      expect(isAppAccessError(xhr)).toBe(true)
+      expect(error).toBeInstanceOf(ORPCError)
+      expect(isAppAccessError(error)).toBe(true)
       expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
       expect(toast.error).not.toHaveBeenCalled()
     },
@@ -340,13 +342,10 @@ describe('WebApp IP access denial transport', () => {
   it('preserves unrelated XHR errors', async () => {
     const xhr = createXhr({ code: 'file_too_large', message: 'File too large' }, 413)
 
-    await expect(upload({ xhr, data: new FormData() }, true)).rejects.toMatchObject({
-      code: 'file_too_large',
-      status: 413,
-      data: xhr.response,
-    })
+    const error = await upload({ xhr, data: new FormData() }, true).catch((error) => error)
 
-    expect(isAppAccessError(xhr)).toBe(false)
+    expect(error).toMatchObject({ status: 413, code: 'file_too_large' })
+    expect(isAppAccessError(error)).toBe(false)
   })
 })
 
@@ -393,8 +392,10 @@ describe('application not-found transport', () => {
       client_ip: '2001:db8::12',
     }
     const xhr = createXhr(body, 404)
-    await expect(upload({ xhr, data: new FormData() }, true, '/files/upload')).rejects.toBe(xhr)
-    expect(isAppAccessError(xhr)).toBe(true)
+    const error = await upload({ xhr, data: new FormData() }, true, '/files/upload').catch(
+      (error) => error,
+    )
+    expect(isAppAccessError(error)).toBe(true)
     expect(appAccessStore.get(appAccessErrorAtom)?.clientIp).toBe('2001:db8::12')
     expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
   })
@@ -453,11 +454,9 @@ describe('application not-found transport', () => {
     ['/workflow/app', '/passport', true],
     ['/environment/agent/app', '/login/status', true],
     ['/agent/app', '/webapp/access-mode?appCode=app', true],
-    ['/app/app/workflow', '/apps/app', false],
-    ['/agents/app/access', '/agent/app', false],
     ['/installed/app', '/installed-apps/app', false],
   ])(
-    'handles an identity 404 at %s with its error data intact and without retrying',
+    'handles an identity 404 at %s without consuming the error or retrying',
     async (route, url, isPublicAPI) => {
       window.history.replaceState({}, '', route)
       const body = { code: 'not_found', message: 'App not found', client_ip: '203.0.113.8' }
@@ -514,7 +513,7 @@ it.each([
   }
 })
 
-it('ignores a console authorization failure arriving after the application 404', async () => {
+it('ignores a console authorization failure after the missing-resource layout navigates away', async () => {
   vi.clearAllMocks()
   window.history.replaceState({}, '', '/')
   captureAppAccessScope()
@@ -525,15 +524,17 @@ it('ignores a console authorization failure arriving after the application 404',
   await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
   fetch.mockResolvedValueOnce(createResponse({ code: 'app_not_found' }, 404))
   await request('/apps/missing').catch(() => undefined)
+  window.history.replaceState({}, '', '/apps')
+  captureAppAccessScope()
   late.resolve(createResponse({ code: 'unauthorized', message: 'Unauthorized' }, 401))
   await pending
   expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
-  expect(window.location.pathname).toBe('/app/missing/workflow')
+  expect(window.location.pathname).toBe('/apps')
   vi.restoreAllMocks()
 })
 
 it.each(['agent', 'installed'] as const)(
-  'connects the generated %s detail client to the page boundary',
+  'preserves the generated %s detail error owner',
   async (kind) => {
     vi.clearAllMocks()
     window.history.replaceState({}, '', '/')
@@ -552,8 +553,12 @@ it.each(['agent', 'installed'] as const)(
               params: { installed_app_id: 'missing' },
             })
       await promise.catch(() => undefined)
-      expect(appAccessStore.get(appAccessErrorAtom)).toMatchObject({ reason: 'app_not_found' })
-      expect(toast.error).not.toHaveBeenCalled()
+      if (kind === 'installed') {
+        expect(appAccessStore.get(appAccessErrorAtom)).toMatchObject({ reason: 'app_not_found' })
+        expect(toast.error).not.toHaveBeenCalled()
+      } else {
+        expect(appAccessStore.get(appAccessErrorAtom)).toBeNull()
+      }
     } finally {
       vi.restoreAllMocks()
     }

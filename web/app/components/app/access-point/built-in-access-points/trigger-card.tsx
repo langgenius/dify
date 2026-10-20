@@ -1,7 +1,9 @@
 'use client'
 
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import type { AppTrigger } from '@/app/components/tools/types'
+import type {
+  AppDetailWithSite,
+  WorkflowTriggerResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -24,7 +26,7 @@ function TriggerIcon({
   trigger,
   triggerPlugins,
 }: {
-  trigger: AppTrigger
+  trigger: WorkflowTriggerResponse
   triggerPlugins: TriggerWithProvider[]
 }) {
   const blockType =
@@ -59,7 +61,7 @@ function TriggerAccessPointItem({
 }: {
   appId: string
   canManageAccessPoint: boolean
-  trigger: AppTrigger
+  trigger: WorkflowTriggerResponse
   triggerPlugins: TriggerWithProvider[]
 }) {
   const { t } = useTranslation(['agentV2', 'appOverview', 'common'])
@@ -118,7 +120,7 @@ function TriggerAccessPointItem({
       </span>
       <span
         className={`flex shrink-0 items-center gap-1 system-xs-semibold-uppercase ${
-          enabled ? 'text-text-success' : 'text-text-tertiary'
+          enabled ? 'text-text-secondary' : 'text-text-tertiary'
         }`}
       >
         <StatusDot size="small" status={enabled ? 'success' : 'disabled'} />
@@ -207,7 +209,7 @@ export function TriggerAccessPointCard({
               href={docLink('/use-dify/nodes/trigger/overview')}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-text-accent hover:underline"
+              className="text-text-accent underline"
             >
               {t(($) => $['overview.triggerInfo.learnAboutTriggers'], {
                 ns: 'appOverview',

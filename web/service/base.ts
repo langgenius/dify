@@ -1,6 +1,6 @@
 import type { FetchOptionType } from './fetch'
+import type { RequestGuard } from './request-guard'
 import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
-import type { AppAccessScope } from '@/features/app-access-error/state'
 import type { VisionFile } from '@/types/app'
 import type {
   DataSourceNodeCompletedResponse,
@@ -41,14 +41,6 @@ import {
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
-import {
-  captureAppAccessRequest,
-  captureAppAccessScope,
-  handleAppAccessError,
-  hasAppAccessError,
-  isAppAccessScopeCurrent,
-  throwIfAppAccessBlocked,
-} from '@/features/app-access-error/state'
 import { asyncRunSafe } from '@/utils'
 import { isClient } from '@/utils/client'
 import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
@@ -56,6 +48,7 @@ import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { httpErrorFromXhr, isHttpErrorStatus, isTransientHttpError } from './http-error'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
+import { captureRequestGuard } from './request-guard'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import {
   beginWebAppAuthorizationRecovery,
@@ -66,8 +59,8 @@ import {
 
 const TIME_OUT = 100000
 
-const canRecoverWebAppAuthorization = (scope: AppAccessScope | null) =>
-  isAppAccessScopeCurrent(scope) && !hasAppAccessError(scope)
+const canRecoverWebAppAuthorization = (guard: RequestGuard | undefined) =>
+  guard?.isActive() !== false
 
 const isWebAppAuthorizationEndpoint = (url: string) =>
   /\/(?:login(?:\/|\?|$)|passport(?:\?|$))/.test(url)
@@ -164,23 +157,21 @@ const reportStreamResponseError = async (
   }
 }
 
-const handleAppStreamResponseError = async (
+const handleGuardedStreamResponseError = async (
   response: Response,
-  scope: AppAccessScope | null,
+  guard: RequestGuard | undefined,
   onError: IOnError | undefined,
   onCompleted: IOnCompleted | undefined,
 ) => {
-  if (!scope) return false
+  if (!guard) return false
   const data = await response
     .clone()
     .json()
     .catch(() => undefined)
-  if (
-    !handleAppAccessError(response.status, data, scope, response) &&
-    canRecoverWebAppAuthorization(scope)
-  )
+  if (!guard.handleError(response.status, data, response) && canRecoverWebAppAuthorization(guard))
     return false
-  const message = typeof data?.message === 'string' ? data.message : 'App not accessible'
+  const message =
+    typeof data?.message === 'string' ? data.message : 'The request is no longer active.'
   if (onError) onError(message, typeof data?.code === 'string' ? data.code : undefined)
   else onCompleted?.(true, message)
   return true
@@ -191,7 +182,7 @@ const handlePublicStreamResponseError = async (
   onError: IOnError | undefined,
   onNotifyError: IOnError | undefined,
   silent: boolean | undefined,
-  appAccessScope: AppAccessScope | null,
+  requestGuard: RequestGuard | undefined,
   onCompleted: IOnCompleted | undefined,
 ) => {
   let data: { code?: string; message?: string; reason?: unknown } | undefined
@@ -199,13 +190,13 @@ const handlePublicStreamResponseError = async (
     data = (await response.clone().json()) as typeof data
   } catch {}
 
-  if (data && handleAppAccessError(response.status, data, appAccessScope, response)) {
-    const message = data.message || 'IP access denied'
+  if (data && requestGuard?.handleError(response.status, data, response)) {
+    const message = data.message || 'Server Error'
     if (onError) onError(message, data.code)
     else onCompleted?.(true, message)
     return
   }
-  if (!canRecoverWebAppAuthorization(appAccessScope)) {
+  if (!canRecoverWebAppAuthorization(requestGuard)) {
     const message = data?.message || 'Server Error'
     if (onError) onError(message, typeof data?.code === 'string' ? data.code : undefined)
     else onCompleted?.(true, message)
@@ -478,8 +469,10 @@ export const handleStream = (
         }
         buffer += decoder.decode(result.value, { stream: true })
         const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
         try {
           lines.forEach((message) => {
+            if (hasError) return
             if (message.startsWith('data: ')) {
               // check if it starts with data:
               try {
@@ -601,7 +594,6 @@ export const handleStream = (
               }
             }
           })
-          buffer = lines[lines.length - 1]!
         } catch (e) {
           onData('', false, {
             conversationId: undefined,
@@ -644,8 +636,12 @@ export const upload = async (
   url?: string,
   searchParams?: string,
 ): Promise<UploadResponse> => {
-  const appAccessScope = isPublicAPI ? captureAppAccessScope() : null
-  throwIfAppAccessBlocked(appAccessScope)
+  const requestGuard = captureRequestGuard(
+    options.url || url || '/files/upload',
+    isPublicAPI,
+    options.method || 'POST',
+  )
+  requestGuard?.beforeRequest()
   const address = resolveWebAppAddress()
   const shareCode = address?.code
   const publicApiPrefix = PUBLIC_API_PREFIX
@@ -680,11 +676,12 @@ export const upload = async (
       if (xhr.readyState === 4 && xhr.status !== 0) {
         if (!isHttpErrorStatus(xhr.status)) resolve(xhr.response)
         else {
-          if (handleAppAccessError(xhr.status, xhr.response, appAccessScope, xhr)) {
-            reject(xhr)
+          const error = httpErrorFromXhr(xhr)
+          if (requestGuard?.handleError(xhr.status, xhr.response, error)) {
+            reject(error)
             return
           }
-          if (isPublicAPI && !canRecoverWebAppAuthorization(appAccessScope)) {
+          if (isPublicAPI && !canRecoverWebAppAuthorization(requestGuard)) {
             reject(new DOMException('The upload is no longer active.', 'AbortError'))
             return
           }
@@ -695,7 +692,7 @@ export const upload = async (
             xhr.response !== null
           )
             handleWebAppAuthorizationError(xhr.response)
-          reject(httpErrorFromXhr(xhr))
+          reject(error)
         }
       }
     }
@@ -752,9 +749,9 @@ export const ssePost = async (
     onUnhandledEvent,
     silent,
   } = otherOptions
-  const { scope: appAccessScope } = captureAppAccessRequest(url, isPublicAPI, 'POST')
-  if (hasAppAccessError(appAccessScope)) {
-    onCompleted?.(true, 'App not accessible')
+  const requestGuard = captureRequestGuard(url, isPublicAPI, 'POST')
+  if (requestGuard?.isActive() === false) {
+    onCompleted?.(true, 'The request is no longer active.')
     return
   }
   const abortController = new AbortController()
@@ -779,8 +776,8 @@ export const ssePost = async (
   )
   options.headers = new Headers(options.headers)
 
-  const contentType = (options.headers as Headers).get('Content-Type')
-  if (!contentType) (options.headers as Headers).set('Content-Type', ContentType.json)
+  const contentType = options.headers.get('Content-Type')
+  if (!contentType) options.headers.set('Content-Type', ContentType.json)
 
   getAbortController?.(abortController)
 
@@ -793,7 +790,7 @@ export const ssePost = async (
     .fetch(urlWithPrefix, options as RequestInit)
     .then(async (res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (await handleAppStreamResponseError(res, appAccessScope, onError, onCompleted)) return
+        if (await handleGuardedStreamResponseError(res, requestGuard, onError, onCompleted)) return
         if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
             void handlePublicStreamResponseError(
@@ -801,7 +798,7 @@ export const ssePost = async (
               onError,
               onNotifyError,
               silent,
-              appAccessScope,
+              requestGuard,
               onCompleted,
             )
           } else {
@@ -926,9 +923,9 @@ export const sseGet = async (
     onUnhandledEvent,
     silent,
   } = otherOptions
-  const { scope: appAccessScope } = captureAppAccessRequest(url, isPublicAPI, 'GET')
-  if (hasAppAccessError(appAccessScope)) {
-    onCompleted?.(true, 'App not accessible')
+  const requestGuard = captureRequestGuard(url, isPublicAPI, 'GET')
+  if (requestGuard?.isActive() === false) {
+    onCompleted?.(true, 'The request is no longer active.')
     return
   }
   const abortController = new AbortController()
@@ -950,8 +947,8 @@ export const sseGet = async (
   )
   options.headers = new Headers(options.headers)
 
-  const contentType = (options.headers as Headers).get('Content-Type')
-  if (!contentType) (options.headers as Headers).set('Content-Type', ContentType.json)
+  const contentType = options.headers.get('Content-Type')
+  if (!contentType) options.headers.set('Content-Type', ContentType.json)
 
   getAbortController?.(abortController)
 
@@ -961,7 +958,7 @@ export const sseGet = async (
     .fetch(urlWithPrefix, options as RequestInit)
     .then(async (res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (await handleAppStreamResponseError(res, appAccessScope, onError, onCompleted)) return
+        if (await handleGuardedStreamResponseError(res, requestGuard, onError, onCompleted)) return
         if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
             void handlePublicStreamResponseError(
@@ -969,7 +966,7 @@ export const sseGet = async (
               onError,
               onNotifyError,
               silent,
-              appAccessScope,
+              requestGuard,
               onCompleted,
             )
           } else {
@@ -1096,7 +1093,7 @@ export const sseGeneratorPost = (
   }
 
   globalThis
-    .fetch(urlWithPrefix, options as RequestInit)
+    .fetch(urlWithPrefix, options)
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
@@ -1161,7 +1158,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
   try {
     const otherOptionsForBaseFetch = otherOptions || {}
     const { isPublicAPI = false, silent } = otherOptionsForBaseFetch
-    const { scope: appAccessScope, appIdentity } = captureAppAccessRequest(
+    const requestGuard = captureRequestGuard(
       url,
       isPublicAPI,
       otherOptions?.request?.method || (options as RequestInit).method,
@@ -1171,22 +1168,19 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       const address = resolveWebAppAddress()
       if (
         isPublicAPI &&
-        canRecoverWebAppAuthorization(appAccessScope) &&
+        canRecoverWebAppAuthorization(requestGuard) &&
         address?.kind === 'environment' &&
         !isWebAppAuthorizationEndpoint(url)
       )
         completeWebAppAuthorizationRecovery(address)
       return resp
     }
-    if (err instanceof ORPCError && (err.status === 403 || err.status === 404)) {
-      if (handleAppAccessError(err.status, err.data, appAccessScope, err, appIdentity))
-        return Promise.reject(err)
-    }
+    if (err instanceof ORPCError && requestGuard?.handleError(err.status, err.data, err))
+      return Promise.reject(err)
+    if (requestGuard?.isActive() === false) return Promise.reject(err)
     if (err instanceof ORPCError && (err.status === 401 || (err.status === 403 && isPublicAPI))) {
       if (!isClient) return Promise.reject(err)
 
-      if (appAccessScope && !canRecoverWebAppAuthorization(appAccessScope))
-        return Promise.reject(err)
       const errRespData = { code: err.code, message: err.message, reason: err.data?.reason }
       if (!err.data) {
         if (err.status === 401) {

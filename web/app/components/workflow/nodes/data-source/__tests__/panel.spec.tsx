@@ -1,35 +1,12 @@
 import type { DataSourceNodeType } from '../types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useNodes } from 'reactflow'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Panel from '../panel'
-
-const { update, get } = vi.hoisted(() => ({
-  update: vi.fn(),
-  get: vi.fn(async (_url: string) => []),
-}))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  get,
-  // Console contract requests; only the schema type definitions are expected.
-  request: async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
-    if (new URL(request.url).pathname.endsWith('/spec/schema-definitions')) return Response.json([])
-    throw new Error(`Unexpected request: ${request.url}`)
-  },
-}))
-vi.mock('../../../hooks/use-node-data-update', () => ({
-  useNodeDataUpdate: () => ({ handleNodeDataUpdateWithSyncDraft: update }),
-}))
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../hooks/use-workflow')>()),
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-}))
-vi.mock('../../_base/hooks/use-available-var-list', () => ({
-  default: () => ({ availableVars: [], availableNodesWithParent: [] }),
-}))
 
 const panelProps = {
   getInputVars: () => [],
@@ -52,6 +29,19 @@ const createData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNode
   datasource_configurations: {},
   ...overrides,
 })
+
+const { get } = vi.hoisted(() => ({
+  get: vi.fn(async (_url: string) => []),
+}))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  get,
+  // Console contract requests; only the schema type definitions are expected.
+  request: async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
+    if (new URL(request.url).pathname.endsWith('/spec/schema-definitions')) return Response.json([])
+    throw new Error(`Unexpected request: ${request.url}`)
+  },
+}))
 const createProvider = () => {
   const provider = createDatasourceProvider()
   provider.declaration.datasources![0]!.parameters = [
@@ -76,7 +66,18 @@ const createProvider = () => {
   ]
   return provider
 }
-beforeEach(() => vi.clearAllMocks())
+function EditablePanel() {
+  const node = useNodes<DataSourceNodeType>().find((node) => node.id === 'datasource')
+  if (!node) return null
+  return (
+    <>
+      <Panel id={node.id} data={node.data} panelProps={panelProps} />
+      <output aria-label="Datasource parameters">
+        {JSON.stringify(node.data.datasource_parameters)}
+      </output>
+    </>
+  )
+}
 
 it('renders real datasource fields and descriptions without tool dynamic requests, preserving numeric and boolean values', async () => {
   const user = userEvent.setup()
@@ -86,7 +87,7 @@ it('renders real datasource fields and descriptions without tool dynamic request
       enabled: { type: VarKindType.constant, value: false },
     },
   })
-  renderWorkflowFlowComponent(<Panel id="datasource" data={data} panelProps={panelProps} />, {
+  renderWorkflowFlowComponent(<EditablePanel />, {
     nodes: [{ id: 'datasource', position: { x: 0, y: 0 }, data }],
     initialStoreState: { dataSourceList: [createProvider()] },
   })
@@ -98,23 +99,16 @@ it('renders real datasource fields and descriptions without tool dynamic request
   expect(count).toHaveValue('0')
   await user.clear(count)
   await user.type(count, '2')
-  expect(update).toHaveBeenLastCalledWith({
-    id: 'datasource',
-    data: expect.objectContaining({
-      datasource_parameters: expect.objectContaining({
-        count: { type: VarKindType.constant, value: 2 },
-      }),
+  expect(screen.getByRole('status', { name: 'Datasource parameters' })).toHaveTextContent(
+    '"count":{"type":"constant","value":2}',
+  )
+  await user.click(screen.getByRole('button', { name: 'True' }))
+  expect(screen.getByRole('status', { name: 'Datasource parameters' })).toHaveTextContent(
+    JSON.stringify({
+      count: { type: VarKindType.constant, value: 2 },
+      enabled: { type: VarKindType.constant, value: true },
     }),
-  })
-  await user.click(screen.getByRole('button', { name: 'False' }))
-  expect(update).toHaveBeenLastCalledWith({
-    id: 'datasource',
-    data: expect.objectContaining({
-      datasource_parameters: expect.objectContaining({
-        enabled: { type: VarKindType.constant, value: false },
-      }),
-    }),
-  })
+  )
   expect(get.mock.calls.map((call) => call[0])).not.toContain(
     '/workspaces/current/plugin/parameters/dynamic-options',
   )
