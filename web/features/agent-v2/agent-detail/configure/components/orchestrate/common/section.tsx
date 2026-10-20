@@ -64,7 +64,7 @@ export function ConfigureSection({
             </Heading>
             {hasTip && (
               <Infotip>
-                <InfotipTrigger aria-labelledby={labelId} className="ml-0.5 size-3.5" />
+                <InfotipTrigger aria-labelledby={labelId} className="ml-0.5" />
                 <InfotipContent aria-labelledby={labelId} className="max-w-64">
                   {tip}
                 </InfotipContent>

@@ -186,7 +186,7 @@ const WorkflowToolOutputName = React.memo(
             <Infotip>
               <InfotipTrigger
                 aria-labelledby={outputNameId}
-                className="text-text-warning-secondary"
+                tone="warning"
                 iconSize="small"
                 iconVariant="warning"
               />
@@ -386,7 +386,7 @@ export function WorkflowToolDrawer({
                   *
                 </span>
                 <Infotip>
-                  <InfotipTrigger aria-labelledby={toolNameLabelId} className="ml-1 size-3.5" />
+                  <InfotipTrigger aria-labelledby={toolNameLabelId} className="ml-1" />
                   <InfotipContent aria-labelledby={toolNameLabelId} className="w-45">
                     {t(($) => $['createTool.nameForToolCallPlaceHolder'], { ns: 'tools' })}
                   </InfotipContent>

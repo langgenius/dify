@@ -105,7 +105,7 @@ export function AccessControlForm({
                 <Infotip>
                   <InfotipTrigger
                     aria-labelledby={externalAccessLabelId}
-                    className="text-text-warning-secondary hover:text-text-warning-secondary"
+                    tone="warning"
                     iconSize="large"
                   />
                   <InfotipContent aria-labelledby={externalAccessLabelId}>
@@ -123,10 +123,7 @@ export function AccessControlForm({
               </p>
               {publicAccessDisabled && (
                 <Infotip>
-                  <InfotipTrigger
-                    aria-labelledby={publicAccessLabelId}
-                    className="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
-                  />
+                  <InfotipTrigger aria-labelledby={publicAccessLabelId} tone="warning" />
                   <InfotipContent aria-labelledby={publicAccessLabelId}>
                     {t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
                       ns: 'app',

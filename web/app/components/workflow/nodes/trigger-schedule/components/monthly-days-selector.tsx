@@ -61,7 +61,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange, disabled }: MonthlyDaysSe
                   <Infotip>
                     <InfotipTrigger
                       aria-labelledby={lastDayLabelId}
-                      className="absolute inset-e-1 top-1/2 size-3 -translate-y-1/2"
+                      className="absolute inset-e-1 top-1/2 -translate-y-1/2"
                       iconSize="small"
                     />
                     <InfotipContent aria-labelledby={lastDayLabelId}>

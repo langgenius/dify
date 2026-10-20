@@ -74,7 +74,7 @@ export function TopKAndScoreThreshold({
             {topKLabel}
           </FieldLabel>
           <Infotip>
-            <InfotipTrigger aria-labelledby={topKLabelId} className="ml-0.5 size-3.5" />
+            <InfotipTrigger aria-labelledby={topKLabelId} className="ml-0.5" />
             <InfotipContent aria-labelledby={topKLabelId}>{topKTip}</InfotipContent>
           </Infotip>
         </div>
@@ -112,10 +112,7 @@ export function TopKAndScoreThreshold({
                 </span>
               </FieldLabel>
               <Infotip>
-                <InfotipTrigger
-                  aria-labelledby={scoreThresholdLabelId}
-                  className="ml-0.5 size-3.5"
-                />
+                <InfotipTrigger aria-labelledby={scoreThresholdLabelId} className="ml-0.5" />
                 <InfotipContent aria-labelledby={scoreThresholdLabelId}>
                   {scoreThresholdTip}
                 </InfotipContent>

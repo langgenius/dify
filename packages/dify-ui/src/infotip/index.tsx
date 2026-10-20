@@ -1,8 +1,10 @@
 'use client'
 
+import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
 import type { Placement } from '../internal/placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
+import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 import { iconButtonVariants } from '../icon-button'
 import { hintPopupClassName, positionerClassName } from '../internal/overlay'
@@ -21,6 +23,20 @@ const iconSizeClassNames = {
   large: 'size-4',
 } as const
 
+const triggerVariants = cva('shrink-0 border-0 bg-transparent data-disabled:text-text-disabled', {
+  variants: {
+    tone: {
+      default:
+        'text-text-quaternary not-data-disabled:hover:text-text-tertiary not-data-disabled:data-popup-open:text-text-tertiary',
+      warning: 'text-text-warning-secondary',
+      error: 'text-text-destructive',
+    },
+  },
+  defaultVariants: {
+    tone: 'default',
+  },
+})
+
 const Infotip = BasePopover.Root
 const InfotipTitle = BasePopover.Title
 type InfotipActions = BasePopover.Root.Actions
@@ -32,18 +48,21 @@ type InfotipTitleProps = BasePopover.Title.Props
 
 type InfotipTriggerProps<Payload = unknown> = Omit<
   BasePopover.Trigger.Props<Payload>,
-  'children' | 'render' | 'nativeButton' | 'aria-label' | 'aria-labelledby'
+  'children' | 'render' | 'nativeButton' | 'aria-label' | 'aria-labelledby' | 'style'
 > &
   (
     | { 'aria-label': string; 'aria-labelledby'?: never }
     | { 'aria-label'?: never; 'aria-labelledby': string }
   ) & {
+    style?: never
+    tone?: NonNullable<VariantProps<typeof triggerVariants>['tone']>
     iconVariant?: keyof typeof iconClassNames
     iconSize?: keyof typeof iconSizeClassNames
   }
 
 function InfotipTrigger<Payload = unknown>({
   className,
+  tone = 'default',
   iconVariant = 'question',
   iconSize = 'medium',
   openOnHover = true,
@@ -65,7 +84,7 @@ function InfotipTrigger<Payload = unknown>({
       className={(state) =>
         cn(
           iconButtonVariants({ variant: null, size: 'xs' }),
-          'shrink-0 border-0 bg-transparent text-text-quaternary outline-hidden hover:text-text-tertiary',
+          triggerVariants({ tone }),
           resolveClassName(className, state),
         )
       }

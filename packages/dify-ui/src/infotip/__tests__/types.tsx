@@ -17,8 +17,8 @@ export function infotipTypeContracts(
             payload={{ title: 'Details' }}
             iconVariant="information"
             iconSize="small"
-            className={(state) => (state.open ? 'text-text-accent' : undefined)}
-            style={(state) => ({ opacity: state.disabled ? 0.5 : 1 })}
+            tone="warning"
+            className={(state) => (state.open ? 'ml-1' : undefined)}
           />
           <InfotipContent
             ref={popupRef}
@@ -41,11 +41,15 @@ export function infotipTypeContracts(
   const children = <InfotipTrigger aria-label="Details">Custom trigger</InfotipTrigger>
   // @ts-expect-error InfotipTrigger always renders a native button.
   const render = <InfotipTrigger aria-label="Details" render={<div />} />
+  // @ts-expect-error InfotipTrigger owns its appearance; use className for external layout.
+  const style = <InfotipTrigger aria-label="Details" style={{ color: 'red' }} />
+  // @ts-expect-error Brand colors are local exceptions, not semantic tones.
+  const accent = <InfotipTrigger aria-label="Details" tone="accent" />
   const state = (
     // @ts-expect-error Popup state is separate from trigger state.
     <InfotipContent className={(state) => String(state.disabled)}>Details</InfotipContent>
   )
-  return { composition, labelledTrigger, unnamed, children, render, state }
+  return { composition, labelledTrigger, unnamed, children, render, style, accent, state }
 }
 
 export function infotipActionsTypeContract() {

@@ -419,11 +419,13 @@ const ChatInputArea = ({
             </div>
             {shouldShowFooterNoticeTooltip && (
               <Infotip>
+                {/* oxlint-disable shadcn/no-restyle -- This footer explanation follows the adjacent branded notice color in every interaction state. */}
                 <InfotipTrigger
                   aria-labelledby={footerNoticeLabelId}
-                  className="ml-auto size-5 rounded-md text-text-accent hover:bg-state-base-hover hover:text-text-accent"
+                  className="ml-auto text-text-accent not-data-disabled:hover:text-text-accent not-data-disabled:data-popup-open:text-text-accent"
                   iconVariant="information"
                 />
+                {/* oxlint-enable shadcn/no-restyle */}
                 <InfotipContent aria-labelledby={footerNoticeLabelId} className="max-w-80">
                   {footerNoticeTooltip}
                 </InfotipContent>

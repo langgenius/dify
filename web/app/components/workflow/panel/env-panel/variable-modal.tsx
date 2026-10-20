@@ -205,7 +205,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
               <Infotip>
                 <InfotipTrigger
                   aria-labelledby={secretLabelId}
-                  className="absolute top-1/2 right-1 size-3.5 -translate-y-1/2"
+                  className="absolute top-1/2 right-1 -translate-y-1/2"
                 />
                 <InfotipContent aria-labelledby={secretLabelId} className="w-60">
                   {t(($) => $['env.modal.secretTip'], { ns: 'workflow' })}
