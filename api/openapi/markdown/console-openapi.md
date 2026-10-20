@@ -9090,7 +9090,7 @@ Update account-level Step-by-step Tour state
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Published workflow retrieved successfully, or null if not exist | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
+| 200 | Published workflow retrieved successfully, or null if not exist | **application/json**: [RagPipelinePublishedWorkflowResponse](#ragpipelinepublishedworkflowresponse)<br> |
 | 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -20907,6 +20907,13 @@ Per-output retry configuration that mirrors ``graphon.RetryConfig`` shape.
 | ---- | ---- | ----------- | -------- |
 | DeclaredOutputType | string |  |  |
 
+#### DefaultBlockConfigItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | Yes |
+| type | string |  | Yes |
+
 #### DefaultBlockConfigQuery
 
 | Name | Type | Description | Required |
@@ -22373,13 +22380,13 @@ Enum class for form type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| actions | [ object ] |  | No |
+| actions | [ [UserActionConfig](#useractionconfig) ] |  | No |
 | display_in_ui | boolean |  | No |
 | expiration_time | integer |  | No |
 | form_content | string |  | Yes |
 | form_id | string |  | Yes |
 | form_token | string |  | No |
-| inputs | [ object ] |  | No |
+| inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
 | resolved_default_values | object |  | No |
@@ -25623,6 +25630,14 @@ Blocking run result: a preview run returns the workflow result, a processing run
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | RagPipelinePublishedRunResponse | [PipelineGenerateResponse](#pipelinegenerateresponse)<br>[WorkflowAppBlockingResponse](#workflowappblockingresponse) | Blocking run result: a preview run returns the workflow result, a processing run the queued batch. |  |
+
+#### RagPipelinePublishedWorkflowResponse
+
+A null response means the pipeline has no published workflow.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RagPipelinePublishedWorkflowResponse | [WorkflowResponse](#workflowresponse) | A null response means the pipeline has no published workflow. |  |
 
 #### RagPipelineRecommendedPluginQuery
 

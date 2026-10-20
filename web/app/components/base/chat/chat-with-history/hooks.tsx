@@ -600,7 +600,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     async (messageId, feedback) => {
       await updateFeedback(
         {
-          url: `/messages/${messageId}/feedbacks`,
+          messageId,
           body: { rating: feedback.rating, content: feedback.content },
         },
         appSourceType,

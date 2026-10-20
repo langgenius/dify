@@ -1597,11 +1597,6 @@
       "count": 1
     }
   },
-  "web/app/components/rag-pipeline/hooks/use-pipeline-config.ts": {
-    "typescript/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/rag-pipeline/hooks/use-pipeline-run.ts": {
     "no-restricted-imports": {
       "count": 2
@@ -2687,11 +2682,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/panel/debug-and-preview/conversation-variable-modal.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/panel/debug-and-preview/hooks.ts": {
     "no-restricted-imports": {
       "count": 2
@@ -3025,11 +3015,6 @@
       "count": 1
     }
   },
-  "web/features/account-profile/client.ts": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    }
-  },
   "web/features/agent-v2/agent-detail/configure/components/preview/working-directory-panel.tsx": {
     "@tanstack/query/prefer-query-options": {
       "count": 2
@@ -3125,9 +3110,6 @@
   },
   "web/service/access-control/use-app-access-control.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 2
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -3207,7 +3189,7 @@
   },
   "web/service/use-plugins-auth.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 3
+      "count": 1
     },
     "no-restricted-imports": {
       "count": 1
@@ -3248,7 +3230,7 @@
   },
   "web/service/use-workflow.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 6
+      "count": 4
     }
   },
   "web/service/webapp-auth.ts": {
@@ -3281,7 +3263,7 @@
   },
   "web/types/workflow.ts": {
     "typescript/no-explicit-any": {
-      "count": 16
+      "count": 15
     }
   },
   "web/utils/completion-params.ts": {

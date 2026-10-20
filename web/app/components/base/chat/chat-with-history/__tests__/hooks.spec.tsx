@@ -749,7 +749,7 @@ describe('useChatWithHistory', () => {
 
       // Assert
       expect(mockUpdateFeedback).toHaveBeenCalledWith(
-        { url: '/messages/message-1/feedbacks', body: { rating: 'like', content: 'Great!' } },
+        { messageId: 'message-1', body: { rating: 'like', content: 'Great!' } },
         AppSourceType.webApp,
         'app-1',
       )
