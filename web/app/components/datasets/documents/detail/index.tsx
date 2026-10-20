@@ -426,9 +426,10 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               (isMobile ? (
                 metadataPanel
               ) : (
-                <ScrollArea className="relative mt-3 mr-2 min-h-0 shrink-0 overflow-hidden">
+                <ScrollArea className="relative mt-3 min-h-0 shrink-0 overflow-hidden">
                   <ScrollAreaViewport className="overscroll-contain">
-                    <ScrollAreaContent className="pb-3">{metadataPanel}</ScrollAreaContent>
+                    {/* pr-3 reserves a gutter for the 12px overlay scrollbar so it never covers the panel's controls */}
+                    <ScrollAreaContent className="pr-3 pb-3">{metadataPanel}</ScrollAreaContent>
                   </ScrollAreaViewport>
                   <ScrollAreaScrollbar orientation="vertical">
                     <ScrollAreaThumb />
