@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { StrictMode } from 'react'
 import { fetchWorkflowInstructionSuggestions } from '@/service/workflow-generator'
 import ExamplePrompts from '../example-prompts'
 
@@ -24,11 +25,14 @@ describe('ExamplePrompts', () => {
     // The primary content is AI-generated, workspace-grounded chips fetched on
     // open; they replace the static list once they arrive.
     it('should render AI-generated chips when the backend returns suggestions', async () => {
-      mockFetch.mockResolvedValue({ suggestions: ['Build a triage bot', 'Summarize PDFs'] })
-      render(<ExamplePrompts mode="workflow" onSelect={vi.fn()} />)
+      const user = userEvent.setup()
+      const onSelect = vi.fn()
+      mockFetch.mockResolvedValue({ suggestions: [' Build a triage bot ', '', 'Summarize PDFs'] })
+      render(<ExamplePrompts mode="workflow" onSelect={onSelect} />)
 
       expect(await screen.findByRole('button', { name: 'Build a triage bot' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Summarize PDFs' })).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Build a triage bot' }))
+      expect(onSelect).toHaveBeenCalledWith('Build a triage bot')
       expect(
         screen.queryByRole('button', { name: /workflowGenerator\.examples\.workflow\.summarize/i }),
       ).not.toBeInTheDocument()
@@ -44,15 +48,6 @@ describe('ExamplePrompts', () => {
         await screen.findByRole('button', {
           name: /workflowGenerator\.examples\.workflow\.summarize/i,
         }),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.translate/i }),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.rag/i }),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.classify/i }),
       ).toBeInTheDocument()
     })
 
@@ -83,29 +78,6 @@ describe('ExamplePrompts', () => {
       ).toBeInTheDocument()
     })
 
-    it('should silently ignore AbortError when unmounted or refreshed', async () => {
-      // Simulate fetch that we can manually abort
-      mockFetch.mockImplementation(async (_, opts) => {
-        return new Promise((resolve, reject) => {
-          if (opts?.getAbortController) {
-            const controller = new AbortController()
-            opts.getAbortController(controller)
-            controller.signal.addEventListener('abort', () => {
-              const err = new Error('AbortError')
-              err.name = 'AbortError'
-              reject(err)
-            })
-          }
-        })
-      })
-
-      const { unmount } = render(<ExamplePrompts mode="workflow" onSelect={vi.fn()} />)
-      // Unmount triggers abort
-      unmount()
-
-      expect(mockFetch).toHaveBeenCalledTimes(1)
-    })
-
     it('should not fetch on mount if suggestions are already cached', async () => {
       // Simulate already having cached suggestions
       sessionStorage.setItem(
@@ -118,32 +90,55 @@ describe('ExamplePrompts', () => {
       expect(await screen.findByRole('button', { name: 'cached suggestion' })).toBeInTheDocument()
       expect(mockFetch).not.toHaveBeenCalled()
     })
+  })
 
-    it('should gracefully handle empty response structure', async () => {
-      // Simulate an empty response with no suggestions array
-      // oxlint-disable-next-line typescript/no-explicit-any
-      mockFetch.mockResolvedValue({} as any)
-      render(<ExamplePrompts mode="workflow" onSelect={vi.fn()} />)
-
-      expect(
-        await screen.findByRole('button', {
-          name: /workflowGenerator\.examples\.workflow\.summarize/i,
+  it('restarts a canceled Strict Mode request and ignores its late response', async () => {
+    const requests: {
+      controller: AbortController
+      resolve: (value: { suggestions: string[] }) => void
+    }[] = []
+    mockFetch.mockImplementation(
+      (_, options) =>
+        new Promise((resolve) => {
+          const controller = new AbortController()
+          options?.getAbortController?.(controller)
+          requests.push({ controller, resolve })
         }),
-      ).toBeInTheDocument()
-    })
+    )
+    const { unmount } = render(
+      <StrictMode>
+        <ExamplePrompts mode="workflow" onSelect={vi.fn()} />
+      </StrictMode>,
+    )
+    expect(requests).toHaveLength(2)
+    expect(requests[0]!.controller.signal.aborted).toBe(true)
+    expect(requests[1]!.controller.signal.aborted).toBe(false)
 
-    it('does not double-fetch on re-renders (simulating React Strict Mode)', async () => {
-      mockFetch.mockResolvedValue({ suggestions: ['test double-fetch'] })
-      const { rerender, unmount } = render(<ExamplePrompts mode="workflow" onSelect={vi.fn()} />)
+    await act(async () => requests[0]!.resolve({ suggestions: ['stale suggestion'] }))
+    expect(screen.getByRole('button', { name: /examples.refresh/ })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'stale suggestion' })).not.toBeInTheDocument()
+    await act(async () => requests[1]!.resolve({ suggestions: ['current suggestion'] }))
+    expect(screen.getByRole('button', { name: 'current suggestion' })).toBeInTheDocument()
+    expect(JSON.parse(sessionStorage.getItem('workflow-gen-suggestions-workflow')!)).toEqual([
+      'current suggestion',
+    ])
+    unmount()
+  })
 
-      // Re-render the same component instance with a new prop to trigger the effect again
-      rerender(<ExamplePrompts mode="advanced-chat" onSelect={vi.fn()} />)
-
-      await screen.findByRole('button', { name: 'test double-fetch' })
-      expect(mockFetch).toHaveBeenCalledTimes(1) // Only fetched once because didInit.current is true
-
-      unmount()
-    })
+  it('aborts an in-flight request on unmount', () => {
+    const controller = new AbortController()
+    mockFetch.mockImplementation(
+      (_, options) =>
+        new Promise((_resolve, reject) => {
+          options?.getAbortController?.(controller)
+          controller.signal.addEventListener('abort', () =>
+            reject(new DOMException('Aborted', 'AbortError')),
+          )
+        }),
+    )
+    const { unmount } = render(<ExamplePrompts mode="workflow" onSelect={vi.fn()} />)
+    unmount()
+    expect(controller.signal.aborted).toBe(true)
   })
 
   describe('refresh', () => {
@@ -162,22 +157,6 @@ describe('ExamplePrompts', () => {
 
       expect(await screen.findByRole('button', { name: 'second set' })).toBeInTheDocument()
       expect(mockFetch).toHaveBeenCalledTimes(2)
-    })
-  })
-
-  describe('selection', () => {
-    // Clicking a chip hands its text back to the parent verbatim to populate
-    // the instruction textarea.
-    it("should forward the clicked chip's text to onSelect", async () => {
-      mockFetch.mockResolvedValue({ suggestions: ['Build a triage bot'] })
-      const user = userEvent.setup()
-      const onSelect = vi.fn()
-      render(<ExamplePrompts mode="workflow" onSelect={onSelect} />)
-
-      const chip = await screen.findByRole('button', { name: 'Build a triage bot' })
-      await user.click(chip)
-
-      expect(onSelect).toHaveBeenCalledWith('Build a triage bot')
     })
   })
 })

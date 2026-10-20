@@ -4,15 +4,12 @@ import type {
   ProviderWithModelsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import type { DefaultModelResponse } from '../../declarations'
-import { QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
+import { render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryClient } from '@/test/console/query-data'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
-import { useSystemDefaultModelAndModelList } from '../../hooks'
 import { ModelSelector, SplitModelSelector } from '../index'
 
 const makeModelItem = (
@@ -26,56 +23,6 @@ const makeModelItem = (
   model_properties: {},
   load_balancing_enabled: false,
   ...overrides,
-})
-
-const mockModelProviders = vi.hoisted(() => ({ current: [] as ProviderWithModelsResponse[] }))
-
-vi.mock('../../provider-added-card/use-credential-panel-state', () => ({
-  useCredentialPanelState: () => ({
-    variant: 'credits-active',
-    priority: 'credits',
-    supportsCredits: true,
-    showPrioritySwitcher: true,
-    hasCredentials: false,
-    isCreditsExhausted: false,
-    credentialName: undefined,
-    credits: 100,
-  }),
-}))
-
-vi.mock('../popup', () => {
-  return {
-    default: ({
-      onConfigureEmptyState,
-      onHide,
-      onOpenProviderSettings,
-      onSelect,
-    }: {
-      onConfigureEmptyState?: () => void
-      onHide: () => void
-      onOpenProviderSettings?: () => void
-      onSelect: (provider: string, model: ProviderModelWithStatusEntity) => void
-    }) => (
-      <>
-        <button type="button" onClick={() => onSelect('openai', makeModelItem())}>
-          select
-        </button>
-        <button type="button" onClick={onHide}>
-          hide
-        </button>
-        {onOpenProviderSettings && (
-          <button type="button" onClick={onOpenProviderSettings}>
-            provider-settings
-          </button>
-        )}
-        {onConfigureEmptyState && (
-          <button type="button" onClick={onConfigureEmptyState}>
-            configure-empty-state
-          </button>
-        )}
-      </>
-    ),
-  }
 })
 
 const makeModel = (
@@ -111,7 +58,9 @@ const onUrlUpdate = vi.fn()
 const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
 const renderWithQueryClient = (node: ReactNode) => {
-  const queryClient = createConsoleQueryClient()
+  const { queryClient, wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { enable_marketplace: false },
+  })
   queryClient.setQueryData(
     consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions().queryKey,
     {
@@ -119,17 +68,30 @@ const renderWithQueryClient = (node: ReactNode) => {
       plugins: {},
     },
   )
-  return render(node, {
-    wrapper: ({ children }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    ),
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(), {
+    remaining_credits: 100,
+    quota_used: 0,
+    quota_limit: 100,
+    is_exhausted: false,
+    is_unlimited: false,
+    exhausted_at: null,
+    next_credit_reset_date: null,
+    pool_type: 'trial',
   })
+  for (const model_type of ['llm', 'text-embedding', 'rerank', 'speech2text', 'tts'] as const) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+        input: { params: { model_type } },
+      }),
+      { data: [] },
+    )
+  }
+  return render(node, { wrapper })
 }
 
 describe('ModelSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockModelProviders.current = [makeModel()]
   })
 
   it.each([
@@ -153,29 +115,15 @@ describe('ModelSelector', () => {
     },
   )
 
-  it('should toggle popup and close it after selecting a model', () => {
-    renderWithQueryClient(<ModelSelector models={[makeModel()]} />)
-
-    const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
-
-    fireEvent.click(triggerButton)
-    expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
-    expect(
-      screen.getByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('select')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('select'))
-    expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
-  })
-
-  it('should call onValueChange when provided', () => {
+  it('should call onValueChange when provided', async () => {
+    const user = userEvent.setup()
     const onValueChange = vi.fn()
     renderWithQueryClient(<ModelSelector models={[makeModel()]} onValueChange={onValueChange} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
-    fireEvent.click(screen.getByText('select'))
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+    await user.click(screen.getByRole('button', { name: /GPT-4/ }))
 
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(onValueChange).toHaveBeenCalledWith({
       provider: 'openai',
       model: 'gpt-4',
@@ -183,29 +131,31 @@ describe('ModelSelector', () => {
     })
   })
 
-  it('should close popup when popup requests hide', () => {
+  it('should close popup with Escape', async () => {
+    const user = userEvent.setup()
     renderWithQueryClient(<ModelSelector models={[makeModel()]} />)
 
     const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
-    fireEvent.click(triggerButton)
+    await user.click(triggerButton)
     expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('hide')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('hide'))
+    await user.keyboard('{Escape}')
     expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('should close popup before running the empty-state configure action', () => {
+  it('should close popup before running the empty-state configure action', async () => {
+    const user = userEvent.setup()
     const onConfigureEmptyState = vi.fn()
     renderWithQueryClient(
-      <ModelSelector models={[makeModel()]} onConfigureEmptyState={onConfigureEmptyState} />,
+      <ModelSelector models={[]} onConfigureEmptyState={onConfigureEmptyState} />,
     )
 
     const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
-    fireEvent.click(triggerButton)
+    await user.click(triggerButton)
     expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
 
-    fireEvent.click(screen.getByText('configure-empty-state'))
+    await user.click(
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.selector.configure' }),
+    )
 
     expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
     expect(onConfigureEmptyState).toHaveBeenCalledTimes(1)
@@ -218,7 +168,11 @@ describe('ModelSelector', () => {
 
     const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
     await user.click(triggerButton)
-    await user.click(screen.getByRole('button', { name: 'provider-settings' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'modelProvider.modelProvider.selector.modelProviderSettings',
+      }),
+    )
 
     expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
     expect(onHide).toHaveBeenCalledTimes(1)
@@ -227,49 +181,46 @@ describe('ModelSelector', () => {
     )
   })
 
-  it('should not open popup when disabled', () => {
+  it('should not open popup when disabled', async () => {
+    const user = userEvent.setup()
     renderWithQueryClient(<ModelSelector models={[makeModel()]} disabled />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
-    expect(screen.queryByText('select')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('should let the split trigger own the combobox interaction', () => {
-    renderWithQueryClient(<SplitModelSelector models={[makeModel()]} />)
+  it('should open and select a model from the split trigger with the keyboard', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    renderWithQueryClient(
+      <SplitModelSelector models={[makeModel()]} onValueChange={onValueChange} />,
+    )
 
     const trigger = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
-    expect(trigger).toHaveAttribute('data-shape', 'split')
+    trigger.focus()
+    await user.keyboard('{Enter}')
+    const model = screen.getByRole('button', { name: /GPT-4/ })
+    model.focus()
+    await user.keyboard('{Enter}')
+    expect(onValueChange).toHaveBeenCalledWith({
+      provider: 'openai',
+      model: 'gpt-4',
+      plugin_id: 'langgenius/openai',
+    })
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
   })
 
   it.each(['openai', 'uninstalled-provider'])(
     'should display a loaded default model as incompatible when missing from the list (%s)',
     (provider) => {
       const models = [makeModel()]
-      function SystemDefaultSelector({ defaultModel }: { defaultModel?: DefaultModelResponse }) {
-        const [value] = useSystemDefaultModelAndModelList(defaultModel, models)
-        return <ModelSelector value={value} models={models} />
-      }
-      const { rerender } = renderWithQueryClient(<SystemDefaultSelector />)
+      const { rerender } = renderWithQueryClient(<ModelSelector models={models} />)
 
       expect(
         screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }),
       ).toBeInTheDocument()
 
-      rerender(
-        <SystemDefaultSelector
-          defaultModel={{
-            model: 'missing-model',
-            model_type: ModelTypeEnum.textGeneration,
-            provider: {
-              provider,
-              icon_small: { en_US: '', zh_Hans: '' },
-              label: { en_US: provider, zh_Hans: provider },
-              supported_model_types: [],
-              tenant_id: 'tenant-1',
-            },
-          }}
-        />,
-      )
+      rerender(<ModelSelector models={models} value={{ provider, model: 'missing-model' }} />)
 
       expect(
         screen.getByRole('button', {
@@ -279,12 +230,4 @@ describe('ModelSelector', () => {
       expect(screen.queryByText('plugin.detailPanel.configureModel')).not.toBeInTheDocument()
     },
   )
-
-  it('should render model trigger when value matches', () => {
-    renderWithQueryClient(
-      <ModelSelector value={{ provider: 'openai', model: 'gpt-4' }} models={[makeModel()]} />,
-    )
-
-    expect(screen.getByText('GPT-4')).toBeInTheDocument()
-  })
 })

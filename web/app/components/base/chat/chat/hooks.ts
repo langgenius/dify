@@ -22,6 +22,11 @@ import { isInstalledAppPath } from '@/app/components/explore/installed-app/route
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import {
+  captureAppAccessScope,
+  hasAppAccessError,
+  isAppAccessScopeCurrent,
+} from '@/features/app-access-error/state'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
@@ -84,6 +89,18 @@ function mergeStreamingThought(currentThought: ThoughtItem, nextThought: Thought
       ? nextThought.message_files
       : currentThought.message_files,
   }
+}
+
+// A tool result streams in under the id of the thought that made the call. With parallel tool
+// calls that thought is not always the last one, so it is looked up by id from the end.
+function upsertStreamingThought(thoughts: ThoughtItem[], thought: ThoughtItem) {
+  for (let index = thoughts.length - 1; index >= 0; index--) {
+    if (thoughts[index]!.id === thought.id) {
+      thoughts[index] = mergeStreamingThought(thoughts[index]!, thought)
+      return
+    }
+  }
+  thoughts.push(thought)
 }
 
 function appendAgentResponseMessagePart(responseItem: ChatItemInTree, message: string) {
@@ -192,7 +209,7 @@ export const useChat = (
     inputsForm: InputForm[]
   },
   prevChatTree?: ChatItemInTree[],
-  stopChat?: (taskId: string) => void,
+  stopChat?: (taskId: string) => void | Promise<unknown>,
   clearChatList?: boolean,
   clearChatListCallback?: (state: boolean) => void,
   initialConversationId?: string,
@@ -527,7 +544,15 @@ export const useChat = (
   const handleStop = useCallback(() => {
     hasStopRespondedRef.current = true
     handleResponding(false)
-    if (stopChat && taskIdRef.current && !pausedStateRef.current) stopChat(taskIdRef.current)
+    if (stopChat && taskIdRef.current && !pausedStateRef.current) {
+      void (async () => {
+        try {
+          await stopChat(taskIdRef.current)
+        } catch {
+          // The request layer owns error feedback; stopping locally must still finish.
+        }
+      })()
+    }
     if (conversationMessagesAbortControllerRef.current)
       conversationMessagesAbortControllerRef.current.abort()
     if (suggestedQuestionsAbortControllerRef.current)
@@ -741,18 +766,7 @@ export const useChat = (
             if (thought.conversation_id) responseItem.conversationId = thought.conversation_id
 
             if (!responseItem.agent_thoughts) responseItem.agent_thoughts = []
-
-            if (responseItem.agent_thoughts.length === 0) {
-              responseItem.agent_thoughts.push(thought)
-            } else {
-              const lastThought = responseItem.agent_thoughts.at(-1)
-              if (lastThought?.id === thought.id) {
-                responseItem.agent_thoughts[responseItem.agent_thoughts.length - 1] =
-                  mergeStreamingThought(lastThought, thought)
-              } else {
-                responseItem.agent_thoughts.push(thought)
-              }
-            }
+            upsertStreamingThought(responseItem.agent_thoughts, thought)
             if (options.isNewAgent) {
               const currentThought =
                 responseItem.agent_thoughts.find((item) => item.id === thought.id) ?? thought
@@ -1109,6 +1123,11 @@ export const useChat = (
       pausedStateRef.current = false
       resetWorkflowEventsSubscription()
       const requestGeneration = ++workflowRequestGenerationRef.current
+      const appAccessScope = isPublicAPI ? captureAppAccessScope() : null
+      const isCurrentRequest = () =>
+        requestGeneration === workflowRequestGenerationRef.current &&
+        isAppAccessScopeCurrent(appAccessScope) &&
+        !hasAppAccessError(appAccessScope)
 
       const parentMessage = threadMessages.find((item) => item.id === data.parent_message_id)
 
@@ -1181,13 +1200,13 @@ export const useChat = (
       let hasNotifiedConversationComplete = false
       let currentWorkflowRunId = ''
       const settleSend = (hasError?: boolean) => {
-        if (hasSettled) return
+        if (hasSettled || !isCurrentRequest()) return
 
         hasSettled = true
         onSendSettled?.(hasError)
       }
       const notifyConversationComplete = (workflowRunId?: string) => {
-        if (hasNotifiedConversationComplete) return
+        if (hasNotifiedConversationComplete || !isCurrentRequest()) return
 
         hasNotifiedConversationComplete = true
         onConversationComplete?.(conversationIdRef.current, workflowRunId)
@@ -1254,7 +1273,7 @@ export const useChat = (
           })
         },
         async onCompleted(hasError?: boolean) {
-          if (requestGeneration !== workflowRequestGenerationRef.current) return
+          if (!isCurrentRequest()) return
 
           handleResponding(false)
 
@@ -1268,11 +1287,22 @@ export const useChat = (
               !hasStopRespondedRef.current &&
               onGetConversationMessages
             ) {
-              const conversationMessagesResponse = await onGetConversationMessages(
-                conversationIdRef.current,
-                (newAbortController) =>
-                  (conversationMessagesAbortControllerRef.current = newAbortController),
-              )
+              let conversationMessagesResponse: unknown
+              try {
+                conversationMessagesResponse = await onGetConversationMessages(
+                  conversationIdRef.current,
+                  (newAbortController) => {
+                    if (isCurrentRequest())
+                      conversationMessagesAbortControllerRef.current = newAbortController
+                    else newAbortController.abort()
+                  },
+                )
+              } catch {
+                // Keep the streamed answer and its settlement when history cannot be refreshed.
+                return
+              }
+              if (!isCurrentRequest()) return
+
               const data = getConversationMessagesData(conversationMessagesResponse)
               const newResponseItem = data.find((item) => item.id === responseItem.id)
               completedWorkflowRunId = newResponseItem?.workflow_run_id ?? completedWorkflowRunId
@@ -1335,6 +1365,7 @@ export const useChat = (
             notifyConversationComplete(completedWorkflowRunId)
 
             if (
+              isCurrentRequest() &&
               config?.suggested_questions_after_answer?.enabled &&
               !hasStopRespondedRef.current &&
               onGetSuggestedQuestions
@@ -1342,12 +1373,15 @@ export const useChat = (
               try {
                 const { data }: any = await onGetSuggestedQuestions(
                   responseItem.id,
-                  (newAbortController) =>
-                    (suggestedQuestionsAbortControllerRef.current = newAbortController),
+                  (newAbortController) => {
+                    if (isCurrentRequest())
+                      suggestedQuestionsAbortControllerRef.current = newAbortController
+                    else newAbortController.abort()
+                  },
                 )
-                setSuggestedQuestions(data)
+                if (isCurrentRequest()) setSuggestedQuestions(data)
               } catch {
-                setSuggestedQuestions([])
+                if (isCurrentRequest()) setSuggestedQuestions([])
               }
             }
           } finally {
@@ -1426,18 +1460,7 @@ export const useChat = (
           if (thought.message_id && !hasSetResponseId) response.id = thought.message_id
           if (thought.conversation_id) response.conversationId = thought.conversation_id
 
-          if (response.agent_thoughts.length === 0) {
-            response.agent_thoughts.push(thought)
-          } else {
-            const lastThought = response.agent_thoughts.at(-1)
-            // thought changed but still the same thought, so update.
-            if (lastThought.id === thought.id) {
-              responseItem.agent_thoughts![response.agent_thoughts.length - 1] =
-                mergeStreamingThought(lastThought, thought)
-            } else {
-              responseItem.agent_thoughts!.push(thought)
-            }
-          }
+          upsertStreamingThought(response.agent_thoughts, thought)
           if (options.isNewAgent) {
             const currentThought =
               responseItem.agent_thoughts?.find((item) => item.id === thought.id) ?? thought

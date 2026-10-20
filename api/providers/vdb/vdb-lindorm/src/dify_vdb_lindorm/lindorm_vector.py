@@ -131,7 +131,7 @@ class LindormVectorStore(BaseVector):
 
             actions = []
             for i in range(start_idx, end_idx):
-                action_header = {
+                action_header: dict[str, dict[str, Any]] = {
                     "index": {
                         "_index": self.collection_name,
                         "_id": uuids[i],
@@ -402,19 +402,20 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
         if using_ugc is None:
             raise ValueError("LINDORM_USING_UGC is not set")
         routing_value = None
-        if dataset.index_struct:
+        index_struct = dataset.index_struct_dict
+        if index_struct is not None:
             # if an existed record's index_struct_dict doesn't contain using_ugc field,
             # it actually stores in the normal index format
-            stored_in_ugc: bool = dataset.index_struct_dict.get("using_ugc", False)
+            stored_in_ugc: bool = index_struct.get("using_ugc", False)
             using_ugc = stored_in_ugc
             if stored_in_ugc:
-                dimension = dataset.index_struct_dict["dimension"]
-                index_type = dataset.index_struct_dict["index_type"]
-                distance_type = dataset.index_struct_dict["distance_type"]
-                routing_value = dataset.index_struct_dict["vector_store"]["class_prefix"]
+                dimension = index_struct["dimension"]
+                index_type = index_struct["index_type"]
+                distance_type = index_struct["distance_type"]
+                routing_value = index_struct["vector_store"]["class_prefix"]
                 index_name = f"{UGC_INDEX_PREFIX}_{dimension}_{index_type}_{distance_type}".lower()
             else:
-                index_name = dataset.index_struct_dict["vector_store"]["class_prefix"].lower()
+                index_name = index_struct["vector_store"]["class_prefix"].lower()
         else:
             embedding_vector = embeddings.embed_query("hello word")
             dimension = len(embedding_vector)

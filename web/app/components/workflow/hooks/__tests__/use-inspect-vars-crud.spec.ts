@@ -65,9 +65,6 @@ describe('useInspectVarsCrud', () => {
   it('should pass the flow id to shared variable queries for app flows', () => {
     renderWorkflowHook(() => useInspectVarsCrud(), {
       resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-      hooksStoreProps: {
-        fileSettings: {} as never,
-      },
     })
 
     expect(mockUseConversationVarValues).toHaveBeenCalledWith({
@@ -83,10 +80,6 @@ describe('useInspectVarsCrud', () => {
   })
 
   it('should append query and files vars to the start node and keep other system vars separate', () => {
-    const hasNodeInspectVars = vi.fn(() => true)
-    const deleteAllInspectorVars = vi.fn()
-    const fetchInspectVarValue = vi.fn()
-
     const { result } = renderWorkflowHook(() => useInspectVarsCrud(), {
       initialStoreState: {
         nodesWithInspectVars: [
@@ -96,7 +89,7 @@ describe('useInspectVarsCrud', () => {
               type: BlockEnum.Start,
               title: 'Start',
               desc: '',
-            } as never,
+            },
             nodeType: BlockEnum.Start,
             title: 'Start',
             vars: [
@@ -109,23 +102,6 @@ describe('useInspectVarsCrud', () => {
         ],
       },
       resource: { kind: 'app' as const, appId: 'flow-1', mode: 'workflow' as const },
-      hooksStoreProps: {
-        fileSettings: {} as never,
-        hasNodeInspectVars,
-        fetchInspectVarValue,
-        editInspectVarValue: vi.fn(),
-        renameInspectVarName: vi.fn(),
-        appendNodeInspectVars: vi.fn(),
-        deleteInspectVar: vi.fn(),
-        deleteNodeInspectorVars: vi.fn(),
-        deleteAllInspectorVars,
-        isInspectVarEdited: vi.fn(() => false),
-        resetToLastRunVar: vi.fn(),
-        invalidateSysVarValues: vi.fn(),
-        resetConversationVar: vi.fn(),
-        invalidateConversationVarValues: vi.fn(),
-        hasSetInspectVar: vi.fn(() => false),
-      },
     })
 
     expect(result.current.conversationVars).toHaveLength(1)
@@ -135,17 +111,11 @@ describe('useInspectVarsCrud', () => {
       'query',
       'files',
     ])
-    expect(result.current.hasNodeInspectVars).toBe(hasNodeInspectVars)
-    expect(result.current.fetchInspectVarValue).toBe(fetchInspectVarValue)
-    expect(result.current.deleteAllInspectorVars).toBe(deleteAllInspectorVars)
   })
 
   it('should disable app-only variable queries in rag pipelines', () => {
     renderWorkflowHook(() => useInspectVarsCrud(), {
       resource: { kind: 'knowledge-pipeline' as const, pipelineId: 'pipeline-1' },
-      hooksStoreProps: {
-        fileSettings: {} as never,
-      },
     })
 
     expect(mockUseConversationVarValues).toHaveBeenCalledWith(undefined)
@@ -155,9 +125,6 @@ describe('useInspectVarsCrud', () => {
   it('should disable app-only variable queries in snippets', () => {
     renderWorkflowHook(() => useInspectVarsCrud(), {
       resource: { kind: 'snippet' as const, snippetId: 'snippet-1' },
-      hooksStoreProps: {
-        fileSettings: {} as never,
-      },
     })
 
     expect(mockUseConversationVarValues).toHaveBeenCalledWith(undefined)

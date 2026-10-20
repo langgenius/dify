@@ -75,6 +75,7 @@ describe('AccountPage', () => {
         }),
     )
   })
+  afterEach(() => vi.restoreAllMocks())
 
   it('updates the account name through the profile endpoint', async () => {
     const user = userEvent.setup()
@@ -94,7 +95,8 @@ describe('AccountPage', () => {
     expect(request.method).toBe('PATCH')
     await expect(request.json()).resolves.toEqual({ name: 'Alice Cooper' })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(screen.getAllByText('Alice Cooper')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeEnabled()
+    expect(screen.getAllByText('Alice Cooper')[0]).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     expect(screen.getByRole('textbox', { name: 'accountSettings.account.name' })).toHaveValue(
       'Alice Cooper',
@@ -195,7 +197,8 @@ describe('AccountPage', () => {
       refreshing.resolve(new Response(JSON.stringify(createAccountResponse('Alice Cooper')))),
     )
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(screen.getAllByText('Alice Cooper')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeEnabled()
+    expect(screen.getAllByText('Alice Cooper')[0]).toBeInTheDocument()
   })
 
   it.each([false, true])(

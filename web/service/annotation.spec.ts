@@ -9,10 +9,6 @@ vi.mock('./console', () => ({
 }))
 
 describe('annotation service', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should preserve zero score threshold when updating annotation status', () => {
     updateAnnotationStatus(
       'app-1',

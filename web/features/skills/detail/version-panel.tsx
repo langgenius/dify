@@ -18,11 +18,11 @@ import {
   Dialog,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import {
@@ -354,7 +354,7 @@ function VersionRow({
             <DialogDescription className="sr-only">
               {t(($) => $['skillManagement.detail.renameVersionPrompt'])}
             </DialogDescription>
-            <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} />
+            <DialogHeaderCloseButton aria-label={tCommon(($) => $['operation.close'])} />
           </DialogHeader>
           <DialogBody className="flex flex-col gap-y-4">
             <Field name="versionTitle">

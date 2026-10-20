@@ -155,7 +155,7 @@ class TestBillingServiceSendRequest:
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Invalid arguments\\.") as exc_info:
             BillingService._send_request("PUT", "/test", json={"key": "value"})
         assert "Invalid arguments." in str(exc_info.value)
 
@@ -215,7 +215,13 @@ class TestBillingServiceSendRequest:
 
         # Act & Assert
         with caplog.at_level(logging.ERROR, logger="services.billing_service"):
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(
+                ValueError,
+                match=(
+                    "Unable to process delete request https://billing\\-api\\.example\\.com"
+                    "/test\\. Please try again later or contact support\\."
+                ),
+            ) as exc_info:
                 BillingService._send_request("DELETE", "/test", json={"key": "value"})
             assert "Unable to process delete request" in str(exc_info.value)
             assert "DELETE response" in caplog.text
@@ -259,7 +265,13 @@ class TestBillingServiceSendRequest:
 
         # Act & Assert
         with caplog.at_level(logging.ERROR, logger="services.billing_service"):
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(
+                ValueError,
+                match=(
+                    "Unable to process delete request https://billing\\-api\\.example\\.com"
+                    "/test\\. Please try again later or contact support\\."
+                ),
+            ) as exc_info:
                 BillingService._send_request("DELETE", "/test", json={"key": "value"})
             assert "Unable to process delete request" in str(exc_info.value)
             assert "DELETE response" in caplog.text

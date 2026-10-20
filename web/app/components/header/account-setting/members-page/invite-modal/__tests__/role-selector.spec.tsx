@@ -47,8 +47,6 @@ const createPage = (data: Role[]): RoleListResponse => ({
   },
 })
 
-const RoleSelectorWrapper = () => <RoleSelector />
-
 const getTrigger = () => screen.getByRole('combobox', { name: /members\.role/i })
 const getListbox = () => screen.getByRole('listbox')
 
@@ -63,7 +61,7 @@ describe('RoleSelector', () => {
   })
 
   it('requires an explicit selection and exposes select semantics', () => {
-    render(<RoleSelectorWrapper />)
+    render(<RoleSelector />)
 
     expect(getTrigger().textContent).toMatch(/members\.selectRole/i)
     expect(document.querySelector('input[name="role"]')).toBeRequired()
@@ -71,22 +69,15 @@ describe('RoleSelector', () => {
 
   it('uses the selected Role object as its typed value', async () => {
     const user = userEvent.setup()
-    render(<RoleSelectorWrapper />)
+    render(<RoleSelector />)
 
     await user.click(getTrigger())
-    await user.click(within(getListbox()).getByRole('option', { name: /Admin/i }))
+    const admin = await within(getListbox()).findByRole('option', { name: /Admin/i })
+    expect(admin).toHaveTextContent('Can manage workspace settings')
+    await user.click(admin)
 
     expect(getTrigger()).toHaveTextContent('Admin')
     expect(document.querySelector('input[name="role"]')).toHaveValue('admin')
-  })
-
-  it('shows role descriptions in the option list', async () => {
-    const user = userEvent.setup()
-    render(<RoleSelectorWrapper />)
-
-    await user.click(getTrigger())
-
-    expect(within(getListbox()).getByText('Can manage workspace settings')).toBeInTheDocument()
   })
 
   it('falls back to localized descriptions for legacy built-in roles', async () => {
@@ -97,7 +88,7 @@ describe('RoleSelector', () => {
         createRole({ id: 'dataset_operator', name: 'dataset_operator', description: '' }),
       ]),
     )
-    render(<RoleSelectorWrapper />)
+    render(<RoleSelector />)
 
     await user.click(getTrigger())
 
@@ -113,7 +104,7 @@ describe('RoleSelector', () => {
     const user = userEvent.setup()
     const request = createDeferred<RoleListResponse>()
     getRoles.mockReturnValue(request.promise)
-    render(<RoleSelectorWrapper />)
+    render(<RoleSelector />)
     await user.click(getTrigger())
     expect(within(getListbox()).getByText(/common\.loading/i)).toBeInTheDocument()
     await act(async () => request.resolve(createPage([])))
@@ -123,7 +114,7 @@ describe('RoleSelector', () => {
   it('shows an error instead of treating a failed first page as empty', async () => {
     const user = userEvent.setup()
     getRoles.mockRejectedValue(new Error('Failed to load roles'))
-    render(<RoleSelectorWrapper />)
+    render(<RoleSelector />)
     await user.click(getTrigger())
     expect(await within(getListbox()).findByText(/dynamicSelect\.error/i)).toBeInTheDocument()
     expect(within(getListbox()).queryByText(/dynamicSelect\.noData/i)).not.toBeInTheDocument()
@@ -166,7 +157,7 @@ describe('RoleSelector', () => {
           ...createPage([nextRole]),
           pagination: { total_count: 4, per_page: 3, current_page: 2, total_pages: 2 },
         })
-      render(<RoleSelectorWrapper />)
+      render(<RoleSelector />)
 
       await user.click(getTrigger())
       await within(getListbox()).findByRole('option', { name: /Admin/i })

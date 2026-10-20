@@ -16,25 +16,19 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }))
 
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
-
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: {
-    setup: {
-      get: vi.fn(),
-      post: vi.fn(),
-    },
-    init: {
-      get: vi.fn(),
-    },
-    login: {
-      post: vi.fn(),
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'setup.get': vi.fn(),
+      'setup.post': vi.fn(),
+      'init.get': vi.fn(),
+      'login.post': vi.fn(),
+    }),
+  }
+})
 
 const mockFetchSetupStatus = vi.mocked(consoleClient.setup.get)
 const mockFetchInitValidateStatus = vi.mocked(consoleClient.init.get)
@@ -50,7 +44,7 @@ const prepareLoadedState = () => {
 
 describe('InstallForm', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     prepareLoadedState()
   })
 

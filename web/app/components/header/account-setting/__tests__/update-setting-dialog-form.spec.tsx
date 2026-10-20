@@ -1,7 +1,7 @@
 import type { SettingsDestination } from '@/app/components/header/account-setting/query-params'
 import { Dialog } from '@langgenius/dify-ui/dialog'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
+import { render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import {
@@ -16,18 +16,9 @@ import { UpdateSettingDialogForm } from '../update-setting-dialog-form'
 let mockSettingsDestination: SettingsDestination | null = null
 
 vi.mock('react-i18next', async () => {
-  const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
+  const { createReactI18nextMock, withSelectorKeyProps } = await import('@/test/i18n-mock')
   return {
-    useTranslation: (defaultNs?: string) => ({
-      t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
-        const ns = (options?.ns as string | undefined) ?? defaultNs
-        return `${ns ? `${ns}.` : ''}${key}`
-      }),
-      i18n: {
-        language: 'en',
-        changeLanguage: vi.fn(),
-      },
-    }),
+    ...createReactI18nextMock(),
     Trans: withSelectorKeyProps(
       ({
         i18nKey,
@@ -118,6 +109,7 @@ describe('UpdateSettingDialogForm', () => {
   })
 
   it('should replace the current destination when timezone link is clicked inside settings', async () => {
+    const user = userEvent.setup()
     mockSettingsDestination = 'provider'
 
     renderForm(
@@ -137,7 +129,7 @@ describe('UpdateSettingDialogForm', () => {
       </Dialog>,
     )
 
-    fireEvent.click(screen.getByText('autoUpdate.changeTimezone'))
+    await user.click(screen.getByText('autoUpdate.changeTimezone'))
 
     await waitFor(() =>
       expect(onUrlUpdate).toHaveBeenCalledWith(

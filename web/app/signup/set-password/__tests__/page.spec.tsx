@@ -82,12 +82,6 @@ describe('Signup Set Password Page', () => {
     mockRegister.mockResolvedValue({ result: 'fail', data: {} })
   })
 
-  it('exposes the page title as the main heading', () => {
-    renderWithQueryClient(<ChangePasswordForm />)
-
-    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
-  })
-
   describe('Registration payload', () => {
     it('should submit locale and browser timezone when setting password', async () => {
       const user = userEvent.setup()

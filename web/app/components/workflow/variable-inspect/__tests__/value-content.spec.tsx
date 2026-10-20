@@ -1,16 +1,28 @@
 import type { VarInInspect } from '@/types/workflow'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { VarType } from '@/app/components/workflow/types'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { VarInInspectType } from '@/types/workflow'
 import ValueContent from '../value-content'
 
+// Rich JSON editing is independently tested; this shim keeps ValueContent's value contract visible.
 vi.mock(
   '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor',
   () => ({
-    default: ({ schema, onUpdate }: { schema: string; onUpdate: (value: string) => void }) => (
+    default: ({
+      schema,
+      onUpdate,
+      readonly,
+    }: {
+      schema: string
+      onUpdate: (value: string) => void
+      readonly?: boolean
+    }) => (
       <textarea
-        data-testid="json-editor"
+        aria-label="JSON value"
+        readOnly={readonly}
         value={schema}
         onChange={(event) => onUpdate(event.target.value)}
       />
@@ -18,40 +30,9 @@ vi.mock(
   }),
 )
 
-vi.mock('../value-content-sections', () => ({
-  TextEditorSection: ({
-    value,
-    onTextChange,
-  }: {
-    value: string
-    onTextChange: (value: string) => void
-  }) => (
-    <textarea
-      aria-label="value-text-editor"
-      value={value ?? ''}
-      onChange={(event) => onTextChange(event.target.value)}
-    />
-  ),
-  BoolArraySection: ({ onChange }: { onChange: (value: boolean[]) => void }) => (
-    <button onClick={() => onChange([true, true])}>bool-array-editor</button>
-  ),
-  JsonEditorSection: ({
-    json,
-    readonly,
-    onChange,
-  }: {
-    json: string
-    readonly: boolean
-    onChange: (value: string) => void
-  }) => (
-    <textarea
-      data-testid="json-editor"
-      readOnly={readonly}
-      value={json}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  ),
-  FileEditorSection: ({
+// Upload mechanics are independently tested; this boundary supplies completed and pending file states.
+vi.mock('@/app/components/base/file-uploader', () => ({
+  FileUploaderInAttachmentWrapper: ({
     onChange,
   }: {
     onChange: (files: Array<Record<string, unknown>>) => void
@@ -73,279 +54,188 @@ vi.mock('../value-content-sections', () => ({
       </button>
     </div>
   ),
-  ErrorMessages: ({
-    parseError,
-    validationError,
-  }: {
-    parseError: Error | null
-    validationError: string
-  }) => (
-    <div>
-      {parseError && <div>{parseError.message}</div>}
-      {validationError && <div>{validationError}</div>}
-    </div>
-  ),
 }))
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: '' }),
 }))
 
-describe('ValueContent', () => {
-  const createVar = (overrides: Partial<VarInInspect>): VarInInspect =>
-    ({
-      id: 'var-default',
-      name: 'query',
-      type: VarInInspectType.node,
-      value_type: VarType.string,
-      value: '',
-      ...overrides,
-    }) as VarInInspect
+const createVar = (overrides: Partial<VarInInspect> = {}): VarInInspect => ({
+  id: 'var-default',
+  name: 'query',
+  type: VarInInspectType.node,
+  value_type: VarType.string,
+  value: '',
+  description: '',
+  selector: ['node-1', 'query'],
+  edited: false,
+  visible: true,
+  is_truncated: false,
+  full_content: null,
+  ...overrides,
+})
 
+const renderValueContent = (
+  currentVar: VarInInspect,
+  handleValueChange = vi.fn(),
+  isTruncated = false,
+) =>
+  renderWorkflowComponent(
+    <ValueContent
+      currentVar={currentVar}
+      handleValueChange={handleValueChange}
+      isTruncated={isTruncated}
+    />,
+  )
+
+const setupDebounceTest = () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+  // React Testing Library detects this Jest-shaped bridge before draining its async wrapper.
+  vi.stubGlobal('jest', { advanceTimersByTime: vi.advanceTimersByTime })
+  return userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+}
+
+describe('ValueContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('should debounce text changes for string variables', async () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  it('coalesces intermediate string edits into the latest debounced value', async () => {
+    const user = setupDebounceTest()
     const handleValueChange = vi.fn()
+    renderValueContent(createVar({ id: 'var-1', value: 'hello' }), handleValueChange)
+    const input = screen.getByRole('textbox')
 
-    renderWorkflowComponent(
-      <ValueContent
-        currentVar={createVar({
-          id: 'var-1',
-          value_type: VarType.string,
-          value: 'hello',
-        })}
-        handleValueChange={handleValueChange}
-        isTruncated={false}
-      />,
-      {
-        initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
-        },
-      },
-    )
+    await user.clear(input)
+    await user.type(input, 'draft')
+    await user.clear(input)
+    await user.type(input, 'updated')
 
-    fireEvent.change(screen.getByLabelText('value-text-editor'), { target: { value: 'updated' } })
+    await vi.advanceTimersByTimeAsync(499)
+    expect(handleValueChange).not.toHaveBeenCalled()
 
-    await waitFor(() => {
-      expect(handleValueChange).toHaveBeenCalledWith('var-1', 'updated')
-    })
+    await vi.advanceTimersByTimeAsync(1)
+    expect(handleValueChange).toHaveBeenCalledExactlyOnceWith('var-1', 'updated')
   })
 
-  it('should surface parse errors from invalid json input', async () => {
-    renderWorkflowComponent(
-      <ValueContent
-        currentVar={createVar({
-          id: 'var-2',
-          name: 'payload',
-          value_type: VarType.object,
-          value: { foo: 1 },
-        })}
-        handleValueChange={vi.fn()}
-        isTruncated={false}
-      />,
-      {
-        initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
-        },
-      },
-    )
-
-    fireEvent.change(screen.getByTestId('json-editor'), { target: { value: '{' } })
-
-    await waitFor(() => {
-      expect(screen.getByText(/json/i)).toBeInTheDocument()
-    })
-  })
-
-  it('should debounce numeric changes', async () => {
+  it('does not save invalid JSON and recovers after a valid edit', async () => {
+    const user = setupDebounceTest()
     const handleValueChange = vi.fn()
-
-    renderWorkflowComponent(
-      <ValueContent
-        currentVar={createVar({
-          id: 'var-3',
-          name: 'count',
-          value_type: VarType.number,
-          value: 1,
-        })}
-        handleValueChange={handleValueChange}
-        isTruncated={false}
-      />,
-      {
-        initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
-        },
-      },
+    renderValueContent(
+      createVar({
+        id: 'var-2',
+        name: 'payload',
+        value_type: VarType.object,
+        value: { foo: 1 },
+      }),
+      handleValueChange,
     )
+    const editor = screen.getByRole('textbox', { name: 'JSON value' })
 
-    fireEvent.change(screen.getByLabelText('value-text-editor'), { target: { value: '24.5' } })
+    await user.clear(editor)
+    await user.paste('[')
+    expect(screen.getByText(/json/i)).toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(500)
+    expect(handleValueChange).not.toHaveBeenCalled()
 
-    await waitFor(() => {
-      expect(handleValueChange).toHaveBeenCalledWith('var-3', 24.5)
-    })
-    expect(handleValueChange).toHaveBeenCalledTimes(1)
+    await user.clear(editor)
+    await user.paste('{"foo":2}')
+    expect(screen.queryByText(/json/i)).not.toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(500)
+    expect(handleValueChange).toHaveBeenCalledExactlyOnceWith('var-2', { foo: 2 })
   })
 
-  it('should update boolean values', async () => {
+  it('cancels a pending numeric value while the draft is invalid, then saves recovery', async () => {
+    const user = setupDebounceTest()
     const handleValueChange = vi.fn()
-
-    renderWorkflowComponent(
-      <ValueContent
-        currentVar={createVar({
-          id: 'var-4',
-          name: 'enabled',
-          value_type: VarType.boolean,
-          value: false,
-        })}
-        handleValueChange={handleValueChange}
-        isTruncated={false}
-      />,
-      {
-        initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
-        },
-      },
+    renderValueContent(
+      createVar({ name: 'count', value_type: VarType.number, value: 1 }),
+      handleValueChange,
     )
+    const input = screen.getByRole('textbox')
 
-    fireEvent.click(screen.getByText('True'))
+    await user.clear(input)
+    await user.type(input, '12')
+    await user.clear(input)
+    await user.type(input, '-')
+    expect(input).toHaveValue('-')
+    await vi.advanceTimersByTimeAsync(500)
+    expect(handleValueChange).not.toHaveBeenCalled()
 
-    await waitFor(() => {
-      expect(handleValueChange).toHaveBeenCalledWith('var-4', true)
-    })
+    await user.type(input, '2.5')
+    await vi.advanceTimersByTimeAsync(500)
+    expect(handleValueChange).toHaveBeenCalledExactlyOnceWith('var-default', -2.5)
   })
 
-  it('should not emit changes when the content is truncated', async () => {
+  it('updates boolean values', async () => {
+    const user = userEvent.setup()
     const handleValueChange = vi.fn()
-
-    renderWorkflowComponent(
-      <ValueContent
-        currentVar={createVar({
-          id: 'var-5',
-          value_type: VarType.string,
-          value: 'hello',
-        })}
-        handleValueChange={handleValueChange}
-        isTruncated
-      />,
-      {
-        initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
-        },
-      },
+    renderValueContent(
+      createVar({ id: 'var-4', name: 'enabled', value_type: VarType.boolean, value: false }),
+      handleValueChange,
     )
 
-    fireEvent.change(screen.getByLabelText('value-text-editor'), { target: { value: 'updated' } })
-
+    await user.click(screen.getByRole('button', { name: 'True' }))
     await waitFor(() => {
-      expect(handleValueChange).not.toHaveBeenCalled()
+      expect(handleValueChange).toHaveBeenCalledExactlyOnceWith('var-4', true)
     })
   })
 
-  it('should update boolean array values', async () => {
+  it('does not emit changes when the content is truncated', async () => {
+    const user = userEvent.setup()
     const handleValueChange = vi.fn()
+    renderValueContent(createVar({ id: 'var-5', value: 'hello' }), handleValueChange, true)
 
-    renderWorkflowComponent(
-      <ValueContent
-        currentVar={createVar({
-          id: 'var-6',
-          name: 'flags',
-          value_type: VarType.arrayBoolean,
-          value: [true, false],
-        })}
-        handleValueChange={handleValueChange}
-        isTruncated={false}
-      />,
-      {
-        initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
-        },
-      },
-    )
-
-    fireEvent.click(screen.getByText('bool-array-editor'))
-
-    await waitFor(() => {
-      expect(handleValueChange).toHaveBeenCalledWith('var-6', [true, true])
-    })
+    expect(screen.getByRole('textbox')).toBeDisabled()
+    await user.type(screen.getByRole('textbox'), 'updated')
+    expect(handleValueChange).not.toHaveBeenCalled()
   })
 
-  it('should parse valid json values', async () => {
+  it('updates the selected boolean array value', async () => {
+    const user = userEvent.setup()
     const handleValueChange = vi.fn()
-
-    renderWorkflowComponent(
-      <ValueContent
-        currentVar={createVar({
-          id: 'var-7',
-          name: 'payload',
-          value_type: VarType.object,
-          value: { foo: 1 },
-        })}
-        handleValueChange={handleValueChange}
-        isTruncated={false}
-      />,
-      {
-        initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
-        },
-      },
+    renderValueContent(
+      createVar({
+        id: 'var-6',
+        name: 'flags',
+        value_type: VarType.arrayBoolean,
+        value: [true, false],
+      }),
+      handleValueChange,
     )
 
-    fireEvent.change(screen.getByTestId('json-editor'), { target: { value: '{"foo":2}' } })
-
+    await user.click(screen.getAllByRole('button', { name: 'True' })[1]!)
     await waitFor(() => {
-      expect(handleValueChange).toHaveBeenCalledWith('var-7', { foo: 2 })
+      expect(handleValueChange).toHaveBeenCalledExactlyOnceWith('var-6', [true, true])
     })
   })
 
-  it('should render LLM environment variables as read-only JSON', async () => {
+  it('renders LLM environment variables as read-only JSON', () => {
     const value = { provider: 'openai', name: 'gpt-4o', mode: 'chat' }
-
-    renderWorkflowComponent(
-      <ValueContent
-        currentVar={createVar({
-          id: 'var-llm',
-          name: 'for_summarize',
-          type: VarInInspectType.environment,
-          value_type: 'llm' as VarType,
-          value,
-        })}
-        handleValueChange={vi.fn()}
-        isTruncated={false}
-      />,
-      {
-        initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
-        },
-      },
+    renderValueContent(
+      createVar({
+        id: 'var-llm',
+        name: 'for_summarize',
+        type: VarInInspectType.environment,
+        value_type: 'llm',
+        value,
+      }),
     )
 
-    await waitFor(() => {
-      expect(screen.getByTestId('json-editor')).toHaveValue(JSON.stringify(value, null, 2))
-    })
-    expect(screen.getByTestId('json-editor')).toHaveAttribute('readonly')
+    expect(screen.getByRole('textbox', { name: 'JSON value' })).toHaveValue(
+      JSON.stringify(value, null, 2),
+    )
+    expect(screen.getByRole('textbox', { name: 'JSON value' })).toHaveAttribute('readonly')
   })
 
-  it('should update uploaded single file values and ignore pending uploads', async () => {
+  it('ignores pending single-file uploads and saves completed files', async () => {
+    const user = setupDebounceTest()
     const handleValueChange = vi.fn()
-
     renderWorkflowComponent(
       <ValueContent
         currentVar={createVar({
@@ -357,70 +247,24 @@ describe('ValueContent', () => {
         handleValueChange={handleValueChange}
         isTruncated={false}
       />,
-      {
-        initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
-        },
-      },
+      { initialStoreState: { fileUploadConfig: createFileUploadConfigFixture() } },
     )
 
-    fireEvent.click(screen.getByText('file-pending'))
+    await user.click(screen.getByRole('button', { name: 'file-pending' }))
+    await vi.advanceTimersByTimeAsync(500)
+    expect(handleValueChange).not.toHaveBeenCalled()
 
-    await waitFor(() => {
-      expect(handleValueChange).not.toHaveBeenCalled()
-    })
-
-    fireEvent.click(screen.getByText('file-uploaded'))
-
-    await waitFor(() => {
-      expect(handleValueChange).toHaveBeenCalledWith(
-        'var-8',
-        expect.objectContaining({ upload_file_id: 'file-1' }),
-      )
-    })
+    await user.click(screen.getByRole('button', { name: 'file-uploaded' }))
+    await vi.advanceTimersByTimeAsync(500)
+    expect(handleValueChange).toHaveBeenCalledExactlyOnceWith(
+      'var-8',
+      expect.objectContaining({ upload_file_id: 'file-1' }),
+    )
   })
 
-  it('should update uploaded file arrays and react to resize observer changes', async () => {
+  it('converts every completed file in an uploaded array', async () => {
+    const user = userEvent.setup()
     const handleValueChange = vi.fn()
-    const observe = vi.fn()
-    const disconnect = vi.fn()
-    const originalResizeObserver = globalThis.ResizeObserver
-    const originalClientHeight = Object.getOwnPropertyDescriptor(
-      HTMLDivElement.prototype,
-      'clientHeight',
-    )
-
-    Object.defineProperty(HTMLDivElement.prototype, 'clientHeight', {
-      configurable: true,
-      get: () => 120,
-    })
-
-    class MockResizeObserver {
-      callback: ResizeObserverCallback
-
-      constructor(callback: ResizeObserverCallback) {
-        this.callback = callback
-      }
-
-      observe = (target: Element) => {
-        observe(target)
-        this.callback(
-          [
-            {
-              borderBoxSize: [{ inlineSize: 20 }],
-            } as unknown as ResizeObserverEntry,
-          ],
-          this as unknown as ResizeObserver,
-        )
-      }
-
-      disconnect = disconnect
-    }
-
-    vi.stubGlobal('ResizeObserver', MockResizeObserver as unknown as typeof ResizeObserver)
-
     renderWorkflowComponent(
       <ValueContent
         currentVar={createVar({
@@ -433,37 +277,15 @@ describe('ValueContent', () => {
         handleValueChange={handleValueChange}
         isTruncated={false}
       />,
-      {
-        initialStoreState: {
-          fileUploadConfig: {
-            workflow_file_upload_limit: 5,
-          } as never,
-        },
-      },
+      { initialStoreState: { fileUploadConfig: createFileUploadConfigFixture() } },
     )
 
-    fireEvent.click(screen.getByText('file-array-uploaded'))
-
+    await user.click(screen.getByRole('button', { name: 'file-array-uploaded' }))
     await waitFor(() => {
-      expect(handleValueChange).toHaveBeenCalledWith(
-        'var-9',
-        expect.arrayContaining([
-          expect.objectContaining({ upload_file_id: 'file-1' }),
-          expect.objectContaining({ upload_file_id: 'file-2' }),
-        ]),
-      )
+      expect(handleValueChange).toHaveBeenCalledExactlyOnceWith('var-9', [
+        expect.objectContaining({ upload_file_id: 'file-1' }),
+        expect.objectContaining({ upload_file_id: 'file-2' }),
+      ])
     })
-
-    expect(observe).toHaveBeenCalled()
-    expect(document.querySelector('[style="height: 100px;"]')).toBeInTheDocument()
-
-    if (originalClientHeight)
-      Object.defineProperty(HTMLDivElement.prototype, 'clientHeight', originalClientHeight)
-    else delete (HTMLDivElement.prototype as { clientHeight?: number }).clientHeight
-
-    if (originalResizeObserver) vi.stubGlobal('ResizeObserver', originalResizeObserver)
-    else vi.unstubAllGlobals()
-
-    expect(disconnect).not.toHaveBeenCalled()
   })
 })

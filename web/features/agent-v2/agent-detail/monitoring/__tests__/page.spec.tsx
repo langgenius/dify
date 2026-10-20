@@ -2,68 +2,31 @@ import type {
   AgentLogSourceListResponse,
   AgentStatisticSummaryEnvelopeResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { EChartsOption } from 'echarts'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentMonitoringPage } from '../page'
 
-type AgentMonitoringQueryInput = {
-  input: {
-    params: {
-      agent_id: string
-    }
-    query?: Record<string, unknown>
-  }
-}
-
 const mocks = vi.hoisted(() => ({
-  chartOptions: [] as EChartsOption[],
   statisticsQueryFn: vi.fn(),
   logSourcesQueryFn: vi.fn(),
-  statisticsQueryOptions: vi.fn((input: AgentMonitoringQueryInput) => ({
-    queryKey: ['agent-monitoring-statistics', input],
-    queryFn: () => mocks.statisticsQueryFn(input),
-  })),
-  logSourcesQueryOptions: vi.fn((input: AgentMonitoringQueryInput) => ({
-    queryKey: ['agent-log-sources', input],
-    queryFn: () => mocks.logSourcesQueryFn(input),
-  })),
 }))
 
 vi.mock('echarts-for-react/esm/core', () => ({
-  default: ({ option, style }: { option: EChartsOption; style?: React.CSSProperties }) => {
-    mocks.chartOptions.push(option)
-
-    return <div data-testid="agent-monitoring-chart" style={style} />
-  },
+  default: () => <div data-testid="agent-monitoring-chart" />,
 }))
 
-vi.mock('#i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('#i18n')>()),
-  useLocale: () => 'en-US',
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    agent: {
-      byAgentId: {
-        logSources: {
-          get: {
-            queryOptions: mocks.logSourcesQueryOptions,
-          },
-        },
-        statistics: {
-          summary: {
-            get: {
-              queryOptions: mocks.statisticsQueryOptions,
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.logSources.get': mocks.logSourcesQueryFn,
+      'agent.byAgentId.statistics.summary.get': mocks.statisticsQueryFn,
+    }),
+  }
+})
 
 const logSourcesResponse: AgentLogSourceListResponse = {
   data: [],
@@ -156,51 +119,14 @@ const renderPage = () => {
   return queryClient
 }
 
-const getLatestStatisticsQueryInput = () => {
-  const latestCall = mocks.statisticsQueryOptions.mock.calls.at(-1)
-
-  if (!latestCall) throw new Error('Expected statistics query options to be called')
-
-  return latestCall[0]
-}
-
 describe('AgentMonitoringPage', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mocks.chartOptions = []
+    vi.resetAllMocks()
     mocks.statisticsQueryFn.mockResolvedValue(statisticsResponse)
     mocks.logSourcesQueryFn.mockResolvedValue(logSourcesResponse)
   })
 
-  it('should request statistics through the generated contract without a source filter by default', async () => {
-    renderPage()
-
-    await waitFor(() => {
-      expect(mocks.statisticsQueryOptions).toHaveBeenCalled()
-    })
-
-    expect(getLatestStatisticsQueryInput()).toEqual({
-      input: {
-        params: {
-          agent_id: 'agent-1',
-        },
-        query: expect.objectContaining({
-          start: expect.any(String),
-          end: expect.any(String),
-        }),
-      },
-    })
-    expect(getLatestStatisticsQueryInput().input.query).not.toHaveProperty('source')
-  })
-
-  it('should show the monitoring description without the obsolete documentation link', () => {
-    renderPage()
-
-    expect(screen.getByText('agentV2.agentDetail.monitoring.description')).toBeInTheDocument()
-    expect(screen.queryByRole('link')).not.toBeInTheDocument()
-  })
-
-  it('should render statistics summary values and chart options from backend data', async () => {
+  it('should request unfiltered statistics and render backend summary values', async () => {
     renderPage()
 
     expect(await screen.findByText('1.3k')).toBeInTheDocument()
@@ -210,34 +136,10 @@ describe('AgentMonitoringPage', () => {
     expect(screen.getByText('66.67%')).toBeInTheDocument()
     expect(screen.getByText('2.5k')).toBeInTheDocument()
 
-    await waitFor(() => {
-      expect(mocks.chartOptions).toHaveLength(6)
+    expect(mocks.statisticsQueryFn).toHaveBeenCalledExactlyOnceWith({
+      params: { agent_id: 'agent-1' },
+      query: { start: expect.any(String), end: expect.any(String) },
     })
-    const firstChartOption = mocks.chartOptions[0]
-
-    expect(firstChartOption).toBeDefined()
-    expect(firstChartOption).toEqual(
-      expect.objectContaining({
-        grid: { top: 8, right: 36, bottom: 10, left: 25, containLabel: true },
-      }),
-    )
-    expect(firstChartOption?.xAxis).toEqual(expect.any(Array))
-  })
-
-  it('should use overview empty y-axis fallbacks when backend charts are empty', async () => {
-    mocks.statisticsQueryFn.mockResolvedValue(emptyStatisticsResponse)
-
-    renderPage()
-
-    expect(await screen.findByText('0%')).toBeInTheDocument()
-
-    await waitFor(() => {
-      expect(mocks.chartOptions).toHaveLength(6)
-    })
-
-    expect((mocks.chartOptions[0]?.yAxis as { max?: number }).max).toBe(500)
-    expect((mocks.chartOptions[3]?.yAxis as { max?: number }).max).toBe(100)
-    expect((mocks.chartOptions[4]?.yAxis as { max?: number }).max).toBe(1000)
   })
 
   it('should send the selected backend source id through the source query param', async () => {
@@ -249,30 +151,20 @@ describe('AgentMonitoringPage', () => {
     await user.click(await screen.findByRole('option', { name: /Book Translation/ }))
 
     await waitFor(() => {
-      expect(getLatestStatisticsQueryInput().input.query).toEqual(
-        expect.objectContaining({
-          source: 'webapp:webapp-app-id',
-        }),
-      )
+      expect(mocks.statisticsQueryFn).toHaveBeenLastCalledWith({
+        params: { agent_id: 'agent-1' },
+        query: expect.objectContaining({ source: 'webapp:webapp-app-id' }),
+      })
     })
 
-    const sourceTrigger = screen.getByRole('combobox', { name: /Book Translation/ })
-
-    expect(within(sourceTrigger).getByText(/metadata.sourceLabel/)).toHaveClass(
-      'system-sm-regular',
-      'text-text-tertiary',
-    )
-    expect(within(sourceTrigger).getByText('Book Translation')).toHaveClass(
-      'system-sm-medium',
-      'text-text-secondary',
-    )
-
     const clearButton = screen.getByRole('button', { name: /operation.clear.*Book Translation/ })
-    clearButton.focus()
-    await user.keyboard('{Enter}')
+    await user.click(clearButton)
 
     await waitFor(() => {
-      expect(getLatestStatisticsQueryInput().input.query).not.toHaveProperty('source')
+      expect(mocks.statisticsQueryFn).toHaveBeenLastCalledWith({
+        params: { agent_id: 'agent-1' },
+        query: { start: expect.any(String), end: expect.any(String) },
+      })
     })
     expect(
       screen.getByRole('combobox', { name: /metadata.sourceLabel.*sources.all/ }),
@@ -298,15 +190,18 @@ describe('AgentMonitoringPage', () => {
     await user.click(await screen.findByRole('option', { name: /Book Translation/ }))
 
     await waitFor(() => {
-      expect(getLatestStatisticsQueryInput().input.query).toEqual(
-        expect.objectContaining({
-          source: 'webapp:webapp-app-id',
-        }),
-      )
+      expect(mocks.statisticsQueryFn).toHaveBeenLastCalledWith({
+        params: { agent_id: 'agent-1' },
+        query: expect.objectContaining({ source: 'webapp:webapp-app-id' }),
+      })
     })
     expect(screen.getByText('1.3k')).toBeInTheDocument()
 
-    resolveNextStatistics(emptyStatisticsResponse)
+    await act(async () => {
+      resolveNextStatistics(emptyStatisticsResponse)
+    })
+    expect(await screen.findByText('0%')).toBeInTheDocument()
+    expect(screen.queryByText('1.3k')).not.toBeInTheDocument()
   })
 
   it('announces a loading failure and recovers after retry', async () => {

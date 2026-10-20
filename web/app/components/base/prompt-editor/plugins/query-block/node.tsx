@@ -7,8 +7,8 @@ export class QueryBlockNode extends DecoratorNode<React.JSX.Element> {
     return 'query-block'
   }
 
-  static override clone(): QueryBlockNode {
-    return new QueryBlockNode()
+  static override clone(node: QueryBlockNode): QueryBlockNode {
+    return new QueryBlockNode(node.__key)
   }
 
   override isInline(): boolean {

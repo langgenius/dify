@@ -6,10 +6,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -100,7 +100,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
               ? t(($) => $['apiBasedExtension.modal.editTitle'], { ns: 'common' })
               : t(($) => $['apiBasedExtension.modal.title'], { ns: 'common' })}
           </DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <Form<ApiBasedExtensionPayload> className="contents" onFormSubmit={handleSubmit}>
           <DialogBody className="grid gap-4">

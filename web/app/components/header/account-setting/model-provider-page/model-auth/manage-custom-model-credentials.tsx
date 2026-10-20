@@ -1,3 +1,4 @@
+import type { ComponentPropsWithRef } from 'react'
 import type {
   CustomConfigurationModelFixedFields,
   ModelProvider,
@@ -30,9 +31,10 @@ const ManageCustomModelCredentials = ({
   const noModels = !customModels.length
 
   const renderTrigger = useCallback(
-    (open?: boolean) => {
+    (open: boolean, triggerProps: ComponentPropsWithRef<'button'>) => {
       const Item = (
         <Button
+          {...triggerProps}
           variant="ghost"
           size="small"
           className={cn('mr-0.5 text-text-tertiary', open && 'bg-components-button-ghost-bg-hover')}

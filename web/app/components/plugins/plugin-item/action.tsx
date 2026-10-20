@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
@@ -23,8 +24,7 @@ import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { checkForUpdates, fetchReleases } from '../install-plugin/hooks'
-import PluginInfo from '../plugin-page/plugin-info'
-import { PluginSource } from '../types'
+import PluginInfoContent from '../plugin-page/plugin-info'
 
 const i18nPrefix = 'action'
 
@@ -73,7 +73,6 @@ const Action: FC<Props> = ({
           invalidateInstalledPluginList(category)
         },
         payload: {
-          type: PluginSource.github,
           category,
           github: {
             originalPackageInfo: {
@@ -169,14 +168,20 @@ const Action: FC<Props> = ({
         </Tooltip>
       )}
 
-      {isShowPluginInfo && (
-        <PluginInfo
-          repository={meta!.repo}
-          release={meta!.version}
-          packageName={meta!.package}
-          onHide={hidePluginInfo}
-        />
-      )}
+      <Dialog
+        open={isShowPluginInfo}
+        onOpenChange={(open) => {
+          if (!open) hidePluginInfo()
+        }}
+      >
+        <DialogContent className="w-120">
+          <PluginInfoContent
+            repository={meta?.repo}
+            release={meta?.version}
+            packageName={meta?.package}
+          />
+        </DialogContent>
+      </Dialog>
       <AlertDialog open={isShowDeleteConfirm} onOpenChange={(open) => !open && hideDeleteConfirm()}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <AlertDialogHeader>

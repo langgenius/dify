@@ -54,11 +54,13 @@ const render = (ui: ReactElement) =>
 describe('AmplitudeIdentitySync', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    window.sessionStorage.clear()
+    window.sessionStorage.removeItem(REGISTRATION_SUCCESS_STORAGE_KEY)
     vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
       '11111111-1111-4111-8111-111111111111',
     )
   })
+
+  afterEach(() => vi.restoreAllMocks())
 
   it('sets identity before flushing a marker that already exists', async () => {
     rememberRegistrationSuccess({ method: 'oauth' })
@@ -67,7 +69,15 @@ describe('AmplitudeIdentitySync', () => {
 
     await waitFor(() => expect(mockTrackEvent).toHaveBeenCalledTimes(1))
     expect(mockSetUserId).toHaveBeenCalledWith('person@example.com')
-    expect(mockSetUserProperties).toHaveBeenCalledTimes(1)
+    expect(mockSetUserProperties).toHaveBeenCalledExactlyOnceWith({
+      email: 'person@example.com',
+      name: 'Person',
+      has_password: true,
+      workspace_id: 'workspace-id',
+      workspace_name: 'Workspace',
+      workspace_plan: 'professional',
+      workspace_role: 'owner',
+    })
     expect(mockSetUserId.mock.invocationCallOrder[0]).toBeLessThan(
       mockTrackEvent.mock.invocationCallOrder[0]!,
     )

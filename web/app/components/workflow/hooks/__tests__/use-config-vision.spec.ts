@@ -13,8 +13,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
     mockUseTextGenerationCurrentProviderAndModelAndModelList(...args),
 }))
 
-vi.mock('../use-workflow', () => ({}))
-
 const createModel = (overrides: Partial<ModelConfig> = {}): ModelConfig => ({
   provider: 'openai',
   name: 'gpt-4o',

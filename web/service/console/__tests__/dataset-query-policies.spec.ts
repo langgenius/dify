@@ -26,7 +26,7 @@ describe('dataset query policies', () => {
     expect(retryDetail(3, error)).toBe(false)
   })
 
-  it('reads process rules once per import', () => {
+  it('does not refetch process rules on window focus', () => {
     const options = consoleQuery.datasets.processRule.get.queryOptions({ input: { query: {} } })
     expect('refetchOnWindowFocus' in options ? options.refetchOnWindowFocus : undefined).toBe(false)
   })

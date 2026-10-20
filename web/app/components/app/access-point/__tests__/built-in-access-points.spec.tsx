@@ -3,8 +3,7 @@ import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
-import { createQueryClientWrapper } from '@/test/console/query-client'
-import { render as renderWithConsole } from '@/test/console/render'
+import { renderWithConsoleQuery as renderWithConsole } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { BuiltInAccessPoints } from '../built-in-access-points'
@@ -29,23 +28,24 @@ const mocks = vi.hoisted(() => ({
   useAppWorkflow: vi.fn(),
 }))
 
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock()
-})
-
 vi.mock('@/features/system-features/client', () => ({
   systemFeaturesQueryOptions: () => ({ queryKey: ['system-features'] }),
 }))
 
 function render(ui: ReactElement) {
   const queryClient = createTestQueryClient()
-  queryClient.setQueryData(['system-features'], { webapp_auth: { enabled: true } })
+  queryClient.setQueryData(['system-features'], {
+    webapp_auth: { enabled: true },
+    rbac_enabled: true,
+  })
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
     createAppDetailFixture({ ...mocks.appInfo, mode: mocks.appInfo.mode as AppMode }),
   )
-  return renderWithConsole(ui, { wrapper: createQueryClientWrapper(queryClient) })
+  return renderWithConsole(ui, {
+    queryClient,
+    currentWorkspace: { id: 'workspace-1', role: 'owner' },
+  })
 }
 
 vi.mock('@/context/i18n', () => ({
@@ -114,6 +114,7 @@ describe('BuiltInAccessPoints', () => {
   it('renders the unpublished state across all access point cards', () => {
     render(
       <BuiltInAccessPoints
+        canViewLayout
         appId="app-1"
         canDeploy
         canManageAccessPoint={false}
@@ -151,6 +152,7 @@ describe('BuiltInAccessPoints', () => {
 
     render(
       <BuiltInAccessPoints
+        canViewLayout
         appId="app-1"
         canDeploy
         canManageAccessPoint={false}
@@ -172,9 +174,82 @@ describe('BuiltInAccessPoints', () => {
     )
   })
 
+  it('keeps an unpublished Chatflow unavailable without showing a Trigger card', () => {
+    mocks.appInfo = {
+      ...mocks.appInfo,
+      mode: 'advanced-chat',
+      enable_site: true,
+      enable_api: true,
+    }
+    render(
+      <BuiltInAccessPoints
+        canViewLayout
+        appId="app-1"
+        canDeploy
+        canManageAccessPoint
+        canReleaseAndVersion
+      />,
+    )
+
+    expect(screen.getByText('deployments.studio.accessPoint.noPublishedTitle')).toBeInTheDocument()
+    expect(mocks.webCard).toHaveBeenCalledWith(
+      expect.objectContaining({ availability: 'unavailable' }),
+    )
+    expect(mocks.apiCard).toHaveBeenCalledWith(
+      expect.objectContaining({ availability: 'unavailable' }),
+    )
+    expect(mocks.mcpCard).toHaveBeenCalledWith(
+      expect.objectContaining({ availability: 'unavailable' }),
+    )
+    expect(mocks.triggerCard).not.toHaveBeenCalled()
+    expect(mocks.useAppWorkflow).toHaveBeenCalledWith('app-1', expect.any(Object))
+  })
+
+  it.each([
+    ['loading', { data: null, isError: false, isPending: true }, 'loading'],
+    ['failed', { data: null, isError: true, isPending: false }, 'unavailable'],
+    [
+      'published',
+      {
+        data: { graph: { nodes: [{ data: { type: 'start' } }] } },
+        isError: false,
+        isPending: false,
+      },
+      'available',
+    ],
+  ] as const)(
+    'shows Chatflow access points as %s while published workflow is %s',
+    (_state, workflow, availability) => {
+      mocks.appInfo = {
+        ...mocks.appInfo,
+        mode: 'advanced-chat',
+        enable_site: true,
+        enable_api: true,
+      }
+      mocks.workflow = workflow
+      render(
+        <BuiltInAccessPoints
+          canViewLayout
+          appId="app-1"
+          canDeploy
+          canManageAccessPoint
+          canReleaseAndVersion
+        />,
+      )
+
+      expect(mocks.webCard).toHaveBeenCalledWith(expect.objectContaining({ availability }))
+      expect(mocks.apiCard).toHaveBeenCalledWith(expect.objectContaining({ availability }))
+      expect(mocks.triggerCard).not.toHaveBeenCalled()
+      expect(
+        screen.queryByText('deployments.studio.accessPoint.noPublishedTitle'),
+      ).not.toBeInTheDocument()
+    },
+  )
+
   it('uses Access Point management for every requested built-in operation', () => {
     render(
       <BuiltInAccessPoints
+        canViewLayout
         appId="app-1"
         canDeploy
         canManageAccessPoint
@@ -194,23 +269,6 @@ describe('BuiltInAccessPoints', () => {
     )
   })
 
-  it('highlights only the targeted built-in access point card', () => {
-    render(
-      <BuiltInAccessPoints
-        appId="app-1"
-        canDeploy
-        canManageAccessPoint
-        canReleaseAndVersion
-        highlightedAccessPoint="mcp"
-      />,
-    )
-
-    expect(mocks.webCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
-    expect(mocks.apiCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
-    expect(mocks.mcpCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: true }))
-    expect(mocks.triggerCard).toHaveBeenCalledWith(expect.objectContaining({ highlighted: false }))
-  })
-
   it('enables Trigger and disables the other access points in trigger mode', () => {
     mocks.workflow = {
       data: {
@@ -223,7 +281,13 @@ describe('BuiltInAccessPoints', () => {
     }
 
     render(
-      <BuiltInAccessPoints appId="app-1" canDeploy canManageAccessPoint canReleaseAndVersion />,
+      <BuiltInAccessPoints
+        canViewLayout
+        appId="app-1"
+        canDeploy
+        canManageAccessPoint
+        canReleaseAndVersion
+      />,
     )
 
     expect(mocks.webCard).toHaveBeenCalledWith(
@@ -233,7 +297,7 @@ describe('BuiltInAccessPoints', () => {
       expect.objectContaining({ availability: 'unavailable' }),
     )
     expect(mocks.mcpCard).toHaveBeenCalledWith(
-      expect.objectContaining({ triggerModeDisabled: true }),
+      expect.objectContaining({ availability: 'unavailable' }),
     )
     expect(mocks.triggerCard).toHaveBeenCalledWith(
       expect.objectContaining({ availability: 'available' }),
@@ -251,7 +315,13 @@ describe('BuiltInAccessPoints', () => {
     }
 
     render(
-      <BuiltInAccessPoints appId="app-1" canDeploy canManageAccessPoint canReleaseAndVersion />,
+      <BuiltInAccessPoints
+        canViewLayout
+        appId="app-1"
+        canDeploy
+        canManageAccessPoint
+        canReleaseAndVersion
+      />,
     )
 
     expect(mocks.webCard).toHaveBeenCalledWith(expect.objectContaining({ availability: 'loading' }))
@@ -269,7 +339,13 @@ describe('BuiltInAccessPoints', () => {
     }
 
     render(
-      <BuiltInAccessPoints appId="app-1" canDeploy canManageAccessPoint canReleaseAndVersion />,
+      <BuiltInAccessPoints
+        canViewLayout
+        appId="app-1"
+        canDeploy
+        canManageAccessPoint
+        canReleaseAndVersion
+      />,
     )
 
     expect(
@@ -279,7 +355,13 @@ describe('BuiltInAccessPoints', () => {
 
   it('does not retry forbidden published workflow requests', () => {
     render(
-      <BuiltInAccessPoints appId="app-1" canDeploy canManageAccessPoint canReleaseAndVersion />,
+      <BuiltInAccessPoints
+        canViewLayout
+        appId="app-1"
+        canDeploy
+        canManageAccessPoint
+        canReleaseAndVersion
+      />,
     )
 
     const options = mocks.useAppWorkflow.mock.calls.at(-1)?.[1] as {

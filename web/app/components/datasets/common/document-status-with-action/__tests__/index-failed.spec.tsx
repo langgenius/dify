@@ -1,5 +1,6 @@
 import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import RetryButton from '../index-failed'
@@ -48,7 +49,7 @@ describe('RetryButton', () => {
     expect(container.firstChild).toBeNull()
     expect(getErrorDocs).toHaveBeenCalledWith({ params: { dataset_id: 'dataset-1' } })
     await act(async () => response.resolve(errors))
-    expect(await screen.findByText(/retry/i)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'dataset.retry' })).toBeInTheDocument()
     expect(screen.getByText(/2/)).toBeInTheDocument()
   })
   it('renders nothing when the response contains no failures', async () => {
@@ -58,9 +59,10 @@ describe('RetryButton', () => {
     expect(container.firstChild).toBeNull()
   })
   it('retries the failed documents and refreshes their status', async () => {
+    const user = userEvent.setup()
     getErrorDocs.mockResolvedValueOnce(errors).mockResolvedValue({ total: 0, data: [] })
     render(<RetryButton datasetId="dataset-1" />)
-    fireEvent.click(await screen.findByText(/retry/i))
+    await user.click(await screen.findByRole('button', { name: 'dataset.retry' }))
     await waitFor(() =>
       expect(retryErrorDocs).toHaveBeenCalledWith({
         datasetId: 'dataset-1',
@@ -68,32 +70,38 @@ describe('RetryButton', () => {
       }),
     )
     await waitFor(() => expect(getErrorDocs).toHaveBeenCalledTimes(2))
-    await waitFor(() => expect(screen.queryByText(/retry/i)).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'dataset.retry' })).not.toBeInTheDocument(),
+    )
   })
   it('ignores repeated clicks while retrying', async () => {
+    const user = userEvent.setup()
     const response = createDeferred<{ result: 'success' }>()
     retryErrorDocs.mockReturnValue(response.promise)
     render(<RetryButton datasetId="dataset-1" />)
-    fireEvent.click(await screen.findByText(/retry/i))
-    expect(screen.getByText(/retry/i)).toHaveClass('cursor-not-allowed')
-    fireEvent.click(screen.getByText(/retry/i))
+    await user.click(await screen.findByRole('button', { name: 'dataset.retry' }))
+    expect(screen.getByRole('button', { name: 'dataset.retry' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'dataset.retry' }))
     expect(retryErrorDocs).toHaveBeenCalledTimes(1)
     await act(async () => response.resolve({ result: 'success' }))
     await waitFor(() => expect(getErrorDocs).toHaveBeenCalledTimes(2))
   })
   it('keeps retry available after failure without refreshing history', async () => {
+    const user = userEvent.setup()
     retryErrorDocs.mockRejectedValueOnce(new Error('Retry failed'))
     render(<RetryButton datasetId="dataset-1" />)
-    fireEvent.click(await screen.findByText(/retry/i))
-    await waitFor(() => expect(screen.getByText(/retry/i)).not.toHaveClass('cursor-not-allowed'))
+    await user.click(await screen.findByRole('button', { name: 'dataset.retry' }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'dataset.retry' })).not.toBeDisabled(),
+    )
     expect(getErrorDocs).toHaveBeenCalledTimes(1)
-    fireEvent.click(screen.getByText(/retry/i))
+    await user.click(screen.getByRole('button', { name: 'dataset.retry' }))
     await waitFor(() => expect(retryErrorDocs).toHaveBeenCalledTimes(2))
   })
   it('shows retry when the status request fails', async () => {
     getErrorDocs.mockRejectedValue(new Error('Unavailable'))
     render(<RetryButton datasetId="dataset-1" />)
-    expect(await screen.findByText(/retry/i)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'dataset.retry' })).toBeInTheDocument()
   })
   it('does not fetch without a dataset ID', () => {
     render(<RetryButton datasetId="" />)

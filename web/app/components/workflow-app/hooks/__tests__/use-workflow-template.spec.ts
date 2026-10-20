@@ -14,10 +14,6 @@ const renderTemplateHook = (mode: AppMode) => {
 }
 
 describe('useWorkflowTemplate', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should return only the start placeholder template in workflow mode', () => {
     const { result } = renderTemplateHook('workflow')
 

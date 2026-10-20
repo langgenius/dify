@@ -1,5 +1,6 @@
 'use client'
 
+import type { ComponentPropsWithRef } from 'react'
 import type { ToolSettingTarget } from '../types'
 import type {
   AgentProviderTool,
@@ -87,8 +88,9 @@ function UnauthorizedCredentialStatus({
     [credentials, onCredentialChange, tool.credentialType],
   )
   const renderTrigger = useCallback(
-    (open?: boolean) => (
+    (open: boolean, triggerProps: ComponentPropsWithRef<'button'>) => (
       <Button
+        {...triggerProps}
         variant="secondary"
         size="small"
         className={cn('shrink-0', open && 'bg-components-button-secondary-bg-hover')}

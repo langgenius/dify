@@ -4,11 +4,16 @@ import * as React from 'react'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { createTestWorkflowStore } from '../../__tests__/workflow-test-env'
+import { WorkflowContext } from '../../context'
 import { BlockSelectorPanels } from '../tabs'
 import { TabType } from '../types'
 
 const render = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { enable_marketplace: true } })
+  renderWithConsoleQuery(
+    <WorkflowContext.Provider value={createTestWorkflowStore()}>{ui}</WorkflowContext.Provider>,
+    { systemFeatures: { enable_marketplace: true } },
+  )
 
 const { mockToolsState } = vi.hoisted(() => ({
   mockToolsState: {
@@ -42,14 +47,9 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('@/utils/var', () => ({
+vi.mock('@/utils/var', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/var')>()),
   basePath: '/console',
-}))
-
-vi.mock('../../store', () => ({
-  useWorkflowStore: () => ({
-    setState: vi.fn(),
-  }),
 }))
 
 vi.mock('../all-start-blocks', () => ({

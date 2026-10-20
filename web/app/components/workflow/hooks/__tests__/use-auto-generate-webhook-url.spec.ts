@@ -43,7 +43,7 @@ describe('useAutoGenerateWebhookUrl', () => {
     renderWorkflowFlowHook(
       () => ({
         autoGenerateWebhookUrl: useAutoGenerateWebhookUrl(),
-        nodes: useNodes<WebhookFlowNode>(),
+        nodes: useNodes<WebhookFlowNode['data']>(),
       }),
       {
         resource: { kind: 'app', appId: 'app-123', mode: 'workflow' },
@@ -174,7 +174,7 @@ describe('useAutoGenerateWebhookUrl', () => {
     expect(mockRequest).not.toHaveBeenCalled()
   })
 
-  it('should handle API errors gracefully', async () => {
+  it('leaves failed URL generation retryable', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     mockRequest.mockRejectedValue(new Error('network error'))
 
@@ -192,6 +192,16 @@ describe('useAutoGenerateWebhookUrl', () => {
       | WebhookFlowNode
       | undefined
     expect(webhookNode?.data.webhook_url).toBe('')
+    mockRequest.mockResolvedValue({
+      webhook_url: 'https://example.com/retry',
+      webhook_debug_url: 'https://example.com/debug',
+    })
+    await act(async () => {
+      await result.current.autoGenerateWebhookUrl('webhook-1')
+    })
+    expect(result.current.nodes.find((node) => node.id === 'webhook-1')?.data.webhook_url).toBe(
+      'https://example.com/retry',
+    )
     consoleSpy.mockRestore()
   })
 })

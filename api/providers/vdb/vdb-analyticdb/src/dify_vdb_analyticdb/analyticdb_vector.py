@@ -97,7 +97,7 @@ class AnalyticdbVectorFactory(AbstractVectorFactory):
                 account=dify_config.ANALYTICDB_ACCOUNT or "",
                 account_password=dify_config.ANALYTICDB_PASSWORD or "",
                 namespace=dify_config.ANALYTICDB_NAMESPACE or "",
-                namespace_password=dify_config.ANALYTICDB_NAMESPACE_PASSWORD,
+                namespace_password=dify_config.ANALYTICDB_NAMESPACE_PASSWORD or "",
             )
             sql_config = None
         else:

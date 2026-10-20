@@ -1,29 +1,21 @@
 import type { StartNodeType } from '../types'
 import type { InputVar, ValueSelector } from '@/app/components/workflow/types'
 import { act } from '@testing-library/react'
-import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { renderWorkflowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, ChangeType, InputVarType } from '@/app/components/workflow/types'
-import { withSelectorKey } from '@/test/i18n-mock'
 import useConfig from '../use-config'
 
-const mockUseTranslation = vi.hoisted(() => vi.fn())
-const mockUseNodesReadOnly = vi.hoisted(() => vi.fn())
 const mockUseWorkflow = vi.hoisted(() => vi.fn())
 let chatflowMode = false
 const mockUseNodeCrud = vi.hoisted(() => vi.fn())
 const mockUseInspectVarsCrud = vi.hoisted(() => vi.fn())
 const mockNotify = vi.hoisted(() => vi.fn())
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => mockUseTranslation(),
-}))
-
 vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
 
   return {
     ...actual,
-    useNodesReadOnly: () => mockUseNodesReadOnly(),
     useWorkflow: () => mockUseWorkflow(),
   }
 })
@@ -84,10 +76,6 @@ describe('start/use-config', () => {
     vi.clearAllMocks()
     currentInputs = createPayload()
 
-    mockUseTranslation.mockReturnValue({
-      t: withSelectorKey((key: string) => key),
-    })
-    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false })
     mockUseWorkflow.mockReturnValue({
       handleOutVarRenameChange: mockHandleOutVarRenameChange,
       isVarUsedInNodes: mockIsVarUsedInNodes,
@@ -175,7 +163,7 @@ describe('start/use-config', () => {
       })
     })
 
-    expect(mockDeleteInspectVar).toHaveBeenCalledWith('start-node', 'inspect-query')
+    expect(mockDeleteInspectVar).not.toHaveBeenCalled()
     expect(mockSetInputs).not.toHaveBeenCalled()
     expect(result.current.isShowRemoveVarConfirm).toBe(true)
 
@@ -188,8 +176,25 @@ describe('start/use-config', () => {
         variables: [expect.objectContaining({ variable: 'age' })],
       }),
     )
+    expect(mockDeleteInspectVar).toHaveBeenCalledExactlyOnceWith('start-node', 'inspect-query')
     expect(mockRemoveUsedVarInNodes).toHaveBeenCalledWith(['start-node', 'query'] as ValueSelector)
     expect(result.current.isShowRemoveVarConfirm).toBe(false)
+  })
+
+  it('keeps the variable and inspector value when removal is cancelled', () => {
+    mockIsVarUsedInNodes.mockReturnValue(true)
+    const { result } = renderHook(() => useConfig('start-node', currentInputs))
+    act(() =>
+      result.current.handleVarListChange([currentInputs.variables[1]!], {
+        index: 0,
+        payload: { type: ChangeType.remove, payload: { beforeKey: 'query' } },
+      }),
+    )
+    act(() => result.current.hideRemoveVarConfirm())
+    expect(result.current.isShowRemoveVarConfirm).toBe(false)
+    expect(mockSetInputs).not.toHaveBeenCalled()
+    expect(mockDeleteInspectVar).not.toHaveBeenCalled()
+    expect(mockRemoveUsedVarInNodes).not.toHaveBeenCalled()
   })
 
   it('should validate duplicate variables and labels before adding a new variable', () => {
@@ -211,7 +216,7 @@ describe('start/use-config', () => {
     expect(toastSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'error',
-        message: 'varKeyError.keyAlreadyExists',
+        message: expect.stringContaining('varKeyError.keyAlreadyExists'),
       }),
     )
 
@@ -274,7 +279,7 @@ describe('start/use-config', () => {
     expect(toastSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'error',
-        message: 'varKeyError.keyAlreadyExists',
+        message: expect.stringContaining('varKeyError.keyAlreadyExists'),
       }),
     )
   })

@@ -27,20 +27,24 @@ const appApiKeys = {
   ],
 }
 
-const render = (ui: ReactElement) => {
+const render = (ui: ReactElement, seedKeys = true) => {
   const queryClient = createConsoleQueryClient()
-  queryClient.setQueryData(
-    consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
-      input: { params: { resource_id: 'app-1' } },
-    }),
-    appApiKeys,
-  )
+  if (seedKeys)
+    queryClient.setQueryData(
+      consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
+        input: { params: { resource_id: 'app-1' } },
+      }),
+      appApiKeys,
+    )
   return renderWithConsoleQuery(ui, { queryClient })
 }
+
+const request = vi.hoisted(() => vi.fn())
 
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: {
     call: async (path: string[]) => {
+      request(path)
       if (path.join('.') === 'apps.byResourceId.apiKeys.get') return appApiKeys
       if (path.join('.') === 'enterprise.appDeploy.accessService.listEnvironmentApiKeys')
         return { data: [{ id: 'environment-key', token: 'env-secret-0001', created_at: 1 }] }
@@ -91,12 +95,14 @@ describe('ApiSecretKeyButton', () => {
   })
 
   it('does not request API keys without management permission', () => {
-    render(<ApiSecretKeyButton appId="app-1" canManage={false} />)
+    request.mockClear()
+    render(<ApiSecretKeyButton appId="app-1" canManage={false} />, false)
 
     expect(
       screen.getByRole('button', {
         name: 'appApi.apiKeyModal.apiSecretKey 0',
       }),
     ).toBeDisabled()
+    expect(request).not.toHaveBeenCalled()
   })
 })

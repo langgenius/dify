@@ -6,9 +6,9 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -82,7 +82,7 @@ export function ChunkDetailDialog({ payload, open, onOpenChange }: ChunkDetailDi
           <DialogTitle>
             {t(($) => $[`${i18nPrefix}chunkDetail`], { ns: 'datasetHitTesting' })}
           </DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
 
         <DialogBody className="flex flex-col gap-6 lg:flex-row">
