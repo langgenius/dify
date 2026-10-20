@@ -13,6 +13,7 @@ from models.account import Account, Tenant, TenantAccountRole
 from models.model import App, AppMode
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
 from services.account.console_tokens import issue_console_access_token
+from services.account_errors import InvalidConsoleAccessTokenError
 from services.workflow_collaboration_service import SYNC_REQUEST_TIMEOUT_SECONDS, WorkflowCollaborationService
 from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.model_factories import make_account, make_app
@@ -126,7 +127,7 @@ class TestWorkflowCollaborationService:
     ) -> None:
         service, _repository, socketio = real_service
 
-        with pytest.raises(ValueError):
+        with pytest.raises(InvalidConsoleAccessTokenError):
             service.authenticate_socket(f"invalid.{socket_token}", "sid-1")
 
         socketio.save_session.assert_not_called()
