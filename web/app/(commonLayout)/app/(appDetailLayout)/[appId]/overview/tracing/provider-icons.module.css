@@ -1,0 +1,84 @@
+@reference "../../../../../../styles/globals.css";
+
+/* Keep layout utilities in control of each logo's rendered dimensions. */
+@layer components {
+  .arize {
+    @apply i-custom-public-tracing-arize-icon;
+  }
+
+  .arizeBig {
+    @apply i-custom-public-tracing-arize-icon-big;
+  }
+
+  .phoenix {
+    @apply i-custom-public-tracing-phoenix-icon;
+  }
+
+  .phoenixBig {
+    @apply i-custom-public-tracing-phoenix-icon-big;
+  }
+
+  .langsmith {
+    @apply i-custom-public-tracing-langsmith-icon;
+  }
+
+  .langsmithBig {
+    @apply i-custom-public-tracing-langsmith-icon-big;
+  }
+
+  .langfuse {
+    @apply i-custom-public-tracing-langfuse-icon;
+  }
+
+  .langfuseBig {
+    @apply i-custom-public-tracing-langfuse-icon-big;
+  }
+
+  .opik {
+    @apply i-custom-public-tracing-opik-icon;
+  }
+
+  .opikBig {
+    @apply i-custom-public-tracing-opik-icon-big;
+  }
+
+  .weave {
+    @apply i-custom-public-tracing-weave-icon;
+  }
+
+  .weaveBig {
+    @apply i-custom-public-tracing-weave-icon-big;
+  }
+
+  .aliyun {
+    @apply i-custom-public-tracing-aliyun-icon;
+  }
+
+  .aliyunBig {
+    @apply i-custom-public-tracing-aliyun-icon-big;
+  }
+
+  .mlflow {
+    @apply i-custom-public-tracing-mlflow-icon;
+  }
+
+  .mlflowBig {
+    @apply i-custom-public-tracing-mlflow-icon-big;
+  }
+
+  .databricks {
+    @apply i-custom-public-tracing-databricks-icon;
+  }
+
+  .databricksBig {
+    @apply i-custom-public-tracing-databricks-icon-big;
+  }
+
+  .tencent {
+    @apply i-custom-public-tracing-tencent-icon;
+  }
+
+  .tencentBig {
+    @apply i-custom-public-tracing-tencent-icon-big;
+  }
+}
