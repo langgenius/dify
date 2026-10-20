@@ -72,7 +72,7 @@ class ReleaseCheckApi(Resource):
         issues = check_graph(
             draft.graph,
             mode=mode,
-            resources=credential_check(ctx.workspace.id, environment, ctx.session),
+            resources=credential_check(ctx.workspace.id, environment, application_services().credential_queries),
         )
         runs = (
             application_services()

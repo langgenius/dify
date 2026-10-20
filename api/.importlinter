@@ -32,16 +32,12 @@ layers =
 # error makes this list shrink whenever a legacy dependency is removed.
 unmatched_ignore_imports_alerting = error
 ignore_imports =
-    core.app.apps.advanced_chat.app_runner -> extensions.workflow_warm_shutdown
-    core.app.apps.workflow.app_runner -> extensions.workflow_warm_shutdown
     core.app.app_config.easy_ui_based_app.dataset.manager -> services.knowledge.dataset_service
     core.app.apps.advanced_chat.app_generator -> controllers.console.app.workflow
     core.app.apps.advanced_chat.app_generator -> services.conversation_service
     core.app.apps.advanced_chat.app_generator -> services.errors.conversation
     core.app.apps.advanced_chat.app_generator -> services.workflow_draft_variable_service
-    core.app.apps.advanced_chat.app_runner -> services.conversation_variable_updater
-    core.app.apps.advanced_chat.app_runner -> services.workflow.execution.adapters.node_factory
-    core.app.apps.advanced_chat.app_runner -> services.workflow.execution.adapters.workflow_entry
+    core.app.apps.advanced_chat.app_runner -> services.workflow.execution.adapters.chatflow.app_runner
     core.app.apps.agent_app.app_generator -> services.agent.composer_service
     core.app.apps.agent_app.app_generator -> services.agent.workspace_service
     core.app.apps.agent_app.app_generator -> services.conversation_service
@@ -65,23 +61,14 @@ ignore_imports =
     core.app.apps.pipeline.pipeline_generator -> services.data_source.provider_service
     core.app.apps.pipeline.pipeline_generator -> services.feature_service
     core.app.apps.pipeline.pipeline_generator -> services.workflow_draft_variable_service
-    core.app.apps.pipeline.pipeline_runner -> services.workflow.execution.adapters.node_factory
-    core.app.apps.pipeline.pipeline_runner -> services.workflow.execution.adapters.workflow_entry
-    core.app.apps.workflow.app_generator -> controllers.console.app.workflow
-    core.app.apps.workflow.app_generator -> services.snippet_generate_service
-    core.app.apps.workflow.app_generator -> services.workflow.execution.adapters.node_factory
-    core.app.apps.workflow.app_generator -> services.workflow_draft_variable_service
-    core.app.apps.workflow.app_runner -> services.workflow.execution.adapters.node_factory
-    core.app.apps.workflow.app_runner -> services.workflow.execution.adapters.workflow_entry
-    core.app.apps.workflow_app_runner -> services.workflow.execution.adapters.events
-    core.app.apps.workflow_app_runner -> services.workflow.execution.adapters.human_input_events
-    core.app.apps.workflow_app_runner -> services.workflow.execution.adapters.node_factory
-    core.app.apps.workflow_app_runner -> services.workflow.execution.adapters.workflow_entry
+    core.app.apps.pipeline.pipeline_runner -> services.workflow.execution.adapters.pipeline.pipeline_runner
+    core.app.apps.workflow.app_generator -> services.workflow.execution.adapters.workflow.app_generator
+    core.app.apps.workflow.app_runner -> services.workflow.execution.adapters.workflow.app_runner
+    # The legacy runners share contracts until their service replacements are activated.
+    core.app.apps.workflow_app_runner -> services.workflow.execution.contracts
     core.app.features.annotation_reply.annotation_reply -> services.annotation_service
     core.app.llm.quota -> services.credit_pool_service
     core.app.task_pipeline.message_cycle_manager -> services.annotation_service
-    core.app.workflow.layers.persistence -> services.workflow.inspector_events
-    core.app.workflow.layers.persistence -> services.workflow.execution.adapters.workflow_entry
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
     core.helper.credential_utils -> services.system_feature_service
     core.mcp.auth_client -> services.tools.mcp_tools_manage_service
@@ -103,7 +90,6 @@ ignore_imports =
     core.tools.tool_manager -> services.tools.legacy_builtin_tools_manage_service
     core.tools.tool_manager -> services.tools.legacy_mcp_tools_manage_service
     core.tools.tool_manager -> services.tools.legacy_tools_transform_service
-    # Node construction delegates datasource dependency assembly to the composition root.
     core.workflow.nodes.agent_v2.runtime_feature_manifest -> services.agent.knowledge_datasets
     core.workflow.nodes.agent_v2.session_store -> services.agent.workspace_service
     core.workflow.nodes.agent_v2.workspace_retirement_layer -> tasks.collect_agent_resources_task

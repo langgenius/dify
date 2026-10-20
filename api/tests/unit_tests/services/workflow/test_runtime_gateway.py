@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Callable, Generator, Iterable
+from dataclasses import replace
 from typing import Literal, NoReturn, Self, cast, override
 from unittest.mock import Mock, create_autospec
 
@@ -15,13 +16,17 @@ from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.file_access import DatabaseFileAccessController
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.trigger.debug.event_selectors import TriggerDebugEvent
-from extensions.application_services.workflow import build_workflow_execution_dependencies
+from extensions.application_services.workflow import (
+    WorkflowExecutionDependencies,
+    build_workflow_execution_dependencies,
+)
+from extensions.ext_redis import RedisClientWrapper
 from extensions.ext_storage import storage
 from fields.workflow_run_fields import WorkflowRunNodeExecutionResponse
 from graphon.entities import WorkflowNodeExecution
 from graphon.file import File
-from graphon.graph_engine.manager import GraphEngineManager
 from machinery.context import RequestContext
+from models import Account, EndUser
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, ExecutionOffLoadType
 from models.model import AppMode
@@ -31,16 +36,18 @@ from models.workflow import (
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionOffload,
     WorkflowNodeExecutionStatus,
+    WorkflowNodeExecutionTriggeredFrom,
 )
 from repositories.agent.retirement_repository import WorkflowAgentRetirementRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.workflow.debug_reservation_repository import WorkflowDebugReservationRepository
-from repositories.workflow.definition_repository import WorkflowDefinitionRepository
+from repositories.workflow.definition_repository import WorkflowDefinitionRepository, workflow_snapshot
 from repositories.workflow.draft_variable_repository import WorkflowDraftVariableRepository
 from repositories.workflow.node_execution_repository import WorkflowNodeExecutionRepository
 from services import workflow_service as workflow_module
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskControlService
 from services.file_service import FileService
 from services.tools.provider_queries import ToolProviderIcons
 from services.workflow import runtime_gateway as module
@@ -122,7 +129,9 @@ def runtime_gateway(
         reservations=WorkflowDebugReservationRepository(factory),
         executions=WorkflowNodeExecutionRepository(factory),
         generator=generator,
-        graph_engine=create_autospec(GraphEngineManager, instance=True, spec_set=True),
+        tasks=AppTaskControlService(
+            redis_client=create_autospec(RedisClientWrapper, instance=True, spec_set=True),
+        ),
         file_access=DatabaseFileAccessController(),
         variables=workflow_variables,
     )
@@ -136,6 +145,24 @@ def test_generate_closes_session_before_stream_is_consumed(
     stream = gateway.generate(CONTEXT, "app-1", {}, root_node_id=None, workflow=None)
     assert all(session.closed for session in sessions)
     assert list(stream) == ["data: ready\n\n"]
+
+
+def test_stop_scopes_task_to_the_requested_app(
+    runtime: tuple[WorkflowRuntimeGateway, list[RecordingSession]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    gateway, _ = runtime
+    stop = Mock(return_value=True)
+    monkeypatch.setattr(gateway._tasks, "stop_workflow_task", stop)
+
+    gateway.stop(CONTEXT, "app-1", "task-1")
+
+    stop.assert_called_once_with(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        task_id="task-1",
+        app_mode=AppMode.WORKFLOW,
+        owner=None,
+    )
 
 
 @pytest.mark.parametrize("rejection", ["expired", "claimed", "paused", "tenant", "app", "workflow", "mode"])
@@ -815,7 +842,7 @@ def test_file_config_and_access_controller_are_reused(
     runtime: tuple[WorkflowRuntimeGateway, list[RecordingSession]], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     gateway, _ = runtime
-    workflow = make_workflow()
+    workflow = workflow_snapshot(make_workflow())
     monkeypatch.setattr(module.FileUploadConfigManager, "convert", lambda *_args, **_kwargs: None)
     assert gateway._files(workflow, [{"id": "file"}]) == []
     config = object()
@@ -977,10 +1004,28 @@ def test_single_node_reads_offloaded_outputs_after_repository_session_closes(
             # support a writer that stores the execution payload out of line.
             self.save_execution_data(execution)
 
+    runtime_dependencies = gateway._workflows._runtime
+    assert isinstance(runtime_dependencies, WorkflowExecutionDependencies)
+
+    def node_writer(
+        *,
+        tenant_id: str,
+        user: Account | EndUser,
+        app_id: str,
+        triggered_from: WorkflowNodeExecutionTriggeredFrom,
+    ) -> OffloadedExecutionRepository:
+        return OffloadedExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=tenant_id,
+            user=user,
+            app_id=app_id,
+            triggered_from=triggered_from,
+        )
+
     monkeypatch.setattr(
-        workflow_module.DifyCoreRepositoryFactory,
-        "create_workflow_node_execution_repository",
-        lambda **kwargs: OffloadedExecutionRepository(**kwargs),
+        gateway._workflows,
+        "_runtime",
+        replace(runtime_dependencies, node_writer=node_writer),
     )
     with sqlite_session_factory.begin() as session:
         draft = session.scalar(select(Workflow).where(Workflow.version == "draft"))

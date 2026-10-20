@@ -11,19 +11,18 @@ from core.workflow.nodes.agent.exceptions import (
     AgentInvocationError,
     AgentMessageTransformError,
 )
-from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
 from core.workflow.nodes.agent.strategy_protocols import AgentStrategyPresentationProvider, AgentStrategyResolver
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.engine_events import NodeEvent
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from graphon.graph_events import GraphNodeEventBase
-from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
+from graphon.node_events import NodeEventPayload, NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
+from services.workflow.execution.adapters.agent_message_transformer import AgentMessageTransformer
 from services.workflow.execution.adapters.agent_runtime import AgentRuntimeSupport
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import InitParams, RuntimeState
 
 
 class AgentNode(Node[AgentNodeData]):
@@ -39,8 +38,8 @@ class AgentNode(Node[AgentNodeData]):
         node_id: str,
         data: AgentNodeData,
         *,
-        graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
+        init_params: InitParams,
+        runtime_state: RuntimeState,
         strategy_resolver: AgentStrategyResolver,
         presentation_provider: AgentStrategyPresentationProvider,
         runtime_support: AgentRuntimeSupport,
@@ -49,8 +48,8 @@ class AgentNode(Node[AgentNodeData]):
         super().__init__(
             node_id=node_id,
             data=data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
         self._strategy_resolver = strategy_resolver
         self._presentation_provider = presentation_provider
@@ -76,8 +75,8 @@ class AgentNode(Node[AgentNodeData]):
     @override
     @singledispatchmethod
     def _dispatch(  # pyrefly: ignore[missing-override-decorator]
-        self, event: NodeEventBase
-    ) -> GraphNodeEventBase:
+        self, event: NodeEventPayload
+    ) -> NodeEvent:
         return super()._dispatch(event)
 
     @_dispatch.register
@@ -97,7 +96,7 @@ class AgentNode(Node[AgentNodeData]):
         )
 
     @override
-    def _run(self) -> Generator[NodeEventBase]:
+    def _run(self) -> Generator[NodeEventPayload]:
         from core.plugin.impl.exc import PluginDaemonClientSideError
 
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
@@ -122,7 +121,7 @@ class AgentNode(Node[AgentNodeData]):
 
         parameters = self._runtime_support.build_parameters(
             agent_parameters=agent_parameters,
-            variable_pool=self.graph_runtime_state.variable_pool,
+            variable_pool=self.runtime_state.variable_pool,
             node_data=self.node_data,
             strategy=strategy,
             tenant_id=dify_ctx.tenant_id,
@@ -132,7 +131,7 @@ class AgentNode(Node[AgentNodeData]):
         )
         parameters_for_log = self._runtime_support.build_parameters(
             agent_parameters=agent_parameters,
-            variable_pool=self.graph_runtime_state.variable_pool,
+            variable_pool=self.runtime_state.variable_pool,
             node_data=self.node_data,
             strategy=strategy,
             tenant_id=dify_ctx.tenant_id,
@@ -143,7 +142,7 @@ class AgentNode(Node[AgentNodeData]):
         )
         credentials = self._runtime_support.build_credentials(parameters=parameters)
 
-        conversation_id = get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+        conversation_id = get_system_text(self.runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
 
         try:
             message_stream = strategy.invoke(

@@ -49,7 +49,7 @@ from core.workflow.system_variables import build_system_variables
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import MessageStatus
 from models.human_input_entities import UserActionConfig
@@ -175,7 +175,8 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._task_state.answer = "partial answer"
         pipeline._workflow_run_id = "run-id"
-        pipeline._graph_runtime_state = GraphRuntimeState(
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=build_test_variable_pool(
                 variables=build_system_variables(workflow_execution_id="run-id"),
             ),
@@ -310,7 +311,8 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         message = _persist_message(sqlite_session)
         other_message = _persist_message(sqlite_session, message_id="other-message-id")
-        pipeline._graph_runtime_state = GraphRuntimeState(
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
@@ -441,7 +443,6 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             start_at=naive_utc_now(),
-            node_run_index=1,
         )
         iter_next = QueueIterationNextEvent(
             index=1,
@@ -449,7 +450,6 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            node_run_index=1,
         )
         iter_done = QueueIterationCompletedEvent(
             node_execution_id="exec",
@@ -457,7 +457,6 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             start_at=naive_utc_now(),
-            node_run_index=1,
         )
         loop_start = QueueLoopStartEvent(
             node_execution_id="exec",
@@ -465,7 +464,6 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             start_at=naive_utc_now(),
-            node_run_index=1,
         )
         loop_next = QueueLoopNextEvent(
             index=1,
@@ -473,7 +471,6 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
-            node_run_index=1,
         )
         loop_done = QueueLoopCompletedEvent(
             node_execution_id="exec",
@@ -481,7 +478,6 @@ class TestAdvancedChatGenerateTaskPipeline:
             node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             start_at=naive_utc_now(),
-            node_run_index=1,
         )
 
         assert list(pipeline._handle_iteration_start_event(iter_start)) == ["iter_start"]
@@ -494,7 +490,8 @@ class TestAdvancedChatGenerateTaskPipeline:
     def test_workflow_finish_handlers(self, app_records, *, workflow_contexts, tool_providers):
         pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._workflow_run_id = "run-id"
-        pipeline._graph_runtime_state = GraphRuntimeState(
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(
                 system_variables=build_system_variables(workflow_execution_id="run-id")
             ),
@@ -648,7 +645,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline._workflow_response_converter.human_input_form_timeout_to_stream_response = lambda **kwargs: "timeout"
 
         filled_event = QueueHumanInputFormFilledEvent(
-            node_execution_id="exec",
+            form_id="form",
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="title",
@@ -657,6 +654,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             action_text="action",
         )
         timeout_event = QueueHumanInputFormTimeoutEvent(
+            form_id="form",
             node_id="node",
             node_type=BuiltinNodeTypes.LLM,
             node_title="title",
@@ -687,7 +685,8 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         message = _persist_message(sqlite_session)
 
-        graph_runtime_state = GraphRuntimeState(
+        graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(
                 system_variables=build_system_variables(workflow_execution_id="run-id")
             ),
@@ -722,7 +721,8 @@ class TestAdvancedChatGenerateTaskPipeline:
         self, app_records, *, workflow_contexts, tool_providers
     ):
         pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
-        pipeline._graph_runtime_state = GraphRuntimeState(
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(
                 system_variables=build_system_variables(workflow_execution_id="run-id")
             ),

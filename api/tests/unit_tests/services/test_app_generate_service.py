@@ -593,12 +593,9 @@ class TestGenerate(_RealSessionTest):
             return_value=MagicMock(workflow_run_id="wfr-1", model_dump_json=MagicMock(return_value="{}")),
         )
         delay_spy = mocker.patch("services.app_generate_service.workflow_based_app_execution_task.delay")
-        gen_instance = MagicMock()
-        gen_instance.retrieve_events.return_value = iter([])
-        gen_instance.convert_to_event_stream.side_effect = lambda x: x
-        mocker.patch(
-            "services.app_generate_service.WorkflowEventStream",
-            new=gen_instance,
+        retrieve_spy = mocker.patch(
+            "services.app_generate_service.WorkflowEventStream.retrieve_events",
+            return_value=iter([]),
         )
 
         AppGenerateService.generate(
@@ -612,10 +609,10 @@ class TestGenerate(_RealSessionTest):
             runtime=workflow_runtime,
         )
         # In streaming mode it should go through retrieve_events, not generate
-        gen_instance.retrieve_events.assert_called_once()
+        retrieve_spy.assert_called_once()
         # Dispatch is gated on subscribe; simulate the SSE layer entering the
         # subscription, which is what actually invokes on_subscribe.
-        on_subscribe = gen_instance.retrieve_events.call_args.kwargs["on_subscribe"]
+        on_subscribe = retrieve_spy.call_args.kwargs["on_subscribe"]
         on_subscribe()
         delay_spy.assert_called_once()
 

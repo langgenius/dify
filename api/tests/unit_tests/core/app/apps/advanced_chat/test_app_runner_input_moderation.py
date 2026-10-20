@@ -5,10 +5,12 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
+import services.workflow.execution.adapters.chatflow.app_runner as module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
-from core.app.entities.queue_entities import QueueStopEvent
+from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent
 from core.moderation.base import ModerationError
+from models.annotation_reply import AnnotationReply
 from models.model import App, AppMode, Conversation, IconType, Message
 from models.workflow import Workflow, WorkflowType
 from repositories.workflow.definition_repository import workflow_snapshot
@@ -94,8 +96,6 @@ def build_runner(sqlite_session: Session, *, workflow_runtime: WorkflowRuntime):
         workflow=workflow_snapshot(workflow),
         system_user_id=str(uuid4()),
         app=app,
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
         runtime=workflow_runtime,
     )
 
@@ -109,7 +109,7 @@ def _patch_common_run_deps(runner: AdvancedChatAppRunner):
         RedisChannel=MagicMock(),
         redis_client=MagicMock(),
         WorkflowEntry=MagicMock(**{"return_value.run.return_value": iter([])}),
-        GraphRuntimeState=MagicMock(),
+        RuntimeState=MagicMock(),
     )
 
 
@@ -141,6 +141,7 @@ def test_handle_input_moderation_stops_on_moderation_error(build_runner):
 
 def test_run_applies_overridden_inputs_and_query_from_moderation(build_runner):
     runner = build_runner
+    runner.application_generate_entity.call_depth = 5
 
     overridden_inputs = {"q": "sanitized"}
     overridden_query = "sanitized-query"
@@ -155,7 +156,7 @@ def test_run_applies_overridden_inputs_and_query_from_moderation(build_runner):
         patch.object(runner, "handle_annotation_reply", return_value=False) as mock_anno,
         patch.object(runner._graphs, "build", return_value=MagicMock()) as mock_init_graph,
     ):
-        runner.run()
+        runner.prepare()
 
         # moderation called with original values
         mock_moderate.assert_called_once()
@@ -170,6 +171,7 @@ def test_run_applies_overridden_inputs_and_query_from_moderation(build_runner):
 
         # since not stopped, graph initialization should proceed
         assert mock_init_graph.called
+        assert mock_init_graph.call_args.kwargs["call_depth"] == 5
 
 
 def test_run_returns_early_when_direct_output_via_handle_input_moderation(build_runner):
@@ -186,9 +188,68 @@ def test_run_returns_early_when_direct_output_via_handle_input_moderation(build_
         patch.object(runner._graphs, "build") as mock_init_graph,
         patch.object(runner, "handle_annotation_reply") as mock_anno,
     ):
-        runner.run()
+        runner.prepare()
 
         mock_handle.assert_called_once()
         # Ensure no further steps executed
         mock_anno.assert_not_called()
         mock_init_graph.assert_not_called()
+
+
+def test_prepare_publishes_annotation_after_repository_returns(build_runner):
+    runner = build_runner
+    events: list[str] = []
+
+    def query_annotation(**_kwargs):
+        events.append("commit")
+        return AnnotationReply(id="annotation-id", content="annotated answer")
+
+    def publish(event):
+        if isinstance(event, QueueAnnotationReplyEvent):
+            events.append("publish")
+
+    with (
+        patch.object(runner, "moderation_for_inputs", return_value=(False, {}, "raw-query")),
+        patch.object(runner._runtime.annotation_replies, "query", side_effect=query_annotation),
+        patch.object(runner._events, "_publish_event", side_effect=publish),
+        patch.object(runner, "_complete_with_stream_output"),
+    ):
+        assert runner.prepare() is None
+
+    assert events == ["commit", "publish"]
+
+
+def test_prepare_completes_repository_calls_before_workflow_run(build_runner):
+    runner = build_runner
+    events: list[str] = []
+    workflow_entry = MagicMock()
+
+    def initialize_conversation_variables():
+        events.append("close")
+        return []
+
+    def run_workflow(**_kwargs):
+        events.append("run")
+        return iter([])
+
+    workflow_entry.run.side_effect = run_workflow
+
+    with (
+        patch.object(module, "RedisChannel"),
+        patch.object(module, "redis_client"),
+        patch.object(module, "WorkflowEntry", return_value=workflow_entry),
+        patch.object(
+            runner,
+            "handle_input_moderation",
+            return_value=(False, runner.application_generate_entity.inputs, runner.application_generate_entity.query),
+        ),
+        patch.object(runner, "handle_annotation_reply", return_value=None),
+        patch.object(runner, "_initialize_conversation_variables", side_effect=initialize_conversation_variables),
+        patch.object(runner._graphs, "build", return_value=MagicMock()),
+    ):
+        prepared = runner.prepare()
+        assert prepared is not None
+        assert events[-1] == "close"
+        list(prepared.entry.run())
+
+    assert events[-2:] == ["close", "run"]

@@ -173,15 +173,15 @@ class WorkspaceMembersApi(Resource):
                 role=body.role,
             )
         except AccountAlreadyInTenantError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except InvalidWorkspaceMemberRoleError as exc:
             raise BadRequest(str(exc)) from exc
         except NoPermissionError as exc:
-            raise BadRequest(str(exc))
-        except SeatsLimitExceededError:
-            raise BadRequest("licensed seats limit exceeded")
+            raise BadRequest(str(exc)) from exc
+        except SeatsLimitExceededError as caught_error:
+            raise BadRequest("licensed seats limit exceeded") from caught_error
         except AccountRegisterError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
 
         return _invitation_response(invitation)
 
@@ -217,11 +217,11 @@ class WorkspaceMemberApi(Resource):
         except AccountNotFoundError:
             raise NotFound("member not found") from None
         except CannotOperateSelfError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except NoPermissionError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except MemberNotInTenantError as exc:
-            raise NotFound(str(exc))
+            raise NotFound(str(exc)) from exc
 
         return MemberActionResponse()
 
@@ -252,13 +252,13 @@ class WorkspaceMemberApi(Resource):
         except AccountNotFoundError:
             raise NotFound("member not found") from None
         except CannotOperateSelfError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except NoPermissionError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except MemberNotInTenantError as exc:
-            raise NotFound(str(exc))
+            raise NotFound(str(exc)) from exc
         except RoleAlreadyAssignedError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except InvalidWorkspaceMemberRoleError as exc:
             raise BadRequest(str(exc)) from exc
 
