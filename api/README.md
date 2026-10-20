@@ -78,7 +78,7 @@ The [API schema guide](controllers/API_SCHEMA_GUIDE.md) owns schema changes and 
 pnpm -C packages/contracts gen-api-contract
 ```
 
-Refresh the checked-in Markdown reference with:
+The checked-in Markdown reference lives in `api/openapi/markdown`. The generator's default output directories are anchored to `api/`, regardless of the working directory. Refresh it with:
 
 ```bash
 uv run --project api python api/dev/generate_swagger_markdown_docs.py \
