@@ -23,6 +23,22 @@ describe('ChatRecord', () => {
     mockRequest.mockReset()
   })
 
+  it('renders paused history without a finished timestamp', async () => {
+    mockRequest.mockResolvedValue({ data: [] })
+
+    renderWorkflowComponent(<ChatRecord />, {
+      initialStoreState: {
+        historyWorkflowData: {
+          ...historyWorkflowData,
+          status: 'paused',
+          finished_at: undefined,
+        },
+      },
+    })
+
+    expect(await screen.findByText('TEST CHAT (Paused)')).toBeInTheDocument()
+  })
+
   it('renders chat history and keeps sibling selection within its conversation', async () => {
     const user = userEvent.setup()
 
