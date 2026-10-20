@@ -1,5 +1,6 @@
 import type { Parameters as AppParameters } from '@dify/contracts/api/console/installed-apps/types.gen'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import { createHttpError } from './http-error'
 
 const getMock = vi.hoisted(() => vi.fn())
@@ -353,6 +354,7 @@ it.each([
   { source: AppSourceType.installedApp, prefix: 'installed-apps' },
   { source: AppSourceType.tryApp, prefix: 'trial-apps' },
 ])('loads $source parameters through the shared typed UI adapter', async ({ source, prefix }) => {
+  const numberDefaults = [0, 42, -7.123456, '12.5']
   const parameters: AppParameters = {
     opening_statement: null,
     suggested_questions: ['Next question'],
@@ -389,6 +391,15 @@ it.each([
           required: false,
         },
       },
+      ...numberDefaults.map((defaultValue, index) => ({
+        number: {
+          variable: `count_${index}`,
+          label: `Count ${index}`,
+          default: defaultValue,
+          required: false,
+          hide: true,
+        },
+      })),
     ],
   }
   request.mockReset().mockResolvedValueOnce(Response.json(parameters))
@@ -405,6 +416,19 @@ it.each([
     user_input_form: [
       { 'text-input': { variable: 'topic', default: '', required: false, max_length: 0 } },
       { checkbox: { variable: 'include_details', default: false, required: false } },
+      ...numberDefaults.map((defaultValue, index) => ({
+        number: {
+          variable: `count_${index}`,
+          default: defaultValue,
+          required: false,
+          hide: true,
+        },
+      })),
     ],
   })
+  expect(
+    userInputsFormToPromptVariables(result.user_input_form)
+      .filter((variable) => variable.type === 'number')
+      .map((variable) => variable.default),
+  ).toEqual(numberDefaults)
 })

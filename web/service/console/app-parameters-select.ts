@@ -203,6 +203,10 @@ const normalizeUserInputFormItem = (
     return {
       number: {
         ...normalizeBaseInputForm(item.number),
+        default:
+          typeof item.number.default === 'number'
+            ? item.number.default
+            : getString(item.number.default),
         max_length: getNumber(item.number.max_length, 0),
       },
     }
