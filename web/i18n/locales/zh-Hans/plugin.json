@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "自定义凭据当前不可用，请联系管理员。",
   "auth.credentialUnavailableInButton": "凭据不可用",
   "auth.custom": "自定义",
+  "auth.customClientInfo": "使用你自己的 OAuth 应用。输入其客户端 ID 和客户端密钥，并注册以下重定向 URI。",
   "auth.customCredentialUnavailable": "自定义凭据当前不可用",
   "auth.default": "默认",
   "auth.emptyAuth": "请配置凭据",

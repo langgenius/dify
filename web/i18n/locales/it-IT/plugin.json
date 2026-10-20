@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "Credenziali attualmente non disponibili. Si prega di contattare l'amministratore.",
   "auth.credentialUnavailableInButton": "Credenziali non disponibili",
   "auth.custom": "Personalizzato",
+  "auth.customClientInfo": "Usa la tua app OAuth. Inserisci il suo ID client e il suo segreto client e registra il seguente URI di reindirizzamento.",
   "auth.customCredentialUnavailable": "Le credenziali personalizzate attualmente non sono disponibili",
   "auth.default": "Predefinito",
   "auth.emptyAuth": "Configurare l'autenticazione",

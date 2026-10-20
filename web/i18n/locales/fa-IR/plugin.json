@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "دسترسی به مدارک در حال حاضر امکان‌پذیر نیست. لطفاً با مدیر تماس بگیرید.",
   "auth.credentialUnavailableInButton": "گواهی در دسترس نیست",
   "auth.custom": "سفارشی",
+  "auth.customClientInfo": "از برنامه OAuth خود استفاده کنید. شناسه و راز کلاینت آن را وارد کنید و URI تغییرمسیر زیر را ثبت کنید.",
   "auth.customCredentialUnavailable": "اعتبارنامه‌های سفارشی در حال حاضر در دسترس نیستند",
   "auth.default": "پیش‌فرض",
   "auth.emptyAuth": "لطفا احراز هویت را پیکربندی کنید",

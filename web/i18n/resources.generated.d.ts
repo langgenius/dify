@@ -3651,6 +3651,7 @@ export default interface Resources {
     'auth.credentialUnavailable': 'Credentials currently unavailable. Please contact admin.'
     'auth.credentialUnavailableInButton': 'Credential unavailable'
     'auth.custom': 'Custom'
+    'auth.customClientInfo': 'Use your own OAuth app. Enter its Client ID and Client Secret, and register the following redirect URI.'
     'auth.customCredentialUnavailable': 'Custom credentials currently unavailable'
     'auth.default': 'Default'
     'auth.emptyAuth': 'Please configure authentication'

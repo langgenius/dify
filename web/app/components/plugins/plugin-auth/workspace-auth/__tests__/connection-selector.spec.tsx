@@ -591,7 +591,7 @@ describe('WorkspaceConnectionSelector', () => {
 
     await user.click(within(dialog).getByRole('radio', { name: 'plugin.auth.custom' }))
 
-    expect(within(dialog).getByText('plugin.auth.clientInfo')).toBeVisible()
+    expect(within(dialog).getByText('plugin.auth.customClientInfo')).toBeVisible()
     expect(within(dialog).getByText(oauthClient.redirect_uri)).toBeVisible()
     const clientId = within(dialog).getByRole('textbox', { name: 'Client ID' })
     expect(clientId).toBeRequired()

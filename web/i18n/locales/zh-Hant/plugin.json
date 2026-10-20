@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "凭證目前無法使用。請聯繫管理員。",
   "auth.credentialUnavailableInButton": "憑證不可用",
   "auth.custom": "自訂",
+  "auth.customClientInfo": "使用你自己的 OAuth 應用程式。輸入其用戶端 ID 和用戶端密鑰，並註冊以下重新導向 URI。",
   "auth.customCredentialUnavailable": "自訂憑證目前無法使用",
   "auth.default": "默認",
   "auth.emptyAuth": "請設定驗證",

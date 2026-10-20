@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "ข้อมูลรับรองไม่สามารถใช้งานได้ในขณะนี้ กรุณาติดต่อผู้ดูแลระบบ.",
   "auth.credentialUnavailableInButton": "ข้อมูลรับรองไม่พร้อมใช้งาน",
   "auth.custom": "ที่กำหนดเอง",
+  "auth.customClientInfo": "ใช้แอป OAuth ของคุณเอง ป้อน ID ไคลเอนต์และข้อมูลลับไคลเอนต์ของแอป แล้วลงทะเบียน URI เปลี่ยนเส้นทางต่อไปนี้",
   "auth.customCredentialUnavailable": "ข้อมูลรับรองที่กำหนดเองขณะนี้ไม่สามารถใช้ได้",
   "auth.default": "ค่าเริ่มต้น",
   "auth.emptyAuth": "โปรดกําหนดค่าการรับรองความถูกต้อง",

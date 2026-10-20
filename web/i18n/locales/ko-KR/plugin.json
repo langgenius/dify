@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "현재 자격 증명이 사용 불가능합니다. 관리자에게 문의하십시오.",
   "auth.credentialUnavailableInButton": "자격 증명 사용 불가능",
   "auth.custom": "맞춤형",
+  "auth.customClientInfo": "자신의 OAuth 앱을 사용하세요. 클라이언트 ID와 클라이언트 시크릿을 입력하고 아래 리디렉션 URI를 등록하세요.",
   "auth.customCredentialUnavailable": "현재 사용자 정의 자격 증명이 사용 불가능합니다.",
   "auth.default": "기본",
   "auth.emptyAuth": "인증을 구성하십시오.",

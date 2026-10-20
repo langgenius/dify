@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "ຂໍ້ມູນການເຂົ້າລະບົບບໍ່ພ້ອມໃຊ້ງານໃນຂະນະນີ້. ກະລຸນາຕິດຕໍ່ຜູ້ດູແລລະບົບ.",
   "auth.credentialUnavailableInButton": "ຂໍ້ມູນການເຂົ້າລະບົບບໍ່ພ້ອມໃຊ້ງານ",
   "auth.custom": "ກຳນົດເອງ",
+  "auth.customClientInfo": "ໃຊ້ແອັບ OAuth ຂອງທ່ານເອງ. ປ້ອນ ID ໄຄລເອັນ ແລະ ລະຫັດລັບໄຄລເອັນຂອງແອັບ ແລະ ລົງທະບຽນ URI ປ່ຽນເສັ້ນທາງຕໍ່ໄປນີ້.",
   "auth.customCredentialUnavailable": "ຂໍ້ມູນການເຂົ້າລະບົບແບບກຳນົດເອງບໍ່ພ້ອມໃຊ້ງານ",
   "auth.default": "ຄ່າເລີ່ມຕົ້ນ",
   "auth.emptyAuth": "ກະລຸນາຕັ້ງຄ່າການອະນຸຍາດ",

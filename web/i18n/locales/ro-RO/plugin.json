@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "Credențialele nu sunt disponibile în acest moment. Vă rugăm să contactați administratorul.",
   "auth.credentialUnavailableInButton": "Credential indisponibil",
   "auth.custom": "Personalizat",
+  "auth.customClientInfo": "Folosește propria aplicație OAuth. Introdu ID-ul și secretul clientului și înregistrează următorul URI de redirecționare.",
   "auth.customCredentialUnavailable": "Credentialele personalizate sunt în prezent indisponibile",
   "auth.default": "Default",
   "auth.emptyAuth": "Vă rugăm să configurați autentificarea",

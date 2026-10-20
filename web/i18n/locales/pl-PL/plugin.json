@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "Kredencje są obecnie niedostępne. Proszę skontaktować się z administratorem.",
   "auth.credentialUnavailableInButton": "Credential niedostępny",
   "auth.custom": "Niestandardowy",
+  "auth.customClientInfo": "Użyj własnej aplikacji OAuth. Wprowadź jej identyfikator klienta i sekret klienta oraz zarejestruj poniższy URI przekierowania.",
   "auth.customCredentialUnavailable": "Niestandardowe dane logowania są obecnie niedostępne",
   "auth.default": "Domyślny",
   "auth.emptyAuth": "Skonfiguruj uwierzytelnianie",

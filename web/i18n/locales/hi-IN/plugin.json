@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "वर्तमान में क्रेडेंशियल्स उपलब्ध नहीं हैं। कृपया प्रशासन से संपर्क करें।",
   "auth.credentialUnavailableInButton": "प्रमाण पत्र उपलब्ध नहीं है",
   "auth.custom": "कस्टम",
+  "auth.customClientInfo": "अपना OAuth ऐप इस्तेमाल करें। उसका क्लाइंट ID और क्लाइंट सीक्रेट दर्ज करें और नीचे दिया गया रीडायरेक्ट URI पंजीकृत करें।",
   "auth.customCredentialUnavailable": "कस्टम क्रेडेंशियल वर्तमान में उपलब्ध नहीं हैं",
   "auth.default": "डिफ़ॉल्ट",
   "auth.emptyAuth": "कृपया प्रमाणीकरण कॉन्फ़िगर करें",

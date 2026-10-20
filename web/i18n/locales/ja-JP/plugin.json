@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "現在、資格情報は利用できません。管理者にご連絡ください。",
   "auth.credentialUnavailableInButton": "資格情報が利用できません",
   "auth.custom": "カスタム",
+  "auth.customClientInfo": "独自の OAuth アプリを使用します。クライアント ID とクライアントシークレットを入力し、以下のリダイレクト URI を登録してください。",
   "auth.customCredentialUnavailable": "カスタム資格情報は現在利用できません",
   "auth.default": "デフォルト",
   "auth.emptyAuth": "認証を設定してください",

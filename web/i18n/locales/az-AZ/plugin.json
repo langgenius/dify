@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "Giriş məlumatları hazırda əlçatan deyil. İnzibatçı ilə əlaqə saxlayın.",
   "auth.credentialUnavailableInButton": "Giriş məlumatları əlçatan deyil",
   "auth.custom": "Fərdi",
+  "auth.customClientInfo": "Öz OAuth tətbiqinizdən istifadə edin. Onun müştəri ID-sini və müştəri sirrini daxil edin və aşağıdakı yönləndirmə URI-sini qeydiyyatdan keçirin.",
   "auth.customCredentialUnavailable": "Fərdi giriş məlumatları hazırda əlçatan deyil",
   "auth.default": "Standart",
   "auth.emptyAuth": "Autentifikasiyanı konfiqurasiya edin",

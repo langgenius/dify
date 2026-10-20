@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "Kimlik bilgileri şu anda mevcut değil. Lütfen yönetici ile iletişime geçin.",
   "auth.credentialUnavailableInButton": "Kimlik bilgileri mevcut değil",
   "auth.custom": "Özel",
+  "auth.customClientInfo": "Kendi OAuth uygulamanızı kullanın. İstemci Kimliğini ve İstemci Gizli Anahtarını girin ve aşağıdaki yönlendirme URI’sini kaydedin.",
   "auth.customCredentialUnavailable": "Özel kimlik bilgileri şu anda mevcut değil.",
   "auth.default": "Varsayılan",
   "auth.emptyAuth": "Lütfen kimlik doğrulamasını yapılandırın",

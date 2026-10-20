@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "Anmeldeinformationen derzeit nicht verfügbar. Bitte kontaktieren Sie den Administrator.",
   "auth.credentialUnavailableInButton": "Zugangsdaten nicht verfügbar",
   "auth.custom": "Benutzerdefiniert",
+  "auth.customClientInfo": "Verwenden Sie Ihre eigene OAuth-App. Geben Sie ihre Client-ID und ihr Client-Secret ein und registrieren Sie die folgende Weiterleitungs-URI.",
   "auth.customCredentialUnavailable": "Benutzerdefinierte Anmeldeinformationen derzeit nicht verfügbar",
   "auth.default": "Standard",
   "auth.emptyAuth": "Bitte konfigurieren Sie die Authentifizierung",

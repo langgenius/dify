@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "بيانات الاعتماد غير متوفرة حاليًا. يرجى الاتصال بالمسؤول.",
   "auth.credentialUnavailableInButton": "بيانات الاعتماد غير متوفرة",
   "auth.custom": "مخصص",
+  "auth.customClientInfo": "استخدم تطبيق OAuth الخاص بك. أدخل معرّف العميل وسر العميل الخاصين به، وسجّل URI إعادة التوجيه التالي.",
   "auth.customCredentialUnavailable": "بيانات الاعتماد المخصصة غير متوفرة حاليًا",
   "auth.default": "افتراضي",
   "auth.emptyAuth": "يرجى تكوين المصادقة",

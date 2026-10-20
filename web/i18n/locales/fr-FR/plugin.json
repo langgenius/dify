@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "Les informations d'identification ne sont actuellement pas disponibles. Veuillez contacter l'administrateur.",
   "auth.credentialUnavailableInButton": "Identifiant indisponible",
   "auth.custom": "Personnalisé",
+  "auth.customClientInfo": "Utilisez votre propre application OAuth. Saisissez son ID client et son secret client, puis enregistrez l’URI de redirection ci-dessous.",
   "auth.customCredentialUnavailable": "Les identifiants personnalisés ne sont actuellement pas disponibles.",
   "auth.default": "Par défaut",
   "auth.emptyAuth": "Veuillez configurer l’authentification",

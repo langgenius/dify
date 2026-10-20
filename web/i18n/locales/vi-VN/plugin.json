@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "Thông tin đăng nhập hiện không khả dụng. Vui lòng liên hệ với quản trị viên.",
   "auth.credentialUnavailableInButton": "Thông tin xác thực không khả dụng",
   "auth.custom": "Tùy chỉnh",
+  "auth.customClientInfo": "Sử dụng ứng dụng OAuth của riêng bạn. Nhập ID và khóa bí mật ứng dụng khách, rồi đăng ký URI chuyển hướng bên dưới.",
   "auth.customCredentialUnavailable": "Thông tin đăng nhập tùy chỉnh hiện không khả dụng",
   "auth.default": "Mặc định",
   "auth.emptyAuth": "Vui lòng định cấu hình xác thực",

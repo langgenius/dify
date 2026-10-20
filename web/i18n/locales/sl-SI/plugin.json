@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "Trenutno niso na voljo poverilnice. Prosimo, kontaktirajte administratorja.",
   "auth.credentialUnavailableInButton": "Pogodba ni na voljo",
   "auth.custom": "Po meri",
+  "auth.customClientInfo": "Uporabite svojo aplikacijo OAuth. Vnesite njen ID in skrivnost odjemalca ter registrirajte spodnji URI za preusmeritev.",
   "auth.customCredentialUnavailable": "Trenutno niso na voljo prilagojene prijave.",
   "auth.default": "Privzeto",
   "auth.emptyAuth": "Prosimo, konfigurirajte preverjanje pristnosti",

@@ -62,6 +62,7 @@
   "auth.credentialUnavailable": "Kredensial saat ini tidak tersedia. Silakan hubungi admin.",
   "auth.credentialUnavailableInButton": "Kredensial tidak tersedia",
   "auth.custom": "Adat",
+  "auth.customClientInfo": "Gunakan aplikasi OAuth Anda sendiri. Masukkan ID Klien dan Rahasia Klien aplikasi tersebut, lalu daftarkan URI pengalihan berikut.",
   "auth.customCredentialUnavailable": "Kredensial kustom saat ini tidak tersedia",
   "auth.default": "Default",
   "auth.emptyAuth": "Silakan konfigurasikan otentikasi",
