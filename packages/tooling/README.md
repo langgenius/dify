@@ -6,7 +6,7 @@ Vite+ provides the primary static check through `vp check`, which combines Oxfmt
 custom rules, and dead-code tooling. Edit the implementations here:
 
 - `repository.config.ts`: repository Vite+ lint, format, staged checks, and cached check task.
-- `lint.config.ts`, `eslint.mjs`, and `tsslint.config.ts`: rule configurations.
+- `lint.config.ts`, `eslint.ts`, and `tsslint.config.ts`: rule configurations.
 - `plugins/`: custom rules, their fixtures, and tests.
 - `knip.config.ts`, `a11y.config.ts`, `oxlint.unused.config.json`, and `scripts/`: targeted checks.
 - `package.json`: plugin dependencies and the tooling package's test and type-check scripts.
@@ -85,13 +85,13 @@ vp run -w lint:eslint package.json pnpm-workspace.yaml web/docs
 vp run -w lint:eslint:fix package.json pnpm-workspace.yaml web/docs
 ```
 
-Oxlint and Vite+ type-check scope is defined by `packages/tooling/lint.config.ts` `ignorePatterns`, and ESLint's scope is defined by `packages/tooling/eslint.mjs` global ignores.
+Oxlint and Vite+ type-check scope is defined by `packages/tooling/lint.config.ts` `ignorePatterns`, and ESLint's scope is defined by `packages/tooling/eslint.ts` global ignores.
 
 The primary rule baseline lives in `packages/tooling/lint.config.ts` and is connected through the root `vite.config.ts` `lint` block. Oxlint-native rules are preferred, and compatible ESLint rules can run through Oxlint's `jsPlugins` support. The rules are explicit snapshots of the ESLint configurations that were active at migration time. Do not import an upstream preset wholesale: enable a new rule intentionally and review its existing violations first.
 
 Tailwind canonical class cleanup is optional because loading the JavaScript plugin adds noticeable lint startup time. The default `vp run -w check` command does not load it. Run `vp run -w lint:tailwind` to inspect `web/` and `packages/dify-ui/`, or `vp run -w lint:tailwind:fix` to apply safe replacements. Both commands run the complete lint configuration with the additional `better-tailwindcss/enforce-canonical-classes` rule, using `web/app/styles/globals.css` and a 16px root font size.
 
-The non-code baseline and its repository-wide file scope live in `packages/tooling/eslint.mjs`. ESLint checks JSON, JSONC, JSON5, YAML, and Markdown only. The configuration globally ignores JavaScript, JSX, TypeScript, TSX, and declaration files; a comment-only inventory records the removed code checks as a migration tradeoff. It does not import or depend on the Antfu ESLint config.
+The non-code baseline and its repository-wide file scope live in `packages/tooling/eslint.ts`. ESLint checks JSON, JSONC, JSON5, YAML, and Markdown only. The configuration globally ignores JavaScript, JSX, TypeScript, TSX, and declaration files; a comment-only inventory records the removed code checks as a migration tradeoff. It does not import or depend on the Antfu ESLint config.
 
 ### Type-aware Linting
 
@@ -134,7 +134,7 @@ ESLint is intentionally limited to non-code files. The remaining limitations and
 | Markdown code blocks     | ESLint validates the Markdown document, but fenced JavaScript and TypeScript blocks are not passed through the former overlapping preset. This remains deferred rather than duplicating the Oxlint rule set.     |
 | Override-scoped settings | The three Dify UI Tailwind rules are disabled with the rest of ESLint's code path. Oxlint still applies the web `react-x.additionalStateHooks` setting globally because it cannot scope settings to an override. |
 
-Suppression comments belong to exactly one linter. Use `oxlint-disable` for code rules from `packages/tooling/lint.config.ts`, and use `eslint-disable` only for non-code rules from `packages/tooling/eslint.mjs`. Oxlint deliberately sets `respectEslintDisableDirectives` to `false`, so an ESLint comment cannot hide an Oxlint finding.
+Suppression comments belong to exactly one linter. Use `oxlint-disable` for code rules from `packages/tooling/lint.config.ts`, and use `eslint-disable` only for non-code rules from `packages/tooling/eslint.ts`. Oxlint deliberately sets `respectEslintDisableDirectives` to `false`, so an ESLint comment cannot hide an Oxlint finding.
 
 ### Inline Disable Comments
 

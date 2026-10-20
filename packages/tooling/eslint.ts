@@ -1,6 +1,4 @@
-// @ts-check
-/// <reference types="node" />
-
+import type { ESLint } from 'eslint'
 import markdown from '@eslint/markdown'
 import gitignore from 'eslint-config-flat-gitignore'
 import md from 'eslint-markdown'
@@ -10,10 +8,10 @@ import pnpm from 'eslint-plugin-pnpm'
 import yml from 'eslint-plugin-yml'
 import { defineConfig, globalIgnores } from 'eslint/config'
 import { repositoryRoot } from './paths.ts'
-import dify from './plugins/eslint/index.js'
+import dify from './plugins/eslint/index.ts'
 
 const codeFiles = '**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'
-const mdPlugin = /** @type {import('eslint').ESLint.Plugin} */ (/** @type {unknown} */ (md))
+const mdPlugin = md as unknown as ESLint.Plugin
 
 /**
  * Migration tradeoff: ESLint is intentionally restricted to non-code files.

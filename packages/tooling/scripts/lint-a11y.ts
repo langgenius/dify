@@ -55,12 +55,12 @@ const ignoredDirectories = new Set([
   'storybook-static',
 ])
 
-function isWithinWebRoot(filePath) {
+function isWithinWebRoot(filePath: string) {
   const relativePath = path.relative(webRoot, filePath)
   return relativePath !== '' && !relativePath.startsWith('..') && !path.isAbsolute(relativePath)
 }
 
-function isTraversableSourceFile(filePath) {
+function isTraversableSourceFile(filePath: string) {
   if (!isWithinWebRoot(filePath) || !sourceExtensions.has(path.extname(filePath))) return false
   if (/\.d\.[cm]?ts$/u.test(filePath)) return false
 
@@ -70,9 +70,9 @@ function isTraversableSourceFile(filePath) {
     .some((segment) => ignoredDirectories.has(segment))
 }
 
-function formatTypeScriptDiagnostics(diagnostics) {
+function formatTypeScriptDiagnostics(diagnostics: readonly ts.Diagnostic[]) {
   return ts.formatDiagnostics(diagnostics, {
-    getCanonicalFileName: (fileName) => fileName,
+    getCanonicalFileName: (fileName: string) => fileName,
     getCurrentDirectory: () => webRoot,
     getNewLine: () => ts.sys.newLine,
   })
@@ -103,7 +103,7 @@ function readCompilerOptions() {
   return parsedConfig.options
 }
 
-function collectLocalDependencies(entryFiles) {
+function collectLocalDependencies(entryFiles: string[]) {
   for (const entryFile of entryFiles) {
     let stats
 
@@ -122,18 +122,18 @@ function collectLocalDependencies(entryFiles) {
 
   const compilerOptions = readCompilerOptions()
   const canonicalFileName = ts.sys.useCaseSensitiveFileNames
-    ? (fileName) => fileName
-    : (fileName) => fileName.toLowerCase()
+    ? (fileName: string) => fileName
+    : (fileName: string) => fileName.toLowerCase()
   const resolutionCache = ts.createModuleResolutionCache(
     webRoot,
     canonicalFileName,
     compilerOptions,
   )
-  const visitedFiles = new Map()
+  const visitedFiles = new Map<string, string>()
   const pending = [...entryFiles]
 
   while (pending.length > 0) {
-    const currentFile = path.resolve(pending.pop())
+    const currentFile = path.resolve(pending.pop()!)
     const canonicalCurrentFile = canonicalFileName(currentFile)
 
     if (visitedFiles.has(canonicalCurrentFile)) continue

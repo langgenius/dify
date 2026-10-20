@@ -5,6 +5,13 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import unusedConfig from '../oxlint.unused.config.json' with { type: 'json' }
 
+type OxlintDiagnostic = {
+  labels?: { file?: string; span?: { line: number; column: number } }[]
+  filename?: string
+  code?: string
+  message?: string
+}
+
 const scriptDir = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(scriptDir, '../../..')
 const webDir = path.join(repoRoot, 'web')
@@ -20,31 +27,33 @@ const oxlintBin =
 if (!oxlintBin) throw new Error('Unable to resolve the bundled Oxlint executable.')
 const oxlint = path.resolve(path.dirname(oxlintPackagePath), oxlintBin)
 
-function run(command, args, options = {}) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      cwd: options.cwd,
-      env: process.env,
-      shell: false,
-    })
+function run(command: string, args: string[], options: { cwd?: string } = {}) {
+  return new Promise<{ status: number | null; stdout: string; stderr: string }>(
+    (resolve, reject) => {
+      const child = spawn(command, args, {
+        cwd: options.cwd,
+        env: process.env,
+        shell: false,
+      })
 
-    let stdout = ''
-    let stderr = ''
-    child.stdout.on('data', (data) => (stdout += data))
-    child.stderr.on('data', (data) => (stderr += data))
-    child.on('error', reject)
-    child.on('close', (status) => resolve({ status, stdout, stderr }))
-  })
+      let stdout = ''
+      let stderr = ''
+      child.stdout.on('data', (data) => (stdout += data))
+      child.stderr.on('data', (data) => (stderr += data))
+      child.on('error', reject)
+      child.on('close', (status) => resolve({ status, stdout, stderr }))
+    },
+  )
 }
 
-function parseOxlintJson(stdout) {
+function parseOxlintJson(stdout: string): { diagnostics?: OxlintDiagnostic[] } {
   const jsonStart = stdout.indexOf('{')
   if (jsonStart === -1) throw new Error('Oxlint produced no JSON output.')
 
   return JSON.parse(stdout.slice(jsonStart))
 }
 
-function relativeDiagnostic(diagnostic) {
+function relativeDiagnostic(diagnostic: OxlintDiagnostic) {
   const label = diagnostic.labels?.[0]
   const diagnosticFile = label?.file ?? diagnostic.filename
   const filePath = diagnosticFile

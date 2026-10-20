@@ -1,9 +1,9 @@
+import type { Rule } from 'eslint'
 import fs from 'node:fs'
 import path, { normalize, sep } from 'node:path'
 import { getTranslationSourceKey } from '../../../i18n-plurals.ts'
 
-/** @type {import('eslint').Rule.RuleModule} */
-export default {
+const rule: Rule.RuleModule = {
   meta: {
     type: 'problem',
     docs: {
@@ -67,3 +67,5 @@ export default {
     }
   },
 }
+
+export default rule

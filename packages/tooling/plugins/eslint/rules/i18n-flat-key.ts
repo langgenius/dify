@@ -1,16 +1,18 @@
-function getPropertyKey(property) {
+import type { Rule, SourceCode } from 'eslint'
+import type { AST } from 'jsonc-eslint-parser'
+import type { JsonRuleModule } from '../utils.ts'
+function getPropertyKey(property: AST.JSONProperty) {
   if (property.key.type === 'JSONIdentifier') return property.key.name
   if (property.key.type === 'JSONLiteral' && typeof property.key.value === 'string')
     return property.key.value
   return null
 }
 
-function getReportNode(sourceCode, targetNode) {
+function getReportNode(sourceCode: SourceCode, targetNode: AST.JSONNode) {
   return sourceCode.getNodeByRangeIndex(targetNode.range[0]) ?? sourceCode.ast
 }
 
-/** @type {import('eslint').Rule.RuleModule} */
-export default {
+const rule: JsonRuleModule = {
   meta: {
     type: 'problem',
     docs: {
@@ -26,7 +28,7 @@ export default {
   },
   create(context) {
     return {
-      JSONObjectExpression(node) {
+      JSONObjectExpression(node: AST.JSONObjectExpression) {
         if (node.parent.type !== 'JSONExpressionStatement') {
           const targetNode = node.parent.type === 'JSONProperty' ? node.parent.key : node
           context.report({
@@ -36,7 +38,7 @@ export default {
           return
         }
 
-        const keyEntries = new Map()
+        const keyEntries = new Map<string, { key: string; keyNode: AST.JSONProperty['key'] }>()
         for (const property of node.properties) {
           const key = getPropertyKey(property)
           if (key === null || keyEntries.has(key)) continue
@@ -47,7 +49,7 @@ export default {
         }
 
         const keys = [...keyEntries.keys()]
-        const keyPrefixes = new Set()
+        const keyPrefixes = new Set<string>()
         for (const key of keys) {
           if (!key.includes('.')) continue
           const parts = key.split('.')
@@ -81,3 +83,6 @@ export default {
     }
   },
 }
+
+// JSON listeners receive jsonc-eslint-parser nodes rather than ESTree nodes.
+export default rule as unknown as Rule.RuleModule

@@ -386,6 +386,9 @@ catalogs:
     '@typescript-eslint/parser':
       specifier: 8.71.2
       version: 8.71.2
+    '@typescript-eslint/utils':
+      specifier: 8.71.2
+      version: 8.71.2
     '@typescript/native':
       specifier: npm:typescript@7.0.2
       version: 7.0.2
@@ -575,6 +578,9 @@ catalogs:
     js-yaml:
       specifier: 5.5.0
       version: 5.5.0
+    jsonc-eslint-parser:
+      specifier: 3.3.0
+      version: 3.3.0
     jsonschema:
       specifier: 1.5.0
       version: 1.5.0
@@ -1355,6 +1361,12 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.9
+      '@typescript-eslint/utils':
+        specifier: 'catalog:'
+        version: 8.71.2(@typescript/typescript6@6.0.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
+      jsonc-eslint-parser:
+        specifier: 'catalog:'
+        version: 3.3.0
       vite:
         specifier: 'catalog:'
         version: '@voidzero-dev/vite-plus-core@1.3.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)'
@@ -17051,6 +17063,7 @@ time:
   '@types/react@19.3.0': '2026-09-09T18:08:49.750Z'
   '@types/sortablejs@1.15.9': '2025-10-24T04:31:45.132Z'
   '@typescript-eslint/parser@8.71.2': '2026-10-12T17:11:57.903Z'
+  '@typescript-eslint/utils@8.71.2': '2026-10-12T17:09:24.822Z'
   '@typescript/typescript6@6.0.2': '2026-07-06T18:06:47.459Z'
   '@vitejs/plugin-react@6.1.2': '2026-10-05T10:08:27.143Z'
   '@vitejs/plugin-rsc@0.5.38': '2026-10-15T02:02:18.001Z'
@@ -17116,6 +17129,7 @@ time:
   jotai@3.0.1: '2026-09-29T14:18:19.043Z'
   js-cookie@3.0.8: '2026-05-29T10:51:39.065Z'
   js-yaml@5.5.0: '2026-10-15T23:28:37.500Z'
+  jsonc-eslint-parser@3.3.0: '2026-08-08T01:15:58.520Z'
   jsonschema@1.5.0: '2025-01-07T15:09:11.287Z'
   katex@0.17.0: '2026-05-22T08:06:26.967Z'
   knip@6.42.0: '2026-10-18T13:44:32.638Z'

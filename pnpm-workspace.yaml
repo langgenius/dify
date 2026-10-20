@@ -142,6 +142,7 @@ catalog:
   '@types/react-dom': 19.3.0
   '@types/sortablejs': 1.15.9
   '@typescript-eslint/parser': 8.71.2
+  '@typescript-eslint/utils': 8.71.2
   '@typescript/native': npm:typescript@7.0.2
   '@vitejs/plugin-react': 6.1.2
   '@vitejs/plugin-rsc': 0.5.38
@@ -206,6 +207,7 @@ catalog:
   jotai-tanstack-query: 0.11.0
   js-cookie: 3.0.8
   js-yaml: 5.5.0
+  jsonc-eslint-parser: 3.3.0
   jsonschema: 1.5.0
   katex: 0.17.0
   knip: 6.42.0
