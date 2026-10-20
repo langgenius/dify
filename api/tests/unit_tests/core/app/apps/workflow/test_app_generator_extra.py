@@ -151,7 +151,9 @@ class TestWorkflowAppGeneratorValidation:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        generator = WorkflowAppGenerator(runtime=workflow_runtime)
+        generator = WorkflowAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         app = _persist_app(sqlite_session)
         workflow = _persist_workflow(sqlite_session)
         user = _persist_end_user(sqlite_session)
@@ -219,7 +221,9 @@ class TestWorkflowAppGeneratorValidation:
         worker_thread.join.assert_called_once_with(timeout=300)
 
     def test_single_iteration_generate_validates_args(self, *, workflow_runtime: WorkflowRuntime):
-        generator = WorkflowAppGenerator(runtime=workflow_runtime)
+        generator = WorkflowAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
 
         with pytest.raises(ValueError, match="node_id is required"):
             generator.single_iteration_generate(
@@ -242,7 +246,9 @@ class TestWorkflowAppGeneratorValidation:
             )
 
     def test_single_loop_generate_validates_args(self, *, workflow_runtime: WorkflowRuntime):
-        generator = WorkflowAppGenerator(runtime=workflow_runtime)
+        generator = WorkflowAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
 
         with pytest.raises(ValueError, match="node_id is required"):
             generator.single_loop_generate(
@@ -263,7 +269,11 @@ class TestWorkflowAppGeneratorValidation:
     ):
         loader = create_autospec(VariableLoader, instance=True)
         loader_factory = Mock(return_value=loader)
-        generator = WorkflowAppGenerator(draft_variable_loader=loader_factory, runtime=workflow_runtime)
+        generator = WorkflowAppGenerator(
+            draft_variable_loader=loader_factory,
+            runtime=workflow_runtime,
+            execution_driver=workflow_runtime.execution_driver,
+        )
         app = _persist_app(sqlite_session)
         workflow = _persist_workflow(sqlite_session)
         user = _persist_end_user(sqlite_session)
@@ -307,7 +317,11 @@ class TestWorkflowAppGeneratorValidation:
     ):
         loader = create_autospec(VariableLoader, instance=True)
         loader_factory = Mock(return_value=loader)
-        generator = WorkflowAppGenerator(draft_variable_loader=loader_factory, runtime=workflow_runtime)
+        generator = WorkflowAppGenerator(
+            draft_variable_loader=loader_factory,
+            runtime=workflow_runtime,
+            execution_driver=workflow_runtime.execution_driver,
+        )
         app = _persist_app(sqlite_session)
         workflow = _persist_workflow(sqlite_session)
         user = _persist_end_user(sqlite_session)
@@ -357,7 +371,9 @@ class TestWorkflowAppGeneratorHandleResponse:
     def test_handle_response_closed_file_raises_stopped(
         self, monkeypatch: pytest.MonkeyPatch, *, workflow_runtime: WorkflowRuntime
     ):
-        generator = WorkflowAppGenerator(runtime=workflow_runtime)
+        generator = WorkflowAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -414,7 +430,9 @@ class TestWorkflowAppGeneratorGenerate:
         workflow_runtime: WorkflowRuntime,
     ):
         """Keep input preparation real and stop at the execution boundary."""
-        generator = WorkflowAppGenerator(runtime=workflow_runtime)
+        generator = WorkflowAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         app = _persist_app(sqlite_session)
         workflow = _persist_workflow(sqlite_session)
         user = _persist_end_user(sqlite_session)
@@ -505,7 +523,9 @@ class TestWorkflowAppGeneratorResume:
     def test_resume_restores_trace_manager_when_missing(
         self, monkeypatch: pytest.MonkeyPatch, *, workflow_runtime: WorkflowRuntime
     ):
-        generator = WorkflowAppGenerator(runtime=workflow_runtime)
+        generator = WorkflowAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
             app_id="app",
@@ -569,7 +589,9 @@ class TestWorkflowAppGeneratorResume:
     def test_resume_preserves_existing_trace_manager(
         self, monkeypatch: pytest.MonkeyPatch, *, workflow_runtime: WorkflowRuntime
     ):
-        generator = WorkflowAppGenerator(runtime=workflow_runtime)
+        generator = WorkflowAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
             app_id="app",
@@ -624,7 +646,9 @@ class TestWorkflowAppGeneratorWorker:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        generator = WorkflowAppGenerator(runtime=workflow_runtime)
+        generator = WorkflowAppGenerator(
+            runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+        )
         _persist_app(sqlite_session)
         workflow = _persist_workflow(sqlite_session)
         _persist_end_user(sqlite_session)
@@ -636,7 +660,7 @@ class TestWorkflowAppGeneratorWorker:
             def __init__(self, **kwargs):
                 runner_kwargs.update(kwargs)
 
-            def run(self):
+            def prepare(self):
                 return None
 
         monkeypatch.setattr(
@@ -685,6 +709,7 @@ class TestWorkflowAppGeneratorWorker:
         assert runner_kwargs["system_user_id"] == "session-id"
         assert runner_kwargs["runtime"] is workflow_runtime
         assert runner_kwargs["workflow"] is workflow
+        assert "execution_driver" not in runner_kwargs
         restore_workflow_run_graph.assert_called_once()
         restore_workflow_run_graph.assert_called_once_with(workflow, "run-id")
         assert inspect(runner_kwargs["workflow"]).detached is True

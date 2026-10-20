@@ -197,7 +197,7 @@ class WorkflowHumanInputFormApi(Resource):
                 form_data=payload.inputs,
                 submission_end_user_id=end_user.id,
             )
-        except FormNotFoundError:
-            raise NotFoundError("Form not found")
+        except FormNotFoundError as caught_error:
+            raise NotFoundError("Form not found") from caught_error
 
         return {}, 200
