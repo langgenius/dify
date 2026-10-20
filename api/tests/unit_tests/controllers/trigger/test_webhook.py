@@ -186,6 +186,8 @@ class TestHandleWebhook:
 
         assert status == 500
         assert response["error"] == "Internal server error"
+        assert response["message"] == "An internal error has occurred."
+        assert "boom" not in response["message"]
 
 
 class TestHandleWebhookDebug:
