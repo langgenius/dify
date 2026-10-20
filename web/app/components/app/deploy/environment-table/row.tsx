@@ -1,7 +1,8 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { AlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import type { AccessPoint } from '../utils/access-point'
 import type { DeploymentVersion } from '../utils/version'
-import type { UndeployHandler } from './types'
+import type { UndeployDialogPayload } from './types'
 import { RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { memo } from 'react'
 import { AccessPointIcon } from '../shared/access-point-icon'
@@ -17,23 +18,13 @@ export const EnvironmentRow = memo(
     canViewAccessPoint,
     latestVersion,
     row,
-    onChangeVersion,
-    onDeployLatest,
-    onRedeploy,
-    onUndeploy,
+    undeployDialogHandle,
   }: {
     appId: string
     canViewAccessPoint: boolean
     latestVersion?: DeploymentVersion
     row: EnvironmentDeployment
-    onChangeVersion: (deployment: EnvironmentDeployment, trigger: HTMLElement | null) => void
-    onDeployLatest: (
-      deployment: EnvironmentDeployment,
-      version: DeploymentVersion,
-      trigger: HTMLElement | null,
-    ) => void
-    onRedeploy: (deployment: EnvironmentDeployment, trigger: HTMLElement | null) => void
-    onUndeploy: UndeployHandler
+    undeployDialogHandle: AlertDialogHandle<UndeployDialogPayload>
   }) => {
     const runtimeState = row.deployment
       ? row.deployment.runtimeState
@@ -95,10 +86,7 @@ export const EnvironmentRow = memo(
           <EnvironmentRowActions
             latestVersion={latestVersion}
             row={row}
-            onChangeVersion={onChangeVersion}
-            onDeployLatest={onDeployLatest}
-            onRedeploy={onRedeploy}
-            onUndeploy={onUndeploy}
+            undeployDialogHandle={undeployDialogHandle}
           />
         </td>
       </tr>

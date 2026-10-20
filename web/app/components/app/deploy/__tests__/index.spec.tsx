@@ -791,10 +791,6 @@ function environmentTableProps(
   return {
     appId: APP_ID,
     canViewAccessPoint: true,
-    onChangeVersion: vi.fn(),
-    onDeployLatest: vi.fn(),
-    onDeployToEnvironment: vi.fn(),
-    onRedeploy: vi.fn(),
     onUndeploy: vi.fn(),
     ...overrides,
   }
@@ -2350,6 +2346,49 @@ describe('AppDeploy', () => {
 
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(onUndeploy).not.toHaveBeenCalled()
+  })
+
+  it('keeps undeploy confirmation open while pending and allows retry after failure', async () => {
+    const user = userEvent.setup()
+    let rejectUndeploy: ((error: Error) => void) | undefined
+    const onUndeploy = vi
+      .fn<(deployment: EnvironmentDeployment) => Promise<void>>()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            rejectUndeploy = reject
+          }),
+      )
+      .mockResolvedValueOnce(undefined)
+    render(
+      <AppDeployStateBoundary appId={APP_ID}>
+        <EnvironmentTable {...environmentTableProps({ onUndeploy })} />
+      </AppDeployStateBoundary>,
+    )
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Canary · deployments.deployTab.moreActions',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'deployments.deployTab.undeploy' }))
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'Undeploy Sprint-42 from Canary',
+    })
+    const confirm = within(dialog).getByRole('button', { name: 'Undeploy' })
+    const cancel = within(dialog).getByRole('button', { name: 'Cancel' })
+    await user.click(confirm)
+    expect(onUndeploy).toHaveBeenCalledWith(APP_ENVIRONMENT_DEPLOYMENTS[1])
+    expect(cancel).toBeDisabled()
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+
+    await act(async () => rejectUndeploy?.(new Error('Undeploy failed')))
+    await waitFor(() => expect(cancel).toBeEnabled())
+    expect(dialog).toBeInTheDocument()
+    await user.click(confirm)
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(onUndeploy).toHaveBeenCalledTimes(2)
   })
 
   it('shows the version description from the deployment contract on hover', async () => {

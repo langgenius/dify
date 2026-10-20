@@ -114,9 +114,15 @@ export function DeploymentConfiguration({
           embedded ? 'px-4 pt-2 pb-4' : 'px-6 pt-5 pb-6',
         )}
       >
-        <Button type="button" variant="secondary" onClick={onClose}>
-          {tCommon(($) => $['operation.cancel'])}
-        </Button>
+        {embedded ? (
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {tCommon(($) => $['operation.cancel'])}
+          </Button>
+        ) : (
+          <DialogClose render={<Button type="button" variant="secondary" />}>
+            {tCommon(($) => $['operation.cancel'])}
+          </DialogClose>
+        )}
         <Button type="submit" variant="primary" disabled={!canDeploy} loading={isDeploying}>
           {tCommon(($) => $['appMenus.deploy'])}
         </Button>

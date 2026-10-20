@@ -1,8 +1,8 @@
 'use client'
 
-import type { RefObject } from 'react'
+import type { AlertDialogContentProps } from '@langgenius/dify-ui/alert-dialog'
+import type { UndeployDialogPayload } from '../types'
 import {
-  AlertDialog,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
@@ -11,58 +11,63 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type UndeployConfirmDialogProps = {
-  finalFocus: RefObject<HTMLElement | null>
+type UndeployConfirmDialogContentProps = {
+  finalFocus: AlertDialogContentProps['finalFocus']
+  menuActionsRef: UndeployDialogPayload['menuActionsRef']
   environmentName: string
   isPending?: boolean
-  open: boolean
   versionName: string
   onConfirm: () => void
-  onOpenChange: (open: boolean) => void
 }
 
-export function UndeployConfirmDialog({
-  finalFocus,
+function UndeployConfirmDialogSession({
+  menuActionsRef,
   environmentName,
   isPending = false,
-  open,
   versionName,
   onConfirm,
-  onOpenChange,
-}: UndeployConfirmDialogProps) {
+}: Omit<UndeployConfirmDialogContentProps, 'finalFocus'>) {
   const { t } = useTranslation(['deployments'])
   const { t: tCommon } = useTranslation(['common'])
+  const cancelRef = useRef<HTMLButtonElement | null>(null)
+  useLayoutEffect(() => {
+    cancelRef.current?.focus()
+    menuActionsRef.current?.close()
+  }, [menuActionsRef])
 
   return (
-    <AlertDialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!isPending) onOpenChange(nextOpen)
-      }}
-    >
-      <AlertDialogContent finalFocus={finalFocus}>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            {t(($) => $['studio.undeployConfirmTitle'], {
-              envName: environmentName,
-              versionName,
-            })}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {t(($) => $['studio.undeployConfirmDesc'])}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancelButton disabled={isPending}>
-            {tCommon(($) => $['operation.cancel'])}
-          </AlertDialogCancelButton>
-          <AlertDialogConfirmButton loading={isPending} onClick={onConfirm}>
-            {t(($) => $['deployTab.confirmUndeploy'])}
-          </AlertDialogConfirmButton>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <>
+      <AlertDialogHeader>
+        <AlertDialogTitle>
+          {t(($) => $['studio.undeployConfirmTitle'], {
+            envName: environmentName,
+            versionName,
+          })}
+        </AlertDialogTitle>
+        <AlertDialogDescription>{t(($) => $['studio.undeployConfirmDesc'])}</AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancelButton ref={cancelRef} disabled={isPending}>
+          {tCommon(($) => $['operation.cancel'])}
+        </AlertDialogCancelButton>
+        <AlertDialogConfirmButton loading={isPending} onClick={onConfirm}>
+          {t(($) => $['deployTab.confirmUndeploy'])}
+        </AlertDialogConfirmButton>
+      </AlertDialogFooter>
+    </>
+  )
+}
+
+export function UndeployConfirmDialogContent({
+  finalFocus,
+  ...sessionProps
+}: UndeployConfirmDialogContentProps) {
+  return (
+    <AlertDialogContent finalFocus={finalFocus}>
+      <UndeployConfirmDialogSession {...sessionProps} />
+    </AlertDialogContent>
   )
 }

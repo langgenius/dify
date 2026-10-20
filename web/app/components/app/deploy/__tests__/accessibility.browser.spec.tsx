@@ -3,6 +3,8 @@ import type {
   GetWorkflowDeploymentOptionsResponse,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import {
+  DeploymentOperationStatus,
+  DeploymentOperationType,
   EnvironmentStatus,
   EnvVarValueType,
   PluginCategory,
@@ -119,7 +121,13 @@ const options: GetWorkflowDeploymentOptionsResponse = {
   ],
 }
 
-async function renderDeploy({ withLLM = false } = {}) {
+async function renderDeploy({
+  withLLM = false,
+  environmentDeployments = [deployment],
+}: {
+  withLLM?: boolean
+  environmentDeployments?: EnvironmentDeployment[]
+} = {}) {
   if (withLLM) await import('@/app/components/workflow/llm-environment-variable-value-field')
   document.documentElement.lang = 'en'
   document.title = 'Deploy accessibility audit'
@@ -208,7 +216,10 @@ async function renderDeploy({ withLLM = false } = {}) {
     }),
     {
       data: [
-        { ...environment, in_use: true },
+        {
+          ...environment,
+          in_use: environmentDeployments.some((row) => row.environment.id === environment.id),
+        },
         { ...environment, id: 'dev', display_name: 'Dev', in_use: false },
       ],
     },
@@ -218,7 +229,7 @@ async function renderDeploy({ withLLM = false } = {}) {
       input: { params },
     }),
     {
-      environment_deployments: [deployment],
+      environment_deployments: environmentDeployments,
     },
   )
   for (const workflowId of ['release-0', published.id]) {
@@ -274,9 +285,9 @@ async function renderDeploy({ withLLM = false } = {}) {
     </Wrapper>,
   )
   await expect
-    .element(screen.getByRole('table', { name: 'Environments', exact: true }))
+    .element(screen.getByRole('region', { name: 'Environments', exact: true }))
     .toBeVisible()
-  return screen
+  return { ...screen, queryClient: client }
 }
 
 async function checkAccessibility(verifyFocusGuards?: (count: number) => Promise<void>) {
@@ -373,7 +384,11 @@ it('verifies every reported menu sentinel redirects focus and allows keyboard ex
   })
 })
 
-it('keeps focus through deployment steps and passes axe on the page, dialogs, and validation errors', async () => {
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+it('keeps focus through the first lazy menu handoff and resets deployment drafts before a pointer reopen', async () => {
   const screen = await renderDeploy()
   await checkAccessibility()
   const trigger = screen.getByRole('button', { name: 'Deploy', exact: true })
@@ -389,6 +404,7 @@ it('keeps focus through deployment steps and passes axe on the page, dialogs, an
   await expect.element(dev).toHaveFocus()
   await userEvent.keyboard('{Enter}')
   const versions = screen.getByRole('dialog', { name: 'Deploy to Dev', exact: true })
+  await expect.element(dev).not.toBeInTheDocument()
   await expect
     .element(versions.getByRole('heading', { name: 'Deploy to Dev', exact: true }))
     .toHaveFocus()
@@ -412,6 +428,23 @@ it('keeps focus through deployment steps and passes axe on the page, dialogs, an
   await expect.element(port).toHaveFocus()
   await expect.element(port).toHaveAttribute('aria-invalid', 'true')
   await checkAccessibility()
+  await port.fill('3000')
+  await userEvent.keyboard('{Escape}')
+  await expect.element(configuration).not.toBeInTheDocument()
+  await expect.element(trigger).toHaveFocus()
+
+  await trigger.click()
+  await dev.click()
+  await expect.element(dev).not.toBeInTheDocument()
+  await expect
+    .element(versions.getByRole('heading', { name: 'Deploy to Dev', exact: true }))
+    .toHaveFocus()
+  await versions.getByRole('button', { name: /Release 1/ }).click()
+  await expect.element(credential).toBeVisible()
+  await expect.element(port).toHaveValue(null)
+  await configuration.getByRole('button', { name: 'Deploy', exact: true }).click()
+  await expect.element(credential).toHaveAttribute('aria-invalid', 'true')
+  await expect.element(credential).toHaveFocus()
   await configuration.getByRole('button', { name: 'Back', exact: true }).click()
   await expect
     .element(versions.getByRole('heading', { name: 'Deploy to Dev', exact: true }))
@@ -419,20 +452,24 @@ it('keeps focus through deployment steps and passes axe on the page, dialogs, an
   await userEvent.keyboard('{Escape}')
   await expect.element(versions).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
-  await userEvent.keyboard('{Enter}')
-  await expect.element(dev).toHaveFocus()
-  await userEvent.keyboard('{Enter}')
-  await expect.element(versions).toBeVisible()
-  await expect.element(versions.getByRole('button', { name: /Release 1/ })).toBeVisible()
 })
 
-it('restores focus to More after its menu item unmounts on redeploy or undeploy', async () => {
+it('uses the requested version and restores surviving triggers as redeploy and undeploy menu items unmount', async () => {
   const screen = await renderDeploy()
+  const latest = screen.getByRole('button', { name: 'Deploy latest', exact: true })
+  await latest.click()
+  const configuration = screen.getByRole('dialog', { name: 'Deploy configuration', exact: true })
+  await expect.element(configuration.getByText('Release 1', { exact: true })).toBeVisible()
+  await configuration.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect.element(configuration).not.toBeInTheDocument()
+  await expect.element(latest).toHaveFocus()
   const more = screen.getByRole('button', { name: 'Canary · More actions', exact: true })
   await more.click()
-  await screen.getByRole('menuitem', { name: 'Redeploy', exact: true }).click()
-  const configuration = screen.getByRole('dialog', { name: 'Deploy configuration', exact: true })
+  const redeploy = screen.getByRole('menuitem', { name: 'Redeploy', exact: true })
+  await redeploy.click()
   await expect.element(configuration).toBeVisible()
+  await expect.element(configuration.getByText('Release 0', { exact: true })).toBeVisible()
+  await expect.element(redeploy).not.toBeInTheDocument()
   await expect
     .element(configuration.getByRole('heading', { name: 'Deploy configuration', exact: true }))
     .toHaveFocus()
@@ -443,13 +480,121 @@ it('restores focus to More after its menu item unmounts on redeploy or undeploy'
   await expect
     .element(screen.getByRole('menuitem', { name: 'Undeploy', exact: true }))
     .toBeVisible()
-  await screen.getByRole('menuitem', { name: 'Undeploy', exact: true }).click()
+  await userEvent.keyboard('{End}')
+  const undeploy = screen.getByRole('menuitem', { name: 'Undeploy', exact: true })
+  await expect.element(undeploy).toHaveFocus()
+  await userEvent.keyboard(' ')
   const confirmation = screen.getByRole('alertdialog')
   await expect.element(confirmation).toBeVisible()
+  await expect.element(undeploy).not.toBeInTheDocument()
   await checkAccessibility()
   await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect.element(confirmation).not.toBeInTheDocument()
   await expect.element(more).toHaveFocus()
+  await more.click()
+  await undeploy.click()
+  await expect.element(confirmation).toBeVisible()
+  await expect.element(undeploy).not.toBeInTheDocument()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(confirmation).not.toBeInTheDocument()
+  await expect.element(more).toHaveFocus()
+})
+
+it('keeps disabled composed menu triggers inert and opens the current environment after deployment finishes', async () => {
+  const deploying: EnvironmentDeployment = {
+    ...deployment,
+    deployment: {
+      runtimeState: RuntimeState.RUNTIME_STATE_STARTING,
+    },
+  }
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const request = input instanceof Request ? input : new Request(input, init)
+    if (request.url.endsWith('/environments'))
+      return Response.json({ data: [{ ...environment, in_use: true }] })
+    if (request.url.endsWith('/workflows/environment-deployments'))
+      return Response.json({ environment_deployments: [deploying] })
+    throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+  })
+  const screen = await renderDeploy({ environmentDeployments: [deploying] })
+  const more = screen.getByRole('button', { name: 'Canary · More actions', exact: true })
+  more.element().focus()
+  await userEvent.keyboard('{Enter}')
+  const changeVersion = screen.getByRole('menuitem', { name: 'Change version', exact: true })
+  await expect.element(changeVersion).toHaveAttribute('aria-disabled', 'true')
+  changeVersion.element().focus()
+  await expect.element(changeVersion).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  await userEvent.keyboard(' ')
+  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(more).toHaveFocus()
+
+  screen.queryClient.setQueryData(
+    consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryKey({
+      input: { params: { app_id: appId } },
+    }),
+    { environment_deployments: [deployment] },
+  )
+  await userEvent.keyboard('{Enter}')
+  await expect.element(changeVersion).not.toHaveAttribute('aria-disabled', 'true')
+  await expect.element(changeVersion).toHaveFocus()
+  await userEvent.keyboard(' ')
+  const versions = screen.getByRole('dialog', { name: 'Change version · Canary', exact: true })
+  await expect.element(changeVersion).not.toBeInTheDocument()
+  await expect
+    .element(versions.getByRole('heading', { name: 'Change version · Canary', exact: true }))
+    .toHaveFocus()
+  await versions.getByRole('button', { name: /Release 1/ }).click()
+  const configuration = screen.getByRole('dialog', { name: 'Deploy configuration', exact: true })
+  await expect.element(configuration).toBeVisible()
+  await configuration.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect.element(configuration).not.toBeInTheDocument()
+  await expect.element(more).toHaveFocus()
+})
+
+it('returns focus to the environment heading after a successful deployment removes the empty-state trigger', async () => {
+  const deployed: EnvironmentDeployment = {
+    ...deployment,
+    environment: { ...environment, id: 'dev', display_name: 'Dev' },
+  }
+  const deployRequests: Request[] = []
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const request = input instanceof Request ? input : new Request(input, init)
+    if (request.url.endsWith('/deployment:deploy')) {
+      deployRequests.push(request.clone())
+      return Response.json({
+        operation: {
+          id: 'deploy-dev',
+          status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_SUCCEEDED,
+          type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_DEPLOY,
+        },
+      })
+    }
+    if (request.url.endsWith('/environments'))
+      return Response.json({ data: [{ ...deployed.environment, in_use: true }] })
+    if (request.url.endsWith('/workflows/environment-deployments'))
+      return Response.json({ environment_deployments: [deployed] })
+    throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+  })
+  const screen = await renderDeploy({ environmentDeployments: [] })
+  const emptyDeploy = screen.getByRole('button', { name: 'Deploy', exact: true }).nth(1)
+  await emptyDeploy.click()
+  await screen.getByRole('menuitem', { name: 'Dev', exact: true }).click()
+  const versions = screen.getByRole('dialog', { name: 'Deploy to Dev', exact: true })
+  await versions.getByRole('button', { name: /Release 1/ }).click()
+  const configuration = screen.getByRole('dialog', { name: 'Deploy configuration', exact: true })
+  await configuration.getByRole('combobox', { name: 'Deepseek', exact: true }).click()
+  await screen.getByRole('option', { name: 'Production key', exact: true }).click()
+  await configuration.getByRole('spinbutton', { name: 'PORT', exact: true }).fill('3000')
+  await configuration.getByRole('button', { name: 'Deploy', exact: true }).click()
+  await expect.element(configuration).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('rowheader', { name: 'Dev', exact: true })).toBeVisible()
+  await expect
+    .element(screen.getByRole('heading', { name: 'Environments', exact: true }))
+    .toHaveFocus()
+  expect(deployRequests).toHaveLength(1)
+  expect(new URL(deployRequests[0]!.url).pathname).toContain('/environments/dev/deployment:deploy')
 })
 
 it('audits the LLM model picker and settings reachable from deploy without mounting workflow editors or media', async () => {

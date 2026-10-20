@@ -1,6 +1,5 @@
 'use client'
 
-import type { AppEnvironment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import { EnvironmentDeployMenu } from '../deploy-menu'
@@ -9,7 +8,6 @@ import { EmptyTableSkeleton } from './skeleton'
 type EnvironmentTableEmptyProps =
   | {
       state: 'empty'
-      onSelectEnvironment: (environment: AppEnvironment, trigger: HTMLElement | null) => void
     }
   | {
       state: 'error'
@@ -49,10 +47,7 @@ export function EnvironmentTableEmpty(props: EnvironmentTableEmptyProps) {
               {tCommon(($) => $['operation.retry'])}
             </Button>
           ) : (
-            <EnvironmentDeployMenu
-              appearance="empty"
-              onSelectEnvironment={props.onSelectEnvironment}
-            />
+            <EnvironmentDeployMenu appearance="empty" />
           )}
         </div>
       </div>
