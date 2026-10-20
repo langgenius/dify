@@ -2,9 +2,70 @@ import logging
 from unittest.mock import Mock
 
 import pytest
+from sqlalchemy import inspect
+from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_generator import BaseAppGenerator
+from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
+from models import CreatorUserRole, Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
+
+
+def _workflow_run(*, graph: str | None) -> WorkflowRun:
+    return WorkflowRun(
+        id="run-id",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        type=WorkflowType.CHAT,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="1",
+        graph=graph,
+        inputs="{}",
+        status=WorkflowExecutionStatus.PAUSED,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+    )
+
+
+def test_restore_workflow_run_graph(sqlite_session: Session):
+    workflow = Workflow(graph='{"nodes": [{"id": "edited"}]}')
+    workflow_run = _workflow_run(graph='{"nodes": [{"id": "paused"}]}')
+    sqlite_session.add(workflow_run)
+    sqlite_session.commit()
+
+    BaseAppGenerator._restore_workflow_run_graph(
+        session=sqlite_session,
+        workflow=workflow,
+        workflow_run_id="run-id",
+    )
+
+    assert sqlite_session.get(WorkflowRun, "run-id") is workflow_run
+    assert workflow.graph == '{"nodes": [{"id": "paused"}]}'
+    assert not inspect(workflow).attrs.graph.history.has_changes()
+
+
+@pytest.mark.parametrize(
+    ("workflow_run_id", "workflow_run"),
+    [(None, None), ("run-id", None), ("run-id", _workflow_run(graph=None))],
+)
+def test_restore_workflow_run_graph_requires_persisted_snapshot(
+    workflow_run_id: str | None,
+    workflow_run: WorkflowRun | None,
+    sqlite_session: Session,
+):
+    if workflow_run is not None:
+        sqlite_session.add(workflow_run)
+        sqlite_session.commit()
+
+    with pytest.raises(
+        ValueError, match=("(?:Workflow run graph not found: run\\-id|Workflow run id is required when resuming)")
+    ):
+        BaseAppGenerator._restore_workflow_run_graph(
+            session=sqlite_session,
+            workflow=Workflow(graph="{}"),
+            workflow_run_id=workflow_run_id,
+        )
 
 
 def test_validate_inputs_with_zero():
@@ -46,7 +107,7 @@ def test_validate_input_with_none_for_required_variable():
         )
 
         # Test with input None
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="test_var is required in input form") as exc_info:
             base_app_generator._validate_inputs(
                 variable_entity=var,
                 value=None,
@@ -130,7 +191,7 @@ def test_validate_inputs_with_default_value():
         label="test_number_float",
         type=VariableEntityType.NUMBER,
         required=False,
-        default=3.14,
+        default=float("3.14"),
     )
 
     result = base_app_generator._validate_inputs(
@@ -138,7 +199,7 @@ def test_validate_inputs_with_default_value():
         value=None,
     )
 
-    assert result == 3.14
+    assert result == float("3.14")
 
     # Test with number default value as string (frontend sends as string)
     var_number_string = VariableEntity(
@@ -341,7 +402,7 @@ def test_validate_inputs_required_file_with_empty_string_fails():
         required=True,
     )
 
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(ValueError, match="test_file in input form must be a file") as exc_info:
         base_app_generator._validate_inputs(
             variable_entity=var_file,
             value="",
@@ -532,7 +593,6 @@ class TestBaseAppGeneratorExtras:
 
     def test_get_draft_var_saver_factory_debugger(self):
         from core.app.entities.app_invoke_entities import InvokeFrom
-        from graphon.enums import BuiltinNodeTypes
         from models import Account
 
         base_app_generator = BaseAppGenerator()

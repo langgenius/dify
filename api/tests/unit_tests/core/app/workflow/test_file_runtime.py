@@ -3,19 +3,87 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from collections.abc import Callable, Iterator
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
+from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope
 from core.app.workflow import file_runtime
-from core.app.workflow.file_runtime import DifyWorkflowFileRuntime, bind_dify_workflow_file_runtime
+from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
 from core.workflow.file_reference import build_file_reference
+from dify_app import DifyApp
+from extensions.storage.storage_type import StorageType
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.file.runtime import peek_workflow_file_runtime, use_workflow_file_runtime
 from models import ToolFile, UploadFile
+from models.base import TypeBase
+from models.enums import CreatorUserRole
+
+
+@pytest.fixture
+def file_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
+    """Bind runtime-owned sessions to SQLite with only the two file tables present."""
+    tables = [TypeBase.metadata.tables[model.__tablename__] for model in (UploadFile, ToolFile)]
+    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
+    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    monkeypatch.setattr(file_runtime.session_factory, "create_session", session_maker)
+    with session_maker() as session:
+        yield session
+
+
+def _persist_upload_file(
+    session: Session,
+    *,
+    file_id: str = "upload-file-id",
+    key: str = "canonical-storage-key",
+    tenant_id: str = "tenant-id",
+    created_by: str = "end-user-id",
+) -> UploadFile:
+    upload_file = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=key,
+        name="diagram.png",
+        size=128,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=created_by,
+        created_at=datetime(2024, 1, 1, tzinfo=UTC),
+        used=False,
+    )
+    upload_file.id = file_id
+    session.add(upload_file)
+    session.commit()
+    return upload_file
+
+
+def _persist_tool_file(
+    session: Session,
+    *,
+    file_id: str = "tool-file-id",
+    key: str = "tool-storage-key",
+) -> ToolFile:
+    tool_file = ToolFile(
+        user_id="end-user-id",
+        tenant_id="tenant-id",
+        conversation_id=None,
+        file_key=key,
+        mimetype="image/png",
+        name="diagram.png",
+        size=128,
+    )
+    tool_file.id = file_id
+    session.add(tool_file)
+    session.commit()
+    return tool_file
 
 
 def _build_file(
@@ -54,7 +122,7 @@ def test_resolve_file_url_returns_remote_url() -> None:
 
 def test_resolve_file_url_requires_file_reference() -> None:
     runtime = _build_runtime()
-    file = SimpleNamespace(transfer_method=FileTransferMethod.LOCAL_FILE, reference=None)
+    file = File.model_construct(transfer_method=FileTransferMethod.LOCAL_FILE, reference=None)
 
     with pytest.raises(ValueError, match="Missing file reference"):
         runtime.resolve_file_url(file=file)
@@ -74,9 +142,17 @@ def test_resolve_file_url_requires_extension_for_tool_files() -> None:
 
 def test_resolve_file_url_uses_tool_signatures_for_tool_and_datasource_files(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
-    sign_tool_file = MagicMock(return_value="https://signed.example.com/file")
-    monkeypatch.setattr(file_runtime, "sign_tool_file", sign_tool_file)
+    signed_file_ids: list[str] = []
+
+    def sign_tool_file_uri(*, tool_file_id: str, extension: str) -> str:
+        signed_file_ids.append(tool_file_id)
+        assert extension == ".png"
+        return "/files/signed"
+
+    monkeypatch.setattr(file_runtime, "sign_tool_file_uri", sign_tool_file_uri)
+    config_overrides(FILES_URL="https://files.example.com")
     runtime = _build_runtime()
 
     tool_file = _build_file(
@@ -90,22 +166,52 @@ def test_resolve_file_url_uses_tool_signatures_for_tool_and_datasource_files(
         extension=".png",
     )
 
-    assert runtime.resolve_file_url(file=tool_file) == "https://signed.example.com/file"
-    assert runtime.resolve_file_url(file=datasource_file) == "https://signed.example.com/file"
-    assert sign_tool_file.call_count == 2
+    assert runtime.resolve_file_url(file=tool_file) == "https://files.example.com/files/signed"
+    assert runtime.resolve_file_url(file=datasource_file) == "https://files.example.com/files/signed"
+    assert signed_file_ids == ["tool-file-id", "datasource-file-id"]
+
+
+def test_resolve_file_uri_keeps_dify_owned_file_origin_free(monkeypatch: pytest.MonkeyPatch) -> None:
+    def sign_tool_file_uri(**_kwargs: str) -> str:
+        return "/files/tools/tool-file-id.png?sign=1"
+
+    monkeypatch.setattr(file_runtime, "sign_tool_file_uri", sign_tool_file_uri)
+    runtime = _build_runtime()
+    file = _build_file(
+        transfer_method=FileTransferMethod.TOOL_FILE,
+        reference=build_file_reference(record_id="tool-file-id"),
+        extension=".png",
+    )
+
+    assert runtime.resolve_file_uri(file=file) == "/files/tools/tool-file-id.png?sign=1"
+
+
+def test_resolve_file_url_returns_relative_uri_when_files_url_is_empty(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    monkeypatch.setattr(file_runtime, "sign_tool_file_uri", lambda **_: "/files/tools/tool-file-id.png?sign=1")
+    config_overrides(FILES_URL="")
+    runtime = _build_runtime()
+    file = _build_file(
+        transfer_method=FileTransferMethod.TOOL_FILE,
+        reference=build_file_reference(record_id="tool-file-id"),
+        extension=".png",
+    )
+
+    assert runtime.resolve_file_url(file=file, for_external=True) == "/files/tools/tool-file-id.png?sign=1"
 
 
 def test_resolve_upload_file_url_signs_internal_urls_and_supports_attachments(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
+    config_overrides(
+        SECRET_KEY="unit-secret",
+        FILES_URL="https://files.example.com",
+        INTERNAL_FILES_URL="https://internal.example.com",
+    )
     monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.app.workflow.file_runtime.os.urandom", lambda _: b"\x01" * 16)
-    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.FILES_URL", "https://files.example.com")
-    monkeypatch.setattr(
-        "core.app.workflow.file_runtime.dify_config.INTERNAL_FILES_URL",
-        "https://internal.example.com",
-    )
 
     runtime = _build_runtime()
     url = runtime.resolve_upload_file_url(
@@ -122,10 +228,11 @@ def test_resolve_upload_file_url_signs_internal_urls_and_supports_attachments(
     assert query["timestamp"] == ["1700000000"]
 
 
-def test_verify_preview_signature_validates_signature_and_expiration(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_verify_preview_signature_validates_signature_and_expiration(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(SECRET_KEY="unit-secret", FILES_ACCESS_TIMEOUT=60)
     monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
-    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.SECRET_KEY", "unit-secret")
-    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.FILES_ACCESS_TIMEOUT", 60)
     runtime = _build_runtime()
     payload = "file-preview|upload-file-id|1700000000|nonce"
     sign = base64.urlsafe_b64encode(hmac.new(b"unit-secret", payload.encode(), hashlib.sha256).digest()).decode()
@@ -164,105 +271,62 @@ def test_verify_preview_signature_validates_signature_and_expiration(monkeypatch
     )
 
 
-def test_load_file_bytes_returns_bytes_and_rejects_non_bytes(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_file_bytes_returns_bytes_and_rejects_non_bytes(
+    monkeypatch: pytest.MonkeyPatch, file_session: Session
+) -> None:
     runtime = _build_runtime()
     file = _build_file(
         transfer_method=FileTransferMethod.LOCAL_FILE,
         reference=build_file_reference(record_id="upload-file-id"),
     )
-    session = MagicMock()
-    session.get.return_value = SimpleNamespace(key="canonical-storage-key")
-
-    class _SessionContext:
-        def __enter__(self):
-            return session
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-    monkeypatch.setattr(file_runtime.session_factory, "create_session", lambda: _SessionContext())
+    _persist_upload_file(file_session)
     monkeypatch.setattr(file_runtime.storage, "load", lambda *args, **kwargs: b"image-bytes")
 
     assert runtime.load_file_bytes(file=file) == b"image-bytes"
-    session.get.assert_called_with(UploadFile, "upload-file-id")
 
     monkeypatch.setattr(file_runtime.storage, "load", lambda *args, **kwargs: "not-bytes")
     with pytest.raises(ValueError, match="is not a bytes object"):
         runtime.load_file_bytes(file=file)
 
 
-def test_resolve_storage_key_ignores_encoded_reference_when_unscoped(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_storage_key_ignores_encoded_reference_when_unscoped(file_session: Session) -> None:
     runtime = _build_runtime()
     file = _build_file(
         transfer_method=FileTransferMethod.LOCAL_FILE,
         reference=build_file_reference(record_id="upload-file-id", storage_key="tampered-storage-key"),
     )
-    session = MagicMock()
-    session.get.return_value = SimpleNamespace(key="canonical-storage-key")
-
-    class _SessionContext:
-        def __enter__(self):
-            return session
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-    monkeypatch.setattr(file_runtime.session_factory, "create_session", lambda: _SessionContext())
+    _persist_upload_file(file_session)
 
     assert runtime._resolve_storage_key(file=file) == "canonical-storage-key"
-    session.get.assert_called_once_with(UploadFile, "upload-file-id")
 
 
-def test_resolve_storage_key_uses_canonical_record_when_scope_is_bound(monkeypatch: pytest.MonkeyPatch) -> None:
-    controller = MagicMock()
-    controller.current_scope.return_value = FileAccessScope(
+def test_resolve_storage_key_uses_canonical_record_when_scope_is_bound(file_session: Session) -> None:
+    _persist_upload_file(file_session)
+    scope = FileAccessScope(
         tenant_id="tenant-id",
         user_id="end-user-id",
         user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
     )
-    controller.get_upload_file.return_value = SimpleNamespace(key="canonical-storage-key")
+    controller = DatabaseFileAccessController(scope_getter=lambda: scope)
     runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
     file = _build_file(
         transfer_method=FileTransferMethod.LOCAL_FILE,
         reference=build_file_reference(record_id="upload-file-id", storage_key="tampered-storage-key"),
     )
-    session = MagicMock()
-
-    class _SessionContext:
-        def __enter__(self):
-            return session
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-    monkeypatch.setattr(file_runtime.session_factory, "create_session", lambda: _SessionContext())
-
     assert runtime._resolve_storage_key(file=file) == "canonical-storage-key"
-    controller.get_upload_file.assert_called_once_with(session=session, file_id="upload-file-id")
 
 
-def test_resolve_upload_file_url_rejects_unauthorized_scoped_access(monkeypatch: pytest.MonkeyPatch) -> None:
-    controller = MagicMock()
-    controller.current_scope.return_value = FileAccessScope(
+def test_resolve_upload_file_url_rejects_unauthorized_scoped_access(file_session: Session) -> None:
+    _persist_upload_file(file_session, tenant_id="other-tenant", created_by="other-user")
+    scope = FileAccessScope(
         tenant_id="tenant-id",
         user_id="end-user-id",
         user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
     )
-    controller.get_upload_file.return_value = None
+    controller = DatabaseFileAccessController(scope_getter=lambda: scope)
     runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
-    session = MagicMock()
-
-    class _SessionContext:
-        def __enter__(self):
-            return session
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-    monkeypatch.setattr(file_runtime.session_factory, "create_session", lambda: _SessionContext())
-
     with pytest.raises(ValueError, match="Upload file upload-file-id not found"):
         runtime.resolve_upload_file_url(upload_file_id="upload-file-id")
 
@@ -276,7 +340,7 @@ def test_resolve_upload_file_url_rejects_unauthorized_scoped_access(monkeypatch:
     ],
 )
 def test_resolve_storage_key_loads_database_records(
-    monkeypatch: pytest.MonkeyPatch,
+    file_session: Session,
     transfer_method: FileTransferMethod,
     record_id: str,
     expected_storage_key: str,
@@ -287,25 +351,10 @@ def test_resolve_storage_key_loads_database_records(
         reference=build_file_reference(record_id=record_id),
         extension=".png",
     )
-    session = MagicMock()
-
-    def get(model_class, value):
-        if transfer_method in {FileTransferMethod.LOCAL_FILE, FileTransferMethod.DATASOURCE_FILE}:
-            assert model_class is UploadFile
-            return SimpleNamespace(key="upload-storage-key")
-        assert model_class is ToolFile
-        return SimpleNamespace(file_key="tool-storage-key")
-
-    session.get.side_effect = get
-
-    class _SessionContext:
-        def __enter__(self):
-            return session
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-    monkeypatch.setattr(file_runtime.session_factory, "create_session", lambda: _SessionContext())
+    if transfer_method in {FileTransferMethod.LOCAL_FILE, FileTransferMethod.DATASOURCE_FILE}:
+        _persist_upload_file(file_session, key="upload-storage-key")
+    else:
+        _persist_tool_file(file_session)
 
     assert runtime._resolve_storage_key(file=file) == expected_storage_key
 
@@ -318,7 +367,7 @@ def test_resolve_storage_key_loads_database_records(
     ],
 )
 def test_resolve_storage_key_raises_when_records_are_missing(
-    monkeypatch: pytest.MonkeyPatch,
+    file_session: Session,
     transfer_method: FileTransferMethod,
     expected_message: str,
 ) -> None:
@@ -329,24 +378,14 @@ def test_resolve_storage_key_raises_when_records_are_missing(
         reference=build_file_reference(record_id=record_id),
         extension=".png",
     )
-    session = MagicMock()
-    session.get.return_value = None
-
-    class _SessionContext:
-        def __enter__(self):
-            return session
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-    monkeypatch.setattr(file_runtime.session_factory, "create_session", lambda: _SessionContext())
-
     with pytest.raises(ValueError, match=expected_message):
         runtime._resolve_storage_key(file=file)
 
 
-def test_runtime_helper_wrappers_delegate_to_config_and_io(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.MULTIMODAL_SEND_FORMAT", "url")
+def test_runtime_helper_wrappers_delegate_to_config_and_io(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(MULTIMODAL_SEND_FORMAT="url")
     runtime = _build_runtime()
 
     assert runtime.multimodal_send_format == "url"
@@ -364,11 +403,65 @@ def test_runtime_helper_wrappers_delegate_to_config_and_io(monkeypatch: pytest.M
         mock_load.assert_called_once_with("path", stream=True)
 
 
-def test_bind_dify_workflow_file_runtime_registers_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
-    set_runtime = MagicMock()
-    monkeypatch.setattr(file_runtime, "set_workflow_file_runtime", set_runtime)
+def test_app_file_runtime_scopes_restore_across_nested_apps_and_workers(monkeypatch: pytest.MonkeyPatch) -> None:
+    first, second = DifyApp("first"), DifyApp("second")
+    runtimes = [_build_runtime(), _build_runtime()]
+    monkeypatch.setattr(file_runtime, "create_dify_workflow_file_runtime", iter(runtimes).__next__)
+    file_runtime.init_app(first)
+    file_runtime.init_app(second)
 
-    bind_dify_workflow_file_runtime()
+    def in_worker() -> None:
+        assert peek_workflow_file_runtime() is None
+        with first.app_context():
+            assert peek_workflow_file_runtime() is runtimes[0]
+        assert peek_workflow_file_runtime() is None
 
-    set_runtime.assert_called_once()
-    assert isinstance(set_runtime.call_args.args[0], DifyWorkflowFileRuntime)
+    def failed_rendering() -> None:
+        with second.app_context():
+            assert peek_workflow_file_runtime() is runtimes[1]
+            raise ValueError("failed rendering")
+
+    with use_workflow_file_runtime(None):
+        with first.app_context():
+            assert peek_workflow_file_runtime() is runtimes[0]
+            with pytest.raises(ValueError, match="failed rendering"):
+                failed_rendering()
+            assert peek_workflow_file_runtime() is runtimes[0]
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                pool.submit(in_worker).result()
+            assert peek_workflow_file_runtime() is runtimes[0]
+        assert peek_workflow_file_runtime() is None
+
+        context = first.app_context()
+        context.push()
+        context.push()
+        context.pop()
+        assert peek_workflow_file_runtime() is runtimes[0]
+        context.pop()
+        assert peek_workflow_file_runtime() is None
+
+
+@pytest.mark.parametrize("explicit_none", [False, True])
+def test_app_file_runtime_restores_when_teardown_raises(monkeypatch: pytest.MonkeyPatch, explicit_none: bool) -> None:
+    app = DifyApp("failed-teardown")
+    runtime, previous_runtime = _build_runtime(), _build_runtime()
+    monkeypatch.setattr(file_runtime, "create_dify_workflow_file_runtime", lambda: runtime)
+    file_runtime.init_app(app)
+    request_error = RuntimeError("request failed")
+
+    @app.teardown_appcontext
+    def fail_teardown(error: BaseException | None) -> None:
+        assert peek_workflow_file_runtime() is runtime
+        assert error is (None if explicit_none else request_error)
+        raise ValueError("teardown failed")
+
+    with use_workflow_file_runtime(previous_runtime):
+        context = app.app_context()
+        context.push()
+        pop_args = (None,) if explicit_none else ()
+        try:
+            raise request_error
+        except RuntimeError:
+            with pytest.raises(ValueError, match="teardown failed"):
+                context.pop(*pop_args)
+        assert peek_workflow_file_runtime() is previous_runtime

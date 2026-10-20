@@ -7,10 +7,15 @@ from unittest.mock import patch
 
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 from sqlalchemy.engine import Engine
 from werkzeug.exceptions import BadRequest
 
-from controllers.console.workspace.trigger_providers import TriggerSubscriptionDeleteApi
+from controllers.console.workspace.trigger_providers import (
+    TriggerSubscriptionBuilderVerifyPayload,
+    TriggerSubscriptionDeleteApi,
+    TriggerSubscriptionVerifyPayload,
+)
 from models.engine import db
 
 trigger_provider_module = import_module("controllers.console.workspace.trigger_providers")
@@ -46,7 +51,8 @@ def test_delete_subscription_uses_sqlite_transaction(flask_sqlite_engine: Engine
     assert provider_session.get_bind() is flask_sqlite_engine
 
 
-def test_delete_subscription_translates_value_error(flask_sqlite_engine: Engine) -> None:
+@pytest.mark.usefixtures("flask_sqlite_engine")
+def test_delete_subscription_translates_value_error() -> None:
     api = TriggerSubscriptionDeleteApi()
     method = unwrap(api.post)
 
@@ -59,3 +65,14 @@ def test_delete_subscription_translates_value_error(flask_sqlite_engine: Engine)
         pytest.raises(BadRequest, match="bad"),
     ):
         method(api, "t1", "sub1")
+
+
+def test_builder_verify_payload_allows_credentials_to_be_omitted() -> None:
+    payload = TriggerSubscriptionBuilderVerifyPayload.model_validate({})
+
+    assert payload.credentials is None
+
+
+def test_subscription_verify_payload_requires_credentials() -> None:
+    with pytest.raises(ValidationError):
+        TriggerSubscriptionVerifyPayload.model_validate({})

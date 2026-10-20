@@ -10,7 +10,7 @@ type Props = Readonly<{
 }>
 
 const NoData: FC<Props> = ({ onStart }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   return (
     <div className="rounded-xl bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4 pt-3">
       <div className="text-xs/5 font-semibold text-text-secondary">
@@ -21,7 +21,7 @@ const NoData: FC<Props> = ({ onStart }) => {
       </div>
       <Button variant="primary" className="mt-2" onClick={onStart}>
         <div>{t(($) => $['metadata.documentMetadata.startLabeling'], { ns: 'dataset' })}</div>
-        <RiArrowRightLine className="ml-1 size-4" />
+        <RiArrowRightLine className="size-4" />
       </Button>
     </div>
   )

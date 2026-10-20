@@ -103,5 +103,5 @@ def gen_uuidv4_string() -> str:
 
 
 def gen_uuidv7_string() -> str:
-    """gen_uuidv4_string generate a UUIDv4 string."""
+    """Generate a UUIDv7 string."""
     return str(uuidv7())

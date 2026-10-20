@@ -1,6 +1,6 @@
 import json
 from base64 import b64decode
-from typing import Any
+from typing import NoReturn
 
 import pytest
 
@@ -43,7 +43,7 @@ def test_serialize_inputs_encodes_payload() -> None:
 def test_transform_response_parses_json_result_and_converts_scientific_notation() -> None:
     response = '<<RESULT>>{"value": "1e+3", "nested": {"x": "2E-2"}, "arr": ["3e+1"]}<<RESULT>>'
 
-    result: dict[str, Any] = _DummyTransformer.transform_response(response)
+    result: dict[str, object] = _DummyTransformer.transform_response(response)
 
     assert result == {"value": 1000.0, "nested": {"x": 0.02}, "arr": [30.0]}
 
@@ -66,7 +66,7 @@ def test_transform_response_raises_for_non_string_keys(monkeypatch: pytest.Monke
 
 
 def test_transform_response_raises_for_unexpected_errors(monkeypatch: pytest.MonkeyPatch) -> None:
-    def _raise_unexpected(_: str) -> Any:
+    def _raise_unexpected(_: str) -> NoReturn:
         raise RuntimeError("boom")
 
     monkeypatch.setattr("json.loads", _raise_unexpected)

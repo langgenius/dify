@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from dify_agent.protocol import RunFailureType
 from sqlalchemy.orm import Session
 
 from clients.agent_backend.errors import AgentBackendRunFailedError
@@ -149,6 +150,22 @@ class TestBasedGenerateTaskPipeline:
             "code": "completion_request_error",
             "status": 400,
             "message": "Knowledge retrieval failed (agent_run_id=run-1)",
+        }
+
+    def test_stream_converter_maps_agent_run_limit_error(self):
+        data = AppGenerateResponseConverter._error_to_stream_response(
+            AgentBackendRunFailedError(
+                "run-1",
+                {},
+                message="run limit reached",
+                error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+            )
+        )
+
+        assert data == {
+            "code": "agent_run_limit_exceeded",
+            "status": 400,
+            "message": "run limit reached (agent_run_id=run-1)",
         }
 
     def test_handle_output_moderation_when_flagged(self, pipeline):

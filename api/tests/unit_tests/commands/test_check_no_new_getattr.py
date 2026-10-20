@@ -85,6 +85,42 @@ def main_branch_rev(repo: Path) -> str:
     return git(repo, "rev-parse", "main")
 
 
+@pytest.mark.parametrize(
+    ("source_line", "rule_id"),
+    [
+        (
+            "value = getattr(module, name)  # guard-ignore: no-new-getattr -- lazy export proxy",
+            "no-new-getattr",
+        ),
+        (
+            "session.rollback()  # guard-ignore: no-new-controller-sqlalchemy -- decorator owns rollback",
+            "no-new-controller-sqlalchemy",
+        ),
+    ],
+)
+def test_has_reasoned_guard_ignore_accepts_custom_rules(source_line: str, rule_id: str) -> None:
+    module = load_guard_module()
+
+    assert module.has_reasoned_guard_ignore(source_line, rule_id)
+
+
+@pytest.mark.parametrize(
+    ("source_line", "rule_id"),
+    [
+        ("value = getattr(module, name)  # noqa: no-new-getattr legacy marker", "no-new-getattr"),
+        ("value = getattr(module, name)  # guard-ignore: no-new-getattr", "no-new-getattr"),
+        (
+            "value = getattr(module, name)  # guard-ignore: another-rule -- wrong rule",
+            "no-new-getattr",
+        ),
+    ],
+)
+def test_has_reasoned_guard_ignore_rejects_invalid_markers(source_line: str, rule_id: str) -> None:
+    module = load_guard_module()
+
+    assert not module.has_reasoned_guard_ignore(source_line, rule_id)
+
+
 def test_resolve_ast_grep_command_prefers_ast_grep(monkeypatch: pytest.MonkeyPatch) -> None:
     module = load_guard_module()
     monkeypatch.setattr(
@@ -192,19 +228,6 @@ def test_style_workflow_wires_no_new_getattr_guard() -> None:
     assert checkout_step is not None
     assert "fetch-depth: 0" in checkout_step.group("step")
 
-    changed_files_step = re.search(
-        r"(?ms)^      - name: Check changed files\n.*?^          files: \|\n(?P<files>(?:^            \S[^\n]*\n)+)",
-        job_text,
-    )
-    assert changed_files_step is not None
-
-    files_block = changed_files_step.group("files")
-    assert "api/**\n" in files_block
-    assert "scripts/check_no_new_getattr.py\n" in files_block
-    assert "scripts/ast_grep_rules/no_new_getattr.yml\n" in files_block
-    assert ".github/workflows/style.yml\n" in files_block
-    assert ".github/workflows/main-ci.yml\n" in files_block
-
     guard_command = 'scripts/check_no_new_getattr.py --base-rev "${{ inputs.base-rev }}"'
     assert guard_command in job_text
 
@@ -215,6 +238,7 @@ def test_style_workflow_wires_no_new_getattr_guard() -> None:
     )
     assert guard_step is not None
 
+    assert "if: inputs.run-python-style" in guard_step.group("step")
     assert "GITHUB_BASE_SHA" not in guard_step.group("step")
 
 
@@ -230,17 +254,22 @@ def test_main_ci_passes_style_base_rev_input() -> None:
         "base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}"
         in style_job.group("job")
     )
-
-    api_filter = re.search(
-        r"(?ms)^            api:\n(?P<filter>(?:^              - '[^']+'\n)+)",
-        workflow,
+    assert "run-python-style: ${{ needs.check-changes.outputs.python-style-changed == 'true' }}" in style_job.group(
+        "job"
     )
-    assert api_filter is not None
-    filter_text = api_filter.group("filter")
-    assert "scripts/check_no_new_getattr.py" in filter_text
-    assert "scripts/ast_grep_rules/no_new_getattr.yml" in filter_text
-    assert ".github/workflows/style.yml" in filter_text
-    assert ".github/workflows/main-ci.yml" in filter_text
+
+    for filter_name in ("api", "python-style"):
+        path_filter = re.search(
+            rf"(?ms)^            {re.escape(filter_name)}:\n(?P<filter>(?:^              - '[^']+'\n)+)",
+            workflow,
+        )
+        assert path_filter is not None, filter_name
+        filter_text = path_filter.group("filter")
+        assert "api/**" in filter_text
+        assert "scripts/check_no_new_getattr.py" in filter_text
+        assert "scripts/ast_grep_rules/no_new_getattr.yml" in filter_text
+        assert ".github/workflows/style.yml" in filter_text
+        assert ".github/workflows/main-ci.yml" in filter_text
 
 
 def test_base_rev_mode_passes_when_only_legacy_getattr_exists(tmp_path: Path) -> None:
@@ -776,7 +805,7 @@ def test_modified_hunk_with_increased_getattr_count_fails(tmp_path: Path) -> Non
     assert "net-new getattr" in result.stderr
 
 
-def test_inline_noqa_suppression_with_explanatory_text_skips_added_getattr(tmp_path: Path) -> None:
+def test_inline_guard_ignore_with_explanatory_text_skips_added_getattr(tmp_path: Path) -> None:
     init_repo(tmp_path)
     write_repo_file(
         tmp_path,
@@ -795,20 +824,20 @@ def test_inline_noqa_suppression_with_explanatory_text_skips_added_getattr(tmp_p
         "pkg/existing.py",
         """
         def read_value(obj):
-            return getattr(obj, "dynamic_name", None)  # noqa: no-new-getattr needed for plugin-defined attributes
+            return getattr(obj, "dynamic_name", None)  # guard-ignore: no-new-getattr -- plugin-defined attributes
         """,
     )
     commit_all(tmp_path, "add suppressed getattr")
 
     result = run_script(tmp_path, "--base-rev", base_rev)
 
-    assert "no-new-getattr needed for plugin-defined attributes" in (tmp_path / "pkg/existing.py").read_text(
+    assert "guard-ignore: no-new-getattr -- plugin-defined attributes" in (tmp_path / "pkg/existing.py").read_text(
         encoding="utf-8"
     )
     assert result.returncode == 0, stderr_lines(result)
 
 
-def test_inline_noqa_without_explanatory_text_is_not_sufficient(tmp_path: Path) -> None:
+def test_inline_guard_ignore_without_explanatory_text_is_not_sufficient(tmp_path: Path) -> None:
     init_repo(tmp_path)
     write_repo_file(
         tmp_path,
@@ -827,10 +856,10 @@ def test_inline_noqa_without_explanatory_text_is_not_sufficient(tmp_path: Path) 
         "pkg/existing.py",
         """
         def read_value(obj):
-            return getattr(obj, "dynamic_name", None)  # noqa: no-new-getattr
+            return getattr(obj, "dynamic_name", None)  # guard-ignore: no-new-getattr
         """,
     )
-    commit_all(tmp_path, "add bare noqa getattr")
+    commit_all(tmp_path, "add bare guard ignore getattr")
 
     result = run_script(tmp_path, "--base-rev", base_rev)
 

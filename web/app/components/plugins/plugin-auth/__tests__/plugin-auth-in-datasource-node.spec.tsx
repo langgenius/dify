@@ -1,53 +1,34 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import PluginAuthInDataSourceNode from '../plugin-auth-in-datasource-node'
 
 describe('PluginAuthInDataSourceNode', () => {
-  const mockOnJump = vi.fn()
+  it('offers navigation to connect while hiding authorized content', async () => {
+    const user = userEvent.setup()
+    const onJump = vi.fn()
+    render(
+      <PluginAuthInDataSourceNode onJumpToDataSourcePage={onJump}>
+        Data Source Connected
+      </PluginAuthInDataSourceNode>,
+    )
+    expect(screen.queryByText('Data Source Connected')).not.toBeInTheDocument()
 
-  beforeEach(() => {
-    vi.clearAllMocks()
+    await user.click(screen.getByRole('button', { name: 'common.integrations.connect' }))
+
+    expect(onJump).toHaveBeenCalledOnce()
   })
 
-  afterEach(() => {
-    cleanup()
-  })
+  it('replaces the connect action with authorized content', () => {
+    render(
+      <PluginAuthInDataSourceNode isAuthorized onJumpToDataSourcePage={vi.fn()}>
+        Data Source Connected
+      </PluginAuthInDataSourceNode>,
+    )
 
-  it('renders connect button when not authorized', () => {
-    render(<PluginAuthInDataSourceNode onJumpToDataSourcePage={mockOnJump} />)
-    expect(screen.getByText('common.integrations.connect')).toBeInTheDocument()
-  })
-
-  it('renders connect button', () => {
-    render(<PluginAuthInDataSourceNode onJumpToDataSourcePage={mockOnJump} />)
     expect(
-      screen.getByRole('button', { name: /common\.integrations\.connect/ }),
-    ).toBeInTheDocument()
-  })
-
-  it('calls onJumpToDataSourcePage when connect button is clicked', () => {
-    render(<PluginAuthInDataSourceNode onJumpToDataSourcePage={mockOnJump} />)
-    fireEvent.click(screen.getByRole('button', { name: /common\.integrations\.connect/ }))
-    expect(mockOnJump).toHaveBeenCalledTimes(1)
-  })
-
-  it('hides connect button and shows children when authorized', () => {
-    render(
-      <PluginAuthInDataSourceNode isAuthorized onJumpToDataSourcePage={mockOnJump}>
-        <div data-testid="child-content">Data Source Connected</div>
-      </PluginAuthInDataSourceNode>,
-    )
-    expect(screen.queryByText('common.integrations.connect')).not.toBeInTheDocument()
-    expect(screen.getByTestId('child-content')).toBeInTheDocument()
-  })
-
-  it('shows connect button when isAuthorized is false', () => {
-    render(
-      <PluginAuthInDataSourceNode isAuthorized={false} onJumpToDataSourcePage={mockOnJump}>
-        <div data-testid="child-content">Data Source Connected</div>
-      </PluginAuthInDataSourceNode>,
-    )
-    expect(screen.getByText('common.integrations.connect')).toBeInTheDocument()
-    expect(screen.queryByTestId('child-content')).not.toBeInTheDocument()
+      screen.queryByRole('button', { name: 'common.integrations.connect' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('Data Source Connected')).toBeInTheDocument()
   })
 })

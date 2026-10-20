@@ -16,13 +16,13 @@ type ConditionValueProps = {
   condition: Condition
 }
 const ConditionValue = ({ condition }: ConditionValueProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
   const { variable_selector, comparison_operator: operator, sub_variable_condition } = condition
 
   const variableSelector = variable_selector as ValueSelector
 
   const operatorName = isComparisonOperatorNeedTranslate(operator)
-    ? t(($) => $[`nodes.ifElse.comparisonOperator.${operator}`], { ns: 'workflow' })
+    ? t(($) => $[`nodes.ifElse.comparisonOperator.${operator}`], { ns: 'workflowLogic' })
     : operator
   const formatValue = useCallback((c: Condition) => {
     const notHasValue = comparisonOperatorNotRequireValue(c.comparison_operator)
@@ -54,7 +54,7 @@ const ConditionValue = ({ condition }: ConditionValueProps) => {
           (item) => item.value === (Array.isArray(c.value) ? c.value[0] : c.value),
         )[0]
         return name
-          ? t(($) => $[`nodes.ifElse.optionName.${name.i18nKey}`], { ns: 'workflow' }).replace(
+          ? t(($) => $[`nodes.ifElse.optionName.${name.i18nKey}`], { ns: 'workflowLogic' }).replace(
               /\{\{#([^#]*)#\}\}/g,
               (a, b) => {
                 const arr: string[] = b.split('.')
@@ -78,13 +78,13 @@ const ConditionValue = ({ condition }: ConditionValueProps) => {
           {operatorName}
         </div>
       </div>
-      <div className="ml-[10px] border-l border-divider-regular pl-[10px]">
+      <div className="ml-2.5 border-l border-divider-regular pl-2.5">
         {sub_variable_condition?.conditions.map((c: Condition, index) => {
           const comparisonOperator = c.comparison_operator
           const comparisonOperatorName =
             comparisonOperator && isComparisonOperatorNeedTranslate(comparisonOperator)
               ? t(($) => $[`nodes.ifElse.comparisonOperator.${comparisonOperator}`], {
-                  ns: 'workflow',
+                  ns: 'workflowLogic',
                 })
               : comparisonOperator
           return (
@@ -97,9 +97,9 @@ const ConditionValue = ({ condition }: ConditionValueProps) => {
                 </div>
               )}
               {index !== sub_variable_condition.conditions.length - 1 && (
-                <div className="absolute right-1 bottom-[-10px] z-10 text-[10px] leading-4 font-medium text-text-accent uppercase">
+                <div className="absolute right-1 -bottom-2.5 z-10 text-2xs leading-4 font-medium text-text-accent uppercase">
                   {t(($) => $[`nodes.ifElse.${sub_variable_condition.logical_operator}`], {
-                    ns: 'workflow',
+                    ns: 'workflowLogic',
                   })}
                 </div>
               )}

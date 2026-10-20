@@ -4,9 +4,10 @@ import pytest
 
 from core.tools.utils import system_encryption as encryption
 from core.tools.utils.system_encryption import EncryptionError, SystemEncrypter
+from tests.unit_tests.config_override import apply_config_overrides
 
 
-def test_system_encrypter_roundtrip():
+def test_system_encrypter_roundtrip() -> None:
     encrypter = SystemEncrypter(secret_key="test-secret")
     payload = {"client_id": "cid", "client_secret": "csecret", "grant_type": "authorization_code"}
 
@@ -17,7 +18,7 @@ def test_system_encrypter_roundtrip():
     assert dict(decrypted) == payload
 
 
-def test_system_encrypter_decrypt_validates_input():
+def test_system_encrypter_decrypt_validates_input() -> None:
     encrypter = SystemEncrypter(secret_key="test-secret")
 
     with pytest.raises(ValueError, match="must be a string"):
@@ -27,16 +28,16 @@ def test_system_encrypter_decrypt_validates_input():
         encrypter.decrypt_params("")
 
 
-def test_system_encrypter_raises_error_for_invalid_ciphertext():
+def test_system_encrypter_raises_error_for_invalid_ciphertext() -> None:
     encrypter = SystemEncrypter(secret_key="test-secret")
 
     with pytest.raises(EncryptionError, match="Decryption failed"):
         encrypter.decrypt_params("not-base64")
 
 
-def test_system_helpers_use_global_cached_instance(monkeypatch: pytest.MonkeyPatch):
+def test_system_helpers_use_global_cached_instance(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(encryption, "_encrypter", None)
-    monkeypatch.setattr("core.tools.utils.system_encryption.dify_config.SECRET_KEY", "global-secret")
+    apply_config_overrides(monkeypatch, SECRET_KEY="global-secret")
 
     first = encryption.get_system_encrypter()
     second = encryption.get_system_encrypter()
@@ -46,6 +47,6 @@ def test_system_helpers_use_global_cached_instance(monkeypatch: pytest.MonkeyPat
     assert encryption.decrypt_system_params(encrypted) == {"k": "v"}
 
 
-def test_create_system_encrypter_factory():
+def test_create_system_encrypter_factory() -> None:
     encrypter = encryption.create_system_encrypter(secret_key="factory-secret")
     assert isinstance(encrypter, SystemEncrypter)

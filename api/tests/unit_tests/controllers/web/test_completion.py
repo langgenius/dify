@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import uuid
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import InternalServerError
 
 from controllers.web.completion import ChatApi, ChatStopApi, CompletionApi, CompletionStopApi
 from controllers.web.error import (
@@ -23,18 +24,50 @@ from controllers.web.error import (
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
+from models.model import App, AppMode, EndUser
+from tests.unit_tests.model_factories import make_app, make_end_user
 
 
-def _completion_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="completion")
+def _app(mode: AppMode) -> App:
+    return make_app(name="Web App", mode=mode, enable_api=False, max_active_requests=0)
 
 
-def _chat_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="chat")
+def _completion_app() -> App:
+    return _app(AppMode.COMPLETION)
 
 
-def _end_user() -> SimpleNamespace:
-    return SimpleNamespace(id="eu-1")
+def _chat_app() -> App:
+    return _app(AppMode.CHAT)
+
+
+def _end_user() -> EndUser:
+    return make_end_user(end_user_id="eu-1", app_id="app-1", name="Web User")
+
+
+@pytest.mark.parametrize(
+    ("resource", "mode", "path"),
+    [
+        (CompletionApi, AppMode.COMPLETION, "/completion-messages"),
+        (ChatApi, AppMode.CHAT, "/chat-messages"),
+    ],
+)
+def test_unexpected_generation_error_hides_internal_details(
+    app: Flask,
+    resource: type[CompletionApi | ChatApi],
+    mode: AppMode,
+    path: str,
+) -> None:
+    error = RuntimeError("internal provider failure")
+    with (
+        patch("controllers.web.completion.AppGenerateService.generate", side_effect=error),
+        app.test_request_context(path, method="POST", json={"inputs": {}, "query": "hello"}),
+        pytest.raises(InternalServerError) as exc_info,
+    ):
+        resource().post(_app(mode), _end_user())
+
+    assert exc_info.value.code == 500
+    assert "internal provider failure" not in str(exc_info.value)
+    assert exc_info.value.__context__ is error
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +186,7 @@ class TestChatApi:
     @patch("controllers.web.completion.web_ns")
     def test_agent_not_published_error_mapped(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
         mock_ns.payload = {"inputs": {}, "query": "x"}
-        app_model = SimpleNamespace(id="app-1", mode="agent")
+        app_model = _app(AppMode.AGENT)
 
         with app.test_request_context("/chat-messages", method="POST"):
             with pytest.raises(AgentNotPublishedError):
@@ -168,9 +201,10 @@ class TestChatApi:
         mock_get_conversation: MagicMock,
         mock_generate: MagicMock,
         app: Flask,
+        unbound_session: Session,
     ) -> None:
         mock_ns.payload = {"inputs": {}, "query": "hi", "conversation_id": str(uuid.uuid4())}
-        session = MagicMock()
+        session = unbound_session
 
         with app.test_request_context("/chat-messages", method="POST"):
             unwrap(ChatApi.post)(ChatApi(), session, _chat_app(), _end_user())

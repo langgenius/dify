@@ -114,20 +114,25 @@ def build_oauth_authorization_server_metadata_discovery_urls(auth_server_url: st
     base = f"{parsed.scheme}://{parsed.netloc}"
     path = parsed.path.rstrip("/")
     # OAuth 2.0 Authorization Server Metadata at root (MCP-03-26)
-    urls.append(f"{base}/.well-known/oauth-authorization-server")
-
-    # OpenID Connect Discovery at root
-    urls.append(f"{base}/.well-known/openid-configuration")
+    urls.extend(
+        [
+            f"{base}/.well-known/oauth-authorization-server",
+            # OpenID Connect Discovery at root
+            f"{base}/.well-known/openid-configuration",
+        ]
+    )
 
     if path:
         # OpenID Connect Discovery with path insertion
-        urls.append(f"{base}/.well-known/openid-configuration{path}")
-
-        # OpenID Connect Discovery path appending
-        urls.append(f"{base}{path}/.well-known/openid-configuration")
-
-        # OAuth 2.0 Authorization Server Metadata with path insertion
-        urls.append(f"{base}/.well-known/oauth-authorization-server{path}")
+        urls.extend(
+            [
+                f"{base}/.well-known/openid-configuration{path}",
+                # OpenID Connect Discovery path appending
+                f"{base}{path}/.well-known/openid-configuration",
+                # OAuth 2.0 Authorization Server Metadata with path insertion
+                f"{base}/.well-known/oauth-authorization-server{path}",
+            ]
+        )
 
     return urls
 
@@ -230,7 +235,7 @@ def _retrieve_redis_state(state_key: str) -> OAuthCallbackState:
 
         return oauth_state
     except ValidationError as e:
-        raise ValueError(f"Invalid state parameter: {str(e)}")
+        raise ValueError(f"Invalid state parameter: {str(e)}") from e
 
 
 def handle_callback(state_key: str, authorization_code: str) -> tuple[OAuthCallbackState, OAuthTokens]:
@@ -531,7 +536,9 @@ def register_client(
         headers={"Content-Type": "application/json"},
     )
     if not response.is_success:
-        response.raise_for_status()
+        # Callers only translate RequestError/ValueError into a user-facing error,
+        # so a raise_for_status() here would escape as an opaque 500.
+        raise ValueError(f"Client registration failed: HTTP {response.status_code}, Response: {response.text}")
     return OAuthClientInformationFull.model_validate(response.json())
 
 
@@ -604,7 +611,7 @@ def auth(
         try:
             full_information = register_client(server_url, server_metadata, client_metadata)
         except RequestError as e:
-            raise ValueError(f"Could not register OAuth client: {e}")
+            raise ValueError(f"Could not register OAuth client: {e}") from e
 
         # Return action to save client information
         actions.append(
@@ -647,7 +654,7 @@ def auth(
             # RequestError: HTTP request failed
             # ValueError: Invalid response data
             # KeyError: Missing required fields in response
-            raise ValueError(f"Client credentials flow failed: {e}")
+            raise ValueError(f"Client credentials flow failed: {e}") from e
 
     # Exchange authorization code for tokens (Authorization Code flow)
     if authorization_code is not None:
@@ -665,7 +672,7 @@ def auth(
                 raise ValueError("Missing code_verifier or redirect_uri in state data")
 
         except (json.JSONDecodeError, ValueError) as e:
-            raise ValueError(f"Invalid state parameter: {e}")
+            raise ValueError(f"Invalid state parameter: {e}") from e
 
         tokens = exchange_authorization(
             server_url,
@@ -712,7 +719,7 @@ def auth(
             # RequestError: HTTP request failed
             # ValueError: Invalid response data
             # KeyError: Missing required fields in response
-            raise ValueError(f"Could not refresh OAuth tokens: {e}")
+            raise ValueError(f"Could not refresh OAuth tokens: {e}") from e
 
     # Start new authorization flow (only for authorization code flow)
     authorization_url, code_verifier = start_authorization(

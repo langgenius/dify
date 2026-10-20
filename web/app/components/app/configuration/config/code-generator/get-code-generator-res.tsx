@@ -2,30 +2,21 @@ import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type { GenRes } from '@/service/debug'
-import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
+import type { CompletionParams, Model, ModelModeType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
 import { useBoolean, useSessionStorageState } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Generator } from '@/app/components/base/icons/src/vender/other'
-import Loading from '@/app/components/base/loading'
+import { toast } from '@/app/components/app/configuration/toast'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { consoleQuery } from '@/service/console'
 import { generateRule } from '@/service/debug'
-import { useGenerateRuleTemplate } from '@/service/use-apps'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
 import { useAutoGenModel } from '../auto-gen-model-storage'
 import IdeaOutput from '../automatic/idea-output'
@@ -51,7 +42,7 @@ type IGetCodeGeneratorResProps = {
   flowId: string
   nodeId: string
   currentCode?: string
-  mode: AppModeEnum
+  modelMode: ModelModeType
   isShow: boolean
   codeLanguages: CodeLanguage
   onClose: () => void
@@ -62,29 +53,39 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
   flowId,
   nodeId,
   currentCode,
-  mode,
+  modelMode,
   isShow,
   codeLanguages,
   onClose,
   onFinished,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'appGeneration'])
   const [storedModel, setStoredModel] = useAutoGenModel()
-  const [model, setModel] = React.useState<Model>(
-    storedModel || {
-      name: '',
-      provider: '',
-      mode: mode as unknown as ModelModeType,
-      completion_params: defaultCompletionParams,
-    },
-  )
+  const [selectedModel, setSelectedModel] = React.useState<Model>()
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
     ModelTypeEnum.textGeneration,
   )
-  const [instructionFromSessionStorage, setInstruction] = useSessionStorageState<string>(
-    `improve-instruction-${flowId}-${nodeId}`,
-  )
-  const instruction = instructionFromSessionStorage || ''
+  const model = useMemo<Model>(() => {
+    if (selectedModel) return selectedModel
+    if (storedModel) {
+      return {
+        ...storedModel,
+        completion_params: {
+          ...defaultCompletionParams,
+          ...storedModel.completion_params,
+        },
+      }
+    }
+
+    return {
+      name: defaultModel?.model ?? '',
+      provider: defaultModel?.provider.provider ?? '',
+      mode: modelMode,
+      completion_params: defaultCompletionParams,
+    }
+  }, [defaultModel, modelMode, selectedModel, storedModel])
+  const [instructionFromSessionStorage, setInstructionFromSessionStorage] =
+    useSessionStorageState<string>(`improve-instruction-${flowId}-${nodeId}`)
 
   const [ideaOutput, setIdeaOutput] = useState<string>('')
 
@@ -95,13 +96,15 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
       storageKey,
     },
   )
-  const [editorKey, setEditorKey] = useState(`${flowId}-0`)
-  const { data: instructionTemplate } = useGenerateRuleTemplate(GeneratorType.code)
-  useEffect(() => {
-    if (!instruction && instructionTemplate) setInstruction(instructionTemplate.data)
-
-    setEditorKey(`${flowId}-${Date.now()}`)
-  }, [instructionTemplate])
+  const [editorKey] = useState(`${flowId}-0`)
+  const { data: instructionTemplate } = useQuery({
+    ...consoleQuery.instructionGenerate.template.post.queryOptions({
+      input: { body: { type: GeneratorType.code } },
+    }),
+    retry: 0,
+  })
+  const instruction = instructionFromSessionStorage ?? instructionTemplate?.data ?? ''
+  const instructionEditorKey = `${editorKey}-${instructionTemplate ? 'template' : 'pending'}`
 
   const isValid = () => {
     if (instruction.trim() === '') {
@@ -124,10 +127,10 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
         name: newValue.modelId,
         mode: newValue.mode as ModelModeType,
       }
-      setModel(newModel)
+      setSelectedModel(newModel)
       setStoredModel(newModel)
     },
-    [model, setModel, setStoredModel],
+    [model, setStoredModel],
   )
 
   const handleCompletionParamsChange = useCallback(
@@ -136,10 +139,10 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
         ...model,
         completion_params: newParams as CompletionParams,
       }
-      setModel(newModel)
+      setSelectedModel(newModel)
       setStoredModel(newModel)
     },
-    [model, setModel, setStoredModel],
+    [model, setStoredModel],
   )
 
   const onGenerate = async () => {
@@ -156,9 +159,9 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
         ideal_output: ideaOutput,
         language: languageMap[codeLanguages] || 'javascript',
       })
-      if ((res as any).code)
+      if ('code' in res && typeof res.code === 'string')
         // not current or current is the same as the template would return a code field
-        res.modified = (res as any).code
+        res.modified = res.code
 
       if (error) {
         toast.error(error)
@@ -170,36 +173,11 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
     }
   }
 
-  const [
-    isShowConfirmOverwrite,
-    { setTrue: showConfirmOverwrite, setFalse: hideShowConfirmOverwrite },
-  ] = useBoolean(false)
-
-  useEffect(() => {
-    if (defaultModel) {
-      if (storedModel) {
-        setModel({
-          ...storedModel,
-          completion_params: {
-            ...defaultCompletionParams,
-            ...storedModel.completion_params,
-          },
-        })
-      } else {
-        setModel((prev) => ({
-          ...prev,
-          name: defaultModel.model,
-          provider: defaultModel.provider.provider,
-        }))
-      }
-    }
-  }, [defaultModel, storedModel])
-
   const renderLoading = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
-      <Loading />
+      <LoadingPlaceholder />
       <div className="text-[13px] text-text-tertiary">
-        {t(($) => $['codegen.loading'], { ns: 'appDebug' })}
+        {t(($) => $['codegen.loading'], { ns: 'appGeneration' })}
       </div>
     </div>
   )
@@ -211,15 +189,15 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-full min-w-[1140px] overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] w-full min-w-285 overflow-hidden">
         <div className="relative flex h-full min-h-0 flex-wrap">
-          <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
+          <div className="h-full w-142.5 shrink-0 overflow-y-auto border-r border-divider-regular p-6">
             <div className="mb-5">
-              <div className={`text-lg leading-[28px] font-bold ${s.textGradient}`}>
-                {t(($) => $['codegen.title'], { ns: 'appDebug' })}
+              <div className={`text-lg leading-7 font-bold ${s.textGradient}`}>
+                {t(($) => $['codegen.title'], { ns: 'appGeneration' })}
               </div>
               <div className="mt-1 text-[13px] font-normal text-text-tertiary">
-                {t(($) => $['codegen.description'], { ns: 'appDebug' })}
+                {t(($) => $['codegen.description'], { ns: 'appGeneration' })}
               </div>
             </div>
             <div className="mb-4">
@@ -237,12 +215,12 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
             <div>
               <div className="text-[0px]">
                 <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">
-                  {t(($) => $['codegen.instruction'], { ns: 'appDebug' })}
+                  {t(($) => $['codegen.instruction'], { ns: 'appGeneration' })}
                 </div>
                 <InstructionEditor
-                  editorKey={editorKey}
+                  editorKey={instructionEditorKey}
                   value={instruction}
-                  onChange={setInstruction}
+                  onChange={setInstructionFromSessionStorage}
                   nodeId={nodeId}
                   generatorType={GeneratorType.code}
                   isShowCurrentBlock={!!currentCode}
@@ -252,17 +230,17 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
 
               <div className="mt-7 flex justify-end space-x-2">
                 <Button onClick={onClose}>
-                  {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appDebug' })}
+                  {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appGeneration' })}
                 </Button>
                 <Button
-                  className="flex space-x-1"
+                  className="flex"
                   variant="primary"
                   onClick={onGenerate}
                   disabled={isLoading}
                 >
-                  <Generator className="size-4" />
+                  <span aria-hidden className="i-custom-vender-other-generator size-4" />
                   <span className="text-xs font-semibold">
-                    {t(($) => $['codegen.generate'], { ns: 'appDebug' })}
+                    {t(($) => $['codegen.generate'], { ns: 'appGeneration' })}
                   </span>
                 </Button>
               </div>
@@ -277,40 +255,12 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
                 currentVersionIndex={currentVersionIndex || 0}
                 setCurrentVersionIndex={setCurrentVersionIndex}
                 versions={versions || []}
-                onApply={showConfirmOverwrite}
+                onApply={() => onFinished(current!)}
                 generatorType={GeneratorType.code}
               />
             </div>
           )}
         </div>
-        <AlertDialog
-          open={isShowConfirmOverwrite}
-          onOpenChange={(open) => !open && hideShowConfirmOverwrite()}
-        >
-          <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t(($) => $['codegen.overwriteConfirmTitle'], { ns: 'appDebug' })}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t(($) => $['codegen.overwriteConfirmMessage'], { ns: 'appDebug' })}
-              </AlertDialogDescription>
-            </div>
-            <AlertDialogActions>
-              <AlertDialogCancelButton>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </AlertDialogCancelButton>
-              <AlertDialogConfirmButton
-                onClick={() => {
-                  hideShowConfirmOverwrite()
-                  onFinished(current!)
-                }}
-              >
-                {t(($) => $['operation.confirm'], { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogActions>
-          </AlertDialogContent>
-        </AlertDialog>
       </DialogContent>
     </Dialog>
   )

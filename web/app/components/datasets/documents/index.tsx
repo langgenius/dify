@@ -1,27 +1,24 @@
 'use client'
+
 import type { FC } from 'react'
+import { keepPreviousData, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
-import Loading from '@/app/components/base/loading'
-import { userProfileIdAtom } from '@/context/account-state'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toCreationDataSourceType } from '@/app/components/datasets/dataset-fields'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
-import {
-  useDocumentList,
-  useInvalidDocumentDetail,
-  useInvalidDocumentList,
-} from '@/service/knowledge/use-document'
-import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
-import { useInvalid } from '@/service/use-base'
+import { consoleQuery } from '@/service/console'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata'
 import DocumentsHeader from './components/documents-header'
 import EmptyElement from './components/empty-element'
 import List from './components/list'
 import { useDocumentsPageState } from './hooks/use-documents-page-state'
+import { toDocumentListQuery } from './status-filter'
 
 type IDocumentsProps = {
   datasetId: string
@@ -33,11 +30,12 @@ const FORCED_POLLING_STATUSES = new Set(['queuing', 'indexing', 'paused'])
 
 const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const router = useRouter()
-  const { plan } = useProviderContext()
-  const isFreePlan = plan.type === 'sandbox'
 
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const embeddingAvailable = !!dataset?.embedding_available
   const datasetACLCapabilities = getDatasetACLCapabilities(dataset?.permission_keys, {
@@ -66,42 +64,65 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   } = useDocumentsPageState()
 
   // Fetch document list
-  const { data: documentsRes, isLoading: isListLoading } = useDocumentList({
-    datasetId,
-    query: {
-      page: currPage + 1,
-      limit,
-      keyword: debouncedSearchValue,
-      status: normalizedStatusFilterValue,
-      sort: sortValue,
-    },
-    refetchInterval: (query) => {
-      const shouldForcePolling =
-        normalizedStatusFilterValue !== 'all' &&
-        FORCED_POLLING_STATUSES.has(normalizedStatusFilterValue)
-      const documents = query.state.data?.data
-      if (!documents) return POLLING_INTERVAL
-      const hasIncompleteDocuments = documents.some(
-        ({ indexing_status }) => !TERMINAL_INDEXING_STATUSES.has(indexing_status),
-      )
-      return shouldForcePolling || hasIncompleteDocuments ? POLLING_INTERVAL : false
-    },
-  })
+  const { data: documentsRes, isLoading: isListLoading } = useQuery(
+    consoleQuery.datasets.byDatasetId.documents.get.queryOptions({
+      input: {
+        params: { dataset_id: datasetId },
+        query: toDocumentListQuery({
+          page: currPage + 1,
+          limit,
+          keyword: debouncedSearchValue,
+          status: normalizedStatusFilterValue,
+          sort: sortValue,
+        }),
+      },
+      placeholderData: keepPreviousData,
+      refetchInterval: (query) => {
+        const shouldForcePolling =
+          normalizedStatusFilterValue !== 'all' &&
+          FORCED_POLLING_STATUSES.has(normalizedStatusFilterValue)
+        const documents = query.state.data?.data
+        if (!documents) return POLLING_INTERVAL
+        const hasIncompleteDocuments = documents.some(
+          ({ indexing_status }) => !TERMINAL_INDEXING_STATUSES.has(indexing_status ?? ''),
+        )
+        return shouldForcePolling || hasIncompleteDocuments ? POLLING_INTERVAL : false
+      },
+    }),
+  )
 
   // Invalidation hooks
-  const invalidDocumentList = useInvalidDocumentList(datasetId)
-  const invalidDocumentDetail = useInvalidDocumentDetail()
-  const invalidChunkList = useInvalid(useSegmentListKey)
-  const invalidChildChunkList = useInvalid(useChildSegmentListKey)
+  const queryClient = useQueryClient()
+  const invalidDocumentList = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+          input: { params: { dataset_id: datasetId } },
+        }),
+      }),
+    [queryClient, datasetId],
+  )
 
   const handleUpdate = useCallback(() => {
     invalidDocumentList()
-    invalidDocumentDetail()
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
+    })
     setTimeout(() => {
-      invalidChunkList()
-      invalidChildChunkList()
+      const params = { dataset_id: datasetId }
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.key({
+          input: { params },
+        }),
+      })
+      queryClient.invalidateQueries({
+        queryKey:
+          consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.get.key(
+            { input: { params } },
+          ),
+      })
     }, 5000)
-  }, [invalidDocumentList, invalidDocumentDetail, invalidChunkList, invalidChildChunkList])
+  }, [queryClient, datasetId, invalidDocumentList])
 
   // Metadata editing hook
   const {
@@ -136,7 +157,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   // Render content based on loading and data state
   const renderContent = () => {
-    if (isListLoading && !documentsRes) return <Loading type="app" />
+    if (isListLoading && !documentsRes) return <LoadingPlaceholder className="h-full" />
 
     if (total > 0) {
       return (
@@ -175,12 +196,11 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     <div className="flex h-full flex-col">
       <DocumentsHeader
         datasetId={datasetId}
-        dataSourceType={dataset?.data_source_type}
+        dataSourceType={toCreationDataSourceType(dataset?.data_source_type)}
         embeddingAvailable={embeddingAvailable}
         canManageMetadata={datasetACLCapabilities.canEdit}
         canAddDocument={datasetACLCapabilities.canUse}
         canEditDocument={datasetACLCapabilities.canEdit}
-        isFreePlan={isFreePlan}
         statusFilterValue={statusFilterValue}
         sortValue={sortValue}
         inputValue={inputValue}

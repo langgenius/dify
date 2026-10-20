@@ -14,9 +14,9 @@ import type {
 import { atom } from 'jotai'
 import { atomWithMutation, atomWithQuery, queryClientAtom } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
-import { deploymentEditionAtom } from '@/context/system-features-state'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
-import { consoleQuery } from '@/service/client'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/console'
 
 const stepByStepTourStateQueryKey = () =>
   consoleQuery.onboarding.stepByStepTour.state.get.queryKey()

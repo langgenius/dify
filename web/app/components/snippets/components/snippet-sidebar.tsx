@@ -1,9 +1,9 @@
 'use client'
 
 import type { InputVar } from '@/app/components/workflow/types'
-import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
+import type { InputVar as PipelineInputVar } from '@/models/pipeline'
+import type { SnippetDetail } from '@/models/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { isEqual } from 'es-toolkit/predicate'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,34 +12,31 @@ import SnippetInfoDropdown from '@/app/components/app-sidebar/snippet-info/dropd
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import VarList from '@/app/components/workflow/nodes/start/components/var-list'
+import { toast } from '@/app/notifications'
 import { hasDuplicateStr } from '@/utils/var'
 import { SnippetPlaceholderIcon } from './snippet-placeholder-icon'
 
 type SnippetSidebarProps = {
   snippet: SnippetDetail
-  fields: SnippetInputField[]
+  fields: PipelineInputVar[]
   readonly: boolean
-  onFieldsChange: (fields: SnippetInputField[]) => void
+  onFieldsChange: (fields: PipelineInputVar[]) => void
 }
 
 type SnippetSidebarContentProps = SnippetSidebarProps & {
   className?: string
 }
 
-const toWorkflowInputVar = (field: SnippetInputField): InputVar => ({
+const toWorkflowInputVar = (field: PipelineInputVar): InputVar => ({
   ...field,
-  type: field.type as unknown as InputVar['type'],
+  type: field.type as InputVar['type'],
 })
 
-const toSnippetInputField = (field: InputVar): SnippetInputField => ({
+const toSnippetInputField = (field: InputVar): PipelineInputVar => ({
   ...field,
   label: typeof field.label === 'string' ? field.label : field.label.variable,
-  type: field.type as unknown as SnippetInputField['type'],
+  type: field.type as PipelineInputVar['type'],
 })
-
-const NodeTreeIcon = ({ className }: { className?: string }) => (
-  <span className={cn('i-ri-node-tree', className)} />
-)
 
 export const SnippetSidebarContent = ({
   snippet,
@@ -48,7 +45,7 @@ export const SnippetSidebarContent = ({
   onFieldsChange,
   className,
 }: SnippetSidebarContentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'snippet'])
   const [isShowAddVarModal, setIsShowAddVarModal] = useState(false)
   const workflowInputVars = useMemo(() => fields.map(toWorkflowInputVar), [fields])
 
@@ -61,13 +58,13 @@ export const SnippetSidebarContent = ({
   }, [])
 
   const validateFields = useCallback(
-    (nextFields: SnippetInputField[]) => {
+    (nextFields: PipelineInputVar[]) => {
       let errorMsgKey: 'varKeyError.keyAlreadyExists' | '' = ''
       let typeName: 'variableConfig.varName' | 'variableConfig.labelName' | '' = ''
       if (hasDuplicateStr(nextFields.map((item) => item.variable))) {
         errorMsgKey = 'varKeyError.keyAlreadyExists'
         typeName = 'variableConfig.varName'
-      } else if (hasDuplicateStr(nextFields.map((item) => item.label as string))) {
+      } else if (hasDuplicateStr(nextFields.map((item) => item.label))) {
         errorMsgKey = 'varKeyError.keyAlreadyExists'
         typeName = 'variableConfig.labelName'
       }
@@ -141,7 +138,7 @@ export const SnippetSidebarContent = ({
           name={t(($) => $.sectionOrchestrate, { ns: 'snippet' })}
           href={`/snippets/${snippet.id}/orchestrate`}
           active
-          iconMap={{ selected: NodeTreeIcon, normal: NodeTreeIcon }}
+          iconMap={{ selected: 'i-ri-node-tree', normal: 'i-ri-node-tree' }}
         />
       </nav>
 

@@ -1,18 +1,24 @@
 'use client'
+import type { AgentToolCallResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { ToolCall } from '@/models/log'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCheckboxCircleLine, RiErrorWarningLine } from '@remixicon/react'
 import { useState } from 'react'
-import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import { useLocale } from '#i18n'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useLocale } from '@/context/i18n'
+
+const getToolIcon = (icon: AgentToolCallResponse['tool_icon']) => {
+  if (typeof icon === 'string') return icon
+  if (icon?.content !== undefined && icon.background !== undefined)
+    return { content: icon.content, background: icon.background }
+  return undefined
+}
 
 type Props = Readonly<{
-  toolCall: ToolCall
+  toolCall: Partial<AgentToolCallResponse> & Pick<AgentToolCallResponse, 'status'>
   isLLM: boolean
   isFinal?: boolean
   tokens?: number
@@ -32,7 +38,9 @@ const ToolCallItem: FC<Props> = ({
   const locale = useLocale()
   const toolName = isLLM
     ? 'LLM'
-    : toolCall.tool_label[locale] || toolCall.tool_label[locale.replaceAll('-', '_')]
+    : typeof toolCall.tool_label === 'string'
+      ? toolCall.tool_label
+      : toolCall.tool_label?.[locale] || toolCall.tool_label?.[locale.replaceAll('-', '_')]
 
   const getTime = (time: number) => {
     if (time < 1) return `${(time * 1000).toFixed(3)} ms`
@@ -56,31 +64,33 @@ const ToolCallItem: FC<Props> = ({
       >
         <div
           className={cn(
-            'flex cursor-pointer items-center py-3 pr-3 pl-[6px]',
+            'flex cursor-pointer items-center py-3 pr-3 pl-1.5',
             !collapseState && 'pb-2!',
           )}
           onClick={() => setCollapseState(!collapseState)}
         >
-          <ChevronRight
+          <span
+            aria-hidden
             className={cn(
-              'mr-1 size-3 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
-              !collapseState && 'rotate-90',
+              'i-custom-vender-line-arrows-chevron-right h-3.5 w-3.5',
+              cn(
+                'mr-1 size-3 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
+                !collapseState && 'rotate-90',
+              ),
             )}
           />
           <BlockIcon
             className={cn('mr-2 shrink-0')}
             type={isLLM ? BlockEnum.LLM : BlockEnum.Tool}
-            toolIcon={toolCall.tool_icon}
+            toolIcon={getToolIcon(toolCall.tool_icon)}
           />
           <div
-            className={cn(
-              'grow truncate text-[13px] leading-[16px] font-semibold text-text-secondary',
-            )}
+            className={cn('grow truncate text-[13px] leading-4 font-semibold text-text-secondary')}
             title={toolName}
           >
             {toolName}
           </div>
-          <div className="shrink-0 text-xs leading-[18px] text-text-tertiary">
+          <div className="shrink-0 text-xs leading-4.5 text-text-tertiary">
             {!!toolCall.time_cost && <span>{getTime(toolCall.time_cost || 0)}</span>}
             {isLLM && <span>{`${getTokenCount(tokens || 0)} tokens`}</span>}
           </div>
@@ -93,15 +103,15 @@ const ToolCallItem: FC<Props> = ({
         </div>
         {!collapseState && (
           <div className="pb-2">
-            <div className={cn('px-[10px] py-1')}>
+            <div className={cn('px-2.5 py-1')}>
               {toolCall.status === 'error' && (
-                <div className="rounded-lg border-[0.5px] border-[rbga(0,0,0,0.05)] bg-[#fef3f2] px-3 py-[10px] text-xs leading-[18px] text-[#d92d20] shadow-xs">
+                <div className="rounded-lg border-[0.5px] border-[rbga(0,0,0,0.05)] bg-[#fef3f2] px-3 py-2.5 text-xs leading-4.5 text-[#d92d20] shadow-xs">
                   {toolCall.error}
                 </div>
               )}
             </div>
             {toolCall.tool_input && (
-              <div className={cn('px-[10px] py-1')}>
+              <div className={cn('px-2.5 py-1')}>
                 <CodeEditor
                   readOnly
                   title={<div>INPUT</div>}
@@ -112,7 +122,7 @@ const ToolCallItem: FC<Props> = ({
               </div>
             )}
             {toolCall.tool_output && (
-              <div className={cn('px-[10px] py-1')}>
+              <div className={cn('px-2.5 py-1')}>
                 <CodeEditor
                   readOnly
                   title={<div>OUTPUT</div>}
@@ -123,7 +133,7 @@ const ToolCallItem: FC<Props> = ({
               </div>
             )}
             {isLLM && (
-              <div className={cn('px-[10px] py-1')}>
+              <div className={cn('px-2.5 py-1')}>
                 <CodeEditor
                   readOnly
                   title={<div>OBSERVATION</div>}
@@ -134,7 +144,7 @@ const ToolCallItem: FC<Props> = ({
               </div>
             )}
             {isLLM && (
-              <div className={cn('px-[10px] py-1')}>
+              <div className={cn('px-2.5 py-1')}>
                 <CodeEditor
                   readOnly
                   title={<div>{isFinal ? 'FINAL ANSWER' : 'THOUGHT'}</div>}

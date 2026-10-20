@@ -6,13 +6,4 @@ After a keyboard user deletes a tool, this module restores focus after the contr
 
 Tools are identified by `provider_name` and `tool_name`, matching the module's deduplication contract. Callers must replace `value` after `onChange` so the list and pending focus target can settle together.
 
-## Internal Modules
-
-- `index.tsx`: List state composition, collapse control, and post-delete focus ownership.
-- `__tests__/focus-restoration.spec.tsx`: Integration coverage through the real tool row and trigger chain.
-
-## External Modules
-
-- `app/components/plugins/plugin-detail-panel/tool-selector`: Single-tool trigger, Popover, and configuration form.
-- `app/components/workflow/nodes/_base/components/mcp-tool-availability`: MCP availability policy.
-- `service/use-tools`: Installed MCP tool data used by the enabled count.
+MCP availability remains owned by the workflow policy, and installed-tool data remains owned by its query. This list only adapts those results into ordering, counts, and selection updates.

@@ -1,239 +1,195 @@
 import type { DehydratedState } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { consoleQuery } from '@/service/console'
+import { httpErrorFromResponse } from '@/service/http-error'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 
 const mocks = vi.hoisted(() => ({
-  rootQueryClient: undefined as QueryClient | undefined,
-  profileQueryFn: vi.fn(),
-  workspaceQueryFn: vi.fn(),
-  workspaceQueryOptions: vi.fn(),
-  permissionQueryFn: vi.fn(),
-  permissionQueryOptions: vi.fn(),
-  getServerConsoleClientContext: vi.fn(),
+  queryClient: undefined as QueryClient | undefined,
+  profile: vi.fn(),
+  workspace: vi.fn(),
+  permissions: vi.fn(),
+  features: vi.fn(),
   redirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`)
   }),
   headers: vi.fn(),
-  resolveServerConsoleApiUrl: vi.fn(),
-  basePath: '',
+  resolveApiUrl: vi.fn(),
 }))
-
-vi.mock('@/context/query-client-server', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/query-client-server')>()
-
-  return {
-    ...actual,
-    getQueryClientServer: () => mocks.rootQueryClient,
-  }
-})
-
-vi.mock('@/next/headers', () => ({
-  headers: () => mocks.headers(),
-}))
-
-vi.mock('@/next/navigation', () => ({
-  redirect: (url: string) => mocks.redirect(url),
-}))
-
-vi.mock('@/utils/var', () => ({
-  get basePath() {
-    return mocks.basePath
-  },
-}))
-
+vi.mock('@/app/get-query-client', () => ({ getQueryClient: () => mocks.queryClient }))
+vi.mock('@/next/headers', () => ({ headers: () => mocks.headers() }))
+vi.mock('@/next/navigation', () => ({ redirect: (url: string) => mocks.redirect(url) }))
 vi.mock('@/features/account-profile/server', () => ({
   serverUserProfileQueryOptions: () => ({
-    queryKey: ['common', 'user-profile'],
-    queryFn: mocks.profileQueryFn,
+    queryKey: consoleQueryKey('account.profile.get'),
+    queryFn: mocks.profile,
     retry: false,
   }),
 }))
-
-vi.mock('@/service/server', () => ({
-  getServerConsoleClientContext: () => mocks.getServerConsoleClientContext(),
-  resolveServerConsoleApiUrl: (...args: unknown[]) => mocks.resolveServerConsoleApiUrl(...args),
-  serverConsoleQuery: {
-    workspaces: {
-      current: {
-        post: {
-          queryOptions: (...args: unknown[]) => mocks.workspaceQueryOptions(...args),
-        },
-        rbac: {
-          myPermissions: {
-            get: {
-              queryOptions: (...args: unknown[]) => mocks.permissionQueryOptions(...args),
-            },
-          },
-        },
-      },
-    },
-  },
+vi.mock('@/service/console/server', () => ({
+  resolveServerConsoleApiUrl: (...args: unknown[]) => mocks.resolveApiUrl(...args),
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': mocks.features,
+      'workspaces.current.summary.get': mocks.workspace,
+      'workspaces.current.rbac.myPermissions.get': mocks.permissions,
+    }),
+  }
+})
 
-describe('CommonLayoutHydrationBoundary', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mocks.basePath = ''
-    mocks.rootQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    mocks.headers.mockResolvedValue(
-      new Headers({
-        'x-dify-pathname': '/apps',
-        'x-dify-search': '?tag=workflow',
-      }),
-    )
-    mocks.resolveServerConsoleApiUrl.mockReturnValue(
-      'https://console.example.com/console/api/account/profile',
-    )
-    mocks.profileQueryFn.mockResolvedValue({
-      profile: {
-        id: 'account-id',
-        name: 'Dify User',
-        email: 'user@example.com',
-        avatar: '',
-        avatar_url: null,
-        is_password_set: true,
-      },
-      meta: {
-        currentVersion: '1.0.0',
-        currentEnv: 'DEVELOPMENT',
-      },
-    })
-    mocks.workspaceQueryFn.mockResolvedValue({ id: 'workspace-id', name: 'Workspace' })
-    mocks.permissionQueryFn.mockResolvedValue({
-      workspace: { permission_keys: ['agent.manage'] },
-      app: { default_permission_keys: [], overrides: [] },
-      dataset: { default_permission_keys: [], overrides: [] },
-    })
-    mocks.getServerConsoleClientContext.mockResolvedValue({
-      cookie: 'session=abc',
-      csrfToken: 'csrf-token',
-    })
-    mocks.workspaceQueryOptions.mockReturnValue({
-      queryKey: ['console', 'workspaces', 'current', 'post'],
-      queryFn: mocks.workspaceQueryFn,
-      retry: false,
-    })
-    mocks.permissionQueryOptions.mockReturnValue({
-      queryKey: [
-        ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
-        { type: 'query' },
-      ],
-      queryFn: mocks.permissionQueryFn,
-      retry: false,
-    })
+const clients: QueryClient[] = []
+const createClient = () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   })
+  clients.push(client)
+  return client
+}
+const keys = {
+  features: consoleQuery.features.get.queryOptions().queryKey,
+  workspace: consoleQuery.workspaces.current.summary.get.queryOptions().queryKey,
+  permissions: consoleQuery.workspaces.current.rbac.myPermissions.get.queryOptions().queryKey,
+}
+const stateOf = (element: ReactElement) =>
+  (element as ReactElement<{ state: DehydratedState }>).props.state
 
-  it('should prefetch common layout queries', async () => {
+beforeEach(() => {
+  vi.clearAllMocks()
+  mocks.queryClient = createClient()
+  mocks.headers.mockResolvedValue(
+    new Headers({ 'x-dify-pathname': '/apps', 'x-dify-search': '?tag=workflow' }),
+  )
+  mocks.resolveApiUrl.mockReturnValue('https://console.example.com/console/api/account/profile')
+  mocks.profile.mockResolvedValue({
+    profile: {
+      id: 'account-id',
+      name: 'Dify User',
+      email: 'user@example.com',
+      avatar: '',
+      avatar_url: null,
+      is_password_set: true,
+    },
+    meta: { currentVersion: '1.0.0', currentEnv: 'DEVELOPMENT' },
+  })
+  mocks.workspace.mockResolvedValue({
+    id: 'workspace-id',
+    name: 'Workspace',
+    role: 'owner',
+    plan: 'sandbox',
+    credits: 200,
+  })
+  mocks.permissions.mockResolvedValue({
+    workspace: { permission_keys: ['agent.acl.preview'] },
+    app: { default_permission_keys: [], overrides: [] },
+    dataset: { default_permission_keys: [], overrides: [] },
+  })
+  mocks.features.mockResolvedValue({ enable_skill: true })
+})
+afterEach(() => clients.splice(0).forEach((client) => client.clear()))
+
+it('hydrates the profile, workspace, permissions and feature data', async () => {
+  const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+  const element = await CommonLayoutHydrationBoundary({ children: <div>Common shell</div> })
+  const client = createClient()
+  render(<QueryClientProvider client={client}>{element}</QueryClientProvider>)
+
+  expect(screen.getByText('Common shell')).toBeInTheDocument()
+  expect(client.getQueryData(consoleQueryKey('account.profile.get'))).toMatchObject({
+    profile: { id: 'account-id' },
+  })
+  expect(client.getQueryData(keys.workspace)).toMatchObject({ id: 'workspace-id' })
+  expect(client.getQueryData(keys.permissions)).toMatchObject({
+    workspace: { permission_keys: ['agent.acl.preview'] },
+  })
+  expect(client.getQueryData(keys.features)).toEqual({ enable_skill: true })
+})
+
+it.each([true, false])(
+  'hydrates the initial skill flag as %s without fetching it again',
+  async (enableSkill) => {
+    mocks.features.mockResolvedValue({ enable_skill: enableSkill })
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+    function SkillFlag() {
+      const { data } = useQuery(consoleQuery.features.get.queryOptions({ staleTime: Infinity }))
+      return <output aria-label="Skills enabled">{String(data?.enable_skill)}</output>
+    }
+    const element = await CommonLayoutHydrationBoundary({ children: <SkillFlag /> })
+    render(<QueryClientProvider client={createClient()}>{element}</QueryClientProvider>)
+    expect(screen.getByLabelText('Skills enabled')).toHaveTextContent(String(enableSkill))
+    expect(mocks.features).toHaveBeenCalledTimes(1)
+  },
+)
 
-    const element = await CommonLayoutHydrationBoundary({
-      children: <div>Common shell</div>,
-    })
+it('does not hydrate another request’s feature flag after a failed prefetch', async () => {
+  const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+  await CommonLayoutHydrationBoundary({ children: null })
+  expect(mocks.queryClient?.getQueryData(keys.features)).toEqual({ enable_skill: true })
 
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        {element as ReactElement}
-      </QueryClientProvider>,
-    )
+  mocks.queryClient = createClient()
+  mocks.features.mockRejectedValue(new Error('features unavailable'))
+  const second = await CommonLayoutHydrationBoundary({ children: null })
+  expect(stateOf(second).queries.map((query) => query.queryKey)).not.toContainEqual(keys.features)
+  expect(mocks.redirect).not.toHaveBeenCalled()
+})
+
+it.each(['workspace', 'permissions', 'features'] as const)(
+  'keeps the shell recoverable when %s fails',
+  async (target) => {
+    mocks[target].mockRejectedValue(new Error(`${target} unavailable`))
+    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+    const element = await CommonLayoutHydrationBoundary({ children: <div>Common shell</div> })
+    render(<QueryClientProvider client={createClient()}>{element}</QueryClientProvider>)
+
     expect(screen.getByText('Common shell')).toBeInTheDocument()
-    expect(mocks.profileQueryFn).toHaveBeenCalledTimes(1)
-    expect(mocks.getServerConsoleClientContext).toHaveBeenCalledTimes(1)
-    expect(mocks.workspaceQueryOptions).toHaveBeenCalledWith({
-      context: {
-        cookie: 'session=abc',
-        csrfToken: 'csrf-token',
-      },
-      retry: false,
-    })
-    expect(mocks.workspaceQueryFn).toHaveBeenCalledTimes(1)
-    expect(mocks.permissionQueryOptions).toHaveBeenCalledWith({
-      context: {
-        cookie: 'session=abc',
-        csrfToken: 'csrf-token',
-      },
-      retry: false,
-    })
-    expect(mocks.permissionQueryFn).toHaveBeenCalledTimes(1)
-  })
+    expect(mocks.redirect).not.toHaveBeenCalled()
+    expect(stateOf(element).queries.map((query) => query.queryKey)).not.toContainEqual(keys[target])
+  },
+)
 
-  it('should dehydrate only Common-owned queries', async () => {
-    mocks.rootQueryClient?.setQueryData(['console', 'system-features'], {
-      deployment_edition: 'CLOUD',
-    })
-    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
-
-    const element = await CommonLayoutHydrationBoundary({ children: null })
-    const state = (element as ReactElement<{ state: DehydratedState }>).props.state
-    const queryKeys = state.queries.map((query) => query.queryKey)
-
-    expect(queryKeys).toHaveLength(3)
-    expect(queryKeys).toEqual(
-      expect.arrayContaining([
-        ['common', 'user-profile'],
-        ['console', 'workspaces', 'current', 'post'],
-        [['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'], { type: 'query' }],
-      ]),
-    )
-  })
-
-  it('should redirect unauthorized users to the refresh route with the current path', async () => {
-    mocks.basePath = '/workflow'
-    mocks.profileQueryFn.mockRejectedValue(
+it.each([
+  {
+    headers: { 'x-dify-pathname': '/apps', 'x-dify-search': '?tag=workflow' },
+    destination: '/auth/refresh?redirect_url=%2Fapps%3Ftag%3Dworkflow',
+  },
+  { headers: new Headers(), destination: '/auth/refresh?redirect_url=%2F' },
+])('redirects an unauthorized request to $destination', async ({ headers, destination }) => {
+  mocks.headers.mockResolvedValue(new Headers(headers))
+  mocks.profile.mockRejectedValue(
+    await httpErrorFromResponse(
       new Response(JSON.stringify({ code: 'unauthorized' }), { status: 401 }),
-    )
-    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+    ),
+  )
+  const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
 
-    await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')
+  await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')
+  expect(mocks.redirect).toHaveBeenCalledWith(destination)
+})
 
-    expect(mocks.redirect).toHaveBeenCalledWith(
-      '/auth/refresh?redirect_url=%2Fapps%3Ftag%3Dworkflow',
-    )
-  })
+it.each([
+  ['not_setup', '/install'],
+  ['not_init_validated', '/init'],
+])('routes %s to the internal setup destination', async (code, destination) => {
+  mocks.profile.mockRejectedValue(
+    await httpErrorFromResponse(new Response(JSON.stringify({ code }), { status: 401 })),
+  )
+  const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+  await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')
+  expect(mocks.redirect).toHaveBeenCalledWith(destination)
+})
 
-  it('should use the internal home path when the pathname header is missing', async () => {
-    mocks.basePath = '/workflow'
-    mocks.headers.mockResolvedValue(new Headers())
-    mocks.profileQueryFn.mockRejectedValue(
-      new Response(JSON.stringify({ code: 'unauthorized' }), { status: 401 }),
-    )
-    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
-
-    await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')
-
-    expect(mocks.redirect).toHaveBeenCalledWith('/auth/refresh?redirect_url=%2F')
-  })
-
-  it.each([
-    ['not_setup', '/install'],
-    ['not_init_validated', '/init'],
-  ])('should use an internal destination for %s errors', async (code, destination) => {
-    mocks.basePath = '/workflow'
-    mocks.profileQueryFn.mockRejectedValue(new Response(JSON.stringify({ code }), { status: 401 }))
-    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
-
-    await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')
-
-    expect(mocks.redirect).toHaveBeenCalledWith(destination)
-  })
-
-  it('should render children without server prefetch when the server API URL is not resolvable', async () => {
-    mocks.resolveServerConsoleApiUrl.mockReturnValue(null)
-    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
-
-    const element = await CommonLayoutHydrationBoundary({
-      children: <div>Common shell</div>,
-    })
-
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        {element as ReactElement}
-      </QueryClientProvider>,
-    )
-    expect(screen.getByText('Common shell')).toBeInTheDocument()
-    expect(mocks.profileQueryFn).not.toHaveBeenCalled()
-    expect(mocks.workspaceQueryFn).not.toHaveBeenCalled()
-    expect(mocks.permissionQueryFn).not.toHaveBeenCalled()
-  })
+it('renders the shell without server prefetch when the API URL cannot be resolved', async () => {
+  mocks.resolveApiUrl.mockReturnValue(null)
+  const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+  const element = await CommonLayoutHydrationBoundary({ children: <div>Common shell</div> })
+  render(<QueryClientProvider client={createClient()}>{element}</QueryClientProvider>)
+  expect(screen.getByText('Common shell')).toBeInTheDocument()
+  for (const fetch of [mocks.profile, mocks.workspace, mocks.permissions, mocks.features])
+    expect(fetch).not.toHaveBeenCalled()
 })

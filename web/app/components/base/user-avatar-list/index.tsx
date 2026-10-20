@@ -1,10 +1,18 @@
 import type { AvatarSize } from '@langgenius/dify-ui/avatar'
 import type { FC } from 'react'
-import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
-import { useAtomValue } from 'jotai'
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+  AvatarImage,
+} from '@langgenius/dify-ui/avatar'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { uniqBy } from 'es-toolkit'
 import { memo } from 'react'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
-import { userProfileIdAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { getAvatarInitial } from '@/utils/avatar'
 
 type User = {
   id: string
@@ -20,64 +28,43 @@ type UserAvatarListProps = {
   showCount?: boolean
 }
 
-const avatarSizeToPx: Record<AvatarSize, number> = {
-  xxs: 16,
-  xs: 20,
-  sm: 24,
-  md: 32,
-  lg: 36,
-  xl: 40,
-  '2xl': 48,
-  '3xl': 64,
-}
-
 export const UserAvatarList: FC<UserAvatarListProps> = memo(
   ({ users, maxVisible = 3, size = 'sm', className = '', showCount = true }) => {
-    const currentUserId = useAtomValue(userProfileIdAtom)
-    if (!users.length) return null
+    const { data: currentUserId } = useSuspenseQuery({
+      ...userProfileQueryOptions(),
+      select: (data) => data.profile.id,
+    })
+    const uniqueUsers = uniqBy(users, (user) => user.id)
+    if (!uniqueUsers.length) return null
 
-    const shouldShowCount = showCount && users.length > maxVisible
+    const shouldShowCount = showCount && uniqueUsers.length > maxVisible
     const actualMaxVisible = shouldShowCount ? Math.max(1, maxVisible - 1) : maxVisible
-    const visibleUsers = users.slice(0, actualMaxVisible)
-    const remainingCount = users.length - actualMaxVisible
+    const visibleUsers = uniqueUsers.slice(0, actualMaxVisible)
+    const remainingCount = uniqueUsers.length - actualMaxVisible
 
     return (
-      <div className={`flex items-center -space-x-1 ${className}`}>
+      <AvatarGroup size={size} className={className}>
         {visibleUsers.map((user, index) => {
           const isCurrentUser = user.id === currentUserId
           const userColor = isCurrentUser ? undefined : getUserColor(user.id)
           return (
-            <div
-              key={`${user.id}-${index}`}
-              className="relative"
+            <Avatar
+              key={user.id}
+              role="img"
+              aria-label={user.name}
               style={{ zIndex: visibleUsers.length - index }}
             >
-              <AvatarRoot size={size} className="ring-2 ring-components-panel-bg">
-                {user.avatar_url && <AvatarImage src={user.avatar_url} alt={user.name} />}
-                <AvatarFallback
-                  size={size}
-                  style={userColor ? { backgroundColor: userColor } : undefined}
-                >
-                  {user.name?.[0]?.toLocaleUpperCase()}
-                </AvatarFallback>
-              </AvatarRoot>
-            </div>
+              <AvatarFallback style={userColor ? { backgroundColor: userColor } : undefined}>
+                {getAvatarInitial(user.name)}
+              </AvatarFallback>
+              <AvatarImage src={user.avatar_url || undefined} alt="" />
+            </Avatar>
           )
         })}
         {shouldShowCount && remainingCount > 0 && (
-          <div className="relative shrink-0" style={{ zIndex: 0 }}>
-            <div
-              className="inline-flex items-center justify-center rounded-full bg-gray-500 text-[10px] leading-none text-white ring-2 ring-components-panel-bg"
-              style={{
-                width: avatarSizeToPx[size],
-                height: avatarSizeToPx[size],
-              }}
-            >
-              +{remainingCount}
-            </div>
-          </div>
+          <AvatarGroupCount>+{remainingCount}</AvatarGroupCount>
         )}
-      </div>
+      </AvatarGroup>
     )
   },
 )

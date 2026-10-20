@@ -1,4 +1,3 @@
-import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { FormData } from './form'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
@@ -74,13 +73,7 @@ const LoadedFormContent = ({
   return (
     <div className={cn('mx-auto flex size-full max-w-180 flex-col items-center')}>
       <div className="mt-4 flex w-full shrink-0 items-center gap-3 py-3">
-        <AppIcon
-          size="large"
-          iconType={site.icon_type}
-          icon={site.icon}
-          background={site.icon_background}
-          imageUrl={site.icon_url}
-        />
+        <AppIcon size="large" icon={site} />
         <div className="grow system-xl-semibold text-text-primary">{site.title}</div>
       </div>
       <div className="h-0 w-full grow overflow-y-auto">
@@ -99,7 +92,7 @@ const LoadedFormContent = ({
               <Button
                 key={action.id}
                 disabled={isActionDisabled}
-                variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
+                variant={getButtonStyle(action.button_style)}
                 onClick={() => submit(action.id)}
               >
                 {action.title}

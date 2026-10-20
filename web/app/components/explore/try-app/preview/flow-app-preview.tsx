@@ -1,13 +1,14 @@
 'use client'
-import type { JsonObject2 } from '@dify/contracts/api/console/trial-apps/types.gen'
+import type { JsonObject } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { FC } from 'react'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { BlockEnum } from '@/app/components/workflow/types'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
-import { useGetTryAppFlowPreview } from '@/service/use-try-app'
+import { consoleQuery } from '@/service/console'
 
 type Props = {
   readonly appId: string
@@ -90,7 +91,7 @@ const getBlockType = (value: unknown) => {
   return blockTypeMap[value] || null
 }
 
-const normalizeWorkflowPreviewGraph = (graph: JsonObject2) => {
+const normalizeWorkflowPreviewGraph = (graph: JsonObject) => {
   const nodesData = Array.isArray(graph.nodes) ? graph.nodes : []
   const edgesData = Array.isArray(graph.edges) ? graph.edges : []
 
@@ -153,12 +154,16 @@ const normalizeWorkflowPreviewGraph = (graph: JsonObject2) => {
 }
 
 const FlowAppPreview: FC<Props> = ({ appId, className }) => {
-  const { data, isLoading } = useGetTryAppFlowPreview(appId)
+  const { data, isLoading } = useQuery(
+    consoleQuery.trialApps.byAppId.workflows.get.queryOptions({
+      input: { params: { app_id: appId } },
+    }),
+  )
 
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }

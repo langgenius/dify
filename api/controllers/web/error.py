@@ -1,4 +1,8 @@
 from libs.exception import BaseHTTPException
+from services.errors.app import (
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE,
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE,
+)
 
 
 class AppUnavailableError(BaseHTTPException):
@@ -29,6 +33,12 @@ class NotWorkflowAppError(BaseHTTPException):
     error_code = "not_workflow_app"
     description = "Please check if your Workflow app mode matches the right API route."
     code = 400
+
+
+class TriggerWorkflowServiceModeUnavailableError(BaseHTTPException):
+    error_code = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE
+    description = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE
+    code = 403
 
 
 class ConversationCompletedError(BaseHTTPException):
@@ -119,6 +129,18 @@ class WebAppAuthAccessDeniedError(BaseHTTPException):
     error_code = "web_app_access_denied"
     description = "You do not have permission to access this web app."
     code = 401
+
+
+class WebAppNotFoundError(BaseHTTPException):
+    error_code = "app_not_found"
+    description = "App not found."
+    code = 404
+
+
+class WebAppAccessServiceUnavailableError(BaseHTTPException):
+    error_code = "web_app_access_unavailable"
+    description = "Web app access service is unavailable."
+    code = 503
 
 
 class InvokeRateLimitError(BaseHTTPException):

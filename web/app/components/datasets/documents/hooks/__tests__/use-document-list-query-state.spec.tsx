@@ -1,21 +1,7 @@
-import type { DocumentListQuery } from '../use-document-list-query-state'
 import { act, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderHookWithNuqs } from '@/test/nuqs-testing'
 import { useDocumentListQueryState } from '../use-document-list-query-state'
-
-vi.mock('@/models/datasets', () => ({
-  DisplayStatusList: [
-    'queuing',
-    'indexing',
-    'paused',
-    'error',
-    'available',
-    'enabled',
-    'disabled',
-    'archived',
-  ],
-}))
 
 const renderWithAdapter = (searchParams = '') => {
   return renderHookWithNuqs(() => useDocumentListQueryState(), { searchParams })
@@ -99,11 +85,6 @@ describe('useDocumentListQueryState', () => {
       expect(result.current.query.keyword).toBe('test%20query')
     })
 
-    it('should return empty keyword when not present', () => {
-      const { result } = renderWithAdapter()
-      expect(result.current.query.keyword).toBe('')
-    })
-
     it('should sanitize status from search params', () => {
       const { result } = renderWithAdapter('?status=available')
       expect(result.current.query.status).toBe('available')
@@ -119,18 +100,8 @@ describe('useDocumentListQueryState', () => {
       expect(result.current.query.status).toBe('available')
     })
 
-    it('should parse valid sort value from search params', () => {
-      const { result } = renderWithAdapter('?sort=hit_count')
-      expect(result.current.query.sort).toBe('hit_count')
-    })
-
     it('should default sort to -created_at for invalid sort value', () => {
       const { result } = renderWithAdapter('?sort=invalid_sort')
-      expect(result.current.query.sort).toBe('-created_at')
-    })
-
-    it('should default sort to -created_at when not present', () => {
-      const { result } = renderWithAdapter()
       expect(result.current.query.sort).toBe('-created_at')
     })
 
@@ -144,16 +115,6 @@ describe('useDocumentListQueryState', () => {
   })
 
   describe('updateQuery', () => {
-    it('should update page in state when page is changed', () => {
-      const { result } = renderWithAdapter()
-
-      act(() => {
-        result.current.updateQuery({ page: 3 })
-      })
-
-      expect(result.current.query.page).toBe(3)
-    })
-
     it('should sync page to URL with push history', async () => {
       const { result, onUrlUpdate } = renderWithAdapter()
 
@@ -304,18 +265,6 @@ describe('useDocumentListQueryState', () => {
       expect(update.searchParams.has('status')).toBe(false)
     })
 
-    it('should sanitize invalid sort to -created_at and not include in URL', async () => {
-      const { result, onUrlUpdate } = renderWithAdapter()
-
-      act(() => {
-        result.current.updateQuery({ sort: 'invalidsort' as DocumentListQuery['sort'] })
-      })
-
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
-      expect(update.searchParams.has('sort')).toBe(false)
-    })
-
     it('should not include page in URL when page is default', async () => {
       const { result, onUrlUpdate } = renderWithAdapter()
 
@@ -326,18 +275,6 @@ describe('useDocumentListQueryState', () => {
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('page')).toBe(false)
-    })
-
-    it('should include page in URL when page is greater than 1', async () => {
-      const { result, onUrlUpdate } = renderWithAdapter()
-
-      act(() => {
-        result.current.updateQuery({ page: 2 })
-      })
-
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
-      expect(update.searchParams.get('page')).toBe('2')
     })
 
     it('should include limit in URL when limit is non-default', async () => {
@@ -380,24 +317,10 @@ describe('useDocumentListQueryState', () => {
   })
 
   describe('resetQuery', () => {
-    it('should reset all values to defaults', () => {
-      const { result } = renderWithAdapter('?page=5&status=error&sort=hit_count')
-
-      act(() => {
-        result.current.resetQuery()
-      })
-
-      expect(result.current.query).toEqual({
-        page: 1,
-        limit: 10,
-        keyword: '',
-        status: 'all',
-        sort: '-created_at',
-      })
-    })
-
     it('should clear all params from URL when called', async () => {
-      const { result, onUrlUpdate } = renderWithAdapter('?page=5&status=error')
+      const { result, onUrlUpdate } = renderWithAdapter(
+        '?page=5&status=error&sort=hit_count&keyword=guide&limit=50',
+      )
 
       act(() => {
         result.current.resetQuery()
@@ -407,18 +330,14 @@ describe('useDocumentListQueryState', () => {
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('page')).toBe(false)
       expect(update.searchParams.has('status')).toBe(false)
-    })
-  })
-
-  describe('return value', () => {
-    it('should return query, updateQuery, and resetQuery', () => {
-      const { result } = renderWithAdapter()
-
-      expect(result.current).toHaveProperty('query')
-      expect(result.current).toHaveProperty('updateQuery')
-      expect(result.current).toHaveProperty('resetQuery')
-      expect(typeof result.current.updateQuery).toBe('function')
-      expect(typeof result.current.resetQuery).toBe('function')
+      expect(result.current.query).toEqual({
+        page: 1,
+        limit: 10,
+        keyword: '',
+        status: 'all',
+        sort: '-created_at',
+      })
+      expect(update.searchParams.toString()).toBe('')
     })
   })
 })

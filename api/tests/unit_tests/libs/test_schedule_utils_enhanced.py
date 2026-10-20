@@ -5,6 +5,7 @@ These tests verify that the backend schedule_utils functions properly support
 the enhanced cron syntax introduced in the frontend, ensuring full compatibility.
 """
 
+import contextlib
 import unittest
 from datetime import UTC, datetime, timedelta
 
@@ -76,20 +77,20 @@ class TestEnhancedCronSyntax(unittest.TestCase):
         # Both should give the same next Sunday
         result_0 = calculate_next_run_at("0 10 * * 0", "UTC", base_time)
         result_7 = calculate_next_run_at("0 10 * * 7", "UTC", base_time)
-        result_SUN = calculate_next_run_at("0 10 * * SUN", "UTC", base_time)
+        result_sun = calculate_next_run_at("0 10 * * SUN", "UTC", base_time)
 
         assert result_0 is not None
         assert result_7 is not None
-        assert result_SUN is not None
+        assert result_sun is not None
 
         # All should be Sundays
         assert result_0.weekday() == 6  # Sunday = 6 in weekday()
         assert result_7.weekday() == 6
-        assert result_SUN.weekday() == 6
+        assert result_sun.weekday() == 6
 
         # Times should be identical
         assert result_0 == result_7
-        assert result_0 == result_SUN
+        assert result_0 == result_sun
 
     def test_predefined_expressions(self):
         """Test predefined expressions (@daily, @weekly, etc.)."""
@@ -263,6 +264,44 @@ class TestTimezoneHandlingEnhanced(unittest.TestCase):
         assert local_time.hour in [2, 3]
 
 
+class TestDstTransitionRegression(unittest.TestCase):
+    """Regression tests for DST transitions crashing next-run calculation.
+
+    See https://github.com/langgenius/dify/issues/42955 - localizing the
+    candidate local time with pytz (which raises AmbiguousTimeError /
+    NonExistentTimeError around clock changes) crashed the schedule poller
+    for zones such as Europe/Dublin, Africa/Casablanca and Africa/El_Aaiun.
+    """
+
+    def test_fall_back_ambiguous_times_do_not_crash(self):
+        """Zones with a fall-back clock change must not raise."""
+        # Europe/Dublin falls back on 2026-10-25: 01:00 local occurs twice.
+        # Africa/Casablanca and Africa/El_Aaiun change clocks on 2026-03-29.
+        test_cases = [
+            ("*/10 * * * *", "Europe/Dublin", datetime(2026, 10, 24, 23, 50, 5, tzinfo=UTC)),
+            ("30 1 * * *", "Europe/Dublin", datetime(2026, 10, 24, 0, 30, 5, tzinfo=UTC)),
+            ("30 1 * * *", "Africa/Casablanca", datetime(2026, 3, 26, 0, 30, 5, tzinfo=UTC)),
+            ("30 1 * * *", "Africa/El_Aaiun", datetime(2026, 3, 26, 0, 30, 5, tzinfo=UTC)),
+        ]
+
+        for expr, timezone, base_time in test_cases:
+            with self.subTest(timezone=timezone, expr=expr):
+                result = calculate_next_run_at(expr, timezone, base_time)
+                assert result is not None
+                assert result.tzinfo is not None
+                assert result > base_time
+
+    def test_spring_forward_nonexistent_times_do_not_crash(self):
+        """A cron time that does not exist locally must be skipped, not raise."""
+        # Europe/Dublin springs forward on 2026-03-29: 01:30 local does not
+        # exist. The next run is shifted to the first existing time (02:00).
+        result = calculate_next_run_at("30 1 * * *", "Europe/Dublin", datetime(2026, 3, 28, 23, 0, 5, tzinfo=UTC))
+        assert result is not None
+        assert result > datetime(2026, 3, 28, 23, 0, 5, tzinfo=UTC)
+        local_time = result.astimezone(pytz.timezone("Europe/Dublin"))
+        assert (local_time.hour, local_time.minute) == (2, 0)
+
+
 class TestErrorHandlingEnhanced(unittest.TestCase):
     """Test error handling for enhanced syntax."""
 
@@ -330,10 +369,8 @@ class TestPerformanceEnhanced(unittest.TestCase):
         # under xdist, where worker preemption can inflate elapsed time without
         # indicating a real regression in cron parsing.
         for expr in complex_expressions:
-            try:
+            with contextlib.suppress(Exception):
                 calculate_next_run_at(expr, "UTC", self.base_time)
-            except Exception:
-                pass
 
         start_time = time.process_time()
 

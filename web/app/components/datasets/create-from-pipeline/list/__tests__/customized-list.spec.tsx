@@ -1,137 +1,59 @@
-import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { PipelineTemplateListResponse } from '@dify/contracts/api/console/rag/types.gen'
+import { act, screen, waitFor } from '@testing-library/react'
+import { ChunkingMode } from '@/models/datasets'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import CustomizedList from '../customized-list'
 
-// Mock TemplateCard
-vi.mock('../template-card', () => ({
-  default: ({ type, pipeline }: { type: string; pipeline: { name: string } }) => (
-    <div data-testid="template-card" data-type={type}>
-      {pipeline.name}
-    </div>
-  ),
+const { getTemplates } = vi.hoisted(() => ({ getTemplates: vi.fn() }))
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
+  usePluginDependencies: () => ({ handleCheckPluginDependencies: vi.fn() }),
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipeline.templates.get': getTemplates,
+    }),
+  }
+})
 
-// Mock usePipelineTemplateList hook
-const mockUsePipelineTemplateList = vi.fn()
-vi.mock('@/service/use-pipeline', () => ({
-  usePipelineTemplateList: (...args: unknown[]) => mockUsePipelineTemplateList(...args),
-}))
-
-// CustomizedList Component Tests
-
-describe('CustomizedList', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // Loading State Tests
-  describe('Loading State', () => {
-    it('should return null when loading', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: null,
-        isLoading: true,
-      })
-
-      const { container } = render(<CustomizedList />)
-      expect(container.firstChild).toBeNull()
-    })
-  })
-
-  // Empty State Tests
-  describe('Empty State', () => {
-    it('should return null when list is empty', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: { pipeline_templates: [] },
-        isLoading: false,
-      })
-
-      const { container } = render(<CustomizedList />)
-      expect(container.firstChild).toBeNull()
-    })
-
-    it('should return null when data is undefined', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: undefined,
-        isLoading: false,
-      })
-
-      const { container } = render(<CustomizedList />)
-      expect(container.firstChild).toBeNull()
-    })
-  })
-
-  // Rendering with Data Tests
-  describe('Rendering with Data', () => {
-    it('should render title when list has items', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: {
-          pipeline_templates: [{ name: 'Pipeline 1' }],
+it('shows the customized section only once saved templates have loaded', async () => {
+  const pending = createDeferred<PipelineTemplateListResponse>()
+  getTemplates.mockReturnValue(pending.promise)
+  render(<CustomizedList />)
+  expect(screen.queryByText('datasetPipeline.templates.customized')).not.toBeInTheDocument()
+  await act(async () =>
+    pending.resolve({
+      pipeline_templates: [
+        {
+          id: 'template-1',
+          name: 'Legal documents',
+          description: 'Process legal documents',
+          chunk_structure: ChunkingMode.text,
+          position: 1,
+          icon: { icon_type: 'emoji', icon: '📚', icon_background: '#FFF4ED' },
         },
-        isLoading: false,
-      })
+      ],
+    }),
+  )
+  expect(await screen.findByText('Legal documents')).toBeInTheDocument()
+  expect(screen.getByText('datasetPipeline.templates.customized')).toBeInTheDocument()
+  expect(
+    screen.getByRole('button', { name: 'datasetPipeline.operations.choose' }),
+  ).toBeInTheDocument()
+  expect(getTemplates).toHaveBeenCalledWith({ query: { type: 'customized' } })
+})
 
-      render(<CustomizedList />)
-      expect(screen.getByText(/customized/i)).toBeInTheDocument()
-    })
-
-    it('should render TemplateCard for each pipeline', () => {
-      const mockPipelines = [{ name: 'Pipeline 1' }, { name: 'Pipeline 2' }, { name: 'Pipeline 3' }]
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: { pipeline_templates: mockPipelines },
-        isLoading: false,
-      })
-
-      render(<CustomizedList />)
-      const cards = screen.getAllByTestId('template-card')
-      expect(cards).toHaveLength(3)
-    })
-
-    it('should pass correct props to TemplateCard', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: {
-          pipeline_templates: [{ name: 'Test Pipeline' }],
-        },
-        isLoading: false,
-      })
-
-      render(<CustomizedList />)
-      const card = screen.getByTestId('template-card')
-      expect(card).toHaveAttribute('data-type', 'customized')
-      expect(card).toHaveTextContent('Test Pipeline')
-    })
-  })
-
-  // API Call Tests
-  describe('API Call', () => {
-    it('should call usePipelineTemplateList with type customized', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: null,
-        isLoading: true,
-      })
-
-      render(<CustomizedList />)
-      expect(mockUsePipelineTemplateList).toHaveBeenCalledWith({ type: 'customized' })
-    })
-  })
-
-  describe('Layout', () => {
-    it('should have grid layout for cards', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: {
-          pipeline_templates: [{ name: 'Pipeline 1' }],
-        },
-        isLoading: false,
-      })
-
-      const { container } = render(<CustomizedList />)
-      const grid = container.querySelector('.grid')
-      expect(grid).toHaveClass('grid-cols-[repeat(auto-fill,minmax(296px,1fr))]', 'gap-3', 'py-2')
-      expect(grid).not.toHaveClass(
-        'grid-cols-1',
-        'sm:grid-cols-2',
-        'md:grid-cols-3',
-        'lg:grid-cols-4',
-      )
-    })
-  })
+it('omits the customized section when there are no saved templates', async () => {
+  getTemplates.mockResolvedValue({ pipeline_templates: [] })
+  const { queryClient } = render(<CustomizedList />)
+  await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+  expect(screen.queryByText('datasetPipeline.templates.customized')).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'datasetPipeline.operations.choose' }),
+  ).not.toBeInTheDocument()
 })

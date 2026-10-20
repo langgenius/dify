@@ -1,3 +1,5 @@
+import type { DraftWorkflowNodeRunPayload } from '@dify/contracts/api/console/apps/types.gen'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type {
   CommonNodeType,
   InputVar,
@@ -6,9 +8,8 @@ import type {
   Var,
   Variable,
 } from '@/app/components/workflow/types'
-import type { FlowType } from '@/types/common'
-import type { NodeRunResult, NodeTracing } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
+import type { NodeTracing } from '@/types/workflow'
+import { useQuery } from '@tanstack/react-query'
 import { unionBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -17,6 +18,8 @@ import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { getEditorResourceId, isChatflow } from '@/app/components/workflow/editor-resource/resource'
 import {
   getNodeInfoById,
   isConversationVar,
@@ -48,25 +51,32 @@ import {
   WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { post, ssePost } from '@/service/base'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
-import { useInvalidLastRun } from '@/service/use-workflow'
-import {
-  fetchNodeInspectVars,
-  getIterationSingleNodeRunUrl,
-  getLoopSingleNodeRunUrl,
-  singleNodeRun,
-} from '@/service/workflow'
+import { ssePost } from '@/service/base'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { useInvalidateLastRun } from '@/service/use-workflow'
+import { fetchNodeInspectVars, singleNodeRun } from '@/service/workflow'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
 import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
-import { useIsChatMode, useWorkflow } from '../../../hooks/use-workflow'
+import { useWorkflow } from '../../../hooks/use-workflow'
 import useMatchSchemaType from '../components/variable/use-match-schema-type'
+
+// Iteration and loop runs use the SSE event callbacks that the JSON client does not expose.
+function getContainerNodeRunUrl(
+  resource: EditorResource,
+  type: 'iteration' | 'loop',
+  nodeId: string,
+) {
+  switch (resource.kind) {
+    case 'app':
+      return `apps/${resource.appId}/${resource.mode === 'advanced-chat' ? 'advanced-chat/' : ''}workflows/draft/${type}/nodes/${nodeId}/run`
+    case 'knowledge-pipeline':
+      return `rag/pipelines/${resource.pipelineId}/workflows/draft/${type}/nodes/${nodeId}/run`
+    case 'snippet':
+      return `snippets/${resource.snippetId}/workflows/draft/${type}/nodes/${nodeId}/run`
+  }
+}
 
 const { checkValid: checkLLMValid } = LLMDefault
 const { checkValid: checkKnowledgeRetrievalValid } = KnowledgeRetrievalDefault
@@ -103,15 +113,9 @@ const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.HumanInput]: checkHumanInputValid,
 }
 
-type RequestError = {
-  message: string
-  status: string
-}
-
 export type Params<T> = {
   id: string
-  flowId: string
-  flowType: FlowType
+  resource: EditorResource
   data: CommonNodeType<T>
   defaultRunInputData: Record<string, any>
   moreDataForCheckValid?: any
@@ -131,20 +135,19 @@ const varTypeToInputVarType = (
     isParagraph: boolean
   },
 ) => {
+  const structuredVariableTypes: readonly VarType[] = [
+    VarType.object,
+    VarType.array,
+    VarType.arrayNumber,
+    VarType.arrayString,
+    VarType.arrayObject,
+  ]
+
   if (isSelect) return InputVarType.select
   if (isParagraph) return InputVarType.paragraph
   if (type === VarType.number) return InputVarType.number
   if (type === VarType.boolean) return InputVarType.checkbox
-  if (
-    [
-      VarType.object,
-      VarType.array,
-      VarType.arrayNumber,
-      VarType.arrayString,
-      VarType.arrayObject,
-    ].includes(type)
-  )
-    return InputVarType.json
+  if (structuredVariableTypes.includes(type)) return InputVarType.json
   if (type === VarType.file) return InputVarType.singleFile
   if (type === VarType.arrayFile) return InputVarType.multiFiles
 
@@ -153,8 +156,7 @@ const varTypeToInputVarType = (
 
 const useOneStepRun = <T>({
   id,
-  flowId,
-  flowType,
+  resource,
   data,
   defaultRunInputData,
   moreDataForCheckValid,
@@ -163,11 +165,12 @@ const useOneStepRun = <T>({
   isRunAfterSingleRun,
   isPaused,
 }: Params<T>) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { getBeforeNodesInSameBranch, getBeforeNodesInSameBranchIncludeParent } =
     useWorkflow() as any
   const conversationVariables = useStore((s) => s.conversationVariables)
-  const isChatMode = useIsChatMode()
+  const isChatflowMode = isChatflow(resource)
+  const flowId = getEditorResourceId(resource)
   const isIteration = data.type === BlockEnum.Iteration
   const isLoop = data.type === BlockEnum.Loop
   const isStartNode = data.type === BlockEnum.Start
@@ -177,10 +180,22 @@ const useOneStepRun = <T>({
   const workflowStore = useWorkflowStore()
   const { schemaTypeDefinitions } = useMatchSchemaType()
 
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
 
   const getVar = (valueSelector: ValueSelector): Var | undefined => {
     const isSystem = valueSelector[0] === 'sys'
@@ -195,7 +210,7 @@ const useOneStepRun = <T>({
 
     const allOutputVars = toNodeOutputVars(
       availableNodes,
-      isChatMode,
+      isChatflowMode,
       undefined,
       undefined,
       conversationVariables,
@@ -285,8 +300,8 @@ const useOneStepRun = <T>({
     },
     [workflowStore, store],
   )
-  const invalidLastRun = useInvalidLastRun(flowType, flowId!, id)
-  const [runResult, doSetRunResult] = useState<NodeRunResult | null>(null)
+  const invalidLastRun = useInvalidateLastRun(resource, id)
+  const [runResult, doSetRunResult] = useState<NodeTracing | null>(null)
   const { appendNodeInspectVars, invalidateSysVarValues, invalidateConversationVarValues } =
     useInspectVarsCrud()
   const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
@@ -312,7 +327,7 @@ const useOneStepRun = <T>({
   const isTriggerNode = isWebhookTriggerNode || isPluginTriggerNode || isScheduleTriggerNode
 
   const setRunResult = useCallback(
-    async (data: NodeRunResult | null) => {
+    async (data: NodeTracing | null) => {
       const isPaused = isPausedRef.current
 
       // The backend don't support pause the single run, so the frontend handle the pause state.
@@ -325,7 +340,7 @@ const useOneStepRun = <T>({
       }
 
       // run fail may also update the inspect vars when the node set the error default output.
-      const vars = await fetchNodeInspectVars(flowType, flowId!, id)
+      const vars = await fetchNodeInspectVars(resource, id)
       const { getNodes } = store.getState()
       const nodes = getNodes()
       appendNodeInspectVars(id, vars, nodes)
@@ -339,8 +354,7 @@ const useOneStepRun = <T>({
     [
       isRunAfterSingleRun,
       runningStatus,
-      flowType,
-      flowId,
+      resource,
       id,
       store,
       appendNodeInspectVars,
@@ -433,13 +447,14 @@ const useOneStepRun = <T>({
     setListeningTriggerIsAll,
   ])
 
-  const runScheduleSingleRun = useCallback(async (): Promise<NodeRunResult | null> => {
-    const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger/run`
+  const runScheduleSingleRun = useCallback(async (): Promise<NodeTracing | null> => {
+    if (resource.kind !== 'app') return null
 
     try {
-      const response: any = await post(urlPath, {
-        body: JSON.stringify({}),
-      })
+      const response: any =
+        await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post({
+          params: { app_id: resource.appId, node_id: id },
+        })
 
       if (!response) {
         const message = t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
@@ -463,7 +478,7 @@ const useOneStepRun = <T>({
         },
       })
 
-      return response as NodeRunResult
+      return response as NodeTracing
     } catch (error) {
       console.error('handleRun: schedule trigger single run error', error)
       handleNodeDataUpdate({
@@ -477,10 +492,10 @@ const useOneStepRun = <T>({
       toast.error(t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' }))
       throw error
     }
-  }, [flowId, id, handleNodeDataUpdate, data, t])
+  }, [resource, id, handleNodeDataUpdate, data, t])
 
   const runWebhookSingleRun = useCallback(async (): Promise<any | null> => {
-    const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger/run`
+    if (resource.kind !== 'app') return null
 
     webhookSingleRunActiveRef.current = true
     const token = ++webhookSingleRunTokenRef.current
@@ -490,10 +505,11 @@ const useOneStepRun = <T>({
       webhookSingleRunAbortRef.current = controller
 
       try {
-        const response: any = await post(urlPath, {
-          body: JSON.stringify({}),
-          signal: controller.signal,
-        })
+        const response: any =
+          await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post(
+            { params: { app_id: resource.appId, node_id: id } },
+            { signal: controller.signal },
+          )
 
         if (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
           return null
@@ -568,10 +584,10 @@ const useOneStepRun = <T>({
     }
 
     return null
-  }, [flowId, id, data, handleNodeDataUpdate, cancelWebhookSingleRun, t])
+  }, [resource, id, data, handleNodeDataUpdate, cancelWebhookSingleRun, t])
 
   const runPluginSingleRun = useCallback(async (): Promise<any | null> => {
-    const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger/run`
+    if (resource.kind !== 'app') return null
 
     pluginSingleRunActiveRef.current = true
     const token = ++pluginSingleRunTokenRef.current
@@ -580,23 +596,17 @@ const useOneStepRun = <T>({
       const controller = new AbortController()
       pluginSingleRunAbortRef.current = controller
 
-      let requestError: RequestError | undefined
-      const response: any = await post(urlPath, {
-        body: JSON.stringify({}),
-        signal: controller.signal,
-      })
-        .catch(async (error: Response) => {
-          const data = (await error.clone().json()) as Record<string, any>
-          const { error: respError, status } = data || {}
-          requestError = {
-            message: respError,
-            status,
-          }
-          return null
-        })
-        .finally(() => {
-          pluginSingleRunAbortRef.current = null
-        })
+      let requestError: unknown
+      const response: any =
+        await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run
+          .post({ params: { app_id: resource.appId, node_id: id } }, { signal: controller.signal })
+          .catch((error: unknown) => {
+            requestError = error
+            return null
+          })
+          .finally(() => {
+            pluginSingleRunAbortRef.current = null
+          })
 
       if (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current)
         return null
@@ -604,7 +614,7 @@ const useOneStepRun = <T>({
       if (requestError) {
         if (controller.signal.aborted) return null
 
-        toast.error(requestError.message)
+        toast.error(requestError instanceof Error ? requestError.message : 'Unknown error')
         cancelPluginSingleRun()
         throw requestError
       }
@@ -661,7 +671,7 @@ const useOneStepRun = <T>({
     }
 
     return null
-  }, [flowId, id, data, handleNodeDataUpdate, cancelPluginSingleRun])
+  }, [resource, id, data, handleNodeDataUpdate, cancelPluginSingleRun])
 
   const checkValidWrap = () => {
     if (!checkValid) return { isValid: true, errorMessage: '' }
@@ -777,25 +787,21 @@ const useOneStepRun = <T>({
           }
         } else {
           const isStartNode = data.type === BlockEnum.Start
-          const postData: Record<string, any> = {}
+          const postData: DraftWorkflowNodeRunPayload = { inputs: submitData }
           if (isStartNode) {
             const { '#sys.query#': query, '#sys.files#': files, ...inputs } = submitData
-            if (isChatMode) postData.conversation_id = ''
-
             postData.inputs = inputs
             postData.query = query
             postData.files = files || []
-          } else {
-            postData.inputs = submitData
           }
-          res = (await singleNodeRun(flowType, flowId!, id, postData)) as any
+          res = (await singleNodeRun(resource, id, postData)) as any
         }
       } else if (isIteration) {
         setIterationRunResult([])
         let _iterationResult: NodeTracing[] = []
         let _runResult: any = null
         ssePost(
-          getIterationSingleNodeRunUrl(flowType, isChatMode, flowId!, id),
+          getContainerNodeRunUrl(resource, 'iteration', id),
           { body: { inputs: submitData } },
           {
             onWorkflowStarted: noop,
@@ -897,7 +903,7 @@ const useOneStepRun = <T>({
         let _loopResult: NodeTracing[] = []
         let _runResult: any = null
         ssePost(
-          getLoopSingleNodeRunUrl(flowType, isChatMode, flowId!, id),
+          getContainerNodeRunUrl(resource, 'loop', id),
           { body: { inputs: submitData } },
           {
             onWorkflowStarted: noop,

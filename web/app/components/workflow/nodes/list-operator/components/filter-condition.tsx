@@ -59,14 +59,14 @@ const getSelectOptions = (
 
   if (condition.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
     return FILE_TYPE_OPTIONS.map((item) => ({
-      name: t(($) => $[`${optionNameI18NPrefix}.${item.i18nKey}`], { ns: 'workflow' }),
+      name: t(($) => $[`${optionNameI18NPrefix}.${item.i18nKey}`], { ns: 'workflowLogic' }),
       value: item.value,
     }))
   }
 
   if (condition.key === 'transfer_method') {
     return TRANSFER_METHOD.map((item) => ({
-      name: t(($) => $[`${optionNameI18NPrefix}.${item.i18nKey}`], { ns: 'workflow' }),
+      name: t(($) => $[`${optionNameI18NPrefix}.${item.i18nKey}`], { ns: 'workflowLogic' }),
       value: item.value,
     }))
   }
@@ -143,7 +143,12 @@ const ValueInput = ({
         disabled={readOnly}
         onValueChange={(value) => value && onChange(value)}
       >
-        <SelectTrigger className="h-8 grow text-[13px]">
+        <SelectTrigger
+          aria-label={t(($) => $['nodes.listFilter.filterConditionComparisonValue'], {
+            ns: 'workflow',
+          })}
+          className="h-8 grow text-[13px]"
+        >
           {selectedOption?.name ?? 'Select value'}
         </SelectTrigger>
         <SelectContent>
@@ -159,7 +164,7 @@ const ValueInput = ({
   }
 
   if (isBoolean) {
-    return <BoolValue value={condition.value as boolean} onChange={onChange} />
+    return <BoolValue disabled={readOnly} value={condition.value as boolean} onChange={onChange} />
   }
 
   if (supportVariableInput) {
@@ -170,7 +175,7 @@ const ValueInput = ({
           isFocus
             ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
             : 'border-components-input-border-hover bg-components-input-bg-normal',
-          'w-0 grow rounded-lg border px-3 py-[6px]',
+          'w-0 grow rounded-lg border px-3 py-1.5',
         )}
         value={getConditionValueAsString(condition)}
         onChange={onChange}
@@ -179,7 +184,9 @@ const ValueInput = ({
         availableNodes={availableNodesWithParent}
         onFocusChange={handleFocusChange}
         placeholder={
-          !readOnly ? t(($) => $['nodes.http.insertVarPlaceholder'], { ns: 'workflow' })! : ''
+          !readOnly
+            ? t(($) => $['nodes.http.insertVarPlaceholder'], { ns: 'workflowIntegrations' })!
+            : ''
         }
         placeholderClassName="leading-[21px]!"
       />
@@ -189,7 +196,7 @@ const ValueInput = ({
   return (
     <input
       type={getFallbackInputType({ hasSubVariable, condition, varType })}
-      className="grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-[6px]"
+      className="grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-1.5"
       value={getConditionValueAsString(condition)}
       onChange={(e) => onChange(e.target.value)}
       readOnly={readOnly}
@@ -205,7 +212,13 @@ const FilterCondition: FC<Props> = ({
   readOnly,
   nodeId,
 }) => {
-  const { t } = useTranslation()
+  const arrayOperators: readonly ComparisonOperator[] = [
+    ComparisonOperator.in,
+    ComparisonOperator.notIn,
+    ComparisonOperator.allOf,
+  ]
+
+  const { t } = useTranslation(['workflowLogic', 'workflowIntegrations', 'workflow'])
 
   const expectedVarType = getExpectedVarType(condition, varType)
   const supportVariableInput = !!expectedVarType
@@ -217,11 +230,7 @@ const FilterCondition: FC<Props> = ({
     },
   })
 
-  const isSelect = [
-    ComparisonOperator.in,
-    ComparisonOperator.notIn,
-    ComparisonOperator.allOf,
-  ].includes(condition.comparison_operator)
+  const isSelect = arrayOperators.includes(condition.comparison_operator)
   const isArrayValue = condition.key === 'transfer_method' || condition.key === 'type'
   const isBoolean = varType === VarType.boolean
 
@@ -259,6 +268,7 @@ const FilterCondition: FC<Props> = ({
     <div>
       {hasSubVariable && (
         <SubVariablePicker
+          disabled={readOnly}
           className="mb-2"
           value={condition.key}
           onChange={handleSubVariableChange}

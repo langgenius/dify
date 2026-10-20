@@ -8,13 +8,13 @@ import {
 } from '@/app/components/base/skeleton'
 
 const ParentChunkCardSkelton = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   return (
     <div data-testid="parent-chunk-card-skeleton" className="flex flex-col pb-2">
       <SkeletonContainer className="gap-y-0 p-1 pb-0">
         <SkeletonContainer className="gap-y-0.5 px-2 pt-1.5">
           <SkeletonRow className="py-0.5">
-            <SkeletonRectangle className="w-[72px] bg-text-quaternary" />
+            <SkeletonRectangle className="w-18 bg-text-quaternary" />
             <SkeletonPoint className="opacity-20" />
             <SkeletonRectangle className="w-24 bg-text-quaternary" />
             <SkeletonPoint className="opacity-20" />

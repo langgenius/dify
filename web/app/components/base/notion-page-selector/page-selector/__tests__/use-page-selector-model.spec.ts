@@ -41,10 +41,6 @@ const createProps = (
 })
 
 describe('usePageSelectorModel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should build visible rows from the expanded tree state', async () => {
     const { result } = renderHook(() => usePageSelectorModel(createProps()))
 
@@ -74,6 +70,18 @@ describe('usePageSelectorModel', () => {
         'child-2',
       ])
     })
+    act(() => result.current.handleToggle('root-1'))
+    await waitFor(() =>
+      expect(result.current.rows.map((row) => row.page.page_id)).toEqual(['root-1']),
+    )
+    act(() => result.current.handleToggle('root-1'))
+    await waitFor(() =>
+      expect(result.current.rows.map((row) => row.page.page_id)).toEqual([
+        'root-1',
+        'child-1',
+        'child-2',
+      ]),
+    )
   })
 
   it('should select descendants when selecting a parent in multiple mode', () => {
@@ -113,7 +121,6 @@ describe('usePageSelectorModel', () => {
     rerender(createProps({ searchValue: 'Grandchild' }))
 
     await waitFor(() => {
-      expect(result.current.effectiveSearchValue).toBe('Grandchild')
       expect(result.current.rows.map((row) => row.page.page_id)).toEqual(['grandchild-1'])
     })
   })

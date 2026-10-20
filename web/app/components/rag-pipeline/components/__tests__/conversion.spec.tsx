@@ -1,10 +1,15 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { QueryClient } from '@tanstack/react-query'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import Conversion from '../conversion'
 
 const mockConvert = vi.fn()
-const mockInvalidDatasetDetail = vi.fn()
+const datasetDetailKey = consoleQuery.datasets.byDatasetId.get.queryKey({
+  input: { params: { dataset_id: 'ds-123' } },
+})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
@@ -28,20 +33,16 @@ vi.mock('@/context/dataset-detail', () => ({
   ) => selector(mockDatasetDetailState),
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useConvertDatasetToPipeline: () => ({
-    mutateAsync: mockConvert,
-    isPending: false,
-  }),
-}))
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  datasetDetailQueryKeyPrefix: ['dataset-detail'],
-}))
-
-vi.mock('@/service/use-base', () => ({
-  useInvalid: () => mockInvalidDatasetDetail,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.transform.datasets.byDatasetId.post': (input) => mockConvert(input),
+    }),
+  }
+})
 
 const { mockToast } = vi.hoisted(() => {
   const mockToast = Object.assign(vi.fn(), {
@@ -56,16 +57,8 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: mockToast,
-}))
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, ...props }: Record<string, unknown>) => (
-    <button onClick={onClick as () => void} {...props}>
-      {children as string}
-    </button>
-  ),
 }))
 
 vi.mock('../screenshot', () => ({
@@ -83,6 +76,8 @@ vi.mock('@/context/permission-state', async () => {
 describe('Conversion', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockConvert.mockReset().mockResolvedValue({ status: 'success' })
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     mockDatasetDetailState = {
       dataset: {
         permission_keys: ['dataset.acl.edit'],
@@ -95,21 +90,8 @@ describe('Conversion', () => {
     vi.restoreAllMocks()
   })
 
-  it('should render conversion title and description', () => {
-    render(<Conversion />)
-
-    expect(screen.getByText('datasetPipeline.conversion.title')).toBeInTheDocument()
-    expect(screen.getByText('datasetPipeline.conversion.descriptionChunk1')).toBeInTheDocument()
-    expect(screen.getByText('datasetPipeline.conversion.descriptionChunk2')).toBeInTheDocument()
-  })
-
-  it('should render convert button', () => {
-    render(<Conversion />)
-
-    expect(screen.getByText('datasetPipeline.operations.convert')).toBeInTheDocument()
-  })
-
-  it('should disable convert button when dataset lacks edit ACL', () => {
+  it('should disable convert button when dataset lacks edit ACL', async () => {
+    const user = userEvent.setup()
     mockDatasetDetailState = {
       dataset: {
         permission_keys: ['dataset.acl.readonly'],
@@ -122,102 +104,74 @@ describe('Conversion', () => {
     const convertButton = screen.getByRole('button', { name: 'datasetPipeline.operations.convert' })
     expect(convertButton).toBeDisabled()
 
-    fireEvent.click(convertButton)
+    await user.click(convertButton)
 
     expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
     expect(mockConvert).not.toHaveBeenCalled()
   })
 
-  it('should render warning text', () => {
+  it('should hide confirm modal when cancel is clicked', async () => {
+    const user = userEvent.setup()
     render(<Conversion />)
 
-    expect(screen.getByText('datasetPipeline.conversion.warning')).toBeInTheDocument()
-  })
-
-  it('should render screenshot component', () => {
-    render(<Conversion />)
-
-    expect(screen.getByTestId('screenshot')).toBeInTheDocument()
-  })
-
-  it('should show confirm modal when convert button clicked', () => {
-    render(<Conversion />)
-
-    expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
-
-    expect(screen.getByText('datasetPipeline.conversion.confirm.title')).toBeInTheDocument()
-  })
-
-  it('should hide confirm modal when cancel is clicked', () => {
-    render(<Conversion />)
-
-    fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
+    await user.click(screen.getByRole('button', { name: 'datasetPipeline.operations.convert' }))
     expect(screen.getByText('datasetPipeline.conversion.confirm.title')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-    return waitFor(() => {
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(mockConvert).not.toHaveBeenCalled()
+    await waitFor(() => {
       expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
     })
   })
 
-  it('should call convert when confirm is clicked', () => {
-    render(<Conversion />)
-
-    fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-
-    expect(mockConvert).toHaveBeenCalledWith(
-      'ds-123',
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-        onError: expect.any(Function),
-      }),
-    )
-  })
-
   it('should handle successful conversion', async () => {
-    mockConvert.mockImplementation(
-      (_id: string, opts: { onSuccess: (res: { status: string }) => void }) => {
-        opts.onSuccess({ status: 'success' })
-      },
-    )
+    const user = userEvent.setup()
+    mockConvert.mockResolvedValue({ status: 'success' })
 
     render(<Conversion />)
 
-    fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(screen.getByRole('button', { name: 'datasetPipeline.operations.convert' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-    expect(mockToast.success).toHaveBeenCalledWith('datasetPipeline.conversion.successMessage')
-    expect(mockInvalidDatasetDetail).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(mockToast.success).toHaveBeenCalledWith('datasetPipeline.conversion.successMessage'),
+    )
+    expect(mockConvert).toHaveBeenCalledExactlyOnceWith({ params: { dataset_id: 'ds-123' } })
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: datasetDetailKey,
+    })
   })
 
   it('should handle failed conversion', async () => {
-    mockConvert.mockImplementation(
-      (_id: string, opts: { onSuccess: (res: { status: string }) => void }) => {
-        opts.onSuccess({ status: 'failed' })
-      },
-    )
+    const user = userEvent.setup()
+    mockConvert.mockResolvedValue({ status: 'failed' })
 
     render(<Conversion />)
 
-    fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(screen.getByRole('button', { name: 'datasetPipeline.operations.convert' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-    expect(mockToast.error).toHaveBeenCalledWith('datasetPipeline.conversion.errorMessage')
+    await waitFor(() =>
+      expect(mockToast.error).toHaveBeenCalledWith('datasetPipeline.conversion.errorMessage'),
+    )
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(QueryClient.prototype.invalidateQueries).not.toHaveBeenCalled()
   })
 
   it('should handle conversion error', async () => {
-    mockConvert.mockImplementation((_id: string, opts: { onError: () => void }) => {
-      opts.onError()
-    })
+    const user = userEvent.setup()
+    mockConvert.mockRejectedValue(new Error('Request failed'))
 
     render(<Conversion />)
 
-    fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(screen.getByRole('button', { name: 'datasetPipeline.operations.convert' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-    expect(mockToast.error).toHaveBeenCalledWith('datasetPipeline.conversion.errorMessage')
+    await waitFor(() =>
+      expect(mockToast.error).toHaveBeenCalledWith('datasetPipeline.conversion.errorMessage'),
+    )
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(QueryClient.prototype.invalidateQueries).not.toHaveBeenCalled()
   })
 })

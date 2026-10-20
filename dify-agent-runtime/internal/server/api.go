@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
 )
 
 // Handler creates the HTTP handler (mux) for the shellctl API.
@@ -26,6 +28,12 @@ func Handler(svc *Service, config *Config) http.Handler {
 	mux.HandleFunc("POST /v1/jobs/{job_id}/input", auth(handleInputJob(svc, config)))
 	mux.HandleFunc("POST /v1/jobs/{job_id}/terminate", auth(handleTerminateJob(svc, config)))
 	mux.HandleFunc("DELETE /v1/jobs/{job_id}", auth(handleDeleteJob(svc, config)))
+
+	{ // Snapshot handlers
+		snap := newSnapshotHandlers(config)
+		mux.HandleFunc("POST /v1/snapshot/save", auth(snap.handleSnapshotSave()))
+		mux.HandleFunc("POST /v1/snapshot/restore", auth(snap.handleSnapshotRestore()))
+	}
 
 	return requestLoggingMiddleware(recoveryMiddleware(mux))
 }
@@ -45,6 +53,12 @@ func handleRunJob(svc *Service) http.HandlerFunc {
 			writeError(w, 400, "invalid_request", "script is required")
 			return
 		}
+		mode, err := jobmode.Parse(string(req.Mode))
+		if err != nil {
+			writeError(w, 422, "validation_error", err.Error())
+			return
+		}
+		req.Mode = mode
 		// Validate env
 		if req.Env != nil {
 			for name, value := range req.Env {
@@ -224,6 +238,10 @@ func (sr *statusRecorder) WriteHeader(code int) {
 	sr.ResponseWriter.WriteHeader(code)
 }
 
+// Unwrap exposes the underlying writer so http.ResponseController works
+// (flushes and per-request deadlines reach the real connection).
+func (sr *statusRecorder) Unwrap() http.ResponseWriter { return sr.ResponseWriter }
+
 func requestLoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -237,6 +255,11 @@ func recoveryMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
+				if rec == http.ErrAbortHandler {
+					// Deliberate connection abort (e.g. failed snapshot
+					// stream): let net/http tear the connection down.
+					panic(rec)
+				}
 				stack := debug.Stack()
 				log.Printf("PANIC %s %s: %v\n%s", r.Method, r.URL.Path, rec, stack)
 				writeError(w, 500, "internal_panic", fmt.Sprintf("internal server error: %v", rec))

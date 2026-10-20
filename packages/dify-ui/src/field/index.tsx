@@ -1,77 +1,85 @@
 'use client'
 
-import type { Field as BaseFieldNS } from '@base-ui/react/field'
-import type { VariantProps } from 'class-variance-authority'
 import { Field as BaseField } from '@base-ui/react/field'
 import { cn } from '../cn'
-import { formLabelClassName, textControlVariants } from '../form-control-shared'
+import { formLabelClassName } from '../internal/form-control'
+import { resolveClassName } from '../internal/resolve-class-name'
 
-export type FieldProps = Omit<BaseFieldNS.Root.Props, 'className'> & {
-  className?: string
+type FieldActions = BaseField.Root.Actions
+
+type FieldProps = BaseField.Root.Props
+
+function Field({ className, ...props }: FieldProps) {
+  return (
+    <BaseField.Root
+      className={(state) =>
+        cn('group/field grid min-w-0 gap-1', resolveClassName(className, state))
+      }
+      {...props}
+    />
+  )
 }
 
-export type FieldActions = BaseFieldNS.Root.Actions
+type FieldItemProps = BaseField.Item.Props
 
-export function Field({ className, ...props }: FieldProps) {
-  return <BaseField.Root className={cn('group/field grid min-w-0 gap-1', className)} {...props} />
+function FieldItem({ className, ...props }: FieldItemProps) {
+  return (
+    <BaseField.Item
+      className={(state) => cn('grid min-w-0 gap-1', resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
-export type FieldItemProps = Omit<BaseFieldNS.Item.Props, 'className'> & {
-  className?: string
+type FieldLabelProps = BaseField.Label.Props
+
+function FieldLabel({ className, ...props }: FieldLabelProps) {
+  return (
+    <BaseField.Label
+      className={(state) => cn(formLabelClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
-export function FieldItem({ className, ...props }: FieldItemProps) {
-  return <BaseField.Item className={cn('grid min-w-0 gap-1', className)} {...props} />
-}
+type FieldDescriptionProps = BaseField.Description.Props
 
-export type FieldLabelProps = Omit<BaseFieldNS.Label.Props, 'className'> & {
-  className?: string
-}
-
-export function FieldLabel({ className, ...props }: FieldLabelProps) {
-  return <BaseField.Label className={cn(formLabelClassName, className)} {...props} />
-}
-
-export type FieldControlSize = NonNullable<VariantProps<typeof textControlVariants>['size']>
-
-export type FieldControlProps = Omit<BaseFieldNS.Control.Props, 'className' | 'size'> &
-  VariantProps<typeof textControlVariants> & {
-    className?: string
-  }
-
-export type FieldControlChangeEventDetails = BaseFieldNS.Control.ChangeEventDetails
-
-export function FieldControl({ className, size = 'medium', ...props }: FieldControlProps) {
-  return <BaseField.Control className={cn(textControlVariants({ size }), className)} {...props} />
-}
-
-export type FieldDescriptionProps = Omit<BaseFieldNS.Description.Props, 'className'> & {
-  className?: string
-}
-
-export function FieldDescription({ className, ...props }: FieldDescriptionProps) {
+function FieldDescription({ className, ...props }: FieldDescriptionProps) {
   return (
     <BaseField.Description
-      className={cn('py-0.5 body-xs-regular text-text-tertiary', className)}
+      className={(state) =>
+        cn('py-0.5 body-xs-regular text-text-tertiary', resolveClassName(className, state))
+      }
       {...props}
     />
   )
 }
 
-export type FieldErrorProps = Omit<BaseFieldNS.Error.Props, 'className'> & {
-  className?: string
-}
+type FieldErrorProps = BaseField.Error.Props
 
-export function FieldError({ className, ...props }: FieldErrorProps) {
+function FieldError({ className, ...props }: FieldErrorProps) {
   return (
     <BaseField.Error
-      className={cn('py-0.5 body-xs-regular text-text-destructive', className)}
+      className={(state) =>
+        cn('py-0.5 body-xs-regular text-text-destructive', resolveClassName(className, state))
+      }
       {...props}
     />
   )
 }
 
-export type FieldValidityProps = BaseFieldNS.Validity.Props
-export type FieldValidityState = BaseFieldNS.Validity.State
+type FieldValidityProps = BaseField.Validity.Props
 
-export const FieldValidity = BaseField.Validity
+const FieldValidity = BaseField.Validity
+
+export { Field, FieldDescription, FieldError, FieldItem, FieldLabel, FieldValidity }
+
+export type {
+  FieldActions,
+  FieldDescriptionProps,
+  FieldErrorProps,
+  FieldItemProps,
+  FieldLabelProps,
+  FieldProps,
+  FieldValidityProps,
+}

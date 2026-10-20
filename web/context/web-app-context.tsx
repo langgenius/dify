@@ -11,11 +11,12 @@ import {
   resolveWebAppLoginRedirect,
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useSearchParams } from '@/next/navigation'
 import { useGetWebAppAccessModeByCode } from '@/service/use-share'
+import { parseWebAppAddress } from '@/service/webapp-address'
 
 type WebAppStore = {
   shareCode: string | null
@@ -58,12 +59,10 @@ export const useWebAppStore = create<WebAppStore>((set) => ({
 
 const getShareCodeFromRedirectUrl = (redirectUrl: string | null): string | null => {
   const currentOrigin = typeof window === 'undefined' ? undefined : window.location.origin
-  return resolveWebAppLoginRedirect(redirectUrl, currentOrigin)?.appCode || null
+  return resolveWebAppLoginRedirect(redirectUrl, currentOrigin)?.address.code || null
 }
 const getShareCodeFromPathname = (pathname: string): string | null => {
-  const code = pathname.split('/').pop() || null
-  if (code === 'webapp-signin') return null
-  return code
+  return parseWebAppAddress(pathname)?.code || null
 }
 
 const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
@@ -116,7 +115,7 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   if (isLoading) {
     return (
       <div className="flex size-full items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
   }

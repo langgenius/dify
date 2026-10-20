@@ -50,7 +50,7 @@ class ErrorBoundaryInner extends React.Component<
   },
   ErrorBoundaryState
 > {
-  constructor(props: any) {
+  constructor(props: ErrorBoundaryInner['props']) {
     super(props)
     this.state = {
       hasError: false,
@@ -81,12 +81,15 @@ class ErrorBoundaryInner extends React.Component<
     if (this.props.onError) this.props.onError(error, errorInfo)
   }
 
-  override componentDidUpdate(prevProps: any) {
+  override componentDidUpdate(prevProps: ErrorBoundaryInner['props']) {
     const { resetKeys, resetOnPropsChange } = this.props
     const { hasError } = this.state
 
     if (hasError && prevProps.resetKeys !== resetKeys) {
-      if (resetKeys?.some((key, idx) => key !== prevProps.resetKeys?.[idx]))
+      if (
+        (resetKeys?.length ?? 0) !== (prevProps.resetKeys?.length ?? 0) ||
+        resetKeys?.some((key, idx) => key !== prevProps.resetKeys?.[idx])
+      )
         this.props.resetErrorBoundary()
     }
 
@@ -121,13 +124,13 @@ class ErrorBoundaryInner extends React.Component<
       return (
         <div
           className={cn(
-            'border-state-critical-border bg-state-critical-hover-alt flex flex-col items-center justify-center rounded-lg border p-8',
-            isolate && 'min-h-[200px]',
+            'flex flex-col items-center justify-center rounded-lg border p-8',
+            isolate && 'min-h-50',
             className,
           )}
         >
           <div className="mb-4 flex items-center gap-2">
-            <RiAlertLine className="text-state-critical-solid size-8" />
+            <RiAlertLine className="size-8" />
             <h2 className="text-xl font-semibold text-text-primary">{customTitle || copy.title}</h2>
           </div>
 
@@ -189,7 +192,7 @@ class ErrorBoundaryInner extends React.Component<
 
 // Main functional component wrapper
 const ErrorBoundary: React.FC<ErrorBoundaryProps> = (props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [errorBoundaryKey, setErrorBoundaryKey] = useState(0)
   const resetKeysRef = useRef(props.resetKeys)
   const prevResetKeysRef = useRef<Array<string | number> | undefined>(undefined)
@@ -220,9 +223,9 @@ const ErrorBoundary: React.FC<ErrorBoundaryProps> = (props) => {
 
   return (
     <ErrorBoundaryInner
+      key={errorBoundaryKey}
       {...props}
       copy={copy}
-      key={errorBoundaryKey}
       resetErrorBoundary={resetErrorBoundary}
       onResetKeysChange={onResetKeysChange}
     />

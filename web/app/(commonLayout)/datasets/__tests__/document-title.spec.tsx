@@ -1,0 +1,21 @@
+import { describe, expect, it, vi } from 'vite-plus/test'
+import { generateMetadata as generateConnectMetadata } from '../connect/page'
+import { generateMetadata as generatePipelineMetadata } from '../create-from-pipeline/page'
+import { generateMetadata as generateCreateMetadata } from '../create/page'
+
+vi.mock('server-only', () => ({}))
+
+vi.mock('@/i18n/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/server')>()),
+  getLocaleOnServer: async () => 'en-US',
+}))
+
+describe('dataset creation document titles', () => {
+  it.each([
+    [generateConnectMetadata, 'Connect to an external knowledge base'],
+    [generateCreateMetadata, 'Create a ready-to-use knowledge base'],
+    [generatePipelineMetadata, 'Build a custom knowledge base'],
+  ])('provides localized route metadata', async (generateMetadata, expectedTitle) => {
+    await expect(generateMetadata()).resolves.toMatchObject({ title: expectedTitle })
+  })
+})

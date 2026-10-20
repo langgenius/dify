@@ -12,7 +12,7 @@ type IInvitationLinkProps = {
 }
 
 const InvitationLink = ({ value }: IInvitationLinkProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appApi'])
   const [isCopied, setIsCopied] = useState(false)
 
   const copyHandle = useCallback(() => {
@@ -62,7 +62,7 @@ const InvitationLink = ({ value }: IInvitationLinkProps) => {
                 <button
                   type="button"
                   aria-label={t(($) => $.copy, { ns: 'appApi' })}
-                  className={`box-border flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-base-hover ${s.copyIcon} ${isCopied ? s.copied : ''}`}
+                  className={`box-border flex h-7.5 w-7.5 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-base-hover ${s.copyIcon} ${isCopied ? s.copied : ''}`}
                   onClick={copyHandle}
                 />
               </div>

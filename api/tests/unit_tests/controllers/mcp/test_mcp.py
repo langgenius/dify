@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import types
 from collections.abc import Iterator
 from inspect import unwrap
@@ -11,10 +12,15 @@ from uuid import uuid4
 import pytest
 from flask import Flask, Response
 from pydantic import ValidationError
+from sqlalchemy import inspect
+from sqlalchemy.orm import Session, sessionmaker
 
 import controllers.mcp.mcp as module
 from models.engine import db
-from models.model import EndUser
+from models.enums import EndUserType
+from models.model import App, AppAnnotationSetting, AppMCPServer, AppModelConfig, EndUser, IconType
+from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.model_factories import make_end_user
 
 
 @pytest.fixture
@@ -24,16 +30,25 @@ def app() -> Iterator[Flask]:
     db.init_app(app)
 
     with app.app_context():
-        EndUser.__table__.create(db.engine)
-        yield app
+        for table in (
+            App.__table__,
+            AppAnnotationSetting.__table__,
+            AppMCPServer.__table__,
+            AppModelConfig.__table__,
+            EndUser.__table__,
+            Workflow.__table__,
+        ):
+            table.create(db.engine)
+        with patch.object(module.session_factory, "get_session_maker", return_value=sessionmaker(db.engine)):
+            yield app
 
 
 @pytest.fixture(autouse=True)
-def mock_mcp_ns():
+def mock_mcp_ns(monkeypatch: pytest.MonkeyPatch):
     fake_ns = types.SimpleNamespace()
     fake_ns.payload = None
     fake_ns.models = {}
-    module.mcp_ns = fake_ns
+    monkeypatch.setattr(module, "mcp_ns", fake_ns)
 
 
 @pytest.fixture
@@ -51,34 +66,78 @@ _APP_ID = str(uuid4())
 _SERVER_ID = str(uuid4())
 
 
-class DummyServer:
-    def __init__(self, status, app_id=_APP_ID, tenant_id=_TENANT_ID, server_id=_SERVER_ID):
-        self.status = status
-        self.app_id = app_id
-        self.tenant_id = tenant_id
-        self.id = server_id
-        self.description = "Test server"
-        self.parameters_dict = {}
+def _server(status: module.AppMCPServerStatus | str) -> AppMCPServer:
+    server = AppMCPServer(
+        tenant_id=_TENANT_ID,
+        app_id=_APP_ID,
+        name="Test server",
+        description="Test server",
+        server_code="server-1",
+        status=status,
+        parameters="{}",
+    )
+    server.id = _SERVER_ID
+    return server
 
 
-class DummyApp:
-    def __init__(self, mode, workflow=None, app_model_config=None):
-        self.id = _APP_ID
-        self.tenant_id = _TENANT_ID
-        self.name = "test_app"
-        self.mode = mode
-        self.workflow = workflow
-        self.app_model_config = app_model_config
+def _app(
+    mode: module.AppMode,
+    *,
+    workflow_variables: list[dict[str, object]] | None = None,
+    with_model_config: bool = False,
+) -> App:
+    app = App(
+        id=_APP_ID,
+        tenant_id=_TENANT_ID,
+        name="test_app",
+        description="",
+        mode=mode,
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#ffffff",
+        enable_site=False,
+        enable_api=False,
+        api_rpm=0,
+        api_rph=0,
+        is_demo=False,
+        is_public=False,
+        is_universal=False,
+        max_active_requests=None,
+        use_icon_as_answer_icon=False,
+    )
+    if workflow_variables is not None:
+        workflow = Workflow.new(
+            tenant_id=_TENANT_ID,
+            app_id=_APP_ID,
+            type=WorkflowType.WORKFLOW,
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps({"nodes": [{"id": "start", "data": {"type": "start", "variables": workflow_variables}}]}),
+            features="{}",
+            created_by="user-1",
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        db.session.add(workflow)
+        db.session.flush()
+        app.workflow_id = workflow.id
+    if with_model_config:
+        config = AppModelConfig(app_id=_APP_ID)
+        config.user_input_form = "[]"
+        db.session.add(config)
+        db.session.flush()
+        app.app_model_config_id = config.id
+    return app
 
 
-class DummyWorkflow:
-    def user_input_form(self, to_old_structure=False):
-        return []
-
-
-class DummyConfig:
-    def to_dict(self):
-        return {"user_input_form": []}
+def _end_user() -> EndUser:
+    return make_end_user(
+        end_user_id=str(uuid4()),
+        tenant_id=_TENANT_ID,
+        app_id=_APP_ID,
+        end_user_type=EndUserType.MCP,
+        session_id=_SERVER_ID,
+    )
 
 
 class DummyResult:
@@ -103,11 +162,8 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.ADVANCED_CHAT,
-            workflow=DummyWorkflow(),
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
@@ -127,11 +183,8 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.ADVANCED_CHAT,
-            workflow=DummyWorkflow(),
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
@@ -150,54 +203,55 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.ADVANCED_CHAT,
-            workflow=DummyWorkflow(),
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError):
-            post_fn("server-1")
+        response = post_fn("server-1")
+        assert response.status_code == 202
+        assert response.data == b""
 
     def test_inactive_server(self):
         fake_payload(
             {
                 "jsonrpc": "2.0",
-                "method": "test",
+                "method": "ping",
                 "id": 1,
                 "params": {},
             }
         )
 
-        server = DummyServer(status="inactive")
-        app = DummyApp(
-            mode=module.AppMode.ADVANCED_CHAT,
-            workflow=DummyWorkflow(),
-        )
+        server = _server("inactive")
+        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError):
-            post_fn("server-1")
+        response = post_fn("server-1")
+        assert response.status_code == 404
+        assert response.get_json()["error"]["message"] == "Server Not Found"
 
-    def test_invalid_payload(self):
+    def test_invalid_payload(self, mocker):
         fake_payload({"invalid": "data"})
 
         api = module.MCPAppApi()
+        mocker.patch.object(
+            api,
+            "_get_mcp_server_and_app",
+            return_value=(_server(module.AppMCPServerStatus.ACTIVE), _app(module.AppMode.WORKFLOW)),
+        )
         post_fn = unwrap(api.post)
 
         with pytest.raises(ValidationError):
             post_fn("server-1")
 
-    def test_missing_request_id(self):
+    def test_unknown_method_without_request_id_is_ignored(self):
         fake_payload(
             {
                 "jsonrpc": "2.0",
@@ -206,21 +260,19 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.WORKFLOW,
-            workflow=DummyWorkflow(),
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.WORKFLOW, workflow_variables=[])
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError):
-            post_fn("server-1")
+        response = post_fn("server-1")
+        assert response.status_code == 202
+        assert response.data == b""
 
-    def test_server_not_found(self):
+    def test_server_not_found(self, mocker):
         """Test when MCP server doesn't exist"""
         fake_payload(
             {
@@ -236,17 +288,15 @@ class TestMCPAppApi:
         )
 
         api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(
-            side_effect=module.MCPRequestError(module.mcp_types.INVALID_REQUEST, "Server Not Found")
-        )
+        mocker.patch.object(api, "_get_mcp_server_and_app", side_effect=module.MCPServerNotFoundError())
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError) as exc_info:
-            post_fn("server-1")
-        assert "Server Not Found" in str(exc_info.value)
+        response = post_fn("server-1")
+        assert response.status_code == 404
+        assert response.get_json()["error"]["message"] == "Server Not Found"
 
-    def test_app_not_found(self):
+    def test_app_not_found(self, mocker):
         """Test when app associated with server doesn't exist"""
         fake_payload(
             {
@@ -262,15 +312,13 @@ class TestMCPAppApi:
         )
 
         api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(
-            side_effect=module.MCPRequestError(module.mcp_types.INVALID_REQUEST, "App Not Found")
-        )
+        mocker.patch.object(api, "_get_mcp_server_and_app", side_effect=module.MCPServerNotFoundError())
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError) as exc_info:
-            post_fn("server-1")
-        assert "App Not Found" in str(exc_info.value)
+        response = post_fn("server-1")
+        assert response.status_code == 404
+        assert response.get_json()["error"]["message"] == "Server Not Found"
 
     def test_app_unavailable_no_workflow(self):
         """Test when app has no workflow (ADVANCED_CHAT mode)"""
@@ -287,11 +335,8 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.ADVANCED_CHAT,
-            workflow=None,  # No workflow
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.ADVANCED_CHAT)
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
@@ -317,11 +362,8 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.CHAT,
-            app_model_config=None,  # No model config
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.CHAT)
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
@@ -348,11 +390,8 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.ADVANCED_CHAT,
-            workflow=DummyWorkflow(),
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
@@ -378,14 +417,10 @@ class TestMCPAppApi:
             }
         )
 
-        class WorkflowWithForm:
-            def user_input_form(self, to_old_structure=False):
-                return [{"text-input": {"variable": "test_var", "label": "Test"}}]
-
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.WORKFLOW,
-            workflow=WorkflowWithForm(),
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(
+            module.AppMode.WORKFLOW,
+            workflow_variables=[{"type": "text-input", "variable": "test_var", "label": "Test", "required": False}],
         )
 
         api = module.MCPAppApi()
@@ -411,11 +446,8 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.CHAT,
-            app_model_config=DummyConfig(),
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.CHAT, with_model_config=True)
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
@@ -436,25 +468,26 @@ class TestMCPAppApi:
             }
         )
 
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.ADVANCED_CHAT,
-            workflow=DummyWorkflow(),
-        )
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
 
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
 
         post_fn = unwrap(api.post)
 
-        with pytest.raises(module.MCPRequestError) as exc_info:
-            post_fn("server-1")
-        assert "Invalid MCP request" in str(exc_info.value)
+        response = post_fn("server-1")
+        assert response.status_code == 400
+        assert response.get_json() == {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "error": {"code": module.mcp_types.METHOD_NOT_FOUND, "message": "Method not found"},
+        }
 
     def test_validate_server_status_active(self):
         """Test successful server status validation"""
         api = module.MCPAppApi()
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
+        server = _server(module.AppMCPServerStatus.ACTIVE)
 
         # Should not raise an exception
         api._validate_server_status(server)
@@ -480,15 +513,10 @@ class TestMCPAppApi:
             }
         )
 
-        class WorkflowWithBadForm:
-            def user_input_form(self, to_old_structure=False):
-                # Invalid type that will fail validation
-                return [{"invalid-type": {"variable": "test_var"}}]
-
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.WORKFLOW,
-            workflow=WorkflowWithBadForm(),
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(
+            module.AppMode.WORKFLOW,
+            workflow_variables=[{"type": "invalid-type", "variable": "test_var"}],
         )
 
         api = module.MCPAppApi()
@@ -533,6 +561,61 @@ def _tools_call_payload() -> dict[str, object]:
     }
 
 
+def test_execution_reloads_attached_orm_objects_after_identity_preflight(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app_model = _app(module.AppMode.CHAT, with_model_config=True)
+    server = _server(module.AppMCPServerStatus.ACTIVE)
+    db.session.add_all([app_model, server])
+    db.session.commit()
+    api = module.MCPAppApi()
+    lookup = api._get_mcp_server_and_app
+    snapshots: list[tuple[module.AppMCPServer, module.App]] = []
+
+    def observe_lookup(code: str, session: Session) -> tuple[module.AppMCPServer, module.App]:
+        pair = lookup(code, session)
+        snapshots.append(pair)
+        return pair
+
+    def process(
+        _mcp_request: module.mcp_types.ClientRequest | module.mcp_types.ClientNotification,
+        _request_id: int | str | None,
+        fresh_app: module.App,
+        fresh_server: module.AppMCPServer,
+        _form: list[module.VariableEntity],
+        session: Session,
+        _protocol: str,
+    ) -> Response:
+        old_server, old_app = snapshots[0]
+        assert inspect(old_server).detached
+        assert inspect(old_app).detached
+        assert fresh_server is not old_server
+        assert fresh_app is not old_app
+        assert inspect(fresh_server).session is session
+        assert inspect(fresh_app).session is session
+        return Response("ok")
+
+    monkeypatch.setattr(api, "_get_mcp_server_and_app", observe_lookup)
+    monkeypatch.setattr(api, "_process_mcp_message", process)
+    fake_payload({"jsonrpc": "2.0", "method": "ping", "id": 1})
+    with app.test_request_context("/"):
+        response = api.post("server-1")
+    assert response.status_code == 200
+    assert len(snapshots) == 2
+
+
+@pytest.mark.usefixtures("app")
+def test_identity_query_does_not_accept_a_server_bound_to_another_tenants_app() -> None:
+    app_model = _app(module.AppMode.CHAT)
+    server = _server(module.AppMCPServerStatus.ACTIVE)
+    server.tenant_id = str(uuid4())
+    db.session.add_all([app_model, server])
+    db.session.commit()
+    with sessionmaker(db.engine).begin() as session:
+        with pytest.raises(module.MCPServerNotFoundError):
+            module.MCPAppApi()._get_mcp_server_and_app("server-1", session)
+
+
 class TestMCPProtocolVersionNegotiationApi:
     """MCP protocol version negotiation exercised through the HTTP controller layer.
 
@@ -543,11 +626,11 @@ class TestMCPProtocolVersionNegotiationApi:
     """
 
     def _make_api(self) -> module.MCPAppApi:
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(mode=module.AppMode.CHAT, app_model_config=DummyConfig())
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        app = _app(module.AppMode.CHAT, with_model_config=True)
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
-        api._retrieve_end_user = MagicMock(return_value=MagicMock())
+        api._retrieve_end_user = MagicMock(return_value=_end_user())
         return api
 
     def _post(

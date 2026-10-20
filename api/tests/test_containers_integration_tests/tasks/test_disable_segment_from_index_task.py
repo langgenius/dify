@@ -78,7 +78,7 @@ class TestDisableSegmentFromIndexTask:
         db_session_with_containers.commit()
 
         # Set current tenant for account
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
 
         return account, tenant
 
@@ -608,7 +608,7 @@ class TestDisableSegmentFromIndexTask:
         document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
 
         segments = []
-        for i in range(3):
+        for _i in range(3):
             segment = self._create_test_segment(db_session_with_containers, document, dataset, tenant, account)
             segments.append(segment)
 

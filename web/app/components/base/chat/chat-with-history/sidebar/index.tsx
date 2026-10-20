@@ -1,19 +1,21 @@
+import type { Ref } from 'react'
 import type { ConversationItem } from '@/models/share'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
@@ -23,12 +25,13 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useChatWithHistoryContext } from '../context'
 
 type Props = Readonly<{
+  toggleButtonRef?: Ref<HTMLButtonElement>
   isPanel?: boolean
   panelVisible?: boolean
 }>
 
-const Sidebar = ({ isPanel }: Props) => {
-  const { t } = useTranslation()
+const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
+  const { t } = useTranslation(['common', 'layout', 'share'])
   const {
     isInstalledApp,
     appData,
@@ -94,26 +97,29 @@ const Sidebar = ({ isPanel }: Props) => {
     >
       <div className={cn('flex shrink-0 items-center gap-3 p-3 pr-2')}>
         <div className="shrink-0">
-          <AppIcon
-            size="large"
-            iconType={appData?.site.icon_type}
-            icon={appData?.site.icon}
-            background={appData?.site.icon_background}
-            imageUrl={appData?.site.icon_url}
-          />
+          <AppIcon size="large" icon={appData?.site} />
         </div>
         <div className={cn('grow truncate system-md-semibold text-text-secondary')}>
           {appData?.site.title}
         </div>
         {!isMobile && isSidebarCollapsed && (
-          <ActionButton size="l" onClick={() => handleSidebarCollapse(false)}>
-            <span aria-hidden className="i-ri-expand-right-line h-[18px] w-[18px]" />
-          </ActionButton>
+          <IconButton
+            aria-label={t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })}
+            size="lg"
+            onClick={() => handleSidebarCollapse(false)}
+          >
+            <span aria-hidden className="i-ri-expand-right-line h-4.5 w-4.5" />
+          </IconButton>
         )}
         {!isMobile && !isSidebarCollapsed && (
-          <ActionButton size="l" onClick={() => handleSidebarCollapse(true)}>
-            <span aria-hidden className="i-ri-layout-left-2-line h-[18px] w-[18px]" />
-          </ActionButton>
+          <IconButton
+            ref={toggleButtonRef}
+            aria-label={t(($) => $['sidebar.collapseSidebar'], { ns: 'layout' })}
+            size="lg"
+            onClick={() => handleSidebarCollapse(true)}
+          >
+            <span aria-hidden className="i-ri-layout-left-2-line h-4.5 w-4.5" />
+          </IconButton>
         )}
       </div>
       <div className="shrink-0 px-3 py-4">
@@ -123,7 +129,7 @@ const Sidebar = ({ isPanel }: Props) => {
           className="w-full justify-center"
           onClick={handleNewConversation}
         >
-          <span aria-hidden className="mr-1 i-ri-edit-box-line size-4" />
+          <span aria-hidden className="i-ri-edit-box-line size-4" />
           {t(($) => $['chat.newChat'], { ns: 'share' })}
         </Button>
       </div>
@@ -184,22 +190,20 @@ const Sidebar = ({ isPanel }: Props) => {
         </div>
         <AlertDialog open={!!showConfirm} onOpenChange={(open) => !open && handleCancelConfirm()}>
           <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
                 {t(($) => $['chat.deleteConversation.title'], { ns: 'share' })}
               </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {deleteConversationContent}
-              </AlertDialogDescription>
-            </div>
-            <AlertDialogActions>
+              <AlertDialogDescription>{deleteConversationContent}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={handleDelete}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
         {showRename && (

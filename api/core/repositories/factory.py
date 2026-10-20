@@ -31,9 +31,15 @@ class OrderConfig:
 class WorkflowExecutionRepository(Protocol):
     def save(self, execution: WorkflowExecution): ...
 
+    def save_synchronously(self, execution: WorkflowExecution) -> None:
+        """Commit the SQL control record before publishing a lifecycle transition."""
+        ...
+
 
 class WorkflowNodeExecutionRepository(Protocol):
     def save(self, execution: WorkflowNodeExecution): ...
+
+    def save_synchronously(self, execution: WorkflowNodeExecution) -> None: ...
 
     def save_execution_data(self, execution: WorkflowNodeExecution): ...
 
@@ -41,6 +47,8 @@ class WorkflowNodeExecutionRepository(Protocol):
         self,
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
+        *,
+        include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecution]: ...
 
 

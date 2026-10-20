@@ -1,6 +1,7 @@
+import type { TextGenerationTranslate } from '../../types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { IOtherOptions } from '@/service/base'
-import type { HumanInputFormData, HumanInputFormTimeoutData, NodeTracing } from '@/types/workflow'
+import type { HumanInputFormData, NodeTracing } from '@/types/workflow'
 import { act } from '@testing-library/react'
 import {
   BlockEnum,
@@ -13,12 +14,10 @@ import {
   appendParallelStart,
   appendResultText,
   applyWorkflowFinishedState,
-  applyWorkflowOutputs,
   applyWorkflowPaused,
   createWorkflowStreamHandlers,
   finishParallelTrace,
   finishWorkflowNode,
-  markNodesStopped,
   replaceResultText,
   updateHumanInputFilled,
   updateHumanInputRequired,
@@ -103,277 +102,121 @@ const createHumanInput = (overrides: Partial<HumanInputFormData> = {}): HumanInp
   ...overrides,
 })
 
-describe('workflow-stream-handlers helpers', () => {
-  it('should update tracing, result text, and human input state', () => {
-    const parallelTrace = createTrace({
-      node_id: 'parallel-node',
+describe('workflow state transformations', () => {
+  it('starts parallel traces, appends iterations only to the matching trace, and exposes failures', () => {
+    const trace = createTrace({
+      node_id: 'parallel',
       execution_metadata: { parallel_id: 'parallel-1' },
-      details: [[]],
+      details: undefined,
     })
+    const started = appendParallelStart(undefined, trace)
+    expect(started.tracing[0]?.details).toEqual([[]])
+    const next = appendParallelNext(started, trace)
+    expect(next.tracing[0]?.details).toEqual([[], []])
+    expect(started.tracing[0]?.details).toEqual([[]])
+    const unmatched = appendParallelNext(next, createTrace({ node_id: 'other' }))
+    expect(unmatched.tracing).toEqual(next.tracing)
+    const failed = finishParallelTrace(next, {
+      ...trace,
+      error: 'failed',
+      status: NodeRunningStatus.Failed,
+    })
+    expect(failed.tracing[0]).toMatchObject({
+      error: 'failed',
+      status: NodeRunningStatus.Failed,
+      expand: true,
+    })
+  })
 
-    let workflowProcessData = appendParallelStart(undefined, parallelTrace)
-    workflowProcessData = appendParallelNext(workflowProcessData, parallelTrace)
-    workflowProcessData = finishParallelTrace(
-      workflowProcessData,
-      createTrace({
-        node_id: 'parallel-node',
-        execution_metadata: { parallel_id: 'parallel-1' },
-        error: 'failed',
-      }),
-    )
-    workflowProcessData = upsertWorkflowNode(
-      workflowProcessData,
-      createTrace({
-        node_id: 'node-1',
-        execution_metadata: { parallel_id: 'parallel-2' },
-      }),
+  it('replaces an existing node, retains its extras on completion and excludes nested loop nodes', () => {
+    const process = createWorkflowProcess()
+    process.tracing = [
+      createTrace({ extras: { source: 'extra' }, status: NodeRunningStatus.Succeeded }),
+    ]
+    const replaced = upsertWorkflowNode(process, createTrace())!
+    expect(replaced.tracing).toHaveLength(1)
+    expect(replaced.tracing[0]?.status).toBe(NodeRunningStatus.Running)
+    const finished = finishWorkflowNode(
+      process,
+      createTrace({ status: NodeRunningStatus.Failed, error: 'failed' }),
     )!
-    workflowProcessData = appendResultText(workflowProcessData, 'Hello ')
-    workflowProcessData = replaceResultText(workflowProcessData, 'Hello world')
-    workflowProcessData = updateHumanInputRequired(workflowProcessData, createHumanInput())
-    workflowProcessData = updateHumanInputFilled(workflowProcessData, {
-      action_id: 'action-1',
+    expect(finished.tracing[0]).toMatchObject({
+      extras: { source: 'extra' },
+      error: 'failed',
+      expand: true,
+    })
+    expect(upsertWorkflowNode(process, createTrace({ iteration_id: 'iteration-1' }))).toEqual(
+      process,
+    )
+    expect(finishWorkflowNode(process, createTrace({ loop_id: 'loop-1' }))).toEqual(process)
+    expect(finishWorkflowNode(process, createTrace({ node_id: 'unknown' }))).toEqual(process)
+  })
+
+  it('stops running and waiting descendants while retaining successful node status', () => {
+    const process = createWorkflowProcess()
+    process.tracing = [
+      createTrace({
+        details: [
+          [
+            createTrace({ status: NodeRunningStatus.Waiting }),
+            createTrace({ node_id: 'finished', status: NodeRunningStatus.Succeeded }),
+          ],
+        ],
+      }),
+    ]
+    const stopped = applyWorkflowFinishedState(process, WorkflowRunningStatus.Stopped)
+    expect(stopped.status).toBe(WorkflowRunningStatus.Stopped)
+    expect(stopped.tracing[0]?.status).toBe(NodeRunningStatus.Stopped)
+    expect(stopped.tracing[0]?.details?.[0]?.map((node) => node.status)).toEqual([
+      NodeRunningStatus.Stopped,
+      NodeRunningStatus.Succeeded,
+    ])
+  })
+
+  it('accumulates text chunks and replaces the complete displayed result', () => {
+    const first = appendResultText(undefined, 'Hello ')
+    const second = appendResultText(first, 'world')
+    expect(second.resultText).toBe('Hello world')
+    expect(replaceResultText(second, 'Corrected answer').resultText).toBe('Corrected answer')
+    expect(second.resultText).toBe('Hello world')
+  })
+
+  it('updates pending forms by node and retains submitted form metadata separately', () => {
+    let process = upsertWorkflowNode(undefined, createTrace())!
+    process = updateHumanInputRequired(process, createHumanInput())
+    process = updateHumanInputRequired(process, createHumanInput({ expiration_time: 300 }))
+    process = updateHumanInputRequired(process, createHumanInput({ node_id: 'node-2' }))
+    expect(process.tracing[0]?.status).toBe(NodeRunningStatus.Paused)
+    expect(process.humanInputFormDataList?.map((form) => form.node_id)).toEqual([
+      'node-1',
+      'node-2',
+    ])
+    expect(process.humanInputFormDataList?.[0]?.expiration_time).toBe(300)
+    process = updateHumanInputTimeout(process, {
+      node_id: 'node-2',
+      node_title: 'Node',
+      expiration_time: 400,
+    })
+    expect(process.humanInputFormDataList?.[1]?.expiration_time).toBe(400)
+    process = updateHumanInputFilled(process, {
+      action_id: 'submit',
       action_text: 'Submit',
       node_id: 'node-1',
       node_title: 'Node',
       rendered_content: 'Done',
     })
-    workflowProcessData = updateHumanInputTimeout(workflowProcessData, {
-      node_id: 'node-1',
-      node_title: 'Node',
-      expiration_time: 200,
-    } satisfies HumanInputFormTimeoutData)
-    workflowProcessData = applyWorkflowPaused(workflowProcessData)
-
-    expect(workflowProcessData.expand).toBe(false)
-    expect(workflowProcessData.resultText).toBe('Hello world')
-    expect(workflowProcessData.humanInputFilledFormDataList).toEqual([
+    expect(process.humanInputFormDataList?.map((form) => form.node_id)).toEqual(['node-2'])
+    expect(process.humanInputFilledFormDataList).toEqual([
       expect.objectContaining({
+        node_id: 'node-1',
         action_text: 'Submit',
         form_content: 'content',
         inputs: [],
       }),
     ])
-    expect(workflowProcessData.tracing[0]).toEqual(
-      expect.objectContaining({
-        node_id: 'parallel-node',
-        expand: true,
-      }),
-    )
-  })
-
-  it('should initialize missing parallel details on start and next events', () => {
-    const parallelTrace = createTrace({
-      node_id: 'parallel-node',
-      execution_metadata: { parallel_id: 'parallel-1' },
-    })
-
-    const startedProcess = appendParallelStart(undefined, parallelTrace)
-    const nextProcess = appendParallelNext(startedProcess, parallelTrace)
-
-    expect(startedProcess.tracing[0]?.details).toEqual([[]])
-    expect(nextProcess.tracing[0]?.details).toEqual([[], []])
-  })
-
-  it('should leave tracing unchanged when a parallel next event has no matching trace', () => {
-    const process = createWorkflowProcess()
-    process.tracing = [
-      createTrace({
-        node_id: 'parallel-node',
-        execution_metadata: { parallel_id: 'parallel-1' },
-        details: [[]],
-      }),
-    ]
-
-    const nextProcess = appendParallelNext(
-      process,
-      createTrace({
-        node_id: 'missing-node',
-        execution_metadata: { parallel_id: 'parallel-2' },
-      }),
-    )
-
-    expect(nextProcess.tracing).toEqual(process.tracing)
-    expect(nextProcess.expand).toBe(true)
-  })
-
-  it('should mark running nodes as stopped recursively', () => {
-    const workflowProcessData = createWorkflowProcess()
-    workflowProcessData.tracing = [
-      createTrace({
-        status: NodeRunningStatus.Running,
-        details: [[createTrace({ status: NodeRunningStatus.Waiting })]],
-      }),
-    ]
-
-    const stoppedWorkflow = applyWorkflowFinishedState(
-      workflowProcessData,
-      WorkflowRunningStatus.Stopped,
-    )
-    markNodesStopped(stoppedWorkflow.tracing)
-
-    expect(stoppedWorkflow.status).toBe(WorkflowRunningStatus.Stopped)
-    expect(stoppedWorkflow.tracing[0]!.status).toBe(NodeRunningStatus.Stopped)
-    expect(stoppedWorkflow.tracing[0]!.details?.[0]![0]!.status).toBe(NodeRunningStatus.Stopped)
-  })
-
-  it('should cover unmatched and replacement helper branches', () => {
-    const process = createWorkflowProcess()
-    process.tracing = [
-      createTrace({
-        node_id: 'node-1',
-        parallel_id: 'parallel-1',
-        extras: {
-          source: 'extra',
-        },
-        status: NodeRunningStatus.Succeeded,
-      }),
-    ]
-    process.humanInputFormDataList = [createHumanInput({ node_id: 'node-1' })]
-    process.humanInputFilledFormDataList = [
-      {
-        action_id: 'action-0',
-        action_text: 'Existing',
-        node_id: 'node-0',
-        node_title: 'Node 0',
-        rendered_content: 'Existing',
-      },
-    ]
-
-    const parallelMatched = appendParallelNext(
-      process,
-      createTrace({
-        node_id: 'node-1',
-        execution_metadata: {
-          parallel_id: 'parallel-1',
-        },
-      }),
-    )
-    const notFinished = finishParallelTrace(
-      process,
-      createTrace({
-        node_id: 'missing',
-        execution_metadata: {
-          parallel_id: 'parallel-missing',
-        },
-      }),
-    )
-    const ignoredIteration = upsertWorkflowNode(
-      process,
-      createTrace({
-        iteration_id: 'iteration-1',
-      }),
-    )
-    const replacedNode = upsertWorkflowNode(
-      process,
-      createTrace({
-        node_id: 'node-1',
-      }),
-    )
-    const ignoredFinish = finishWorkflowNode(
-      process,
-      createTrace({
-        loop_id: 'loop-1',
-      }),
-    )
-    const unmatchedFinish = finishWorkflowNode(
-      process,
-      createTrace({
-        node_id: 'missing',
-        execution_metadata: {
-          parallel_id: 'missing',
-        },
-      }),
-    )
-    const finishedWithExtras = finishWorkflowNode(
-      process,
-      createTrace({
-        node_id: 'node-1',
-        execution_metadata: {
-          parallel_id: 'parallel-1',
-        },
-        error: 'failed',
-      }),
-    )
-    const succeededWorkflow = applyWorkflowFinishedState(process, WorkflowRunningStatus.Succeeded)
-    const outputlessWorkflow = applyWorkflowOutputs(undefined, null)
-    const updatedHumanInput = updateHumanInputRequired(
-      process,
-      createHumanInput({
-        node_id: 'node-1',
-        expiration_time: 300,
-      }),
-    )
-    const appendedHumanInput = updateHumanInputRequired(
-      process,
-      createHumanInput({
-        node_id: 'node-2',
-      }),
-    )
-    const noListFilled = updateHumanInputFilled(undefined, {
-      action_id: 'action-1',
-      action_text: 'Submit',
-      node_id: 'node-1',
-      node_title: 'Node',
-      rendered_content: 'Done',
-    })
-    const appendedFilled = updateHumanInputFilled(process, {
-      action_id: 'action-2',
-      action_text: 'Append',
-      node_id: 'node-2',
-      node_title: 'Node 2',
-      rendered_content: 'More',
-    })
-    const timeoutWithoutList = updateHumanInputTimeout(undefined, {
-      node_id: 'node-1',
-      node_title: 'Node',
-      expiration_time: 200,
-    })
-    const timeoutWithMatch = updateHumanInputTimeout(process, {
-      node_id: 'node-1',
-      node_title: 'Node',
-      expiration_time: 400,
-    })
-
-    markNodesStopped(undefined)
-
-    expect(parallelMatched.tracing[0]!.details).toHaveLength(2)
-    expect(notFinished).toEqual(
-      expect.objectContaining({
-        expand: true,
-        tracing: process.tracing,
-      }),
-    )
-    expect(ignoredIteration).toEqual(process)
-    expect(replacedNode?.tracing[0]).toEqual(
-      expect.objectContaining({
-        node_id: 'node-1',
-        status: NodeRunningStatus.Running,
-      }),
-    )
-    expect(ignoredFinish).toEqual(process)
-    expect(unmatchedFinish).toEqual(process)
-    expect(finishedWithExtras?.tracing[0]).toEqual(
-      expect.objectContaining({
-        extras: {
-          source: 'extra',
-        },
-        error: 'failed',
-      }),
-    )
-    expect(succeededWorkflow.status).toBe(WorkflowRunningStatus.Succeeded)
-    expect(outputlessWorkflow.files).toEqual([])
-    expect(updatedHumanInput.humanInputFormDataList?.[0]!.expiration_time).toBe(300)
-    expect(appendedHumanInput.humanInputFormDataList).toHaveLength(2)
-    expect(noListFilled.humanInputFilledFormDataList).toHaveLength(1)
-    expect(appendedFilled.humanInputFilledFormDataList).toHaveLength(2)
-    expect(timeoutWithoutList).toEqual(
-      expect.objectContaining({
-        status: WorkflowRunningStatus.Running,
-        tracing: [],
-      }),
-    )
-    expect(timeoutWithMatch.humanInputFormDataList?.[0]!.expiration_time).toBe(400)
+    const paused = applyWorkflowPaused(process)
+    expect(paused.status).toBe(WorkflowRunningStatus.Paused)
+    expect(paused.expand).toBe(false)
   })
 })
 
@@ -429,7 +272,7 @@ describe('createWorkflowStreamHandlers', () => {
       setMessageId,
       setRespondingFalse,
       setWorkflowProcessData,
-      t: withSelectorKey((key: string) => key),
+      t: withSelectorKey((key: string) => key) as TextGenerationTranslate,
       taskId: 3,
     })
 
@@ -594,6 +437,17 @@ describe('createWorkflowStreamHandlers', () => {
           workflow_run_id: 'run-1',
         },
       })
+      handlers.onWorkflowPaused({
+        task_id: 'task-1',
+        workflow_run_id: 'run-1',
+        event: 'workflow_paused',
+        data: {
+          outputs: {},
+          paused_nodes: [],
+          reasons: [],
+          workflow_run_id: 'run-1',
+        },
+      })
       handlers.onWorkflowFinished({
         task_id: 'task-1',
         workflow_run_id: 'run-1',
@@ -627,14 +481,36 @@ describe('createWorkflowStreamHandlers', () => {
       }),
     )
     expect(sseGetMock).toHaveBeenCalledWith(
-      '/workflow/run-1/events',
+      '/workflow/run-1/events?include_state_snapshot=true&continue_on_pause=true',
       {},
       expect.objectContaining({ isPublicAPI: true }),
     )
+    expect(sseGetMock).toHaveBeenCalledTimes(1)
     expect(setup.messageId()).toBe('run-1')
     expect(setup.onCompleted).toHaveBeenCalledWith('{"answer":"Hello"}', 3, true)
     expect(setup.setRespondingFalse).toHaveBeenCalled()
     expect(setup.resetRunState).toHaveBeenCalled()
+  })
+
+  it('should keep one resumable stream for installed apps', () => {
+    const { handlers } = setupHandlers({ isPublicAPI: false })
+    const onWorkflowPaused = handlers.onWorkflowPaused!
+    const pausedEvent: Parameters<typeof onWorkflowPaused>[0] = {
+      task_id: 'task-installed',
+      workflow_run_id: 'run-installed',
+      event: 'workflow_paused',
+      data: { workflow_run_id: 'run-installed', outputs: {}, paused_nodes: [], reasons: [] },
+    }
+
+    onWorkflowPaused(pausedEvent)
+    onWorkflowPaused(pausedEvent)
+
+    expect(sseGetMock).toHaveBeenCalledWith(
+      '/workflow/run-installed/events?include_state_snapshot=true&continue_on_pause=true',
+      {},
+      expect.objectContaining({ isPublicAPI: false }),
+    )
+    expect(sseGetMock).toHaveBeenCalledTimes(1)
   })
 
   it('should finish timed-out workflow state and warn without applying late outputs', () => {
@@ -735,7 +611,7 @@ describe('createWorkflowStreamHandlers', () => {
     )
   })
 
-  it('should cover existing workflow starts, stopped runs, and non-string outputs', () => {
+  it('preserves existing traces on resume, stops unfinished nodes and serializes structured outputs', () => {
     const setup = setupHandlers()
     let existingProcess: WorkflowProcess = {
       status: WorkflowRunningStatus.Paused,
@@ -766,7 +642,7 @@ describe('createWorkflowStreamHandlers', () => {
       setWorkflowProcessData: (value) => {
         existingProcess = value!
       },
-      t: withSelectorKey((key: string) => key),
+      t: withSelectorKey((key: string) => key) as TextGenerationTranslate,
       taskId: 5,
     }) as Required<
       Pick<IOtherOptions, 'onWorkflowStarted' | 'onWorkflowFinished' | 'onTextReplace'>
@@ -876,7 +752,7 @@ describe('createWorkflowStreamHandlers', () => {
     act(() => {
       objectOutputHandlers.onWorkflowStarted({
         workflow_run_id: 'run-object',
-        task_id: undefined as unknown as string,
+        task_id: 'task-object',
         event: 'workflow_started',
         data: { id: 'run-object', workflow_id: 'wf-3', created_at: 0 },
       })
@@ -909,7 +785,7 @@ describe('createWorkflowStreamHandlers', () => {
       })
     })
 
-    expect(objectOutputSetup.currentTaskId()).toBeNull()
+    expect(objectOutputSetup.currentTaskId()).toBe('task-object')
     expect(objectOutputSetup.setCompletionRes).toHaveBeenCalledWith(
       '{"answer":"Hello","meta":{"mode":"object"}}',
     )
@@ -921,39 +797,7 @@ describe('createWorkflowStreamHandlers', () => {
     )
   })
 
-  it('should serialize empty, string, and circular workflow outputs', () => {
-    const noOutputSetup = setupHandlers()
-    const noOutputHandlers = noOutputSetup.handlers as Required<
-      Pick<IOtherOptions, 'onWorkflowFinished'>
-    >
-
-    act(() => {
-      noOutputHandlers.onWorkflowFinished({
-        task_id: 'task-empty',
-        workflow_run_id: 'run-empty',
-        event: 'workflow_finished',
-        data: {
-          id: 'run-empty',
-          workflow_id: 'wf-empty',
-          status: WorkflowRunningStatus.Succeeded,
-          outputs: null,
-          error: '',
-          elapsed_time: 0,
-          total_tokens: 0,
-          total_steps: 0,
-          created_at: 0,
-          created_by: {
-            id: 'user-1',
-            name: 'User',
-            email: 'user@example.com',
-          },
-          finished_at: 0,
-        },
-      })
-    })
-
-    expect(noOutputSetup.setCompletionRes).toHaveBeenCalledWith('')
-
+  it('preserves plain text workflow outputs', () => {
     const stringOutputSetup = setupHandlers()
     const stringOutputHandlers = stringOutputSetup.handlers as Required<
       Pick<IOtherOptions, 'onWorkflowFinished'>
@@ -985,41 +829,5 @@ describe('createWorkflowStreamHandlers', () => {
     })
 
     expect(stringOutputSetup.setCompletionRes).toHaveBeenCalledWith('plain text output')
-
-    const circularOutputSetup = setupHandlers()
-    const circularOutputHandlers = circularOutputSetup.handlers as Required<
-      Pick<IOtherOptions, 'onWorkflowFinished'>
-    >
-    const circularOutputs: Record<string, unknown> = {
-      answer: 'Hello',
-    }
-    circularOutputs.self = circularOutputs
-
-    act(() => {
-      circularOutputHandlers.onWorkflowFinished({
-        task_id: 'task-circular',
-        workflow_run_id: 'run-circular',
-        event: 'workflow_finished',
-        data: {
-          id: 'run-circular',
-          workflow_id: 'wf-circular',
-          status: WorkflowRunningStatus.Succeeded,
-          outputs: circularOutputs,
-          error: '',
-          elapsed_time: 0,
-          total_tokens: 0,
-          total_steps: 0,
-          created_at: 0,
-          created_by: {
-            id: 'user-1',
-            name: 'User',
-            email: 'user@example.com',
-          },
-          finished_at: 0,
-        },
-      })
-    })
-
-    expect(circularOutputSetup.setCompletionRes).toHaveBeenCalledWith('[object Object]')
   })
 })

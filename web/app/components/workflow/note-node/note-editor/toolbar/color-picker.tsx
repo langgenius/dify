@@ -51,10 +51,7 @@ const ColorPicker = ({ theme, onThemeChange }: ColorPickerProps) => {
         render={
           <button
             type="button"
-            className={cn(
-              'flex size-8 cursor-pointer items-center justify-center rounded-md hover:bg-black/5',
-              open && 'bg-black/5',
-            )}
+            className="flex size-8 cursor-pointer items-center justify-center rounded-md hover:bg-black/5 data-popup-open:bg-black/5"
           >
             <div
               className={cn('size-4 rounded-full border border-black/5', THEME_MAP[theme]!.title)}
@@ -65,7 +62,7 @@ const ColorPicker = ({ theme, onThemeChange }: ColorPickerProps) => {
       <PopoverContent
         placement="top"
         sideOffset={4}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="grid grid-cols-3 grid-rows-2 gap-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg">
           {COLOR_LIST.map((color) => (

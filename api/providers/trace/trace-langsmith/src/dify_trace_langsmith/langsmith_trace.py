@@ -491,7 +491,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.langsmith_client.create_run(**data)
             logger.debug("LangSmith Run created successfully.")
         except Exception as e:
-            raise ValueError(f"LangSmith Failed to create run: {str(e)}")
+            raise ValueError(f"LangSmith Failed to create run: {str(e)}") from e
 
     def update_run(self, update_run_data: LangSmithRunUpdateModel):
         data = update_run_data.model_dump()
@@ -500,7 +500,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.langsmith_client.update_run(**data)
             logger.debug("LangSmith Run updated successfully.")
         except Exception as e:
-            raise ValueError(f"LangSmith Failed to update run: {str(e)}")
+            raise ValueError(f"LangSmith Failed to update run: {str(e)}") from e
 
     def api_check(self):
         try:
@@ -509,8 +509,8 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.langsmith_client.delete_project(project_name=random_project_name)
             return True
         except Exception as e:
-            logger.debug("LangSmith API check failed: %s", str(e))
-            raise ValueError(f"LangSmith API check failed: {str(e)}")
+            logger.debug("LangSmith API check failed", exc_info=True)
+            raise ValueError(f"LangSmith API check failed: {str(e)}") from e
 
     def get_project_url(self):
         try:
@@ -528,5 +528,5 @@ class LangSmithDataTrace(BaseTraceInstance):
             )
             return project_url.split("/r/")[0]
         except Exception as e:
-            logger.debug("LangSmith get run url failed: %s", str(e))
-            raise ValueError(f"LangSmith get run url failed: {str(e)}")
+            logger.debug("LangSmith get run url failed", exc_info=True)
+            raise ValueError(f"LangSmith get run url failed: {str(e)}") from e

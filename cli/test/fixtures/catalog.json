@@ -1,0 +1,1826 @@
+{
+  "ops": {
+    "describe.account": {
+      "bind": {},
+      "deprecated": false,
+      "input": { "properties": {}, "required": [], "type": "object" },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/account",
+      "summary": "Current account"
+    },
+    "get.account.session": {
+      "bind": { "limit": "query", "page": "query" },
+      "deprecated": false,
+      "input": {
+        "properties": {
+          "limit": {
+            "default": 100,
+            "maximum": 200,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "page": { "default": 1, "minimum": 1, "title": "Page", "type": "integer" }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/account/sessions",
+      "summary": "List login sessions of the current account"
+    },
+    "delete.account.session": {
+      "bind": { "session_id": "path" },
+      "deprecated": false,
+      "input": {
+        "properties": { "session_id": { "type": "string" } },
+        "required": ["session_id"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "DELETE",
+      "path": "/openapi/v1/account/sessions/{session_id}",
+      "summary": "Revoke one login session by id"
+    },
+    "delete.account.current_session": {
+      "bind": {},
+      "deprecated": false,
+      "input": { "properties": {}, "required": [], "type": "object" },
+      "internal": false,
+      "kind": "object",
+      "method": "DELETE",
+      "path": "/openapi/v1/account/sessions/self",
+      "summary": "Revoke the session behind this token"
+    },
+    "restore.console_app.version": {
+      "bind": { "app_id": "path", "version_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "app_id": {}, "version_id": {} },
+        "required": ["app_id", "version_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/versions/{version_id}:restore",
+      "summary": "Copy a published version into the draft; publish again to make it live"
+    },
+    "run.console_app.advanced_chat": {
+      "bind": {
+        "app_id": "path",
+        "attachments": "file",
+        "auto_generate_name": "body",
+        "conversation_id": "body",
+        "files": "file",
+        "inputs": "body",
+        "query": "body",
+        "workflow_id": "body",
+        "workspace_id": "body"
+      },
+      "deprecated": false,
+      "examples": [
+        {
+          "input": { "app_id": "<app_id>", "query": "Summarise the latest release" },
+          "title": "Start a new conversation"
+        },
+        {
+          "input": {
+            "app_id": "<app_id>",
+            "conversation_id": "<conversation_id>",
+            "query": "Make it shorter"
+          },
+          "title": "Reply in an existing conversation"
+        },
+        {
+          "input": {
+            "app_id": "<app_id>",
+            "files": { "document": "./report.pdf" },
+            "query": "Summarise the document"
+          },
+          "title": "Fill a file variable with a local file"
+        }
+      ],
+      "input": {
+        "properties": {
+          "app_id": { "type": "string" },
+          "attachments": {
+            "anyOf": [
+              { "items": { "format": "binary", "type": "string" }, "type": "array" },
+              { "type": "null" }
+            ],
+            "default": null,
+            "description": "Local file paths attached to the run itself (the app's `sys.files`), not to a variable",
+            "title": "Attachments"
+          },
+          "auto_generate_name": {
+            "default": true,
+            "description": "Let the server name a new conversation",
+            "title": "Auto Generate Name",
+            "type": "boolean"
+          },
+          "conversation_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Continue an existing conversation",
+            "title": "Conversation Id"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    { "format": "binary", "type": "string" },
+                    { "items": { "format": "binary", "type": "string" }, "type": "array" }
+                  ]
+                },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
+            "default": null,
+            "description": "Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable",
+            "title": "Files"
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both.",
+            "title": "Inputs",
+            "type": "object"
+          },
+          "query": { "description": "User message", "title": "Query", "type": "string" },
+          "workflow_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Pin a published workflow version",
+            "title": "Workflow Id"
+          },
+          "workspace_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Workspace that owns the app",
+            "title": "Workspace Id"
+          }
+        },
+        "required": ["app_id", "query"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "sse",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/advanced-chat:run",
+      "summary": "Run an advanced-chat (chatflow) app; streams message and workflow events"
+    },
+    "run.console_app.chat": {
+      "bind": {
+        "app_id": "path",
+        "attachments": "file",
+        "auto_generate_name": "body",
+        "conversation_id": "body",
+        "files": "file",
+        "inputs": "body",
+        "query": "body",
+        "workspace_id": "body"
+      },
+      "deprecated": false,
+      "input": {
+        "properties": {
+          "app_id": { "type": "string" },
+          "attachments": {
+            "anyOf": [
+              { "items": { "format": "binary", "type": "string" }, "type": "array" },
+              { "type": "null" }
+            ],
+            "default": null,
+            "description": "Local files attached to the run itself (the app's `sys.files`), not to a variable",
+            "title": "Attachments"
+          },
+          "auto_generate_name": {
+            "default": true,
+            "description": "Let the server name a new conversation",
+            "title": "Auto Generate Name",
+            "type": "boolean"
+          },
+          "conversation_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Continue an existing conversation",
+            "title": "Conversation Id"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    { "format": "binary", "type": "string" },
+                    { "items": { "format": "binary", "type": "string" }, "type": "array" }
+                  ]
+                },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
+            "default": null,
+            "description": "Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable",
+            "title": "Files"
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
+            "title": "Inputs",
+            "type": "object"
+          },
+          "query": { "description": "User message", "title": "Query", "type": "string" },
+          "workspace_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Workspace that owns the app",
+            "title": "Workspace Id"
+          }
+        },
+        "required": ["app_id", "inputs", "query"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "sse",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/chat:run",
+      "summary": "Run a chat or agent app; streams message events"
+    },
+    "run.console_app.completion": {
+      "bind": {
+        "app_id": "path",
+        "attachments": "file",
+        "files": "file",
+        "inputs": "body",
+        "query": "body",
+        "workspace_id": "body"
+      },
+      "deprecated": false,
+      "input": {
+        "properties": {
+          "app_id": { "type": "string" },
+          "attachments": {
+            "anyOf": [
+              { "items": { "format": "binary", "type": "string" }, "type": "array" },
+              { "type": "null" }
+            ],
+            "default": null,
+            "description": "Local files attached to the run itself (the app's `sys.files`), not to a variable",
+            "title": "Attachments"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    { "format": "binary", "type": "string" },
+                    { "items": { "format": "binary", "type": "string" }, "type": "array" }
+                  ]
+                },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
+            "default": null,
+            "description": "Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable",
+            "title": "Files"
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
+            "title": "Inputs",
+            "type": "object"
+          },
+          "query": {
+            "default": "",
+            "description": "Prompt text; most completion apps take their input through `inputs`",
+            "title": "Query",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Workspace that owns the app",
+            "title": "Workspace Id"
+          }
+        },
+        "required": ["app_id", "inputs"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "sse",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/completion:run",
+      "summary": "Run a completion app; streams message events"
+    },
+    "check.console_app.dependency": {
+      "bind": { "app_id": "path" },
+      "deprecated": false,
+      "input": {
+        "properties": { "app_id": { "type": "string" } },
+        "required": ["app_id"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/dependencies:check",
+      "summary": "Check plugin dependencies of an app"
+    },
+    "describe.console_app": {
+      "bind": { "app_id": "path", "fields": "query" },
+      "deprecated": false,
+      "input": {
+        "properties": {
+          "app_id": { "type": "string" },
+          "fields": { "default": null, "title": "Fields", "type": "string" }
+        },
+        "required": ["app_id"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}",
+      "summary": "App detail, parameters and runtime input_schema"
+    },
+    "export.console_app.dsl": {
+      "bind": { "app_id": "path", "include_secret": "query", "workflow_id": "query" },
+      "deprecated": false,
+      "input": {
+        "properties": {
+          "app_id": { "type": "string" },
+          "include_secret": {
+            "default": false,
+            "description": "Include encrypted secret values in the exported DSL",
+            "title": "Include Secret",
+            "type": "boolean"
+          },
+          "workflow_id": {
+            "anyOf": [{ "format": "uuid", "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Export a specific workflow version instead of the current draft",
+            "title": "Workflow Id"
+          }
+        },
+        "required": ["app_id"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/dsl",
+      "summary": "Export app DSL as YAML text inside a JSON object"
+    },
+    "import.console_app.dsl": {
+      "bind": {
+        "app_id": "body",
+        "description": "body",
+        "draft_hash": "body",
+        "icon": "body",
+        "icon_background": "body",
+        "icon_type": "body",
+        "mode": "body",
+        "name": "body",
+        "workspace_id": "path",
+        "yaml_content": "body",
+        "yaml_url": "body"
+      },
+      "deprecated": false,
+      "examples": [
+        {
+          "input": { "mode": "yaml-content", "yaml_content": "<yaml text of the app DSL>" },
+          "title": "Import an app from inline YAML"
+        },
+        {
+          "input": {
+            "mode": "yaml-url",
+            "yaml_url": "https://example.com/apps/release-summary.yml"
+          },
+          "title": "Import an app from a URL"
+        },
+        {
+          "input": {
+            "app_id": "<app_id>",
+            "mode": "yaml-content",
+            "yaml_content": "<yaml text of the app DSL>"
+          },
+          "title": "Overwrite an existing workflow app from YAML"
+        }
+      ],
+      "input": {
+        "properties": {
+          "app_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Existing app ID to overwrite (workflow/advanced-chat apps only)",
+            "title": "App Id"
+          },
+          "description": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Override the app description from the DSL",
+            "title": "Description"
+          },
+          "draft_hash": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "draft_hash from the export or restore this import is based on. The import fails if the draft's graph, features, environment variables or conversation variables changed since. Requires app_id",
+            "title": "Draft Hash"
+          },
+          "icon": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "title": "Icon"
+          },
+          "icon_background": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "title": "Icon Background"
+          },
+          "icon_type": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "title": "Icon Type"
+          },
+          "mode": {
+            "description": "Import mode: yaml-content or yaml-url",
+            "enum": ["yaml-content", "yaml-url"],
+            "title": "Mode",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Override the app name from the DSL",
+            "title": "Name"
+          },
+          "workspace_id": { "type": "string" },
+          "yaml_content": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Inline YAML DSL string (required when mode is yaml-content)",
+            "title": "Yaml Content"
+          },
+          "yaml_url": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Remote URL to fetch YAML from (required when mode is yaml-url)",
+            "title": "Yaml Url"
+          }
+        },
+        "required": ["workspace_id", "mode"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/apps/imports",
+      "summary": "Import an app from DSL text or URL"
+    },
+    "confirm.console_app.dsl_import": {
+      "bind": { "import_id": "path", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "properties": { "import_id": { "type": "string" }, "workspace_id": { "type": "string" } },
+        "required": ["import_id", "workspace_id"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/apps/imports/{import_id}:confirm",
+      "summary": "Confirm a pending DSL import"
+    },
+    "upload.console_app.file": {
+      "bind": { "app_id": "path", "file": "file" },
+      "deprecated": false,
+      "input": {
+        "properties": {
+          "app_id": { "type": "string" },
+          "file": {
+            "description": "The file to upload; its id can then be used in an app run's file variables",
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": ["app_id", "file"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/files",
+      "summary": "Upload a file and get a file id for later runs"
+    },
+    "get.console_app": {
+      "bind": {
+        "limit": "query",
+        "mode": "query",
+        "name": "query",
+        "page": "query",
+        "workspace_id": "query"
+      },
+      "deprecated": false,
+      "input": {
+        "properties": {
+          "limit": {
+            "default": 20,
+            "maximum": 200,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "description": "App types the ``app`` usage face (``get app``) lists and filters.\n\nA curated subset of :class:`AppMode`: the real, user-facing app categories.\nExcludes runtime-only mode tags that are not standalone apps\n(``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the\nroster-owned ``agent`` type (surfaced through the roster, not this list).\n\nMembers reference ``AppMode.*.value`` so the subset relationship is\ntype-checked: dropping a member from ``AppMode`` breaks this at import.\nThis is the single source for the listable set — params, filters, and the\ngenerated CLI whitelist all derive from it.",
+                "enum": ["completion", "chat", "advanced-chat", "workflow", "agent-chat"],
+                "title": "SupportedAppType",
+                "type": "string"
+              },
+              { "type": "null" }
+            ],
+            "default": null
+          },
+          "name": {
+            "anyOf": [{ "maxLength": 200, "type": "string" }, { "type": "null" }],
+            "default": null,
+            "title": "Name"
+          },
+          "page": { "default": 1, "minimum": 1, "title": "Page", "type": "integer" },
+          "workspace_id": { "format": "uuid", "title": "Workspace Id", "type": "string" }
+        },
+        "required": ["workspace_id"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/apps",
+      "summary": "List apps in a workspace"
+    },
+    "legacy_run.console_app": {
+      "bind": {
+        "app_id": "path",
+        "attachments": "file",
+        "auto_generate_name": "body",
+        "conversation_id": "body",
+        "files": "file",
+        "inputs": "body",
+        "query": "body",
+        "workflow_id": "body",
+        "workspace_id": "body"
+      },
+      "deprecated": true,
+      "input": {
+        "properties": {
+          "app_id": { "type": "string" },
+          "attachments": {
+            "anyOf": [
+              { "items": { "format": "binary", "type": "string" }, "type": "array" },
+              { "type": "null" }
+            ],
+            "default": null,
+            "description": "Local files attached to the run itself (the app's `sys.files`), not to a variable",
+            "title": "Attachments"
+          },
+          "auto_generate_name": {
+            "default": true,
+            "description": "Let the server name a new conversation",
+            "title": "Auto Generate Name",
+            "type": "boolean"
+          },
+          "conversation_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Continue an existing conversation",
+            "title": "Conversation Id"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    { "format": "binary", "type": "string" },
+                    { "items": { "format": "binary", "type": "string" }, "type": "array" }
+                  ]
+                },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
+            "default": null,
+            "description": "Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable",
+            "title": "Files"
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
+            "title": "Inputs",
+            "type": "object"
+          },
+          "query": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "User message. Required for chat-family apps, rejected for workflow apps",
+            "title": "Query"
+          },
+          "workflow_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Pin a published workflow version",
+            "title": "Workflow Id"
+          },
+          "workspace_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Workspace that owns the app",
+            "title": "Workspace Id"
+          }
+        },
+        "required": ["app_id", "inputs"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "sse",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}:legacy_run",
+      "summary": "Deprecated: use console_app.<mode>.run for the app's mode"
+    },
+    "run.console_app.workflow": {
+      "bind": {
+        "app_id": "path",
+        "attachments": "file",
+        "files": "file",
+        "inputs": "body",
+        "workflow_id": "body",
+        "workspace_id": "body"
+      },
+      "deprecated": false,
+      "input": {
+        "properties": {
+          "app_id": { "type": "string" },
+          "attachments": {
+            "anyOf": [
+              { "items": { "format": "binary", "type": "string" }, "type": "array" },
+              { "type": "null" }
+            ],
+            "default": null,
+            "description": "Local files attached to the run itself (the app's `sys.files`), not to a variable",
+            "title": "Attachments"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    { "format": "binary", "type": "string" },
+                    { "items": { "format": "binary", "type": "string" }, "type": "array" }
+                  ]
+                },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
+            "default": null,
+            "description": "Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable",
+            "title": "Files"
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "description": "Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both.",
+            "title": "Inputs",
+            "type": "object"
+          },
+          "workflow_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Pin a published workflow version",
+            "title": "Workflow Id"
+          },
+          "workspace_id": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "default": null,
+            "description": "Workspace that owns the app",
+            "title": "Workspace Id"
+          }
+        },
+        "required": ["app_id", "inputs"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "sse",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/workflow:run",
+      "summary": "Run a workflow app; streams workflow events"
+    },
+    "get.run.event": {
+      "bind": {
+        "app_id": "path",
+        "continue_on_pause": "query",
+        "include_state_snapshot": "query",
+        "task_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "properties": {
+          "app_id": { "type": "string" },
+          "continue_on_pause": {
+            "default": false,
+            "description": "Whether to keep the event stream open on pause",
+            "title": "Continue On Pause",
+            "type": "boolean"
+          },
+          "include_state_snapshot": {
+            "default": false,
+            "description": "Whether to include workflow state snapshots",
+            "title": "Include State Snapshot",
+            "type": "boolean"
+          },
+          "task_id": { "type": "string" }
+        },
+        "required": ["app_id", "task_id"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "sse",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/tasks/{task_id}/events",
+      "summary": "Stream the events of a workflow run"
+    },
+    "describe.run.form": {
+      "bind": { "app_id": "path", "form_token": "path" },
+      "deprecated": false,
+      "input": {
+        "properties": { "app_id": { "type": "string" }, "form_token": { "type": "string" } },
+        "required": ["app_id", "form_token"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/human-input-forms/{form_token}",
+      "summary": "Read a human-input form"
+    },
+    "submit.run.form": {
+      "bind": {
+        "action": "body",
+        "app_id": "path",
+        "files": "file",
+        "form_token": "path",
+        "inputs": "body"
+      },
+      "deprecated": false,
+      "input": {
+        "properties": {
+          "action": {
+            "description": "ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list.",
+            "title": "Action",
+            "type": "string"
+          },
+          "app_id": { "type": "string" },
+          "files": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    { "format": "binary", "type": "string" },
+                    { "items": { "format": "binary", "type": "string" }, "type": "array" }
+                  ]
+                },
+                "type": "object"
+              },
+              { "type": "null" }
+            ],
+            "default": null,
+            "description": "Local files keyed by the form's file input name, same convention as the run ops' `files`",
+            "title": "Files"
+          },
+          "form_token": { "type": "string" },
+          "inputs": {
+            "additionalProperties": {},
+            "description": "Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`.",
+            "examples": [
+              {
+                "attachment": {
+                  "transfer_method": "local_file",
+                  "type": "document",
+                  "upload_file_id": "4e0d1b87-52f2-49f6-b8c6-95cd9c954b3e"
+                },
+                "attachments": [
+                  {
+                    "transfer_method": "local_file",
+                    "type": "document",
+                    "upload_file_id": "1a77f0df-c0e6-461c-987c-e72526f341ee"
+                  },
+                  {
+                    "transfer_method": "remote_url",
+                    "type": "document",
+                    "url": "https://example.com/report.pdf"
+                  }
+                ],
+                "decision": "approve"
+              }
+            ],
+            "title": "Inputs",
+            "type": "object"
+          }
+        },
+        "required": ["app_id", "form_token", "inputs", "action"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/human-input-forms/{form_token}:submit",
+      "summary": "Submit a human-input form"
+    },
+    "stop.run": {
+      "bind": { "app_id": "path", "task_id": "path" },
+      "deprecated": false,
+      "input": {
+        "properties": { "app_id": { "type": "string" }, "task_id": { "type": "string" } },
+        "required": ["app_id", "task_id"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/tasks/{task_id}:stop",
+      "summary": "Stop a running task"
+    },
+    "describe.workspace": {
+      "bind": { "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "properties": { "workspace_id": { "type": "string" } },
+        "required": ["workspace_id"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}",
+      "summary": "Workspace detail"
+    },
+    "get.workspace": {
+      "bind": { "limit": "query", "page": "query" },
+      "deprecated": false,
+      "input": {
+        "properties": {
+          "limit": {
+            "default": 20,
+            "maximum": 200,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "page": { "default": 1, "minimum": 1, "title": "Page", "type": "integer" }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces",
+      "summary": "List workspaces of the current account"
+    },
+    "invite.workspace.member": {
+      "bind": { "email": "body", "role": "body", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "properties": {
+          "email": { "title": "Email", "type": "string" },
+          "role": { "enum": ["normal", "admin"], "title": "Role", "type": "string" },
+          "workspace_id": { "type": "string" }
+        },
+        "required": ["workspace_id", "email", "role"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/members",
+      "summary": "Invite a member by email"
+    },
+    "get.workspace.member": {
+      "bind": { "limit": "query", "page": "query", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "properties": {
+          "limit": {
+            "default": 20,
+            "maximum": 200,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "page": { "default": 1, "minimum": 1, "title": "Page", "type": "integer" },
+          "workspace_id": { "type": "string" }
+        },
+        "required": ["workspace_id"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/members",
+      "summary": "List workspace members"
+    },
+    "delete.workspace.member": {
+      "bind": { "member_id": "path", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "properties": { "member_id": { "type": "string" }, "workspace_id": { "type": "string" } },
+        "required": ["member_id", "workspace_id"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "DELETE",
+      "path": "/openapi/v1/workspaces/{workspace_id}/members/{member_id}",
+      "summary": "Remove a member"
+    },
+    "set.workspace.member_role": {
+      "bind": { "member_id": "path", "role": "body", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "properties": {
+          "member_id": { "type": "string" },
+          "role": { "enum": ["normal", "admin"], "title": "Role", "type": "string" },
+          "workspace_id": { "type": "string" }
+        },
+        "required": ["member_id", "workspace_id", "role"],
+        "type": "object"
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "PATCH",
+      "path": "/openapi/v1/workspaces/{workspace_id}/members/{member_id}",
+      "summary": "Change a member's role"
+    },
+    "switch.workspace": {
+      "bind": { "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "properties": { "workspace_id": { "type": "string" } },
+        "required": ["workspace_id"],
+        "type": "object"
+      },
+      "internal": true,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}:switch",
+      "summary": "Server-side current switch workspace (shared with the web console)"
+    },
+    "create.console_app.workflow": {
+      "bind": {
+        "description": "body",
+        "icon": "body",
+        "icon_background": "body",
+        "icon_type": "body",
+        "name": "body",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "description": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "name": {},
+          "workspace_id": {}
+        },
+        "required": ["workspace_id", "name"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/apps/workflow",
+      "summary": "Create a blank workflow app; export its DSL to start building"
+    },
+    "create.console_app.advanced_chat": {
+      "bind": {
+        "description": "body",
+        "icon": "body",
+        "icon_background": "body",
+        "icon_type": "body",
+        "name": "body",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "description": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "name": {},
+          "workspace_id": {}
+        },
+        "required": ["workspace_id", "name"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/apps/advanced-chat",
+      "summary": "Create a blank advanced-chat app; export its DSL to start building"
+    },
+    "test.node.workflow": {
+      "bind": { "app_id": "path", "files": "body", "inputs": "body", "node_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "app_id": {}, "files": {}, "inputs": {}, "node_id": {} },
+        "required": ["app_id", "node_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/draft/workflow/nodes/{node_id}:run",
+      "summary": "Test one node of a workflow draft, reusing what the last draft run saved"
+    },
+    "test.node.advanced_chat": {
+      "bind": {
+        "app_id": "path",
+        "files": "body",
+        "inputs": "body",
+        "node_id": "path",
+        "query": "body"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "app_id": {}, "files": {}, "inputs": {}, "node_id": {}, "query": {} },
+        "required": ["app_id", "node_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/draft/advanced-chat/nodes/{node_id}:run",
+      "summary": "Test one node of an advanced-chat draft, reusing what the last draft run saved"
+    },
+    "test.console_app.workflow": {
+      "bind": {
+        "app_id": "path",
+        "attachments": "file",
+        "files": "file",
+        "inputs": "body",
+        "workspace_id": "body"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {},
+          "attachments": {},
+          "files": {},
+          "inputs": {},
+          "workspace_id": {}
+        },
+        "required": ["app_id"]
+      },
+      "internal": false,
+      "kind": "sse",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/draft/workflow:run",
+      "summary": "Test-run the draft of a workflow app; streams workflow events. A human-input pause in a draft run cannot be resumed over openapi."
+    },
+    "test.console_app.advanced_chat": {
+      "bind": {
+        "app_id": "path",
+        "attachments": "file",
+        "auto_generate_name": "body",
+        "conversation_id": "body",
+        "files": "file",
+        "inputs": "body",
+        "query": "body",
+        "workspace_id": "body"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {},
+          "attachments": {},
+          "auto_generate_name": {},
+          "conversation_id": {},
+          "files": {},
+          "inputs": {},
+          "query": {},
+          "workspace_id": {}
+        },
+        "required": ["app_id", "query"]
+      },
+      "internal": false,
+      "kind": "sse",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/draft/advanced-chat:run",
+      "summary": "Test-run the draft of an advanced-chat app; streams message and workflow events. A human-input pause in a draft run cannot be resumed over openapi."
+    },
+    "check.console_app.dsl": {
+      "bind": { "app_id": "body", "workspace_id": "path", "yaml_content": "body" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "app_id": {}, "workspace_id": {}, "yaml_content": {} },
+        "required": ["workspace_id", "yaml_content"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/apps/imports:check",
+      "summary": "Check app DSL and list every problem"
+    },
+    "check.console_app.release": {
+      "bind": { "app_id": "path" },
+      "deprecated": false,
+      "input": { "type": "object", "properties": { "app_id": {} }, "required": ["app_id"] },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/release:check",
+      "summary": "Check whether an app draft is ready to publish and what changed"
+    },
+    "get.knowledge_base": {
+      "bind": { "limit": "query", "page": "query", "query": "query", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "limit": {}, "page": {}, "query": {}, "workspace_id": {} },
+        "required": ["workspace_id"]
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/knowledge-bases",
+      "summary": "List knowledge bases"
+    },
+    "describe.service_api": {
+      "bind": { "app_id": "path" },
+      "deprecated": false,
+      "input": { "type": "object", "properties": { "app_id": {} }, "required": ["app_id"] },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/service-api",
+      "summary": "Show an app's Service API settings"
+    },
+    "set.service_api": {
+      "bind": { "app_id": "path", "enabled": "body" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "app_id": {}, "enabled": {} },
+        "required": ["app_id", "enabled"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "PATCH",
+      "path": "/openapi/v1/apps/{app_id}/service-api",
+      "summary": "Turn an app's Service API on or off"
+    },
+    "describe.webapp_access": {
+      "bind": { "app_id": "path" },
+      "deprecated": false,
+      "input": { "type": "object", "properties": { "app_id": {} }, "required": ["app_id"] },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/webapp-access",
+      "summary": "Show who can open an app's web app"
+    },
+    "set.webapp_access": {
+      "bind": { "access_mode": "body", "app_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "access_mode": {}, "app_id": {} },
+        "required": ["app_id", "access_mode"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "PUT",
+      "path": "/openapi/v1/apps/{app_id}/webapp-access",
+      "summary": "Set who can open an app's web app"
+    },
+    "reset.webapp": {
+      "bind": { "app_id": "path" },
+      "deprecated": false,
+      "input": { "type": "object", "properties": { "app_id": {} }, "required": ["app_id"] },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}/webapp:reset",
+      "summary": "Reset an app's web app address"
+    },
+    "get.node_type": {
+      "bind": {},
+      "deprecated": false,
+      "input": { "type": "object", "properties": {} },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/node-types",
+      "summary": "Every node type this server can run; import decides which a mode allows"
+    },
+    "describe.node_type": {
+      "bind": { "node_type": "path" },
+      "deprecated": false,
+      "input": { "type": "object", "properties": { "node_type": {} }, "required": ["node_type"] },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/node-types/{node_type}",
+      "summary": "The JSON schema of a node type's data and its default config"
+    },
+    "get.run": {
+      "bind": {
+        "app_id": "path",
+        "last_id": "query",
+        "limit": "query",
+        "status": "query",
+        "triggered_from": "query"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {},
+          "last_id": {},
+          "limit": {},
+          "status": {},
+          "triggered_from": {}
+        },
+        "required": ["app_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/runs",
+      "summary": "List runs of a workflow or advanced-chat app, newest first"
+    },
+    "get.run.node": {
+      "bind": { "app_id": "path", "run_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "app_id": {}, "run_id": {} },
+        "required": ["app_id", "run_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/runs/{run_id}/nodes",
+      "summary": "Each node step of a run, to find the one that failed"
+    },
+    "publish.console_app": {
+      "bind": { "app_id": "path", "marked_comment": "body", "marked_name": "body" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "app_id": {}, "marked_comment": {}, "marked_name": {} },
+        "required": ["app_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/apps/{app_id}:publish",
+      "summary": "Publish the draft as a new version and make the app use it"
+    },
+    "get.console_app.version": {
+      "bind": { "app_id": "path", "limit": "query", "named_only": "query", "page": "query" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "app_id": {}, "limit": {}, "named_only": {}, "page": {} },
+        "required": ["app_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/versions",
+      "summary": "List published versions, newest first"
+    },
+    "set.webapp.workflow": {
+      "bind": {
+        "app_id": "path",
+        "copyright": "body",
+        "custom_disclaimer": "body",
+        "default_language": "body",
+        "description": "body",
+        "enabled": "body",
+        "icon": "body",
+        "icon_background": "body",
+        "icon_type": "body",
+        "privacy_policy": "body",
+        "show_workflow_steps": "body",
+        "title": "body"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {},
+          "copyright": {},
+          "custom_disclaimer": {},
+          "default_language": {},
+          "description": {},
+          "enabled": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "privacy_policy": {},
+          "show_workflow_steps": {},
+          "title": {}
+        },
+        "required": ["app_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "PATCH",
+      "path": "/openapi/v1/apps/{app_id}/webapp/workflow",
+      "summary": "Change a workflow app's web app; only the fields passed change"
+    },
+    "set.webapp.advanced_chat": {
+      "bind": {
+        "app_id": "path",
+        "chat_color_theme": "body",
+        "chat_color_theme_inverted": "body",
+        "copyright": "body",
+        "custom_disclaimer": "body",
+        "default_language": "body",
+        "description": "body",
+        "enabled": "body",
+        "icon": "body",
+        "icon_background": "body",
+        "icon_type": "body",
+        "input_placeholder": "body",
+        "privacy_policy": "body",
+        "show_workflow_steps": "body",
+        "title": "body",
+        "use_icon_as_answer_icon": "body"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {},
+          "chat_color_theme": {},
+          "chat_color_theme_inverted": {},
+          "copyright": {},
+          "custom_disclaimer": {},
+          "default_language": {},
+          "description": {},
+          "enabled": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "input_placeholder": {},
+          "privacy_policy": {},
+          "show_workflow_steps": {},
+          "title": {},
+          "use_icon_as_answer_icon": {}
+        },
+        "required": ["app_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "PATCH",
+      "path": "/openapi/v1/apps/{app_id}/webapp/advanced-chat",
+      "summary": "Change an advanced-chat app's web app; only the fields passed change"
+    },
+    "set.webapp.chat": {
+      "bind": {
+        "app_id": "path",
+        "chat_color_theme": "body",
+        "chat_color_theme_inverted": "body",
+        "copyright": "body",
+        "custom_disclaimer": "body",
+        "default_language": "body",
+        "description": "body",
+        "enabled": "body",
+        "icon": "body",
+        "icon_background": "body",
+        "icon_type": "body",
+        "input_placeholder": "body",
+        "privacy_policy": "body",
+        "title": "body",
+        "use_icon_as_answer_icon": "body"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {},
+          "chat_color_theme": {},
+          "chat_color_theme_inverted": {},
+          "copyright": {},
+          "custom_disclaimer": {},
+          "default_language": {},
+          "description": {},
+          "enabled": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "input_placeholder": {},
+          "privacy_policy": {},
+          "title": {},
+          "use_icon_as_answer_icon": {}
+        },
+        "required": ["app_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "PATCH",
+      "path": "/openapi/v1/apps/{app_id}/webapp/chat",
+      "summary": "Change a chat app's web app; only the fields passed change"
+    },
+    "set.webapp.agent_chat": {
+      "bind": {
+        "app_id": "path",
+        "chat_color_theme": "body",
+        "chat_color_theme_inverted": "body",
+        "copyright": "body",
+        "custom_disclaimer": "body",
+        "default_language": "body",
+        "description": "body",
+        "enabled": "body",
+        "icon": "body",
+        "icon_background": "body",
+        "icon_type": "body",
+        "input_placeholder": "body",
+        "privacy_policy": "body",
+        "title": "body",
+        "use_icon_as_answer_icon": "body"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {},
+          "chat_color_theme": {},
+          "chat_color_theme_inverted": {},
+          "copyright": {},
+          "custom_disclaimer": {},
+          "default_language": {},
+          "description": {},
+          "enabled": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "input_placeholder": {},
+          "privacy_policy": {},
+          "title": {},
+          "use_icon_as_answer_icon": {}
+        },
+        "required": ["app_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "PATCH",
+      "path": "/openapi/v1/apps/{app_id}/webapp/agent-chat",
+      "summary": "Change an agent-chat app's web app; only the fields passed change"
+    },
+    "set.webapp.completion": {
+      "bind": {
+        "app_id": "path",
+        "copyright": "body",
+        "custom_disclaimer": "body",
+        "default_language": "body",
+        "description": "body",
+        "enabled": "body",
+        "icon": "body",
+        "icon_background": "body",
+        "icon_type": "body",
+        "privacy_policy": "body",
+        "title": "body"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {},
+          "copyright": {},
+          "custom_disclaimer": {},
+          "default_language": {},
+          "description": {},
+          "enabled": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "privacy_policy": {},
+          "title": {}
+        },
+        "required": ["app_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "PATCH",
+      "path": "/openapi/v1/apps/{app_id}/webapp/completion",
+      "summary": "Change a completion app's web app; only the fields passed change"
+    },
+    "set.webapp.agent": {
+      "bind": {
+        "app_id": "path",
+        "chat_color_theme": "body",
+        "chat_color_theme_inverted": "body",
+        "copyright": "body",
+        "custom_disclaimer": "body",
+        "default_language": "body",
+        "description": "body",
+        "enabled": "body",
+        "icon": "body",
+        "icon_background": "body",
+        "icon_type": "body",
+        "input_placeholder": "body",
+        "privacy_policy": "body",
+        "title": "body",
+        "use_icon_as_answer_icon": "body"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {},
+          "chat_color_theme": {},
+          "chat_color_theme_inverted": {},
+          "copyright": {},
+          "custom_disclaimer": {},
+          "default_language": {},
+          "description": {},
+          "enabled": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "input_placeholder": {},
+          "privacy_policy": {},
+          "title": {},
+          "use_icon_as_answer_icon": {}
+        },
+        "required": ["app_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "PATCH",
+      "path": "/openapi/v1/apps/{app_id}/webapp/agent",
+      "summary": "Change an agent app's web app; only the fields passed change"
+    },
+    "set.service_api.agent": {
+      "bind": { "app_id": "path", "enabled": "body" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "app_id": {}, "enabled": {} },
+        "required": ["app_id", "enabled"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "PATCH",
+      "path": "/openapi/v1/apps/{app_id}/service-api/agent",
+      "summary": "Turn an agent app's Service API on or off"
+    },
+    "set.webapp_access.agent": {
+      "bind": { "access_mode": "body", "app_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "access_mode": {}, "app_id": {} },
+        "required": ["app_id", "access_mode"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "PUT",
+      "path": "/openapi/v1/apps/{app_id}/webapp-access/agent",
+      "summary": "Set who may open an agent app's web app (Enterprise)"
+    },
+    "get.marketplace.plugin": {
+      "bind": {
+        "category": "query",
+        "limit": "query",
+        "page": "query",
+        "query": "query",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "category": {}, "limit": {}, "page": {}, "query": {}, "workspace_id": {} },
+        "required": ["workspace_id"]
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/marketplace/plugins",
+      "summary": "Search the marketplace for plugins to install; each hit says if it is installed here"
+    },
+    "get.plugin": {
+      "bind": { "category": "query", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "category": {}, "workspace_id": {} },
+        "required": ["workspace_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/plugins",
+      "summary": "Plugins installed in the workspace, with the provider ids each one adds"
+    },
+    "install.plugin": {
+      "bind": { "identifiers": "body", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "identifiers": {}, "workspace_id": {} },
+        "required": ["workspace_id", "identifiers"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/plugins:install",
+      "summary": "Start installing marketplace plugins; finishes in the background, check describe.plugin.task"
+    },
+    "describe.plugin.task": {
+      "bind": { "task_id": "path", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "task_id": {}, "workspace_id": {} },
+        "required": ["task_id", "workspace_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/plugin-tasks/{task_id}",
+      "summary": "Progress of a plugin install or upgrade; check again while pending or running"
+    },
+    "delete.plugin": {
+      "bind": { "plugin_id": "path", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "plugin_id": {}, "workspace_id": {} },
+        "required": ["plugin_id", "workspace_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "DELETE",
+      "path": "/openapi/v1/workspaces/{workspace_id}/plugins/{plugin_id}",
+      "summary": "Uninstall a plugin from the workspace"
+    },
+    "describe.model_provider": {
+      "bind": { "provider": "path", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "provider": {}, "workspace_id": {} },
+        "required": ["provider", "workspace_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/model-providers/{provider}",
+      "summary": "One model provider with its credential form and saved credentials (names only)"
+    },
+    "create.model_provider.credential": {
+      "bind": { "credentials": "body", "name": "body", "provider": "path", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "credentials": {}, "name": {}, "provider": {}, "workspace_id": {} },
+        "required": ["provider", "workspace_id", "credentials"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/model-providers/{provider}/credentials",
+      "summary": "Save a credential for a model provider; the provider checks it first"
+    },
+    "get.model": {
+      "bind": {
+        "limit": "query",
+        "model_type": "query",
+        "page": "query",
+        "provider": "query",
+        "query": "query",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "limit": {},
+          "model_type": {},
+          "page": {},
+          "provider": {},
+          "query": {},
+          "workspace_id": {}
+        },
+        "required": ["workspace_id"]
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/models",
+      "summary": "Models in the workspace across providers, with whether each can be used now"
+    },
+    "create.model.credential": {
+      "bind": {
+        "credentials": "body",
+        "model": "body",
+        "model_type": "body",
+        "name": "body",
+        "provider": "path",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "credentials": {},
+          "model": {},
+          "model_type": {},
+          "name": {},
+          "provider": {},
+          "workspace_id": {}
+        },
+        "required": ["provider", "workspace_id", "model", "model_type", "credentials"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/model-providers/{provider}/models/credentials",
+      "summary": "Save a credential for one model you name, for providers such as OpenAI-compatible or Ollama"
+    },
+    "get.tool": {
+      "bind": {
+        "limit": "query",
+        "page": "query",
+        "provider": "query",
+        "provider_type": "query",
+        "query": "query",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "limit": {},
+          "page": {},
+          "provider": {},
+          "provider_type": {},
+          "query": {},
+          "workspace_id": {}
+        },
+        "required": ["workspace_id"]
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/tools",
+      "summary": "Tools a workflow can call here, each with a ready tool node data"
+    },
+    "describe.tool_provider": {
+      "bind": { "provider": "path", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "provider": {}, "workspace_id": {} },
+        "required": ["provider", "workspace_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/tool-providers/{provider}",
+      "summary": "One tool provider with its API-key form and saved credentials (names only)"
+    },
+    "create.tool_provider.credential": {
+      "bind": { "credentials": "body", "name": "body", "provider": "path", "workspace_id": "path" },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": { "credentials": {}, "name": {}, "provider": {}, "workspace_id": {} },
+        "required": ["provider", "workspace_id", "credentials"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/tool-providers/{provider}/credentials",
+      "summary": "Save an API-key credential for a tool provider; the provider checks it first"
+    }
+  }
+}

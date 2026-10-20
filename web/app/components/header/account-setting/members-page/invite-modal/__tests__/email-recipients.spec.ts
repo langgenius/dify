@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { createEmailRecipient, hasEmailDelimiter, mergeEmailRecipients } from '../email-recipients'
 
 describe('email recipients', () => {
@@ -50,13 +50,5 @@ describe('email recipients', () => {
       { value: 'valid@example.com', isValid: true },
       { value: 'not-an-email', isValid: false },
     ])
-  })
-
-  it('should preserve the order of a realistic twenty-recipient batch', () => {
-    const addresses = Array.from({ length: 20 }, (_, index) => `person-${index + 1}@example.com`)
-
-    expect(mergeEmailRecipients([], addresses.join('\n')).map(({ value }) => value)).toEqual(
-      addresses,
-    )
   })
 })

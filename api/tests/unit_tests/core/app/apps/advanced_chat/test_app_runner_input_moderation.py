@@ -1,13 +1,21 @@
+import json
+from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 import core.app.apps.advanced_chat.app_runner as module
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent
 from core.moderation.base import ModerationError
+from models.model import App, AppMode, Conversation, IconType, Message, MessageAnnotation
+from models.workflow import Workflow, WorkflowType
 
 MINIMAL_GRAPH = {
     "nodes": [
@@ -24,61 +32,68 @@ MINIMAL_GRAPH = {
 
 
 @pytest.fixture
-def build_runner():
+def build_runner(sqlite_session: Session):
     """Construct a minimal AdvancedChatAppRunner with heavy dependencies mocked."""
     app_id = str(uuid4())
     workflow_id = str(uuid4())
+    tenant_id = str(uuid4())
 
     # Mocks for constructor args
     mock_queue_manager = MagicMock()
 
-    mock_conversation = MagicMock()
-    mock_conversation.id = str(uuid4())
-    mock_conversation.app_id = app_id
+    conversation = Conversation(id=str(uuid4()), app_id=app_id)
+    message = Message(id=str(uuid4()), app_id=app_id, conversation_id=conversation.id)
+    workflow = Workflow(
+        id=workflow_id,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        type=WorkflowType.CHAT,
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps(MINIMAL_GRAPH),
+        features="{}",
+        created_by=str(uuid4()),
+    )
 
-    mock_message = MagicMock()
-    mock_message.id = str(uuid4())
+    app_config = WorkflowUIBasedAppConfig(
+        app_id=app_id, workflow_id=workflow_id, tenant_id=tenant_id, app_mode=AppMode.ADVANCED_CHAT
+    )
 
-    mock_workflow = MagicMock()
-    mock_workflow.id = workflow_id
-    mock_workflow.tenant_id = str(uuid4())
-    mock_workflow.app_id = app_id
-    mock_workflow.type = "chat"
-    mock_workflow.graph_dict = MINIMAL_GRAPH
-    mock_workflow.environment_variables = []
+    app = App(
+        id=app_id,
+        tenant_id=tenant_id,
+        name="Advanced chat app",
+        mode=AppMode.ADVANCED_CHAT,
+        icon_type=IconType.EMOJI,
+        icon="chat",
+        icon_background="#ffffff",
+        enable_site=False,
+        enable_api=False,
+    )
+    sqlite_session.add(app)
+    sqlite_session.commit()
 
-    mock_app_config = MagicMock()
-    mock_app_config.app_id = app_id
-    mock_app_config.workflow_id = workflow_id
-    mock_app_config.tenant_id = str(uuid4())
-
-    gen = MagicMock(spec=AdvancedChatAppGenerateEntity)
-    gen.app_config = mock_app_config
-    gen.inputs = {"q": "raw"}
-    gen.query = "raw-query"
-    gen.files = []
-    gen.user_id = str(uuid4())
-    gen.invoke_from = InvokeFrom.SERVICE_API
-    gen.workflow_run_id = str(uuid4())
-    gen.task_id = str(uuid4())
-    gen.call_depth = 0
-    gen.single_iteration_run = None
-    gen.single_loop_run = None
-    gen.extras = {}
-    gen.trace_manager = None
+    gen = AdvancedChatAppGenerateEntity(
+        app_config=app_config,
+        inputs={"q": "raw"},
+        query="raw-query",
+        files=[],
+        user_id=str(uuid4()),
+        invoke_from=InvokeFrom.SERVICE_API,
+        workflow_run_id=str(uuid4()),
+        task_id=str(uuid4()),
+        stream=True,
+    )
 
     runner = AdvancedChatAppRunner(
         application_generate_entity=gen,
         queue_manager=mock_queue_manager,
-        conversation=mock_conversation,
-        message=mock_message,
+        conversation=conversation,
+        message=message,
         dialogue_count=1,
         variable_loader=MagicMock(),
-        workflow=mock_workflow,
+        workflow=workflow,
         system_user_id=str(uuid4()),
-        app=MagicMock(),
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+        app=app,
     )
 
     return runner
@@ -86,28 +101,12 @@ def build_runner():
 
 def _patch_common_run_deps(runner: AdvancedChatAppRunner):
     """Context manager that patches common heavy deps used by run()."""
-    # create_session() returns a context manager whose body yields a session that
-    # supports both scalar() (app record lookup) and begin()/scalars().all()
-    # (conversation variable initialization).
-    mock_session = MagicMock()
-    mock_session.scalar.return_value = MagicMock()
-    mock_session.scalars.return_value.all.return_value = []
-
-    session_context = MagicMock()
-    session_context.__enter__.return_value = mock_session
-    session_context.__exit__.return_value = False
-    mock_session.begin.return_value.__enter__.return_value = mock_session
-    mock_session.begin.return_value.__exit__.return_value = False
-
     return patch.multiple(
         "core.app.apps.advanced_chat.app_runner",
-        create_session=MagicMock(return_value=session_context),
-        select=MagicMock(),
-        session_factory=MagicMock(get_session_maker=MagicMock(return_value=MagicMock())),
         RedisChannel=MagicMock(),
         redis_client=MagicMock(),
         WorkflowEntry=MagicMock(**{"return_value.run.return_value": iter([])}),
-        GraphRuntimeState=MagicMock(),
+        RuntimeState=MagicMock(),
     )
 
 
@@ -120,7 +119,7 @@ def test_handle_input_moderation_stops_on_moderation_error(build_runner):
         patch.object(runner, "_complete_with_stream_output") as mock_complete,
     ):
         stop, new_inputs, new_query = runner.handle_input_moderation(
-            app_record=MagicMock(),
+            app_record=runner._app,
             app_generate_entity=runner.application_generate_entity,
             inputs={"k": "v"},
             query="hello",
@@ -139,6 +138,7 @@ def test_handle_input_moderation_stops_on_moderation_error(build_runner):
 
 def test_run_applies_overridden_inputs_and_query_from_moderation(build_runner):
     runner = build_runner
+    runner.application_generate_entity.call_depth = 5
 
     overridden_inputs = {"q": "sanitized"}
     overridden_query = "sanitized-query"
@@ -153,7 +153,7 @@ def test_run_applies_overridden_inputs_and_query_from_moderation(build_runner):
         patch.object(runner, "handle_annotation_reply", return_value=False) as mock_anno,
         patch.object(runner, "_init_graph", return_value=MagicMock()) as mock_init_graph,
     ):
-        runner.run()
+        runner.prepare()
 
         # moderation called with original values
         mock_moderate.assert_called_once()
@@ -168,6 +168,7 @@ def test_run_applies_overridden_inputs_and_query_from_moderation(build_runner):
 
         # since not stopped, graph initialization should proceed
         assert mock_init_graph.called
+        assert mock_init_graph.call_args.kwargs["call_depth"] == 5
 
 
 def test_run_returns_early_when_direct_output_via_handle_input_moderation(build_runner):
@@ -184,7 +185,7 @@ def test_run_returns_early_when_direct_output_via_handle_input_moderation(build_
         patch.object(runner, "_init_graph") as mock_init_graph,
         patch.object(runner, "handle_annotation_reply") as mock_anno,
     ):
-        runner.run()
+        runner.prepare()
 
         mock_handle.assert_called_once()
         # Ensure no further steps executed
@@ -192,16 +193,21 @@ def test_run_returns_early_when_direct_output_via_handle_input_moderation(build_
         mock_init_graph.assert_not_called()
 
 
-def test_run_publishes_annotation_after_commit(build_runner):
+def test_run_publishes_annotation_after_commit(build_runner, sqlite_engine: Engine):
     runner = build_runner
     events: list[str] = []
-    session = MagicMock()
-    session.scalar.return_value = MagicMock()
-    session.commit.side_effect = lambda: events.append("commit")
-    session_context = MagicMock()
-    session_context.__enter__.return_value = session
-    session_context.__exit__.return_value = False
-    annotation_reply = MagicMock(id="annotation-1", content="annotated answer")
+
+    def record_commit(session: Session) -> None:
+        if session.get_bind() is sqlite_engine:
+            events.append("commit")
+
+    event.listen(Session, "after_commit", record_commit)
+    annotation_reply = MessageAnnotation(
+        app_id=runner._app.id,
+        question="question",
+        content="annotated answer",
+        account_id=str(uuid4()),
+    )
 
     def publish(event):
         if isinstance(event, QueueAnnotationReplyEvent):
@@ -209,7 +215,6 @@ def test_run_publishes_annotation_after_commit(build_runner):
 
     with (
         _patch_common_run_deps(runner),
-        patch.object(module, "create_session", return_value=session_context),
         patch.object(
             runner,
             "handle_input_moderation",
@@ -219,32 +224,32 @@ def test_run_publishes_annotation_after_commit(build_runner):
         patch.object(runner, "_publish_event", side_effect=publish),
         patch.object(runner, "_complete_with_stream_output"),
     ):
-        runner.run()
+        runner.prepare()
+    event.remove(Session, "after_commit", record_commit)
 
     assert events == ["commit", "publish"]
 
 
-def test_run_closes_scoped_session_before_workflow_run(build_runner):
+def test_run_closes_scoped_session_before_workflow_run(build_runner, sqlite_session_factory: sessionmaker[Session]):
     runner = build_runner
     events = []
 
-    mock_session = MagicMock()
-    mock_session.scalar.return_value = MagicMock()
-    session_context = MagicMock()
-    session_context.__enter__.return_value = mock_session
-    session_context.__exit__.side_effect = lambda exc_type, exc, tb: events.append("close") or False
+    @contextmanager
+    def observed_session():
+        with sqlite_session_factory() as session:
+            yield session
+        events.append("close")
 
     workflow_entry = MagicMock()
 
-    def run_workflow():
+    def run_workflow(**kwargs):
         events.append("run")
         return iter([])
 
     workflow_entry.run.side_effect = run_workflow
 
     with (
-        patch.object(module, "create_session", return_value=session_context),
-        patch.object(module, "session_factory", MagicMock(get_session_maker=MagicMock(return_value=MagicMock()))),
+        patch.object(module, "create_session", observed_session),
         patch.object(module, "RedisChannel"),
         patch.object(module, "redis_client"),
         patch.object(module, "WorkflowEntry", return_value=workflow_entry),
@@ -257,6 +262,9 @@ def test_run_closes_scoped_session_before_workflow_run(build_runner):
         patch.object(runner, "_initialize_conversation_variables", return_value=[]),
         patch.object(runner, "_init_graph", return_value=MagicMock()),
     ):
-        runner.run()
+        prepared = runner.prepare()
+        assert prepared is not None
+        assert events[-1] == "close"
+        list(prepared.entry.run())
 
     assert events[-2:] == ["close", "run"]

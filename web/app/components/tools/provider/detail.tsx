@@ -1,4 +1,5 @@
 'use client'
+
 import type {
   Collection,
   CustomCollectionBackend,
@@ -9,14 +10,15 @@ import type {
 import type { WorkflowToolDrawerPayload } from '@/app/components/tools/workflow-tool'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
@@ -25,15 +27,17 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import Loading from '@/app/components/base/loading'
+import { useLocale } from '#i18n'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { modelProviderDetailsQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
 import OrgInfo from '@/app/components/plugins/card/base/org-info'
@@ -42,17 +46,15 @@ import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-m
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
-import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
-import { getLanguage } from '@/i18n-config/language'
+import { getPluginLanguage } from '@/i18n/metadata'
+import { consoleQuery } from '@/service/console'
 import {
   deleteWorkflowTool,
   fetchBuiltInToolList,
   fetchCustomCollection,
   fetchCustomToolList,
-  fetchModelToolList,
   fetchWorkflowToolDetail,
   removeBuiltInToolCredential,
   removeCustomCollection,
@@ -60,7 +62,6 @@ import {
   updateBuiltInToolCredential,
   updateCustomCollection,
 } from '@/service/tools'
-import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
 import { basePath } from '@/utils/var'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
 import ToolItem from './tool-item'
@@ -72,9 +73,9 @@ type Props = Readonly<{
 }>
 
 const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin', 'tools'])
   const locale = useLocale()
-  const language = getLanguage(locale)
+  const language = getPluginLanguage(locale)
 
   const needAuth = collection.allow_delete || collection.type === CollectionType.model
   const isAuthed = collection.is_team_authorization
@@ -84,19 +85,29 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const canOpenCredentialSettings = isAuthed ? canUseCredential : canCreateCredential
   const canSaveCredentialSettings = isAuthed ? canManageCredential : canCreateCredential
   const canManageTools = useCanManageTools()
-  const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
   // built in provider
   const [showSettingAuth, setShowSettingAuth] = useState(false)
   const { setShowModelModal } = useModalContext()
-  const { modelProviders: providers } = useProviderContext()
-  const showSettingAuthModal = () => {
+  const { data: modelProvider } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
+      select: (response) => response.data.find((provider) => provider.provider === collection?.id),
+    }),
+  )
+  const queryClient = useQueryClient()
+  const showSettingAuthModal = async () => {
     if (!canOpenCredentialSettings) return
 
     if (isModel) {
-      const provider = providers.find((item) => item.provider === collection?.id)
-      if (provider) {
+      if (!modelProvider) return
+      try {
+        const response = await queryClient.query({
+          ...modelProviderDetailsQueryOptions(),
+          staleTime: 'static',
+        })
+        const provider = response.data.find((item) => item.provider === modelProvider.provider)
+        if (!provider) return
         setShowModelModal({
           payload: {
             currentProvider: provider,
@@ -107,7 +118,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
             onRefreshData()
           },
         })
-      }
+      } catch {}
     } else {
       setShowSettingAuth(true)
     }
@@ -145,15 +156,13 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     await getCustomProvider()
     // Use fresh data from form submission to avoid race condition with collection.labels
     setCustomCollection((prev) => (prev ? { ...prev, labels: data.labels } : null))
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
   }
   const doRemoveCustomToolCollection = async () => {
     if (!canManageTools) return
 
-    await removeCustomCollection(collection?.name as string)
+    await removeCustomCollection(collection?.name)
     onRefreshData()
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
   }
   // workflow provider
@@ -183,7 +192,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
 
     await deleteWorkflowTool(collection.id)
     onRefreshData()
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setWorkflowToolDrawerOpen(false)
   }
   const updateWorkflowToolProvider = async (
@@ -196,10 +204,11 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     if (!canManageTools) return
 
     await saveWorkflowToolProvider(data)
-    invalidateAllWorkflowTools()
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.tools.workflow.get.queryKey(),
+    })
     onRefreshData()
     getWorkflowToolProvider()
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setWorkflowToolDrawerOpen(false)
   }
   const onClickCustomToolDelete = () => {
@@ -224,9 +233,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     try {
       if (collection.type === CollectionType.builtIn) {
         const list = await fetchBuiltInToolList(collection.name)
-        setToolList(list)
-      } else if (collection.type === CollectionType.model) {
-        const list = await fetchModelToolList(collection.name)
         setToolList(list)
       } else if (collection.type === CollectionType.workflow) {
         setToolList([])
@@ -265,7 +271,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
         <DrawerViewport className="pointer-events-none">
           <DrawerPopup
             className={cn(
-              'pointer-events-auto touch-auto justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-[400px] data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border',
+              'pointer-events-auto touch-auto justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-100 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border',
             )}
           >
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
@@ -294,12 +300,12 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <ActionButton
+                      <IconButton
                         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                         onClick={onHide}
                       >
-                        <RiCloseLine className="size-4" />
-                      </ActionButton>
+                        <RiCloseLine aria-hidden className="size-4" />
+                      </IconButton>
                     </div>
                   </div>
                 </div>
@@ -318,7 +324,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                     >
                       <span
                         aria-hidden
-                        className="mr-1 i-ri-equalizer-2-line size-4 text-components-button-secondary-text"
+                        className="i-ri-equalizer-2-line size-4 text-components-button-secondary-text"
                       />
                       <div className="system-sm-medium text-text-secondary">
                         {t(($) => $['createTool.editAction'], { ns: 'tools' })}
@@ -329,27 +335,23 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                     !isDetailLoading &&
                     customCollection && (
                       <>
-                        <Button
-                          nativeButton={false}
-                          variant="primary"
-                          className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg px-3 py-2')}
-                          render={
-                            <a
-                              href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`}
-                              rel="noreferrer"
-                              target="_blank"
-                              aria-label={t(($) => $.openInStudio, { ns: 'tools' })}
-                            />
-                          }
+                        <a
+                          href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`}
+                          rel="noreferrer"
+                          target="_blank"
+                          className={cn(
+                            buttonVariants({ variant: 'primary' }),
+                            'my-3 h-8 min-w-0 flex-1 rounded-lg py-2',
+                          )}
                         >
-                          <span className="min-w-0 truncate px-0.5 system-sm-medium">
+                          <span className="min-w-0 truncate system-sm-medium">
                             {t(($) => $.openInStudio, { ns: 'tools' })}
                           </span>
                           <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0" />
-                        </Button>
+                        </a>
                         <Button
                           variant="secondary"
-                          className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg px-3 py-2')}
+                          className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg py-2')}
                           onClick={() => setWorkflowToolDrawerOpen(true)}
                           disabled={!canManageTools}
                         >
@@ -357,7 +359,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                             aria-hidden
                             className="i-ri-equalizer-2-line size-4 shrink-0 text-components-button-secondary-text"
                           />
-                          <span className="min-w-0 truncate px-0.5 system-sm-medium text-components-button-secondary-text">
+                          <span className="min-w-0 truncate system-sm-medium text-components-button-secondary-text">
                             {t(($) => $['createTool.editAction'], { ns: 'tools' })}
                           </span>
                         </Button>
@@ -366,8 +368,8 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                 </div>
                 <div className="flex min-h-0 flex-1 flex-col pt-3">
                   {isDetailLoading && (
-                    <div className="flex h-[200px]">
-                      <Loading type="app" />
+                    <div className="flex h-50">
+                      <LoadingPlaceholder className="h-full" />
                     </div>
                   )}
                   {!isDetailLoading && (
@@ -395,7 +397,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                                   }}
                                   disabled={!canOpenCredentialSettings}
                                 >
-                                  <StatusDot className="mr-2" status="success" />
+                                  <StatusDot status="success" />
                                   {t(($) => $['auth.authorized'], { ns: 'tools' })}
                                 </Button>
                               )}
@@ -465,7 +467,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                               collection={collection}
                               tool={tool}
                               isBuiltIn={isBuiltIn}
-                              isModel={isModel}
                             />
                           ))}
                         {collection.type === CollectionType.workflow &&
@@ -505,7 +506,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                       if (!canSaveCredentialSettings) return
 
                       await updateBuiltInToolCredential(collection.name, value)
-                      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
                       await onRefreshData()
                       setShowSettingAuth(false)
                     }}
@@ -513,7 +513,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                       if (!canManageCredential) return
 
                       await removeBuiltInToolCredential(collection.name)
-                      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
                       await onRefreshData()
                       setShowSettingAuth(false)
                     }}
@@ -541,22 +540,22 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                   onOpenChange={(open) => !open && setShowConfirmDelete(false)}
                 >
                   <AlertDialogContent>
-                    <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                      <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
                         {t(($) => $['createTool.deleteToolConfirmTitle'], { ns: 'tools' })}
                       </AlertDialogTitle>
-                      <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                      <AlertDialogDescription>
                         {t(($) => $['createTool.deleteToolConfirmContent'], { ns: 'tools' })}
                       </AlertDialogDescription>
-                    </div>
-                    <AlertDialogActions>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
                       <AlertDialogCancelButton>
                         {t(($) => $['operation.cancel'], { ns: 'common' })}
                       </AlertDialogCancelButton>
                       <AlertDialogConfirmButton onClick={handleConfirmDelete}>
                         {t(($) => $['operation.confirm'], { ns: 'common' })}
                       </AlertDialogConfirmButton>
-                    </AlertDialogActions>
+                    </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
               </div>

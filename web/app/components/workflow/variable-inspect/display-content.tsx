@@ -1,4 +1,3 @@
-import type { VarType } from '../types'
 import type { ChunkInfo } from '@/app/components/rag-pipeline/components/chunk-card-list/types'
 import type { ParentMode } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -14,7 +13,7 @@ import { PreviewType, ViewMode } from './types'
 
 type DisplayContentProps = {
   previewType: PreviewType
-  varType: VarType
+  varType: string
   schemaType?: string
   mdString?: string
   jsonString?: string
@@ -36,9 +35,9 @@ export function DisplayContent(props: DisplayContentProps) {
     handleEditorChange,
     className,
   } = props
-  const [selectedViewModes, setSelectedViewModes] = useState<readonly ViewMode[]>([ViewMode.Code])
+  const [selectedViewMode, setSelectedViewMode] = useState<ViewMode>(ViewMode.Code)
   const [isFocused, setIsFocused] = useState(false)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowDebug'])
   const viewOptions = [
     {
       value: ViewMode.Code,
@@ -51,14 +50,6 @@ export function DisplayContent(props: DisplayContentProps) {
       iconClassName: 'i-ri-eye-line',
     },
   ]
-  const selectedViewMode = selectedViewModes[0] ?? ViewMode.Code
-
-  function handleViewModeChange(nextViewModes: ViewMode[]) {
-    const nextViewMode = nextViewModes[0]
-
-    if (nextViewMode) setSelectedViewModes([nextViewMode])
-  }
-
   const chunkType = useMemo(() => {
     if (previewType !== PreviewType.Chunks || !schemaType) return undefined
     if (schemaType === 'general_structure') return ChunkingMode.text
@@ -77,8 +68,7 @@ export function DisplayContent(props: DisplayContentProps) {
     <div
       className={cn(
         'flex h-full flex-col rounded-[10px] bg-components-input-bg-normal',
-        isFocused &&
-          'bg-components-input-bg-active outline-1 outline-components-input-border-active outline-solid',
+        isFocused && 'bg-components-input-bg-active ring-2 ring-state-accent-solid ring-inset',
         className,
       )}
     >
@@ -96,15 +86,15 @@ export function DisplayContent(props: DisplayContentProps) {
         )}
         <SegmentedControl<ViewMode>
           aria-label={t(($) => $['common.preview'], { ns: 'workflow' })}
-          value={selectedViewModes}
-          onValueChange={handleViewModeChange}
+          value={selectedViewMode}
+          onValueChange={setSelectedViewMode}
           className="shrink-0 rounded-md p-px"
         >
           {viewOptions.map(({ value, label, iconClassName }) => (
             <SegmentedControlItem
               key={value}
               value={value}
-              className="h-[22px] gap-[3px] rounded-md p-px pr-0.5 pl-1.5 text-text-tertiary data-pressed:text-text-accent-light-mode-only"
+              className="h-5.5 gap-0.75 rounded-md p-px pr-0.5 pl-1.5 text-text-tertiary data-checked:text-text-accent-light-mode-only"
             >
               <i className={cn('size-4 shrink-0', iconClassName)} aria-hidden="true" />
               <span className="p-0.5 pr-1">{label}</span>
@@ -116,11 +106,13 @@ export function DisplayContent(props: DisplayContentProps) {
         {selectedViewMode === ViewMode.Code &&
           (previewType === PreviewType.Markdown ? (
             <Textarea
-              aria-label={t(($) => $['debug.variableInspect.markdownContent'], { ns: 'workflow' })}
+              aria-label={t(($) => $['debug.variableInspect.markdownContent'], {
+                ns: 'workflowDebug',
+              })}
               readOnly={readonly}
               disabled={readonly}
-              className="h-full border-none bg-transparent p-0 text-text-secondary hover:bg-transparent focus:bg-transparent focus:shadow-none"
-              value={mdString as any}
+              className="h-full border-none bg-transparent p-0 text-text-secondary hover:bg-transparent focus:bg-transparent focus:ring-0"
+              value={mdString}
               onValueChange={(value) => handleTextChange?.(value)}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}

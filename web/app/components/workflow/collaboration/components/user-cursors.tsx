@@ -59,7 +59,7 @@ const UserCursors: FC<UserCursorsProps> = ({ cursors, myUserId, onlineUsers }) =
             </svg>
 
             <div
-              className="absolute top-4 left-4 max-w-[120px] overflow-hidden rounded px-1.5 py-0.5 text-[11px] font-medium text-ellipsis whitespace-nowrap text-white shadow-sm"
+              className="absolute top-4 left-4 max-w-30 overflow-hidden rounded px-1.5 py-0.5 text-[11px] font-medium text-ellipsis whitespace-nowrap text-white shadow-sm"
               style={{
                 backgroundColor: userColor,
               }}

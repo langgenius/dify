@@ -1,18 +1,24 @@
-import type { AppPublisherPublishParams } from '@/app/components/app/app-publisher'
+import type {
+  AppPublisherPublishOptions,
+  AppPublisherPublishParams,
+} from '@/app/components/app/app-publisher/types'
+import type { WorkflowToolOutputVariable } from '@/app/components/tools/types'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import { AppPublisher } from '@/app/components/app/app-publisher'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { Plan } from '@/app/components/billing/type'
+import {
+  isChatflowAtom,
+  workflowAppIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
 // useWorkflowRunValidation,
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import {
@@ -20,35 +26,36 @@ import {
   useChecklistBeforePublish,
 } from '@/app/components/workflow/hooks/use-checklist'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
-import { useIsChatMode, useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflow/types'
-import { useProviderContext } from '@/context/provider-context'
+import { toast } from '@/app/notifications'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
-import { fetchAppDetail } from '@/service/apps'
-import { consoleQuery } from '@/service/client'
-import { appDetailQueryKeyPrefix } from '@/service/use-apps'
-import { useInvalidateAppTriggers } from '@/service/use-tools'
-import {
-  useInvalidateAppWorkflow,
-  usePublishWorkflow,
-  useResetWorkflowVersionHistory,
-} from '@/service/use-workflow'
+import { consoleQuery } from '@/service/console'
+import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
 
 const FeaturesTrigger = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { theme } = useTheme()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   const workflowStore = useWorkflowStore()
   const queryClient = useQueryClient()
-  const appDetail = useAppStore((s) => s.appDetail)
-  const setAppDetail = useAppStore((s) => s.setAppDetail)
-  const appID = appDetail?.id
+  const { appId: appID } = useAtomValue(workflowAppIdentityAtom)
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const canReleaseAndVersion = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
-  const { plan, isFetchedPlan } = useProviderContext()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (features) => features.billing.subscription.plan,
+    }),
+  )
   const publishedAt = useStore((s) => s.publishedAt)
   const draftUpdatedAt = useStore((s) => s.draftUpdatedAt)
   const toolPublished = useStore((s) => s.toolPublished)
@@ -75,7 +82,6 @@ const FeaturesTrigger = () => {
   }, [nodes])
   const hasWorkflowNodes = nodes.length > 0
   const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
-  const endNode = nodes.find((node) => node.data.type === BlockEnum.End)
   const startVariables = (startNode as Node<StartNodeType>)?.data?.variables
   const edges = useEdges<CommonEdgeType>()
 
@@ -96,7 +102,22 @@ const FeaturesTrigger = () => {
 
     return data
   }, [fileSettings?.image?.enabled, startVariables])
-  const endVariables = useMemo(() => (endNode as Node<EndNodeType>)?.data?.outputs || [], [endNode])
+  const endVariables = useMemo<WorkflowToolOutputVariable[]>(
+    () =>
+      nodes.flatMap((node) => {
+        if (node.data.type !== BlockEnum.End) return []
+
+        return ((node as Node<EndNodeType>).data.outputs || []).map((output, outputIndex) => ({
+          ...output,
+          source: {
+            nodeId: node.id,
+            nodeTitle: node.data.title,
+            outputIndex,
+          },
+        }))
+      }),
+    [nodes],
+  )
 
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -109,25 +130,21 @@ const FeaturesTrigger = () => {
     return edges.some((edge) => startNodeIds.includes(edge.source))
   }, [edges, startNodeIds])
   // Track trigger presence so the publisher can adjust UI (e.g. hide missing start section).
-  const hasTriggerNode = useMemo(
-    () => nodes.some((node) => isTriggerNode(node.data.type as BlockEnum)),
-    [nodes],
-  )
+  const hasTriggerNode = useMemo(() => nodes.some((node) => isTriggerNode(node.data.type)), [nodes])
   const startNodeLimitExceeded = useMemo(() => {
     const entryCount = nodes.reduce((count, node) => {
       const nodeType = node.data.type as BlockEnum
       if (nodeType === BlockEnum.Start || isTriggerNode(nodeType)) return count + 1
       return count
     }, 0)
-    return isFetchedPlan && plan.type === Plan.sandbox && entryCount > 2
-  }, [nodes, plan.type, isFetchedPlan])
+    return deploymentEdition === 'CLOUD' && plan === 'sandbox' && entryCount > 2
+  }, [nodes, plan, deploymentEdition])
 
   const hasHumanInputNode = useMemo(() => {
     return nodes.some((node) => node.data.type === BlockEnum.HumanInput)
   }, [nodes])
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
-  const invalidateAppTriggers = useInvalidateAppTriggers()
 
   const handleShowFeatures = useCallback(() => {
     const { showFeaturesPanel, isRestoring, setShowFeaturesPanel } = workflowStore.getState()
@@ -135,25 +152,14 @@ const FeaturesTrigger = () => {
     setShowFeaturesPanel(!showFeaturesPanel)
   }, [workflowStore, getNodesReadOnly])
 
-  const updateAppDetail = useCallback(async () => {
-    try {
-      if (!appID) return
-
-      const res = await fetchAppDetail({ url: '/apps', id: appID })
-      queryClient.setQueryData([...appDetailQueryKeyPrefix, appID], res)
-      setAppDetail({ ...res })
-    } catch (error) {
-      console.error(error)
-    }
-  }, [appID, queryClient, setAppDetail])
-
-  const { mutateAsync: publishWorkflow } = usePublishWorkflow()
+  const { mutateAsync: publishWorkflow } = useMutation(
+    consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions(),
+  )
   // const { validateBeforeRun } = useWorkflowRunValidation()
   const needWarningNodes = useChecklist(nodes, edges)
 
-  const updatePublishedWorkflow = useInvalidateAppWorkflow()
   const onPublish = useCallback(
-    async (params?: AppPublisherPublishParams) => {
+    async (params?: AppPublisherPublishParams, options?: AppPublisherPublishOptions) => {
       const publishParams = params && 'title' in params ? params : undefined
       // First check if there are any items in the checklist
       // if (!validateBeforeRun())
@@ -170,15 +176,17 @@ const FeaturesTrigger = () => {
         if (!draftSyncResult) throw new Error('Workflow draft sync failed')
 
         const res = await publishWorkflow({
-          url: publishParams?.url || `/apps/${appID}/workflows/publish`,
-          title: publishParams?.title || '',
-          releaseNotes: publishParams?.releaseNotes || '',
+          params: { app_id: appID },
+          body: {
+            marked_name: publishParams?.title || '',
+            marked_comment: publishParams?.releaseNotes || '',
+          },
         })
         if (res) {
-          toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-          updatePublishedWorkflow(appID!)
-          updateAppDetail()
-          invalidateAppTriggers(appID!)
+          // One toast per publish: a warning from the server replaces the success message.
+          if (res.warning) toast.warning(res.warning)
+          else if (options?.showSuccessToast !== false)
+            toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
           if (rosterAgentIds.length > 0) {
             void queryClient.invalidateQueries({
               queryKey: consoleQuery.agent.get.key(),
@@ -212,9 +220,6 @@ const FeaturesTrigger = () => {
       publishWorkflow,
       appID,
       t,
-      updatePublishedWorkflow,
-      updateAppDetail,
-      invalidateAppTriggers,
       rosterAgentIds,
       queryClient,
       workflowStore,
@@ -237,19 +242,20 @@ const FeaturesTrigger = () => {
   return (
     <>
       {/* Feature button is only visible in chatflow mode (advanced-chat) */}
-      {isChatMode && (
+      {isChatflow && (
         <Button
           className={cn(
-            'rounded-lg border border-transparent text-components-button-secondary-text',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
+            'rounded-lg text-components-button-secondary-text inset-ring-1 inset-ring-transparent',
+            theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
           )}
           onClick={handleShowFeatures}
         >
-          <span className="mr-1 i-ri-apps-2-add-line size-4 text-components-button-secondary-text" />
+          <span className="i-ri-apps-2-add-line size-4 text-components-button-secondary-text" />
           {t(($) => $['common.features'], { ns: 'workflow' })}
         </Button>
       )}
       <AppPublisher
+        appId={appID}
         {...{
           publishedAt,
           draftUpdatedAt,

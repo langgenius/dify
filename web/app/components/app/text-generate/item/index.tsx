@@ -1,20 +1,19 @@
 'use client'
 import type { FC } from 'react'
 import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
-import type { FeedbackType } from '@/app/components/base/chat/chat/type'
+import type { FeedbackType, IChatItem } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiPlayList2Line, RiSparklingFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { Markdown } from '@/app/components/base/markdown'
+import { toast } from '@/app/notifications'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
 import {
@@ -58,6 +57,7 @@ type IGenerationItemProps = {
   controlClearMoreLikeThis?: number
   supportFeedback?: boolean
   isShowTextToSpeech?: boolean
+  onOpenLog?: (item: IChatItem) => void
   hideProcessDetail?: boolean
   siteInfo: SiteInfo | null
   inSidePanel?: boolean
@@ -86,11 +86,12 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   controlClearMoreLikeThis,
   supportFeedback,
   isShowTextToSpeech,
+  onOpenLog,
   hideProcessDetail,
   siteInfo,
   inSidePanel,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'share'])
   const params = useParams()
   const isTop = depth === 1
   const [completionRes, setCompletionRes] = useState('')
@@ -100,12 +101,10 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   })
   const { config } = useChatContext()
 
-  const setCurrentLogItem = useAppStore((s) => s.setCurrentLogItem)
-  const setShowPromptLogModal = useAppStore((s) => s.setShowPromptLogModal)
-
   const handleFeedback = async (childFeedback: FeedbackType) => {
+    if (!childMessageId) return
     await updateFeedback(
-      { url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } },
+      { messageId: childMessageId, body: { rating: childFeedback.rating } },
       appSourceType,
       installedAppId,
     )
@@ -130,6 +129,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     installedAppId,
     controlClearMoreLikeThis,
     isWorkflow,
+    onOpenLog,
     siteInfo,
     taskId,
   }
@@ -140,7 +140,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       return
     }
     startQuerying()
-    const res: any = await fetchMoreLikeThis(messageId as string, appSourceType, installedAppId)
+    const res: any = await fetchMoreLikeThis(messageId, appSourceType, installedAppId)
     setCompletionRes(res.answer)
     setChildFeedback({
       rating: null,
@@ -165,13 +165,20 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       setChildMessageId(null)
   }, [isLoading])
 
-  const handleOpenLogModal = async () => {
+  const handleOpenLog = async () => {
+    if (!onOpenLog) return
     const data = await fetchTextGenerationMessage({
       appId: params.appId as string,
       messageId: messageId!,
     })
-    setCurrentLogItem(buildPromptLogItem(data))
-    setShowPromptLogModal(true)
+    const promptLog = buildPromptLogItem(data)
+    onOpenLog({
+      id: promptLog.id,
+      // The prompt log modal only renders `log`; message file entries are passed through as-is.
+      log: promptLog.log as IChatItem['log'],
+      content: data.answer,
+      isAnswer: true,
+    })
   }
 
   const [currentTab, setCurrentTab] = useState<string>('DETAIL')
@@ -202,7 +209,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               !inSidePanel && 'rounded-2xl border-t border-divider-subtle bg-chat-bubble-bg',
             )}
           >
-            <Loading type="area" />
+            <LoadingPlaceholder />
           </div>
         )}
         {!isLoading && (
@@ -283,7 +290,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   moreLikeThis={moreLikeThis}
                   onFeedback={onFeedback}
                   onMoreLikeThis={handleMoreLikeThis}
-                  onOpenLogModal={handleOpenLogModal}
+                  onOpenLog={onOpenLog ? handleOpenLog : undefined}
                   onRetry={onRetry}
                   onSave={onSave}
                   supportFeedback={supportFeedback}
@@ -296,8 +303,8 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             {!isTop && (
               <div
                 className={cn(
-                  'absolute top-[-32px] flex h-[33px] w-4 justify-center',
-                  isMobile ? 'left-[17px]' : 'left-[50%] translate-x-[-50%]',
+                  'absolute -top-8 flex h-8.25 w-4 justify-center',
+                  isMobile ? 'left-4.25' : 'left-[50%] translate-x-[-50%]',
                 )}
               >
                 <div className="h-full w-0.5 bg-divider-regular"></div>

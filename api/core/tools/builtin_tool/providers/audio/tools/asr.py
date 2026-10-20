@@ -4,6 +4,8 @@ from typing import Any, override
 
 from sqlalchemy.orm import Session
 
+from core.credit_usage import CreditUsageCreatedBy
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.plugin.entities.parameters import PluginParameterOption
 from core.tools.builtin_tool.tool import BuiltinTool
@@ -12,11 +14,12 @@ from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from graphon.file import FileType
 from graphon.file.file_manager import download
 from graphon.model_runtime.entities.model_entities import ModelType
-from services.model_provider_service import ModelProviderService
+from services.model_provider.service import ModelProviderService
 
 
 class ASRTool(BuiltinTool):
     @override
+    @with_credit_usage_created_by(CreditUsageCreatedBy.AUDIO)
     def _invoke(
         self,
         session: Session,
@@ -25,7 +28,7 @@ class ASRTool(BuiltinTool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         if not self.runtime:
             raise ValueError("Runtime is required")
         runtime = self.runtime

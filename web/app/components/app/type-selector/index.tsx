@@ -1,3 +1,4 @@
+import type { AppType } from '@/app/components/apps/app-type'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
@@ -7,39 +8,25 @@ import {
   RiFilter3Line,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  BubbleTextMod,
-  ChatBot,
-  ListSparkle,
-  Logic,
-} from '@/app/components/base/icons/src/vender/solid/communication'
-import { AppModeEnum } from '@/types/app'
+import { APP_TYPES } from '@/app/components/apps/app-type'
 
 type AppSelectorProps = {
-  value: Array<AppModeEnum>
+  value: Array<AppType>
   onChange: (value: AppSelectorProps['value']) => void
 }
 
-const allTypes: AppModeEnum[] = [
-  AppModeEnum.WORKFLOW,
-  AppModeEnum.ADVANCED_CHAT,
-  AppModeEnum.CHAT,
-  AppModeEnum.AGENT_CHAT,
-  AppModeEnum.COMPLETION,
-]
+const allTypes = APP_TYPES
 
 const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
-  const [open, setOpen] = useState(false)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const triggerLabel =
     value.length === 0
       ? t(($) => $['typeSelector.all'], { ns: 'app' })
       : value.map((type) => getAppTypeLabel(type, t)).join(', ')
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <div className="relative">
         <PopoverTrigger
           aria-label={triggerLabel}
@@ -63,17 +50,17 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
         <PopoverContent
           placement="bottom-start"
           sideOffset={4}
-          popupClassName="w-[240px] rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+          className="w-60 rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
         >
           <ul className="relative w-full p-1">
             {allTypes.map((mode) => (
               <AppTypeSelectorItem
                 key={mode}
                 type={mode}
-                checked={Boolean(value.length > 0 && value?.indexOf(mode) !== -1)}
+                checked={value.includes(mode)}
                 onClick={() => {
-                  if (value?.indexOf(mode) !== -1) onChange(value?.filter((v) => v !== mode) ?? [])
-                  else onChange([...(value || []), mode])
+                  if (value.includes(mode)) onChange(value.filter((v) => v !== mode))
+                  else onChange([...value, mode])
                 }}
               />
             ))}
@@ -100,41 +87,62 @@ export const AppTypeIcon = React.memo(
       wrapperClassName,
     )
     const iconClassNames = cn('size-3.5 text-components-avatar-shape-fill-stop-100', className)
-    if (type === AppModeEnum.CHAT) {
+    if (type === 'chat') {
       return (
         <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-blue-solid')}>
-          <ChatBot className={iconClassNames} />
+          <span
+            aria-hidden
+            className={cn(
+              'i-custom-vender-solid-communication-chat-bot h-3 w-3.25',
+              iconClassNames,
+            )}
+          />
         </div>
       )
     }
-    if (type === AppModeEnum.AGENT_CHAT) {
+    if (type === 'agent-chat' || type === 'agent') {
       return (
         <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-violet-solid')}>
-          <Logic className={iconClassNames} />
+          <span
+            aria-hidden
+            className={cn('i-custom-vender-solid-communication-logic h-6 w-6', iconClassNames)}
+          />
         </div>
       )
     }
-    if (type === AppModeEnum.ADVANCED_CHAT) {
+    if (type === 'advanced-chat') {
       return (
         <div
           style={style}
           className={cn(wrapperClassNames, 'bg-components-icon-bg-blue-light-solid')}
         >
-          <BubbleTextMod className={iconClassNames} />
+          <span
+            aria-hidden
+            className={cn(
+              'i-custom-vender-solid-communication-bubble-text-mod h-6 w-6',
+              iconClassNames,
+            )}
+          />
         </div>
       )
     }
-    if (type === AppModeEnum.WORKFLOW) {
+    if (type === 'workflow') {
       return (
         <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-indigo-solid')}>
           <RiExchange2Fill className={iconClassNames} />
         </div>
       )
     }
-    if (type === AppModeEnum.COMPLETION) {
+    if (type === 'completion') {
       return (
         <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-teal-solid')}>
-          <ListSparkle className={iconClassNames} />
+          <span
+            aria-hidden
+            className={cn(
+              'i-custom-vender-solid-communication-list-sparkle h-6 w-6',
+              iconClassNames,
+            )}
+          />
         </div>
       )
     }
@@ -143,12 +151,12 @@ export const AppTypeIcon = React.memo(
 )
 
 function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['value'] }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   if (!values || values.length === 0) {
     return (
       <div className={cn('flex h-8 items-center justify-between gap-1')}>
         <RiFilter3Line className="size-4 text-text-tertiary" />
-        <div className="min-w-[65px] grow text-center system-sm-medium text-text-tertiary">
+        <div className="min-w-16.25 grow text-center system-sm-medium text-text-tertiary">
           {t(($) => $['typeSelector.all'], { ns: 'app' })}
         </div>
         <RiArrowDownSLine className="size-4 text-text-tertiary" />
@@ -184,7 +192,7 @@ function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['v
 
 type AppTypeSelectorItemProps = {
   checked: boolean
-  type: AppModeEnum
+  type: AppType
   onClick: () => void
 }
 function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProps) {
@@ -217,11 +225,12 @@ function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProp
 }
 
 function getAppTypeLabel(type: string, t: ReturnType<typeof useTranslation>['t']) {
-  if (type === AppModeEnum.CHAT) return t(($) => $['typeSelector.chatbot'], { ns: 'app' })
-  if (type === AppModeEnum.AGENT_CHAT) return t(($) => $['typeSelector.agent'], { ns: 'app' })
-  if (type === AppModeEnum.COMPLETION) return t(($) => $['typeSelector.completion'], { ns: 'app' })
-  if (type === AppModeEnum.ADVANCED_CHAT) return t(($) => $['typeSelector.advanced'], { ns: 'app' })
-  if (type === AppModeEnum.WORKFLOW) return t(($) => $['typeSelector.workflow'], { ns: 'app' })
+  if (type === 'chat') return t(($) => $['typeSelector.chatbot'], { ns: 'app' })
+  if (type === 'agent-chat' || type === 'agent')
+    return t(($) => $['typeSelector.agent'], { ns: 'app' })
+  if (type === 'completion') return t(($) => $['typeSelector.completion'], { ns: 'app' })
+  if (type === 'advanced-chat') return t(($) => $['typeSelector.advanced'], { ns: 'app' })
+  if (type === 'workflow') return t(($) => $['typeSelector.workflow'], { ns: 'app' })
 
   return ''
 }
@@ -231,7 +240,7 @@ type AppTypeLabelProps = {
   className?: string
 }
 export function AppTypeLabel({ type, className }: AppTypeLabelProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return <span className={className}>{getAppTypeLabel(type, t)}</span>
 }

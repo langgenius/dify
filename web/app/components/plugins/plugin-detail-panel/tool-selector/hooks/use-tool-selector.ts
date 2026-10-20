@@ -3,23 +3,21 @@ import type { ReasoningConfigValue } from '../components/reasoning-config-form'
 import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import {
   generateFormValue,
   getPlainValue,
   getStructureValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
+import { consoleQuery } from '@/service/console'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-  useInvalidateAllBuiltInTools,
-} from '@/service/use-tools'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { usePluginInstalledCheck } from './use-plugin-installed-check'
 
 export type TabType = 'settings' | 'params'
@@ -35,15 +33,27 @@ export function useToolSelector({ value, onSelect, onSelectMultiple }: UseToolSe
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
   const [currType, setCurrType] = useState<TabType>('settings')
 
-  const buildInToolsQuery = useAllBuiltInTools()
-  const customToolsQuery = useAllCustomTools()
-  const workflowToolsQuery = useAllWorkflowTools()
-  const mcpToolsQuery = useAllMCPTools()
+  const buildInToolsQuery = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const customToolsQuery = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const workflowToolsQuery = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const mcpToolsQuery = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
   const { data: buildInTools } = buildInToolsQuery
   const { data: customTools } = customToolsQuery
   const { data: workflowTools } = workflowToolsQuery
   const { data: mcpTools } = mcpToolsQuery
-  const invalidateAllBuiltinTools = useInvalidateAllBuiltInTools()
+  const queryClient = useQueryClient()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   const currentProvider = useMemo(() => {
@@ -53,7 +63,10 @@ export function useToolSelector({ value, onSelect, onSelectMultiple }: UseToolSe
       ...(workflowTools || []),
       ...(mcpTools || []),
     ]
-    return mergedTools.find((toolWithProvider) => toolWithProvider.id === value?.provider_name)
+    // Historical shape: ``provider_name`` stores the provider reference, not a name.
+    return mergedTools.find((toolWithProvider) =>
+      matchesProviderReference(toolWithProvider, value?.provider_name),
+    )
   }, [value, buildInTools, customTools, workflowTools, mcpTools])
   const areToolProvidersSettled = [
     buildInToolsQuery,
@@ -240,16 +253,18 @@ export function useToolSelector({ value, onSelect, onSelectMultiple }: UseToolSe
 
   const handleInstall = useCallback(async () => {
     try {
-      await invalidateAllBuiltinTools()
+      await queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
+      })
     } catch (error) {
       console.error('Failed to invalidate built-in tools cache', error)
     }
     try {
-      await invalidateInstalledPluginList()
+      await invalidateInstalledPluginList(PluginCategoryEnum.tool)
     } catch (error) {
       console.error('Failed to invalidate installed plugin list cache', error)
     }
-  }, [invalidateAllBuiltinTools, invalidateInstalledPluginList])
+  }, [invalidateInstalledPluginList, queryClient])
 
   const settingsValue = useMemo((): ResourceVarInputs => {
     return getPlainValue(

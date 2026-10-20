@@ -1,7 +1,7 @@
 import json
 import re
 from collections.abc import Generator
-from typing import Any, Union
+from typing import Any
 
 from core.agent.entities import AgentScratchpadUnit
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk
@@ -10,9 +10,9 @@ from graphon.model_runtime.entities.llm_entities import LLMResultChunk
 class CotAgentOutputParser:
     @classmethod
     def handle_react_stream_output(
-        cls, llm_response: Generator[LLMResultChunk, None, None], usage_dict: dict[str, Any]
-    ) -> Generator[Union[str, AgentScratchpadUnit.Action], None, None]:
-        def parse_action(action) -> Union[str, AgentScratchpadUnit.Action]:
+        cls, llm_response: Generator[LLMResultChunk], usage_dict: dict[str, Any]
+    ) -> Generator[str | AgentScratchpadUnit.Action]:
+        def parse_action(action) -> str | AgentScratchpadUnit.Action:
             action_name = None
             action_input = None
             if isinstance(action, str):
@@ -39,7 +39,7 @@ class CotAgentOutputParser:
             else:
                 return json.dumps(action)
 
-        def extra_json_from_code_block(code_block) -> list[Union[list, dict]]:
+        def extra_json_from_code_block(code_block) -> list[list | dict]:
             blocks = re.findall(r"```[json]*\s*([\[{].*[]}])\s*```", code_block, re.DOTALL | re.IGNORECASE)
             if not blocks:
                 return []
@@ -49,7 +49,7 @@ class CotAgentOutputParser:
                     json_text = re.sub(r"^[a-zA-Z]+\n", "", block.strip(), flags=re.MULTILINE)
                     json_blocks.append(json.loads(json_text, strict=False))
                 return json_blocks
-            except:
+            except Exception:
                 return []
 
         code_block_cache = ""

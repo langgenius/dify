@@ -1,24 +1,27 @@
 'use client'
 
-import type { Switch as BaseSwitchNS } from '@base-ui/react/switch'
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
 import { Switch as BaseSwitch } from '@base-ui/react/switch'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-
-const switchRootStateClassName =
-  'bg-components-toggle-bg-unchecked hover:bg-components-toggle-bg-unchecked-hover data-checked:bg-components-toggle-bg data-checked:hover:bg-components-toggle-bg-hover data-disabled:cursor-not-allowed data-disabled:bg-components-toggle-bg-unchecked-disabled data-disabled:hover:bg-components-toggle-bg-unchecked-disabled data-disabled:data-checked:bg-components-toggle-bg-disabled data-disabled:data-checked:hover:bg-components-toggle-bg-disabled'
+import { checkedControlFocusClassName } from '../internal/focus'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const switchRootVariants = cva(
-  `group relative inline-flex shrink-0 cursor-pointer touch-manipulation items-center outline-hidden transition-colors duration-200 ease-in-out focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none ${switchRootStateClassName}`,
+  [
+    'group relative inline-flex shrink-0 touch-manipulation items-center transition-colors duration-200 ease-in-out motion-reduce:transition-none',
+    checkedControlFocusClassName,
+    'bg-components-toggle-bg-unchecked hover:bg-components-toggle-bg-unchecked-hover data-checked:bg-components-toggle-bg data-checked:hover:bg-components-toggle-bg-hover',
+    'data-disabled:cursor-not-allowed data-disabled:bg-components-toggle-bg-unchecked-disabled data-disabled:hover:bg-components-toggle-bg-unchecked-disabled data-disabled:data-checked:bg-components-toggle-bg-disabled data-disabled:data-checked:hover:bg-components-toggle-bg-disabled',
+  ],
   {
     variants: {
       size: {
         xs: 'h-2.5 w-3.5 rounded-xs p-0.5',
         sm: 'h-3 w-5 rounded-[3.5px] p-0.5',
         md: 'h-4 w-7 rounded-[5px] p-0.5',
-        lg: 'h-5 w-9 rounded-md p-[3px]',
+        lg: 'h-5 w-9 rounded-md p-0.75',
       },
     },
     defaultVariants: {
@@ -32,10 +35,10 @@ const switchThumbVariants = cva(
   {
     variants: {
       size: {
-        xs: 'h-1.5 w-1 rounded-[1px] data-checked:translate-x-1.5',
-        sm: 'h-2 w-[7px] rounded-xs data-checked:translate-x-[9px]',
-        md: 'h-3 w-2.5 rounded-[3px] data-checked:translate-x-[14px]',
-        lg: 'size-3.5 rounded-sm data-checked:translate-x-4',
+        xs: 'h-1.5 w-1 rounded-[1px] data-checked:translate-x-1.5 data-checked:[&:dir(rtl)]:-translate-x-1.5',
+        sm: 'h-2 w-1.75 rounded-xs data-checked:translate-x-2.25 data-checked:[&:dir(rtl)]:-translate-x-2.25',
+        md: 'h-3 w-2.5 rounded-[3px] data-checked:translate-x-3.5 data-checked:[&:dir(rtl)]:-translate-x-3.5',
+        lg: 'size-3.5 rounded-sm data-checked:translate-x-4 data-checked:[&:dir(rtl)]:-translate-x-4',
       },
     },
     defaultVariants: {
@@ -44,16 +47,17 @@ const switchThumbVariants = cva(
   },
 )
 
-export type SwitchSize = NonNullable<VariantProps<typeof switchRootVariants>['size']>
-
-const switchSpinnerVariants = cva('absolute top-1/2 -translate-x-1/2 -translate-y-1/2', {
-  variants: {
-    size: {
-      md: 'left-[calc(50%+6px)] size-2 group-data-checked:left-[calc(50%-6px)]',
-      lg: 'left-[calc(50%+8px)] size-2.5 group-data-checked:left-[calc(50%-8px)]',
+const switchSpinnerVariants = cva(
+  'absolute top-1/2 -translate-x-1/2 -translate-y-1/2 [&:dir(rtl)]:translate-x-1/2',
+  {
+    variants: {
+      size: {
+        md: 'start-[calc(50%+6px)] size-2 group-data-checked:start-[calc(50%-6px)]',
+        lg: 'start-[calc(50%+8px)] size-2.5 group-data-checked:start-[calc(50%-8px)]',
+      },
     },
   },
-})
+)
 
 type ControlledSwitchProps = {
   checked: boolean
@@ -67,24 +71,20 @@ type UncontrolledSwitchProps = {
 
 type SwitchControlProps = ControlledSwitchProps | UncontrolledSwitchProps
 
-export type SwitchProps = Omit<
-  BaseSwitchNS.Root.Props,
-  'checked' | 'defaultChecked' | 'className' | 'size' | 'onCheckedChange'
-> &
+type SwitchChangeEventReason = BaseSwitch.Root.ChangeEventReason
+type SwitchChangeEventDetails = BaseSwitch.Root.ChangeEventDetails
+type SwitchProps = Omit<BaseSwitch.Root.Props, 'checked' | 'children' | 'defaultChecked' | 'size'> &
   VariantProps<typeof switchRootVariants> &
   SwitchControlProps & {
-    onCheckedChange?: (checked: boolean) => void
     loading?: boolean
-    className?: string
   }
 
-export function Switch({
+function Switch({
   checked,
   size = 'md',
   disabled,
   loading = false,
   className,
-  onCheckedChange,
   ...props
 }: SwitchProps) {
   const isDisabled = disabled || loading
@@ -94,8 +94,7 @@ export function Switch({
       checked={checked}
       disabled={isDisabled}
       aria-busy={loading || undefined}
-      className={cn(switchRootVariants({ size }), className)}
-      onCheckedChange={(value) => onCheckedChange?.(value)}
+      className={(state) => cn(switchRootVariants({ size }), resolveClassName(className, state))}
       {...props}
     >
       <BaseSwitch.Thumb className={switchThumbVariants({ size })} />
@@ -122,9 +121,12 @@ const switchSkeletonVariants = cva('bg-text-quaternary opacity-20', {
   },
 })
 
-export type SwitchSkeletonProps = React.ComponentProps<'div'> &
-  VariantProps<typeof switchSkeletonVariants>
+type SwitchSkeletonProps = React.ComponentProps<'div'> & VariantProps<typeof switchSkeletonVariants>
 
-export function SwitchSkeleton({ size = 'md', className, ...props }: SwitchSkeletonProps) {
+function SwitchSkeleton({ size = 'md', className, ...props }: SwitchSkeletonProps) {
   return <div className={cn(switchSkeletonVariants({ size }), className)} {...props} />
 }
+
+export { Switch, SwitchSkeleton }
+
+export type { SwitchChangeEventDetails, SwitchChangeEventReason, SwitchProps, SwitchSkeletonProps }

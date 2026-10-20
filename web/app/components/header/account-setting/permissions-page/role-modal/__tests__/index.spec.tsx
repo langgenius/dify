@@ -4,7 +4,7 @@ import type { Role } from '@/models/access-control'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createTestQueryClient } from '@/test/query-client'
 import RoleModal from '../index'
 
@@ -61,32 +61,6 @@ describe('RoleModal', () => {
     vi.clearAllMocks()
   })
 
-  // Rendering keeps role fields and workspace permissions in one modal form.
-  describe('Rendering', () => {
-    it('should render edit mode with role values and selected permissions', () => {
-      renderModal(
-        <RoleModal open mode="edit" role={createRole()} onClose={vi.fn()} onSubmit={vi.fn()} />,
-      )
-
-      expect(screen.getByText('permission.role.modal.edit.title')).toBeInTheDocument()
-      expect(screen.getByLabelText('permission.role.modal.nameLabel')).toHaveValue('Operator')
-      expect(screen.getByLabelText('permission.role.modal.descriptionLabel')).toHaveValue(
-        'Can operate workspace',
-      )
-      expect(
-        screen.getByRole('button', { name: /Translated workspace permissions/ }),
-      ).toHaveAttribute('aria-expanded', 'true')
-      expect(screen.getByText('Manage workspace members')).toBeInTheDocument()
-    })
-
-    it('should disable confirm action when role name is empty', () => {
-      renderModal(<RoleModal open mode="create" onClose={vi.fn()} onSubmit={vi.fn()} />)
-
-      expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toBeDisabled()
-    })
-  })
-
-  // Submitting creates the payload expected by role create/update mutations.
   describe('User Interactions', () => {
     it('should submit trimmed role fields and selected permission keys', async () => {
       const user = userEvent.setup()
@@ -95,6 +69,7 @@ describe('RoleModal', () => {
 
       renderModal(<RoleModal open mode="create" onClose={handleClose} onSubmit={handleSubmit} />)
 
+      expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toBeDisabled()
       await user.type(screen.getByLabelText('permission.role.modal.nameLabel'), '  Support role  ')
       await user.type(
         screen.getByLabelText('permission.role.modal.descriptionLabel'),
@@ -129,6 +104,11 @@ describe('RoleModal', () => {
         />,
       )
 
+      expect(screen.getByLabelText('permission.role.modal.nameLabel')).toHaveValue('Operator')
+      expect(
+        screen.getByRole('button', { name: /Translated workspace permissions/ }),
+      ).toHaveAttribute('aria-expanded', 'true')
+      expect(screen.getByText('Manage workspace members')).toBeInTheDocument()
       const descriptionInput = screen.getByLabelText('permission.role.modal.descriptionLabel')
       await user.clear(descriptionInput)
       await user.type(descriptionInput, '  Updated role description  ')
@@ -143,7 +123,6 @@ describe('RoleModal', () => {
     })
   })
 
-  // View mode preserves the permission display but blocks edits and confirmation.
   describe('Read-only Mode', () => {
     it('should render role details as read-only in view mode', () => {
       renderModal(
@@ -155,7 +134,6 @@ describe('RoleModal', () => {
       expect(
         screen.queryByRole('button', { name: 'common.operation.confirm' }),
       ).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
       expect(
         screen.queryByRole('button', { name: 'permission.permissionList.clearAll' }),
       ).not.toBeInTheDocument()

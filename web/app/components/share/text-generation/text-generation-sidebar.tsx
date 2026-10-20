@@ -70,7 +70,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
   textToSpeechConfig,
   visionConfig,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const [descExpanded, setDescExpanded] = useState(false)
   const [showDescToggle, setShowDescToggle] = useState(false)
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
@@ -83,7 +83,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
       onValueChange={onTabChange}
       className={cn(
         'relative flex h-full shrink-0 flex-col',
-        isPC ? 'w-[600px] max-w-[50%]' : resultExisted ? 'h-[calc(100%-64px)]' : '',
+        isPC ? 'w-150 max-w-[50%]' : resultExisted ? 'h-[calc(100%-64px)]' : '',
         isInstalledApp && 'rounded-l-2xl',
       )}
     >
@@ -95,11 +95,9 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
       >
         <div className="flex items-center gap-3">
           <AppIcon
+            fallback={{ content: '🤖', background: appDefaultIconBackground }}
             size={isPC ? 'large' : 'small'}
-            iconType={siteInfo.icon_type}
-            icon={siteInfo.icon}
-            background={siteInfo.icon_background || appDefaultIconBackground}
-            imageUrl={siteInfo.icon_url}
+            icon={siteInfo}
           />
           <div className="grow truncate system-md-semibold text-text-secondary">
             {siteInfo.title}
@@ -114,7 +112,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             <div
               ref={handleDescRef}
               className={cn(
-                'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
+                'relative system-xs-regular wrap-break-word whitespace-pre-wrap text-text-tertiary',
                 !descExpanded && 'line-clamp-3',
                 descExpanded && 'max-h-32 overflow-y-auto',
               )}

@@ -4,25 +4,27 @@ import type { MetaData } from '../types'
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import ActionButton from '../../base/action-button'
 import { checkForUpdates, fetchReleases } from '../install-plugin/hooks'
-import PluginInfo from '../plugin-page/plugin-info'
-import { PluginSource } from '../types'
+import PluginInfoContent from '../plugin-page/plugin-info'
 
 const i18nPrefix = 'action'
 
@@ -51,7 +53,7 @@ const Action: FC<Props> = ({
   onDelete,
   meta,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [isShowPluginInfo, { setTrue: showPluginInfo, setFalse: hidePluginInfo }] =
     useBoolean(false)
   const [deleting, { setTrue: showDeleting, setFalse: hideDeleting }] = useBoolean(false)
@@ -68,10 +70,9 @@ const Action: FC<Props> = ({
     if (needUpdate) {
       setShowUpdatePluginModal({
         onSaveCallback: () => {
-          invalidateInstalledPluginList()
+          invalidateInstalledPluginList(category)
         },
         payload: {
-          type: PluginSource.github,
           category,
           github: {
             originalPackageInfo: {
@@ -96,7 +97,7 @@ const Action: FC<Props> = ({
       const res = await uninstallPlugin(installationId)
       if (res.success) {
         hideDeleteConfirm()
-        invalidateInstalledPluginList()
+        invalidateInstalledPluginList(category)
         onDelete()
       }
     } catch (error) {
@@ -108,6 +109,7 @@ const Action: FC<Props> = ({
     hideDeleteConfirm,
     hideDeleting,
     installationId,
+    category,
     invalidateInstalledPluginList,
     onDelete,
     showDeleting,
@@ -119,9 +121,12 @@ const Action: FC<Props> = ({
         <Tooltip>
           <TooltipTrigger
             render={
-              <ActionButton onClick={handleFetchNewVersion}>
-                <span className="i-ri-loop-left-line size-4 text-text-tertiary" />
-              </ActionButton>
+              <IconButton
+                aria-label={t(($) => $[`${i18nPrefix}.checkForUpdates`], { ns: 'plugin' })}
+                onClick={handleFetchNewVersion}
+              >
+                <span aria-hidden className="i-ri-loop-left-line size-4 text-text-tertiary" />
+              </IconButton>
             }
           />
           <TooltipContent>
@@ -133,9 +138,12 @@ const Action: FC<Props> = ({
         <Tooltip>
           <TooltipTrigger
             render={
-              <ActionButton onClick={showPluginInfo}>
-                <span className="i-ri-information-2-line size-4 text-text-tertiary" />
-              </ActionButton>
+              <IconButton
+                aria-label={t(($) => $[`${i18nPrefix}.pluginInfo`], { ns: 'plugin' })}
+                onClick={showPluginInfo}
+              >
+                <span aria-hidden className="i-ri-information-2-line size-4 text-text-tertiary" />
+              </IconButton>
             }
           />
           <TooltipContent>
@@ -147,47 +155,53 @@ const Action: FC<Props> = ({
         <Tooltip>
           <TooltipTrigger
             render={
-              <ActionButton
-                className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
+              <IconButton
+                aria-label={t(($) => $[`${i18nPrefix}.delete`], { ns: 'plugin' })}
+                tone="destructive"
                 onClick={showDeleteConfirm}
               >
-                <span className="i-ri-delete-bin-line size-4" />
-              </ActionButton>
+                <span aria-hidden className="i-ri-delete-bin-line size-4" />
+              </IconButton>
             }
           />
           <TooltipContent>{t(($) => $[`${i18nPrefix}.delete`], { ns: 'plugin' })}</TooltipContent>
         </Tooltip>
       )}
 
-      {isShowPluginInfo && (
-        <PluginInfo
-          repository={meta!.repo}
-          release={meta!.version}
-          packageName={meta!.package}
-          onHide={hidePluginInfo}
-        />
-      )}
+      <Dialog
+        open={isShowPluginInfo}
+        onOpenChange={(open) => {
+          if (!open) hidePluginInfo()
+        }}
+      >
+        <DialogContent className="w-120">
+          <PluginInfoContent
+            repository={meta?.repo}
+            release={meta?.version}
+            packageName={meta?.package}
+          />
+        </DialogContent>
+      </Dialog>
       <AlertDialog open={isShowDeleteConfirm} onOpenChange={(open) => !open && hideDeleteConfirm()}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $[`${i18nPrefix}.delete`], { ns: 'plugin' })}
             </AlertDialogTitle>
-            <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $[`${i18nPrefix}.deleteContentLeft`], { ns: 'plugin' })}
               <span className="system-md-semibold">{pluginName}</span>
               {t(($) => $[`${i18nPrefix}.deleteContentRight`], { ns: 'plugin' })}
-              <br />
-            </div>
-          </div>
-          <AlertDialogActions>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={handleDelete}>
+            <AlertDialogConfirmButton loading={deleting} onClick={handleDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

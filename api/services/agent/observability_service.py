@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -17,8 +17,8 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.helper import convert_datetime_to_date, escape_like_pattern, to_timestamp
 from models.agent import WorkflowAgentNodeBinding
-from models.enums import CreatorUserRole, MessageStatus
-from models.model import App, Conversation, Message
+from models.enums import CreatorUserRole, FeedbackFromSource, FeedbackRating, MessageStatus
+from models.model import App, Conversation, Message, MessageFeedback
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
 
 
@@ -138,7 +138,12 @@ class AgentObservabilityService:
         return int(message.message_tokens or 0) + int(message.answer_tokens or 0)
 
     @classmethod
-    def serialize_log_message(cls, message: Message, conversation: Conversation | None = None) -> dict[str, Any]:
+    def serialize_log_message(
+        cls,
+        message: Message,
+        conversation: Conversation | None = None,
+        feedbacks: Sequence[MessageFeedback] = (),
+    ) -> dict[str, Any]:
         invoke_from = message.invoke_from.value if message.invoke_from else None
         return {
             "id": message.id,
@@ -153,6 +158,8 @@ class AgentObservabilityService:
             "from_source": message.from_source.value if message.from_source else None,
             "from_end_user_id": message.from_end_user_id,
             "from_account_id": message.from_account_id,
+            "feedback_enabled": True,
+            "feedbacks": [cls._serialize_message_feedback(feedback) for feedback in feedbacks],
             "message_tokens": int(message.message_tokens or 0),
             "answer_tokens": int(message.answer_tokens or 0),
             "total_tokens": cls._total_tokens(message),
@@ -201,14 +208,19 @@ class AgentObservabilityService:
         rows: list[dict[str, Any]] = []
         for source_filter in source_filters:
             if source_filter.kind in {"all", "webapp"}:
+                messages = self._list_webapp_messages(
+                    app=app,
+                    conversation_id=conversation_id,
+                    params=params,
+                    source_filter=source_filter,
+                )
+                feedbacks_by_message = self._list_message_feedbacks(app=app, messages=messages)
                 rows.extend(
-                    self.serialize_log_message(message)
-                    for message in self._list_webapp_messages(
-                        app=app,
-                        conversation_id=conversation_id,
-                        params=params,
-                        source_filter=source_filter,
+                    self.serialize_log_message(
+                        message,
+                        feedbacks=feedbacks_by_message.get(message.id, ()),
                     )
+                    for message in messages
                 )
             if source_filter.kind in {"all", "workflow"}:
                 rows.extend(
@@ -270,6 +282,10 @@ class AgentObservabilityService:
         )
         stmt = self._apply_observability_filters(stmt, params=params, source_filter=source_filter)
         rows = list(self._session.execute(stmt).all())
+        feedback_rates = self._list_conversation_feedback_rates(
+            app=app,
+            conversation_ids=[row[0].id for row in rows],
+        )
         return [
             self._serialize_conversation_log(
                 conversation=row[0],
@@ -279,6 +295,8 @@ class AgentObservabilityService:
                 source=self._serialize_webapp_source(app),
                 created_at=row.created_at,
                 updated_at=row.updated_at,
+                user_rate=feedback_rates.get(row[0].id, {}).get("user_rate"),
+                operation_rate=feedback_rates.get(row[0].id, {}).get("operation_rate"),
             )
             for row in rows
         ]
@@ -349,6 +367,62 @@ class AgentObservabilityService:
         stmt = select(Message).where(Message.app_id == app.id, Message.conversation_id == conversation_id)
         stmt = self._apply_message_filters(stmt, params=params, source_filter=source_filter)
         return list(self._session.scalars(stmt.order_by(Message.created_at.desc(), Message.id.desc())).all())
+
+    def _list_message_feedbacks(self, *, app: App, messages: Sequence[Message]) -> dict[str, list[MessageFeedback]]:
+        message_ids = [message.id for message in messages]
+        if not message_ids:
+            return {}
+
+        stmt = (
+            select(MessageFeedback)
+            .where(
+                MessageFeedback.app_id == app.id,
+                MessageFeedback.message_id.in_(message_ids),
+                MessageFeedback.from_source.in_((FeedbackFromSource.USER, FeedbackFromSource.ADMIN)),
+            )
+            .order_by(MessageFeedback.created_at.asc(), MessageFeedback.id.asc())
+        )
+        feedbacks_by_message: dict[str, list[MessageFeedback]] = {}
+        for feedback in self._session.scalars(stmt).all():
+            feedbacks_by_message.setdefault(feedback.message_id, []).append(feedback)
+        return feedbacks_by_message
+
+    def _list_conversation_feedback_rates(
+        self, *, app: App, conversation_ids: Sequence[str]
+    ) -> dict[str, dict[str, float]]:
+        if not conversation_ids:
+            return {}
+
+        stmt = (
+            select(
+                MessageFeedback.conversation_id,
+                MessageFeedback.from_source,
+                func.sum(sa.case((MessageFeedback.rating == FeedbackRating.LIKE, 1), else_=0)).label("like_count"),
+                func.count(MessageFeedback.id).label("total_count"),
+            )
+            .where(
+                MessageFeedback.app_id == app.id,
+                MessageFeedback.conversation_id.in_(conversation_ids),
+                MessageFeedback.from_source.in_((FeedbackFromSource.USER, FeedbackFromSource.ADMIN)),
+            )
+            .group_by(MessageFeedback.conversation_id, MessageFeedback.from_source)
+        )
+        rates: dict[str, dict[str, float]] = {}
+        for row in self._session.execute(stmt).all():
+            rate = self._positive_feedback_rate(like_count=row.like_count, total_count=row.total_count)
+            if rate is None:
+                continue
+            source = self._enum_value(row.from_source)
+            rate_key = "user_rate" if source == FeedbackFromSource.USER.value else "operation_rate"
+            rates.setdefault(row.conversation_id, {})[rate_key] = rate
+        return rates
+
+    @staticmethod
+    def _positive_feedback_rate(*, like_count: int | None, total_count: int | None) -> float | None:
+        total = int(total_count or 0)
+        if total == 0:
+            return None
+        return int(like_count or 0) / total
 
     def _list_workflow_messages(
         self,
@@ -547,6 +621,8 @@ class AgentObservabilityService:
         source: dict[str, Any],
         created_at: datetime | None,
         updated_at: datetime | None,
+        user_rate: float | None,
+        operation_rate: float | None,
     ) -> dict[str, Any]:
         return {
             "id": conversation.id,
@@ -554,8 +630,8 @@ class AgentObservabilityService:
             "title": conversation.name,
             "end_user_id": conversation.from_end_user_id,
             "message_count": int(message_count or 0),
-            "user_rate": None,
-            "operation_rate": None,
+            "user_rate": user_rate,
+            "operation_rate": operation_rate,
             "unread": conversation.read_at is None,
             "source": source,
             "status": cls._conversation_status(paused_count=paused_count, failed_count=failed_count),
@@ -622,6 +698,8 @@ class AgentObservabilityService:
             "from_account_id": (
                 node_execution.created_by if created_by_role == CreatorUserRole.ACCOUNT.value else None
             ),
+            "feedback_enabled": False,
+            "feedbacks": [],
             "message_tokens": prompt_tokens,
             "answer_tokens": completion_tokens,
             "total_tokens": total_tokens,
@@ -630,6 +708,14 @@ class AgentObservabilityService:
             "latency": float(usage.get("latency") or node_execution.elapsed_time or 0),
             "created_at": to_timestamp(node_execution.created_at),
             "updated_at": to_timestamp(node_execution.finished_at or node_execution.created_at),
+        }
+
+    @classmethod
+    def _serialize_message_feedback(cls, feedback: MessageFeedback) -> dict[str, Any]:
+        return {
+            "rating": cls._enum_value(feedback.rating),
+            "content": feedback.content,
+            "from_source": cls._enum_value(feedback.from_source),
         }
 
     @staticmethod

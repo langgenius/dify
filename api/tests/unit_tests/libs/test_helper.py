@@ -1,10 +1,98 @@
-from datetime import datetime
+from collections.abc import Callable
+from datetime import datetime, timedelta
+from unittest.mock import call, create_autospec
 
 import pytest
+from flask import request
 
-from libs.helper import OptionalTimestampField, email, escape_like_pattern, extract_tenant_id
+from dify_app import DifyApp
+from extensions import ext_proxy_fix
+from libs import rate_limit as rate_limit_module
+from libs.helper import (
+    OptionalTimestampField,
+    RateLimiter,
+    alphanumeric,
+    email,
+    escape_like_pattern,
+    extract_remote_ip,
+    extract_tenant_id,
+)
 from models.account import Account
 from models.model import EndUser
+
+
+@pytest.mark.parametrize(
+    ("trust_proxy", "headers", "expected_ips", "expected_statuses"),
+    [
+        pytest.param(
+            False,
+            [
+                {},
+                {"CF-Connecting-IP": "203.0.113.1"},
+                {"X-Forwarded-For": "203.0.113.2, 192.0.2.42"},
+            ],
+            ["198.51.100.7"] * 3,
+            [200, 429, 429],
+            id="direct-client-ignores-untrusted-headers",
+        ),
+        pytest.param(
+            True,
+            [
+                {"CF-Connecting-IP": "203.0.113.1", "X-Forwarded-For": "192.0.2.42"},
+                {"CF-Connecting-IP": "203.0.113.2", "X-Forwarded-For": "203.0.113.3, 192.0.2.42"},
+            ],
+            ["192.0.2.42"] * 2,
+            [200, 429],
+            id="spoofed-headers-cannot-change-trusted-ip-bucket",
+        ),
+        pytest.param(
+            True,
+            [{"X-Forwarded-For": "192.0.2.42"}, {"X-Forwarded-For": "192.0.2.43"}],
+            ["192.0.2.42", "192.0.2.43"],
+            [200, 200],
+            id="canonical-visitors-have-distinct-buckets",
+        ),
+        pytest.param(
+            True,
+            [{"CF-Connecting-IP": "203.0.113.1"}, {"CF-Connecting-IP": "203.0.113.2"}],
+            ["198.51.100.7"] * 2,
+            [200, 429],
+            id="cloudflare-header-alone-is-not-trusted",
+        ),
+    ],
+)
+def test_extract_remote_ip_preserves_trusted_rate_limit_buckets(
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+    trust_proxy: bool,
+    headers: list[dict[str, str]],
+    expected_ips: list[str],
+    expected_statuses: list[int],
+) -> None:
+    config_overrides(RESPECT_XFORWARD_HEADERS_ENABLED=trust_proxy)
+    app = DifyApp(__name__)
+    ext_proxy_fix.init_app(app)
+    used_keys: set[str] = set()
+    limiter = create_autospec(RateLimiter, instance=True, spec_set=True)
+    limiter.is_rate_limited.side_effect = lambda key: key in used_keys
+    limiter.increment_rate_limit.side_effect = used_keys.add
+    monkeypatch.setattr(rate_limit_module, "_build_limiter", lambda _spec: limiter)
+
+    @app.get("/")
+    @rate_limit_module.rate_limit(
+        rate_limit_module.RateLimit(limit=1, window=timedelta(minutes=1), scopes=(rate_limit_module.RateLimitScope.IP,))
+    )
+    def remote_ip() -> str:
+        return extract_remote_ip(request)
+
+    client = app.test_client()
+    for request_headers, expected_ip, expected_status in zip(headers, expected_ips, expected_statuses, strict=True):
+        response = client.get("/", headers=request_headers, environ_overrides={"REMOTE_ADDR": "198.51.100.7"})
+        assert response.status_code == expected_status
+        if expected_status == 200:
+            assert response.get_data(as_text=True) == expected_ip
+
+    assert limiter.is_rate_limited.call_args_list == [call(f"ip:{ip}") for ip in expected_ips]
 
 
 class TestExtractTenantId:
@@ -153,3 +241,47 @@ class TestEmailValidator:
     def test_invalid_email_rejected(self):
         with pytest.raises(ValueError, match="not a valid email"):
             email("not-an-email")
+
+
+class TestAlphanumericValidator:
+    """Tests for the alphanumeric() validator — regression for #39666."""
+
+    def test_valid_alphanumeric_accepted(self):
+        assert alphanumeric("tool_name") == "tool_name"
+        assert alphanumeric("Tool123") == "Tool123"
+        assert alphanumeric("_underscore_start") == "_underscore_start"
+        assert alphanumeric("a") == "a"
+
+    def test_trailing_newline_rejected(self):
+        # re.match with $ accepts a trailing \n in Python; re.fullmatch does not.
+        # This was the pre-fix behaviour: alphanumeric("tool\n") returned "tool\n".
+        with pytest.raises(ValueError, match="not a valid alphanumeric value"):
+            alphanumeric("tool_name\n")
+
+    def test_trailing_carriage_return_rejected(self):
+        with pytest.raises(ValueError, match="not a valid alphanumeric value"):
+            alphanumeric("tool_name\r")
+
+    def test_trailing_crlf_rejected(self):
+        with pytest.raises(ValueError, match="not a valid alphanumeric value"):
+            alphanumeric("tool_name\r\n")
+
+    def test_leading_newline_rejected(self):
+        with pytest.raises(ValueError, match="not a valid alphanumeric value"):
+            alphanumeric("\ntool_name")
+
+    def test_embedded_whitespace_rejected(self):
+        with pytest.raises(ValueError, match="not a valid alphanumeric value"):
+            alphanumeric("tool name")
+
+    def test_empty_string_rejected(self):
+        with pytest.raises(ValueError, match="not a valid alphanumeric value"):
+            alphanumeric("")
+
+    def test_special_characters_rejected(self):
+        with pytest.raises(ValueError, match="not a valid alphanumeric value"):
+            alphanumeric("tool-name")
+        with pytest.raises(ValueError, match="not a valid alphanumeric value"):
+            alphanumeric("tool.name")
+        with pytest.raises(ValueError, match="not a valid alphanumeric value"):
+            alphanumeric("tool/name")

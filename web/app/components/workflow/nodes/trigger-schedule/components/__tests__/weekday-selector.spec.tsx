@@ -9,7 +9,10 @@ describe('trigger-schedule/weekday-selector', () => {
 
     render(<WeekdaySelector selectedDays={['mon']} onChange={onChange} />)
 
-    await user.click(screen.getByRole('button', { name: 'Mon' }))
+    expect(
+      screen.getByRole('group', { name: 'workflow.nodes.triggerSchedule.weekdays' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Mon', pressed: true }))
 
     expect(onChange).toHaveBeenCalledWith(['mon'])
   })

@@ -1,10 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useBoolean, useClickAway } from 'ahooks'
+import { useClickAway } from 'ahooks'
 import * as React from 'react'
-import { ChevronSelectorVertical } from '@/app/components/base/icons/src/vender/line/arrows'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
+import { useState } from 'react'
 
 type Item = {
   value: string
@@ -13,7 +12,7 @@ type Item = {
 type Props = Readonly<{
   className?: string
   trigger?: React.JSX.Element
-  DropDownIcon?: any
+  dropdownIconClassName?: string
   noLeft?: boolean
   options: Item[]
   allOptions?: Item[]
@@ -31,7 +30,7 @@ type Props = Readonly<{
 const TypeSelector: FC<Props> = ({
   className,
   trigger,
-  DropDownIcon = ChevronSelectorVertical,
+  dropdownIconClassName = 'i-custom-vender-line-arrows-chevron-selector-vertical',
   noLeft,
   options: list,
   allOptions,
@@ -49,23 +48,26 @@ const TypeSelector: FC<Props> = ({
   const item = allOptions
     ? allOptions.find((item) => item.value === value)
     : list.find((item) => item.value === value)
-  const [showOption, { setFalse: setHide, toggle: toggleShow }] = useBoolean(false)
+  const [showOption, setShowOption] = useState(false)
   const ref = React.useRef(null)
   useClickAway(() => {
-    setHide()
+    setShowOption(false)
   }, ref)
   return (
     <div
-      className={cn(!trigger && !noLeft && 'left-[-8px]', 'relative select-none', className)}
+      className={cn(!trigger && !noLeft && '-left-2', 'relative select-none', className)}
       ref={ref}
     >
       {trigger ? (
-        <div onClick={toggleShow} className={cn(!readonly && 'cursor-pointer')}>
+        <div
+          onClick={() => setShowOption((isShown) => !isShown)}
+          className={cn(!readonly && 'cursor-pointer')}
+        >
           {trigger}
         </div>
       ) : (
         <div
-          onClick={toggleShow}
+          onClick={() => setShowOption((isShown) => !isShown)}
           className={cn(
             showOption && 'bg-state-base-hover',
             'flex h-5 cursor-pointer items-center rounded-md pr-0.5 pl-1 text-xs font-semibold text-text-secondary hover:bg-state-base-hover',
@@ -81,14 +83,14 @@ const TypeSelector: FC<Props> = ({
           >
             {!noValue ? item?.label : placeholder}
           </div>
-          {!readonly && <DropDownIcon className="size-3" />}
+          {!readonly && <span aria-hidden className={cn(dropdownIconClassName, 'size-3')} />}
         </div>
       )}
 
       {showOption && !readonly && (
         <div
           className={cn(
-            'absolute top-[24px] z-10 w-[120px] rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg select-none',
+            'absolute top-6 z-10 w-30 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg select-none',
             popupClassName,
           )}
         >
@@ -96,18 +98,21 @@ const TypeSelector: FC<Props> = ({
             <div
               key={item.value}
               onClick={() => {
-                setHide()
+                setShowOption(false)
                 onChange(item.value)
               }}
               className={cn(
                 itemClassName,
                 uppercase && 'uppercase',
-                'flex h-[30px] min-w-[44px] cursor-pointer items-center justify-between rounded-lg px-3 text-[13px] font-medium text-text-secondary hover:bg-state-base-hover',
+                'flex h-7.5 min-w-11 cursor-pointer items-center justify-between rounded-lg px-3 text-[13px] font-medium text-text-secondary hover:bg-state-base-hover',
               )}
             >
               <div>{item.label}</div>
               {showChecked && item.value === value && (
-                <Check className="size-4 text-text-primary" />
+                <span
+                  aria-hidden
+                  className="i-custom-vender-line-general-check size-4 text-text-primary"
+                />
               )}
             </div>
           ))}

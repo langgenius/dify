@@ -1,12 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
+import { toast } from '@/app/notifications'
 import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
 import { sleep } from '@/utils'
 import CrawledResult from '../base/crawled-result'
@@ -60,7 +63,7 @@ const FireCrawl: FC<Props> = ({
   crawlOptions,
   onCrawlOptionsChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
   const [step, setStep] = useState<Step>(Step.init)
   const controlFoldOptions = STEP_CONTROL_FOLD_OPTIONS[step]
   const isMountedRef = useRef(true)
@@ -69,12 +72,10 @@ const FireCrawl: FC<Props> = ({
       isMountedRef.current = false
     }
   }, [])
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const handleSetting = useCallback(() => {
-    openIntegrationsSetting({
-      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-    })
-  }, [openIntegrationsSetting])
+    setSettingsDestination('data-source')
+  }, [setSettingsDestination])
   const checkValid = useCallback(
     (url: string) => {
       let errorMsg = ''
@@ -156,10 +157,9 @@ const FireCrawl: FC<Props> = ({
         return await waitForCrawlFinished(jobId)
       } catch (e: any) {
         if (!isMountedRef.current) return cancelledResult
-        const errorBody = typeof e?.json === 'function' ? await e.json() : undefined
         return {
           isError: true,
-          errorMessage: errorBody?.message,
+          errorMessage: e instanceof Error ? e.message : undefined,
           data: {
             data: [],
           },
@@ -225,7 +225,7 @@ const FireCrawl: FC<Props> = ({
         </OptionsWrap>
 
         {!isInit && (
-          <div className="relative left-[-16px] mt-3 w-[calc(100%+32px)] rounded-b-xl">
+          <div className="relative -left-4 mt-3 w-[calc(100%+32px)] rounded-b-xl">
             {isRunning && (
               <Crawling
                 className="mt-2"

@@ -46,7 +46,7 @@ export const PickerPanelMain: FC<Props> = ({
         <div className="flex">
           {root.nodeName && (
             <>
-              <div className="max-w-[100px] truncate system-sm-medium text-text-tertiary">
+              <div className="max-w-25 truncate system-sm-medium text-text-tertiary">
                 {root.nodeName}
               </div>
               <div className="system-sm-medium text-text-tertiary">.</div>
@@ -79,7 +79,7 @@ const PickerPanel: FC<Props> = ({ className, ...props }) => {
   return (
     <div
       className={cn(
-        'w-[296px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]',
+        'w-74 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]',
         className,
       )}
     >

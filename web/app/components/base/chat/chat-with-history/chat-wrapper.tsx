@@ -1,12 +1,12 @@
 import type { FileEntity } from '../../file-uploader/types'
 import type { SpeechToTextTarget } from '../../voice-input/types'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { trackEvent } from '@/app/components/base/amplitude'
+import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
 import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form'
@@ -23,14 +23,14 @@ import {
 } from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
-import { formatBooleanInputs } from '@/utils/model-config'
+import { getAvatarInitial } from '@/utils/avatar'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
 import { useChatWithHistoryContext } from './context'
 
 const ChatWrapper = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const {
     appParams,
     appPrevChatTree,
@@ -48,7 +48,7 @@ const ChatWrapper = () => {
     handleFeedback,
     currentChatInstanceRef,
     appData,
-    themeBuilder,
+    theme,
     sidebarCollapseState,
     clearChatList,
     setClearChatList,
@@ -86,6 +86,7 @@ const ChatWrapper = () => {
     handleSend,
     handleStop,
     handleSwitchSibling,
+    prepareHumanInputSubmission,
     isResponding: respondingState,
     suggestedQuestions,
   } = useChat(
@@ -118,7 +119,9 @@ const ChatWrapper = () => {
 
         if (fileIsUploading) return
 
-        if (!inputsFormValue?.[variable]) hasEmptyInput = label as string
+        const inputValue = inputsFormValue?.[variable]
+        if (inputValue === undefined || inputValue === null || inputValue === '')
+          hasEmptyInput = label as string
 
         if (
           (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
@@ -151,7 +154,7 @@ const ChatWrapper = () => {
 
   useEffect(() => {
     if (currentChatInstanceRef.current) currentChatInstanceRef.current.handleStop = handleStop
-  }, [])
+  }, [currentChatInstanceRef, handleStop])
 
   useEffect(() => {
     setIsResponding(respondingState)
@@ -165,9 +168,6 @@ const ChatWrapper = () => {
     let lastPausedNode: ChatItemInTree | undefined
     const findLastPausedWorkflow = (nodes: ChatItemInTree[]) => {
       nodes.forEach((node) => {
-        // DFS: recurse to children first
-        if (node.children && node.children.length > 0) findLastPausedWorkflow(node.children)
-
         // Track the last node with humanInputFormDataList
         if (
           node.isAnswer &&
@@ -176,6 +176,9 @@ const ChatWrapper = () => {
           node.humanInputFormDataList.length > 0
         )
           lastPausedNode = node
+
+        // A paused descendant supersedes its ancestor.
+        if (node.children && node.children.length > 0) findLastPausedWorkflow(node.children)
       })
     }
 
@@ -205,10 +208,7 @@ const ChatWrapper = () => {
       const data: any = {
         query: message,
         files,
-        inputs: formatBooleanInputs(
-          inputsForms,
-          currentConversationId ? currentConversationInputs : newConversationInputs,
-        ),
+        inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
         conversation_id: currentConversationId,
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
       }
@@ -224,10 +224,9 @@ const ChatWrapper = () => {
       })
       const appMode = isNewAgent ? 'agent-v2' : appData?.mode
       if (appSourceType === AppSourceType.webApp && appMode)
-        trackEvent('webapp_run', { app_mode: appMode })
+        trackWebAppEvent('webapp_run', { app_mode: appMode })
     },
     [
-      inputsForms,
       currentConversationId,
       currentConversationInputs,
       newConversationInputs,
@@ -284,10 +283,12 @@ const ChatWrapper = () => {
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: any) => {
+      if (!(await prepareHumanInputSubmission())) return
+
       if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
       else await submitHumanInputForm(formToken, formData)
     },
-    [isInstalledApp],
+    [isInstalledApp, prepareHumanInputSubmission],
   )
 
   const [collapsed, setCollapsed] = useState(!!currentConversationId)
@@ -303,12 +304,12 @@ const ChatWrapper = () => {
     if (!description || currentConversationId || hasSent) return null
     return (
       <div className={cn('flex flex-col items-center px-4 pt-6', isMobile && 'pt-4')}>
-        <div className="w-full max-w-[672px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md">
+        <div className="w-full max-w-2xl rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md">
           <div className={cn('p-6', isMobile && 'p-4')}>
             <div
               ref={handleDescRef}
               className={cn(
-                'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
+                'relative system-xs-regular wrap-break-word whitespace-pre-wrap text-text-tertiary',
                 !descExpanded && 'line-clamp-3',
                 descExpanded && 'max-h-32 overflow-y-auto',
               )}
@@ -363,14 +364,8 @@ const ChatWrapper = () => {
     if (welcomeMessage.suggestedQuestions && welcomeMessage.suggestedQuestions?.length > 0) {
       return (
         <div className="flex min-h-[50vh] items-center justify-center px-4 py-12">
-          <div className="flex max-w-[720px] grow gap-4">
-            <AppIcon
-              size="xl"
-              iconType={appData?.site.icon_type}
-              icon={appData?.site.icon}
-              background={appData?.site.icon_background}
-              imageUrl={appData?.site.icon_url}
-            />
+          <div className="flex max-w-180 grow gap-4">
+            <AppIcon size="xl" icon={appData?.site} />
             <div className="w-0 grow">
               <div className="grow rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary">
                 <Markdown content={welcomeMessage.content} />
@@ -383,14 +378,8 @@ const ChatWrapper = () => {
     }
     return (
       <div className={cn('flex min-h-[50vh] flex-col items-center justify-center gap-3 py-12')}>
-        <AppIcon
-          size="xl"
-          iconType={appData?.site.icon_type}
-          icon={appData?.site.icon}
-          background={appData?.site.icon_background}
-          imageUrl={appData?.site.icon_url}
-        />
-        <div className="max-w-[768px] px-4">
+        <AppIcon size="xl" icon={appData?.site} />
+        <div className="max-w-3xl px-4">
           <Markdown
             className="body-2xl-regular! text-text-tertiary!"
             content={welcomeMessage.content}
@@ -456,18 +445,17 @@ const ChatWrapper = () => {
         suggestedQuestions={suggestedQuestions}
         answerIcon={answerIcon}
         hideProcessDetail
-        themeBuilder={themeBuilder}
+        theme={theme}
         switchSibling={doSwitchSibling}
         inputDisabled={inputDisabled}
         sidebarCollapseState={sidebarCollapseState}
         renderAgentContent={renderAgentContent}
         questionIcon={
           initUserVariables?.avatar_url ? (
-            <Avatar
-              avatar={initUserVariables.avatar_url}
-              name={initUserVariables.name || 'user'}
-              size="xl"
-            />
+            <Avatar size="xl" role="img" aria-label={initUserVariables.name || 'user'}>
+              <AvatarFallback>{getAvatarInitial(initUserVariables.name || 'user')}</AvatarFallback>
+              <AvatarImage src={initUserVariables.avatar_url} alt="" />
+            </Avatar>
           ) : undefined
         }
       />

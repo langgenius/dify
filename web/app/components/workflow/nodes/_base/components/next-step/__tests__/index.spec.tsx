@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { screen } from '@testing-library/react'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
@@ -8,18 +7,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { useAvailableBlocks } from '../../../../../hooks/use-available-blocks'
 import { useNodesInteractions } from '../../../../../hooks/use-nodes-interactions'
 import { useToolIcon } from '../../../../../hooks/use-tool-icon'
-import { useNodesReadOnly } from '../../../../../hooks/use-workflow'
 import NextStep from '../index'
-
-vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({ trigger }: { trigger: ((open: boolean) => ReactNode) | ReactNode }) => {
-    return (
-      <div data-testid="next-step-block-selector">
-        {typeof trigger === 'function' ? trigger(false) : trigger}
-      </div>
-    )
-  },
-}))
 
 vi.mock('../../../../../hooks/use-available-blocks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../../../hooks/use-available-blocks')>()
@@ -49,18 +37,8 @@ vi.mock('../../../../../hooks/use-tool-icon', async (importOriginal) => {
   }
 })
 
-vi.mock('../../../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: vi.fn(),
-  }
-})
-
 const mockUseAvailableBlocks = vi.mocked(useAvailableBlocks)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
-const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
 const mockUseToolIcon = vi.mocked(useToolIcon)
 
 const createAvailableBlocksResult = (): ReturnType<typeof useAvailableBlocks> => ({
@@ -76,6 +54,7 @@ const renderComponent = (selectedNode: Node, nodes: Node[], edges: Edge[] = []) 
   renderWorkflowFlowComponent(<NextStep selectedNode={selectedNode} />, {
     nodes,
     edges,
+    initialStoreState: { canvasReadOnly: true },
     canvasStyle: {
       width: 600,
       height: 400,
@@ -90,9 +69,6 @@ describe('NextStep', () => {
       handleNodeSelect: vi.fn(),
       handleNodeAdd: vi.fn(),
     } as unknown as ReturnType<typeof useNodesInteractions>)
-    mockUseNodesReadOnly.mockReturnValue({
-      nodesReadOnly: true,
-    } as ReturnType<typeof useNodesReadOnly>)
     mockUseToolIcon.mockReturnValue('')
   })
 
@@ -122,6 +98,10 @@ describe('NextStep', () => {
       renderComponent(selectedNode, [selectedNode, nextNode], [edge])
 
       expect(screen.getByText('Next Node')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'workflow.common.addParallelNode' })).toBeDisabled()
+      expect(
+        screen.queryByRole('button', { name: 'workflow.common.jumpToNode' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByText('workflow.common.addParallelNode')).toBeInTheDocument()
     })
 

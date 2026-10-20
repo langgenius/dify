@@ -3,7 +3,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -31,10 +31,16 @@ from models import Account, App, EndUser
 from models.model import load_annotation_reply_config
 from services.conversation_service import ConversationService
 
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+
 logger = logging.getLogger(__name__)
 
 
 class AgentChatAppGenerator(MessageBasedAppGenerator):
+    def __init__(self, *, execution_driver: "WorkflowRunDriver") -> None:
+        self._execution_driver = execution_driver
+
     @overload
     def generate(
         self,
@@ -57,7 +63,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[True],
         session: Session,
-    ) -> Generator[Mapping | str, None, None]: ...
+    ) -> Generator[Mapping | str]: ...
 
     @overload
     def generate(
@@ -69,7 +75,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool,
         session: Session,
-    ) -> Mapping | Generator[Mapping | str, None, None]: ...
+    ) -> Mapping | Generator[Mapping | str]: ...
 
     def generate(
         self,
@@ -80,7 +86,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool = True,
         session: Session,
-    ) -> Mapping | Generator[Mapping | str, None, None]:
+    ) -> Mapping | Generator[Mapping | str]:
         """
         Generate App response.
 
@@ -138,9 +144,12 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             # always enable retriever resource in debugger mode
             override_model_config_dict["retriever_resource"] = {"enabled": True}
 
-        annotation_reply = (
-            None if override_model_config_dict else load_annotation_reply_config(session, app_model_config.app_id)
-        )
+        if override_model_config_dict:
+            annotation_reply = None
+            effective_model_config_dict = override_model_config_dict
+        else:
+            annotation_reply = load_annotation_reply_config(session, app_model_config.app_id)
+            effective_model_config_dict = app_model_config.to_dict(annotation_reply=annotation_reply)
 
         # parse files
         # TODO(QuantumGhost): Move file parsing logic to the API controller layer
@@ -150,9 +159,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         # `DraftWorkflowNodeRunApi` class which handle this properly.
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files = args.get("files") or []
-            file_extra_config = FileUploadConfigManager.convert(
-                override_model_config_dict or app_model_config.to_dict(annotation_reply=annotation_reply)
-            )
+            file_extra_config = FileUploadConfigManager.convert(effective_model_config_dict)
             if file_extra_config:
                 file_objs = file_factory.build_from_mappings(
                     mappings=files,
@@ -271,7 +278,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 message = self._get_message(message_id)
 
                 # chatbot app
-                runner = AgentChatAppRunner()
+                runner = AgentChatAppRunner(execution_driver=self._execution_driver)
                 with session_factory.create_session() as session:
                     runner.run(
                         application_generate_entity=application_generate_entity,

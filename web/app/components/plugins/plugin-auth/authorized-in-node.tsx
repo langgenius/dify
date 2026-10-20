@@ -1,4 +1,5 @@
 import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
+import type { ComponentPropsWithRef } from 'react'
 import type { Credential, PluginPayload } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -20,7 +21,7 @@ const AuthorizedInNode = ({
   credentialId,
   onDefaultCredentialChange,
 }: AuthorizedInNodeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [isOpen, setIsOpen] = useState(false)
   const {
     canApiKey,
@@ -37,7 +38,7 @@ const AuthorizedInNode = ({
   }, [defaultCredentialId, onDefaultCredentialChange])
 
   const renderTrigger = useCallback(
-    (open?: boolean) => {
+    (open: boolean, triggerProps: ComponentPropsWithRef<'button'>) => {
       let label = ''
       let removed = false
       let unavailable = false
@@ -48,7 +49,12 @@ const AuthorizedInNode = ({
 
         const defaultCredential = credentials.find((c) => c.is_default)
 
-        if (defaultCredential?.not_allowed_to_use) {
+        if (isLoading) {
+          color = 'disabled'
+        } else if (!defaultCredential) {
+          color = 'error'
+          defaultUnavailable = true
+        } else if (defaultCredential.not_allowed_to_use) {
           color = 'disabled'
           defaultUnavailable = true
         }
@@ -69,14 +75,16 @@ const AuthorizedInNode = ({
       }
       return (
         <Button
+          {...triggerProps}
           size="small"
           className={cn(
+            triggerProps.className,
             open && !removed && 'bg-components-button-ghost-bg-hover',
             removed && 'bg-transparent text-text-destructive',
           )}
           variant={defaultUnavailable || unavailable ? 'ghost' : 'secondary'}
         >
-          <StatusDot className="mr-1.5" status={color} />
+          <StatusDot status={color} />
           {label}
           {(unavailable || defaultUnavailable) && (
             <>
@@ -127,7 +135,7 @@ const AuthorizedInNode = ({
       renderTrigger={renderTrigger}
       isOpen={isOpen}
       onOpenChange={setIsOpen}
-      offset={4}
+      sideOffset={4}
       placement="bottom-end"
       triggerPopupSameWidth={false}
       popupClassName="w-[360px]"

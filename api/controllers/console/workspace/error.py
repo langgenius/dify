@@ -1,6 +1,12 @@
 from libs.exception import BaseHTTPException
 
 
+class CurrentWorkspaceArchivedError(BaseHTTPException):
+    error_code = "current_workspace_archived"
+    description = "The current workspace has been archived."
+    code = 409
+
+
 class RepeatPasswordNotMatchError(BaseHTTPException):
     error_code = "repeat_password_not_match"
     description = "New password and repeat password does not match."
@@ -16,6 +22,12 @@ class CurrentPasswordIncorrectError(BaseHTTPException):
 class InvalidInvitationCodeError(BaseHTTPException):
     error_code = "invalid_invitation_code"
     description = "Invalid invitation code."
+    code = 400
+
+
+class MissingInvitationCodeRequestError(BaseHTTPException):
+    error_code = "missing_invitation_code"
+    description = "Invitation code is required."
     code = 400
 
 
@@ -40,4 +52,40 @@ class InvalidAccountDeletionCodeError(BaseHTTPException):
 class InvalidMemberRoleError(BaseHTTPException):
     error_code = "invalid_role"
     description = "Invalid role."
+    code = 400
+
+
+class PluginOperationError(BaseHTTPException):
+    error_code = "plugin_error"
+    description = "Plugin operation failed."
+    code = 400
+
+
+class SkillRequestError(BaseHTTPException):
+    error_code = "invalid_request"
+    description = "Invalid skill request."
+    code = 400
+
+
+class SkillFilenameMissingError(BaseHTTPException):
+    error_code = "filename_missing"
+    description = "filename is required"
+    code = 400
+
+
+class MemberCannotOperateSelfError(BaseHTTPException):
+    error_code = "cannot_operate_self"
+    description = "Cannot operate on yourself."
+    code = 400
+
+
+class MemberNotFoundError(BaseHTTPException):
+    error_code = "member_not_found"
+    description = "Member not found."
+    code = 404
+
+
+class MemberRoleAlreadyAssignedError(BaseHTTPException):
+    error_code = "role_already_assigned"
+    description = "Role already assigned."
     code = 400

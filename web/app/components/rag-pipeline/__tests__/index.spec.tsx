@@ -1,4 +1,6 @@
 import { render, screen } from '@testing-library/react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { BlockEnum } from '@/app/components/workflow/types'
 import RagPipelineWrapper from '../index'
 
 let pipelineId: string | undefined
@@ -15,18 +17,6 @@ vi.mock('../hooks/use-pipeline-init', () => ({
 
 vi.mock('../store', () => ({
   createRagPipelineSliceSlice: vi.fn(),
-}))
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  initialNodes: () => [{ id: 'node-1' }],
-  initialEdges: () => [{ id: 'edge-1' }],
-}))
-
-vi.mock('../utils', () => ({
-  processNodesWithoutDataSource: (nodes: unknown[]) => ({
-    nodes,
-    viewport: { x: 10, y: 20, zoom: 2 },
-  }),
 }))
 
 vi.mock('../components/conversion', () => ({
@@ -50,7 +40,9 @@ vi.mock('../components/rag-pipeline-main', () => ({
 }))
 
 vi.mock('@/app/components/workflow', () => ({
-  default: ({ children }: { children: React.ReactNode }) => children,
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="workflow-default-context">{children}</div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/context', () => ({
@@ -75,18 +67,24 @@ describe('RagPipeline', () => {
 
     render(<RagPipelineWrapper />)
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('passes initialized graph data to the pipeline', () => {
     pipelineId = 'pipeline-1'
     pipelineInit = {
-      data: { graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } } },
+      data: {
+        graph: {
+          nodes: [createNode({ id: 'source', data: { type: BlockEnum.DataSource } })],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1.5 },
+        },
+      },
       isLoading: false,
     }
 
     render(<RagPipelineWrapper />)
 
-    expect(screen.getByText('Pipeline 1/1/2')).toBeInTheDocument()
+    expect(screen.getByText('Pipeline 1/0/1.5')).toBeInTheDocument()
   })
 })

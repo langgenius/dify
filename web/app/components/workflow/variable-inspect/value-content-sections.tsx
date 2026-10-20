@@ -1,5 +1,5 @@
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { FileUploadConfigResponse } from '@/models/common'
 import type { VarInInspect } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -31,7 +31,7 @@ export const TextEditorSection = ({
   isTruncated,
   onTextChange,
 }: TextEditorSectionProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <>
@@ -41,16 +41,16 @@ export const TextEditorSection = ({
           previewType={PreviewType.Markdown}
           varType={currentVar.value_type}
           mdString={typeof value === 'string' ? value : String(value ?? '')}
-          readonly={textEditorDisabled}
+          readonly={textEditorDisabled || isTruncated}
           handleTextChange={onTextChange}
-          className={cn(isTruncated && 'pt-[36px]')}
+          className={cn(isTruncated && 'pt-9')}
         />
       ) : (
         <Textarea
           aria-label={t(($) => $['errorMsg.fields.variableValue'], { ns: 'workflow' })}
           readOnly={textEditorDisabled}
           disabled={textEditorDisabled || isTruncated}
-          className={cn('h-full', isTruncated && 'pt-[48px]')}
+          className={cn('h-full', isTruncated && 'pt-12')}
           value={typeof value === 'number' ? value : String(value ?? '')}
           onValueChange={(value) => onTextChange(value)}
         />
@@ -66,7 +66,7 @@ type BoolArraySectionProps = {
 
 export const BoolArraySection = ({ values, onChange }: BoolArraySectionProps) => {
   return (
-    <div className="w-[295px] space-y-1">
+    <div className="w-73.75 space-y-1">
       {values.map((value, index) => (
         <BoolValue
           key={`${index}-${String(value)}`}
@@ -129,7 +129,7 @@ export const JsonEditorSection = ({
 type FileEditorSectionProps = {
   currentVar: VarInInspect
   fileValue: FileEntity[]
-  fileUploadConfig?: FileUploadConfigResponse
+  fileUploadConfig?: UploadConfig
   textEditorDisabled: boolean
   onChange: (files: FileEntity[]) => void
 }
@@ -142,7 +142,7 @@ export const FileEditorSection = ({
   onChange,
 }: FileEditorSectionProps) => {
   return (
-    <div className="max-w-[460px]">
+    <div className="max-w-115">
       <FileUploaderInAttachmentWrapper
         value={fileValue}
         onChange={onChange}

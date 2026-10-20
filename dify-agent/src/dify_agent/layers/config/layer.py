@@ -1,23 +1,29 @@
-"""Runtime Dify config layer with shell-backed eager pulls."""
+"""Shell-backed config pulls with instructions derived from current Config.
+
+Only pull results and successful initialization persist. The manifest and CLI
+help are rendered from current configuration and the installed CLI reference.
+"""
 
 from __future__ import annotations
 
-import asyncio
+import json
 import shlex
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import override
 
-from typing_extensions import Self, override
 
-from agenton.layers import LayerDeps, PlainLayer
+from pydantic_ai import RunContext
+from pydantic_ai.capabilities import AbstractCapability, CapabilityOrdering
+from pydantic_ai.capabilities.abstract import WrapRunHandler
+from pydantic_ai.run import AgentRunResult
+from dify_agent.runtime.context import Deps
 from dify_agent.layers._agent_cli_help import render_agent_stub_cli_help
 from dify_agent.layers._agent_file_cli_help import AGENT_FILE_UPLOAD_REPLY_HINT as _AGENT_FILE_UPLOAD_REPLY_HINT
 from dify_agent.layers.config.configs import (
-    DIFY_CONFIG_LAYER_TYPE_ID,
     DifyConfigLayerConfig,
     DifyConfigRuntimeState,
 )
-from dify_agent.layers.shell.layer import DifyShellLayer
+from dify_agent.layers.shell.layer import Capability as ShellCapability, ShellSession
 
 _CONFIG_CONTEXT_HEADING = "Current Agent config manifest for this run:"
 _CONFIG_CONTEXT_COMMAND = "dify-agent config manifest"
@@ -49,66 +55,68 @@ _CONFIG_CLI_MUTATION_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
 }
 _AGENT_FILE_CLI_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
     "dify-agent file upload --help": ("file", "upload"),
+    "dify-agent file public-url --help": ("file", "public-url"),
     "dify-agent file download --help": ("file", "download"),
 }
-_CONFIG_CONTEXT_EXCLUDE = {"mentioned_skill_names": True, "mentioned_file_names": True}
+_CONFIG_CONTEXT_EXCLUDE = {"mentioned_skill_names": True, "mentioned_file_names": True, "shell": True}
 
 
 class DifyConfigLayerError(RuntimeError):
     """Raised when one eager-pull config operation fails."""
 
 
-class DifyConfigDeps(LayerDeps):
-    shell: DifyShellLayer  # pyright: ignore[reportUninitializedInstanceVariable]
+class Config(DifyConfigLayerConfig):
+    pass
 
 
-@dataclass(slots=True)
-class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConfigRuntimeState]):
-    """Config runtime layer that materializes prompt-mentioned targets via shell."""
+class State(DifyConfigRuntimeState):
+    initialized: bool = False
 
-    type_id: ClassVar[str | None] = DIFY_CONFIG_LAYER_TYPE_ID
 
-    config: DifyConfigLayerConfig
+class Capability(AbstractCapability[Deps]):
+    """First-run eager pulls with explicit JSON writeback and native ordering."""
 
-    @classmethod
-    @override
-    def from_config(cls, config: DifyConfigLayerConfig) -> Self:
-        return cls(config=DifyConfigLayerConfig.model_validate(config))
-
-    @property
-    @override
-    def prefix_prompts(self) -> list[str]:
-        return [self.build_prompt_context()]
-
-    @property
-    @override
-    def suffix_prompts(self) -> list[str]:
-        return [self.build_suffix_prompt()]
+    def __init__(self, name: str):
+        self.id = name
+        self.name = name
 
     @override
-    async def on_context_create(self) -> None:
-        await self._initialize_context()
+    def get_ordering(self) -> CapabilityOrdering:
+        return CapabilityOrdering(wrapped_by=[ShellCapability], requires=[ShellCapability])
 
     @override
-    async def on_context_resume(self) -> None:
-        return None
+    def get_instructions(self):
+        return self._instructions
 
-    async def _initialize_context(self) -> None:
-        self._initialize_runtime_prompt_state()
-        await self._pull_mentioned_targets()
+    def _instructions(self, ctx: RunContext[Deps]) -> str:
+        context = self._context(ctx.deps)
+        return f"{context.build_prompt_context()}\n\n{context.build_suffix_prompt()}"
 
-    def _initialize_runtime_prompt_state(self) -> None:
-        command_paths = dict(_CONFIG_CLI_HELP_COMMANDS)
-        if self._config_writable:
-            command_paths.update(_CONFIG_CLI_MUTATION_HELP_COMMANDS)
-        command_paths.update(_AGENT_FILE_CLI_HELP_COMMANDS)
-        self.runtime_state.config_context_json = self._format_config_context_json()
-        self.runtime_state.config_cli_help = {
-            command: render_agent_stub_cli_help(args) for command, args in command_paths.items()
-        }
-        self.runtime_state.push_spec_semantics = ""
-        self.runtime_state.push_spec_json_schema = ""
-        self.runtime_state.push_spec_example = ""
+    def _context(self, deps: Deps) -> _ConfigContext:
+        config = Config.model_validate(deps.layers[self.name]["config"])
+        return _ConfigContext(
+            config, State.model_validate(deps.layers[self.name]["state"]), deps.resources.shells[config.shell]
+        )
+
+    @override
+    async def wrap_run(self, ctx: RunContext[Deps], *, handler: WrapRunHandler) -> AgentRunResult:
+        context = self._context(ctx.deps)
+        try:
+            if not context.runtime_state.initialized:
+                await context._pull_mentioned_targets()
+                context.runtime_state.initialized = True
+        finally:
+            ctx.deps.layers[self.name]["state"] = context.runtime_state.model_dump(mode="json")
+        return await handler()
+
+
+@dataclass
+class _ConfigContext:
+    """Short-lived validated data for prompt rendering or an eager-pull operation."""
+
+    config: Config
+    runtime_state: State
+    shell: ShellSession
 
     def build_prompt_context(self) -> str:
         sections: list[str] = []
@@ -140,17 +148,11 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
         return "\n\n".join(section for section in sections if section)
 
     def build_suffix_prompt(self) -> str:
-        sections: list[str] = []
-        if self.runtime_state.config_context_json:
-            sections.append(
-                f"{_CONFIG_CONTEXT_HEADING}\n"
-                f"{_format_command_output(_CONFIG_CONTEXT_COMMAND, self.runtime_state.config_context_json)}"
-            )
-        usage_lines = [_CONFIG_CLI_USAGE_PROMPT]
-        if cli_help := self._format_config_cli_help():
-            usage_lines.append(cli_help)
-        if file_cli_help := self._format_agent_file_cli_help():
-            usage_lines.append(file_cli_help)
+        sections = [
+            f"{_CONFIG_CONTEXT_HEADING}\n"
+            f"{_format_command_output(_CONFIG_CONTEXT_COMMAND, self._format_config_context_json())}"
+        ]
+        usage_lines = [_CONFIG_CLI_USAGE_PROMPT, self._format_config_cli_help(), self._format_agent_file_cli_help()]
         sections.append("\n".join(usage_lines))
         return "\n\n".join(section for section in sections if section)
 
@@ -159,26 +161,19 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
         return self.config.config_version is not None and self.config.config_version.writable
 
     def _format_config_cli_help(self) -> str:
-        commands = list(_CONFIG_CLI_HELP_COMMANDS)
+        commands = dict(_CONFIG_CLI_HELP_COMMANDS)
         if self._config_writable:
-            commands.extend(_CONFIG_CLI_MUTATION_HELP_COMMANDS)
+            commands.update(_CONFIG_CLI_MUTATION_HELP_COMMANDS)
         command_sections = [
-            _format_command_output(command, self.runtime_state.config_cli_help[command])
-            for command in commands
-            if command in self.runtime_state.config_cli_help
+            _format_command_output(command, render_agent_stub_cli_help(args)) for command, args in commands.items()
         ]
-        if not command_sections:
-            return ""
         return "Agent config CLI reference for installed `dify-agent`:\n" + "\n\n".join(command_sections)
 
     def _format_agent_file_cli_help(self) -> str:
         command_sections = [
-            _format_command_output(command, self.runtime_state.config_cli_help[command])
-            for command in _AGENT_FILE_CLI_HELP_COMMANDS
-            if command in self.runtime_state.config_cli_help
+            _format_command_output(command, render_agent_stub_cli_help(args))
+            for command, args in _AGENT_FILE_CLI_HELP_COMMANDS.items()
         ]
-        if not command_sections:
-            return ""
         return (
             "Agent file CLI reference for installed `dify-agent`:\n"
             + "\n\n".join(command_sections)
@@ -194,75 +189,105 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
         if not self.config.mentioned_skill_names and not self.config.mentioned_file_names:
             return
 
-        tasks = [
-            *(self._pull_mentioned_skill(name) for name in self.config.mentioned_skill_names),
-            *(self._pull_mentioned_file(name) for name in self.config.mentioned_file_names),
-        ]
-        await asyncio.gather(*tasks)
+        if names := self.config.mentioned_skill_names:
+            output = await self._run_mentioned_pull(
+                script=self._build_shell_skill_pull_script(names),
+                target_kind="skill",
+            )
+            self.runtime_state.pulled_skill_outputs = _parse_skill_pull_outputs(output, names)
 
-    async def _pull_mentioned_skill(self, name: str) -> None:
-        result = await self.deps.shell.run_remote_script(
-            self._build_shell_skill_pull_script(name),
+        if names := self.config.mentioned_file_names:
+            output = await self._run_mentioned_pull(
+                script=self._build_shell_file_pull_script(names),
+                target_kind="file",
+            )
+            self.runtime_state.pulled_file_outputs = _parse_file_pull_outputs(output, names)
+
+    async def _run_mentioned_pull(self, *, script: str, target_kind: str) -> str:
+        result = await self.shell.run_remote_script(
+            script,
             inject_agent_stub_env=True,
         )
         if result.exit_code != 0:
             raise DifyConfigLayerError(
-                "config mentioned skill pull failed in shell: "
+                f"config mentioned {target_kind} pull failed in shell: "
                 f"{result.status} exit_code={result.exit_code}\n{result.output}"
             )
         if not result.output_complete:
             reason = result.incomplete_reason or "unknown"
             raise DifyConfigLayerError(
-                f"config mentioned skill pull output was incomplete before the payload finished: {reason}"
+                f"config mentioned {target_kind} pull output was incomplete before the payload finished: {reason}"
             )
         output = result.output.strip()
         if not output:
+            raise DifyConfigLayerError(f"missing pull output for mentioned config {target_kind}s")
+        return output
+
+    def _build_shell_skill_pull_script(self, names: list[str]) -> str:
+        targets = " ".join(shlex.quote(name) for name in names)
+        return f"set -eu\ndify-agent config skills pull --json {targets}"
+
+    def _build_shell_file_pull_script(self, names: list[str]) -> str:
+        targets = " ".join(shlex.quote(name) for name in names)
+        return f"set -eu\ndify-agent config files pull --json {targets}"
+
+
+def _parse_skill_pull_outputs(output: str, expected_names: list[str]) -> dict[str, str]:
+    items = _parse_pull_items(output, target_kind="skill")
+    parsed: dict[str, str] = {}
+    for name in expected_names:
+        item = items.get(name)
+        if item is None:
             raise DifyConfigLayerError(f"missing pull output for mentioned config skill {name}")
-        self.runtime_state.pulled_skill_outputs = {
-            **self.runtime_state.pulled_skill_outputs,
-            name: output,
-        }
+        directory_path = item.get("directory_path")
+        skill_md = item.get("skill_md")
+        if not isinstance(directory_path, str) or not directory_path:
+            raise DifyConfigLayerError(f"invalid directory path in pull output for mentioned config skill {name}")
+        if not isinstance(skill_md, str):
+            raise DifyConfigLayerError(f"invalid skill content in pull output for mentioned config skill {name}")
+        parsed[name] = f"{directory_path}\n{skill_md}".strip()
+    return parsed
 
-    async def _pull_mentioned_file(self, name: str) -> None:
-        result = await self.deps.shell.run_remote_script(
-            self._build_shell_file_pull_script(name),
-            inject_agent_stub_env=True,
-        )
-        if result.exit_code != 0:
-            raise DifyConfigLayerError(
-                "config mentioned file pull failed in shell: "
-                f"{result.status} exit_code={result.exit_code}\n{result.output}"
-            )
-        if not result.output_complete:
-            reason = result.incomplete_reason or "unknown"
-            raise DifyConfigLayerError(
-                f"config mentioned file pull output was incomplete before the payload finished: {reason}"
-            )
-        output = result.output.strip()
-        if not output:
+
+def _parse_file_pull_outputs(output: str, expected_names: list[str]) -> dict[str, str]:
+    items = _parse_pull_items(output, target_kind="file")
+    parsed: dict[str, str] = {}
+    for name in expected_names:
+        item = items.get(name)
+        if item is None:
             raise DifyConfigLayerError(f"missing pull output for mentioned config file {name}")
-        self.runtime_state.pulled_file_outputs = {
-            **self.runtime_state.pulled_file_outputs,
-            name: output,
-        }
+        path = item.get("path")
+        if not isinstance(path, str) or not path:
+            raise DifyConfigLayerError(f"invalid path in pull output for mentioned config file {name}")
+        parsed[name] = path
+    return parsed
 
-    def _build_shell_skill_pull_script(self, name: str) -> str:
-        lines = [
-            "set -eu",
-            f"dify-agent config skills pull {shlex.quote(name)}",
-        ]
-        return "\n".join(lines)
 
-    def _build_shell_file_pull_script(self, name: str) -> str:
-        lines = [
-            "set -eu",
-            f"dify-agent config files pull {shlex.quote(name)}",
-        ]
-        return "\n".join(lines)
+def _parse_pull_items(output: str, *, target_kind: str) -> dict[str, dict[str, object]]:
+    try:
+        payload: object = json.loads(output)
+    except json.JSONDecodeError as exc:
+        raise DifyConfigLayerError(f"invalid JSON pull output for mentioned config {target_kind}s") from exc
+    if not isinstance(payload, dict):
+        raise DifyConfigLayerError(f"invalid pull output for mentioned config {target_kind}s")
+    raw_items = payload.get("items")
+    if not isinstance(raw_items, list):
+        raise DifyConfigLayerError(f"missing items in pull output for mentioned config {target_kind}s")
+
+    items: dict[str, dict[str, object]] = {}
+    for raw_item in raw_items:
+        if not isinstance(raw_item, dict):
+            raise DifyConfigLayerError(f"invalid item in pull output for mentioned config {target_kind}s")
+        item = {str(key): value for key, value in raw_item.items()}
+        name = item.get("name")
+        if not isinstance(name, str) or not name:
+            raise DifyConfigLayerError(f"missing item name in pull output for mentioned config {target_kind}s")
+        items[name] = item
+    return items
 
 
 def _format_command_output(command: str, output: str) -> str:
     return f"Command:\n$ {command}\nOutput:\n{output}"
 
 
-__all__ = ["DifyConfigLayer", "DifyConfigLayerError"]
+__all__ = ["Config", "State", "Capability", "DifyConfigLayerError"]

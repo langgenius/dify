@@ -1,14 +1,14 @@
 'use client'
+import type { ToastType } from '@langgenius/dify-ui/toast'
 import type { FC } from 'react'
-import type { InputValueTypes, TextGenerationRunControl, TextGenerationTranslate } from './types'
-import type { InstalledApp } from '@/models/explore'
+import type { InputValueTypes, TextGenerationRunControl } from './types'
 import type { VisionFile } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useSearchParams } from '@/next/navigation'
 import { useTextGenerationAppState } from './hooks/use-text-generation-app-state'
@@ -18,17 +18,10 @@ import TextGenerationSidebar from './text-generation-sidebar'
 
 type IMainProps = {
   isInstalledApp?: boolean
-  installedAppInfo?: InstalledApp
   isWorkflow?: boolean
 }
 const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = false }) => {
-  const { t } = useTranslation()
-  const translateBatchKey: TextGenerationTranslate = useCallback(
-    (selector, options) => {
-      return t(selector, options)
-    },
-    [t],
-  )
+  const { t } = useTranslation(['share', 'appDebug', 'common'])
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
   const searchParams = useSearchParams()
@@ -45,12 +38,9 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
   const [resultExisted, setResultExisted] = useState(false)
   const [isShowResultPanel, { setTrue: showResultPanelState, setFalse: hideResultPanel }] =
     useBoolean(false)
-  const notify = useCallback(
-    ({ type, message }: { type: 'error' | 'info' | 'success' | 'warning'; message: string }) => {
-      toast(message, { type })
-    },
-    [],
-  )
+  const notify = useCallback(({ type, message }: { type: ToastType; message: string }) => {
+    toast(message, { type })
+  }, [])
   const updateInputs = useCallback((newInputs: Record<string, InputValueTypes>) => {
     setInputs(newInputs)
     inputsRef.current = newInputs
@@ -91,7 +81,7 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
   } = useTextGenerationBatch({
     promptConfig,
     notify,
-    t: translateBatchKey,
+    t,
   })
   useEffect(() => {
     if (isCallBatchAPI) setRunControl(null)
@@ -125,7 +115,7 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
   if (!appId || !siteInfo || !promptConfig) {
     return (
       <div className="flex h-screen items-center">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }

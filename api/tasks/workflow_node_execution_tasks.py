@@ -13,12 +13,15 @@ from celery import shared_task
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
+from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
+from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowNodeExecutionModel
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from repositories.workflow_run_control import apply_workflow_stop_to_node, get_stopped_workflow_run
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +55,26 @@ def save_workflow_node_execution_task(
             # Deserialize execution data
             execution = WorkflowNodeExecution.model_validate(execution_data)
 
+            if execution.status in (
+                WorkflowNodeExecutionStatus.RUNNING,
+                WorkflowNodeExecutionStatus.PAUSED,
+                WorkflowNodeExecutionStatus.RETRY,
+            ):
+                apply_workflow_stop_to_node(
+                    execution,
+                    get_stopped_workflow_run(
+                        session, tenant_id=tenant_id, workflow_run_id=execution.workflow_execution_id, lock=True
+                    ),
+                )
+
             # Check if node execution already exists
             existing_execution = session.scalar(
-                select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == execution.id)
+                select(WorkflowNodeExecutionModel).where(
+                    WorkflowNodeExecutionModel.id == execution.id,
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                    WorkflowNodeExecutionModel.app_id == app_id,
+                    WorkflowNodeExecutionModel.workflow_id == execution.workflow_id,
+                )
             )
 
             if existing_execution:
@@ -80,7 +100,7 @@ def save_workflow_node_execution_task(
     except Exception as e:
         logger.exception("Failed to save workflow node execution %s", execution_data.get("id", "unknown"))
         # Retry the task with exponential backoff
-        raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+        raise self.retry(exc=e, countdown=60 * (2**self.request.retries)) from e
 
 
 def _create_node_execution_from_domain(
@@ -141,11 +161,24 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
     """
     Update a WorkflowNodeExecutionModel database model from a WorkflowNodeExecution domain entity.
     """
+    # Cleanup can insert the terminal row before its queued start is delivered.
+    if (
+        node_execution.status == WorkflowNodeExecutionStatus.FAILED
+        and node_execution.finished_at is not None
+        and execution.status
+        in (
+            WorkflowNodeExecutionStatus.RUNNING,
+            WorkflowNodeExecutionStatus.PAUSED,
+            WorkflowNodeExecutionStatus.RETRY,
+        )
+    ):
+        return
     # Update serialized data
     json_converter = WorkflowRuntimeTypeConverter()
     node_execution.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}"
+    process_data = preserve_workflow_agent_binding_id(node_execution.process_data_dict, execution.process_data)
     node_execution.process_data = (
-        json.dumps(json_converter.to_json_encodable(execution.process_data)) if execution.process_data else "{}"
+        json.dumps(json_converter.to_json_encodable(process_data)) if process_data is not None else "{}"
     )
     node_execution.outputs = (
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"

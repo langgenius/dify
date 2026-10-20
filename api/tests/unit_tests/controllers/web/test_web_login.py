@@ -1,286 +1,355 @@
-import base64
-import logging
-from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock, patch
+"""Controller-boundary tests for Web login endpoints."""
+
+from dataclasses import dataclass
+from inspect import unwrap
+from typing import override
 
 import pytest
-from flask import Flask
-from jwt import InvalidTokenError
-from werkzeug.exceptions import Unauthorized
+from flask import Flask, Response
+from flask_restx import Api
+from pytest_mock import MockerFixture
+from sqlalchemy import func, select, text
+from sqlalchemy.orm import Session, sessionmaker
 
-import services.errors.account
-from controllers.web.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi, LoginApi, LoginStatusApi, LogoutApi
-from enums.deployment_edition import DeploymentEdition
-from services.entities.auth_entities import LoginFailureReason
-
-
-def encode_code(code: str) -> str:
-    return base64.b64encode(code.encode("utf-8")).decode()
-
-
-def assert_login_failure_logged(caplog: pytest.LogCaptureFixture, email: str, reason: LoginFailureReason) -> None:
-    records = [record for record in caplog.records if record.name == "controllers.web.login"]
-    assert len(records) == 1
-    assert records[0].args[0] == email
-    assert records[0].args[1] == reason
+from controllers.console import wraps as console_wraps
+from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
+from controllers.console.error import AccountBannedError
+from controllers.web import login
+from controllers.web.login import (
+    EmailCodeLoginApi,
+    EmailCodeLoginSendEmailApi,
+    EmailCodeLoginSendPayload,
+    EmailCodeLoginVerifyPayload,
+    LoginApi,
+    LoginPayload,
+    LoginStatusApi,
+    LoginStatusQuery,
+    LogoutApi,
+)
+from extensions.ext_application_services import ApplicationServices
+from machinery.context import RequestContext
+from models.enums import CustomizeTokenStrategy
+from models.model import App, AppModelConfig, EndUser, Site
+from services.entities.authentication_entities import WebLoginStatus
+from services.web_authentication_service import (
+    WebAccountBannedError,
+    WebAuthenticationFailedError,
+    WebInvalidCodeError,
+)
+from services.webapp_access_query_service import (
+    WebAppAccessAppNotFoundError,
+    WebAppAccessUnavailableError,
+)
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture
-def app():
-    flask_app = Flask(__name__)
-    flask_app.config["TESTING"] = True
-    return flask_app
+def app() -> Flask:
+    return Flask(__name__)
 
 
-@pytest.fixture(autouse=True)
-def _patch_wraps():
-    wraps_features = SimpleNamespace(enable_email_password_login=True)
-    console_dify = SimpleNamespace(ENTERPRISE_ENABLED=True, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    web_dify = SimpleNamespace(ENTERPRISE_ENABLED=True)
-    with (
-        patch("controllers.console.wraps.db") as mock_db,
-        patch("controllers.console.wraps.dify_config", console_dify),
-        patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
-        patch("controllers.web.login.dify_config", web_dify),
-    ):
-        yield
+@pytest.fixture
+def context() -> RequestContext:
+    return RequestContext("request-1", "trace-1", "", "", "127.0.0.1")
 
 
-class TestEmailCodeLoginSendEmailApi:
-    @patch("controllers.web.login.WebAppAuthService.send_email_code_login_email")
-    @patch("controllers.web.login.WebAppAuthService.get_user_through_email")
-    def test_should_fetch_account_with_original_email(
-        self,
-        mock_get_user,
-        mock_send_email,
-        app: Flask,
-    ):
-        mock_account = MagicMock()
-        mock_get_user.return_value = mock_account
-        mock_send_email.return_value = "token-123"
-
-        with app.test_request_context(
-            "/web/email-code-login",
-            method="POST",
-            json={"email": "User@Example.com", "language": "en-US"},
-        ):
-            response = EmailCodeLoginSendEmailApi().post()
-
-        assert response == {"result": "success", "data": "token-123"}
-        mock_get_user.assert_called_once_with("User@Example.com", ANY)
-        mock_send_email.assert_called_once_with(account=mock_account, language="en-US")
+@dataclass(frozen=True, slots=True)
+class ApplicationServicesStub:
+    web_authentication: object
 
 
-class TestEmailCodeLoginApi:
-    @patch("controllers.web.login.AccountService.reset_login_error_rate_limit")
-    @patch("controllers.web.login.WebAppAuthService.login", return_value="new-access-token")
-    @patch("controllers.web.login.WebAppAuthService.get_user_through_email")
-    @patch("controllers.web.login.WebAppAuthService.revoke_email_code_login_token")
-    @patch("controllers.web.login.WebAppAuthService.get_email_code_login_data")
-    def test_should_normalize_email_before_validating(
-        self,
-        mock_get_token_data,
-        mock_revoke_token,
-        mock_get_user,
-        mock_login,
-        mock_reset_login_rate,
-        app: Flask,
-    ):
-        mock_get_token_data.return_value = {"email": "User@Example.com", "code": "123456"}
-        mock_get_user.return_value = MagicMock()
-
-        with app.test_request_context(
-            "/web/email-code-login/validity",
-            method="POST",
-            json={"email": "User@Example.com", "code": encode_code("123456"), "token": "token-123"},
-        ):
-            response = EmailCodeLoginApi().post()
-
-        assert response == {"result": "success", "data": {"access_token": "new-access-token"}}
-        mock_get_user.assert_called_once_with("User@Example.com", ANY)
-        mock_revoke_token.assert_called_once_with("token-123")
-        mock_login.assert_called_once()
-        mock_reset_login_rate.assert_called_once_with("user@example.com")
+def bind_service(monkeypatch: pytest.MonkeyPatch, service: object) -> None:
+    monkeypatch.setattr(login, "application_services", lambda: ApplicationServicesStub(web_authentication=service))
 
 
-class TestLoginApi:
-    @patch("controllers.web.login.WebAppAuthService.login", return_value="access-tok")
-    @patch("controllers.web.login.WebAppAuthService.authenticate")
-    def test_login_success(self, mock_auth: MagicMock, mock_login: MagicMock, app: Flask) -> None:
-        mock_auth.return_value = MagicMock()
+class PasswordLoginStub:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error = error
+        self.call: tuple[RequestContext, str, str] | None = None
 
-        with app.test_request_context(
-            "/web/login",
-            method="POST",
-            json={"email": "user@example.com", "password": base64.b64encode(b"Valid1234").decode()},
-        ):
-            response = LoginApi().post()
+    def login_with_password(self, context: RequestContext, *, email: str, password: str) -> str:
+        self.call = (context, email, password)
+        if self.error is not None:
+            raise self.error
+        return "access-token"
 
-        assert response["data"]["access_token"] == "access-tok"
-        mock_auth.assert_called_once()
 
-    @patch(
-        "controllers.web.login.WebAppAuthService.authenticate",
-        side_effect=services.errors.account.AccountLoginError(),
+def test_password_login_delegates_to_application_service(
+    monkeypatch: pytest.MonkeyPatch,
+    context: RequestContext,
+) -> None:
+    service = PasswordLoginStub()
+    bind_service(monkeypatch, service)
+
+    result = unwrap(LoginApi.post)(
+        LoginApi(),
+        LoginPayload(email="User@Example.com", password="Valid1234"),
+        context,
     )
-    def test_login_banned_account(self, mock_auth: MagicMock, app: Flask, caplog: pytest.LogCaptureFixture) -> None:
-        from controllers.console.error import AccountBannedError
 
-        with caplog.at_level(logging.WARNING, logger="controllers.web.login"):
-            with app.test_request_context(
-                "/web/login",
-                method="POST",
-                json={"email": "user@example.com", "password": base64.b64encode(b"Valid1234").decode()},
-            ):
-                with pytest.raises(AccountBannedError):
-                    LoginApi().post()
+    assert result == {"result": "success", "data": {"access_token": "access-token"}}
+    assert service.call == (context, "User@Example.com", "Valid1234")
 
-        assert_login_failure_logged(caplog, "user@example.com", LoginFailureReason.ACCOUNT_BANNED)
 
-    @patch(
-        "controllers.web.login.WebAppAuthService.authenticate",
-        side_effect=services.errors.account.AccountPasswordError(),
+@pytest.mark.parametrize(
+    ("service_error", "http_error"),
+    [
+        pytest.param(WebAccountBannedError(), AccountBannedError, id="banned"),
+        pytest.param(WebAuthenticationFailedError(), AuthenticationFailedError, id="credentials"),
+    ],
+)
+def test_password_login_translates_service_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    context: RequestContext,
+    service_error: Exception,
+    http_error: type[Exception],
+) -> None:
+    bind_service(monkeypatch, PasswordLoginStub(service_error))
+
+    with pytest.raises(http_error):
+        unwrap(LoginApi.post)(
+            LoginApi(),
+            LoginPayload(email="user@example.com", password="Valid1234"),
+            context,
+        )
+
+
+class LoginStatusStub:
+    def __init__(self) -> None:
+        self.call: dict[str, str | None] | None = None
+
+    def get_login_status(self, **kwargs: str | None) -> WebLoginStatus:
+        self.call = kwargs
+        return WebLoginStatus(logged_in=True, app_logged_in=False)
+
+
+def test_login_status_passes_transport_tokens_to_service(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
+    service = LoginStatusStub()
+    bind_service(monkeypatch, service)
+    monkeypatch.setattr(login, "extract_webapp_access_token", lambda _request: "account-token")
+    monkeypatch.setattr(login, "extract_webapp_passport", lambda app_code, _request: f"passport:{app_code}")
+
+    with app.test_request_context("/login/status?app_code=site-code"):
+        result = unwrap(LoginStatusApi.get)(
+            LoginStatusApi(),
+            LoginStatusQuery(app_code="site-code", user_id="session-1"),
+            RequestContext("request-1", None, "", "", "127.0.0.1"),
+        )
+
+    assert result == {"logged_in": True, "app_logged_in": False}
+    assert service.call == {
+        "app_code": "site-code",
+        "user_id": "session-1",
+        "access_token": "account-token",
+        "app_session_token": "passport:site-code",
+    }
+
+
+@pytest.mark.parametrize(
+    ("service_error", "status_code", "error_code"),
+    [
+        pytest.param(WebAppAccessAppNotFoundError(), 404, "app_not_found", id="unknown-app"),
+        pytest.param(WebAppAccessUnavailableError(), 503, "web_app_access_unavailable", id="access-unavailable"),
+    ],
+)
+def test_login_status_translates_access_failures_to_http_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    app: Flask,
+    service_error: Exception,
+    status_code: int,
+    error_code: str,
+) -> None:
+    class UnavailableLoginStatusService(LoginStatusStub):
+        @override
+        def get_login_status(self, **kwargs: str | None) -> WebLoginStatus:
+            raise service_error
+
+    bind_service(monkeypatch, UnavailableLoginStatusService())
+    monkeypatch.setattr(console_wraps, "_is_setup_completed", lambda: True)
+    api = Api(app)
+    api.add_resource(LoginStatusApi, "/web/login/status")
+
+    response = app.test_client().get("/web/login/status?app_code=does-not-exist")
+
+    assert response.status_code == status_code
+    assert response.get_json()["code"] == error_code
+
+
+@pytest.mark.parametrize(
+    "condition",
+    ["missing-site", "dangling-site", "app-disabled", "site-disabled", "app-status-disabled", "unpublished"],
+)
+def test_unavailable_identity_is_canonical_404_before_authentication(
+    condition: str,
+    app: Flask,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    account_application_services: ApplicationServices,
+) -> None:
+    """Keep the IP-access contract across the new Web authentication service boundary."""
+    from controllers.web import bp
+
+    app_id = "11111111-1111-1111-1111-111111111111"
+    config_id = "22222222-2222-2222-2222-222222222222"
+    with sqlite_session_factory.begin() as session:
+        if condition != "dangling-site":
+            config = AppModelConfig(app_id=app_id)
+            config.id = config_id
+            session.add(config)
+            session.add(
+                App(
+                    id=app_id,
+                    tenant_id=app_id,
+                    name="Private fixture",
+                    mode="chat",
+                    enable_site=condition != "app-disabled",
+                    enable_api=True,
+                    app_model_config_id=config_id if condition != "unpublished" else None,
+                )
+            )
+        if condition != "missing-site":
+            session.add(
+                Site(
+                    app_id=app_id,
+                    code="private-fixture",
+                    title="Private fixture",
+                    default_language="en-US",
+                    customize_token_strategy=CustomizeTokenStrategy.UUID,
+                )
+            )
+        session.flush()
+        if condition == "site-disabled":
+            session.execute(text("UPDATE sites SET status='disabled' WHERE app_id=:app_id"), {"app_id": app_id})
+        elif condition == "app-status-disabled":
+            session.execute(text("UPDATE apps SET status='disabled' WHERE id=:app_id"), {"app_id": app_id})
+
+    access = account_application_services.webapp_access
+    service = account_application_services.web_authentication
+    mode_lookup = mocker.spy(access._policy, "get_access_mode")
+    token_verify = mocker.spy(service._tokens, "verify_access_token")
+    session_verify = mocker.spy(service._app_sessions, "verify")
+    bind_service(monkeypatch, service)
+    monkeypatch.setattr(console_wraps, "_is_setup_completed", lambda: True)
+    apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
+    app.register_blueprint(bp)
+    response = app.test_client().get(
+        "/api/login/status?app_code=private-fixture", environ_overrides={"REMOTE_ADDR": "203.0.113.42"}
     )
-    def test_login_wrong_password(self, mock_auth: MagicMock, app: Flask, caplog: pytest.LogCaptureFixture) -> None:
-        from controllers.console.auth.error import AuthenticationFailedError
 
-        with caplog.at_level(logging.WARNING, logger="controllers.web.login"):
-            with app.test_request_context(
-                "/web/login",
-                method="POST",
-                json={"email": "user@example.com", "password": base64.b64encode(b"Valid1234").decode()},
-            ):
-                with pytest.raises(AuthenticationFailedError):
-                    LoginApi().post()
-
-        assert_login_failure_logged(caplog, "user@example.com", LoginFailureReason.INVALID_CREDENTIALS)
-
-    @patch(
-        "controllers.web.login.WebAppAuthService.authenticate",
-        side_effect=services.errors.account.AccountNotFoundError(),
+    assert response.status_code == 404
+    assert response.data == (
+        b'{"client_ip":"203.0.113.42","code":"app_not_found","message":"App not found.","status":404}'
     )
-    def test_login_account_not_found(self, mock_auth: MagicMock, app: Flask, caplog: pytest.LogCaptureFixture) -> None:
-        from controllers.console.auth.error import AuthenticationFailedError
+    assert response.headers["Content-Type"] == "application/json"
+    assert response.headers["Cache-Control"] == "no-store"
+    mode_lookup.assert_not_called()
+    token_verify.assert_not_called()
+    session_verify.assert_not_called()
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(func.count()).select_from(EndUser)) == 0
 
-        with caplog.at_level(logging.WARNING, logger="controllers.web.login"):
-            with app.test_request_context(
-                "/web/login",
-                method="POST",
-                json={"email": "missing@example.com", "password": base64.b64encode(b"Valid1234").decode()},
-            ):
-                with pytest.raises(AuthenticationFailedError):
-                    LoginApi().post()
 
-        assert_login_failure_logged(caplog, "missing@example.com", LoginFailureReason.ACCOUNT_NOT_FOUND)
+@pytest.mark.parametrize(
+    ("failure", "status"),
+    [(WebAppAccessUnavailableError("private dependency"), 503), (TypeError("private bug"), 500)],
+)
+def test_login_status_dependency_or_bug_is_not_hidden_as_app_404(
+    failure: Exception, status: int, app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from controllers.web import bp
 
-    @patch("controllers.web.login.WebAppAuthService.get_email_code_login_data", return_value=None)
-    def test_email_code_login_logs_invalid_token(
-        self, mock_get_token_data: MagicMock, app: Flask, caplog: pytest.LogCaptureFixture
-    ) -> None:
-        with caplog.at_level(logging.WARNING, logger="controllers.web.login"):
-            with app.test_request_context(
-                "/web/email-code-login/validity",
-                method="POST",
-                json={"email": "user@example.com", "code": encode_code("123456"), "token": "token-123"},
-            ):
-                with pytest.raises(InvalidTokenError):
-                    EmailCodeLoginApi().post()
+    class FailingLoginStatusService(LoginStatusStub):
+        @override
+        def get_login_status(self, **kwargs: str | None) -> WebLoginStatus:
+            raise failure
 
-        mock_get_token_data.assert_called_once_with("token-123")
-        assert_login_failure_logged(caplog, "user@example.com", LoginFailureReason.INVALID_EMAIL_CODE_TOKEN)
+    bind_service(monkeypatch, FailingLoginStatusService())
+    monkeypatch.setattr(console_wraps, "_is_setup_completed", lambda: True)
+    app.register_blueprint(bp)
+    response = app.test_client().get("/api/login/status?app_code=fixture")
 
-    @patch("controllers.web.login.WebAppAuthService.revoke_email_code_login_token")
-    @patch(
-        "controllers.web.login.WebAppAuthService.get_user_through_email",
-        side_effect=Unauthorized("Account is banned."),
-    )
-    @patch(
-        "controllers.web.login.WebAppAuthService.get_email_code_login_data",
-        return_value={"email": "User@Example.com", "code": "123456"},
-    )
-    def test_email_code_login_logs_banned_account(
+    assert response.status_code == status
+    assert "client_ip" not in response.get_json()
+    assert response.get_json()["code"] != "app_not_found"
+
+
+class EmailLoginStub:
+    def send_email_login_code(self, *, email: str, language: str | None) -> str:
+        assert (email, language) == ("User@Example.com", "zh-Hans")
+        return "email-token"
+
+    def login_with_email_code(
         self,
-        mock_get_token_data: MagicMock,
-        mock_get_user: MagicMock,
-        mock_revoke_token: MagicMock,
-        app: Flask,
-        caplog: pytest.LogCaptureFixture,
-    ) -> None:
-        from controllers.console.error import AccountBannedError
-
-        with caplog.at_level(logging.WARNING, logger="controllers.web.login"):
-            with app.test_request_context(
-                "/web/email-code-login/validity",
-                method="POST",
-                json={"email": "User@Example.com", "code": encode_code("123456"), "token": "token-123"},
-            ):
-                with pytest.raises(AccountBannedError):
-                    EmailCodeLoginApi().post()
-
-        mock_get_token_data.assert_called_once_with("token-123")
-        mock_revoke_token.assert_called_once_with("token-123")
-        assert_login_failure_logged(caplog, "user@example.com", LoginFailureReason.ACCOUNT_BANNED)
+        context: RequestContext,
+        *,
+        email: str,
+        code: str,
+        token: str,
+    ) -> str:
+        assert context.remote_ip == "127.0.0.1"
+        assert (email, code, token) == ("User@Example.com", "123456", "email-token")
+        return "access-token"
 
 
-class TestLoginStatusApi:
-    @patch("controllers.web.login.extract_webapp_access_token", return_value=None)
-    def test_no_app_code_returns_logged_in_false(self, mock_extract: MagicMock, app: Flask) -> None:
-        with app.test_request_context("/web/login/status"):
-            result = LoginStatusApi().get()
+def test_email_login_endpoints_delegate_to_application_service(
+    monkeypatch: pytest.MonkeyPatch,
+    context: RequestContext,
+) -> None:
+    bind_service(monkeypatch, EmailLoginStub())
 
-        assert result["logged_in"] is False
-        assert result["app_logged_in"] is False
+    send_result = unwrap(EmailCodeLoginSendEmailApi.post)(
+        EmailCodeLoginSendEmailApi(),
+        EmailCodeLoginSendPayload(email="User@Example.com", language="zh-Hans"),
+        context,
+    )
+    login_result = unwrap(EmailCodeLoginApi.post)(
+        EmailCodeLoginApi(),
+        EmailCodeLoginVerifyPayload(email="User@Example.com", code="123456", token="email-token"),
+        context,
+    )
 
-    @patch("controllers.web.login.decode_jwt_token")
-    @patch("controllers.web.login.PassportService")
-    @patch("controllers.web.login.WebAppAuthService.is_app_require_permission_check", return_value=False)
-    @patch("controllers.web.login.AppService.get_app_id_by_code", return_value="app-1")
-    @patch("controllers.web.login.extract_webapp_access_token", return_value="tok")
-    def test_public_app_user_logged_in(
-        self,
-        mock_extract: MagicMock,
-        mock_app_id: MagicMock,
-        mock_perm: MagicMock,
-        mock_passport: MagicMock,
-        mock_decode: MagicMock,
-        app: Flask,
-    ) -> None:
-        mock_decode.return_value = (MagicMock(), MagicMock())
-
-        with app.test_request_context("/web/login/status?app_code=code1"):
-            result = LoginStatusApi().get()
-
-        assert result["logged_in"] is True
-        assert result["app_logged_in"] is True
-
-    @patch("controllers.web.login.decode_jwt_token", side_effect=Exception("bad"))
-    @patch("controllers.web.login.PassportService")
-    @patch("controllers.web.login.WebAppAuthService.is_app_require_permission_check", return_value=True)
-    @patch("controllers.web.login.AppService.get_app_id_by_code", return_value="app-1")
-    @patch("controllers.web.login.extract_webapp_access_token", return_value="tok")
-    def test_private_app_passport_fails(
-        self,
-        mock_extract: MagicMock,
-        mock_app_id: MagicMock,
-        mock_perm: MagicMock,
-        mock_passport_cls: MagicMock,
-        mock_decode: MagicMock,
-        app: Flask,
-    ) -> None:
-        mock_passport_cls.return_value.verify.side_effect = Exception("bad")
-
-        with app.test_request_context("/web/login/status?app_code=code1"):
-            result = LoginStatusApi().get()
-
-        assert result["logged_in"] is False
-        assert result["app_logged_in"] is False
+    assert send_result == {"result": "success", "data": "email-token"}
+    assert login_result == {"result": "success", "data": {"access_token": "access-token"}}
 
 
-class TestLogoutApi:
-    @patch("controllers.web.login.clear_webapp_access_token_from_cookie")
-    def test_logout_success(self, mock_clear: MagicMock, app: Flask) -> None:
-        with app.test_request_context("/web/logout", method="POST"):
-            response = LogoutApi().post()
+def test_email_login_translates_invalid_code(monkeypatch: pytest.MonkeyPatch, context: RequestContext) -> None:
+    class InvalidCodeService(EmailLoginStub):
+        @override
+        def login_with_email_code(
+            self,
+            context: RequestContext,
+            *,
+            email: str,
+            code: str,
+            token: str,
+        ) -> str:
+            del context, email, code, token
+            raise WebInvalidCodeError
 
-        assert response.get_json() == {"result": "success"}
-        mock_clear.assert_called_once()
+    bind_service(monkeypatch, InvalidCodeService())
+
+    with pytest.raises(EmailCodeError):
+        unwrap(EmailCodeLoginApi.post)(
+            EmailCodeLoginApi(),
+            EmailCodeLoginVerifyPayload(email="user@example.com", code="bad", token="email-token"),
+            context,
+        )
+
+
+def test_logout_only_serializes_response_and_clears_cookie(
+    monkeypatch: pytest.MonkeyPatch,
+    app: Flask,
+    context: RequestContext,
+) -> None:
+    cleared: list[tuple[str | None, str]] = []
+
+    def clear_cookie(response: Response, *, samesite: str) -> None:
+        cleared.append((response.get_json()["result"], samesite))
+
+    monkeypatch.setattr(login, "clear_webapp_access_token_from_cookie", clear_cookie)
+    with app.test_request_context("/logout", method="POST"):
+        response = unwrap(LogoutApi.post)(LogoutApi(), context)
+
+    assert response.get_json() == {"result": "success"}
+    assert cleared == [("success", "None")]

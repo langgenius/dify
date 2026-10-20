@@ -4,16 +4,18 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 
 type Props = Readonly<{
+  id?: string
   isDeleted?: boolean
   className?: string
   text: string
 }>
 
-const Label: FC<Props> = ({ isDeleted, className, text }) => {
+const Label: FC<Props> = ({ id, isDeleted, className, text }) => {
   return (
     <div
+      id={id}
       className={cn(
-        'w-[136px] shrink-0 truncate system-xs-medium text-text-tertiary',
+        'w-34 shrink-0 truncate system-xs-medium text-text-tertiary',
         isDeleted && 'text-text-quaternary line-through',
         className,
       )}

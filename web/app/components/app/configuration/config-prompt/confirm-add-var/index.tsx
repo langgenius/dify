@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
-import { useRef } from 'react'
+import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import VarHighlight from '../../base/var-highlight'
 
@@ -36,7 +36,8 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
   onCancel,
   // onHide,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
+  const titleId = useId()
   const mainContentRef = useRef<HTMLDivElement>(null)
   // new prompt editor blur trigger click...
   // useClickAway(() => {
@@ -51,7 +52,9 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
     >
       <div
         ref={mainContentRef}
-        className="w-[420px] rounded-xl bg-components-panel-bg p-6"
+        role="group"
+        aria-labelledby={titleId}
+        className="w-105 rounded-xl bg-components-panel-bg p-6"
         style={{
           boxShadow:
             '0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03)',
@@ -62,10 +65,10 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
             {VarIcon}
           </div>
           <div className="grow">
-            <div className="text-sm font-medium text-text-primary">
+            <div id={titleId} className="text-sm font-medium text-text-primary">
               {t(($) => $.autoAddVar, { ns: 'appDebug' })}
             </div>
-            <div className="mt-[15px] flex max-h-[66px] flex-wrap space-x-1 overflow-y-auto px-1">
+            <div className="mt-3.75 flex max-h-16.5 flex-wrap space-x-1 overflow-y-auto px-1">
               {varNameArr.map((name) => (
                 <VarHighlight key={name} name={name} />
               ))}

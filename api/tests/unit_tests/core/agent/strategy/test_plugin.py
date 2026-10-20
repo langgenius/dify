@@ -1,11 +1,14 @@
 # File: tests/unit_tests/core/agent/strategy/test_plugin.py
 
+from collections.abc import Callable
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
 
+from core.agent.plugin_entities import AgentStrategyParameter
 from core.agent.strategy.plugin import PluginAgentStrategy
+from core.tools.entities.common_entities import I18nObject
 
 # ============================================================
 # Fixtures
@@ -13,8 +16,8 @@ from core.agent.strategy.plugin import PluginAgentStrategy
 
 
 @pytest.fixture
-def mock_parameter():
-    def _factory(name="param", return_value="initialized"):
+def mock_parameter() -> Callable[..., MagicMock]:
+    def _factory(name: str = "param", return_value: object = "initialized") -> MagicMock:
         param = MagicMock()
         param.name = name
         param.init_frontend_parameter = MagicMock(return_value=return_value)
@@ -24,7 +27,7 @@ def mock_parameter():
 
 
 @pytest.fixture
-def mock_declaration(mock_parameter):
+def mock_declaration(mock_parameter: Callable[..., MagicMock]) -> MagicMock:
     param1 = mock_parameter("param1", "init1")
     param2 = mock_parameter("param2", "init2")
 
@@ -40,7 +43,7 @@ def mock_declaration(mock_parameter):
 
 
 @pytest.fixture
-def strategy(mock_declaration):
+def strategy(mock_declaration: MagicMock) -> PluginAgentStrategy:
     return PluginAgentStrategy(
         tenant_id="tenant_123",
         declaration=mock_declaration,
@@ -54,7 +57,7 @@ def strategy(mock_declaration):
 
 
 class TestPluginAgentStrategyInitialization:
-    def test_init_sets_attributes(self, mock_declaration) -> None:
+    def test_init_sets_attributes(self, mock_declaration: MagicMock) -> None:
         strategy = PluginAgentStrategy(
             tenant_id="tenant_test",
             declaration=mock_declaration,
@@ -65,7 +68,7 @@ class TestPluginAgentStrategyInitialization:
         assert strategy.declaration == mock_declaration
         assert strategy.meta_version == "meta_v"
 
-    def test_init_meta_version_none(self, mock_declaration) -> None:
+    def test_init_meta_version_none(self, mock_declaration: MagicMock) -> None:
         strategy = PluginAgentStrategy(
             tenant_id="tenant_test",
             declaration=mock_declaration,
@@ -81,7 +84,9 @@ class TestPluginAgentStrategyInitialization:
 
 
 class TestGetParameters:
-    def test_get_parameters_returns_parameters(self, strategy: PluginAgentStrategy, mock_declaration) -> None:
+    def test_get_parameters_returns_parameters(
+        self, strategy: PluginAgentStrategy, mock_declaration: MagicMock
+    ) -> None:
         result = strategy.get_parameters()
         assert result == mock_declaration.parameters
 
@@ -92,7 +97,7 @@ class TestGetParameters:
 
 
 class TestInitializeParameters:
-    def test_initialize_parameters_success(self, strategy: PluginAgentStrategy, mock_declaration) -> None:
+    def test_initialize_parameters_success(self, strategy: PluginAgentStrategy, mock_declaration: MagicMock) -> None:
         params = {"param1": "value1"}
 
         result = strategy.initialize_parameters(params.copy())
@@ -102,6 +107,17 @@ class TestInitializeParameters:
 
         mock_declaration.parameters[0].init_frontend_parameter.assert_called_once_with("value1")
         mock_declaration.parameters[1].init_frontend_parameter.assert_called_once_with(None)
+
+    def test_initialize_parameters_allows_empty_tools_selection(self, strategy: PluginAgentStrategy) -> None:
+        tools_parameter = AgentStrategyParameter(
+            name="tools",
+            label=I18nObject(en_US="Tools"),
+            required=True,
+            type=AgentStrategyParameter.AgentStrategyParameterType.TOOLS_SELECTOR,
+        )
+        strategy.declaration.parameters = [tools_parameter]
+
+        assert strategy.initialize_parameters({"tools": []}) == {"tools": []}
 
     @pytest.mark.parametrize(
         "input_params",
@@ -114,7 +130,9 @@ class TestInitializeParameters:
             {"param1": {}, "param2": "value"},
         ],
     )
-    def test_initialize_parameters_edge_cases(self, strategy: PluginAgentStrategy, input_params) -> None:
+    def test_initialize_parameters_edge_cases(
+        self, strategy: PluginAgentStrategy, input_params: dict[str, object]
+    ) -> None:
         result = strategy.initialize_parameters(input_params.copy())
 
         for param in strategy.declaration.parameters:
@@ -122,7 +140,7 @@ class TestInitializeParameters:
 
     def test_initialize_parameters_invalid_input_type(self, strategy: PluginAgentStrategy) -> None:
         with pytest.raises(AttributeError):
-            strategy.initialize_parameters(None)
+            strategy.initialize_parameters(None)  # pyrefly: ignore[bad-argument-type]
 
 
 # ============================================================
@@ -215,7 +233,12 @@ class TestInvoke:
         ],
     )
     def test_invoke_optional_arguments(
-        self, strategy, mocker: MockerFixture, conversation_id, app_id, message_id
+        self,
+        strategy: PluginAgentStrategy,
+        mocker: MockerFixture,
+        conversation_id: str | None,
+        app_id: str | None,
+        message_id: str | None,
     ) -> None:
         mock_manager = MagicMock()
         mock_manager.invoke = MagicMock(return_value=iter([]))
@@ -254,7 +277,7 @@ class TestInvoke:
             side_effect=ValueError("conversion failed"),
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="conversion failed"):
             list(strategy._invoke(params={}, user_id="user_1"))
 
     def test_invoke_manager_raises_exception(self, strategy: PluginAgentStrategy, mocker: MockerFixture) -> None:

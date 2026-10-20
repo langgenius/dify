@@ -1,9 +1,23 @@
 import type { Role } from '@/models/access-control'
-import { render, screen } from '@testing-library/react'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import WorkspaceRoleCheckboxList from '../workspace-role-checkbox-list'
 
-vi.mock('@/service/access-control/use-workspace-roles')
+const { mockWorkspaceRoleListHook } = vi.hoisted(() => ({
+  mockWorkspaceRoleListHook: vi.fn(),
+}))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
+    }),
+  }
+})
 
 const createRole = (overrides: Partial<Role>): Role => ({
   id: 'role-1',
@@ -26,43 +40,51 @@ const mockRoles = [
 describe('WorkspaceRoleCheckboxList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useWorkspaceRoleList).mockReturnValue({
-      data: {
-        pages: [
-          {
-            data: mockRoles,
-            pagination: {
-              total_count: 2,
-              per_page: 20,
-              current_page: 1,
-              total_pages: 1,
-            },
-          },
-        ],
-        pageParams: [1],
-      },
-      isLoading: false,
-      error: null,
-      hasNextPage: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
-    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+    mockWorkspaceRoleListHook.mockResolvedValue({
+      data: mockRoles,
+      pagination: { total_count: 2, per_page: 20, current_page: 1, total_pages: 1 },
+    })
   })
 
-  it('should render checkboxes when multiple roles are allowed', () => {
+  it('should provide one named keyboard stop per role and toggle from its label', async () => {
+    const user = userEvent.setup()
+    const onSelectedRolesChange = vi.fn()
     render(
       <WorkspaceRoleCheckboxList
-        selectedRoleIds={['role-1']}
-        selectedRoles={[mockRoles[0]!]}
-        onSelectedRolesChange={vi.fn()}
+        selectedRoleIds={[]}
+        onSelectedRolesChange={onSelectedRolesChange}
       />,
     )
 
-    expect(screen.getByRole('checkbox', { name: /First role/i })).toBeInTheDocument()
-    expect(screen.queryByRole('radio', { name: /First role/i })).not.toBeInTheDocument()
+    const firstRole = await screen.findByRole('checkbox', { name: /First role/i })
+    const secondRole = screen.getByRole('checkbox', { name: /Second role/i })
+    await user.click(await screen.findByText('First role'))
+    expect(onSelectedRolesChange).toHaveBeenLastCalledWith([mockRoles[0]])
+
+    firstRole.focus()
+    await user.tab()
+    expect(secondRole).toHaveFocus()
+    await user.keyboard(' ')
+    expect(onSelectedRolesChange).toHaveBeenLastCalledWith([mockRoles[1]])
   })
 
-  it('should render radios when only one role is allowed', () => {
+  it('should prevent changing disabled roles through their labels', async () => {
+    const user = userEvent.setup()
+    const onSelectedRolesChange = vi.fn()
+    render(
+      <WorkspaceRoleCheckboxList
+        selectedRoleIds={[]}
+        disabledRoleIds={['role-1']}
+        onSelectedRolesChange={onSelectedRolesChange}
+      />,
+    )
+
+    await user.click(await screen.findByText('First role'))
+    expect(onSelectedRolesChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('checkbox', { name: /First role/i })).toHaveAttribute('data-disabled')
+  })
+
+  it('should render radios when only one role is allowed', async () => {
     render(
       <WorkspaceRoleCheckboxList
         selectedRoleIds={['role-1']}
@@ -72,37 +94,62 @@ describe('WorkspaceRoleCheckboxList', () => {
       />,
     )
 
-    expect(screen.getByRole('radio', { name: /First role/i })).toBeInTheDocument()
+    const selectedRole = await screen.findByRole('radio', { name: /First role/i })
+    const unselectedRole = screen.getByRole('radio', { name: /Second role/i })
+    expect(selectedRole).toHaveAttribute('data-checked', '')
+    expect(unselectedRole).not.toHaveAttribute('data-checked')
     expect(screen.queryByRole('checkbox', { name: /First role/i })).not.toBeInTheDocument()
   })
 
-  it('should show legacy role descriptions when only one role is allowed', () => {
-    vi.mocked(useWorkspaceRoleList).mockReturnValue({
-      data: {
-        pages: [
-          {
-            data: [
-              createRole({ id: 'admin', name: 'admin' }),
-              createRole({ id: 'editor', name: 'editor' }),
-              createRole({ id: 'normal', name: 'normal' }),
-              createRole({ id: 'dataset_operator', name: 'dataset_operator' }),
-            ],
-            pagination: {
-              total_count: 4,
-              per_page: 20,
-              current_page: 1,
-              total_pages: 1,
-            },
-          },
-        ],
-        pageParams: [1],
-      },
-      isLoading: false,
-      error: null,
-      hasNextPage: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
-    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+  it('should clear the role search and return focus to the search input', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <WorkspaceRoleCheckboxList
+        selectedRoleIds={[]}
+        selectedRoles={[]}
+        onSelectedRolesChange={vi.fn()}
+      />,
+    )
+
+    const searchInput = screen.getByRole('searchbox', {
+      name: 'permission.role.searchPlaceholder',
+    })
+    await screen.findByRole('checkbox', { name: /Second role/i })
+    await user.type(searchInput, 'First')
+    expect(screen.queryByRole('checkbox', { name: /Second role/i })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+
+    expect(searchInput).toHaveValue('')
+    expect(searchInput).toHaveFocus()
+    expect(screen.getByRole('checkbox', { name: /Second role/i })).toBeInTheDocument()
+  })
+
+  it('should expose disabled state on single-role options', async () => {
+    render(
+      <WorkspaceRoleCheckboxList
+        selectedRoleIds={['role-1']}
+        selectedRoles={[mockRoles[0]!]}
+        allowMultipleRoles={false}
+        disabledRoleIds={['role-1']}
+        onSelectedRolesChange={vi.fn()}
+      />,
+    )
+
+    expect(await screen.findByRole('radio', { name: /First role/i })).toHaveAttribute(
+      'data-disabled',
+      '',
+    )
+    expect(screen.getByRole('radio', { name: /Second role/i })).not.toHaveAttribute('data-disabled')
+  })
+
+  it('should show legacy role descriptions when only one role is allowed', async () => {
+    mockWorkspaceRoleListHook.mockResolvedValue({
+      data: ['admin', 'editor', 'normal', 'dataset_operator'].map((name) =>
+        createRole({ id: name, name }),
+      ),
+      pagination: { total_count: 4, per_page: 20, current_page: 1, total_pages: 1 },
+    })
 
     render(
       <WorkspaceRoleCheckboxList
@@ -113,10 +160,10 @@ describe('WorkspaceRoleCheckboxList', () => {
       />,
     )
 
-    expect(screen.getByText('common.members.adminTip')).toBeInTheDocument()
-    expect(screen.getByText('common.members.editorTip')).toBeInTheDocument()
-    expect(screen.getByText('common.members.normalTip')).toBeInTheDocument()
-    expect(screen.getByText('common.members.datasetOperatorTip')).toBeInTheDocument()
+    expect(await screen.findByText('workspaceMembers.members.adminTip')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.editorTip')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.normalTip')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.datasetOperatorTip')).toBeInTheDocument()
     expect(screen.queryByText('permission.role.noDescription')).not.toBeInTheDocument()
   })
 })

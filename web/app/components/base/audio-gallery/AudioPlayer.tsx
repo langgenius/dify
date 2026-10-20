@@ -1,8 +1,8 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 
@@ -11,7 +11,7 @@ type AudioPlayerProps = Readonly<{
   srcs?: string[] // Support multiple sources
 }>
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -26,11 +26,83 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
   const playPauseLabel = t(($) => $[isPlaying ? 'operation.pause' : 'operation.play'], {
     ns: 'common',
   })
+  const generateWaveformData = async (audioSrc: string, isCurrent: () => boolean) => {
+    if (!window.AudioContext && !(window as any).webkitAudioContext) {
+      setIsAudioAvailable(false)
+      toast.error('Web Audio API is not supported in this browser')
+      return null
+    }
+    let url: URL
+    try {
+      url = new URL(audioSrc, window.location.href)
+    } catch {
+      if (isCurrent()) setIsAudioAvailable(false)
+      return
+    }
+    if (!['http:', 'https:', 'blob:', 'data:'].includes(url.protocol)) {
+      if (isCurrent()) setIsAudioAvailable(false)
+      return
+    }
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const samples = 70
+    try {
+      const response = await fetch(audioSrc, { mode: 'cors' })
+      if (!response || !response.ok) {
+        if (isCurrent()) setIsAudioAvailable(false)
+        return null
+      }
+      const arrayBuffer = await response.arrayBuffer()
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+      const channelData = audioBuffer.getChannelData(0)
+      const blockSize = Math.max(1, Math.floor(channelData.length / samples))
+      const waveformData: number[] = []
+      for (let i = 0; i < samples; i++) {
+        let sum = 0
+        for (let j = 0; j < blockSize; j++) sum += Math.abs(channelData[i * blockSize + j] ?? 0)
+        // Apply nonlinear scaling to enhance small amplitudes
+        waveformData.push((sum / blockSize) * 5)
+      }
+      // Normalized waveform data
+      const maxAmplitude = Math.max(...waveformData) || 1
+      const normalizedWaveform = waveformData.map((amp) => amp / maxAmplitude)
+      if (isCurrent()) {
+        setWaveformData(normalizedWaveform)
+        setIsAudioAvailable(true)
+      }
+    } catch {
+      const waveform: number[] = []
+      let prevValue = Math.random()
+      for (let i = 0; i < samples; i++) {
+        const targetValue = Math.random()
+        const interpolatedValue = prevValue + (targetValue - prevValue) * 0.3
+        waveform.push(interpolatedValue)
+        prevValue = interpolatedValue
+      }
+      const maxAmplitude = Math.max(...waveform)
+      const randomWaveform = waveform.map((amp) => amp / maxAmplitude)
+      if (isCurrent()) {
+        setWaveformData(randomWaveform)
+        setIsAudioAvailable(true)
+      }
+    } finally {
+      await audioContext.close()
+    }
+  }
   useEffect(() => {
     const audio = audioRef.current
     /* v8 ignore next 2 - @preserve */
     if (!audio) return
+    let active = true
+    setIsPlaying(false)
+    setCurrentTime(0)
+    setDuration(0)
+    setWaveformData([])
+    setHoverTime(0)
+    setBufferedTime(0)
+    setHasStartedPlaying(false)
+    setIsAudioAvailable(Boolean(srcs?.[0] || src))
     const handleError = () => {
+      setIsPlaying(false)
       setIsAudioAvailable(false)
     }
     const setAudioData = () => {
@@ -54,74 +126,22 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     audio.load()
     // Use the first source or src to generate waveform
     const primarySrc = srcs?.[0] || src
-    if (primarySrc) {
-      // Delayed generation of waveform data
-      // oxlint-disable-next-line typescript/no-use-before-define
-      const timer = setTimeout(generateWaveformData, 1000, primarySrc)
-      return () => {
-        audio.removeEventListener('loadedmetadata', setAudioData)
-        audio.removeEventListener('timeupdate', setAudioTime)
-        audio.removeEventListener('progress', handleProgress)
-        audio.removeEventListener('ended', handleEnded)
-        audio.removeEventListener('error', handleError)
-        clearTimeout(timer)
-      }
+    const timer = primarySrc
+      ? setTimeout(() => {
+          void generateWaveformData(primarySrc, () => active)
+        }, 1000)
+      : undefined
+    return () => {
+      active = false
+      audio.pause()
+      audio.removeEventListener('loadedmetadata', setAudioData)
+      audio.removeEventListener('timeupdate', setAudioTime)
+      audio.removeEventListener('progress', handleProgress)
+      audio.removeEventListener('ended', handleEnded)
+      audio.removeEventListener('error', handleError)
+      clearTimeout(timer)
     }
   }, [src, srcs])
-  const generateWaveformData = async (audioSrc: string) => {
-    if (!window.AudioContext && !(window as any).webkitAudioContext) {
-      setIsAudioAvailable(false)
-      toast.error('Web Audio API is not supported in this browser')
-      return null
-    }
-    const primarySrc = srcs?.[0] || src
-    const url = primarySrc ? new URL(primarySrc) : null
-    const isHttp = url ? url.protocol === 'http:' || url.protocol === 'https:' : false
-    if (!isHttp) {
-      setIsAudioAvailable(false)
-      return null
-    }
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-    const samples = 70
-    try {
-      const response = await fetch(audioSrc, { mode: 'cors' })
-      if (!response || !response.ok) {
-        setIsAudioAvailable(false)
-        return null
-      }
-      const arrayBuffer = await response.arrayBuffer()
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-      const channelData = audioBuffer.getChannelData(0)
-      const blockSize = Math.floor(channelData.length / samples)
-      const waveformData: number[] = []
-      for (let i = 0; i < samples; i++) {
-        let sum = 0
-        for (let j = 0; j < blockSize; j++) sum += Math.abs(channelData[i * blockSize + j]!)
-        // Apply nonlinear scaling to enhance small amplitudes
-        waveformData.push((sum / blockSize) * 5)
-      }
-      // Normalized waveform data
-      const maxAmplitude = Math.max(...waveformData)
-      const normalizedWaveform = waveformData.map((amp) => amp / maxAmplitude)
-      setWaveformData(normalizedWaveform)
-      setIsAudioAvailable(true)
-    } catch {
-      const waveform: number[] = []
-      let prevValue = Math.random()
-      for (let i = 0; i < samples; i++) {
-        const targetValue = Math.random()
-        const interpolatedValue = prevValue + (targetValue - prevValue) * 0.3
-        waveform.push(interpolatedValue)
-        prevValue = interpolatedValue
-      }
-      const maxAmplitude = Math.max(...waveform)
-      const randomWaveform = waveform.map((amp) => amp / maxAmplitude)
-      setWaveformData(randomWaveform)
-      setIsAudioAvailable(true)
-    } finally {
-      await audioContext.close()
-    }
-  }
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
     if (audio && isAudioAvailable) {
@@ -130,7 +150,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
         audio.pause()
       } else {
         setHasStartedPlaying(true)
-        audio.play().catch((error) => console.error('Error playing audio:', error))
+        audio.play().catch((error) => {
+          console.error('Error playing audio:', error)
+          setIsPlaying(false)
+          setHasStartedPlaying(false)
+        })
       }
       setIsPlaying(!isPlaying)
     } else {
@@ -141,6 +165,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
   const handleCanvasInteraction = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
       e.preventDefault()
+      if (!isAudioAvailable || !Number.isFinite(duration) || duration <= 0) return
       const getClientX = (event: React.MouseEvent | React.TouchEvent): number => {
         if ('touches' in event) return event.touches[0]!.clientX
         return event.clientX
@@ -150,6 +175,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
         const audio = audioRef.current
         if (!canvas || !audio) return
         const rect = canvas.getBoundingClientRect()
+        if (rect.width <= 0) return
         const percent = Math.min(Math.max(0, clientX - rect.left), rect.width) / rect.width
         const newTime = percent * duration
         // Removes the buffer check, allowing drag to any location
@@ -165,7 +191,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
       }
       updateProgress(getClientX(e))
     },
-    [duration, isPlaying],
+    [duration, isAudioAvailable, isPlaying],
   )
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60)
@@ -233,7 +259,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     [duration],
   )
   return (
-    <div className="flex h-9 max-w-[420px] min-w-[240px] items-center gap-2 rounded-[10px] border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-xs">
+    <div className="flex h-9 max-w-105 min-w-60 items-center gap-2 rounded-[10px] border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-xs">
       <audio ref={audioRef} src={src} preload="auto" data-testid="audio-player">
         {/* If srcs array is provided, render multiple source elements */}
         {srcs && srcs.map((srcUrl, index) => <source key={index} src={srcUrl} />)}
@@ -263,7 +289,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
             onTouchMove={handleMouseMove}
             onTouchStart={handleCanvasInteraction}
           />
-          <div className="inline-flex min-w-[50px] items-center justify-center system-xs-medium text-text-accent-secondary">
+          <div className="inline-flex min-w-12.5 items-center justify-center system-xs-medium text-text-accent-secondary">
             <span className="rounded-[10px] px-0.5 py-1">{formatTime(duration)}</span>
           </div>
         </div>

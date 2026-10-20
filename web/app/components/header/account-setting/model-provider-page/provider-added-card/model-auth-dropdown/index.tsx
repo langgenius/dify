@@ -1,14 +1,17 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelProvider, PreferredProviderTypeEnum } from '../../declarations'
 import type { CredentialPanelState } from '../use-credential-panel-state'
 import { Button } from '@langgenius/dify-ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { memo, useCallback, useState } from 'react'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useQuery } from '@tanstack/react-query'
+import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { modelProviderDetailsQueryOptions } from '../../utils'
 import { getButtonConfig } from './button-config'
 import DropdownContent from './dropdown-content'
 
 type ModelAuthDropdownProps = {
-  provider: ModelProvider
+  provider: ModelProviderSummaryResponse | ModelProvider
   state: CredentialPanelState
   isChangingPriority: boolean
   onChangePriority: (key: PreferredProviderTypeEnum) => void
@@ -20,15 +23,23 @@ function ModelAuthDropdown({
   isChangingPriority,
   onChangePriority,
 }: ModelAuthDropdownProps) {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-
-  const handleClose = useCallback(() => setOpen(false), [])
-
+  const { t } = useTranslation(['common', 'modelProvider'])
+  const [requestedOpen, setRequestedOpen] = useState(false)
+  const isFullProvider = !('is_configured' in provider) || 'provider_credential_schema' in provider
+  const detailQuery = useQuery({
+    ...modelProviderDetailsQueryOptions(),
+    enabled: requestedOpen && !isFullProvider,
+    retry: false,
+  })
+  const currentProvider = isFullProvider
+    ? provider
+    : detailQuery.data?.data.find((item) => item.provider === provider.provider)
+  const loading = requestedOpen && !isFullProvider && detailQuery.isLoading
+  const open = requestedOpen && (isFullProvider || !detailQuery.isPending)
   const buttonConfig = getButtonConfig(state.variant, state.hasCredentials, t)
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setRequestedOpen}>
       <PopoverTrigger
         render={
           <Button
@@ -36,20 +47,33 @@ function ModelAuthDropdown({
             size="small"
             variant={buttonConfig.variant}
             title={buttonConfig.text}
+            loading={loading}
           >
-            <span className="mr-1 i-ri-equalizer-2-line size-3.5 shrink-0" />
+            <span className="i-ri-equalizer-2-line size-3.5 shrink-0" />
             <span className="min-w-0 truncate">{buttonConfig.text}</span>
           </Button>
         }
       />
       <PopoverContent placement="bottom-end">
-        <DropdownContent
-          provider={provider}
-          state={state}
-          isChangingPriority={isChangingPriority}
-          onChangePriority={onChangePriority}
-          onClose={handleClose}
-        />
+        <PopoverTitle className="sr-only">{buttonConfig.text}</PopoverTitle>
+        {currentProvider ? (
+          <DropdownContent
+            provider={currentProvider}
+            state={state}
+            isChangingPriority={isChangingPriority}
+            onChangePriority={onChangePriority}
+            onClose={() => setRequestedOpen(false)}
+          />
+        ) : (
+          <div className="flex w-80 flex-col items-start gap-3 p-4" role="alert">
+            <span className="system-sm-medium text-text-primary">
+              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </span>
+            <Button size="small" variant="secondary" onClick={() => void detailQuery.refetch()}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   )

@@ -33,7 +33,7 @@ class OracleOCIStorage(BaseStorage):
             data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].read()
         except ClientError as ex:
             if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
-                raise FileNotFoundError("File not found")
+                raise FileNotFoundError("File not found") from ex
             else:
                 raise
         return data
@@ -45,7 +45,7 @@ class OracleOCIStorage(BaseStorage):
             yield from response["Body"].iter_chunks()
         except ClientError as ex:
             if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
-                raise FileNotFoundError("File not found")
+                raise FileNotFoundError("File not found") from ex
             else:
                 raise
 
@@ -58,9 +58,15 @@ class OracleOCIStorage(BaseStorage):
         try:
             self.client.head_object(Bucket=self.bucket_name, Key=filename)
             return True
-        except:
+        except ClientError:
             return False
 
     @override
     def delete(self, filename: str):
         self.client.delete_object(Bucket=self.bucket_name, Key=filename)
+
+    @override
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        pages = self.client.get_paginator("list_objects_v2").paginate(Bucket=self.bucket_name, Prefix=path)
+        keys = (obj["Key"] for page in pages for obj in page.get("Contents", []))
+        return self._filter_scan_keys(keys, files, directories)

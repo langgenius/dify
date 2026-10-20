@@ -16,7 +16,7 @@
 /.agents/skills/ @hyoban
 
 # Packages
-/packages/ @lyzno1
+/packages/ @lyzno1 @hyoban
 /packages/contracts/ @crazywoola @laipz8200
 
 # Docs
@@ -26,24 +26,39 @@
 /cli/ @GareArc
 /.github/workflows/cli-tests.yml @GareArc
 
+# Dify Agent
+/dify-agent/ @BeautyyuYanli
+
 # E2E
-/e2e/ @lyzno1
+/e2e/ @lyzno1 @hyoban
+/.github/workflows/web-e2e.yml @lyzno1 @hyoban
 
 # Backend (default owner, more specific rules below will override)
 /api/ @QuantumGhost
 
-# Backend - Tests
+# Backend - Tests (default owners, domain-specific rules below will override)
 /api/tests/ @laipz8200 @QuantumGhost
+/api/tests/*/core/rag/ @JohnJyong
+/api/tests/*/services/rag_pipeline/ @JohnJyong
+/api/tests/*/services/dataset_service/ @JohnJyong
+/api/tests/*/controllers/console/datasets/ @JohnJyong
+/api/tests/*/controllers/service_api/dataset/ @JohnJyong
+/api/tests/*/vdb/ @JohnJyong
+/api/tests/*/core/plugin/ @WH-2099
+/api/tests/*/services/plugin/ @WH-2099
+/api/tests/*/controllers/inner_api/plugin/ @WH-2099
+/api/tests/*/controllers/trigger/ @CourTeous33
+/api/tests/*/core/trigger/ @CourTeous33
+/api/tests/*/trigger/ @CourTeous33
+/api/tests/*/controllers/console/billing/ @zyssyz123
+/api/tests/*/services/enterprise/ @GareArc
+/api/tests/*/migrations/ @snakevash @laipz8200 @MRZHUH
 
 # Backend - RAG (Retrieval Augmented Generation)
 /api/core/rag/ @JohnJyong
+/api/services/knowledge/ @JohnJyong
 /api/services/rag_pipeline/ @JohnJyong
-/api/services/dataset_service.py @JohnJyong
-/api/services/knowledge_service.py @JohnJyong
-/api/services/external_knowledge_service.py @JohnJyong
 /api/services/hit_testing_service.py @JohnJyong
-/api/services/metadata_service.py @JohnJyong
-/api/services/vector_service.py @JohnJyong
 /api/services/entities/knowledge_entities/ @JohnJyong
 /api/services/entities/external_knowledge_entities/ @JohnJyong
 /api/controllers/console/datasets/ @JohnJyong
@@ -108,8 +123,8 @@
 /api/tasks/async_workflow_tasks.py @Mairuis
 
 # Backend - Billing
-/api/services/billing_service.py @hj24 @zyssyz123
-/api/controllers/console/billing/ @hj24 @zyssyz123
+/api/services/billing_service.py @zyssyz123
+/api/controllers/console/billing/ @zyssyz123
 
 # Backend - Enterprise
 /api/configs/enterprise/ @GareArc
@@ -127,12 +142,21 @@
 # Frontend
 /web/ @iamjoel
 
+# Frontend - Tooling
+/packages/tooling/ @hyoban @lyzno1
+/eslint.config.mjs @hyoban @lyzno1
+/knip.config.ts @hyoban @lyzno1
+/vite.config.ts @hyoban @lyzno1
+/web/vite.config.ts @lyzno1 @hyoban
+/web/next.config.ts @lyzno1 @hyoban
+/web/plugins/vite/ @lyzno1 @hyoban
+/web/next/ @lyzno1 @hyoban
+
 # Frontend - Platform and Features
-/web/config/ @lyzno1
-/web/env.ts @lyzno1
-/web/features/ @lyzno1
-/web/hooks/ @lyzno1
-/web/scripts/gen-icons.mjs @lyzno1
+/web/config/ @lyzno1 @hyoban
+/web/env.ts @lyzno1 @hyoban
+/web/features/ @lyzno1 @hyoban
+/web/hooks/ @lyzno1 @hyoban
 
 # Frontend - Web Tests
 /.github/workflows/web-tests.yml @iamjoel
@@ -154,10 +178,6 @@
 /web/app/components/app/create-app-dialog/ @JzoNgKVO @iamjoel
 /web/app/components/app/create-app-modal/ @JzoNgKVO @iamjoel
 /web/app/components/app/create-from-dsl-modal/ @JzoNgKVO @iamjoel
-
-# Frontend - App - API Documentation
-/web/app/components/develop/ @JzoNgKVO @iamjoel
-/web/app/components/develop/template/*.mdx @JzoNgKVO @iamjoel @RiskeyL
 
 # Frontend - App - Logs and Annotations
 /web/app/components/app/workflow-log/ @JzoNgKVO @iamjoel
@@ -245,7 +265,7 @@
 
 # Frontend - Billing and Education
 /web/app/components/billing/ @iamjoel @zxhlyh
-/web/app/education-apply/ @iamjoel @zxhlyh
+/web/app/education/ @iamjoel @zxhlyh
 
 # Frontend - Workspace
 /web/app/components/header/account-dropdown/workplace-selector/ @iamjoel @zxhlyh
@@ -256,16 +276,18 @@
 /web/app/(commonLayout)/layout.tsx @iamjoel @lyzno1
 /web/app/(commonLayout)/providers.tsx @iamjoel @lyzno1
 /web/app/(commonLayout)/hydration-boundary.tsx @iamjoel @lyzno1
-/web/app/(commonLayout)/profile-bootstrap-gate.tsx @iamjoel @lyzno1
 /web/app/(commonLayout)/error.tsx @iamjoel @lyzno1
 /web/app/account/(commonLayout)/layout.tsx @iamjoel @lyzno1
-/web/app/components/main-nav/* @iamjoel @lyzno1
-/web/app/components/main-nav/components/* @iamjoel @lyzno1
-/web/context/query-client.tsx @iamjoel @lyzno1
-/web/context/query-client-server.ts @iamjoel @lyzno1
+/web/app/components/main-nav/ @iamjoel @lyzno1
 /web/proxy.ts @iamjoel @lyzno1
 /web/app/auth/refresh/route.ts @iamjoel @lyzno1
-/web/service/server.ts @iamjoel @lyzno1
+
+# Frontend - Query Infrastructure and Console Service
+/web/app/get-query-client.ts @lyzno1 @hyoban
+/web/service/console/ @lyzno1 @hyoban
+
+# Frontend - Browser Mode Tests
+/web/app/**/*.browser.spec.tsx @lyzno1 @hyoban
 
 # Docker
 /docker/* @laipz8200

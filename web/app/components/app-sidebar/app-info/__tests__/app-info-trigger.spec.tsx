@@ -1,112 +1,150 @@
-import type { App, AppSSO } from '@/types/app'
-import { render, screen } from '@testing-library/react'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { AppModeEnum } from '@/types/app'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import { AppACLPermission } from '@/utils/permission'
 import AppInfoTrigger from '../app-info-trigger'
 
-vi.mock('../../../base/app-icon', () => ({
-  default: ({
-    size,
-    icon,
-    background,
-  }: {
-    size: string
-    icon: string
-    background: string
-    iconType?: string
-    imageUrl?: string
-  }) => <div data-testid="app-icon" data-size={size} data-icon={icon} data-bg={background} />,
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['app.create_and_management'] as string[],
+}))
+const mockConsoleState = vi.hoisted(() => ({
+  current: {
+    userProfile: { id: 'user-1' },
+    get workspacePermissionKeys() {
+      return mockWorkspacePermissionKeys.value
+    },
+  },
 }))
 
-const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
-  ({
+const render = (ui: Parameters<typeof renderWithConsoleState>[0]) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper({ id: 'user-1' }),
+  })
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState.current)
+})
+
+const defaultAppPermissionKeys = [
+  AppACLPermission.Edit,
+  AppACLPermission.ImportExportDSL,
+  AppACLPermission.Delete,
+]
+
+const createAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
+  createAppDetailFixture({
     id: 'app-1',
     name: 'Test App',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     icon: '🤖',
     icon_type: 'emoji',
     icon_background: '#FFEAD5',
     icon_url: '',
     description: 'A test app',
     use_icon_as_answer_icon: false,
+    permission_keys: defaultAppPermissionKeys,
+    maintainer: 'user-1',
     ...overrides,
-  }) as App & Partial<AppSSO>
+  })
+
+const createProps = (overrides: Partial<React.ComponentProps<typeof AppInfoTrigger>> = {}) => ({
+  appDetail: createAppDetail(),
+  expand: true,
+  openModal: vi.fn(),
+  isExporting: false,
+  exportCheck: vi.fn(),
+  ...overrides,
+})
+
+const getOperationsTrigger = () =>
+  screen.getByRole('button', { name: /common\.operation\.moreActionsFor/ })
 
 describe('AppInfoTrigger', () => {
-  it('should render app icon with correct size when expanded', () => {
-    render(<AppInfoTrigger appDetail={createAppDetail()} expand onClick={vi.fn()} />)
-    const icon = screen.getByTestId('app-icon')
-    expect(icon).toHaveAttribute('data-size', 'large')
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockWorkspacePermissionKeys.value = ['app.create_and_management']
   })
 
-  it('should render app icon with small size when collapsed', () => {
-    render(<AppInfoTrigger appDetail={createAppDetail()} expand={false} onClick={vi.fn()} />)
-    const icon = screen.getByTestId('app-icon')
-    expect(icon).toHaveAttribute('data-size', 'medium')
-  })
-
-  it('should show app name when expanded', () => {
-    render(
-      <AppInfoTrigger
-        appDetail={createAppDetail({ name: 'My Chatbot' })}
-        expand
-        onClick={vi.fn()}
-      />,
-    )
-    expect(screen.getByText('My Chatbot')).toBeInTheDocument()
-  })
-
-  it('should not show app name when collapsed', () => {
-    render(
-      <AppInfoTrigger
-        appDetail={createAppDetail({ name: 'My Chatbot' })}
-        expand={false}
-        onClick={vi.fn()}
-      />,
-    )
-    expect(screen.queryByText('My Chatbot')).not.toBeInTheDocument()
-  })
-
-  it('should show app mode label when expanded', () => {
-    render(
-      <AppInfoTrigger
-        appDetail={createAppDetail({ mode: AppModeEnum.ADVANCED_CHAT })}
-        expand
-        onClick={vi.fn()}
-      />,
-    )
-    expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
-  })
-
-  it('should not show mode label when collapsed', () => {
-    render(<AppInfoTrigger appDetail={createAppDetail()} expand={false} onClick={vi.fn()} />)
-    expect(screen.queryByText('app.types.chatbot')).not.toBeInTheDocument()
-  })
-
-  it('should call onClick when button is clicked', async () => {
+  it('renders expanded app metadata without making the app info clickable', async () => {
     const user = userEvent.setup()
-    const onClick = vi.fn()
-    render(<AppInfoTrigger appDetail={createAppDetail()} expand onClick={onClick} />)
+    const props = createProps({
+      appDetail: createAppDetail({ name: 'My Chatbot', mode: 'advanced-chat' as const }),
+    })
+    render(<AppInfoTrigger {...props} />)
 
-    await user.click(screen.getByRole('button'))
+    expect(screen.getByText('🤖')).toBeInTheDocument()
+    expect(screen.getByText('My Chatbot')).toBeInTheDocument()
+    expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
 
-    expect(onClick).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByText('🤖'))
+
+    expect(props.openModal).not.toHaveBeenCalled()
+    expect(props.exportCheck).not.toHaveBeenCalled()
   })
 
-  it('should show settings icon in expanded and collapsed states', () => {
-    const { container, rerender } = render(
-      <AppInfoTrigger appDetail={createAppDetail()} expand onClick={vi.fn()} />,
+  it('opens workflow conversion for a chat app', async () => {
+    const user = userEvent.setup()
+    const props = createProps()
+    render(<AppInfoTrigger {...props} />)
+
+    await user.click(getOperationsTrigger())
+
+    await user.click(screen.getByRole('menuitem', { name: 'app.switch' }))
+    expect(props.openModal).toHaveBeenCalledWith('switch')
+  })
+
+  it('shows import DSL for workflow apps without a workflow conversion operation', async () => {
+    const user = userEvent.setup()
+    const props = createProps({
+      appDetail: createAppDetail({ mode: 'workflow' as const }),
+    })
+    render(<AppInfoTrigger {...props} />)
+
+    await user.click(getOperationsTrigger())
+
+    expect(screen.getByRole('menuitem', { name: 'app.importApp' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'app.switch' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('menuitem', { name: 'app.importApp' }))
+    expect(props.openModal).toHaveBeenCalledWith('importDSL')
+  })
+
+  it('runs export from the menu and disables it while an export is pending', async () => {
+    const user = userEvent.setup()
+    const props = createProps({ isExporting: true })
+    const { rerender } = render(<AppInfoTrigger {...props} />)
+
+    await user.click(getOperationsTrigger())
+    expect(screen.getByRole('menuitem', { name: 'app.exportApp' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
     )
-    expect(container.querySelector('.i-ri-equalizer-2-line')).toBeInTheDocument()
 
-    rerender(<AppInfoTrigger appDetail={createAppDetail()} expand={false} onClick={vi.fn()} />)
-    expect(container.querySelector('.i-ri-equalizer-2-line')).not.toBeInTheDocument()
+    const readyProps = createProps()
+    rerender(<AppInfoTrigger {...readyProps} />)
+    await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
+
+    expect(readyProps.exportCheck).toHaveBeenCalledTimes(1)
   })
 
-  it('should center the icon wrapper when collapsed', () => {
-    render(<AppInfoTrigger appDetail={createAppDetail()} expand={false} onClick={vi.fn()} />)
-    const iconWrapper = screen.getByTestId('app-icon').parentElement
-    expect(iconWrapper?.parentElement).toHaveClass('items-center')
+  it('keeps the operations trigger disabled when no operation is permitted', () => {
+    mockWorkspacePermissionKeys.value = []
+    render(
+      <AppInfoTrigger
+        {...createProps({
+          appDetail: createAppDetail({
+            maintainer: 'user-2',
+            permission_keys: [AppACLPermission.ViewLayout],
+          }),
+        })}
+      />,
+    )
+
+    expect(getOperationsTrigger()).toBeDisabled()
   })
 })

@@ -1,275 +1,209 @@
-import { renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { PropsWithChildren } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { createElement } from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
+import { createWorkflowStore } from '@/app/components/workflow/store'
+import { consoleQuery } from '@/service/console'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
+import { createDatasourceProvider } from '../../__tests__/datasource-fixtures'
+import { createRagPipelineSliceSlice } from '../../store'
 import { usePipelineConfig } from '../use-pipeline-config'
 
-const mockUseStore = vi.fn()
-const mockWorkflowStoreGetState = vi.fn()
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => mockUseStore(selector),
-  useWorkflowStore: () => ({
-    getState: mockWorkflowStoreGetState,
-  }),
+const mocks = vi.hoisted(() => ({
+  request: vi.fn<(url: string) => Promise<Response>>(),
+  catalog: vi.fn<() => Promise<Response>>(),
+  defaults: vi.fn<(url: string) => Promise<Response>>(),
+  published: vi.fn<(url: string) => Promise<Response>>(),
 }))
+vi.mock('@/service/base', () => ({ request: mocks.request }))
 
-const mockUseWorkflowConfig = vi.fn()
-vi.mock('@/service/use-workflow', () => ({
-  useWorkflowConfig: (url: string, callback: (data: unknown) => void) =>
-    mockUseWorkflowConfig(url, callback),
-}))
-
-const mockUseDataSourceList = vi.fn()
-vi.mock('@/service/use-pipeline', () => ({
-  useDataSourceList: (enabled: boolean, callback: (data: unknown) => void) =>
-    mockUseDataSourceList(enabled, callback),
-}))
-
-vi.mock('@/utils/var', () => ({
-  basePath: '/base',
-}))
+const catalog = consoleQuery.rag.pipelines.datasourcePlugins.get
 
 describe('usePipelineConfig', () => {
-  const mockSetNodesDefaultConfigs = vi.fn()
-  const mockSetPublishedAt = vi.fn()
-  const mockSetDataSourceList = vi.fn()
-  const mockSetFileUploadConfig = vi.fn()
+  let pipelineId: string
+  let client: QueryClient
+  let store: ReturnType<typeof createWorkflowStore>
+  const wrapper = ({ children }: PropsWithChildren) =>
+    createElement(
+      QueryClientProvider,
+      { client },
+      createElement(EditorResourceScope, {
+        resource: { kind: 'knowledge-pipeline', pipelineId },
+        children: createElement(WorkflowContext.Provider, { value: store }, children),
+      }),
+    )
 
   beforeEach(() => {
     vi.clearAllMocks()
-
-    mockUseStore.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
-      const state = { pipelineId: 'test-pipeline-id' }
-      return selector(state)
-    })
-
-    mockWorkflowStoreGetState.mockReturnValue({
-      setNodesDefaultConfigs: mockSetNodesDefaultConfigs,
-      setPublishedAt: mockSetPublishedAt,
-      setDataSourceList: mockSetDataSourceList,
-      setFileUploadConfig: mockSetFileUploadConfig,
-    })
-  })
-
-  afterEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('hook initialization', () => {
-    it('should call useWorkflowConfig with correct URL for nodes default configs', () => {
-      renderHook(() => usePipelineConfig())
-
-      expect(mockUseWorkflowConfig).toHaveBeenCalledWith(
-        '/rag/pipelines/test-pipeline-id/workflows/default-workflow-block-configs',
-        expect.any(Function),
-      )
-    })
-
-    it('should call useWorkflowConfig with correct URL for published workflow', () => {
-      renderHook(() => usePipelineConfig())
-
-      expect(mockUseWorkflowConfig).toHaveBeenCalledWith(
-        '/rag/pipelines/test-pipeline-id/workflows/publish',
-        expect.any(Function),
-      )
-    })
-
-    it('should call useWorkflowConfig with correct URL for file upload config', () => {
-      renderHook(() => usePipelineConfig())
-
-      expect(mockUseWorkflowConfig).toHaveBeenCalledWith('/files/upload', expect.any(Function))
-    })
-
-    it('should call useDataSourceList when pipelineId exists', () => {
-      renderHook(() => usePipelineConfig())
-
-      expect(mockUseDataSourceList).toHaveBeenCalledWith(true, expect.any(Function))
-    })
-
-    it('should call useDataSourceList with false when pipelineId is missing', () => {
-      mockUseStore.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
-        const state = { pipelineId: undefined }
-        return selector(state)
-      })
-
-      renderHook(() => usePipelineConfig())
-
-      expect(mockUseDataSourceList).toHaveBeenCalledWith(false, expect.any(Function))
-    })
-
-    it('should use empty URL when pipelineId is missing for nodes configs', () => {
-      mockUseStore.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
-        const state = { pipelineId: undefined }
-        return selector(state)
-      })
-
-      renderHook(() => usePipelineConfig())
-
-      expect(mockUseWorkflowConfig).toHaveBeenCalledWith('', expect.any(Function))
+    client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
+    store = createWorkflowStore({ injectWorkflowStoreSliceFn: createRagPipelineSliceSlice })
+    pipelineId = 'pipeline-1'
+    mocks.catalog.mockImplementation(async () => Response.json([]))
+    mocks.defaults.mockImplementation(async () => Response.json([]))
+    mocks.published.mockImplementation(async () => Response.json(null))
+    mocks.request.mockImplementation(async (url) => {
+      if (url.endsWith('/datasource-plugins')) return mocks.catalog()
+      if (url.endsWith('/default-workflow-block-configs')) return mocks.defaults(url)
+      if (url.endsWith('/publish')) return mocks.published(url)
+      if (url.endsWith('/files/upload')) return Response.json(createFileUploadConfigFixture())
+      throw new Error(`Unexpected request ${url}`)
     })
   })
+  afterEach(() => client.clear())
 
-  describe('handleUpdateNodesDefaultConfigs', () => {
-    it('should handle array format configs', () => {
-      let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseWorkflowConfig.mockImplementation((url: string, callback: (data: unknown) => void) => {
-        if (url.includes('default-workflow-block-configs')) {
-          capturedCallback = callback
-        }
-      })
+  it('hydrates the store from cached raw data before refreshing it', async () => {
+    const cached = [createDatasourceProvider()]
+    client.setQueryData(catalog.queryKey(), cached)
+    let resolveRequest!: (response: Response) => void
+    mocks.catalog.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRequest = resolve
+      }),
+    )
 
-      renderHook(() => usePipelineConfig())
+    renderHook(usePipelineConfig, { wrapper })
 
-      const arrayConfigs = [
-        { type: 'llm', config: { model: 'gpt-4' } },
-        { type: 'code', config: { language: 'python' } },
-      ]
-
-      capturedCallback?.(arrayConfigs)
-
-      expect(mockSetNodesDefaultConfigs).toHaveBeenCalledWith({
-        llm: { model: 'gpt-4' },
-        code: { language: 'python' },
-      })
-    })
-
-    it('should handle object format configs', () => {
-      let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseWorkflowConfig.mockImplementation((url: string, callback: (data: unknown) => void) => {
-        if (url.includes('default-workflow-block-configs')) {
-          capturedCallback = callback
-        }
-      })
-
-      renderHook(() => usePipelineConfig())
-
-      const objectConfigs = {
-        llm: { model: 'gpt-4' },
-        code: { language: 'python' },
-      }
-
-      capturedCallback?.(objectConfigs)
-
-      expect(mockSetNodesDefaultConfigs).toHaveBeenCalledWith(objectConfigs)
-    })
+    expect(store.getState().dataSourceList).toEqual(cached)
+    expect(store.getState().dataSourceList?.[0]?.declaration.identity.icon).toBe('/datasource.svg')
+    const refreshed = [createDatasourceProvider({ is_authorized: false })]
+    await act(async () => resolveRequest(Response.json(refreshed)))
+    await waitFor(() => expect(store.getState().dataSourceList).toEqual(refreshed))
+    expect(mocks.catalog).toHaveBeenCalledOnce()
+    expect(mocks.request).toHaveBeenCalledWith(
+      expect.stringContaining('/rag/pipelines/datasource-plugins'),
+      expect.anything(),
+      expect.anything(),
+    )
+    expect(client.getQueryData(catalog.queryKey())).toEqual(refreshed)
+    expect(store.getState().dataSourceList).toBe(client.getQueryData(catalog.queryKey()))
+    expect(cached[0]?.declaration.identity.icon).toBe('/datasource.svg')
   })
 
-  describe('handleUpdatePublishedAt', () => {
-    it('should set published at from workflow response', () => {
-      let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseWorkflowConfig.mockImplementation((url: string, callback: (data: unknown) => void) => {
-        if (url.includes('/publish')) {
-          capturedCallback = callback
-        }
-      })
+  it('reconciles an empty catalog on background invalidation', async () => {
+    const providers = [createDatasourceProvider()]
+    mocks.catalog.mockResolvedValueOnce(Response.json(providers))
+    renderHook(usePipelineConfig, { wrapper })
+    await waitFor(() => expect(store.getState().dataSourceList).toEqual(providers))
 
-      renderHook(() => usePipelineConfig())
+    await act(async () => client.invalidateQueries({ queryKey: catalog.key() }))
 
-      capturedCallback?.({ created_at: '2024-01-01T00:00:00Z' })
-
-      expect(mockSetPublishedAt).toHaveBeenCalledWith('2024-01-01T00:00:00Z')
-    })
-
-    it('should reset published at when workflow response is empty', () => {
-      let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseWorkflowConfig.mockImplementation((url: string, callback: (data: unknown) => void) => {
-        if (url.includes('/publish')) {
-          capturedCallback = callback
-        }
-      })
-
-      renderHook(() => usePipelineConfig())
-
-      capturedCallback?.(undefined)
-
-      expect(mockSetPublishedAt).toHaveBeenCalledWith(0)
-    })
+    await waitFor(() => expect(store.getState().dataSourceList).toEqual([]))
+    expect(mocks.catalog).toHaveBeenCalledTimes(2)
   })
 
-  describe('handleUpdateDataSourceList', () => {
-    it('should set data source list', () => {
-      let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseDataSourceList.mockImplementation(
-        (_enabled: boolean, callback: (data: unknown) => void) => {
-          capturedCallback = callback
-        },
-      )
+  it('does not request or hydrate datasource state before a pipeline is available', () => {
+    pipelineId = ''
+    client.setQueryData(catalog.queryKey(), [createDatasourceProvider()])
+    renderHook(usePipelineConfig, { wrapper })
 
-      renderHook(() => usePipelineConfig())
-
-      const dataSourceList = [{ declaration: { identity: { icon: '/icon.png' } } }]
-
-      capturedCallback?.(dataSourceList)
-
-      expect(mockSetDataSourceList).toHaveBeenCalled()
-    })
-
-    it('should prepend basePath to icon if not included', () => {
-      let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseDataSourceList.mockImplementation(
-        (_enabled: boolean, callback: (data: unknown) => void) => {
-          capturedCallback = callback
-        },
-      )
-
-      renderHook(() => usePipelineConfig())
-
-      const dataSourceList = [{ declaration: { identity: { icon: '/icon.png' } } }]
-
-      capturedCallback?.(dataSourceList)
-
-      expect(dataSourceList[0]!.declaration.identity.icon).toBe('/base/icon.png')
-    })
-
-    it('should not modify icon if it already includes basePath', () => {
-      let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseDataSourceList.mockImplementation(
-        (_enabled: boolean, callback: (data: unknown) => void) => {
-          capturedCallback = callback
-        },
-      )
-
-      renderHook(() => usePipelineConfig())
-
-      const dataSourceList = [{ declaration: { identity: { icon: '/base/icon.png' } } }]
-
-      capturedCallback?.(dataSourceList)
-
-      expect(dataSourceList[0]!.declaration.identity.icon).toBe('/base/icon.png')
-    })
-
-    it('should handle non-string icon', () => {
-      let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseDataSourceList.mockImplementation(
-        (_enabled: boolean, callback: (data: unknown) => void) => {
-          capturedCallback = callback
-        },
-      )
-
-      renderHook(() => usePipelineConfig())
-
-      const dataSourceList = [{ declaration: { identity: { icon: { url: '/icon.png' } } } }]
-
-      capturedCallback?.(dataSourceList)
-
-      expect(dataSourceList[0]!.declaration.identity.icon).toEqual({ url: '/icon.png' })
-    })
+    expect(mocks.catalog).not.toHaveBeenCalled()
+    expect(store.getState().dataSourceList).toEqual([])
+    expect(mocks.defaults).not.toHaveBeenCalled()
+    expect(mocks.published).not.toHaveBeenCalled()
   })
 
-  describe('handleUpdateWorkflowFileUploadConfig', () => {
-    it('should set file upload config', () => {
-      let capturedCallback: ((data: unknown) => void) | undefined
-      mockUseWorkflowConfig.mockImplementation((url: string, callback: (data: unknown) => void) => {
-        if (url === '/files/upload') {
-          capturedCallback = callback
-        }
-      })
+  it('fetches and synchronizes when the pipeline becomes available', async () => {
+    pipelineId = ''
+    const providers = [createDatasourceProvider()]
+    mocks.catalog.mockResolvedValue(Response.json(providers))
+    const { rerender } = renderHook(usePipelineConfig, { wrapper })
 
-      renderHook(() => usePipelineConfig())
+    pipelineId = 'pipeline-2'
+    rerender()
 
-      const config = { max_file_size: 10 * 1024 * 1024 }
-      capturedCallback?.(config)
+    await waitFor(() => expect(store.getState().dataSourceList).toEqual(providers))
+  })
 
-      expect(mockSetFileUploadConfig).toHaveBeenCalledWith(config)
-    })
+  it('keeps cached data when refreshing fails without retrying the availability request', async () => {
+    const providers = [createDatasourceProvider()]
+    client.setQueryData(catalog.queryKey(), providers)
+    mocks.catalog.mockRejectedValue(new Error('Datasource catalog unavailable'))
+    renderHook(usePipelineConfig, { wrapper })
+
+    await waitFor(() => expect(client.getQueryState(catalog.queryKey())?.status).toBe('error'))
+    expect(client.getQueryState(catalog.queryKey())?.fetchFailureCount).toBe(1)
+    expect(mocks.catalog).toHaveBeenCalledOnce()
+    expect(store.getState().dataSourceList).toEqual(providers)
+  })
+
+  it('hydrates all configuration from the generated cache before refreshing', async () => {
+    const workflows = consoleQuery.rag.pipelines.byPipelineId.workflows
+    const input = { params: { pipeline_id: pipelineId } }
+    const defaultsKey = workflows.defaultWorkflowBlockConfigs.get.queryKey({ input })
+    const publishKey = workflows.publish.get.queryKey({ input })
+    const uploadKey = consoleQuery.files.upload.get.queryKey()
+    const config = [{ type: 'llm', config: { model: 'cached' } }]
+    const upload = createFileUploadConfigFixture({ file_size_limit: 23 })
+    client.setQueryData(defaultsKey, config)
+    client.setQueryData(publishKey, createWorkflowResponseFixture({ created_at: 123 }))
+    client.setQueryData(uploadKey, upload)
+    // Keep refreshes pending so only cached data can hydrate the new editor.
+    mocks.request.mockImplementation(() => new Promise(() => {}))
+
+    const { unmount } = renderHook(usePipelineConfig, { wrapper })
+
+    expect(store.getState().nodesDefaultConfigs).toEqual({ llm: { model: 'cached' } })
+    expect(store.getState().publishedAt).toBe(123_000)
+    expect(store.getState().fileUploadConfig).toEqual(upload)
+    unmount()
+    store = createWorkflowStore({ injectWorkflowStoreSliceFn: createRagPipelineSliceSlice })
+    renderHook(usePipelineConfig, { wrapper })
+    expect(store.getState().nodesDefaultConfigs).toEqual({ llm: { model: 'cached' } })
+    expect(store.getState().publishedAt).toBe(123_000)
+    expect(store.getState().fileUploadConfig).toEqual(upload)
+  })
+
+  it('refreshes node defaults and clears the published timestamp for an unpublished pipeline', async () => {
+    mocks.defaults.mockResolvedValueOnce(
+      Response.json([{ type: 'llm', config: { model: 'first' } }]),
+    )
+    mocks.published.mockResolvedValueOnce(
+      Response.json(createWorkflowResponseFixture({ created_at: 123 })),
+    )
+    renderHook(usePipelineConfig, { wrapper })
+    await waitFor(() => expect(store.getState().publishedAt).toBe(123_000))
+    expect(store.getState().nodesDefaultConfigs).toEqual({ llm: { model: 'first' } })
+
+    await act(async () =>
+      client.invalidateQueries({
+        queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.key(),
+      }),
+    )
+
+    await waitFor(() => expect(store.getState().publishedAt).toBe(0))
+    expect(store.getState().nodesDefaultConfigs).toEqual({})
+  })
+
+  it('does not apply a previous pipeline response after switching editors', async () => {
+    let resolvePrevious!: (response: Response) => void
+    mocks.defaults.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePrevious = resolve
+        }),
+    )
+    mocks.defaults.mockResolvedValueOnce(
+      Response.json([{ type: 'llm', config: { model: 'second' } }]),
+    )
+    const { rerender } = renderHook(usePipelineConfig, { wrapper })
+    await waitFor(() => expect(mocks.defaults).toHaveBeenCalledOnce())
+
+    pipelineId = 'pipeline-2'
+    rerender()
+    await waitFor(() =>
+      expect(store.getState().nodesDefaultConfigs).toEqual({ llm: { model: 'second' } }),
+    )
+    await act(async () =>
+      resolvePrevious(Response.json([{ type: 'llm', config: { model: 'first' } }])),
+    )
+
+    expect(store.getState().nodesDefaultConfigs).toEqual({ llm: { model: 'second' } })
+    expect(mocks.defaults).toHaveBeenLastCalledWith(
+      expect.stringContaining('/pipelines/pipeline-2/'),
+    )
   })
 })

@@ -1,219 +1,69 @@
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useRef } from 'react'
 import { z } from 'zod'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Form from '../form'
 
-const { mockToastError } = vi.hoisted(() => ({
-  mockToastError: vi.fn(),
-}))
-
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
-  return {
-    ...actual,
-    toast: {
-      ...actual.toast,
-      error: mockToastError,
-    },
-  }
+const { toastError } = vi.hoisted(() => ({ toastError: vi.fn() }))
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
+  return { ...actual, toast: { ...actual.toast, error: toastError } }
 })
-
-// Mock the Header component (sibling component, not a base component)
-vi.mock('../header', () => ({
-  default: ({
-    onReset,
-    resetDisabled,
-    onPreview,
-    previewDisabled,
-  }: {
-    onReset: () => void
-    resetDisabled: boolean
-    onPreview: () => void
-    previewDisabled: boolean
-  }) => (
-    <div data-testid="form-header">
-      <button data-testid="reset-btn" onClick={onReset} disabled={resetDisabled}>
-        Reset
-      </button>
-      <button data-testid="preview-btn" onClick={onPreview} disabled={previewDisabled}>
-        Preview
-      </button>
-    </div>
-  ),
-}))
-
-const schema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  value: z.string().optional(),
-})
-
-const defaultConfigs: BaseConfiguration[] = [
-  {
-    variable: 'name',
-    type: 'text-input',
-    label: 'Name',
-    required: true,
-    showConditions: [],
-  } as BaseConfiguration,
-  {
-    variable: 'value',
-    type: 'text-input',
-    label: 'Value',
-    required: false,
-    showConditions: [],
-  } as BaseConfiguration,
+const configurations: BaseConfiguration[] = [
+  { variable: 'name', type: 'text-input', label: 'Name', required: true, showConditions: [] },
 ]
-
-const defaultProps = {
-  initialData: { name: 'test', value: '' },
-  configurations: defaultConfigs,
-  schema,
-  onSubmit: vi.fn(),
-  onPreview: vi.fn(),
-  ref: { current: null },
-  isRunning: false,
+const schema = z.object({ name: z.string().min(1, 'Name is required') })
+function Harness({ onSubmit = vi.fn(), onPreview = vi.fn(), isRunning = false }) {
+  const ref = useRef<{ submit: () => void }>(null)
+  return (
+    <>
+      <Form
+        ref={ref}
+        initialData={{ name: 'original' }}
+        configurations={configurations}
+        schema={schema}
+        onSubmit={onSubmit}
+        onPreview={onPreview}
+        isRunning={isRunning}
+      />
+      <button onClick={() => ref.current?.submit()}>Process documents</button>
+    </>
+  )
 }
 
-describe('Form (process-documents)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockToastError.mockReset()
+it('submits the edited configuration through the process action and rejects missing required values', async () => {
+  const user = userEvent.setup()
+  const onSubmit = vi.fn()
+  render(<Harness onSubmit={onSubmit} />)
+  const name = screen.getByRole('textbox')
+  await user.clear(name)
+  await user.click(screen.getByRole('button', { name: 'Process documents' }))
+  await waitFor(() => expect(toastError).toHaveBeenCalledWith('"name" Name is required'))
+  expect(onSubmit).not.toHaveBeenCalled()
+  await user.type(name, 'Updated')
+  await user.click(screen.getByRole('button', { name: 'Process documents' }))
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ name: 'Updated' }))
+})
+
+it('resets edited configuration and prevents preview while processing', async () => {
+  const user = userEvent.setup()
+  const onPreview = vi.fn()
+  const { rerender } = render(<Harness onPreview={onPreview} />)
+  const reset = screen.getByRole('button', { name: 'common.operation.reset' })
+  expect(reset).toBeDisabled()
+  await user.type(screen.getByRole('textbox'), ' draft')
+  await user.click(reset)
+  expect(screen.getByRole('textbox')).toHaveValue('original')
+  expect(reset).toBeDisabled()
+  const preview = screen.getByRole('button', {
+    name: 'datasetPipeline.addDocuments.stepTwo.previewChunks',
   })
-
-  // Verify basic rendering of form structure
-  describe('Rendering', () => {
-    it('should render form with header and fields', () => {
-      render(<Form {...defaultProps} />)
-
-      expect(screen.getByTestId('form-header')).toBeInTheDocument()
-      expect(screen.getByText('Name')).toBeInTheDocument()
-      expect(screen.getByText('Value')).toBeInTheDocument()
-    })
-
-    it('should render all configuration fields', () => {
-      const configs: BaseConfiguration[] = [
-        {
-          variable: 'a',
-          type: 'text-input',
-          label: 'A',
-          required: false,
-          showConditions: [],
-        } as BaseConfiguration,
-        {
-          variable: 'b',
-          type: 'text-input',
-          label: 'B',
-          required: false,
-          showConditions: [],
-        } as BaseConfiguration,
-        {
-          variable: 'c',
-          type: 'text-input',
-          label: 'C',
-          required: false,
-          showConditions: [],
-        } as BaseConfiguration,
-      ]
-
-      render(
-        <Form {...defaultProps} configurations={configs} initialData={{ a: '', b: '', c: '' }} />,
-      )
-
-      expect(screen.getByText('A')).toBeInTheDocument()
-      expect(screen.getByText('B')).toBeInTheDocument()
-      expect(screen.getByText('C')).toBeInTheDocument()
-    })
-  })
-
-  // Verify form submission behavior
-  describe('Form Submission', () => {
-    it('should call onSubmit with valid data on form submit', async () => {
-      render(<Form {...defaultProps} />)
-      const form = screen.getByTestId('form-header').closest('form')!
-
-      fireEvent.submit(form)
-
-      await waitFor(() => {
-        expect(defaultProps.onSubmit).toHaveBeenCalled()
-      })
-    })
-
-    it('should call onSubmit with valid data via imperative handle', async () => {
-      const ref = { current: null as { submit: () => void } | null }
-      render(<Form {...defaultProps} ref={ref} />)
-
-      ref.current?.submit()
-
-      await waitFor(() => {
-        expect(defaultProps.onSubmit).toHaveBeenCalled()
-      })
-    })
-  })
-
-  // Verify validation shows Toast on error
-  describe('Validation', () => {
-    it('should show toast error when validation fails', async () => {
-      render(<Form {...defaultProps} initialData={{ name: '', value: '' }} />)
-      const form = screen.getByTestId('form-header').closest('form')!
-
-      fireEvent.submit(form)
-
-      await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith('"name" Name is required')
-      })
-    })
-
-    it('should not show toast error when validation passes', async () => {
-      render(<Form {...defaultProps} />)
-      const form = screen.getByTestId('form-header').closest('form')!
-
-      fireEvent.submit(form)
-
-      await waitFor(() => {
-        expect(defaultProps.onSubmit).toHaveBeenCalled()
-      })
-      expect(mockToastError).not.toHaveBeenCalled()
-    })
-  })
-
-  // Verify header button states
-  describe('Header Controls', () => {
-    it('should pass isRunning to previewDisabled', () => {
-      render(<Form {...defaultProps} isRunning={true} />)
-
-      expect(screen.getByTestId('preview-btn')).toBeDisabled()
-    })
-
-    it('should call onPreview when preview button is clicked', () => {
-      render(<Form {...defaultProps} />)
-
-      fireEvent.click(screen.getByTestId('preview-btn'))
-
-      expect(defaultProps.onPreview).toHaveBeenCalled()
-    })
-
-    it('should render reset button (disabled when form is not dirty)', () => {
-      render(<Form {...defaultProps} />)
-
-      // Reset button is rendered but disabled since form is not dirty initially
-      expect(screen.getByTestId('reset-btn')).toBeInTheDocument()
-      expect(screen.getByTestId('reset-btn')).toBeDisabled()
-    })
-  })
-
-  // Verify edge cases
-  describe('Edge Cases', () => {
-    it('should render with empty configurations array', () => {
-      render(<Form {...defaultProps} configurations={[]} />)
-
-      expect(screen.getByTestId('form-header')).toBeInTheDocument()
-    })
-
-    it('should render with empty initialData', () => {
-      render(<Form {...defaultProps} initialData={{}} configurations={[]} />)
-
-      expect(screen.getByTestId('form-header')).toBeInTheDocument()
-    })
-  })
+  await user.click(preview)
+  expect(onPreview).toHaveBeenCalledOnce()
+  rerender(<Harness onPreview={onPreview} isRunning />)
+  expect(preview).toBeDisabled()
+  await user.click(preview)
+  expect(onPreview).toHaveBeenCalledOnce()
 })

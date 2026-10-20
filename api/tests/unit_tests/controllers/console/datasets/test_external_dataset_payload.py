@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Unit tests for the external dataset controller payload schemas.
 
@@ -8,10 +6,12 @@ in request constraints (e.g. max length changes) without exercising the
 full Flask/RESTX request stack.
 """
 
+from __future__ import annotations
+
 import pytest
 from pydantic import ValidationError
 
-from controllers.console.datasets.external import ExternalDatasetCreatePayload
+from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
 
 
 def test_external_dataset_create_payload_allows_name_length_100() -> None:

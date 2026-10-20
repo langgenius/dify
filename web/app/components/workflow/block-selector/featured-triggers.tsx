@@ -1,9 +1,11 @@
 'use client'
+
+import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import type { TFunction } from 'i18next'
 import type { TriggerPluginActionPreviewPayload } from './trigger-plugin/action-item'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n-config'
+import type { PluginLanguage } from '@/i18n/metadata'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
@@ -14,7 +16,7 @@ import {
 } from '@langgenius/dify-ui/preview-card'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
@@ -55,15 +57,13 @@ const FeaturedTriggers = ({
   isLoading = false,
   onInstallSuccess,
 }: FeaturedTriggersProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'workflow'])
   const language = useGetLanguage()
-  const previewCardHandle = useMemo(
-    () => createPreviewCardHandle<FeaturedTriggerPreviewPayload>(),
-    [],
+  const [previewCardHandle] = useState(() =>
+    createPreviewCardHandle<FeaturedTriggerPreviewPayload>(),
   )
-  const triggerActionPreviewCardHandle = useMemo(
-    () => createPreviewCardHandle<TriggerPluginActionPreviewPayload>(),
-    [],
+  const [triggerActionPreviewCardHandle] = useState(() =>
+    createPreviewCardHandle<TriggerPluginActionPreviewPayload>(),
   )
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT)
   const [visibleCountPlugins, setVisibleCountPlugins] = useState(plugins)
@@ -130,20 +130,20 @@ const FeaturedTriggers = ({
       open={!isCollapsed}
       onOpenChange={(open) => setIsCollapsed(!open)}
     >
-      <CollapsibleTrigger className="ml-2 min-h-0 w-fit justify-start gap-0 rounded-md px-2 py-1 hover:not-data-disabled:bg-transparent focus-visible:ring-inset">
+      <CollapsibleTrigger className="group/collapsible ml-2 flex min-h-0 w-fit touch-manipulation items-center justify-start gap-0 rounded-md px-2 py-1 text-start system-sm-medium text-text-secondary select-none hover:text-text-primary focus-visible:ring-inset data-panel-open:text-text-primary">
         <span className="system-xs-medium text-text-primary">
           {t(($) => $['tabs.featuredTools'], { ns: 'workflow' })}
         </span>
         <span
           aria-hidden
-          className="ml-0.5 i-custom-vender-solid-arrows-arrow-down-round-fill size-4 -rotate-90 text-text-tertiary transition-transform group-data-panel-open:rotate-0 motion-reduce:transition-none"
+          className="ml-0.5 i-custom-vender-solid-arrows-arrow-down-round-fill size-4 -rotate-90 text-text-tertiary transition-transform group-data-panel-open/collapsible:rotate-0 motion-reduce:transition-none"
         />
       </CollapsibleTrigger>
 
       <CollapsiblePanel>
         {isLoading && (
           <div className="py-3">
-            <Loading type="app" />
+            <LoadingPlaceholder className="h-full" />
           </div>
         )}
 
@@ -192,7 +192,7 @@ const FeaturedTriggers = ({
           <Button
             variant="ghost"
             size="medium"
-            className="group mt-1 w-full justify-start gap-x-2 pr-2 pl-3 text-left text-text-tertiary hover:text-text-secondary focus-visible:ring-inset"
+            className="group mt-1 w-full justify-start pr-2 pl-3 text-left text-text-tertiary hover:text-text-secondary focus-visible:ring-inset"
             onClick={() => {
               setVisibleCount((count) => {
                 if (count >= maxAvailable) return INITIAL_VISIBLE_COUNT
@@ -201,7 +201,7 @@ const FeaturedTriggers = ({
               })
             }}
           >
-            <div className="flex items-center px-1 text-text-tertiary group-hover:text-text-secondary group-focus-visible:text-text-secondary">
+            <div className="flex items-center pl-1 text-text-tertiary group-hover:text-text-secondary group-focus-visible:text-text-secondary">
               <span
                 aria-hidden
                 className="i-ri-more-line size-4 group-hover:hidden group-focus-visible:hidden"
@@ -227,18 +227,10 @@ const FeaturedTriggers = ({
         )}
       </CollapsiblePanel>
       <PreviewCard handle={previewCardHandle}>
-        {({ payload }) => (
-          <FeaturedTriggerPreviewCard
-            payload={payload as FeaturedTriggerPreviewPayload | undefined}
-          />
-        )}
+        {({ payload }) => <FeaturedTriggerPreviewCard payload={payload} />}
       </PreviewCard>
       <PreviewCard handle={triggerActionPreviewCardHandle}>
-        {({ payload }) => (
-          <TriggerPluginActionPreviewCard
-            payload={payload as TriggerPluginActionPreviewPayload | undefined}
-          />
-        )}
+        {({ payload }) => <TriggerPluginActionPreviewCard payload={payload} />}
       </PreviewCard>
     </Collapsible>
   )
@@ -246,10 +238,10 @@ const FeaturedTriggers = ({
 
 type FeaturedTriggerUninstalledItemProps = {
   plugin: Plugin
-  language: Locale
-  previewCardHandle: ReturnType<typeof createPreviewCardHandle<FeaturedTriggerPreviewPayload>>
+  language: PluginLanguage
+  previewCardHandle: PreviewCardHandle<FeaturedTriggerPreviewPayload>
   onInstallSuccess?: () => Promise<void> | void
-  t: TFunction
+  t: TFunction<['plugin', 'workflow']>
 }
 
 function FeaturedTriggerUninstalledItem({
@@ -393,7 +385,7 @@ function FeaturedTriggerPreviewCard({ payload }: FeaturedTriggerPreviewCardProps
         toolIcon={payload.plugin.icon}
       />
       <div className="mb-1 text-sm/5 text-text-primary">{payload.label}</div>
-      <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">
+      <div className="text-xs leading-4.5 wrap-break-word text-text-secondary">
         {payload.description}
       </div>
     </BlockSelectorPreviewCardContent>

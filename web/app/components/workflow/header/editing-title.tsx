@@ -5,7 +5,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
 
 function EditingTitle() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { formatTime } = useTimestamp()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const draftUpdatedAt = useStore((state) => state.draftUpdatedAt)
@@ -16,7 +16,7 @@ function EditingTitle() {
     <div
       role="status"
       aria-label={t(($) => $['common.workflowSaveStatus'], { ns: 'workflow' })}
-      className="flex h-[18px] min-w-[300px] items-center system-xs-regular whitespace-nowrap text-text-tertiary"
+      className="flex h-4.5 min-w-75 items-center system-xs-regular whitespace-nowrap text-text-tertiary"
     >
       {!!draftUpdatedAt && (
         <span className="flex items-center gap-1">

@@ -1,14 +1,11 @@
+import type { TFunction } from 'i18next'
 import type { ChangeEvent } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { ChatVarType } from '../../type'
 import { useVariableModalState } from '../use-variable-modal-state'
 
-vi.mock('uuid', () => ({
-  v4: () => 'generated-id',
-}))
-
-const t = withSelectorKey((key: string) => key)
+const t = withSelectorKey((key: string) => key) as TFunction<['appDebug', 'workflow']>
 
 const createOptions = (overrides: Partial<Parameters<typeof useVariableModalState>[0]> = {}) => ({
   chatVar: undefined,
@@ -61,13 +58,6 @@ describe('useVariableModalState', () => {
       result.current.handleStringOrNumberChange([12])
     })
     expect(result.current.value).toBe(12)
-
-    act(() => {
-      result.current.setDescription('note')
-      result.current.setValue(true)
-    })
-    expect(result.current.description).toBe('note')
-    expect(result.current.value).toBe(true)
   })
 
   it('should toggle object values between form and json modes', () => {
@@ -278,7 +268,7 @@ describe('useVariableModalState', () => {
 
     expect(onSave).toHaveBeenCalledWith({
       description: '',
-      id: 'generated-id',
+      id: expect.any(String),
       name: 'greeting',
       value: 'hello',
       value_type: ChatVarType.String,

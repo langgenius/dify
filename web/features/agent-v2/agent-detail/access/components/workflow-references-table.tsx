@@ -1,9 +1,6 @@
 'use client'
 
-import type {
-  AgentIconType,
-  AgentReferencingWorkflowResponse,
-} from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentReferencingWorkflowResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
@@ -11,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 type WorkflowReferencesTableProps = {
   agentId: string
@@ -24,8 +21,8 @@ const getWorkflowReferenceHref = (reference: AgentReferencingWorkflowResponse) =
   `/app/${reference.app_id}/workflow`
 
 export function WorkflowReferencesTable({ agentId, enabled = true }: WorkflowReferencesTableProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const workflowReferencesQuery = useQuery(
     consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
       input: {
@@ -40,12 +37,12 @@ export function WorkflowReferencesTable({ agentId, enabled = true }: WorkflowRef
 
   return (
     <div className="min-w-0 overflow-x-auto">
-      <table className="w-full min-w-[1212px] table-fixed border-collapse">
+      <table className="w-full min-w-303 table-fixed border-collapse">
         <colgroup>
-          <col className="w-[572px]" />
+          <col className="w-143" />
           <col className="w-40" />
           <col className="w-32" />
-          <col className="w-[204px]" />
+          <col className="w-51" />
           <col className="w-36" />
         </colgroup>
         <thead>
@@ -109,21 +106,13 @@ export function WorkflowReferencesTable({ agentId, enabled = true }: WorkflowRef
 }
 
 function WorkflowAccessRow({ reference }: { reference: AgentReferencingWorkflowResponse }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'agentRoster'])
   const { formatTime } = useTimestamp()
-  const imageUrl =
-    reference.app_icon_type === 'image' || reference.app_icon_type === 'link'
-      ? reference.app_icon
-      : undefined
-  const iconType = (imageUrl ? 'image' : reference.app_icon_type) as
-    | AgentIconType
-    | null
-    | undefined
   const updatedAt =
     reference.app_updated_at != null
       ? formatTime(
           reference.app_updated_at,
-          t(($) => $['roster.dateTimeFormat']),
+          t(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
         )
       : t(($) => $['agentDetail.access.workflow.notAvailable'])
   const nodeCount = reference.node_ids?.length ?? 0
@@ -135,11 +124,13 @@ function WorkflowAccessRow({ reference }: { reference: AgentReferencingWorkflowR
           <span aria-hidden className="shrink-0">
             <AppIcon
               size="small"
-              rounded
-              iconType={iconType}
-              icon={reference.app_icon ?? undefined}
-              background={reference.app_icon_background}
-              imageUrl={imageUrl}
+              shape="circle"
+              icon={{
+                icon_type: reference.app_icon_type,
+                icon: reference.app_icon,
+                icon_url: reference.app_icon,
+                icon_background: reference.app_icon_background,
+              }}
             />
           </span>
           <span className="truncate">{reference.app_name}</span>
@@ -159,12 +150,10 @@ function WorkflowAccessRow({ reference }: { reference: AgentReferencingWorkflowR
           href={getWorkflowReferenceHref(reference)}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={t(($) => $['agentDetail.access.workflow.openInStudioFor'], {
-            name: reference.app_name,
-          })}
           className="inline-flex items-center gap-0.5 rounded-sm text-text-secondary hover:text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         >
           {t(($) => $['agentDetail.access.workflow.openInStudio'])}
+          <span className="sr-only">{reference.app_name}</span>
           <span aria-hidden className="i-ri-external-link-line size-4" />
         </Link>
       </td>

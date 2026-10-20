@@ -11,7 +11,7 @@ from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from configs import dify_config
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import ChatBlockingResponse, CompletionBlockingResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
 from controllers.service_api import service_api_ns
@@ -27,6 +27,7 @@ from controllers.service_api.app.error import (
     WorkflowVersionExecutionNotAllowedError,
 )
 from controllers.service_api.schema import (
+    SCOPED_TASK_STOP_USER_DESCRIPTION,
     InputFileList,
     expect_user_json,
     expect_with_user,
@@ -42,9 +43,10 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.external_api import error_responses
 from libs.helper import UUIDStrOrEmpty
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
@@ -163,11 +165,23 @@ class ChatRequestPayload(BaseModel):
 
 
 register_schema_models(service_api_ns, CompletionRequestPayload, ChatRequestPayload)
-register_response_schema_models(service_api_ns, SimpleResultResponse)
+register_response_schema_models(
+    service_api_ns,
+    SimpleResultResponse,
+    ChatBlockingResponse,
+    CompletionBlockingResponse,
+)
 
 
 @service_api_ns.route("/completion-messages")
 class CompletionApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @service_api_ns.doc(
         summary="Send Completion Message",
         description="Send a request to the text generation application.",
@@ -202,11 +216,14 @@ class CompletionApi(Resource):
             200: "Completion created successfully",
             400: "Bad request - invalid parameters",
             401: "Unauthorized - invalid API token",
-            404: "Conversation not found",
             500: "Internal server error",
         }
     )
-    @service_api_ns.response(200, "Completion created successfully")
+    @service_api_ns.response(
+        200,
+        "Completion created successfully",
+        service_api_ns.models[CompletionBlockingResponse.__name__],
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     @with_session
     def post(self, session: Session, app_model: App, end_user: EndUser):
@@ -245,32 +262,33 @@ class CompletionApi(Resource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
-        except AgentAppNotPublishedError:
-            raise AgentNotPublishedError()
+            raise AppUnavailableError() from caught_error
+        except AgentAppNotPublishedError as caught_error:
+            raise AgentNotPublishedError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @service_api_ns.route("/completion-messages/<string:task_id>/stop")
 class CompletionStopApi(Resource):
+    @error_responses(AppUnavailableError)
     @service_api_ns.doc(
         summary="Stop Completion Message Generation",
         description="Stops a completion message generation task. Only supported in `streaming` mode.",
@@ -279,7 +297,11 @@ class CompletionStopApi(Resource):
             400: "`app_unavailable` : App unavailable or misconfigured.",
         },
     )
-    @expect_user_json(service_api_ns)
+    @expect_user_json(
+        service_api_ns,
+        model_name="ScopedTaskStopPayload",
+        user_description=SCOPED_TASK_STOP_USER_DESCRIPTION,
+    )
     @service_api_ns.doc("stop_completion")
     @service_api_ns.doc(description="Stop a running completion task")
     @service_api_ns.doc(
@@ -289,7 +311,6 @@ class CompletionStopApi(Resource):
         responses={
             200: "Task stopped successfully",
             401: "Unauthorized - invalid API token",
-            404: "Task not found",
         }
     )
     @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])
@@ -300,6 +321,8 @@ class CompletionStopApi(Resource):
             raise AppUnavailableError()
 
         AppTaskService.stop_task(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
             task_id=task_id,
             invoke_from=InvokeFrom.SERVICE_API,
             user_id=end_user.id,
@@ -311,6 +334,17 @@ class CompletionStopApi(Resource):
 
 @service_api_ns.route("/chat-messages")
 class ChatApi(Resource):
+    @error_responses(
+        AgentNotPublishedError,
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+        WorkflowVersionExecutionNotAllowedError,
+    )
     @service_api_ns.doc(
         summary="Send Chat Message",
         description="Send a request to the chat application.",
@@ -341,7 +375,7 @@ class ChatApi(Resource):
             404: "`not_found` : Conversation does not exist.",
             429: (
                 "- `too_many_requests` : Too many concurrent requests for this app.\n"
-                "- `rate_limit_error` : The upstream model provider rate limit was exceeded."
+                "- `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached."
             ),
             500: "`internal_server_error` : Internal server error.",
         },
@@ -361,7 +395,11 @@ class ChatApi(Resource):
             500: "Internal server error",
         }
     )
-    @service_api_ns.response(200, "Message sent successfully")
+    @service_api_ns.response(
+        200,
+        "Message sent successfully",
+        service_api_ns.models[ChatBlockingResponse.__name__],
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     @with_session
     def post(self, session: Session, app_model: App, end_user: EndUser):
@@ -376,9 +414,13 @@ class ChatApi(Resource):
 
         payload = ChatRequestPayload.model_validate(omit_trace_session_id_from_payload(service_api_ns.payload) or {})
 
-        if app_mode == AppMode.ADVANCED_CHAT and payload.workflow_id and dify_config.BILLING_ENABLED:
+        if (
+            app_mode == AppMode.ADVANCED_CHAT
+            and payload.workflow_id
+            and dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+        ):
             billing_info = BillingService.get_info(app_model.tenant_id, exclude_vector_space=True)
-            if billing_info["enabled"] and billing_info["subscription"]["plan"] == CloudPlan.SANDBOX:
+            if billing_info["subscription"]["plan"] == CloudPlan.SANDBOX:
                 raise WorkflowVersionExecutionNotAllowedError()
 
         external_trace_id = get_external_trace_id(request)
@@ -413,39 +455,40 @@ class ChatApi(Resource):
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except WorkflowNotFoundError as ex:
-            raise NotFound(str(ex))
+            raise NotFound(str(ex)) from ex
         except IsDraftWorkflowError as ex:
-            raise BadRequest(str(ex))
+            raise BadRequest(str(ex)) from ex
         except WorkflowIdFormatError as ex:
-            raise BadRequest(str(ex))
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+            raise BadRequest(str(ex)) from ex
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
-        except AgentAppNotPublishedError:
-            raise AgentNotPublishedError()
+            raise AppUnavailableError() from caught_error
+        except AgentAppNotPublishedError as caught_error:
+            raise AgentNotPublishedError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @service_api_ns.route("/chat-messages/<string:task_id>/stop")
 class ChatStopApi(Resource):
+    @error_responses(NotChatAppError)
     @service_api_ns.doc(
         summary="Stop Chat Message Generation",
         description="Stops a chat message generation task. Only supported in `streaming` mode.",
@@ -454,7 +497,11 @@ class ChatStopApi(Resource):
             400: "`not_chat_app` : App mode does not match the API route.",
         },
     )
-    @expect_user_json(service_api_ns)
+    @expect_user_json(
+        service_api_ns,
+        model_name="ScopedTaskStopPayload",
+        user_description=SCOPED_TASK_STOP_USER_DESCRIPTION,
+    )
     @service_api_ns.doc("stop_chat_message")
     @service_api_ns.doc(description="Stop a running chat message generation")
     @service_api_ns.doc(
@@ -464,7 +511,6 @@ class ChatStopApi(Resource):
         responses={
             200: "Task stopped successfully",
             401: "Unauthorized - invalid API token",
-            404: "Task not found",
         }
     )
     @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])
@@ -476,6 +522,8 @@ class ChatStopApi(Resource):
             raise NotChatAppError()
 
         AppTaskService.stop_task(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
             task_id=task_id,
             invoke_from=InvokeFrom.SERVICE_API,
             user_id=end_user.id,

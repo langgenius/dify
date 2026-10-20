@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from models import Account
+from models import Account, Tenant
 from models.dataset import Dataset, DatasetQuery
 from services.hit_testing_service import HitTestingService
 
@@ -41,27 +41,27 @@ class HitTestingTestDataFactory:
         provider: str = "vendor",
         retrieval_model: dict[str, Any] | None = None,
         **kwargs,
-    ) -> Mock:
+    ) -> Dataset:
         """
-        Create a mock dataset with specified attributes.
+        Create a dataset with specified attributes.
 
         Args:
             dataset_id: Unique identifier for the dataset
             tenant_id: Tenant identifier
             provider: Dataset provider (vendor, external, etc.)
             retrieval_model: Optional retrieval model configuration
-            **kwargs: Additional attributes to set on the mock
+            **kwargs: Additional mapped attributes for the dataset
 
         Returns:
-            Mock object configured as a Dataset instance
+            Configured Dataset instance
         """
-        dataset = Mock(spec=Dataset)
-        dataset.id = dataset_id
-        dataset.tenant_id = tenant_id
-        dataset.provider = provider
-        dataset.retrieval_model = retrieval_model
-        for key, value in kwargs.items():
-            setattr(dataset, key, value)
+        dataset = Dataset(
+            id=dataset_id,
+            tenant_id=tenant_id,
+            provider=provider,
+            retrieval_model=retrieval_model,
+            **kwargs,
+        )
         return dataset
 
     @staticmethod
@@ -69,7 +69,7 @@ class HitTestingTestDataFactory:
         user_id: str = "user-789",
         tenant_id: str = "tenant-123",
         **kwargs,
-    ) -> Mock:
+    ) -> Account:
         """
         Create a mock user (Account) with specified attributes.
 
@@ -81,37 +81,19 @@ class HitTestingTestDataFactory:
         Returns:
             Mock object configured as an Account instance
         """
-        user = Mock(spec=Account)
+        user = Account(name="Test User", email="test@example.com", **kwargs)
         user.id = user_id
-        user.current_tenant_id = tenant_id
-        user.name = "Test User"
-        for key, value in kwargs.items():
-            setattr(user, key, value)
+        user._current_tenant = Tenant(name="Test Tenant")
+        user._current_tenant.id = tenant_id
         return user
 
     @staticmethod
-    def create_document_mock(
+    def create_document(
         content: str = "Test document content",
         metadata: dict[str, Any] | None = None,
-        **kwargs,
-    ) -> Mock:
-        """
-        Create a mock Document from core.rag.models.document.
-
-        Args:
-            content: Document content/text
-            metadata: Optional metadata dictionary
-            **kwargs: Additional attributes to set on the mock
-
-        Returns:
-            Mock object configured as a Document instance
-        """
-        document = Mock(spec=Document)
-        document.page_content = content
-        document.metadata = metadata or {}
-        for key, value in kwargs.items():
-            setattr(document, key, value)
-        return document
+    ) -> Document:
+        """Create a document; None means that the document has no metadata."""
+        return Document(page_content=content, metadata=metadata if metadata is not None else {})
 
     @staticmethod
     def create_retrieval_record_mock(
@@ -162,8 +144,8 @@ class TestHitTestingServiceRetrieve:
         external_retrieval_model = {}
 
         documents = [
-            HitTestingTestDataFactory.create_document_mock(content="Doc 1"),
-            HitTestingTestDataFactory.create_document_mock(content="Doc 2"),
+            HitTestingTestDataFactory.create_document(content="Doc 1"),
+            HitTestingTestDataFactory.create_document(content="Doc 2"),
         ]
 
         mock_records = [
@@ -219,7 +201,7 @@ class TestHitTestingServiceRetrieve:
         }
         external_retrieval_model = {}
 
-        documents = [HitTestingTestDataFactory.create_document_mock()]
+        documents = [HitTestingTestDataFactory.create_document()]
         mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
 
         with (
@@ -275,7 +257,7 @@ class TestHitTestingServiceRetrieve:
             None,
         )
 
-        documents = [HitTestingTestDataFactory.create_document_mock()]
+        documents = [HitTestingTestDataFactory.create_document()]
         mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
 
         with (
@@ -365,7 +347,7 @@ class TestHitTestingServiceRetrieve:
         retrieval_model = None
         external_retrieval_model = {}
 
-        documents = [HitTestingTestDataFactory.create_document_mock()]
+        documents = [HitTestingTestDataFactory.create_document()]
         mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
 
         with (
@@ -573,8 +555,8 @@ class TestHitTestingServiceCompactRetrieveResponse:
         # Arrange
         query = "test query"
         documents = [
-            HitTestingTestDataFactory.create_document_mock(content="Doc 1"),
-            HitTestingTestDataFactory.create_document_mock(content="Doc 2"),
+            HitTestingTestDataFactory.create_document(content="Doc 1"),
+            HitTestingTestDataFactory.create_document(content="Doc 2"),
         ]
 
         mock_records = [

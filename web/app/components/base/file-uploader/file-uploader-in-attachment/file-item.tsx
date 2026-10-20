@@ -1,12 +1,11 @@
 import type { FileEntity } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { ProgressCircle } from '@langgenius/dify-ui/progress'
 import { RiDeleteBinLine, RiDownloadLine, RiEyeLine } from '@remixicon/react'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { PreviewMode } from '@/app/components/base/features/types'
-import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { downloadUrl } from '@/utils/download'
@@ -33,10 +32,11 @@ const FileInAttachmentItem = ({
   canPreview,
   previewMode = PreviewMode.CurrentPage,
 }: FileInAttachmentItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'custom'])
   const { id, name, type, progress, supportFileType, base64Url, url, isRemote } = file
   const ext = getFileExtension(name, type, isRemote)
   const isImageFile = supportFileType === SupportUploadFileTypes.image
+  const fileUrl = url || base64Url
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
   return (
     <>
@@ -47,8 +47,8 @@ const FileInAttachmentItem = ({
           canPreview && previewMode === PreviewMode.NewPage && 'cursor-pointer',
         )}
         onClick={() => {
-          if (canPreview && previewMode === PreviewMode.NewPage)
-            window.open(url || base64Url || '', '_blank')
+          if (canPreview && previewMode === PreviewMode.NewPage && fileUrl)
+            window.open(fileUrl, '_blank')
         }}
       >
         <div className="flex size-12 items-center justify-center">
@@ -77,29 +77,55 @@ const FileInAttachmentItem = ({
             />
           )}
           {progress === -1 && (
-            <ActionButton className="mr-1" onClick={() => onReUpload?.(id)}>
-              <ReplayLine className="size-4 text-text-tertiary" />
-            </ActionButton>
-          )}
-          {showDeleteAction && (
-            <ActionButton onClick={() => onRemove?.(id)}>
-              <RiDeleteBinLine className="size-4" />
-            </ActionButton>
-          )}
-          {canPreview && isImageFile && (
-            <ActionButton className="mr-1" onClick={() => setImagePreviewUrl(url || '')}>
-              <RiEyeLine className="size-4" />
-            </ActionButton>
-          )}
-          {showDownloadAction && (
-            <ActionButton
+            <IconButton
+              aria-label={`${t(($) => $['operation.retry'], { ns: 'common' })} ${name}`}
+              className="mr-1"
               onClick={(e) => {
                 e.stopPropagation()
-                downloadUrl({ url: url || base64Url || '', fileName: name, target: '_blank' })
+                onReUpload?.(id)
               }}
             >
-              <RiDownloadLine className="size-4" />
-            </ActionButton>
+              <span
+                aria-hidden="true"
+                className="i-custom-vender-other-replay-line size-4 text-text-tertiary"
+              />
+            </IconButton>
+          )}
+          {showDeleteAction && (
+            <IconButton
+              aria-label={`${t(($) => $['operation.remove'], { ns: 'common' })} ${name}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                onRemove?.(id)
+              }}
+            >
+              <RiDeleteBinLine aria-hidden="true" className="size-4" />
+            </IconButton>
+          )}
+          {canPreview && isImageFile && (
+            <IconButton
+              aria-label={`${t(($) => $['operation.view'], { ns: 'common' })} ${name}`}
+              className="mr-1"
+              disabled={!fileUrl}
+              onClick={(e) => {
+                e.stopPropagation()
+                setImagePreviewUrl(fileUrl || '')
+              }}
+            >
+              <RiEyeLine aria-hidden="true" className="size-4" />
+            </IconButton>
+          )}
+          {showDownloadAction && (
+            <IconButton
+              aria-label={`${t(($) => $['operation.download'], { ns: 'common' })} ${name}`}
+              disabled={!fileUrl}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (fileUrl) downloadUrl({ url: fileUrl, fileName: name, target: '_blank' })
+              }}
+            >
+              <RiDownloadLine aria-hidden="true" className="size-4" />
+            </IconButton>
           )}
         </div>
       </div>

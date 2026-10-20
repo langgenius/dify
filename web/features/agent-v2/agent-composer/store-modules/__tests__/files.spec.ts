@@ -1,14 +1,15 @@
 import { createStore } from 'jotai'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { defaultAgentSoulConfigFormState } from '../../form-state'
 import { agentComposerDraftAtom } from '../../store'
-import { clearAgentConfigNoteAtom, removeAgentFileAtom, upsertAgentFileAtom } from '../files'
+import { removeAgentFileAtom, upsertAgentFileAtom } from '../files'
 
 describe('agent composer files store', () => {
   it('should upsert and remove files from the latest draft state', () => {
     const store = createStore()
     store.set(agentComposerDraftAtom, {
       ...defaultAgentSoulConfigFormState,
+      prompt: 'Use [§file:diagram.png:diagram.png§].',
       files: [
         {
           id: 'folder',
@@ -35,6 +36,9 @@ describe('agent composer files store', () => {
       icon: 'image',
       name: 'updated-diagram.png',
     })
+    expect(store.get(agentComposerDraftAtom).prompt).toBe(
+      'Use [§file:diagram.png:updated-diagram.png§].',
+    )
     store.set(removeAgentFileAtom, 'brief.md')
 
     expect(store.get(agentComposerDraftAtom).files).toEqual([
@@ -50,17 +54,5 @@ describe('agent composer files store', () => {
         name: 'updated-diagram.png',
       },
     ])
-  })
-
-  it('should clear config note through the file action surface', () => {
-    const store = createStore()
-    store.set(agentComposerDraftAtom, {
-      ...defaultAgentSoulConfigFormState,
-      configNote: 'Build note',
-    })
-
-    store.set(clearAgentConfigNoteAtom)
-
-    expect(store.get(agentComposerDraftAtom).configNote).toBe('')
   })
 })

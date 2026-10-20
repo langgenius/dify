@@ -1,101 +1,13 @@
-import type { ReactNode } from 'react'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { ReactFlowProvider } from 'reactflow'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useAvailableBlocks } from '../../../../../hooks/use-available-blocks'
 import { useNodesInteractions } from '../../../../../hooks/use-nodes-interactions'
 import Operator from '../operator'
-
-vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
-  const React = await import('react')
-  const DropdownMenuContext = React.createContext<{
-    open: boolean
-    setOpen: (open: boolean) => void
-  } | null>(null)
-
-  const useDropdownMenuContext = () => {
-    const context = React.use(DropdownMenuContext)
-    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
-    return context
-  }
-
-  return {
-    DropdownMenu: ({
-      children,
-      open,
-      onOpenChange,
-    }: {
-      children: ReactNode
-      open: boolean
-      onOpenChange?: (open: boolean) => void
-    }) => (
-      <DropdownMenuContext value={{ open, setOpen: onOpenChange ?? vi.fn() }}>
-        <div>{children}</div>
-      </DropdownMenuContext>
-    ),
-    DropdownMenuTrigger: ({
-      children,
-      render,
-    }: {
-      children: ReactNode
-      render?: React.ReactElement<{ children?: ReactNode }>
-    }) => {
-      const { open, setOpen } = useDropdownMenuContext()
-      if (render) {
-        return React.cloneElement(
-          render,
-          { onClick: () => setOpen(!open) } as Record<string, unknown>,
-          children ?? render.props.children,
-        )
-      }
-
-      return (
-        <button type="button" onClick={() => setOpen(!open)}>
-          {children}
-        </button>
-      )
-    },
-    DropdownMenuContent: ({ children }: { children: ReactNode }) => {
-      const { open } = useDropdownMenuContext()
-      return open ? <div>{children}</div> : null
-    },
-  }
-})
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    className,
-    onClick,
-  }: {
-    children: ReactNode
-    className?: string
-    onClick?: React.MouseEventHandler<HTMLButtonElement>
-  }) => (
-    <button type="button" className={className} onClick={onClick}>
-      {children}
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({
-    trigger,
-    onSelect,
-  }: {
-    trigger: ((open: boolean) => ReactNode) | ReactNode
-    onSelect: (type: BlockEnum) => void
-  }) => (
-    <div>
-      {typeof trigger === 'function' ? trigger(false) : trigger}
-      <button type="button" onClick={() => onSelect(BlockEnum.HttpRequest)}>
-        select-http
-      </button>
-    </div>
-  ),
-}))
 
 vi.mock('../../../../../hooks/use-available-blocks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../../../hooks/use-available-blocks')>()
@@ -126,7 +38,8 @@ const mockHandleNodeDisconnect = vi.fn()
 const defaultNodeData = {
   type: BlockEnum.Code,
   title: 'Code Node',
-} as CommonNodeType
+  desc: '',
+} satisfies CommonNodeType
 
 const TestHarness = () => {
   const [open, setOpen] = useState(false)
@@ -156,43 +69,33 @@ describe('NextStep operator', () => {
     } as unknown as ReturnType<typeof useNodesInteractions>)
   })
 
-  it('opens the menu and keeps the change action available', async () => {
-    const user = userEvent.setup()
-    render(<TestHarness />)
-
-    await user.click(screen.getAllByRole('button')[0]!)
-
-    expect(screen.getByText('workflow.panel.change')).toBeInTheDocument()
-    expect(screen.getByText('workflow.common.disconnect')).toBeInTheDocument()
-    expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
-  })
-
-  it('changes the next-step block through the nested selector trigger', async () => {
-    const user = userEvent.setup()
-    render(<TestHarness />)
-
-    await user.click(screen.getAllByRole('button')[0]!)
-    await user.click(screen.getByText('select-http'))
-
-    expect(mockHandleNodeChange).toHaveBeenCalledWith(
-      'node-1',
-      BlockEnum.HttpRequest,
-      'source',
-      undefined,
-    )
-  })
-
   it('disconnects and deletes the next step from the menu', async () => {
     const user = userEvent.setup()
     render(<TestHarness />)
 
-    await user.click(screen.getAllByRole('button')[0]!)
-    await user.click(screen.getByText('workflow.common.disconnect'))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'workflow.common.disconnect' }))
     expect(mockHandleNodeDisconnect).toHaveBeenCalledWith('node-1')
     expect(screen.queryByText('workflow.common.disconnect')).not.toBeInTheDocument()
 
-    await user.click(screen.getAllByRole('button')[0]!)
-    await user.click(screen.getByText('common.operation.delete'))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
     expect(mockHandleNodeDelete).toHaveBeenCalledWith('node-1')
+  })
+
+  it('opens the node selector from the change menu item with the keyboard', async () => {
+    const user = userEvent.setup()
+    renderWorkflowComponent(
+      <ReactFlowProvider>
+        <TestHarness />
+      </ReactFlowProvider>,
+    )
+
+    await user.tab()
+    await user.keyboard('{ArrowDown}{Enter}')
+
+    expect(
+      await screen.findByRole('dialog', { name: 'workflow.common.addBlock' }),
+    ).toBeInTheDocument()
   })
 })

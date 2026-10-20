@@ -1,45 +1,13 @@
 import type { TriggerEvent } from '@/app/components/plugins/types'
 import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { EventDetailDrawer } from '../event-detail-drawer'
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useLanguage: () => 'en_US',
 }))
-
-vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
-}))
-
-vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
-  default: () => <span data-testid="card-icon" />,
-}))
-
-vi.mock('@/app/components/plugins/card/base/description', () => ({
-  default: ({ text }: { text: string }) => <div data-testid="description">{text}</div>,
-}))
-
-vi.mock('@/app/components/plugins/card/base/org-info', () => ({
-  default: ({ orgName }: { orgName: string }) => <div data-testid="org-info">{orgName}</div>,
-}))
-
-vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
-  triggerEventParametersToFormSchemas: (params: Array<Record<string, unknown>>) =>
-    params.map((p) => ({
-      label: (p.label as Record<string, string>) || { en_US: p.name as string },
-      type: (p.type as string) || 'text-input',
-      required: (p.required as boolean) || false,
-      description: p.description as Record<string, string> | undefined,
-    })),
-}))
-
-vi.mock(
-  '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show/field',
-  () => ({
-    default: ({ name }: { name: string }) => <div data-testid="output-field">{name}</div>,
-  }),
-)
 
 const mockEventInfo = {
   name: 'test-event',
@@ -84,325 +52,85 @@ const mockProviderInfo = {
 } as unknown as TriggerProviderApiEntity
 
 describe('EventDetailDrawer', () => {
-  const mockOnClose = vi.fn()
+  const onClose = vi.fn()
+  const renderEvent = (eventInfo = mockEventInfo) =>
+    render(
+      <EventDetailDrawer eventInfo={eventInfo} providerInfo={mockProviderInfo} onClose={onClose} />,
+    )
 
-  beforeEach(() => {
-    vi.clearAllMocks()
+  beforeEach(() => vi.clearAllMocks())
+
+  it('shows the event identity, provider, required parameters and output fields', () => {
+    renderEvent()
+    const drawer = within(screen.getByRole('dialog'))
+    expect(drawer.getByText('Test Event')).toBeInTheDocument()
+    expect(drawer.getByText('Test event description')).toBeInTheDocument()
+    expect(drawer.getByText('test-author')).toBeInTheDocument()
+    expect(drawer.getByText('test-name')).toBeInTheDocument()
+    expect(drawer.getByText('Parameter 1')).toBeInTheDocument()
+    expect(drawer.getByText('A test parameter')).toBeInTheDocument()
+    expect(drawer.getByText('tools.setBuiltInTools.string')).toBeInTheDocument()
+    expect(drawer.getByText('tools.setBuiltInTools.required')).toBeInTheDocument()
+    expect(drawer.getByText('result')).toBeInTheDocument()
+    expect(drawer.getByText('Result')).toBeInTheDocument()
+    expect(drawer.getByText('app.structOutput.required')).toBeInTheDocument()
   })
 
-  describe('Rendering', () => {
-    it('should render drawer', () => {
-      render(
-        <EventDetailDrawer
-          eventInfo={mockEventInfo}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
+  it.each(['common.operation.close', 'plugin.detailPanel.operation.back'])(
+    'closes through %s',
+    async (name) => {
+      const user = userEvent.setup()
+      renderEvent()
+      await user.click(screen.getByRole('button', { name }))
+      expect(onClose).toHaveBeenCalledOnce()
+    },
+  )
 
-      const dialog = screen.getByRole('dialog')
-
-      expect(dialog)!.toBeInTheDocument()
-      expect(dialog).toHaveClass(
-        'data-[swipe-direction=right]:top-2',
-        'data-[swipe-direction=right]:bottom-2',
-        'data-[swipe-direction=right]:h-[calc(100dvh-16px)]',
-        'data-[swipe-direction=right]:w-[400px]',
-        'data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]',
-      )
-    })
-
-    it('should render event title', () => {
-      render(
-        <EventDetailDrawer
-          eventInfo={mockEventInfo}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(screen.getByText('Test Event'))!.toBeInTheDocument()
-    })
-
-    it('should render event description', () => {
-      render(
-        <EventDetailDrawer
-          eventInfo={mockEventInfo}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(screen.getByTestId('description'))!.toHaveTextContent('Test event description')
-    })
-
-    it('should render org info', () => {
-      render(
-        <EventDetailDrawer
-          eventInfo={mockEventInfo}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(screen.getByTestId('org-info'))!.toBeInTheDocument()
-    })
-
-    it('should render parameters section', () => {
-      render(
-        <EventDetailDrawer
-          eventInfo={mockEventInfo}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(screen.getByText('tools.setBuiltInTools.parameters'))!.toBeInTheDocument()
-      expect(screen.getByText('Parameter 1'))!.toBeInTheDocument()
-    })
-
-    it('should render output section', () => {
-      render(
-        <EventDetailDrawer
-          eventInfo={mockEventInfo}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(screen.getByText('pluginTrigger.events.output'))!.toBeInTheDocument()
-      expect(screen.getByTestId('output-field'))!.toHaveTextContent('result')
-    })
-
-    it('should render back button', () => {
-      render(
-        <EventDetailDrawer
-          eventInfo={mockEventInfo}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(screen.getByText('plugin.detailPanel.operation.back'))!.toBeInTheDocument()
-    })
+  it('shows an empty parameter state and no stale output fields', () => {
+    renderEvent({ ...mockEventInfo, parameters: [], output_schema: {} })
+    expect(screen.getByText('pluginTrigger.events.item.noParameters')).toBeInTheDocument()
+    expect(screen.getByText('pluginTrigger.events.output')).toBeInTheDocument()
+    expect(screen.queryByText('Parameter 1')).not.toBeInTheDocument()
+    expect(screen.queryByText('result')).not.toBeInTheDocument()
   })
 
-  describe('User Interactions', () => {
-    it('should call onClose when close button clicked', () => {
-      render(
-        <EventDetailDrawer
-          eventInfo={mockEventInfo}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      // Find the close button (ActionButton with action-btn class)
-      const closeButton = screen
-        .getAllByRole('button')
-        .find((btn) => btn.classList.contains('action-btn'))
-      if (closeButton) fireEvent.click(closeButton)
-
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onClose when back clicked', () => {
-      render(
-        <EventDetailDrawer
-          eventInfo={mockEventInfo}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      fireEvent.click(screen.getByText('plugin.detailPanel.operation.back'))
-
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
-    })
+  it.each([
+    ['number-input', 'tools.setBuiltInTools.number'],
+    ['checkbox', 'boolean'],
+    ['file', 'tools.setBuiltInTools.file'],
+  ])('labels a %s parameter as %s', (type, label) => {
+    renderEvent({ ...mockEventInfo, parameters: [{ ...mockEventInfo.parameters[0]!, type }] })
+    expect(screen.getByText(label)).toBeInTheDocument()
   })
 
-  describe('Edge Cases', () => {
-    it('should handle no parameters', () => {
-      const eventWithNoParams = { ...mockEventInfo, parameters: [] }
-      render(
-        <EventDetailDrawer
-          eventInfo={eventWithNoParams}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(screen.getByText('pluginTrigger.events.item.noParameters'))!.toBeInTheDocument()
-    })
-
-    it('should handle no output schema', () => {
-      const eventWithNoOutput = { ...mockEventInfo, output_schema: {} }
-      render(
-        <EventDetailDrawer
-          eventInfo={eventWithNoOutput}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(screen.getByText('pluginTrigger.events.output'))!.toBeInTheDocument()
-      expect(screen.queryByTestId('output-field')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Parameter Types', () => {
-    it('should display correct type for number-input', () => {
-      const eventWithNumber = {
-        ...mockEventInfo,
-        parameters: [{ ...mockEventInfo.parameters[0]!, type: 'number-input' }],
-      }
-      render(
-        <EventDetailDrawer
-          eventInfo={eventWithNumber}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(screen.getByText('tools.setBuiltInTools.number'))!.toBeInTheDocument()
-    })
-
-    it('should display correct type for checkbox', () => {
-      const eventWithCheckbox = {
-        ...mockEventInfo,
-        parameters: [{ ...mockEventInfo.parameters[0]!, type: 'checkbox' }],
-      }
-      render(
-        <EventDetailDrawer
-          eventInfo={eventWithCheckbox}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(screen.getByText('boolean'))!.toBeInTheDocument()
-    })
-
-    it('should display correct type for file', () => {
-      const eventWithFile = {
-        ...mockEventInfo,
-        parameters: [{ ...mockEventInfo.parameters[0]!, type: 'file' }],
-      }
-      render(
-        <EventDetailDrawer
-          eventInfo={eventWithFile}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(screen.getByText('tools.setBuiltInTools.file'))!.toBeInTheDocument()
-    })
-
-    it('should display original type for unknown types', () => {
-      const eventWithUnknown = {
-        ...mockEventInfo,
-        parameters: [{ ...mockEventInfo.parameters[0]!, type: 'custom-type' }],
-      }
-      render(
-        <EventDetailDrawer
-          eventInfo={eventWithUnknown}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(screen.getByText('custom-type'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Output Schema Conversion', () => {
-    it('should handle array type in output schema', () => {
-      const eventWithArrayOutput = {
-        ...mockEventInfo,
-        output_schema: {
-          properties: {
-            items: { type: 'array', items: { type: 'string' }, description: 'Array items' },
+  it('renders converted nested, array, enum and nullable output schemas', () => {
+    renderEvent({
+      ...mockEventInfo,
+      output_schema: {
+        properties: {
+          records: { type: 'array', items: { type: 'string' }, description: 'Collected values' },
+          nested: {
+            type: 'object',
+            properties: { inner: { type: 'number', description: 'Nested value' } },
+            required: ['inner'],
           },
-          required: [],
+          status: { type: 'string', enum: ['active', 'inactive'] },
+          nullable: { type: ['string', 'null'], description: 'Optional value' },
         },
-      }
-      render(
-        <EventDetailDrawer
-          eventInfo={eventWithArrayOutput}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(screen.getByText('pluginTrigger.events.output'))!.toBeInTheDocument()
+        required: ['nested'],
+      },
     })
-
-    it('should handle nested properties in output schema', () => {
-      const eventWithNestedOutput = {
-        ...mockEventInfo,
-        output_schema: {
-          properties: {
-            nested: {
-              type: 'object',
-              properties: { inner: { type: 'string' } },
-              required: ['inner'],
-            },
-          },
-          required: [],
-        },
-      }
-      render(
-        <EventDetailDrawer
-          eventInfo={eventWithNestedOutput}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(screen.getByText('pluginTrigger.events.output'))!.toBeInTheDocument()
-    })
-
-    it('should handle enum in output schema', () => {
-      const eventWithEnumOutput = {
-        ...mockEventInfo,
-        output_schema: {
-          properties: {
-            status: { type: 'string', enum: ['active', 'inactive'], description: 'Status' },
-          },
-          required: [],
-        },
-      }
-      render(
-        <EventDetailDrawer
-          eventInfo={eventWithEnumOutput}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(screen.getByText('pluginTrigger.events.output'))!.toBeInTheDocument()
-    })
-
-    it('should handle array type schema', () => {
-      const eventWithArrayType = {
-        ...mockEventInfo,
-        output_schema: {
-          properties: {
-            multi: { type: ['string', 'null'], description: 'Multi type' },
-          },
-          required: [],
-        },
-      }
-      render(
-        <EventDetailDrawer
-          eventInfo={eventWithArrayType}
-          providerInfo={mockProviderInfo}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(screen.getByText('pluginTrigger.events.output'))!.toBeInTheDocument()
-    })
+    expect(screen.getByText('records')).toBeInTheDocument()
+    expect(screen.getByText('array[string]')).toBeInTheDocument()
+    expect(screen.getByText('Collected values')).toBeInTheDocument()
+    expect(screen.getByText('inner')).toBeInTheDocument()
+    expect(screen.getByText('number')).toBeInTheDocument()
+    expect(screen.getByText('Nested value')).toBeInTheDocument()
+    expect(screen.getAllByText('app.structOutput.required')).toHaveLength(2)
+    expect(screen.getByText(/"active"/)).toBeInTheDocument()
+    expect(screen.getByText('"inactive"')).toBeInTheDocument()
+    expect(screen.getByText('nullable')).toBeInTheDocument()
+    expect(screen.getByText('string')).toBeInTheDocument()
+    expect(screen.getByText('Optional value')).toBeInTheDocument()
   })
 })

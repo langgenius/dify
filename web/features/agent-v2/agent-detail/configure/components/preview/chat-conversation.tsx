@@ -10,20 +10,21 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import type { Inputs } from '@/models/debug'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import dynamic from 'next/dynamic'
 import { useCallback, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AgentRosterResponseContent } from '@/app/components/base/chat/chat/answer/agent-roster-response-content'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
-import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { userProfileAtom } from '@/context/account-state'
-import dynamic from '@/next/dynamic'
-import { consoleClient, consoleQuery } from '@/service/client'
-import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
+import { toast } from '@/app/notifications'
+import { useDocLink } from '@/context/i18n'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { getAvatarInitial } from '@/utils/avatar'
+import { getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })
 
@@ -77,7 +78,7 @@ export function AgentPreviewChatConversation({
   clearChatList,
   config,
   conversationId,
-  currentModel,
+  currentModel: _currentModel,
   draftType,
   initialChatTree,
   inputs,
@@ -118,8 +119,13 @@ export function AgentPreviewChatConversation({
   onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
   onSendInterrupted?: () => void
 }) {
+  const { t } = useTranslation(['agentV2'])
+  const docLink = useDocLink()
   const queryClient = useQueryClient()
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const sendInterruptedRef = useRef(false)
   const [isSendPending, setIsSendPending] = useState(false)
   const notifySendInterrupted = useCallback(() => {
@@ -128,8 +134,6 @@ export function AgentPreviewChatConversation({
     sendInterruptedRef.current = true
     onSendInterrupted?.()
   }, [onSendInterrupted])
-  const { textGenerationModelList } =
-    useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
   const {
     chatList,
     setTargetMessageId,
@@ -171,21 +175,6 @@ export function AgentPreviewChatConversation({
         const runtimeInputs = preparedAgentSoulConfig
           ? getAgentSoulInputs(runtimeInputsForm)
           : inputs
-        const runtimeConfig = preparedAgentSoulConfig
-          ? buildChatConfig({
-              agentSoulConfig: runtimeAgentSoulConfig,
-              currentModel: undefined,
-              prompt: runtimeAgentSoulConfig?.prompt?.system_prompt ?? '',
-            })
-          : config
-
-        const currentProvider = textGenerationModelList.find(
-          (item) => item.provider === runtimeConfig.model.provider,
-        )
-        const selectedModel = currentProvider?.models.find(
-          (model) => model.model === runtimeConfig.model.name,
-        )
-        const supportVision = selectedModel?.features?.includes(ModelFeatureEnum.vision)
         const data: Record<string, unknown> = {
           query: message,
           inputs: runtimeInputs,
@@ -195,7 +184,7 @@ export function AgentPreviewChatConversation({
         }
         if (draftType) data.draft_type = draftType
 
-        if (files?.length && supportVision) data.files = files
+        if (files?.length) data.files = files
 
         sendMessage({
           agentId,
@@ -203,7 +192,7 @@ export function AgentPreviewChatConversation({
           handleSend,
           callbacks: {
             onGetConversationMessages: async (conversationId) => {
-              return queryClient.fetchQuery({
+              return queryClient.query({
                 ...consoleQuery.agent.byAgentId.chatMessages.get.queryOptions({
                   input: {
                     params: {
@@ -222,12 +211,37 @@ export function AgentPreviewChatConversation({
             onUnhandledEvent: (event) => {
               if (event.event !== 'error' || typeof event.message !== 'string') return
 
+              const errorCode = typeof event.code === 'string' ? event.code : undefined
+              if (errorCode === 'agent_run_limit_exceeded') {
+                // The backend currently uses the same code for time and request-count limits.
+                // Pydantic AI's request-count error includes its `request_limit` field name.
+                const errorMessage = event.message.includes('request_limit')
+                  ? t(
+                      ($) =>
+                        $['agentDetail.configure.preview.errors.agentModelRequestLimitExceeded'],
+                    )
+                  : t(($) => $['agentDetail.configure.preview.errors.agentRunLimitExceeded'])
+                toast.error(errorMessage, {
+                  description: (
+                    <a
+                      href={docLink('/use-dify/build/new-agent/build#publish')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-text-accent hover:underline"
+                    >
+                      {t(($) => $['agentDetail.configure.rightPanel.learnMore'])}
+                    </a>
+                  ),
+                  timeout: 0,
+                })
+              }
+
               return {
                 conversationId:
                   typeof event.conversation_id === 'string' ? event.conversation_id : undefined,
                 messageId: typeof event.message_id === 'string' ? event.message_id : undefined,
                 errorMessage: event.message,
-                errorCode: typeof event.code === 'string' ? event.code : undefined,
+                errorCode,
               }
             },
             onConversationComplete: (completedConversationId, workflowRunId) => {
@@ -253,9 +267,9 @@ export function AgentPreviewChatConversation({
       agentId,
       agentSoulConfig,
       chatList,
-      config,
       conversationId,
       draftType,
+      docLink,
       handleSend,
       inputs,
       inputsForm,
@@ -266,7 +280,7 @@ export function AgentPreviewChatConversation({
       onSaveDraftBeforeRun,
       queryClient,
       sendMessage,
-      textGenerationModelList,
+      t,
     ],
   )
 
@@ -316,7 +330,7 @@ export function AgentPreviewChatConversation({
       isResponding={isResponding}
       sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
       sendButtonLoading={sendButtonLoading}
-      chatContainerClassName={cn('pt-6', isEmptyChat ? 'px-12 pt-2 !pb-[88px]' : 'px-3')}
+      chatContainerClassName={cn('pt-6', isEmptyChat ? 'px-12 pt-2 pb-22!' : 'px-3')}
       chatFooterClassName={isEmptyChat ? 'hidden' : 'px-3 pb-0 pt-10'}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
@@ -327,7 +341,12 @@ export function AgentPreviewChatConversation({
       onStopResponding={doStopResponding}
       noChatInput
       showRegenerate
-      questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xl" />}
+      questionIcon={
+        <Avatar size="xl" role="img" aria-label={userProfile.name}>
+          <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+          <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+        </Avatar>
+      }
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}
       onAnnotationRemoved={handleAnnotationRemoved}

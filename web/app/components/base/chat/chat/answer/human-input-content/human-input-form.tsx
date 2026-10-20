@@ -1,5 +1,4 @@
 'use client'
-import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { HumanInputFieldValue } from './field-renderer'
 import type { HumanInputFormProps } from './type'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
@@ -37,11 +36,16 @@ const HumanInputForm = ({ formData, onSubmit }: HumanInputFormProps) => {
     inputs: Record<string, HumanInputFieldValue>,
   ) => {
     setIsSubmitting(true)
-    await onSubmit?.(formToken, {
-      inputs: getProcessedHumanInputFormInputs(renderedFormInputs, inputs) || {},
-      action: actionID,
-    })
-    setIsSubmitting(false)
+    try {
+      await onSubmit?.(formToken, {
+        inputs: getProcessedHumanInputFormInputs(renderedFormInputs, inputs) || {},
+        action: actionID,
+      })
+    } catch {
+      // The request layer reports the error; retain the inputs for another attempt.
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const isActionDisabled =
@@ -63,7 +67,7 @@ const HumanInputForm = ({ formData, onSubmit }: HumanInputFormProps) => {
           <Button
             key={action.id}
             disabled={isActionDisabled}
-            variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
+            variant={getButtonStyle(action.button_style)}
             onClick={() => formToken && submit(formToken, action.id, inputs)}
           >
             {action.title}

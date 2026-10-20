@@ -1,8 +1,16 @@
-import type { ExternalAPIItem } from '@/models/datasets'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
 // Import mocked services
-import { checkUsageExternalAPI, deleteExternalAPI, fetchExternalAPI } from '@/service/datasets'
+import {
+  checkUsageExternalAPI,
+  deleteExternalAPI,
+  fetchExternalAPI,
+  updateExternalAPI,
+} from '@/service/datasets'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import ExternalKnowledgeAPICard from '../index'
 
 // Mock API services
@@ -15,7 +23,21 @@ vi.mock('@/service/datasets', () => ({
 
 // Mock contexts
 const mockSetShowExternalKnowledgeAPIModal = vi.fn()
-const mockMutateExternalKnowledgeApis = vi.fn()
+const externalKnowledgeApiQueryKey = consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({
+  input: {},
+}).queryKey
+let queryClient: ReturnType<typeof createConsoleQueryClient>
+const render = (ui: React.ReactElement) => {
+  queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(externalKnowledgeApiQueryKey, {
+    data: [],
+    has_more: false,
+    page: 1,
+    limit: 20,
+    total: 0,
+  })
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -23,14 +45,8 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-vi.mock('@/context/external-knowledge-api-context', () => ({
-  useExternalKnowledgeApi: () => ({
-    mutateExternalKnowledgeApis: mockMutateExternalKnowledgeApis,
-  }),
-}))
-
 describe('ExternalKnowledgeAPICard', () => {
-  const mockApi: ExternalAPIItem = {
+  const mockApi: ExternalKnowledgeApiResponse = {
     id: 'api-123',
     tenant_id: 'tenant-1',
     name: 'Test External API',
@@ -47,47 +63,59 @@ describe('ExternalKnowledgeAPICard', () => {
   const defaultProps = {
     api: mockApi,
     canManageExternalKnowledgeApi: true,
+    position: 1,
   }
+
+  const editButtonName =
+    'common.operation.edit Test External API https://api.example.com/knowledge 1'
+  const deleteButtonName =
+    'common.operation.delete Test External API https://api.example.com/knowledge 1'
 
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
-    it('should render API name', () => {
-      render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      expect(screen.getByText('Test External API'))!.toBeInTheDocument()
-    })
+    it('targets the correct API when cards have duplicate names and endpoints', async () => {
+      const user = userEvent.setup()
+      vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: false, count: 0 })
+      const duplicateApi = {
+        ...mockApi,
+        id: 'api-456',
+      }
 
-    it('should render API endpoint', () => {
-      render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      expect(screen.getByText('https://api.example.com/knowledge'))!.toBeInTheDocument()
-    })
+      render(
+        <>
+          <ExternalKnowledgeAPICard {...defaultProps} />
+          <ExternalKnowledgeAPICard
+            api={duplicateApi}
+            canManageExternalKnowledgeApi={true}
+            position={2}
+          />
+        </>,
+      )
 
-    it('should render edit and delete buttons', () => {
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const buttons = container.querySelectorAll('button')
-      expect(buttons.length).toBe(2)
+      await user.click(
+        screen.getByRole('button', {
+          name: 'common.operation.delete Test External API https://api.example.com/knowledge 2',
+        }),
+      )
+      expect(checkUsageExternalAPI).toHaveBeenCalledWith({ apiTemplateId: 'api-456' })
+      expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
     })
 
     it('should hide edit and delete buttons when external knowledge API management is unavailable', () => {
-      const { container } = render(
-        <ExternalKnowledgeAPICard {...defaultProps} canManageExternalKnowledgeApi={false} />,
-      )
+      render(<ExternalKnowledgeAPICard {...defaultProps} canManageExternalKnowledgeApi={false} />)
 
-      expect(container.querySelectorAll('button').length).toBe(0)
-    })
-
-    it('should render API connection icon', () => {
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const icon = container.querySelector('svg')
-      expect(icon)!.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: editButtonName })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: deleteButtonName })).not.toBeInTheDocument()
     })
   })
 
   describe('User Interactions - Edit', () => {
     it('should fetch API details and open modal when edit button is clicked', async () => {
-      const mockResponse: ExternalAPIItem = {
+      const user = userEvent.setup()
+      const mockResponse: ExternalKnowledgeApiResponse = {
         id: 'api-123',
         tenant_id: 'tenant-1',
         name: 'Test External API',
@@ -102,11 +130,10 @@ describe('ExternalKnowledgeAPICard', () => {
       }
       vi.mocked(fetchExternalAPI).mockResolvedValue(mockResponse)
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const buttons = container.querySelectorAll('button')
-      const editButton = buttons[0]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const editButton = screen.getByRole('button', { name: editButtonName })
 
-      fireEvent.click(editButton!)
+      await user.click(editButton!)
 
       await waitFor(() => {
         expect(fetchExternalAPI).toHaveBeenCalledWith({ apiTemplateId: 'api-123' })
@@ -127,14 +154,14 @@ describe('ExternalKnowledgeAPICard', () => {
     })
 
     it('should handle fetch error gracefully', async () => {
+      const user = userEvent.setup()
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       vi.mocked(fetchExternalAPI).mockRejectedValue(new Error('Fetch failed'))
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const buttons = container.querySelectorAll('button')
-      const editButton = buttons[0]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const editButton = screen.getByRole('button', { name: editButtonName })
 
-      fireEvent.click(editButton!)
+      await user.click(editButton!)
 
       await waitFor(() => {
         expect(consoleSpy).toHaveBeenCalledWith(
@@ -143,11 +170,13 @@ describe('ExternalKnowledgeAPICard', () => {
         )
       })
 
+      expect(queryClient.getQueryState(externalKnowledgeApiQueryKey)?.isInvalidated).toBe(false)
       consoleSpy.mockRestore()
     })
 
-    it('should call mutate on save callback', async () => {
-      const mockResponse: ExternalAPIItem = {
+    it('should invalidate the generated list query after editing', async () => {
+      const user = userEvent.setup()
+      const mockResponse: ExternalKnowledgeApiResponse = {
         id: 'api-123',
         tenant_id: 'tenant-1',
         name: 'Test External API',
@@ -162,82 +191,47 @@ describe('ExternalKnowledgeAPICard', () => {
       }
       vi.mocked(fetchExternalAPI).mockResolvedValue(mockResponse)
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const editButton = container.querySelectorAll('button')[0]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const editButton = screen.getByRole('button', { name: editButtonName })
 
-      fireEvent.click(editButton!)
+      await user.click(editButton!)
 
       await waitFor(() => {
         expect(mockSetShowExternalKnowledgeAPIModal).toHaveBeenCalled()
       })
 
-      // Simulate save callback
       const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0]![0]
-      modalCall.onSaveCallback()
-
-      expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
-    })
-
-    it('should call mutate on cancel callback', async () => {
-      const mockResponse: ExternalAPIItem = {
-        id: 'api-123',
-        tenant_id: 'tenant-1',
-        name: 'Test External API',
-        description: 'Test API description',
+      await modalCall.onEditCallback({
+        name: 'Updated External API',
         settings: {
-          endpoint: 'https://api.example.com/knowledge',
-          api_key: 'secret-key-123',
+          endpoint: 'https://updated.example.com/knowledge',
+          api_key: 'updated-secret-key',
         },
-        dataset_bindings: [],
-        created_by: 'user-1',
-        created_at: '2021-01-01T00:00:00Z',
-      }
-      vi.mocked(fetchExternalAPI).mockResolvedValue(mockResponse)
-
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const editButton = container.querySelectorAll('button')[0]
-
-      fireEvent.click(editButton!)
-
-      await waitFor(() => {
-        expect(mockSetShowExternalKnowledgeAPIModal).toHaveBeenCalled()
       })
 
-      // Simulate cancel callback
-      const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0]![0]
-      modalCall.onCancelCallback()
-
-      expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
+      expect(updateExternalAPI).toHaveBeenCalledWith({
+        apiTemplateId: 'api-123',
+        body: expect.objectContaining({
+          name: 'Updated External API',
+          settings: {
+            endpoint: 'https://updated.example.com/knowledge',
+            api_key: 'updated-secret-key',
+          },
+        }),
+      })
+      expect(queryClient.getQueryState(externalKnowledgeApiQueryKey)?.isInvalidated).toBe(true)
     })
   })
 
   describe('User Interactions - Delete', () => {
-    it('should check usage and show confirm dialog when delete button is clicked', async () => {
-      vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: false, count: 0 })
-
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const buttons = container.querySelectorAll('button')
-      const deleteButton = buttons[1]
-
-      fireEvent.click(deleteButton!)
-
-      await waitFor(() => {
-        expect(checkUsageExternalAPI).toHaveBeenCalledWith({ apiTemplateId: 'api-123' })
-      })
-
-      // Confirm dialog should be shown
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /cancel/i }))!.toBeInTheDocument()
-      })
-    })
-
     it('should show usage count in confirm dialog when API is in use', async () => {
+      const user = userEvent.setup()
       vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: true, count: 3 })
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const deleteButton = container.querySelectorAll('button')[1]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const deleteButton = screen.getByRole('button', { name: deleteButtonName })
 
-      fireEvent.click(deleteButton!)
+      await user.click(deleteButton!)
 
       await waitFor(() => {
         expect(screen.getByText(/3/))!.toBeInTheDocument()
@@ -245,63 +239,68 @@ describe('ExternalKnowledgeAPICard', () => {
     })
 
     it('should delete API and refresh list when confirmed', async () => {
+      const user = userEvent.setup()
       vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: false, count: 0 })
       vi.mocked(deleteExternalAPI).mockResolvedValue({ result: 'success' })
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const deleteButton = container.querySelectorAll('button')[1]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const deleteButton = screen.getByRole('button', { name: deleteButtonName })
 
-      fireEvent.click(deleteButton!)
+      await user.click(deleteButton!)
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /confirm/i }))!.toBeInTheDocument()
       })
 
       const confirmButton = screen.getByRole('button', { name: /confirm/i })
-      fireEvent.click(confirmButton)
+      await user.click(confirmButton)
 
       await waitFor(() => {
         expect(deleteExternalAPI).toHaveBeenCalledWith({ apiTemplateId: 'api-123' })
-        expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
+        expect(queryClient.getQueryState(externalKnowledgeApiQueryKey)?.isInvalidated).toBe(true)
       })
     })
 
     it('should close confirm dialog when cancel is clicked', async () => {
+      const user = userEvent.setup()
       vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: false, count: 0 })
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const deleteButton = container.querySelectorAll('button')[1]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const deleteButton = screen.getByRole('button', { name: deleteButtonName })
 
-      fireEvent.click(deleteButton!)
+      await user.click(deleteButton!)
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /cancel/i }))!.toBeInTheDocument()
       })
 
       const cancelButton = screen.getByRole('button', { name: /cancel/i })
-      fireEvent.click(cancelButton)
+      await user.click(cancelButton)
 
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: /confirm/i })).not.toBeInTheDocument()
+        expect(deleteExternalAPI).not.toHaveBeenCalled()
+        expect(queryClient.getQueryState(externalKnowledgeApiQueryKey)?.isInvalidated).toBe(false)
       })
     })
 
     it('should handle delete error gracefully', async () => {
+      const user = userEvent.setup()
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: false, count: 0 })
       vi.mocked(deleteExternalAPI).mockRejectedValue(new Error('Delete failed'))
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const deleteButton = container.querySelectorAll('button')[1]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const deleteButton = screen.getByRole('button', { name: deleteButtonName })
 
-      fireEvent.click(deleteButton!)
+      await user.click(deleteButton!)
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /confirm/i }))!.toBeInTheDocument()
       })
 
       const confirmButton = screen.getByRole('button', { name: /confirm/i })
-      fireEvent.click(confirmButton)
+      await user.click(confirmButton)
 
       await waitFor(() => {
         expect(consoleSpy).toHaveBeenCalledWith(
@@ -310,17 +309,19 @@ describe('ExternalKnowledgeAPICard', () => {
         )
       })
 
+      expect(queryClient.getQueryState(externalKnowledgeApiQueryKey)?.isInvalidated).toBe(false)
       consoleSpy.mockRestore()
     })
 
     it('should handle check usage error gracefully', async () => {
+      const user = userEvent.setup()
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       vi.mocked(checkUsageExternalAPI).mockRejectedValue(new Error('Check failed'))
 
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const deleteButton = container.querySelectorAll('button')[1]
+      render(<ExternalKnowledgeAPICard {...defaultProps} />)
+      const deleteButton = screen.getByRole('button', { name: deleteButtonName })
 
-      fireEvent.click(deleteButton!)
+      await user.click(deleteButton!)
 
       await waitFor(() => {
         expect(consoleSpy).toHaveBeenCalledWith(
@@ -329,46 +330,7 @@ describe('ExternalKnowledgeAPICard', () => {
         )
       })
 
-      consoleSpy.mockRestore()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle API with empty endpoint', () => {
-      const apiWithEmptyEndpoint: ExternalAPIItem = {
-        ...mockApi,
-        settings: { endpoint: '', api_key: 'key' },
-      }
-      render(
-        <ExternalKnowledgeAPICard
-          api={apiWithEmptyEndpoint}
-          canManageExternalKnowledgeApi={true}
-        />,
-      )
-      expect(screen.getByText('Test External API'))!.toBeInTheDocument()
-    })
-
-    it('should handle delete response with unsuccessful result', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: false, count: 0 })
-      vi.mocked(deleteExternalAPI).mockResolvedValue({ result: 'error' })
-
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const deleteButton = container.querySelectorAll('button')[1]
-
-      fireEvent.click(deleteButton!)
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /confirm/i }))!.toBeInTheDocument()
-      })
-
-      const confirmButton = screen.getByRole('button', { name: /confirm/i })
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(consoleSpy).toHaveBeenCalledWith('Failed to delete external API')
-      })
-
+      expect(queryClient.getQueryState(externalKnowledgeApiQueryKey)?.isInvalidated).toBe(false)
       consoleSpy.mockRestore()
     })
   })

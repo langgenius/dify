@@ -1,15 +1,16 @@
 import type { ComponentType } from 'react'
-import type { Components, StreamdownProps } from 'streamdown'
+import type { Components, ExtraProps, StreamdownProps } from 'streamdown'
 import { createMathPlugin } from '@streamdown/math'
+import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
 import RemarkBreaks from 'remark-breaks'
 import { defaultRehypePlugins, defaultRemarkPlugins, Streamdown } from 'streamdown'
+import { visit } from 'unist-util-visit'
 import {
   AudioBlock,
   Img,
   Link,
   MarkdownButton,
-  MarkdownForm,
   Paragraph,
   PluginImg,
   PluginParagraph,
@@ -17,7 +18,6 @@ import {
   VideoBlock,
 } from '@/app/components/base/markdown-blocks'
 import { ALLOW_INLINE_STYLES, ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
-import dynamic from '@/next/dynamic'
 import { customUrlTransform } from './markdown-utils'
 import 'katex/dist/katex.min.css'
 
@@ -35,9 +35,17 @@ type SanitizeSchema = {
   [key: string]: unknown
 }
 
-const CodeBlock = dynamic(() => import('@/app/components/base/markdown-blocks/code-block'), {
+const MARKDOWN_FORM_TAG_RE = /<form(?:\s|>)/i
+
+const MarkdownForm = dynamic(() => import('@/app/components/base/markdown-blocks/form'), {
   ssr: false,
 })
+
+const CodeBlock = dynamic(
+  () =>
+    import('@/app/components/base/markdown-blocks/code-block').then((module) => module.CodeBlock),
+  { ssr: false },
+)
 
 const mathPlugin = createMathPlugin({
   singleDollarTextMath: ENABLE_SINGLE_DOLLAR_LATEX,
@@ -70,6 +78,17 @@ const ALLOWED_TAGS: Record<string, string[]> = {
   section: ['dataName'],
 }
 
+function rehypePluginAssetPaths() {
+  return (tree: Parameters<typeof visit>[0]) => {
+    visit(tree, 'element', (value) => {
+      const node = value as NonNullable<ExtraProps['node']>
+      if (node.tagName !== 'img' || typeof node.properties.src !== 'string') return
+      if (node.properties.src.startsWith('_assets/'))
+        node.properties.src = `./${node.properties.src}`
+    })
+  }
+}
+
 /**
  * Build a rehype plugin list that includes the default raw → sanitize → harden
  * pipeline with `ALLOWED_TAGS` baked into the sanitize schema, plus any extra
@@ -78,7 +97,7 @@ const ALLOWED_TAGS: Record<string, string[]> = {
  * This sidesteps the streamdown `allowedTags` prop, which only takes effect
  * when `rehypePlugins` is the exact default reference (identity check).
  */
-function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
+function buildRehypePlugins(extraPlugins?: PluggableList, isPlugin = false): PluggableList {
   const [sanitizePlugin, defaultSanitizeSchema] = defaultRehypePlugins.sanitize as [
     Pluggable,
     SanitizeSchema,
@@ -103,7 +122,7 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
       const overrideNames = new Set(ALLOWED_TAGS[tag])
       const filtered = existing.filter((entry) => {
         const name = typeof entry === 'string' ? entry : entry[0]
-        return !overrideNames.has(name as string)
+        return !overrideNames.has(name)
       })
       mergedAttributes[tag] = [...filtered, ...(ALLOWED_TAGS[tag] ?? [])]
     } else {
@@ -137,6 +156,7 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
     defaultRehypePlugins.raw!,
     ...(extraPlugins ?? []),
     [sanitizePlugin, customSchema] as Pluggable,
+    ...(isPlugin ? [rehypePluginAssetPaths] : []),
     defaultRehypePlugins.harden!,
   ]
 }
@@ -167,6 +187,10 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
     className,
     mode = 'streaming',
   } = props
+  // Remend treats Markdown punctuation inside raw HTML attributes as incomplete syntax.
+  // Form markup must reach the HTML parser unchanged or a field name such as `field()!*&-`
+  // gains a synthetic trailing `*` after the closing form tag.
+  const shouldParseIncompleteMarkdown = !MARKDOWN_FORM_TAG_RE.test(latexContent)
 
   const remarkPlugins = useMemo(
     () => [
@@ -183,8 +207,8 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
   )
 
   const rehypePlugins = useMemo(
-    () => buildRehypePlugins(props.rehypePlugins ?? undefined),
-    [props.rehypePlugins],
+    () => buildRehypePlugins(props.rehypePlugins ?? undefined, !!pluginInfo),
+    [props.rehypePlugins, pluginInfo],
   )
 
   const plugins = useMemo(
@@ -245,6 +269,7 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
       components={components}
       isAnimating={isAnimating}
       mode={mode}
+      parseIncompleteMarkdown={shouldParseIncompleteMarkdown}
     >
       {latexContent}
     </Streamdown>

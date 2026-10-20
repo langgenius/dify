@@ -6,6 +6,16 @@ export type ClientOptions = {
 
 export type TagListResponse = Array<TagResponse>
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type TagBasePayload = {
   name: string
   type: TagType
@@ -22,17 +32,23 @@ export type TagUpdateRequestPayload = {
   name: string
 }
 
-export type TagType = 'app' | 'knowledge' | 'snippet'
+export type TagType = 'app' | 'knowledge' | 'skill' | 'snippet'
 
 export type GetTagsData = {
   body?: never
   path?: never
-  query?: {
+  query: {
     keyword?: string
-    type?: '' | 'app' | 'knowledge' | 'snippet'
+    type: 'app' | 'knowledge' | 'skill' | 'snippet'
   }
   url: '/tags'
 }
+
+export type GetTagsErrors = {
+  default: ErrorResponse
+}
+
+export type GetTagsError = GetTagsErrors[keyof GetTagsErrors]
 
 export type GetTagsResponses = {
   200: TagListResponse
@@ -46,6 +62,12 @@ export type PostTagsData = {
   query?: never
   url: '/tags'
 }
+
+export type PostTagsErrors = {
+  default: ErrorResponse
+}
+
+export type PostTagsError = PostTagsErrors[keyof PostTagsErrors]
 
 export type PostTagsResponses = {
   200: TagResponse
@@ -62,6 +84,12 @@ export type DeleteTagsByTagIdData = {
   url: '/tags/{tag_id}'
 }
 
+export type DeleteTagsByTagIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteTagsByTagIdError = DeleteTagsByTagIdErrors[keyof DeleteTagsByTagIdErrors]
+
 export type DeleteTagsByTagIdResponses = {
   204: void
 }
@@ -76,6 +104,12 @@ export type PatchTagsByTagIdData = {
   query?: never
   url: '/tags/{tag_id}'
 }
+
+export type PatchTagsByTagIdErrors = {
+  default: ErrorResponse
+}
+
+export type PatchTagsByTagIdError = PatchTagsByTagIdErrors[keyof PatchTagsByTagIdErrors]
 
 export type PatchTagsByTagIdResponses = {
   200: TagResponse

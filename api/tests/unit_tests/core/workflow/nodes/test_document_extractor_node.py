@@ -3,12 +3,13 @@ from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
-from docx.oxml.text.paragraph import CT_P
+from docx import Document
+from odfdo import Document as OdfDocument
+from odfdo import Paragraph
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from graphon.entities import GraphInitParams
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from graphon.file import File, FileTransferMethod
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import NodeRunResult
 from graphon.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
 from graphon.nodes.document_extractor.exc import TextExtractionError, UnsupportedFileTypeError
@@ -20,14 +21,26 @@ from graphon.nodes.document_extractor.node import (
     _extract_text_from_plain_text,
     _normalize_docx_zip,
 )
+from graphon.runtime import InitParams
 from graphon.variables import ArrayFileSegment, FileSegment
 from graphon.variables.segments import ArrayStringSegment
 from graphon.variables.variables import StringVariable
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
+def make_file(extension: str | None, mime_type: str | None) -> File:
+    """Use None when the file has no extension or MIME metadata, respectively."""
+    return File(
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference="test_file_id",
+        extension=extension,
+        mime_type=mime_type,
+    )
+
+
 @pytest.fixture
-def graph_init_params() -> GraphInitParams:
+def graph_init_params() -> InitParams:
     return build_test_graph_init_params(
         workflow_id="test_workflow",
         graph_config={},
@@ -50,8 +63,8 @@ def document_extractor_node(graph_init_params):
     node = DocumentExtractorNode(
         node_id="test_node_id",
         data=node_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=Mock(),
+        init_params=graph_init_params,
+        runtime_state=Mock(),
         http_client=http_client,
     )
     return node
@@ -63,7 +76,7 @@ def mock_graph_runtime_state():
 
 
 def test_run_variable_not_found(document_extractor_node, mock_graph_runtime_state):
-    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    document_extractor_node.runtime_state = mock_graph_runtime_state
     mock_graph_runtime_state.variable_pool.get.return_value = None
 
     result = document_extractor_node._run()
@@ -75,7 +88,7 @@ def test_run_variable_not_found(document_extractor_node, mock_graph_runtime_stat
 
 
 def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_state):
-    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    document_extractor_node.runtime_state = mock_graph_runtime_state
     mock_graph_runtime_state.variable_pool.get.return_value = StringVariable(
         value="Not an ArrayFileSegment", name="test"
     )
@@ -90,7 +103,7 @@ def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_s
 
 def test_run_empty_file_list_returns_succeeded(document_extractor_node, mock_graph_runtime_state):
     """Empty file list should return SUCCEEDED with empty documents and ArrayStringSegment([])."""
-    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    document_extractor_node.runtime_state = mock_graph_runtime_state
 
     # Provide an actual ArrayFileSegment with an empty list
     mock_graph_runtime_state.variable_pool.get.return_value = ArrayFileSegment(value=[])
@@ -105,11 +118,10 @@ def test_run_empty_file_list_returns_succeeded(document_extractor_node, mock_gra
 
 def test_run_none_only_file_list_returns_succeeded(document_extractor_node, mock_graph_runtime_state):
     """A file list containing only None (e.g., [None]) should be filtered to [] and succeed."""
-    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    document_extractor_node.runtime_state = mock_graph_runtime_state
 
-    # Use a Mock to bypass type validation for None entries in the list
-    afs = Mock(spec=ArrayFileSegment)
-    afs.value = [None]
+    # Preserve the legacy null-entry payload handled by the node filtering branch.
+    afs = ArrayFileSegment.model_construct(value=[None])
     mock_graph_runtime_state.variable_pool.get.return_value = afs
 
     result = document_extractor_node._run()
@@ -163,19 +175,19 @@ def test_run_extract_text(
     extension,
     monkeypatch,
 ):
-    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    document_extractor_node.runtime_state = mock_graph_runtime_state
 
-    mock_file = Mock(spec=File)
-    mock_file.mime_type = mime_type
-    mock_file.transfer_method = transfer_method
-    mock_file.related_id = "test_file_id" if transfer_method == FileTransferMethod.LOCAL_FILE else None
-    mock_file.remote_url = "https://example.com/file.txt" if transfer_method == FileTransferMethod.REMOTE_URL else None
-    mock_file.extension = extension
+    file = File(
+        file_type=FileType.DOCUMENT,
+        mime_type=mime_type,
+        transfer_method=transfer_method,
+        reference="test_file_id" if transfer_method == FileTransferMethod.LOCAL_FILE else None,
+        remote_url="https://example.com/file.txt" if transfer_method == FileTransferMethod.REMOTE_URL else None,
+        extension=extension,
+    )
+    array_file_segment = ArrayFileSegment(value=[file])
 
-    mock_array_file_segment = Mock(spec=ArrayFileSegment)
-    mock_array_file_segment.value = [mock_file]
-
-    mock_graph_runtime_state.variable_pool.get.return_value = mock_array_file_segment
+    mock_graph_runtime_state.variable_pool.get.return_value = array_file_segment
 
     mock_download = Mock(return_value=file_content)
 
@@ -217,7 +229,7 @@ def test_run_extract_text(
     if transfer_method == FileTransferMethod.REMOTE_URL:
         document_extractor_node._http_client.get.assert_called_once_with("https://example.com/file.txt")
     elif transfer_method == FileTransferMethod.LOCAL_FILE:
-        mock_download.assert_called_once_with(mock_file)
+        mock_download.assert_called_once_with(file)
 
 
 def test_extract_text_from_plain_text():
@@ -247,20 +259,14 @@ def test_extract_text_from_pdf(mock_pdf_document):
     assert text == "PDF content"
 
 
-@patch("docx.Document")
-def test_extract_text_from_docx(mock_document):
-    mock_paragraph1 = Mock()
-    mock_paragraph1.text = "Paragraph 1"
-    mock_paragraph2 = Mock()
-    mock_paragraph2.text = "Paragraph 2"
-    mock_document.return_value.paragraphs = [mock_paragraph1, mock_paragraph2]
-    mock_ct_p1 = Mock(spec=CT_P)
-    mock_ct_p1.text = "Paragraph 1"
-    mock_ct_p2 = Mock(spec=CT_P)
-    mock_ct_p2.text = "Paragraph 2"
-    mock_element = Mock(body=[mock_ct_p1, mock_ct_p2])
-    mock_document.return_value.element = mock_element
-    text = _extract_text_from_docx(b"PK\x03\x04")
+def test_extract_text_from_docx():
+    document = Document()
+    document.add_paragraph("Paragraph 1")
+    document.add_paragraph("Paragraph 2")
+    content = io.BytesIO()
+    document.save(content)
+
+    text = _extract_text_from_docx(content.getvalue())
     assert text == "Paragraph 1\nParagraph 2"
 
 
@@ -442,6 +448,39 @@ def test_extract_text_from_excel_numeric_type_column(mock_excel_file):
 
 
 @pytest.mark.parametrize(
+    ("extension", "mime_type", "route_label"),
+    [
+        (".odt", "text/plain", "extension"),
+        (None, "application/vnd.oasis.opendocument.text", "mime_type"),
+    ],
+)
+def test_extract_text_from_file_routes_odt_inputs_to_graphon_odt_extractor(
+    document_extractor_node,
+    extension,
+    mime_type,
+    route_label,
+):
+    file = make_file(extension, mime_type)
+
+    document = OdfDocument()
+    document.body.append(Paragraph(f"extracted through {route_label}"))
+    content = io.BytesIO()
+    document.save(content)
+
+    with patch(
+        "graphon.nodes.document_extractor.node._download_file_content", return_value=content.getvalue()
+    ) as mock_download:
+        text = _extract_text_from_file(
+            document_extractor_node.http_client,
+            file,
+            unstructured_api_config=document_extractor_node._unstructured_api_config,
+        )
+
+    assert text.strip() == f"extracted through {route_label}"
+    mock_download.assert_called_once_with(document_extractor_node.http_client, file)
+
+
+@pytest.mark.parametrize(
     ("extension", "mime_type"),
     [
         (".xlsx", "text/plain"),
@@ -449,9 +488,7 @@ def test_extract_text_from_excel_numeric_type_column(mock_excel_file):
     ],
 )
 def test_extract_text_from_file_routes_excel_inputs(document_extractor_node, extension, mime_type):
-    file = Mock(spec=File)
-    file.extension = extension
-    file.mime_type = mime_type
+    file = make_file(extension, mime_type)
 
     with patch(
         "graphon.nodes.document_extractor.node._download_file_content",
@@ -492,9 +529,7 @@ def test_extract_text_from_file_routes_excel_inputs(document_extractor_node, ext
 
 
 def test_extract_text_from_file_rejects_missing_extension_and_mime_type(document_extractor_node):
-    file = Mock(spec=File)
-    file.extension = None
-    file.mime_type = None
+    file = make_file(None, None)
 
     with patch(
         "graphon.nodes.document_extractor.node._download_file_content",
@@ -509,9 +544,8 @@ def test_extract_text_from_file_rejects_missing_extension_and_mime_type(document
 
 
 def test_run_list_file_extraction_error_returns_failed(document_extractor_node, mock_graph_runtime_state):
-    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
-    file_list = Mock(spec=ArrayFileSegment)
-    file_list.value = [Mock(spec=File)]
+    document_extractor_node.runtime_state = mock_graph_runtime_state
+    file_list = ArrayFileSegment(value=[make_file(".txt", "text/plain")])
     mock_graph_runtime_state.variable_pool.get.return_value = file_list
 
     with patch(
@@ -525,9 +559,8 @@ def test_run_list_file_extraction_error_returns_failed(document_extractor_node, 
 
 
 def test_run_single_file_segment_extraction_error_returns_failed(document_extractor_node, mock_graph_runtime_state):
-    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
-    file_segment = Mock(spec=FileSegment)
-    file_segment.value = Mock(spec=File)
+    document_extractor_node.runtime_state = mock_graph_runtime_state
+    file_segment = FileSegment(value=make_file(".txt", "text/plain"))
     mock_graph_runtime_state.variable_pool.get.return_value = file_segment
 
     with patch(
@@ -541,9 +574,8 @@ def test_run_single_file_segment_extraction_error_returns_failed(document_extrac
 
 
 def test_run_single_file_segment_returns_string_output(document_extractor_node, mock_graph_runtime_state):
-    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
-    file_segment = Mock(spec=FileSegment)
-    file_segment.value = Mock(spec=File)
+    document_extractor_node.runtime_state = mock_graph_runtime_state
+    file_segment = FileSegment(value=make_file(".txt", "text/plain"))
     mock_graph_runtime_state.variable_pool.get.return_value = file_segment
 
     with patch(

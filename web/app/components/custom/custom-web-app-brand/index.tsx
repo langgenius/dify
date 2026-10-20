@@ -1,8 +1,9 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import ChatPreviewCard from './components/chat-preview-card'
 import WorkflowPreviewCard from './components/workflow-preview-card'
 import useWebAppBrand from './hooks/use-web-app-brand'
@@ -10,7 +11,9 @@ import useWebAppBrand from './hooks/use-web-app-brand'
 const ALLOW_FILE_EXTENSIONS = ['svg', 'png']
 
 const CustomWebAppBrand = () => {
-  const { t } = useTranslation()
+  const brandSwitchId = useId()
+  const logoInputId = useId()
+  const { t } = useTranslation(['appOverview', 'common', 'custom'])
   const {
     fileId,
     imgKey,
@@ -18,10 +21,11 @@ const CustomWebAppBrand = () => {
     uploading,
     webappLogo,
     webappBrandRemoved,
+    isCustomConfigUnavailable,
     uploadDisabled,
     workspaceLogo,
     canManageCustomBrand,
-    isSandbox,
+    canReplaceLogo,
     handleApply,
     handleCancel,
     handleChange,
@@ -32,11 +36,12 @@ const CustomWebAppBrand = () => {
   return (
     <div className="py-4">
       <div className="mb-2 flex items-center justify-between rounded-xl bg-background-section-burn p-4 system-md-medium text-text-primary">
-        {t(($) => $['webapp.removeBrand'], { ns: 'custom' })}
+        <label htmlFor={brandSwitchId}>{t(($) => $['webapp.removeBrand'], { ns: 'custom' })}</label>
         <Switch
+          id={brandSwitchId}
           size="lg"
           checked={webappBrandRemoved ?? false}
-          disabled={isSandbox || !canManageCustomBrand}
+          disabled={isCustomConfigUnavailable || !canReplaceLogo || !canManageCustomBrand}
           onCheckedChange={handleSwitch}
         />
       </div>
@@ -47,9 +52,9 @@ const CustomWebAppBrand = () => {
         )}
       >
         <div>
-          <div className="system-md-medium text-text-primary">
+          <label htmlFor={logoInputId} className="block system-md-medium text-text-primary">
             {t(($) => $['webapp.changeLogo'], { ns: 'custom' })}
-          </div>
+          </label>
           <div className="system-xs-regular text-text-tertiary">
             {t(($) => $['webapp.changeLogoTip'], { ns: 'custom' })}
           </div>
@@ -69,11 +74,12 @@ const CustomWebAppBrand = () => {
           )}
           {!uploading && (
             <Button className="relative mr-2" disabled={uploadDisabled}>
-              <span className="mr-1 i-ri-image-add-line size-4" />
+              <span className="i-ri-image-add-line size-4" />
               {webappLogo || fileId
                 ? t(($) => $.change, { ns: 'custom' })
                 : t(($) => $.upload, { ns: 'custom' })}
               <input
+                id={logoInputId}
                 className={cn(
                   'absolute inset-0 block w-full text-[0] opacity-0',
                   uploadDisabled ? 'cursor-not-allowed' : 'cursor-pointer',
@@ -88,7 +94,7 @@ const CustomWebAppBrand = () => {
           )}
           {uploading && (
             <Button className="relative mr-2" disabled={true}>
-              <span className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
+              <span className="i-ri-loader-2-line size-4 animate-spin" />
               {t(($) => $.uploading, { ns: 'custom' })}
             </Button>
           )}
@@ -105,7 +111,12 @@ const CustomWebAppBrand = () => {
                 variant="primary"
                 className="mr-2"
                 onClick={handleApply}
-                disabled={webappBrandRemoved || !canManageCustomBrand}
+                disabled={
+                  isCustomConfigUnavailable ||
+                  !canReplaceLogo ||
+                  webappBrandRemoved ||
+                  !canManageCustomBrand
+                }
               >
                 {t(($) => $.apply, { ns: 'custom' })}
               </Button>
@@ -122,7 +133,7 @@ const CustomWebAppBrand = () => {
         <div className="shrink-0 system-xs-medium-uppercase text-text-tertiary">
           {t(($) => $['overview.appInfo.preview'], { ns: 'appOverview' })}
         </div>
-        <Divider bgStyle="gradient" className="grow" />
+        <Separator decorative variant="gradient" className="my-2 h-[0.5px] grow" />
       </div>
       <div className="relative mb-2 flex items-center gap-3">
         <ChatPreviewCard

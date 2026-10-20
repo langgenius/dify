@@ -6,20 +6,23 @@ import type {
   SelectFormInput,
 } from '../../../types'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
-import type { App, AppSSO } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useState } from 'react'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
 import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
+import { createDeferred } from '@/test/deferred'
 import EmailSenderModal from '../test-email-sender'
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', async (importOriginal) => ({
+  ...(await importOriginal()),
   toast: {
     error: vi.fn(),
   },
@@ -37,45 +40,29 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => mockConsoleState)
-})
-
 type RecordedRequest = {
   url: string
   method: string
   body?: unknown
 }
 
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-      mutations: {
-        retry: false,
-      },
-    },
-  })
-
 const renderWithProviders = (ui: ReactNode) => {
-  const queryClient = createQueryClient()
+  const { queryClient } = createConsoleQueryWrapper({
+    accountProfile: mockConsoleState.userProfile,
+    currentWorkspace: mockConsoleState.currentWorkspace,
+  })
   const hooksStore = createHooksStore({})
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <HooksStoreContext.Provider value={hooksStore}>{ui}</HooksStoreContext.Provider>
+      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+        <HooksStoreContext.Provider value={hooksStore}>{ui}</HooksStoreContext.Provider>
+      </EditorResourceScope>
     </QueryClientProvider>,
   )
 }
 
-const setupFetch = () => {
+const setupFetch = (deliveryResponse?: () => Promise<Response>) => {
   const requests: RecordedRequest[] = []
   const fetchSpy = vi
     .spyOn(globalThis, 'fetch')
@@ -113,6 +100,10 @@ const setupFetch = () => {
         )
       }
 
+      if (!request.url.endsWith('/delivery-test') || request.method !== 'POST')
+        throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+      if (deliveryResponse) return deliveryResponse()
+
       return new Response(JSON.stringify({ result: 'success' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -135,6 +126,26 @@ const createConfig = (overrides: Partial<EmailConfig> = {}): EmailConfig => ({
   debug_mode: false,
   ...overrides,
 })
+
+const TestEmailSenderHarness = () => {
+  const [open, setOpen] = useState(true)
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Open test email sender
+      </button>
+      <EmailSenderModal
+        nodeId="human-node"
+        deliveryId="delivery-1"
+        open={open}
+        onOpenChange={setOpen}
+        jumpToEmailConfigModal={vi.fn()}
+        config={createConfig({ body: '' })}
+      />
+    </>
+  )
+}
 
 const createFormInput = (overrides: Partial<ParagraphFormInput> = {}): FormInputItem => ({
   type: InputVarType.paragraph,
@@ -160,12 +171,6 @@ const createDynamicSelectInput = (): SelectFormInput => ({
 describe('human-input/delivery-method/test-email-sender', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.setState({
-      appDetail: {
-        id: 'app-1',
-        name: 'Workflow App',
-      } as App & Partial<AppSSO>,
-    })
   })
 
   afterEach(() => {
@@ -218,7 +223,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
     )
 
     const sendButton = screen.getByRole('button', {
-      name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+      name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
     })
     expect(sendButton).toBeDisabled()
 
@@ -230,7 +235,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.done'),
+        screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.done'),
       ).toBeInTheDocument(),
     )
     expect(requests).toContainEqual(
@@ -250,6 +255,73 @@ describe('human-input/delivery-method/test-email-sender', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
 
     expect(handleOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('should start a fresh session after closing and reopening', async () => {
+    const user = userEvent.setup()
+    const { requests } = setupFetch()
+    renderWithProviders(<TestEmailSenderHarness />)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
+      }),
+    )
+    expect(
+      await screen.findByText(
+        'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.done',
+      ),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: 'Open test email sender' }))
+
+    expect(
+      screen.getByRole('button', {
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.done'),
+    ).not.toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
+      }),
+    )
+    await waitFor(() => {
+      expect(
+        requests.filter(
+          (request) => request.method === 'POST' && request.url.endsWith('/delivery-test'),
+        ),
+      ).toHaveLength(2)
+    })
+  })
+
+  it('should stay open when clicking outside the dialog', async () => {
+    setupFetch()
+    const user = userEvent.setup()
+    const handleOpenChange = vi.fn()
+
+    renderWithProviders(
+      <EmailSenderModal
+        nodeId="human-node"
+        deliveryId="delivery-1"
+        open
+        onOpenChange={handleOpenChange}
+        jumpToEmailConfigModal={vi.fn()}
+        config={createConfig({ body: '' })}
+      />,
+    )
+
+    await user.click(document.body)
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(handleOpenChange).not.toHaveBeenCalled()
   })
 
   it('should submit variables referenced by dynamic select option sources', async () => {
@@ -304,7 +376,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
     )
 
     const sendButton = screen.getByRole('button', {
-      name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+      name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
     })
     expect(sendButton).toBeDisabled()
 
@@ -335,7 +407,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
 
   it('should render fallback variable inputs and allow cancelling', async () => {
     const user = userEvent.setup()
-    setupFetch()
+    const { requests } = setupFetch()
     const handleOpenChange = vi.fn()
 
     renderWithProviders(
@@ -355,7 +427,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.vars',
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.vars',
       }),
     )
 
@@ -364,32 +436,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(handleOpenChange).toHaveBeenCalledWith(false)
-  })
-
-  it('should show selected recipients with the email configuration tip', () => {
-    setupFetch()
-
-    renderWithProviders(
-      <EmailSenderModal
-        nodeId="human-node"
-        deliveryId="delivery-1"
-        open
-        onOpenChange={vi.fn()}
-        jumpToEmailConfigModal={vi.fn()}
-        config={createConfig({
-          recipients: {
-            whole_workspace: true,
-            items: [{ type: 'external', email: 'external@example.com' }],
-          },
-          body: 'Please review {{#url#}}',
-        })}
-      />,
-    )
-
-    expect(screen.getByText('external@example.com')).toBeInTheDocument()
-    expect(
-      screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.tip'),
-    ).toBeInTheDocument()
+    expect(requests.filter((request) => request.method === 'POST')).toEqual([])
   })
 
   it('should show a validation toast when generated JSON input is invalid', async () => {
@@ -447,7 +494,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
     })
     await user.click(
       screen.getByRole('button', {
-        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
       }),
     )
 
@@ -458,6 +505,48 @@ describe('human-input/delivery-method/test-email-sender', () => {
         method: 'POST',
       }),
     )
+  })
+
+  it('prevents duplicate delivery while the test email request is pending', async () => {
+    const user = userEvent.setup()
+    const pending = createDeferred<Response>()
+    const { requests } = setupFetch(() => pending.promise)
+    renderWithProviders(
+      <EmailSenderModal
+        nodeId="human-node"
+        deliveryId="delivery-1"
+        open
+        onOpenChange={vi.fn()}
+        jumpToEmailConfigModal={vi.fn()}
+        config={createConfig({ body: 'Plain body' })}
+      />,
+    )
+    const send = screen.getByRole('button', {
+      name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
+    })
+    await user.click(send)
+    await waitFor(() =>
+      expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1),
+    )
+    expect(send).toHaveAttribute('aria-disabled', 'true')
+    await user.click(send)
+    expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1)
+    expect(
+      screen.queryByText('workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.done'),
+    ).not.toBeInTheDocument()
+    await act(async () =>
+      pending.resolve(
+        new Response(JSON.stringify({ result: 'success' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    )
+    expect(
+      await screen.findByText(
+        'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.done',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('should show debug success copy after sending in debug mode', async () => {
@@ -479,18 +568,22 @@ describe('human-input/delivery-method/test-email-sender', () => {
     )
 
     expect(
-      screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.debugModeTip'),
+      screen.getByText(
+        'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.debugModeTip',
+      ),
     ).toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', {
-        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
       }),
     )
 
     await waitFor(() =>
       expect(
-        screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.debugDone'),
+        screen.getByText(
+          'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.debugDone',
+        ),
       ).toBeInTheDocument(),
     )
   })
@@ -518,13 +611,15 @@ describe('human-input/delivery-method/test-email-sender', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.send',
       }),
     )
 
     await waitFor(() =>
       expect(
-        screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.wholeTeamDone3'),
+        screen.getByText(
+          'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.wholeTeamDone3',
+        ),
       ).toBeInTheDocument(),
     )
     expect(screen.getByText('external@example.com')).toBeInTheDocument()

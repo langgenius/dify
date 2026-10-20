@@ -1,3 +1,4 @@
+import json
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -7,6 +8,7 @@ import pytest
 from dify_vdb_pgvector.pgvector import PGVector, PGVectorConfig
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 class TestPGVector:
@@ -319,7 +321,38 @@ def test_config_validation_parametrized(invalid_config_override):
     }
     config.update(invalid_config_override)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:1 validation error for PGVectorConfig\\\n  Value error, config "
+            "PGVECTOR_DATABASE is required \\[type=value_error, "
+            "input_value=\\{'host': 'localhost', 'po\\.\\.\\. 1, 'max_connection': "
+            "5\\}, input_type=dict\\]|1 validation error for PGVectorConfig\\\n  "
+            "Value error, config PGVECTOR_HOST is required \\[type=value_error, "
+            "input_value=\\{'host': '', 'port': 5432\\.\\.\\. 1, 'max_connection': "
+            "5\\}, input_type=dict\\]|1 validation error for PGVectorConfig\\\n  "
+            "Value error, config PGVECTOR_MAX_CONNECTION is required "
+            "\\[type=value_error, input_value=\\{'host': 'localhost', 'po\\.\\.\\. "
+            "1, 'max_connection': 0\\}, input_type=dict\\]|1 validation error for "
+            "PGVectorConfig\\\n  Value error, config PGVECTOR_MIN_CONNECTION is "
+            "required \\[type=value_error, input_value=\\{'host': 'localhost', "
+            "'po\\.\\.\\. 0, 'max_connection': 5\\}, input_type=dict\\]|1 "
+            "validation error for PGVectorConfig\\\n  Value error, config "
+            "PGVECTOR_MIN_CONNECTION should less than PGVECTOR_MAX_CONNECTION "
+            "\\[type=value_error, input_value=\\{'host': 'localhost', "
+            "'po\\.\\.\\.10, 'max_connection': 5\\}, input_type=dict\\]|1 "
+            "validation error for PGVectorConfig\\\n  Value error, config "
+            "PGVECTOR_PASSWORD is required \\[type=value_error, "
+            "input_value=\\{'host': 'localhost', 'po\\.\\.\\. 1, 'max_connection': "
+            "5\\}, input_type=dict\\]|1 validation error for PGVectorConfig\\\n  "
+            "Value error, config PGVECTOR_PORT is required \\[type=value_error, "
+            "input_value=\\{'host': 'localhost', 'po\\.\\.\\. 1, 'max_connection': "
+            "5\\}, input_type=dict\\]|1 validation error for PGVectorConfig\\\n  "
+            "Value error, config PGVECTOR_USER is required \\[type=value_error, "
+            "input_value=\\{'host': 'localhost', 'po\\.\\.\\. 1, 'max_connection': "
+            "5\\}, input_type=dict\\])"
+        ),
+    ):
         PGVectorConfig(**config)
 
 
@@ -466,12 +499,10 @@ def test_search_by_full_text_branches_for_bigm_and_standard():
 
 def test_pgvector_factory_initializes_expected_collection_name(monkeypatch: pytest.MonkeyPatch):
     factory = pgvector_module.PGVectorFactory()
-    dataset_with_index = SimpleNamespace(
-        id="dataset-1",
-        index_struct_dict={"vector_store": {"class_prefix": "EXISTING_COLLECTION"}},
-        index_struct=None,
+    dataset_with_index = Dataset(
+        id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})
     )
-    dataset_without_index = SimpleNamespace(id="dataset-2", index_struct_dict=None, index_struct=None)
+    dataset_without_index = Dataset(id="dataset-2")
 
     monkeypatch.setattr(pgvector_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
     monkeypatch.setattr(pgvector_module.dify_config, "PGVECTOR_HOST", "localhost")
@@ -484,8 +515,8 @@ def test_pgvector_factory_initializes_expected_collection_name(monkeypatch: pyte
     monkeypatch.setattr(pgvector_module.dify_config, "PGVECTOR_PG_BIGM", False)
 
     with patch.object(pgvector_module, "PGVector", return_value="vector") as vector_cls:
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock())
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock())
+        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock(), session=None)
+        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result_1 == "vector"
     assert result_2 == "vector"

@@ -6,8 +6,6 @@ import (
 	"fmt"
 )
 
-const agentStubProtocolVersion = 1
-
 // ConnectResponse is the JSON output for `dify-agent connect --json`.
 type ConnectResponse struct {
 	ConnectionID string `json:"connection_id"`

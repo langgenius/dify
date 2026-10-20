@@ -16,15 +16,20 @@ from sqlalchemy.orm import Session
 import commands
 from commands import system as system_commands
 from core.tools.entities.tool_entities import ApiProviderSchemaType
+from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Tenant
 from models.provider import Provider, ProviderModel, ProviderType
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider
+from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_tenant
 
 
 def _invoke_reset() -> int:
+    callback = commands.reset_encrypt_key_pair.callback
+    assert callback is not None
     try:
-        commands.reset_encrypt_key_pair.callback()
+        callback()
     except SystemExit as e:
         return int(e.code or 0)
     return 0
@@ -36,9 +41,7 @@ USER_ID = "22222222-2222-2222-2222-222222222222"
 
 
 def _tenant(tenant_id: str, *, name: str = "Test tenant") -> Tenant:
-    tenant = Tenant(name=name, encrypt_public_key="old-key")
-    tenant.id = tenant_id
-    return tenant
+    return make_tenant(tenant_id=tenant_id, name=name, encrypt_public_key="old-key")
 
 
 def _encrypted_rows(tenant_id: str, *, suffix: str = "1") -> tuple[object, ...]:
@@ -86,8 +89,8 @@ def _bind_command_to_sqlite(monkeypatch: pytest.MonkeyPatch, session: Session) -
     monkeypatch.setattr(system_commands, "db", SimpleNamespace(engine=session.get_bind()))
 
 
-def test_reset_aborts_when_not_self_hosted(monkeypatch, capsys):
-    monkeypatch.setattr(system_commands.dify_config, "EDITION", "CLOUD")
+def test_reset_aborts_when_not_self_hosted(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
     exit_code = _invoke_reset()
     captured = capsys.readouterr()
@@ -106,7 +109,7 @@ def test_reset_purges_provider_and_tool_tables_for_each_tenant(
 ) -> None:
     """The command must purge LLM provider rows AND every tool provider table
     that stores ciphertext encrypted under the tenant key (#35396)."""
-    monkeypatch.setattr(system_commands.dify_config, "EDITION", "SELF_HOSTED")
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     monkeypatch.setattr(system_commands, "generate_key_pair", lambda tenant_id: f"new-key-{tenant_id}")
     _bind_command_to_sqlite(monkeypatch, sqlite_session)
 
@@ -127,8 +130,12 @@ def test_reset_purges_provider_and_tool_tables_for_each_tenant(
     assert TENANT_ID in captured.out
 
     sqlite_session.expire_all()
-    assert sqlite_session.get(Tenant, TENANT_ID).encrypt_public_key == f"new-key-{TENANT_ID}"
-    assert sqlite_session.get(Tenant, OTHER_TENANT_ID).encrypt_public_key == f"new-key-{OTHER_TENANT_ID}"
+    tenant_after = sqlite_session.get(Tenant, TENANT_ID)
+    other_tenant_after = sqlite_session.get(Tenant, OTHER_TENANT_ID)
+    assert tenant_after is not None
+    assert other_tenant_after is not None
+    assert tenant_after.encrypt_public_key == f"new-key-{TENANT_ID}"
+    assert other_tenant_after.encrypt_public_key == f"new-key-{OTHER_TENANT_ID}"
     assert sqlite_session.scalars(select(Provider).where(Provider.provider_type == ProviderType.CUSTOM)).all() == []
     assert sqlite_session.scalars(select(ProviderModel)).all() == []
     assert sqlite_session.scalars(select(BuiltinToolProvider)).all() == []
@@ -146,7 +153,7 @@ def test_reset_purges_provider_and_tool_tables_for_each_tenant(
 )
 def test_reset_iterates_all_tenants(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     """Multi-tenant deployments must purge every tenant, not just the first."""
-    monkeypatch.setattr(system_commands.dify_config, "EDITION", "SELF_HOSTED")
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     monkeypatch.setattr(system_commands, "generate_key_pair", lambda tenant_id: f"new-key-{tenant_id}")
 
     _bind_command_to_sqlite(monkeypatch, sqlite_session)

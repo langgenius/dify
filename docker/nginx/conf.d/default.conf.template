@@ -3,19 +3,21 @@
 server {
     listen ${NGINX_PORT};
     server_name ${NGINX_SERVER_NAME};
+    resolver 127.0.0.11 valid=30s ipv6=off;
 
     location /console/api {
-      proxy_pass http://api:5001;
+      set $api_upstream api:5001;
+      proxy_pass http://$api_upstream;
       include proxy.conf;
     }
 
     location /api {
-      proxy_pass http://api:5001;
+      set $api_upstream api:5001;
+      proxy_pass http://$api_upstream;
       include proxy.conf;
     }
 
     location /socket.io/ {
-      resolver 127.0.0.11 valid=30s ipv6=off;
       set $socket_io_upstream ${NGINX_SOCKET_IO_UPSTREAM};
       proxy_pass http://$socket_io_upstream;
       include proxy.conf;
@@ -25,43 +27,51 @@ server {
     }
 
     location /v1 {
-      proxy_pass http://api:5001;
+      set $api_upstream api:5001;
+      proxy_pass http://$api_upstream;
       include proxy.conf;
     }
 
     location /openapi {
-      proxy_pass http://api:5001;
+      set $api_upstream api:5001;
+      proxy_pass http://$api_upstream;
       include proxy.conf;
     }
 
     location /files {
-      proxy_pass http://api:5001;
+      set $api_upstream api:5001;
+      proxy_pass http://$api_upstream;
       include proxy.conf;
     }
 
     location /explore {
-      proxy_pass http://web:3000;
+      set $web_upstream web:3000;
+      proxy_pass http://$web_upstream;
       include proxy.conf;
     }
 
     location /e/ {
-      proxy_pass http://plugin_daemon:5002;
+      set $plugin_daemon_upstream plugin_daemon:5002;
+      proxy_pass http://$plugin_daemon_upstream;
       proxy_set_header Dify-Hook-Url $scheme://$host$request_uri;
       include proxy.conf;
     }
 
     location / {
-      proxy_pass http://web:3000;
+      set $web_upstream web:3000;
+      proxy_pass http://$web_upstream;
       include proxy.conf;
     }
 
     location /mcp {
-      proxy_pass http://api:5001;
+      set $api_upstream api:5001;
+      proxy_pass http://$api_upstream;
       include proxy.conf;
     }
 
     location /triggers {
-      proxy_pass http://api:5001;
+      set $api_upstream api:5001;
+      proxy_pass http://$api_upstream;
       include proxy.conf;
     }
     

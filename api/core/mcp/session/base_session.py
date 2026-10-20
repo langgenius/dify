@@ -135,7 +135,7 @@ class BaseSession[
     messages when entered.
     """
 
-    _response_streams: dict[RequestId, queue.Queue[JSONRPCResponse | JSONRPCError | HTTPStatusError]]
+    _response_streams: dict[RequestId, queue.Queue[JSONRPCResponse | JSONRPCError | HTTPStatusError | None]]
     _request_id: int
     _in_flight: dict[RequestId, RequestResponder[ReceiveRequestT, SendResultT]]
     _receive_request_type: type[ReceiveRequestT]
@@ -216,7 +216,7 @@ class BaseSession[
         request_id = self._request_id
         self._request_id = request_id + 1
 
-        response_queue: queue.Queue[JSONRPCResponse | JSONRPCError | HTTPStatusError] = queue.Queue()
+        response_queue: queue.Queue[JSONRPCResponse | JSONRPCError | HTTPStatusError | None] = queue.Queue()
         self._response_streams[request_id] = response_queue
 
         try:
@@ -229,9 +229,9 @@ class BaseSession[
             self._write_stream.put(SessionMessage(message=JSONRPCMessage(jsonrpc_request), metadata=metadata))
             timeout = DEFAULT_RESPONSE_READ_TIMEOUT
             if request_read_timeout_seconds is not None:
-                timeout = float(request_read_timeout_seconds.total_seconds())
+                timeout = request_read_timeout_seconds.total_seconds()
             elif self._session_read_timeout_seconds is not None:
-                timeout = float(self._session_read_timeout_seconds.total_seconds())
+                timeout = self._session_read_timeout_seconds.total_seconds()
             while True:
                 try:
                     response_or_error = response_queue.get(timeout=timeout)

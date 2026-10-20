@@ -16,8 +16,7 @@ from pydantic import BaseModel, Field, NonNegativeInt, field_validator, model_va
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.file.enums import FileTransferMethod, FileType
-from graphon.nodes.base.variable_template_parser import VariableTemplateParser
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.consts import SELECTORS_LENGTH
 from graphon.variables.segments import Segment
 
@@ -59,13 +58,24 @@ class StringSource(BaseModel):
 
 
 class StringListSource(BaseModel):
-    type: ValueSourceType
+    type: ValueSourceType = Field(
+        description=(
+            "Origin of the options. `constant` means `value` lists the options literally; `variable` means "
+            "`selector` points to an `array[string]` workflow variable that provides them."
+        )
+    )
 
     # The selector of default variable, used when `type` is `VARIABLE`.
-    selector: Sequence[str] = Field(default_factory=tuple)
+    selector: Sequence[str] = Field(
+        default_factory=tuple,
+        description="Variable reference path when `type` is `variable`.",
+    )
 
     # The value of the default, used when `type` is `CONSTANT`.
-    value: list[str] = Field(default_factory=list)
+    value: list[str] = Field(
+        default_factory=list,
+        description="Literal option list when `type` is `constant`.",
+    )
 
 
 class BaseInputConfig(BaseModel):
@@ -95,7 +105,13 @@ class ParagraphInputConfig(BaseInputConfig):
 
     # NOTE: This class is renamed from FormInput.
     type: Literal[FormInputType.PARAGRAPH] = FormInputType.PARAGRAPH
-    default: StringSource | None = None
+    default: StringSource | None = Field(
+        default=None,
+        description=(
+            "Raw default-value configuration for the paragraph input. Runtime-resolved values are exposed in the "
+            "surrounding `resolved_default_values` mapping."
+        ),
+    )
 
     @override
     def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
@@ -120,7 +136,9 @@ class ParagraphInputConfig(BaseInputConfig):
 
 class SelectInputConfig(BaseInputConfig):
     type: Literal[FormInputType.SELECT] = FormInputType.SELECT
-    option_source: StringListSource
+    option_source: StringListSource = Field(
+        description="Source of options for `select` inputs. Present only when `type` is `select`."
+    )
 
     @override
     def extract_variable_selectors(self) -> Sequence[Sequence[NodeType]]:
@@ -210,7 +228,7 @@ class UserActionConfig(BaseModel):
     # It also serves as the identifiers of output handle.
     #
     # The id must be a valid identifier (satisfy the _IDENTIFIER_PATTERN above.)
-    id: str = Field(max_length=20)
+    id: str = Field(max_length=20, pattern=_IDENTIFIER_PATTERN.pattern)
     title: str = Field(max_length=100)
     button_style: ButtonStyle = ButtonStyle.DEFAULT
 
@@ -272,35 +290,6 @@ class HumanInputNodeData(BaseNodeData):
 
     def outputs_field_names(self) -> Sequence[str]:
         return [match.group("field_name") for match in _OUTPUT_VARIABLE_PATTERN.finditer(self.form_content)]
-
-    def extract_variable_selector_to_variable_mapping(
-        self,
-        node_id: str,
-    ) -> Mapping[str, Sequence[str]]:
-        variable_mappings: dict[str, Sequence[str]] = {}
-
-        def _add_variable_selectors(selectors: Sequence[Sequence[str]]) -> None:
-            for selector in selectors:
-                if len(selector) < SELECTORS_LENGTH:
-                    continue
-                qualified_variable_mapping_key = f"{node_id}.#{'.'.join(selector[:SELECTORS_LENGTH])}#"
-                variable_mappings[qualified_variable_mapping_key] = list(
-                    selector[:SELECTORS_LENGTH],
-                )
-
-        form_template_parser = VariableTemplateParser(template=self.form_content)
-        _add_variable_selectors(
-            [selector.value_selector for selector in form_template_parser.extract_variable_selectors()]
-        )
-
-        for form_input in self.inputs:
-            selectors = form_input.extract_variable_selectors()
-            for selector in selectors:
-                value_key = ".".join(selector)
-                qualified_variable_mapping_key = f"{node_id}.#{value_key}#"
-                variable_mappings[qualified_variable_mapping_key] = selector
-
-        return variable_mappings
 
     def find_action_text(self, action_id: str) -> str:
         """Resolve action display text by id."""

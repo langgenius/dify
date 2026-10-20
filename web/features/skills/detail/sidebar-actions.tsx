@@ -1,0 +1,311 @@
+'use client'
+
+import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import {
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
+import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
+import { downloadBlob } from '@/utils/download'
+import { fetchSkillArchiveBlob } from '../client'
+import { SkillReferencesList, SkillReferencesListSkeleton } from './skill-metadata'
+
+function invalidateSkillListQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({
+    queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
+  })
+  void queryClient.invalidateQueries({
+    queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'infinite' }),
+  })
+  void queryClient.invalidateQueries({
+    queryKey: consoleQuery.workspaces.current.skills.tags.get.key({ type: 'query' }),
+  })
+}
+
+function SkillDetailDeleteDialog({
+  detail,
+  onOpenChange,
+  open,
+}: {
+  detail: SkillDetailResponse
+  onOpenChange: (open: boolean) => void
+  open: boolean
+}) {
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
+  const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
+  const queryClient = useQueryClient()
+  const router = useRouter()
+  const deleteMutation = useMutation(
+    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions(),
+  )
+  const referencesQuery = useQuery({
+    ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
+      input: {
+        params: {
+          skill_id: detail.id,
+        },
+      },
+    }),
+    enabled: open,
+    refetchOnMount: 'always',
+  })
+  const references = referencesQuery.data?.data ?? []
+  const referenceCount = Math.max(detail.reference_count ?? 0, references.length)
+  const isDeleteUnavailable =
+    (open && (referencesQuery.isFetching || !referencesQuery.isSuccess)) ||
+    (referenceCount > 0 && confirmDeleteInput !== detail.display_name)
+  const isDeleteDisabled = deleteMutation.isPending || isDeleteUnavailable
+  const description =
+    referenceCount > 0
+      ? t(($) => $['skillManagement.deleteDialog.referencedDescription'], { count: referenceCount })
+      : t(($) => $['skillManagement.deleteDialog.description'])
+
+  const handleDelete = () => {
+    if (isDeleteDisabled) return
+
+    deleteMutation.mutate(
+      {
+        params: {
+          skill_id: detail.id,
+        },
+        body: {
+          confirmation_name: referenceCount > 0 ? detail.display_name : detail.name,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success(t(($) => $['skillManagement.deleteSuccess']))
+          invalidateSkillListQueries(queryClient)
+          onOpenChange(false)
+          router.push('/skills')
+        },
+        onError: () => {
+          toast.error(t(($) => $['skillManagement.deleteFailed']))
+        },
+      },
+    )
+  }
+
+  return (
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) setConfirmDeleteInput('')
+        onOpenChange(nextOpen)
+      }}
+    >
+      <AlertDialogContent>
+        <form
+          className="contents"
+          onSubmit={(event) => {
+            event.preventDefault()
+            handleDelete()
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['skillManagement.deleteDialog.title'], { name: detail.display_name })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          {referenceCount > 0 && (
+            <AlertDialogBody className="flex flex-col gap-2">
+              {referencesQuery.isPending ? (
+                <SkillReferencesListSkeleton compact />
+              ) : (
+                <SkillReferencesList
+                  compact
+                  maxHeight="max-h-[240px]"
+                  references={references}
+                  testId="skill-delete-reference-list"
+                  visibleLimit={5}
+                />
+              )}
+              <Field name="confirm-skill-name">
+                <FieldLabel>
+                  <Trans
+                    i18nKey={($) => $['skillManagement.deleteDialog.confirmInputLabel']}
+                    ns="skill"
+                    values={{ skillName: detail.display_name }}
+                    components={{
+                      skillName: (
+                        <span className="system-sm-semibold text-text-primary" translate="no" />
+                      ),
+                    }}
+                  />
+                </FieldLabel>
+                <InputGroup>
+                  <InputGroupInput
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder={t(
+                      ($) => $['skillManagement.deleteDialog.confirmInputPlaceholder'],
+                    )}
+                    value={confirmDeleteInput}
+                    onValueChange={setConfirmDeleteInput}
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <Button
+                      variant="tertiary"
+                      size="small"
+                      onClick={() => setConfirmDeleteInput(detail.display_name)}
+                    >
+                      {tCommon(($) => $['operation.fill'])}
+                    </Button>
+                  </InputGroupAddon>
+                </InputGroup>
+              </Field>
+            </AlertDialogBody>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancelButton disabled={deleteMutation.isPending}>
+              {tCommon(($) => $['operation.cancel'])}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              loading={deleteMutation.isPending}
+              disabled={isDeleteUnavailable}
+              type="submit"
+            >
+              {tCommon(($) =>
+                referenceCount > 0 ? $['operation.confirm'] : $['operation.delete'],
+              )}
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </form>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+export function SkillDetailSidebarActions({
+  canDelete,
+  canEdit,
+  detail,
+  onRename,
+}: {
+  canDelete: boolean
+  canEdit: boolean
+  detail: SkillDetailResponse
+  onRename: () => void
+}) {
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
+  const queryClient = useQueryClient()
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const router = useRouter()
+  const duplicateMutation = useMutation(
+    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
+  )
+  const exportMutation = useMutation({
+    mutationFn: () => fetchSkillArchiveBlob(detail.id),
+    onSuccess: (blob) => {
+      downloadBlob({ data: blob, fileName: `${detail.name}.zip` })
+    },
+    onError: () => {
+      toast.error(tCommon(($) => $['operation.downloadFailed']))
+    },
+  })
+
+  const handleDuplicate = () => {
+    if (duplicateMutation.isPending) return
+
+    duplicateMutation.mutate(
+      {
+        params: {
+          skill_id: detail.id,
+        },
+      },
+      {
+        onSuccess: (copiedSkill) => {
+          invalidateSkillListQueries(queryClient)
+          router.push(`/skills/${copiedSkill.id}?rename=true`)
+        },
+        onError: () => {
+          toast.error(t(($) => $['skillManagement.duplicateFailed']))
+        },
+      },
+    )
+  }
+
+  return (
+    <>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger
+          aria-label={t(($) => $['skillManagement.moreActions'], {
+            name: detail.display_name,
+          })}
+          className="mt-px flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+        >
+          <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+          {canEdit && (
+            <DropdownMenuItem className="gap-2" onClick={onRename}>
+              <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
+              <span>{tCommon(($) => $['operation.rename'])}</span>
+            </DropdownMenuItem>
+          )}
+          {canEdit && (
+            <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
+              <span
+                aria-hidden
+                className="i-ri-file-copy-2-line size-4 shrink-0 text-text-tertiary"
+              />
+              <span>{tCommon(($) => $['operation.duplicate'])}</span>
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem
+            className="gap-2"
+            onClick={() => {
+              if (!exportMutation.isPending) exportMutation.mutate()
+            }}
+          >
+            <span
+              aria-hidden
+              className="i-ri-file-download-line size-4 shrink-0 text-text-tertiary"
+            />
+            <span>{tCommon(($) => $['operation.export'])}</span>
+          </DropdownMenuItem>
+          {canDelete && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                className="gap-2"
+                onClick={() => setDeleteOpen(true)}
+              >
+                <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+                <span>{tCommon(($) => $['operation.delete'])}</span>
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <SkillDetailDeleteDialog detail={detail} open={deleteOpen} onOpenChange={setDeleteOpen} />
+    </>
+  )
+}

@@ -11,11 +11,16 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
-import services
+import services.errors.base
+import services.errors.workspace
 from controllers.console.auth.error import MemberNotInTenantError
-from controllers.console.workspace import members as members_module
 from controllers.console.workspace.members import MemberCancelInviteApi, MemberUpdateRoleApi, OwnerTransfer
+from extensions.ext_application_services import application_services
+from libs.exception import BaseHTTPException
+from libs.helper import TokenManager
+from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from services.workspace import gateways
 
 JsonResponse = dict[str, object]
 StatusResponse = tuple[JsonResponse, int]
@@ -78,7 +83,7 @@ class WorkspaceMembersIntegrationFactory:
             )
             db_session_with_containers.add(join)
             db_session_with_containers.commit()
-            account.current_tenant = tenant
+            account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
         return account
 
     @staticmethod
@@ -95,11 +100,8 @@ class WorkspaceMembersIntegrationFactory:
 
     @staticmethod
     def create_owner_transfer_token(account: Account) -> str:
-        _, token = members_module.AccountService.generate_owner_transfer_token(
-            account.email,
-            account=account,
-            code="123456",
-            additional_data={},
+        token = TokenManager.generate_token(
+            account_id=account.id, email=account.email, token_type="owner_transfer", additional_data={"code": "123456"}
         )
         return token
 
@@ -126,17 +128,17 @@ class TestMemberCancelInviteApiWithContainers:
 
         with (
             flask_app_with_containers.test_request_context("/"),
-            patch.object(members_module.TenantService, "remove_member_from_tenant") as mock_remove_member,
+            patch.object(application_services().workspaces.members, "remove") as mock_remove_member,
         ):
-            result, status = method(api, current_user, member.id)
+            result, status = method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
 
         assert status == 200
         assert result["result"] == "success"
         mock_remove_member.assert_called_once()
         called_tenant, called_member, called_current_user = mock_remove_member.call_args.args
-        assert called_tenant.id == tenant.id
-        assert called_member.id == member.id
-        assert called_current_user.id == current_user.id
+        assert called_tenant == tenant.id
+        assert called_member == member.id
+        assert called_current_user == current_user.id
 
     def test_cancel_not_found(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = MemberCancelInviteApi()
@@ -146,7 +148,7 @@ class TestMemberCancelInviteApiWithContainers:
 
         with flask_app_with_containers.test_request_context("/"):
             with pytest.raises(HTTPException):
-                method(api, current_user, str(uuid4()))
+                method(api, RequestContext("request", None, current_user.id, tenant.id), str(uuid4()))
 
     def test_cancel_cannot_operate_self(
         self, flask_app_with_containers: Flask, db_session_with_containers: Session
@@ -160,15 +162,20 @@ class TestMemberCancelInviteApiWithContainers:
         with (
             flask_app_with_containers.test_request_context("/"),
             patch.object(
-                members_module.TenantService,
-                "remove_member_from_tenant",
-                side_effect=services.errors.account.CannotOperateSelfError("x"),
+                application_services().workspaces.members,
+                "remove",
+                side_effect=services.errors.workspace.CannotOperateSelfError("x"),
             ),
         ):
-            result, status = method(api, current_user, member.id)
+            with pytest.raises(BaseHTTPException) as exc_info:
+                method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
 
-        assert status == 400
-        assert result["code"] == "cannot-operate-self"
+        assert exc_info.value.code == 400
+        assert exc_info.value.data == {
+            "code": "cannot_operate_self",
+            "message": exc_info.value.description,
+            "status": 400,
+        }
 
     def test_cancel_no_permission(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = MemberCancelInviteApi()
@@ -180,15 +187,16 @@ class TestMemberCancelInviteApiWithContainers:
         with (
             flask_app_with_containers.test_request_context("/"),
             patch.object(
-                members_module.TenantService,
-                "remove_member_from_tenant",
-                side_effect=services.errors.account.NoPermissionError("x"),
+                application_services().workspaces.members,
+                "remove",
+                side_effect=services.errors.base.NoPermissionError("x"),
             ),
         ):
-            result, status = method(api, current_user, member.id)
+            with pytest.raises(BaseHTTPException) as exc_info:
+                method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
 
-        assert status == 403
-        assert result["code"] == "forbidden"
+        assert exc_info.value.code == 403
+        assert exc_info.value.data == {"code": "forbidden", "message": exc_info.value.description, "status": 403}
 
     def test_cancel_member_not_in_tenant(
         self, flask_app_with_containers: Flask, db_session_with_containers: Session
@@ -202,15 +210,16 @@ class TestMemberCancelInviteApiWithContainers:
         with (
             flask_app_with_containers.test_request_context("/"),
             patch.object(
-                members_module.TenantService,
-                "remove_member_from_tenant",
-                side_effect=services.errors.account.MemberNotInTenantError(),
+                application_services().workspaces.members,
+                "remove",
+                side_effect=services.errors.workspace.MemberNotInTenantError(),
             ),
         ):
-            result, status = method(api, current_user, member.id)
+            with pytest.raises(BaseHTTPException) as exc_info:
+                method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
 
-        assert status == 404
-        assert result["code"] == "member-not-found"
+        assert exc_info.value.code == 404
+        assert exc_info.value.data == {"code": "member_not_found", "message": exc_info.value.description, "status": 404}
 
 
 class TestMemberUpdateRoleApiWithContainers:
@@ -227,7 +236,7 @@ class TestMemberUpdateRoleApiWithContainers:
         )
 
         with flask_app_with_containers.test_request_context("/", json={"role": "normal"}):
-            result = method(api, current_user, member.id)
+            result = method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
 
         if isinstance(result, tuple):
             result = result[0]
@@ -247,7 +256,7 @@ class TestMemberUpdateRoleApiWithContainers:
 
         with flask_app_with_containers.test_request_context("/", json={"role": "normal"}):
             with pytest.raises(HTTPException):
-                method(api, current_user, str(uuid4()))
+                method(api, RequestContext("request", None, current_user.id, tenant.id), str(uuid4()))
 
 
 class TestOwnerTransferApiWithContainers:
@@ -261,7 +270,7 @@ class TestOwnerTransferApiWithContainers:
 
         with flask_app_with_containers.test_request_context("/", json={"token": token}):
             with pytest.raises(MemberNotInTenantError):
-                method(api, current_user, member.id)
+                method(api, RequestContext("test", None, current_user.id, tenant.id), member.id)
 
     def test_member_not_found(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = OwnerTransfer()
@@ -272,7 +281,7 @@ class TestOwnerTransferApiWithContainers:
 
         with flask_app_with_containers.test_request_context("/", json={"token": token}):
             with pytest.raises(HTTPException):
-                method(api, current_user, str(uuid4()))
+                method(api, RequestContext("test", None, current_user.id, tenant.id), str(uuid4()))
 
     def test_transfer_success(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = OwnerTransfer()
@@ -289,10 +298,10 @@ class TestOwnerTransferApiWithContainers:
 
         with (
             flask_app_with_containers.test_request_context("/", json={"token": token}),
-            patch.object(members_module.AccountService, "send_new_owner_transfer_notify_email") as mock_new_owner_email,
-            patch.object(members_module.AccountService, "send_old_owner_transfer_notify_email") as mock_old_owner_email,
+            patch.object(gateways.send_new_owner_transfer_notify_email_task, "delay") as notify_new,
+            patch.object(gateways.send_old_owner_transfer_notify_email_task, "delay") as notify_old,
         ):
-            result = method(api, current_user, member.id)
+            result = method(api, RequestContext("test", None, current_user.id, tenant.id), member.id)
 
         assert result["result"] == "success"
         assert (
@@ -300,7 +309,9 @@ class TestOwnerTransferApiWithContainers:
         )
         assert (
             factory.get_join(db_session_with_containers, tenant=tenant, account=current_user).role
-            == TenantAccountRole.ADMIN
+            == TenantAccountRole.NORMAL
         )
-        mock_new_owner_email.assert_called_once()
-        mock_old_owner_email.assert_called_once()
+        notify_new.assert_called_once_with(language="en-US", to=member.email, workspace=tenant.name)
+        notify_old.assert_called_once_with(
+            language="en-US", to=current_user.email, workspace=tenant.name, new_owner_email=member.email
+        )

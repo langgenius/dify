@@ -1,9 +1,13 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import { noop, QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/storage'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { emailLoginWithCode } from '@/service/common'
+import { consoleClient } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import CheckCode from '../page'
 
 const navigationMocks = vi.hoisted(() => ({
@@ -13,8 +17,29 @@ const navigationMocks = vi.hoisted(() => ({
 }))
 
 const serviceBaseMocks = vi.hoisted(() => ({
-  get: vi.fn(),
+  request: vi.fn(),
 }))
+
+type ScriptProps = {
+  id: string
+  src: string
+  onReady?: () => void
+  onError?: () => void
+}
+
+type TurnstileOptions = {
+  action: string
+  callback: (token: string) => void
+}
+
+const turnstileMocks = vi.hoisted(() => ({
+  deploymentEdition: 'COMMUNITY' as DeploymentEdition,
+  remove: vi.fn(),
+  render: vi.fn(),
+  scriptProps: undefined as ScriptProps | undefined,
+  siteKey: '',
+}))
+const turnstileWidgets = new Map<string, HTMLElement>()
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
@@ -22,6 +47,16 @@ vi.mock('@/app/components/base/amplitude', () => ({
 
 vi.mock('@/config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config')>()),
+  get TURNSTILE_SITE_KEY() {
+    return turnstileMocks.siteKey
+  },
+}))
+
+vi.mock('@/next/script', () => ({
+  default: (props: ScriptProps) => {
+    turnstileMocks.scriptProps = props
+    return null
+  },
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -34,25 +69,54 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/service/base', () => serviceBaseMocks)
 
-vi.mock('@/service/common', () => ({
-  emailLoginWithCode: vi.fn(),
-  sendEMailLoginCode: vi.fn(),
-}))
-
-vi.mock('@/utils/encryption', () => ({
-  encryptVerificationCode: (code: string) => code,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/service/console')>()
+  return {
+    ...original,
+    consoleClient: {
+      account: original.consoleClient.account,
+      emailCodeLogin: {
+        validity: {
+          post: vi.fn(),
+        },
+        post: vi.fn(),
+      },
+    },
+  }
+})
 
 vi.mock('@/utils/timezone', () => ({
   getBrowserTimezone: () => 'Asia/Singapore',
 }))
 
 function createQueryClient() {
-  return new QueryClient({
+  const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
       },
+    },
+  })
+  seedSystemFeatures(queryClient, {
+    deployment_edition: turnstileMocks.deploymentEdition,
+  })
+  return queryClient
+}
+
+function createDeferred<T>() {
+  let resolve: (value: T) => void = () => {}
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise
+  })
+  return { promise, resolve }
+}
+
+function installTurnstileApi() {
+  Object.defineProperty(window, 'turnstile', {
+    configurable: true,
+    value: {
+      remove: turnstileMocks.remove,
+      render: turnstileMocks.render,
     },
   })
 }
@@ -75,16 +139,372 @@ const accountProfile: GetAccountProfileResponse = {
 describe('CheckCode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.setItem(COUNT_DOWN_KEY, '0')
+    serviceBaseMocks.request.mockReset()
+    vi.mocked(consoleClient.emailCodeLogin.validity.post)
+      .mockReset()
+      .mockResolvedValue({ result: 'success' })
+    vi.mocked(consoleClient.emailCodeLogin.post).mockReset()
+    turnstileWidgets.clear()
     navigationMocks.searchParams = new URLSearchParams({
       email: 'user@example.com',
       redirect_url: '/apps',
       token: 'email-login-token',
     })
-    vi.mocked(emailLoginWithCode).mockResolvedValue({ result: 'success' })
+    turnstileMocks.deploymentEdition = 'COMMUNITY'
+    turnstileMocks.scriptProps = undefined
+    turnstileMocks.siteKey = ''
+    turnstileMocks.render.mockImplementation(
+      (container: HTMLElement, options: TurnstileOptions) => {
+        const widgetId = `widget-${turnstileMocks.render.mock.calls.length}`
+        const verifyButton = document.createElement('button')
+        verifyButton.type = 'button'
+        verifyButton.dataset.widgetId = widgetId
+        verifyButton.textContent = `verify-turnstile-${options.action}`
+        verifyButton.addEventListener('click', () =>
+          options.callback(`${options.action}-token-${turnstileMocks.render.mock.calls.length}`),
+        )
+        container.appendChild(verifyButton)
+        turnstileWidgets.set(widgetId, verifyButton)
+        return widgetId
+      },
+    )
+    turnstileMocks.remove.mockImplementation((widgetId: string) => {
+      turnstileWidgets.get(widgetId)?.remove()
+      turnstileWidgets.delete(widgetId)
+    })
+    installTurnstileApi()
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+    localStorage.removeItem(COUNT_DOWN_KEY)
+  })
+
+  it('associates one localized error with an incomplete verification code', async () => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    const codeInput = screen.getByLabelText('login.checkCode.verificationCode')
+    await user.type(codeInput, '12345{Enter}')
+
+    const errors = await screen.findAllByText('login.checkCode.invalidCode')
+    expect(errors).toHaveLength(1)
+    expect(codeInput).toHaveAttribute('aria-invalid', 'true')
+    expect(codeInput).toHaveAccessibleDescription('login.checkCode.invalidCode')
+    expect(codeInput).toHaveFocus()
+    expect(consoleClient.emailCodeLogin.validity.post).not.toHaveBeenCalled()
+  })
+
+  it('keeps Community verification independent of Turnstile', async () => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    vi.mocked(consoleClient.emailCodeLogin.validity.post).mockResolvedValue({ result: 'fail' })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+
+    expect(consoleClient.emailCodeLogin.validity.post).toHaveBeenCalledWith({
+      body: {
+        code: 'MTIzNDU2',
+        email: 'user@example.com',
+        language: expect.any(String),
+        timezone: 'Asia/Singapore',
+        token: 'email-login-token',
+      },
+    })
+    expect(turnstileMocks.render).not.toHaveBeenCalled()
+  })
+
+  it('does not resend while verification is in progress', async () => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    const verificationRequest =
+      createDeferred<Awaited<ReturnType<typeof consoleClient.emailCodeLogin.validity.post>>>()
+    vi.mocked(consoleClient.emailCodeLogin.validity.post).mockReturnValue(
+      verificationRequest.promise,
+    )
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+    await waitFor(() => {
+      expect(consoleClient.emailCodeLogin.validity.post).toHaveBeenCalledOnce()
+    })
+
+    const resendButton = screen.getByRole('button', { name: 'login.checkCode.resend' })
+    expect(resendButton).toBeDisabled()
+    await user.click(resendButton)
+    expect(consoleClient.emailCodeLogin.post).not.toHaveBeenCalled()
+
+    act(() => {
+      verificationRequest.resolve({ result: 'fail' })
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'login.checkCode.verify' })).toBeEnabled()
+    })
+  })
+
+  it('does not verify while resend is in progress', async () => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    const resendRequest =
+      createDeferred<Awaited<ReturnType<typeof consoleClient.emailCodeLogin.post>>>()
+    vi.mocked(consoleClient.emailCodeLogin.post).mockReturnValue(resendRequest.promise)
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.resend' }))
+    await waitFor(() => {
+      expect(consoleClient.emailCodeLogin.post).toHaveBeenCalledOnce()
+    })
+
+    const verifyButton = screen.getByRole('button', { name: 'login.checkCode.verify' })
+    expect(verifyButton).toBeDisabled()
+    await user.click(verifyButton)
+    await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '{Enter}')
+    expect(consoleClient.emailCodeLogin.validity.post).not.toHaveBeenCalled()
+
+    act(() => {
+      resendRequest.resolve({ data: '', result: 'fail' })
+    })
+    await waitFor(() => {
+      expect(verifyButton).toBeEnabled()
+    })
+  })
+
+  it('requires a fresh verify-action Turnstile token after every Cloud login attempt', async () => {
+    const user = userEvent.setup()
+    turnstileMocks.deploymentEdition = 'CLOUD'
+    turnstileMocks.siteKey = 'cloud-site-key'
+    const queryClient = createQueryClient()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.mocked(consoleClient.emailCodeLogin.validity.post)
+      .mockRejectedValueOnce(new Error('invalid verification code'))
+      .mockResolvedValueOnce({ result: 'fail' })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    const codeInput = screen.getByLabelText('login.checkCode.verificationCode')
+    const verifyButton = screen.getByRole('button', { name: 'login.checkCode.verify' })
+    expect(verifyButton).toBeDisabled()
+
+    act(() => {
+      turnstileMocks.scriptProps?.onReady?.()
+    })
+    expect(turnstileMocks.render).toHaveBeenLastCalledWith(
+      expect.any(HTMLElement),
+      expect.objectContaining({ action: 'signin_code_verify' }),
+    )
+    await user.click(
+      await screen.findByRole('button', { name: 'verify-turnstile-signin_code_verify' }),
+    )
+    expect(verifyButton).toBeEnabled()
+
+    await user.type(codeInput, '123456')
+    await user.click(verifyButton)
+
+    await waitFor(() => {
+      expect(consoleClient.emailCodeLogin.validity.post).toHaveBeenCalledWith({
+        body: expect.objectContaining({
+          turnstile_token: 'signin_code_verify-token-1',
+        }),
+      })
+    })
+    expect(codeInput).toHaveValue('123456')
+    await waitFor(() => {
+      expect(verifyButton).toBeDisabled()
+      expect(turnstileMocks.remove).toHaveBeenCalledWith('widget-1')
+      expect(turnstileMocks.render).toHaveBeenCalledTimes(2)
+    })
+    expect(turnstileMocks.render).toHaveBeenLastCalledWith(
+      expect.any(HTMLElement),
+      expect.objectContaining({ action: 'signin_code_verify' }),
+    )
+    await user.click(
+      await screen.findByRole('button', { name: 'verify-turnstile-signin_code_verify' }),
+    )
+    await user.click(verifyButton)
+
+    await waitFor(() => {
+      expect(consoleClient.emailCodeLogin.validity.post).toHaveBeenLastCalledWith({
+        body: expect.objectContaining({
+          turnstile_token: 'signin_code_verify-token-2',
+        }),
+      })
+    })
+    expect(codeInput).toHaveValue('123456')
+  })
+
+  it('keeps the Cloud resend challenge separate from the verify challenge', async () => {
+    const user = userEvent.setup()
+    turnstileMocks.deploymentEdition = 'CLOUD'
+    turnstileMocks.siteKey = 'cloud-site-key'
+    const queryClient = createQueryClient()
+    vi.mocked(consoleClient.emailCodeLogin.post).mockResolvedValue({
+      result: 'success',
+      data: 'new-login-token',
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    const resendButton = screen.getByRole('button', { name: 'login.checkCode.resend' })
+    expect(resendButton).toBeEnabled()
+    act(() => {
+      turnstileMocks.scriptProps?.onReady?.()
+    })
+    await user.click(
+      await screen.findByRole('button', { name: 'verify-turnstile-signin_code_verify' }),
+    )
+    expect(screen.getByRole('button', { name: 'login.checkCode.verify' })).toBeEnabled()
+
+    await user.click(resendButton)
+
+    expect(resendButton).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'login.checkCode.verify' })).toBeDisabled()
+    expect(turnstileMocks.remove).toHaveBeenCalledWith('widget-1')
+    expect(
+      screen.queryByRole('button', { name: 'verify-turnstile-signin_code_verify' }),
+    ).not.toBeInTheDocument()
+    expect(turnstileMocks.render).toHaveBeenLastCalledWith(
+      expect.any(HTMLElement),
+      expect.objectContaining({ action: 'signin_code' }),
+    )
+    await user.click(await screen.findByRole('button', { name: 'verify-turnstile-signin_code' }))
+
+    await waitFor(() => {
+      expect(consoleClient.emailCodeLogin.post).toHaveBeenCalledWith({
+        body: {
+          email: 'user@example.com',
+          language: expect.any(String),
+          turnstile_token: 'signin_code-token-2',
+        },
+      })
+    })
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: 'verify-turnstile-signin_code' }),
+      ).not.toBeInTheDocument()
+    })
+    expect(turnstileMocks.render).toHaveBeenLastCalledWith(
+      expect.any(HTMLElement),
+      expect.objectContaining({ action: 'signin_code_verify' }),
+    )
+  })
+
+  it('keeps Turnstile script-error recovery available during a Cloud resend', async () => {
+    const user = userEvent.setup()
+    turnstileMocks.deploymentEdition = 'CLOUD'
+    turnstileMocks.siteKey = 'cloud-site-key'
+    const queryClient = createQueryClient()
+    vi.mocked(consoleClient.emailCodeLogin.post).mockResolvedValue({
+      result: 'success',
+      data: 'new-login-token',
+    })
+    Object.defineProperty(window, 'turnstile', {
+      configurable: true,
+      value: undefined,
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    const resendButton = screen.getByRole('button', { name: 'login.checkCode.resend' })
+    await user.click(resendButton)
+    const initialScriptSrc = turnstileMocks.scriptProps?.src
+
+    act(() => {
+      turnstileMocks.scriptProps?.onError?.()
+    })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('login.turnstile.loadError')
+    expect(resendButton).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(turnstileMocks.scriptProps?.src).not.toBe(initialScriptSrc)
+
+    installTurnstileApi()
+    act(() => {
+      turnstileMocks.scriptProps?.onReady?.()
+    })
+    await user.click(await screen.findByRole('button', { name: 'verify-turnstile-signin_code' }))
+
+    await waitFor(() => {
+      expect(consoleClient.emailCodeLogin.post).toHaveBeenCalledWith({
+        body: {
+          email: 'user@example.com',
+          language: expect.any(String),
+          turnstile_token: 'signin_code-token-1',
+        },
+      })
+    })
+  })
+
+  it('does not require Turnstile outside Cloud based on the site key alone', async () => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    turnstileMocks.siteKey = 'site-key-not-used-outside-cloud'
+    vi.mocked(consoleClient.emailCodeLogin.post).mockResolvedValue({
+      result: 'success',
+      data: 'new-login-token',
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.queryByRole('button', { name: /verify-turnstile-/ })).not.toBeInTheDocument()
+    const resendButton = screen.getByRole('button', { name: 'login.checkCode.resend' })
+    expect(resendButton).toBeEnabled()
+    await user.click(resendButton)
+
+    expect(consoleClient.emailCodeLogin.post).toHaveBeenCalledWith({
+      body: { email: 'user@example.com', language: expect.any(String) },
+    })
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'login.checkCode.resend' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(Number(localStorage.getItem(COUNT_DOWN_KEY))).toBeGreaterThan(0)
+    expect(Number(localStorage.getItem(COUNT_DOWN_KEY))).toBeLessThanOrEqual(COUNT_DOWN_TIME_MS)
+    const redirect = new URL(navigationMocks.replace.mock.calls[0]![0], 'http://localhost')
+    expect(redirect.pathname).toBe('/signin/check-code')
+    expect(redirect.searchParams.get('token')).toBe('new-login-token')
   })
 
   describe('Post-login profile bootstrap', () => {
@@ -97,10 +517,10 @@ describe('CheckCode', () => {
       const profileResponse = new Promise<Response>((resolve) => {
         resolveProfileResponse = resolve
       })
-      serviceBaseMocks.get
-        .mockRejectedValueOnce(new Response(null, { status: 401 }))
+      serviceBaseMocks.request
+        .mockRejectedValueOnce(createHttpError(new Response(null, { status: 401 })))
         .mockReturnValueOnce(profileResponse)
-      await queryClient.prefetchQuery(profileQueryOptions)
+      await queryClient.query(profileQueryOptions).catch(noop)
       expect(queryClient.getQueryState(profileQueryKey)?.status).toBe('error')
 
       render(
@@ -113,7 +533,7 @@ describe('CheckCode', () => {
       await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
 
       await waitFor(() => {
-        expect(serviceBaseMocks.get).toHaveBeenCalledTimes(2)
+        expect(serviceBaseMocks.request).toHaveBeenCalledTimes(2)
       })
       expect(queryClient.getQueryState(profileQueryKey)).toMatchObject({
         fetchStatus: 'fetching',
@@ -146,7 +566,7 @@ describe('CheckCode', () => {
         email: 'hanxujiang%2B4%40dify.ai',
         token: 'email-login-token',
       })
-      serviceBaseMocks.get.mockResolvedValue(
+      serviceBaseMocks.request.mockResolvedValue(
         new Response(JSON.stringify(accountProfile), {
           headers: {
             'content-type': 'application/json',

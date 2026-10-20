@@ -1,12 +1,29 @@
 import type { ReactElement } from 'react'
 import type { Shape } from '@/app/components/workflow/store/workflow'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import VariableTrigger from '../variable-trigger'
+
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/hooks',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/header/account-setting/model-provider-page/hooks')
+      >()
+
+    return {
+      ...actual,
+      useTextGenerationCurrentProviderAndModelAndModelList: () => ({
+        activeTextGenerationModelList: [],
+      }),
+    }
+  },
+)
 
 const createEnv = (overrides: Partial<EnvironmentVariable> = {}): EnvironmentVariable => ({
   id: 'env-1',
@@ -36,40 +53,7 @@ const renderWithProviders = (
 }
 
 describe('VariableTrigger', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('opens and closes the variable trigger modal through the real portal flow', async () => {
-    const user = userEvent.setup()
-    const onClose = vi.fn()
-
-    const TriggerHarness = () => {
-      const [open, setOpen] = React.useState(false)
-
-      return <VariableTrigger open={open} setOpen={setOpen} onClose={onClose} onSave={vi.fn()} />
-    }
-
-    renderWithProviders(<TriggerHarness />)
-
-    const trigger = screen.getByRole('button', { name: 'workflow.env.envPanelButton' })
-
-    await user.click(trigger)
-    expect(screen.getByText('workflow.env.modal.title')).toBeInTheDocument()
-
-    await user.click(trigger)
-    expect(onClose).toHaveBeenCalledTimes(1)
-    expect(screen.queryByText('workflow.env.modal.title')).not.toBeInTheDocument()
-
-    await user.click(trigger)
-    expect(screen.getByText('workflow.env.modal.title')).toBeInTheDocument()
-
-    await user.keyboard('{Escape}')
-    expect(onClose).toHaveBeenCalledTimes(2)
-    expect(screen.queryByText('workflow.env.modal.title')).not.toBeInTheDocument()
-  })
-
-  it('submits the edited environment variable through the real modal', async () => {
+  it('discards a cancelled secret edit before reopening and saving its replacement', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
     const onSave = vi.fn()
@@ -101,7 +85,17 @@ describe('VariableTrigger', () => {
     })
 
     await user.click(screen.getByRole('button', { name: 'workflow.env.envPanelButton' }))
+    const firstInput = screen.getByPlaceholderText('workflow.env.modal.valuePlaceholder')
+    await user.clear(firstInput)
+    await user.type(firstInput, 'cancelled-secret')
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(screen.queryByText('workflow.env.modal.editTitle')).not.toBeInTheDocument(),
+    )
+    expect(onSave).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'workflow.env.envPanelButton' }))
     const valueInput = screen.getByPlaceholderText('workflow.env.modal.valuePlaceholder')
+    expect(valueInput).toHaveValue('123')
     await user.clear(valueInput)
     await user.type(valueInput, '456')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -113,7 +107,7 @@ describe('VariableTrigger', () => {
       value_type: 'secret',
       description: 'editable',
     })
-    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onClose).toHaveBeenCalledTimes(2)
     expect(screen.queryByText('workflow.env.modal.editTitle')).not.toBeInTheDocument()
   })
 })

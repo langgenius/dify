@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { ProgressCircleColor, ProgressCircleSize } from '.'
+import type { ProgressCircleProps } from '.'
 import * as React from 'react'
 import { ProgressCircle } from '.'
+
+type ProgressCircleColor = NonNullable<ProgressCircleProps['color']>
+type ProgressCircleSize = NonNullable<ProgressCircleProps['size']>
 
 const colors: ProgressCircleColor[] = ['gray', 'white', 'blue', 'warning', 'error']
 const sizes: ProgressCircleSize[] = ['small', 'medium', 'large']

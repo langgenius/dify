@@ -1,6 +1,7 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { DrawerActions } from '@langgenius/dify-ui/drawer'
 import type { FC } from 'react'
-import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
@@ -8,13 +9,13 @@ import {
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
+  DrawerTrigger,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -23,23 +24,23 @@ import SettingsModal from '../settings-modal'
 
 type ItemProps = {
   className?: string
-  config: DataSet
+  config: DatasetDetailWithPartialMembersResponse
   onRemove: (id: string) => void
   readonly?: boolean
-  onSave: (newDataset: DataSet) => void
+  onSave: (newDataset: DatasetDetailWithPartialMembersResponse) => void
   editable?: boolean
 }
 
 const Item: FC<ItemProps> = ({ config, onSave, onRemove, readonly = false, editable = true }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const settingsDrawerActionsRef = useRef<DrawerActions>(null)
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
 
-  const handleSave = (newDataset: DataSet) => {
+  const handleSave = (newDataset: DatasetDetailWithPartialMembersResponse) => {
     onSave(newDataset)
-    setShowSettingsModal(false)
+    settingsDrawerActionsRef.current?.close()
   }
 
   const [isDeleting, setIsDeleting] = useState(false)
@@ -60,42 +61,53 @@ const Item: FC<ItemProps> = ({ config, onSave, onRemove, readonly = false, edita
       )}
     >
       <div className="flex w-0 grow items-center space-x-1.5">
-        <AppIcon
-          size="tiny"
-          iconType={iconInfo.icon_type}
-          icon={iconInfo.icon}
-          background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
-          imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
-        />
+        <AppIcon size="tiny" icon={iconInfo} />
         <div className="w-0 grow truncate system-sm-medium text-text-secondary" title={config.name}>
           {config.name}
         </div>
       </div>
       <div className="ml-2 hidden shrink-0 items-center space-x-1 group-hover:flex">
         {editable && !readonly && (
-          <ActionButton
-            onClick={(e) => {
-              e.stopPropagation()
-              setShowSettingsModal(true)
-            }}
-          >
-            <RiEditLine className="size-4 shrink-0 text-text-tertiary" />
-          </ActionButton>
+          <Drawer actionsRef={settingsDrawerActionsRef} modal swipeDirection="right">
+            <DrawerTrigger
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="i-ri-edit-line size-4 shrink-0 text-text-tertiary"
+                  />
+                </IconButton>
+              }
+            />
+            <DrawerPortal>
+              <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
+              <DrawerViewport>
+                <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-160 data-[swipe-direction=right]:rounded-xl">
+                  <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+                    <SettingsModal
+                      currentDataset={config}
+                      onCancel={() => settingsDrawerActionsRef.current?.close()}
+                      onSave={handleSave}
+                    />
+                  </DrawerContent>
+                </DrawerPopup>
+              </DrawerViewport>
+            </DrawerPortal>
+          </Drawer>
         )}
         {!readonly && (
-          <ActionButton
+          <IconButton
+            aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+            tone="destructive"
             onClick={() => onRemove(config.id)}
-            state={isDeleting ? ActionButtonState.Destructive : ActionButtonState.Default}
             onMouseEnter={() => setIsDeleting(true)}
             onMouseLeave={() => setIsDeleting(false)}
           >
-            <RiDeleteBinLine
-              className={cn(
-                'size-4 shrink-0 text-text-tertiary',
-                isDeleting && 'text-text-destructive',
-              )}
-            />
-          </ActionButton>
+            <span aria-hidden="true" className="i-ri-delete-bin-line size-4 shrink-0" />
+          </IconButton>
         )}
       </div>
       {!!config.indexing_technique && (
@@ -113,31 +125,6 @@ const Item: FC<ItemProps> = ({ config, onSave, onRemove, readonly = false, edita
           text={t(($) => $.externalTag, { ns: 'dataset' }) as string}
         />
       )}
-      <Drawer
-        open={showSettingsModal}
-        modal
-        swipeDirection="right"
-        onOpenChange={(open) => {
-          if (!open) setShowSettingsModal(false)
-        }}
-      >
-        <DrawerPortal>
-          <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
-          <DrawerViewport>
-            <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[640px] data-[swipe-direction=right]:rounded-xl">
-              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
-                {showSettingsModal && (
-                  <SettingsModal
-                    currentDataset={config}
-                    onCancel={() => setShowSettingsModal(false)}
-                    onSave={handleSave}
-                  />
-                )}
-              </DrawerContent>
-            </DrawerPopup>
-          </DrawerViewport>
-        </DrawerPortal>
-      </Drawer>
     </div>
   )
 }

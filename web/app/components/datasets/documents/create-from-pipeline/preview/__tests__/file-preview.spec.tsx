@@ -1,68 +1,37 @@
-import type { CustomFile } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import FilePreview from '../file-preview'
 
-const mockFileData = { content: 'file content here with some text' }
-let mockIsFetching = false
-
-vi.mock('@/service/use-common', () => ({
-  useFilePreview: () => ({
-    data: mockIsFetching ? undefined : mockFileData,
-    isFetching: mockIsFetching,
-  }),
-}))
-
-vi.mock('../../../../common/document-file-icon', () => ({
-  default: () => <span data-testid="file-icon" />,
-}))
-
-vi.mock('../loading', () => ({
-  default: () => <div data-testid="loading" />,
-}))
-
-describe('FilePreview', () => {
-  const defaultProps = {
-    file: {
-      id: 'file-1',
-      name: 'document.pdf',
-      extension: 'pdf',
-      size: 1024,
-    } as CustomFile,
-    hidePreview: vi.fn(),
+const { preview } = vi.hoisted(() => ({ preview: vi.fn() }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'files.byFileId.preview.get': preview,
+    }),
   }
+})
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockIsFetching = false
+it('loads the selected file content and dismisses its preview', async () => {
+  const user = userEvent.setup()
+  const response = { content: 'file content here with some text' }
+  const pending = createDeferred<typeof response>()
+  preview.mockReturnValue(pending.promise)
+  const hidePreview = vi.fn()
+  const file = Object.assign(new File(['content'], 'document.pdf'), {
+    id: 'file-1',
+    extension: 'pdf',
   })
-
-  it('should render preview label', () => {
-    render(<FilePreview {...defaultProps} />)
-    expect(screen.getByText('datasetPipeline.addDocuments.stepOne.preview'))!.toBeInTheDocument()
-  })
-
-  it('should render file name', () => {
-    render(<FilePreview {...defaultProps} />)
-    expect(screen.getByText('document.pdf'))!.toBeInTheDocument()
-  })
-
-  it('should render file content when loaded', () => {
-    render(<FilePreview {...defaultProps} />)
-    expect(screen.getByText('file content here with some text'))!.toBeInTheDocument()
-  })
-
-  it('should render loading state', () => {
-    mockIsFetching = true
-    render(<FilePreview {...defaultProps} />)
-    expect(screen.getByTestId('loading'))!.toBeInTheDocument()
-  })
-
-  it('should call hidePreview when close button clicked', () => {
-    render(<FilePreview {...defaultProps} />)
-    const buttons = screen.getAllByRole('button')
-    const closeBtn = buttons[buttons.length - 1]
-    fireEvent.click(closeBtn!)
-    expect(defaultProps.hidePreview).toHaveBeenCalled()
-  })
+  render(<FilePreview file={file} hidePreview={hidePreview} />)
+  expect(screen.getByText('document.pdf')).toBeInTheDocument()
+  expect(screen.queryByText(response.content)).not.toBeInTheDocument()
+  await act(async () => pending.resolve(response))
+  expect(await screen.findByText(response.content)).toBeInTheDocument()
+  expect(preview).toHaveBeenCalledWith({ params: { file_id: 'file-1' } })
+  await user.click(screen.getByRole('button'))
+  expect(hidePreview).toHaveBeenCalledOnce()
 })

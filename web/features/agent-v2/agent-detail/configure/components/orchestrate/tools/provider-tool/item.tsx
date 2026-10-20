@@ -1,5 +1,6 @@
 'use client'
 
+import type { ComponentPropsWithRef } from 'react'
 import type { ToolSettingTarget } from '../types'
 import type {
   AgentProviderTool,
@@ -21,9 +22,12 @@ import { AuthCategory, Authorized, usePluginAuth } from '@/app/components/plugin
 import AuthorizedInNode from '@/app/components/plugins/plugin-auth/authorized-in-node'
 import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { BlockEnum } from '@/app/components/workflow/types'
 import useTheme from '@/hooks/use-theme'
+import { usePluginManifestInfo } from '@/service/use-plugins'
 import { Theme } from '@/types/app'
+import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { useAgentOrchestrateReadOnly } from '../../read-only-context'
 
 function ProviderIcon({
@@ -54,7 +58,7 @@ function UnauthorizedCredentialStatus({
     credentialType?: AgentProviderTool['credentialType'],
   ) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const [isOpen, setIsOpen] = useState(false)
   const pluginPayload = useMemo(
     () => ({
@@ -84,14 +88,15 @@ function UnauthorizedCredentialStatus({
     [credentials, onCredentialChange, tool.credentialType],
   )
   const renderTrigger = useCallback(
-    (open?: boolean) => (
+    (open: boolean, triggerProps: ComponentPropsWithRef<'button'>) => (
       <Button
+        {...triggerProps}
         variant="secondary"
         size="small"
         className={cn('shrink-0', open && 'bg-components-button-secondary-bg-hover')}
       >
         {t(($) => $.notAuthorized, { ns: 'tools' })}
-        <StatusDot className="ml-2" status="warning" />
+        <StatusDot status="warning" />
       </Button>
     ),
     [t],
@@ -106,7 +111,7 @@ function UnauthorizedCredentialStatus({
       renderTrigger={renderTrigger}
       isOpen={isOpen}
       onOpenChange={setIsOpen}
-      offset={4}
+      sideOffset={4}
       placement="bottom-end"
       triggerPopupSameWidth={false}
       popupClassName="w-[360px]"
@@ -116,6 +121,36 @@ function UnauthorizedCredentialStatus({
       onUpdate={handleCredentialUpdate}
       notAllowCustomCredential={notAllowCustomCredential}
     />
+  )
+}
+
+function UninstalledPluginStatus({
+  installInfo,
+  extraIdentifiers,
+  onInstall,
+}: {
+  installInfo?: string
+  extraIdentifiers: string[]
+  onInstall: () => void
+}) {
+  const { t } = useTranslation(['plugin'])
+
+  if (installInfo) {
+    return (
+      <InstallPluginButton
+        size="small"
+        uniqueIdentifier={installInfo}
+        extraIdentifiers={extraIdentifiers}
+        onSuccess={onInstall}
+      />
+    )
+  }
+
+  return (
+    <span className="flex h-6 shrink-0 items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 system-xs-medium text-components-button-secondary-text shadow-xs backdrop-blur-[5px]">
+      {t(($) => $['detailPanel.toolSelector.uninstalledTitle'], { ns: 'plugin' })}
+      <StatusDot className="ml-2" status="warning" />
+    </span>
   )
 }
 
@@ -182,7 +217,7 @@ const ProviderToolActionItem = memo(
     onConfigureAction: (target: ToolSettingTarget) => void
     onRemoveAction: (actionId: string) => void
   }) => {
-    const { t } = useTranslation('agentV2')
+    const { t } = useTranslation(['agentV2'])
     const readOnly = useAgentOrchestrateReadOnly()
     const handleConfigureAction = useCallback(() => {
       onConfigureAction({ actionId: action.id, toolId: tool.id })
@@ -231,28 +266,45 @@ const ProviderToolActionItem = memo(
 export const AgentProviderToolItem = memo(
   ({
     tool,
+    isInstalled,
     isExpanded,
     onOpenChange,
     onConfigureAction,
     onRemoveAction,
     onRemoveProvider,
     onCredentialChange,
+    onInstall,
   }: {
     tool: AgentProviderTool
+    isInstalled?: boolean
     isExpanded: boolean
     onOpenChange: (open: boolean) => void
     onConfigureAction: (target: ToolSettingTarget) => void
     onRemoveAction: (actionId: string) => void
     onRemoveProvider: () => void
+    onInstall: () => void
     onCredentialChange: (
       credentialId?: string,
       credentialType?: AgentProviderTool['credentialType'],
     ) => void
   }) => {
-    const { t } = useTranslation('agentV2')
+    const { t } = useTranslation(['agentV2'])
     const readOnly = useAgentOrchestrateReadOnly()
     const { theme } = useTheme()
-    const icon = theme === Theme.dark && tool.iconDark ? tool.iconDark : tool.icon
+    const shouldFetchPluginManifest =
+      isInstalled === false && !!tool.pluginId && !tool.pluginUniqueIdentifier
+    const { data: pluginManifestData } = usePluginManifestInfo(
+      shouldFetchPluginManifest ? tool.pluginId! : '',
+    )
+    const pluginManifest = pluginManifestData?.data.plugin
+    const configuredIcon = theme === Theme.dark && tool.iconDark ? tool.iconDark : tool.icon
+    const icon =
+      configuredIcon ??
+      (pluginManifest && tool.pluginId ? getIconFromMarketPlace(tool.pluginId) : undefined)
+    const installInfo = tool.pluginUniqueIdentifier ?? pluginManifest?.latest_package_identifier
+    const installIdentifiers = [tool.pluginId, tool.id].filter((identifier): identifier is string =>
+      Boolean(identifier),
+    )
     const displayName = tool.displayName ?? tool.name
 
     return (
@@ -262,7 +314,7 @@ export const AgentProviderToolItem = memo(
         className="overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
       >
         <div className="flex min-h-7 items-center gap-1 rounded-lg py-0.5 pr-0.5 pl-1">
-          <CollapsibleTrigger className="group min-h-0 min-w-0 flex-1 justify-start gap-2 rounded-md px-0 pr-1 text-left hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-secondary">
+          <CollapsibleTrigger className="group/collapsible flex min-h-0 w-full min-w-0 flex-1 touch-manipulation items-center justify-start gap-2 rounded-md pr-1 text-left system-sm-medium text-text-secondary select-none">
             <ProviderIcon icon={icon} iconClassName={tool.iconClassName} />
             <span className="flex min-w-0 items-center">
               <span className="min-w-0 truncate system-sm-medium text-text-primary">
@@ -271,38 +323,42 @@ export const AgentProviderToolItem = memo(
               <span
                 aria-hidden
                 className={cn(
-                  'i-custom-vender-solid-arrows-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-quaternary transition-transform group-data-panel-open:rotate-0 motion-reduce:transition-none',
+                  'i-custom-vender-solid-arrows-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-quaternary transition-transform group-data-panel-open/collapsible:rotate-0 motion-reduce:transition-none',
                 )}
               />
             </span>
           </CollapsibleTrigger>
           {!readOnly && (
-            <>
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger
-                  aria-label={t(($) => $['agentDetail.configure.tools.moreActions'], {
-                    name: tool.name,
-                  })}
-                  className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-base-hover">
+                <span className="sr-only">
+                  {t(($) => $['agentDetail.configure.tools.moreActions'], { name: tool.name })}
+                </span>
+                <span aria-hidden className="i-ri-more-fill size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-44">
+                <DropdownMenuItem
+                  variant="destructive"
+                  className="gap-2"
+                  onClick={onRemoveProvider}
                 >
-                  <span className="sr-only">
-                    {t(($) => $['agentDetail.configure.tools.moreActions'], { name: tool.name })}
-                  </span>
-                  <span aria-hidden className="i-ri-more-fill size-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
-                  <DropdownMenuItem
-                    variant="destructive"
-                    className="gap-2"
-                    onClick={onRemoveProvider}
-                  >
-                    <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-                    <span>{t(($) => $['agentDetail.configure.tools.removeProvider'])}</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <CredentialStatus tool={tool} onCredentialChange={onCredentialChange} />
-            </>
+                  <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+                  <span>{t(($) => $['agentDetail.configure.tools.removeProvider'])}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {isInstalled === false && (
+            <div className="shrink-0">
+              <UninstalledPluginStatus
+                installInfo={installInfo}
+                extraIdentifiers={installIdentifiers}
+                onInstall={onInstall}
+              />
+            </div>
+          )}
+          {!readOnly && isInstalled === true && (
+            <CredentialStatus tool={tool} onCredentialChange={onCredentialChange} />
           )}
         </div>
 

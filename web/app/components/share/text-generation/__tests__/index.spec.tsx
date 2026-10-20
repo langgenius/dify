@@ -1,5 +1,6 @@
 import type { TextGenerationRunControl } from '../types'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AccessMode } from '@/models/access-control'
 import TextGeneration from '../index'
 
@@ -38,10 +39,6 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => ({
     get: (key: string) => (key === 'mode' ? mockMode.value : null),
   }),
-}))
-
-vi.mock('@/app/components/base/loading', () => ({
-  default: ({ type }: { type: string }) => <div data-testid="loading-app">{type}</div>,
 }))
 
 vi.mock('../hooks/use-text-generation-app-state', () => ({
@@ -154,15 +151,10 @@ const createBatchState = (overrides: Record<string, unknown> = {}) => ({
 describe('TextGeneration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers()
     mockMode.value = 'create'
     mockMedia.value = 'pc'
     mockAppStateRef.value = createAppState()
     mockBatchStateRef.value = createBatchState()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
   })
 
   it('should render the loading state until app state is ready', () => {
@@ -170,7 +162,7 @@ describe('TextGeneration', () => {
 
     render(<TextGeneration />)
 
-    expect(screen.getByTestId('loading-app')).toHaveTextContent('app')
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
   })
 
   it('should fall back to create mode for unsupported query params', () => {
@@ -189,36 +181,34 @@ describe('TextGeneration', () => {
   })
 
   it('should orchestrate a run-once request and reveal the result panel', async () => {
+    const user = userEvent.setup()
     render(<TextGeneration />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'run-once' }))
-
-    act(() => {
-      vi.runAllTimers()
-    })
+    await user.click(screen.getByRole('button', { name: 'run-once' }))
 
     expect(mockSetIsCallBatchAPI).toHaveBeenCalledWith(false)
     expect(mockResetBatchExecution).toHaveBeenCalledTimes(1)
-    expect(screen.getByTestId('show-result')).toHaveTextContent('shown')
+    await waitFor(() => {
+      expect(screen.getByTestId('show-result')).toHaveTextContent('shown')
+    })
     expect(Number(screen.getByTestId('control-send').textContent)).toBeGreaterThan(0)
   })
 
   it('should orchestrate batch runs through the batch hook and expose the result panel', async () => {
+    const user = userEvent.setup()
     mockMode.value = 'batch'
 
     render(<TextGeneration />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'run-batch' }))
-
-    act(() => {
-      vi.runAllTimers()
-    })
+    await user.click(screen.getByRole('button', { name: 'run-batch' }))
 
     expect(mockHandleRunBatch).toHaveBeenCalledWith(
       [['name'], ['Alice']],
       expect.objectContaining({ onStart: expect.any(Function) }),
     )
-    expect(screen.getByTestId('show-result')).toHaveTextContent('shown')
+    await waitFor(() => {
+      expect(screen.getByTestId('show-result')).toHaveTextContent('shown')
+    })
     expect(Number(screen.getByTestId('control-stop').textContent)).toBeGreaterThan(0)
   })
 })

@@ -1,22 +1,13 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactElement } from 'react'
 import type { FilterState } from '../../filter-management'
-import { act, fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  getStepByStepTourTargetSelector,
-  STEP_BY_STEP_TOUR_TARGETS,
-} from '@/app/components/step-by-step-tour/target-registry'
-import { InstallationScope } from '@/features/system-features/constants'
+import { zPluginInstallationScope } from '@dify/contracts/api/console/system-features/zod.gen'
+import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-// ==================== Imports (after mocks) ====================
 import Empty from '../index'
 
-// ==================== Mock Setup ====================
-
-// Use vi.hoisted to define ALL mock state and functions so the local render
-// helper below (and downstream `vi.mock` factories) can read from the same
-// shared object regardless of declaration order.
 const { mockSetActiveTab, mockUseInstalledPluginList, mockState } = vi.hoisted(() => {
   const state = {
     filters: {
@@ -45,7 +36,6 @@ const { mockSetActiveTab, mockUseInstalledPluginList, mockState } = vi.hoisted((
 const render = (ui: ReactElement) =>
   renderWithConsoleQuery(ui, { systemFeatures: mockState.systemFeatures })
 
-// Mock plugin page context
 vi.mock('../../context', () => ({
   usePluginPageContext: (selector: (value: Record<string, unknown>) => unknown) => {
     const contextValue = {
@@ -56,50 +46,36 @@ vi.mock('../../context', () => ({
   },
 }))
 
-// Mock useInstalledPluginList hook
 vi.mock('@/service/use-plugins', () => ({
   useInstalledPluginList: () => mockUseInstalledPluginList(),
 }))
 
-// Mock InstallFromGitHub component
 vi.mock('@/app/components/plugins/install-plugin/install-from-github', () => ({
-  default: ({ onClose }: { onSuccess: () => void; onClose: () => void }) => (
+  default: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="install-from-github-modal">
       <button data-testid="github-modal-close" onClick={onClose}>
         Close
       </button>
-      <button data-testid="github-modal-success">Success</button>
     </div>
   ),
 }))
 
-// Mock InstallFromLocalPackage component
 vi.mock('@/app/components/plugins/install-plugin/install-from-local-package', () => ({
-  default: ({ file, onClose }: { file: File; onSuccess: () => void; onClose: () => void }) => (
+  default: ({ file, onClose }: { file: File; onClose: () => void }) => (
     <div data-testid="install-from-local-modal" data-file-name={file.name}>
       <button data-testid="local-modal-close" onClick={onClose}>
         Close
       </button>
-      <button data-testid="local-modal-success">Success</button>
     </div>
   ),
 }))
-
-// Mock Line component
-vi.mock('../../../marketplace/empty/line', () => ({
-  default: ({ className }: { className?: string }) => (
-    <div data-testid="line-component" className={className} />
-  ),
-}))
-
-// ==================== Test Utilities ====================
 
 const resetMockState = () => {
   mockState.filters = { categories: [], tags: [], searchQuery: '' }
   mockState.systemFeatures = {
     enable_marketplace: true,
     plugin_installation_permission: {
-      plugin_installation_scope: InstallationScope.ALL,
+      plugin_installation_scope: zPluginInstallationScope.enum.all,
       restrict_to_marketplace_only: false,
     },
   }
@@ -124,606 +100,138 @@ const createMockFile = (name: string, type = 'application/octet-stream'): File =
   return new File(['test'], name, { type })
 }
 
-// Helper to wait for useEffect to complete (single tick)
-const flushEffects = async () => {
-  await act(async () => {})
-}
+const getFileInput = () => document.querySelector<HTMLInputElement>('input[type="file"]')!
 
-// ==================== Tests ====================
-
-describe('Empty Component', () => {
+describe('Plugin list empty state', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     resetMockState()
   })
 
-  // ==================== Rendering Tests ====================
-  describe('Rendering', () => {
-    it('should render basic structure correctly', async () => {
-      // Arrange & Act
-      render(<Empty />)
-      await flushEffects()
+  it('shows the no-installed message even when filters are active', () => {
+    setMockFilters({ categories: ['model'], searchQuery: 'test' })
+    render(<Empty />)
 
-      // Assert - file input
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-      expect(fileInput).toBeInTheDocument()
-      expect(fileInput.style.display).toBe('none')
-      expect(fileInput.accept).toBe('.difypkg,.difybndl')
-
-      // Assert - group icon container
-      const iconContainer = document.querySelector('.size-14')
-      expect(iconContainer).toBeInTheDocument()
-
-      // Assert - line components
-      const lines = screen.getAllByTestId('line-component')
-      expect(lines).toHaveLength(4)
-    })
-
-    it('should render the Figma trigger empty layout variant', async () => {
-      // Arrange & Act
-      const { container } = render(<Empty contentInset="compact" variant="integrationsTrigger" />)
-      await flushEffects()
-
-      // Assert
-      expect(screen.getByText('plugin.list.noTriggerFound')).toBeInTheDocument()
-      expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
-      expect(container.querySelector('.i-ri-drag-drop-line')).toBeInTheDocument()
-      expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
-      expect(
-        container.querySelector('.i-custom-vender-integrations-trigger-active'),
-      ).toBeInTheDocument()
-      expect(
-        container.querySelector('.i-custom-vender-integrations-trigger'),
-      ).not.toBeInTheDocument()
-
-      const buttons = screen.getAllByRole('button')
-      buttons.forEach((button) => expect(button).toHaveClass('h-8', 'w-full', 'justify-start'))
-    })
-
-    it('should anchor the trigger tour target to the empty state content instead of the grow root', async () => {
-      const { container } = render(<Empty contentInset="compact" variant="integrationsTrigger" />)
-      await flushEffects()
-
-      const selector = getStepByStepTourTargetSelector(
-        STEP_BY_STEP_TOUR_TARGETS.integrationTriggerGrid,
-      )
-      const target = document.querySelector<HTMLElement>(selector)
-
-      expect(container.firstElementChild).not.toHaveAttribute('data-step-by-step-tour-target')
-      expect(target).toContainElement(screen.getByText('plugin.list.noTriggerFound'))
-      expect(target).toContainElement(screen.getByText('plugin.source.marketplace'))
-      expect(target).not.toContainElement(
-        screen.getByText('plugin.installModal.dropIntegrationToInstall'),
-      )
-    })
-
-    it('should render the Figma agent strategy empty layout at the shared center position', async () => {
-      // Arrange & Act
-      const { container } = render(
-        <Empty contentInset="compact" variant="integrationsAgentStrategy" />,
-      )
-      await flushEffects()
-
-      // Assert
-      expect(screen.getByText('plugin.list.noAgentStrategyFound')).toBeInTheDocument()
-      expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
-      expect(container.querySelector('.i-ri-drag-drop-line')).toBeInTheDocument()
-      expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
-
-      expect(container.querySelector('.items-center')).toBeInTheDocument()
-      expect(container.querySelector('.-translate-y-7')).not.toBeInTheDocument()
-      expect(
-        container.querySelector('.i-custom-vender-integrations-agent-strategy-active'),
-      ).toHaveClass('size-6', 'shrink-0')
-    })
-
-    it('should anchor the agent strategy tour target to the empty state content instead of the grow root', async () => {
-      const { container } = render(
-        <Empty contentInset="compact" variant="integrationsAgentStrategy" />,
-      )
-      await flushEffects()
-
-      const selector = getStepByStepTourTargetSelector(
-        STEP_BY_STEP_TOUR_TARGETS.integrationAgentStrategyEmpty,
-      )
-      const target = document.querySelector<HTMLElement>(selector)
-
-      expect(container.firstElementChild).not.toHaveAttribute('data-step-by-step-tour-target')
-      expect(target).toContainElement(screen.getByText('plugin.list.noAgentStrategyFound'))
-      expect(target).toContainElement(screen.getByText('plugin.source.marketplace'))
-      expect(target).not.toContainElement(
-        screen.getByText('plugin.installModal.dropIntegrationToInstall'),
-      )
-    })
-
-    it('should render the Figma extension empty layout with extension copy', async () => {
-      // Arrange & Act
-      const { container } = render(<Empty contentInset="compact" variant="integrationsExtension" />)
-      await flushEffects()
-
-      // Assert
-      expect(screen.getByText('plugin.list.noExtensionFound')).toBeInTheDocument()
-      expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
-      expect(container.querySelector('.i-ri-drag-drop-line')).toBeInTheDocument()
-
-      expect(container.querySelector('.i-custom-vender-integrations-extension-active')).toHaveClass(
-        'size-6',
-        'shrink-0',
-      )
-    })
-
-    it('should anchor the extension tour target to the empty state content instead of the grow root', async () => {
-      const { container } = render(<Empty contentInset="compact" variant="integrationsExtension" />)
-      await flushEffects()
-
-      const selector = getStepByStepTourTargetSelector(
-        STEP_BY_STEP_TOUR_TARGETS.integrationExtensionGrid,
-      )
-      const target = document.querySelector<HTMLElement>(selector)
-
-      expect(container.firstElementChild).not.toHaveAttribute('data-step-by-step-tour-target')
-      expect(target).toContainElement(screen.getByText('plugin.list.noExtensionFound'))
-      expect(target).toContainElement(screen.getByText('plugin.source.marketplace'))
-      expect(target).not.toContainElement(
-        screen.getByText('plugin.installModal.dropIntegrationToInstall'),
-      )
-    })
+    expect(screen.getByText('plugin.list.noInstalled')).toBeInTheDocument()
+    expect(screen.queryByText('plugin.list.notFound')).not.toBeInTheDocument()
   })
 
-  // ==================== Text Display Tests (useMemo) ====================
-  describe('Text Display (useMemo)', () => {
-    it('should display "noInstalled" text when plugin list is empty', async () => {
-      // Arrange
-      setMockPluginList({ plugins: [] })
-
-      // Act
-      render(<Empty />)
-      await flushEffects()
-
-      // Assert
-      expect(screen.getByText('plugin.list.noInstalled')).toBeInTheDocument()
-    })
-
-    it('should display "notFound" text when filters are active with plugins', async () => {
-      // Arrange
+  it.each([{ categories: ['model'] }, { tags: ['tag1'] }, { searchQuery: 'test query' }])(
+    'shows no results for an installed list filtered by %o',
+    (filters) => {
       setMockPluginList({ plugins: [{ id: 'plugin-1' }] })
+      setMockFilters(filters)
+      render(<Empty />)
 
-      // Test categories filter
-      setMockFilters({ categories: ['model'] })
-      const { rerender } = render(<Empty />)
-      await flushEffects()
       expect(screen.getByText('plugin.list.notFound')).toBeInTheDocument()
+    },
+  )
 
-      // Test tags filter
-      setMockFilters({ categories: [], tags: ['tag1'] })
-      rerender(<Empty />)
-      await flushEffects()
-      expect(screen.getByText('plugin.list.notFound')).toBeInTheDocument()
-
-      // Test searchQuery filter
-      setMockFilters({ tags: [], searchQuery: 'test query' })
-      rerender(<Empty />)
-      await flushEffects()
-      expect(screen.getByText('plugin.list.notFound')).toBeInTheDocument()
-    })
-
-    it('should prioritize "noInstalled" over "notFound" when no plugins exist', async () => {
-      // Arrange
-      setMockFilters({ categories: ['model'], searchQuery: 'test' })
-      setMockPluginList({ plugins: [] })
-
-      // Act
-      render(<Empty />)
-      await flushEffects()
-
-      // Assert
-      expect(screen.getByText('plugin.list.noInstalled')).toBeInTheDocument()
-    })
-  })
-
-  // ==================== Install Methods Tests (useEffect) ====================
-  describe('Install Methods (useEffect)', () => {
-    it('should render all three install methods when marketplace enabled and not restricted', async () => {
-      // Arrange
+  it.each([
+    { marketplace: true, restricted: false, methods: ['marketplace', 'github', 'local'] },
+    { marketplace: true, restricted: true, methods: ['marketplace'] },
+    { marketplace: false, restricted: false, methods: ['github', 'local'] },
+    { marketplace: false, restricted: true, methods: [] },
+  ])(
+    'offers $methods with marketplace=$marketplace and restricted=$restricted',
+    ({ marketplace, restricted, methods }) => {
       setMockSystemFeatures({
-        enable_marketplace: true,
+        enable_marketplace: marketplace,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
-          restrict_to_marketplace_only: false,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
+          restrict_to_marketplace_only: restricted,
         },
       })
-
-      // Act
       render(<Empty />)
-      await flushEffects()
 
-      // Assert
-      const buttons = screen.getAllByRole('button')
-      expect(buttons).toHaveLength(3)
-      expect(screen.getByText('plugin.source.marketplace')).toBeInTheDocument()
-      expect(screen.getByText('plugin.source.github')).toBeInTheDocument()
-      expect(screen.getByText('plugin.source.local')).toBeInTheDocument()
+      for (const method of ['marketplace', 'github', 'local']) {
+        const button = screen.queryByRole('button', { name: `plugin.source.${method}` })
+        if (methods.includes(method)) expect(button).toBeInTheDocument()
+        else expect(button).not.toBeInTheDocument()
+      }
+    },
+  )
 
-      // Verify button order
-      const buttonTexts = buttons.map((btn) => btn.textContent)
-      expect(buttonTexts[0]).toContain('plugin.source.marketplace')
-      expect(buttonTexts[1]).toContain('plugin.source.github')
-      expect(buttonTexts[2]).toContain('plugin.source.local')
-    })
+  it('hides installation actions and ignores file changes without install permission', () => {
+    render(<Empty canInstall={false} />)
+    expect(screen.queryAllByRole('button')).toHaveLength(0)
 
-    it('should render only marketplace method when restricted to marketplace only', async () => {
-      // Arrange
-      setMockSystemFeatures({
-        enable_marketplace: true,
-        plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
-          restrict_to_marketplace_only: true,
-        },
-      })
-
-      // Act
-      render(<Empty />)
-      await flushEffects()
-
-      // Assert
-      const buttons = screen.getAllByRole('button')
-      expect(buttons).toHaveLength(1)
-      expect(screen.getByText('plugin.source.marketplace')).toBeInTheDocument()
-      expect(screen.queryByText('plugin.source.github')).not.toBeInTheDocument()
-      expect(screen.queryByText('plugin.source.local')).not.toBeInTheDocument()
-    })
-
-    it('should render github and local methods when marketplace is disabled', async () => {
-      // Arrange
-      setMockSystemFeatures({
-        enable_marketplace: false,
-        plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
-          restrict_to_marketplace_only: false,
-        },
-      })
-
-      // Act
-      render(<Empty />)
-      await flushEffects()
-
-      // Assert
-      const buttons = screen.getAllByRole('button')
-      expect(buttons).toHaveLength(2)
-      expect(screen.queryByText('plugin.source.marketplace')).not.toBeInTheDocument()
-      expect(screen.getByText('plugin.source.github')).toBeInTheDocument()
-      expect(screen.getByText('plugin.source.local')).toBeInTheDocument()
-    })
-
-    it('should render no methods when marketplace disabled and restricted', async () => {
-      // Arrange
-      setMockSystemFeatures({
-        enable_marketplace: false,
-        plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
-          restrict_to_marketplace_only: true,
-        },
-      })
-
-      // Act
-      render(<Empty />)
-      await flushEffects()
-
-      // Assert
-      const buttons = screen.queryAllByRole('button')
-      expect(buttons).toHaveLength(0)
-    })
-
-    it('should render no install methods or drop hint when install permission is unavailable', async () => {
-      // Act
-      render(<Empty canInstall={false} contentInset="compact" variant="integrationsTrigger" />)
-      await flushEffects()
-
-      // Assert
-      expect(screen.queryAllByRole('button')).toHaveLength(0)
-      expect(screen.queryByText('plugin.source.marketplace')).not.toBeInTheDocument()
-      expect(screen.queryByText('plugin.source.github')).not.toBeInTheDocument()
-      expect(screen.queryByText('plugin.source.local')).not.toBeInTheDocument()
-      expect(
-        screen.queryByText('plugin.installModal.dropIntegrationToInstall'),
-      ).not.toBeInTheDocument()
-    })
+    // Exercise the permission guard even if a file change reaches the hidden input.
+    fireEvent.change(getFileInput(), { target: { files: [createMockFile('blocked.difypkg')] } })
+    expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
   })
 
-  // ==================== User Interactions Tests ====================
-  describe('User Interactions', () => {
-    it('should call setActiveTab with "discover" when marketplace button is clicked', async () => {
-      // Arrange
-      render(<Empty />)
-      await flushEffects()
+  it('opens the discovery tab from the marketplace action', async () => {
+    const user = userEvent.setup()
+    render(<Empty />)
 
-      // Act
-      fireEvent.click(screen.getByText('plugin.source.marketplace'))
+    await user.click(screen.getByRole('button', { name: 'plugin.source.marketplace' }))
 
-      // Assert
-      expect(mockSetActiveTab).toHaveBeenCalledWith('discover')
-    })
-
-    it('should use the provided marketplace action when marketplace button is clicked', async () => {
-      // Arrange
-      const onSwitchToMarketplace = vi.fn()
-      render(
-        <Empty onSwitchToMarketplace={onSwitchToMarketplace} variant="integrationsExtension" />,
-      )
-      await flushEffects()
-
-      // Act
-      fireEvent.click(screen.getByText('plugin.source.marketplace'))
-
-      // Assert
-      expect(onSwitchToMarketplace).toHaveBeenCalledTimes(1)
-      expect(mockSetActiveTab).not.toHaveBeenCalled()
-    })
-
-    it('should open and close GitHub modal correctly', async () => {
-      // Arrange
-      render(<Empty />)
-      await flushEffects()
-
-      // Assert - initially no modal
-      expect(screen.queryByTestId('install-from-github-modal')).not.toBeInTheDocument()
-
-      // Act - open modal
-      fireEvent.click(screen.getByText('plugin.source.github'))
-
-      // Assert - modal is open
-      expect(screen.getByTestId('install-from-github-modal')).toBeInTheDocument()
-
-      // Act - close modal
-      fireEvent.click(screen.getByTestId('github-modal-close'))
-
-      // Assert - modal is closed
-      expect(screen.queryByTestId('install-from-github-modal')).not.toBeInTheDocument()
-    })
-
-    it('should trigger file input click when local button is clicked', async () => {
-      // Arrange
-      render(<Empty />)
-      await flushEffects()
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-      const clickSpy = vi.spyOn(fileInput, 'click')
-
-      // Act
-      fireEvent.click(screen.getByText('plugin.source.local'))
-
-      // Assert
-      expect(clickSpy).toHaveBeenCalled()
-    })
-
-    it('should open and close local modal when file is selected', async () => {
-      // Arrange
-      render(<Empty />)
-      await flushEffects()
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-      const mockFile = createMockFile('test-plugin.difypkg')
-
-      // Assert - initially no modal
-      expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
-
-      // Act - select file
-      Object.defineProperty(fileInput, 'files', { value: [mockFile], writable: true })
-      fireEvent.change(fileInput)
-
-      // Assert - modal is open with correct file
-      expect(screen.getByTestId('install-from-local-modal')).toBeInTheDocument()
-      expect(screen.getByTestId('install-from-local-modal')).toHaveAttribute(
-        'data-file-name',
-        'test-plugin.difypkg',
-      )
-
-      // Act - close modal
-      fireEvent.click(screen.getByTestId('local-modal-close'))
-
-      // Assert - modal is closed
-      expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
-    })
-
-    it('should not open local modal when no file is selected', async () => {
-      // Arrange
-      render(<Empty />)
-      await flushEffects()
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-
-      // Act - trigger change with empty files
-      Object.defineProperty(fileInput, 'files', { value: [], writable: true })
-      fireEvent.change(fileInput)
-
-      // Assert
-      expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
-    })
-
-    it('should ignore selected files when install permission is unavailable', async () => {
-      // Arrange
-      render(<Empty canInstall={false} />)
-      await flushEffects()
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-
-      // Act
-      Object.defineProperty(fileInput, 'files', {
-        value: [createMockFile('blocked-plugin.difypkg')],
-        writable: true,
-      })
-      fireEvent.change(fileInput)
-
-      // Assert
-      expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
-    })
+    expect(mockSetActiveTab).toHaveBeenCalledWith('discover')
   })
 
-  // ==================== State Management Tests ====================
-  describe('State Management', () => {
-    it('should maintain modal state correctly and allow reopening', async () => {
-      // Arrange
-      render(<Empty />)
-      await flushEffects()
+  it('uses the supplied marketplace navigation instead of switching tabs', async () => {
+    const user = userEvent.setup()
+    const onSwitchToMarketplace = vi.fn()
+    render(<Empty onSwitchToMarketplace={onSwitchToMarketplace} />)
 
-      // Act - Open, close, and reopen GitHub modal
-      fireEvent.click(screen.getByText('plugin.source.github'))
-      expect(screen.getByTestId('install-from-github-modal')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'plugin.source.marketplace' }))
 
-      fireEvent.click(screen.getByTestId('github-modal-close'))
-      expect(screen.queryByTestId('install-from-github-modal')).not.toBeInTheDocument()
-
-      fireEvent.click(screen.getByText('plugin.source.github'))
-      expect(screen.getByTestId('install-from-github-modal')).toBeInTheDocument()
-    })
-
-    it('should update selectedFile state when file is selected', async () => {
-      // Arrange
-      render(<Empty />)
-      await flushEffects()
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-
-      // Act - select .difypkg file
-      Object.defineProperty(fileInput, 'files', {
-        value: [createMockFile('my-plugin.difypkg')],
-        writable: true,
-      })
-      fireEvent.change(fileInput)
-      expect(screen.getByTestId('install-from-local-modal')).toHaveAttribute(
-        'data-file-name',
-        'my-plugin.difypkg',
-      )
-
-      // Close and select .difybndl file
-      fireEvent.click(screen.getByTestId('local-modal-close'))
-      Object.defineProperty(fileInput, 'files', {
-        value: [createMockFile('test-bundle.difybndl')],
-        writable: true,
-      })
-      fireEvent.change(fileInput)
-      expect(screen.getByTestId('install-from-local-modal')).toHaveAttribute(
-        'data-file-name',
-        'test-bundle.difybndl',
-      )
-    })
+    expect(onSwitchToMarketplace).toHaveBeenCalledTimes(1)
+    expect(mockSetActiveTab).not.toHaveBeenCalled()
   })
 
-  // ==================== Side Effects Tests ====================
-  describe('Side Effects', () => {
-    it('should render correct install methods based on system features', async () => {
-      // Test 1: All methods when marketplace enabled and not restricted
-      setMockSystemFeatures({
-        enable_marketplace: true,
-        plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
-          restrict_to_marketplace_only: false,
-        },
-      })
+  it('opens, closes, and reopens the GitHub installer', async () => {
+    const user = userEvent.setup()
+    render(<Empty />)
+    expect(screen.queryByTestId('install-from-github-modal')).not.toBeInTheDocument()
 
-      const { unmount: unmount1 } = render(<Empty />)
-      await flushEffects()
-      expect(screen.getAllByRole('button')).toHaveLength(3)
-      unmount1()
-
-      // Test 2: Only marketplace when restricted
-      setMockSystemFeatures({
-        enable_marketplace: true,
-        plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
-          restrict_to_marketplace_only: true,
-        },
-      })
-
-      render(<Empty />)
-      await flushEffects()
-      expect(screen.getAllByRole('button')).toHaveLength(1)
-      expect(screen.getByText('plugin.source.marketplace')).toBeInTheDocument()
-    })
-
-    it('should render correct text based on plugin list and filters', async () => {
-      // Test 1: noInstalled when plugin list is empty
-      setMockPluginList({ plugins: [] })
-      setMockFilters({ categories: [], tags: [], searchQuery: '' })
-
-      const { unmount: unmount1 } = render(<Empty />)
-      await flushEffects()
-      expect(screen.getByText('plugin.list.noInstalled')).toBeInTheDocument()
-      unmount1()
-
-      // Test 2: notFound when filters are active with plugins
-      setMockFilters({ categories: ['tool'] })
-      setMockPluginList({ plugins: [{ id: 'plugin-1' }] })
-
-      render(<Empty />)
-      await flushEffects()
-      expect(screen.getByText('plugin.list.notFound')).toBeInTheDocument()
-    })
+    await user.click(screen.getByRole('button', { name: 'plugin.source.github' }))
+    expect(screen.getByTestId('install-from-github-modal')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.queryByTestId('install-from-github-modal')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'plugin.source.github' }))
+    expect(screen.getByTestId('install-from-github-modal')).toBeInTheDocument()
   })
 
-  // ==================== Edge Cases ====================
-  describe('Edge Cases', () => {
-    it('should handle undefined plugin data gracefully', () => {
-      // Test undefined plugin list - component should render without error
-      setMockPluginList(undefined)
-      expect(() => render(<Empty />)).not.toThrow()
-    })
+  it('opens the file picker for supported plugin and bundle files', async () => {
+    const user = userEvent.setup()
+    render(<Empty />)
+    const input = getFileInput()
+    const clickSpy = vi.spyOn(input, 'click')
 
-    it('should handle file input edge cases', async () => {
-      // Arrange
-      render(<Empty />)
-      await flushEffects()
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    await user.click(screen.getByRole('button', { name: 'plugin.source.local' }))
 
-      // Test undefined files
-      Object.defineProperty(fileInput, 'files', { value: undefined, writable: true })
-      fireEvent.change(fileInput)
-      expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
-    })
+    expect(clickSpy).toHaveBeenCalledOnce()
+    expect(input).toHaveAttribute('accept', '.difypkg,.difybndl')
+    expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
+    clickSpy.mockRestore()
   })
 
-  // ==================== Modal Callbacks Tests ====================
-  describe('Modal Callbacks', () => {
-    it('should handle modal onSuccess callbacks (noop)', async () => {
-      // Arrange
-      render(<Empty />)
-      await flushEffects()
+  it('passes the selected package to the installer and accepts a new bundle after closing', async () => {
+    const user = userEvent.setup()
+    render(<Empty />)
+    const input = getFileInput()
 
-      // Test GitHub modal onSuccess
-      fireEvent.click(screen.getByText('plugin.source.github'))
-      fireEvent.click(screen.getByTestId('github-modal-success'))
-      expect(screen.getByTestId('install-from-github-modal')).toBeInTheDocument()
+    await user.upload(input, createMockFile('my-plugin.difypkg'))
+    expect(screen.getByTestId('install-from-local-modal')).toHaveAttribute(
+      'data-file-name',
+      'my-plugin.difypkg',
+    )
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
 
-      // Close GitHub modal and test Local modal onSuccess
-      fireEvent.click(screen.getByTestId('github-modal-close'))
-
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-      Object.defineProperty(fileInput, 'files', {
-        value: [createMockFile('test-plugin.difypkg')],
-        writable: true,
-      })
-      fireEvent.change(fileInput)
-
-      fireEvent.click(screen.getByTestId('local-modal-success'))
-      expect(screen.getByTestId('install-from-local-modal')).toBeInTheDocument()
-    })
+    await user.upload(input, createMockFile('my-bundle.difybndl'))
+    expect(screen.getByTestId('install-from-local-modal')).toHaveAttribute(
+      'data-file-name',
+      'my-bundle.difybndl',
+    )
   })
 
-  // ==================== Conditional Modal Rendering ====================
-  describe('Conditional Modal Rendering', () => {
-    it('should only render one modal at a time and require file for local modal', async () => {
-      // Arrange
-      render(<Empty />)
-      await flushEffects()
+  it('does not open an installer when file selection is cancelled', () => {
+    render(<Empty />)
 
-      // Assert - no modals initially
-      expect(screen.queryByTestId('install-from-github-modal')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
+    fireEvent.change(getFileInput(), { target: { files: [] } })
 
-      // Open GitHub modal - only GitHub modal visible
-      fireEvent.click(screen.getByText('plugin.source.github'))
-      expect(screen.getByTestId('install-from-github-modal')).toBeInTheDocument()
-      expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
-
-      // Click local button - triggers file input, no modal yet (no file selected)
-      fireEvent.click(screen.getByText('plugin.source.local'))
-      // GitHub modal should still be visible, local modal requires file selection
-      expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
-    })
+    expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
   })
 })

@@ -10,7 +10,7 @@ from models.dataset import Dataset
 from models.enums import CollectionBindingType, ConversationFromSource
 from models.model import AnnotationReplyEnabledConfig, App, Message, MessageAnnotation, load_annotation_reply_config
 from services.annotation_service import AppAnnotationService
-from services.dataset_service import DatasetCollectionBindingService
+from services.knowledge.dataset_service import DatasetCollectionBindingService
 
 logger = logging.getLogger(__name__)
 
@@ -90,8 +90,8 @@ class AnnotationReplyFeature:
                     )
 
                     return annotation
-        except Exception as e:
-            logger.warning("Query annotation failed, exception: %s.", str(e))
+        except Exception:
+            logger.warning("Query annotation failed.", exc_info=True)
             return None
 
         return None

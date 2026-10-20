@@ -7,11 +7,33 @@ from pydantic import ValidationError
 
 from shellctl.shared import (
     JOB_ID_ALPHABET,
+    JobMode,
+    MAX_WAIT_TIMEOUT_SECONDS,
     RunJobRequest,
+    SHELL_TOOL_HARD_TIMEOUT_SECONDS,
+    SHELL_TOOL_HTTP_TIMEOUT_GRACE_SECONDS,
+    SHELL_TOOL_TIMEOUT_WITH_HTTP_GRACE_SECONDS,
     generate_job_id,
     read_output_window,
     tail_output_window,
 )
+
+
+def test_run_job_request_defaults_to_pty_and_rejects_unknown_mode() -> None:
+    assert RunJobRequest(script="true").mode is JobMode.PTY
+
+    with pytest.raises(ValidationError):
+        RunJobRequest(script="true", mode="stdout")  # pyright: ignore[reportArgumentType]
+
+
+def test_shell_tool_timeout_budget_has_one_source_of_truth() -> None:
+    assert MAX_WAIT_TIMEOUT_SECONDS == SHELL_TOOL_HARD_TIMEOUT_SECONDS == 300
+    assert SHELL_TOOL_HTTP_TIMEOUT_GRACE_SECONDS == 10
+    assert (
+        SHELL_TOOL_TIMEOUT_WITH_HTTP_GRACE_SECONDS
+        == SHELL_TOOL_HARD_TIMEOUT_SECONDS + SHELL_TOOL_HTTP_TIMEOUT_GRACE_SECONDS
+        == 310
+    )
 
 
 def test_generate_job_id_matches_proposal_format() -> None:

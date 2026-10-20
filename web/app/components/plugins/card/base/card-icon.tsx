@@ -1,7 +1,7 @@
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCheckLine, RiCloseLine } from '@remixicon/react'
 import AppIcon from '@/app/components/base/app-icon'
-import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import { shouldUseMcpIcon } from '@/utils/mcp'
 
 const iconSizeMap = {
@@ -11,6 +11,17 @@ const iconSizeMap = {
   medium: 'w-9 h-9',
   large: 'w-10 h-10',
 }
+
+const iconPixelSizeMap = {
+  xs: 16,
+  tiny: 24,
+  small: 32,
+  medium: 36,
+  large: 40,
+}
+
+type IconSize = keyof typeof iconSizeMap
+
 const Icon = ({
   className,
   src,
@@ -27,40 +38,50 @@ const Icon = ({
       }
   installed?: boolean
   installFailed?: boolean
-  size?: 'xs' | 'tiny' | 'small' | 'medium' | 'large'
+  size?: IconSize
 }) => {
   const iconClassName =
     'flex justify-center items-center gap-2 absolute bottom-[-4px] right-[-4px] w-[18px] h-[18px] rounded-full border-2 border-components-panel-bg'
   if (typeof src === 'object') {
     return (
       <div className={cn('relative', className)}>
-        <AppIcon
-          size={size}
-          iconType="emoji"
-          icon={src.content}
-          background={src.background}
-          className="rounded-md"
-          innerIcon={
-            shouldUseMcpIcon(src) ? (
-              <Mcp className="size-8 text-text-primary-on-surface" />
-            ) : undefined
-          }
-        />
+        {shouldUseMcpIcon(src) ? (
+          <Avatar
+            aria-hidden="true"
+            className={cn('rounded-md border-[0.5px] border-divider-regular', iconSizeMap[size])}
+          >
+            <AvatarFallback
+              className="text-text-primary-on-surface"
+              style={{ background: src.background || '#FFEAD5' }}
+            >
+              <span className="i-custom-vender-other-mcp size-8" />
+            </AvatarFallback>
+          </Avatar>
+        ) : (
+          <AppIcon
+            size={size}
+            icon={{ icon_type: 'emoji', icon: src.content, icon_background: src.background }}
+            className="rounded-md"
+          />
+        )}
       </div>
     )
   }
 
   return (
-    <div
-      className={cn(
-        'relative shrink-0 rounded-md bg-contain bg-center bg-no-repeat',
-        iconSizeMap[size],
-        className,
-      )}
-      style={{
-        backgroundImage: `url(${src})`,
-      }}
-    >
+    <div className={cn('relative shrink-0 rounded-md', iconSizeMap[size], className)}>
+      <img
+        alt=""
+        className="size-full rounded-md object-contain object-center"
+        decoding="async"
+        height={iconPixelSizeMap[size]}
+        loading="lazy"
+        src={src}
+        width={iconPixelSizeMap[size]}
+        onError={({ currentTarget }) => {
+          currentTarget.style.display = 'none'
+        }}
+      />
       {installed && (
         <div className={cn(iconClassName, 'bg-state-success-solid')}>
           <RiCheckLine className="size-3 text-text-primary-on-surface" />

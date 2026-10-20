@@ -1,27 +1,18 @@
 import type { KnowledgeBaseNodeType } from '../types'
 import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CommonNodeType } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Node from '../node'
 import { ChunkStructureEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../types'
 
-const mockUseModelList = vi.hoisted(() => vi.fn())
-const mockUseSettingsDisplay = vi.hoisted(() => vi.fn())
 const mockUseEmbeddingModelStatus = vi.hoisted(() => vi.fn())
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: () => ({ data: undefined }),
-  }
-})
 
 vi.mock(
   '@/app/components/header/account-setting/model-provider-page/hooks',
@@ -33,14 +24,9 @@ vi.mock(
     return {
       ...actual,
       useLanguage: () => 'en_US',
-      useModelList: mockUseModelList,
     }
   },
 )
-
-vi.mock('../hooks/use-settings-display', () => ({
-  useSettingsDisplay: mockUseSettingsDisplay,
-}))
 
 vi.mock('../hooks/use-embedding-model-status', () => ({
   useEmbeddingModelStatus: mockUseEmbeddingModelStatus,
@@ -81,11 +67,7 @@ const createNodeData = (
 describe('KnowledgeBaseNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseModelList.mockReturnValue({ data: [] })
-    mockUseSettingsDisplay.mockReturnValue({
-      [IndexMethodEnum.QUALIFIED]: 'High Quality',
-      [RetrievalSearchMethodEnum.semantic]: 'Vector Search',
-    })
+
     mockUseEmbeddingModelStatus.mockReturnValue({
       providerMeta: undefined,
       modelProvider: undefined,
@@ -113,7 +95,7 @@ describe('KnowledgeBaseNode', () => {
       render(<Node id="knowledge-base-1" data={createNodeData()} />)
 
       expect(
-        screen.getByText('common.modelProvider.selector.configureRequired'),
+        screen.getByText('modelProvider.modelProvider.selector.configureRequired'),
       ).toBeInTheDocument()
     })
 
@@ -127,7 +109,7 @@ describe('KnowledgeBaseNode', () => {
 
       render(<Node id="knowledge-base-1" data={createNodeData()} />)
 
-      expect(screen.getByText('common.modelProvider.selector.disabled')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.selector.disabled')).toBeInTheDocument()
     })
 
     it('should render incompatible when embedding model status is incompatible', () => {
@@ -140,7 +122,9 @@ describe('KnowledgeBaseNode', () => {
 
       render(<Node id="knowledge-base-1" data={createNodeData()} />)
 
-      expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
+      expect(
+        screen.getByText('modelProvider.modelProvider.selector.incompatible'),
+      ).toBeInTheDocument()
     })
 
     it('should render configure model prompt when no embedding model is selected', () => {
@@ -192,21 +176,7 @@ describe('KnowledgeBaseNode', () => {
       expect(screen.getByText(/chunksVariableIsRequired/i)).toBeInTheDocument()
     })
 
-    it('should render a warning value for retrieval settings when reranking is incomplete', () => {
-      mockUseModelList.mockImplementation((modelType: ModelTypeEnum) => {
-        if (modelType === ModelTypeEnum.textEmbedding) {
-          return {
-            data: [
-              {
-                provider: 'openai',
-                models: [createModelItem()],
-              },
-            ],
-          }
-        }
-        return { data: [] }
-      })
-
+    it('should render a warning value for retrieval settings when reranking is incomplete', async () => {
       render(
         <Node
           id="knowledge-base-1"
@@ -222,7 +192,7 @@ describe('KnowledgeBaseNode', () => {
         />,
       )
 
-      expect(screen.getByText(/rerankingModelIsRequired/i)).toBeInTheDocument()
+      expect(await screen.findByText(/rerankingModelIsRequired/i)).toBeInTheDocument()
     })
 
     it('should hide the embedding model row when the index method is not qualified', () => {
@@ -238,4 +208,27 @@ describe('KnowledgeBaseNode', () => {
       expect(screen.queryByText('Text Embedding 3 Large')).not.toBeInTheDocument()
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.models.modelTypes.byModelType.get': async ({
+        params,
+      }: {
+        params: { model_type: string }
+      }) => ({
+        data:
+          params.model_type === ModelTypeEnum.textEmbedding
+            ? [{ provider: 'openai', models: [createModelItem()] }]
+            : [],
+      }),
+      'workspaces.current.modelProviders.byProvider.models.get': async () => ({
+        data: [createModelItem()],
+      }),
+    }),
+  }
 })

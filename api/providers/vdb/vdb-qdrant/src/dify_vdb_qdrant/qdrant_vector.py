@@ -19,6 +19,7 @@ from qdrant_client.http.models import (
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -194,7 +195,7 @@ class QdrantVector(BaseVector):
         ids: Sequence[str] | None = None,
         batch_size: int = 64,
         group_id: str | None = None,
-    ) -> Generator[tuple[list[str], list[rest.PointStruct]], None, None]:
+    ) -> Generator[tuple[list[str], list[rest.PointStruct]]]:
         from qdrant_client.http import models as rest
 
         texts_iterator = iter(texts)
@@ -226,6 +227,7 @@ class QdrantVector(BaseVector):
                         group_id or "",  # Ensure group_id is never None
                         Field.GROUP_KEY,
                     ),
+                    strict=False,
                 )
             ]
 
@@ -441,8 +443,12 @@ class QdrantVector(BaseVector):
             return []
 
         top_k = kwargs.get("top_k", 2)
+        if top_k <= 0:
+            return []
+
         seen_ids: set[str | int] = set()
         documents: list[Document] = []
+        keyword_results: list[list[rest.Record]] = []
 
         # Search each keyword separately and merge results.
         # This ensures each keyword gets its own search, preventing one keyword's
@@ -466,14 +472,29 @@ class QdrantVector(BaseVector):
                 with_vectors=True,
             )
             results = response[0]
+            keyword_results.append(results)
 
-            for result in results:
-                if result and result.id not in seen_ids:
-                    seen_ids.add(result.id)
-                    document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
-                    documents.append(document)
-                    if len(documents) >= top_k:
-                        return documents
+        # Select round-robin so a common first keyword cannot fill top_k before
+        # later keywords contribute their matches.
+        result_indexes = [0] * len(keyword_results)
+        while True:
+            found_result = False
+            for index, results in enumerate(keyword_results):
+                while result_indexes[index] < len(results):
+                    result = results[result_indexes[index]]
+                    result_indexes[index] += 1
+                    if result.id not in seen_ids:
+                        seen_ids.add(result.id)
+                        document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
+                        documents.append(document)
+                        found_result = True
+                        break
+                if len(documents) >= top_k:
+                    break
+            if len(documents) >= top_k:
+                break
+            if not found_result:
+                break
 
         return documents
 
@@ -497,10 +518,15 @@ class QdrantVector(BaseVector):
 
 class QdrantVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> QdrantVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> QdrantVector:
         if dataset.collection_binding_id:
             stmt = select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == dataset.collection_binding_id)
-            dataset_collection_binding = db.session.scalars(stmt).one_or_none()
+            # Annotation bindings may only be flushed in the caller's transaction.
+            # Keep the legacy lookup for workflows initialized with session=None.
+            binding_session = session if session is not None else db.session
+            dataset_collection_binding = binding_session.scalars(stmt).one_or_none()
             if dataset_collection_binding:
                 collection_name = dataset_collection_binding.collection_name
             else:

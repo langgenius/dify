@@ -1,22 +1,26 @@
-import type { PluginInstallationItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  GetWorkspacesCurrentPluginByCategoryListData,
+  ParserMarketplaceUpgrade,
+  PluginCategoryInstalledPluginResponse,
+  PluginCategoryListResponse,
+  PluginEntity,
+  PluginInstallationItemResponse,
+  PluginInstallTask,
+  PluginInstallTaskStartResponse,
+  PluginListResponse,
+  PluginParameterOption,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   PluginInfoFromMarketPlace,
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
 } from '@dify/contracts/marketplace'
-import type { MutateOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
-import type {
-  FormOption,
-  ModelProvider,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { InfiniteData, MutateOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
+import type { FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import type {
-  DebugInfo as DebugInfoTypes,
   Dependency,
   GitHubItemAndMarketPlaceDependency,
-  InstalledPluginCategoryListResponse,
-  InstalledPluginListWithTotalResponse,
-  InstallPackageResponse,
   InstallStatusResponse,
   MetaData,
   PackageDependency,
@@ -25,12 +29,15 @@ import type {
   PluginDeclaration,
   PluginDetail,
   PluginTask,
-  PluginTaskStart,
   ReferenceSetting,
-  uploadGitHubResponse,
   VersionInfo,
-  VersionListResponse,
 } from '@/app/components/plugins/types'
+import type { Collection } from '@/app/components/tools/types'
+import {
+  zAgentStrategyProviderEntity,
+  zDatasourceProviderEntity,
+  zEndpointProviderDeclarationResponse,
+} from '@dify/contracts/api/console/workspaces/zod.gen'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cloneDeep } from 'es-toolkit/object'
 import { useAtomValue } from 'jotai'
@@ -40,16 +47,13 @@ import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { fetchModelProviderModelList } from '@/service/common'
-import { fetchPluginInfoFromMarketPlace, uninstallPlugin } from '@/service/plugins'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { uninstallPlugin } from '@/service/plugins'
 import { hasPermission } from '@/utils/permission'
 // oxlint-disable-next-line no-restricted-imports
-import { get, getMarketplace, post, postMarketplace } from './base'
-import { consoleQuery } from './client'
-import { useInvalidateAllBuiltInTools } from './use-tools'
+import { getMarketplace, postMarketplace } from './base'
 
 const NAME_SPACE = 'plugins'
-const useInstalledPluginListKey = [NAME_SPACE, 'installedPluginList']
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
 
 type PluginTaskListResponse = {
@@ -127,9 +131,12 @@ const normalizeI18nObject = (
     'id-ID': en,
     'nl-NL': en,
     'ar-TN': en,
+    'lo-LA': en,
+    'az-AZ': en,
     en_US: en,
     zh_Hans: zhHans,
     ja_JP: ja,
+    pt_BR: ptBr,
   }
 }
 
@@ -215,19 +222,6 @@ const normalizePluginToolDeclaration = (value: unknown): PluginDeclaration['tool
       tags: getStringArray(identity.tags),
     },
     credentials_schema: getRecordArray(value, 'credentials_schema').map(normalizeToolCredential),
-  }
-}
-
-const normalizePluginEndpointDeclaration = (value: unknown): PluginDeclaration['endpoint'] => {
-  if (!isRecord(value)) return undefined
-
-  return {
-    settings: getRecordArray(value, 'settings').map(normalizeToolCredential),
-    endpoints: getRecordArray(value, 'endpoints').map((endpoint) => ({
-      path: getString(endpoint.path),
-      method: getString(endpoint.method),
-      hidden: endpoint.hidden === undefined ? undefined : getBoolean(endpoint.hidden),
-    })),
   }
 }
 
@@ -415,7 +409,12 @@ const normalizePluginTriggerDeclaration = (
   }
 }
 
-const normalizePluginDeclaration = (plugin: PluginInstallationItemResponse): PluginDeclaration => {
+type InstalledPluginResponse =
+  | PluginCategoryInstalledPluginResponse
+  | PluginEntity
+  | PluginInstallationItemResponse
+
+const normalizePluginDeclaration = (plugin: InstalledPluginResponse): PluginDeclaration => {
   const { declaration } = plugin
   return {
     plugin_unique_identifier: plugin.plugin_unique_identifier,
@@ -431,12 +430,20 @@ const normalizePluginDeclaration = (plugin: PluginInstallationItemResponse): Plu
     resource: declaration.resource,
     plugins: declaration.plugins,
     verified: declaration.verified ?? false,
-    endpoint: normalizePluginEndpointDeclaration(declaration.endpoint),
+    endpoint: isRecord(declaration.endpoint)
+      ? zEndpointProviderDeclarationResponse.parse(declaration.endpoint)
+      : undefined,
     tool: normalizePluginToolDeclaration(declaration.tool),
-    datasource: normalizePluginToolDeclaration(declaration.datasource),
+    datasource:
+      declaration.datasource == null
+        ? declaration.datasource
+        : zDatasourceProviderEntity.parse(declaration.datasource),
     model: declaration.model,
     tags: declaration.tags ?? [],
-    agent_strategy: declaration.agent_strategy,
+    agent_strategy:
+      declaration.agent_strategy == null
+        ? declaration.agent_strategy
+        : zAgentStrategyProviderEntity.parse(declaration.agent_strategy),
     meta: {
       version: getString(declaration.meta.version) || declaration.version,
       minimum_dify_version: getString(declaration.meta.minimum_dify_version) || undefined,
@@ -445,9 +452,7 @@ const normalizePluginDeclaration = (plugin: PluginInstallationItemResponse): Plu
   }
 }
 
-export const normalizeInstalledPluginDetail = (
-  plugin: PluginInstallationItemResponse,
-): PluginDetail => {
+export const normalizeInstalledPluginDetail = (plugin: InstalledPluginResponse): PluginDetail => {
   const declaration = normalizePluginDeclaration(plugin)
 
   return {
@@ -476,15 +481,19 @@ export const normalizeInstalledPluginDetail = (
 const isUnfinishedPluginTask = (task: PluginTask) =>
   task.status === TaskStatus.pending || task.status === TaskStatus.running
 
-const normalizeStartedPluginTask = (task: PluginTaskStart): PluginTask => ({
+// Each plugin status records its task so a single status can be cleared.
+const normalizeStartedPluginTask = (task: PluginInstallTask): PluginTask => ({
   ...task,
   plugins: task.plugins.map((plugin) => ({
     ...plugin,
-    taskId: plugin.taskId || task.id,
+    taskId: task.id,
   })),
 })
 
-const upsertStartedPluginTask = (queryClient: QueryClient, response: InstallPackageResponse) => {
+const upsertStartedPluginTask = (
+  queryClient: QueryClient,
+  response: PluginInstallTaskStartResponse,
+) => {
   if (!response.task) return
 
   const startedTask = normalizeStartedPluginTask(response.task)
@@ -603,64 +612,125 @@ export const useFeaturedTriggersRecommendations = (enabled: boolean, limit = 15)
 
 type UseInstalledPluginListOptions = {
   category?: PluginCategoryEnum
-  refetchOnMount?: boolean | 'always'
+  enabled?: boolean
+  filters?: InstalledPluginListFilters
+  gcTime?: number
+  pageSize?: number
+  staleTime?: number
 }
 
-export const useInstalledPluginList = (
-  disable?: boolean,
-  pageSize = 100,
-  options?: UseInstalledPluginListOptions,
-) => {
-  const category = options?.category
-  const fetchPlugins = async ({ pageParam = 1 }) => {
-    const path = category
-      ? `/workspaces/current/plugin/${category}/list`
-      : '/workspaces/current/plugin/list'
+type PluginCategoryListLanguage = NonNullable<
+  NonNullable<GetWorkspacesCurrentPluginByCategoryListData['query']>['language']
+>
 
-    if (category)
-      return get<InstalledPluginCategoryListResponse>(
-        `${path}?page=${pageParam}&page_size=${pageSize}`,
-      )
+type InstalledPluginListFilters = {
+  language?: PluginCategoryListLanguage
+  query?: string
+  tags?: string[]
+}
 
-    return get<InstalledPluginListWithTotalResponse>(
-      `${path}?page=${pageParam}&page_size=${pageSize}`,
-    )
+export const normalizePluginCategoryListLanguage = (locale: string): PluginCategoryListLanguage => {
+  switch (locale) {
+    case 'zh_Hans':
+    case 'ja_JP':
+    case 'pt_BR':
+    case 'en_US':
+      return locale
+    default:
+      return 'en_US'
   }
+}
 
-  const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isSuccess } =
-    useInfiniteQuery({
-      enabled: !disable,
-      queryKey: category ? [...useInstalledPluginListKey, category] : useInstalledPluginListKey,
-      queryFn: fetchPlugins,
-      getNextPageParam: (lastPage, pages) => {
-        if (category)
-          return 'has_more' in lastPage && lastPage.has_more ? pages.length + 1 : undefined
-
-        const totalItems = 'total' in lastPage ? lastPage.total : 0
-        const currentPage = pages.length
-        const itemsLoaded = currentPage * pageSize
-
-        if (itemsLoaded >= totalItems) return
-
-        return currentPage + 1
+const getInstalledPluginCategoryListInfiniteOptions = ({
+  category,
+  filters,
+  pageSize,
+}: {
+  category: PluginCategoryEnum
+  filters?: InstalledPluginListFilters
+  pageSize: number
+}) => {
+  return consoleQuery.workspaces.current.plugin.byCategory.list.get.infiniteOptions({
+    input: (pageParam) => ({
+      params: { category },
+      query: {
+        page: Number(pageParam),
+        page_size: pageSize,
+        ...(filters?.query ? { query: filters.query } : {}),
+        ...(filters?.tags?.length ? { tags: filters.tags } : {}),
+        ...(filters?.language ? { language: filters.language } : {}),
       },
-      initialPageParam: 1,
-      refetchOnMount: options?.refetchOnMount,
-    })
+    }),
+    getNextPageParam: (lastPage, pages) => (lastPage.has_more ? pages.length + 1 : undefined),
+    initialPageParam: 1,
+  })
+}
 
-  const plugins = data?.pages.flatMap((page) => page.plugins) ?? []
-  const firstPage = data?.pages[0]
-  const builtinTools = firstPage && 'builtin_tools' in firstPage ? firstPage.builtin_tools : []
-  const total = data?.pages[0] && 'total' in data.pages[0] ? data.pages[0].total : plugins.length
+const getInstalledPluginCategoryListQueryKey = (
+  category: PluginCategoryEnum,
+  pageSize: number,
+  filters?: InstalledPluginListFilters,
+) => {
+  return getInstalledPluginCategoryListInfiniteOptions({
+    category,
+    filters,
+    pageSize,
+  }).queryKey
+}
+
+export const useInstalledPluginList = (options: UseInstalledPluginListOptions = {}) => {
+  const { category, enabled = true, filters, gcTime, pageSize = 100, staleTime } = options
+  const categoryQuery = useInfiniteQuery({
+    ...getInstalledPluginCategoryListInfiniteOptions({
+      category: category ?? PluginCategoryEnum.tool,
+      filters,
+      pageSize,
+    }),
+    enabled: enabled && !!category,
+    gcTime,
+    staleTime,
+  })
+  const legacyQuery = useInfiniteQuery({
+    ...consoleQuery.workspaces.current.plugin.list.get.infiniteOptions({
+      input: (pageParam) => ({
+        query: {
+          page: Number(pageParam),
+          page_size: pageSize,
+        },
+      }),
+      getNextPageParam: (lastPage, pages) =>
+        pages.length * pageSize < lastPage.total ? pages.length + 1 : undefined,
+      initialPageParam: 1,
+    }),
+    enabled: enabled && !category,
+    gcTime,
+    staleTime,
+  })
+  const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isSuccess } =
+    category ? categoryQuery : legacyQuery
+
+  const categoryData = category
+    ? (data as InfiniteData<PluginCategoryListResponse, number> | undefined)
+    : undefined
+  const legacyData = category
+    ? undefined
+    : (data as InfiniteData<PluginListResponse, number> | undefined)
+  const plugins: PluginDetail[] = categoryData
+    ? categoryData.pages.flatMap((page) => page.plugins.map(normalizeInstalledPluginDetail))
+    : (legacyData?.pages.flatMap((page) => page.plugins.map(normalizeInstalledPluginDetail)) ?? [])
+  // The Built-in Tools panel still consumes its legacy Collection model. Keep the
+  // API-contract boundary narrow until that presentation model is migrated.
+  const builtinTools = categoryData?.pages[0]?.builtin_tools as Collection[] | undefined
+  const total = legacyData?.pages[0]?.total ?? plugins.length
 
   return {
-    data: disable
-      ? undefined
-      : {
+    data: enabled
+      ? {
           plugins,
-          builtin_tools: builtinTools,
+          builtin_tools: builtinTools ?? [],
           total,
-        },
+        }
+      : undefined,
     isLastPage: !hasNextPage,
     loadNextPage: () => {
       fetchNextPage()
@@ -672,25 +742,79 @@ export const useInstalledPluginList = (
   }
 }
 
+export const useRemoveFilteredInstalledPluginPageOnUnmount = (
+  category: PluginCategoryEnum | undefined,
+  pageSize: number,
+  filters?: InstalledPluginListFilters,
+) => {
+  const queryClient = useQueryClient()
+  const hasActiveFilters = !!filters?.query || !!filters?.tags?.length
+
+  useEffect(() => {
+    if (!category || !hasActiveFilters) return
+
+    const queryKey = getInstalledPluginCategoryListQueryKey(category, pageSize, filters)
+
+    return () => queryClient.removeQueries({ queryKey, exact: true })
+  }, [category, filters, hasActiveFilters, pageSize, queryClient])
+}
+
 export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
-  const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
-  return () => {
+  const invalidateAllBuiltInTools = () =>
     queryClient.invalidateQueries({
-      queryKey: useInstalledPluginListKey,
+      queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
     })
-    invalidateAllBuiltInTools()
+  return (category?: PluginCategoryEnum) => {
+    if (category) {
+      const invalidateCategoryPluginList = queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key({
+          type: 'infinite',
+          input: { params: { category } },
+        }),
+      })
+      const invalidateCategoryInstalledIds = queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key({
+          type: 'query',
+          input: { query: { category } },
+        }),
+      })
+
+      if (category === PluginCategoryEnum.tool)
+        return Promise.all([
+          invalidateCategoryPluginList,
+          invalidateCategoryInstalledIds,
+          invalidateAllBuiltInTools(),
+        ]).then(() => undefined)
+
+      return Promise.all([invalidateCategoryPluginList, invalidateCategoryInstalledIds]).then(
+        () => undefined,
+      )
+    }
+
+    return Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key(),
+      }),
+      invalidateAllBuiltInTools(),
+    ]).then(() => undefined)
   }
 }
 
 export const useInstallPackageFromMarketPlace = (
-  options?: MutateOptions<InstallPackageResponse, Error, string>,
+  options?: MutateOptions<PluginInstallTaskStartResponse, Error, string>,
 ) => {
   const queryClient = useQueryClient()
   return useMutation({
     ...options,
     mutationFn: (uniqueIdentifier: string) => {
-      return post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
+      return consoleClient.workspaces.current.plugin.install.marketplace.post({
         body: { plugin_unique_identifiers: [uniqueIdentifier] },
       })
     },
@@ -702,13 +826,13 @@ export const useInstallPackageFromMarketPlace = (
 }
 
 export const useUpdatePackageFromMarketPlace = (
-  options?: MutateOptions<InstallPackageResponse, Error, object>,
+  options?: MutateOptions<PluginInstallTaskStartResponse, Error, ParserMarketplaceUpgrade>,
 ) => {
   const queryClient = useQueryClient()
   return useMutation({
     ...options,
-    mutationFn: (body: object) => {
-      return post<InstallPackageResponse>('/workspaces/current/plugin/upgrade/marketplace', {
+    mutationFn: (body: ParserMarketplaceUpgrade) => {
+      return consoleClient.workspaces.current.plugin.upgrade.marketplace.post({
         body,
       })
     },
@@ -723,21 +847,10 @@ export const usePluginDeclarationFromMarketPlace = (pluginUniqueIdentifier: stri
   return useQuery({
     queryKey: [NAME_SPACE, 'pluginDeclaration', pluginUniqueIdentifier],
     queryFn: () =>
-      get<{ manifest: PluginDeclaration }>('/workspaces/current/plugin/marketplace/pkg', {
-        params: { plugin_unique_identifier: pluginUniqueIdentifier },
+      consoleClient.workspaces.current.plugin.marketplace.pkg.get({
+        query: { plugin_unique_identifier: pluginUniqueIdentifier },
       }),
     enabled: !!pluginUniqueIdentifier,
-  })
-}
-
-export const useVersionListOfPlugin = (pluginID: string) => {
-  return useQuery<{ data: VersionListResponse }>({
-    enabled: !!pluginID,
-    queryKey: [NAME_SPACE, 'versions', pluginID],
-    queryFn: () =>
-      getMarketplace<{ data: VersionListResponse }>(`/plugins/${pluginID}/versions`, {
-        params: { page: 1, page_size: 100 },
-      }),
   })
 }
 
@@ -745,7 +858,7 @@ export const useInstallPackageFromLocal = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (uniqueIdentifier: string) => {
-      return post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
+      return consoleClient.workspaces.current.plugin.install.pkg.post({
         body: { plugin_unique_identifiers: [uniqueIdentifier] },
       })
     },
@@ -769,7 +882,7 @@ export const useInstallPackageFromGitHub = () => {
       selectedPackage: string
       uniqueIdentifier: string
     }) => {
-      return post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
+      return consoleClient.workspaces.current.plugin.install.github.post({
         body: {
           repo: repoUrl,
           version: selectedVersion,
@@ -788,7 +901,7 @@ export const useUploadGitHub = (payload: { repo: string; version: string; packag
   return useQuery({
     queryKey: [NAME_SPACE, 'uploadGitHub', payload],
     queryFn: () =>
-      post<uploadGitHubResponse>('/workspaces/current/plugin/upload/github', {
+      consoleClient.workspaces.current.plugin.upload.github.post({
         body: payload,
       }),
     retry: 0,
@@ -826,16 +939,14 @@ export const useInstallOrUpdate = ({
               // From local bundle don't have data.value.github_plugin_unique_identifier
               uniqueIdentifier = data.value.github_plugin_unique_identifier!
               if (!uniqueIdentifier) {
-                const { unique_identifier } = await post<uploadGitHubResponse>(
-                  '/workspaces/current/plugin/upload/github',
-                  {
+                const { unique_identifier } =
+                  await consoleClient.workspaces.current.plugin.upload.github.post({
                     body: {
                       repo: data.value.repo!,
                       version: data.value.release! || data.value.version!,
                       package: data.value.packages! || data.value.package!,
                     },
-                  },
-                )
+                  })
                 uniqueIdentifier = data.value.github_plugin_unique_identifier! || unique_identifier
                 // has the same version, but not installed
                 if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
@@ -847,17 +958,14 @@ export const useInstallOrUpdate = ({
                 }
               }
               if (!isInstalled) {
-                const response = await post<InstallPackageResponse>(
-                  '/workspaces/current/plugin/install/github',
-                  {
-                    body: {
-                      repo: data.value.repo!,
-                      version: data.value.release! || data.value.version!,
-                      package: data.value.packages! || data.value.package!,
-                      plugin_unique_identifier: uniqueIdentifier,
-                    },
+                const response = await consoleClient.workspaces.current.plugin.install.github.post({
+                  body: {
+                    repo: data.value.repo!,
+                    version: data.value.release! || data.value.version!,
+                    package: data.value.packages! || data.value.package!,
+                    plugin_unique_identifier: uniqueIdentifier,
                   },
-                )
+                })
                 upsertStartedPluginTask(queryClient, response)
                 const { task_id, all_installed } = response
                 taskId = task_id
@@ -878,14 +986,12 @@ export const useInstallOrUpdate = ({
                 }
               }
               if (!isInstalled) {
-                const response = await post<InstallPackageResponse>(
-                  '/workspaces/current/plugin/install/marketplace',
-                  {
+                const response =
+                  await consoleClient.workspaces.current.plugin.install.marketplace.post({
                     body: {
                       plugin_unique_identifiers: [uniqueIdentifier],
                     },
-                  },
-                )
+                  })
                 upsertStartedPluginTask(queryClient, response)
                 const { task_id, all_installed } = response
                 taskId = task_id
@@ -903,14 +1009,11 @@ export const useInstallOrUpdate = ({
                 }
               }
               if (!isInstalled) {
-                const response = await post<InstallPackageResponse>(
-                  '/workspaces/current/plugin/install/pkg',
-                  {
-                    body: {
-                      plugin_unique_identifiers: [uniqueIdentifier],
-                    },
+                const response = await consoleClient.workspaces.current.plugin.install.pkg.post({
+                  body: {
+                    plugin_unique_identifiers: [uniqueIdentifier],
                   },
-                )
+                })
                 upsertStartedPluginTask(queryClient, response)
                 const { task_id, all_installed } = response
                 taskId = task_id
@@ -919,15 +1022,12 @@ export const useInstallOrUpdate = ({
             }
             if (isInstalled) {
               if (item.type === 'package') {
-                await uninstallPlugin(installedPayload.installedId)
-                const response = await post<InstallPackageResponse>(
-                  '/workspaces/current/plugin/install/pkg',
-                  {
-                    body: {
-                      plugin_unique_identifiers: [uniqueIdentifier],
-                    },
+                await uninstallPlugin(installedPayload.installedId, { preserveCredentials: true })
+                const response = await consoleClient.workspaces.current.plugin.install.pkg.post({
+                  body: {
+                    plugin_unique_identifiers: [uniqueIdentifier],
                   },
-                )
+                })
                 upsertStartedPluginTask(queryClient, response)
                 const { task_id, all_installed } = response
                 taskId = task_id
@@ -968,7 +1068,7 @@ export const useInstallOrUpdate = ({
 export const useDebugKey = () => {
   return useQuery({
     queryKey: [NAME_SPACE, 'debugKey'],
-    queryFn: () => get<DebugInfoTypes>('/workspaces/current/plugin/debugging-key'),
+    queryFn: () => consoleClient.workspaces.current.plugin.debuggingKey.get(),
   })
 }
 
@@ -1032,7 +1132,7 @@ const areAutoUpgradeSettingsEqual = (
 export const usePluginPermissionSettings = () => {
   return useQuery({
     queryKey: usePluginPermissionSettingsKey,
-    queryFn: () => get<Permissions>('/workspaces/current/plugin/permission/fetch'),
+    queryFn: () => consoleClient.workspaces.current.plugin.permission.fetch.get(),
   })
 }
 
@@ -1040,9 +1140,7 @@ export const usePluginAutoUpgradeSettings = (category: PluginCategoryEnum) => {
   return useQuery({
     queryKey: pluginAutoUpgradeSettingsQueryKey(category),
     queryFn: () =>
-      get<PluginAutoUpgradeSettingsResponse>('/workspaces/current/plugin/auto-upgrade/fetch', {
-        params: { category },
-      }),
+      consoleClient.workspaces.current.plugin.autoUpgrade.fetch.get({ query: { category } }),
     staleTime: 60 * 1000,
   })
 }
@@ -1065,7 +1163,7 @@ export const useMutationPluginPermissionSettings = ({
 
   return useMutation({
     mutationFn: (payload: Permissions) => {
-      return post('/workspaces/current/plugin/permission/change', { body: payload })
+      return consoleClient.workspaces.current.plugin.permission.change.post({ body: payload })
     },
     onMutate: async (payload) => {
       await queryClient.cancelQueries({ queryKey: usePluginPermissionSettingsKey })
@@ -1100,7 +1198,7 @@ export const useMutationPluginAutoUpgradeSettings = ({
 
   return useMutation({
     mutationFn: (payload: AutoUpdateConfig) => {
-      return post('/workspaces/current/plugin/auto-upgrade/change', {
+      return consoleClient.workspaces.current.plugin.autoUpgrade.change.post({
         body: {
           category,
           auto_upgrade: payload,
@@ -1114,20 +1212,19 @@ export const useMutationPluginAutoUpgradeSettings = ({
         queryClient.getQueryData<PluginAutoUpgradeSettingsResponse>(queryKey)
       const hadPreviousAutoUpgrade = previousAutoUpgrade !== undefined
 
-      queryClient.setQueryData(pluginAutoUpgradeSettingsQueryKey(category), {
+      queryClient.setQueryData(queryKey, {
         category,
         auto_upgrade: payload,
       } satisfies PluginAutoUpgradeSettingsResponse)
 
-      return { previousAutoUpgrade, hadPreviousAutoUpgrade }
+      return { queryKey, previousAutoUpgrade, hadPreviousAutoUpgrade }
     },
     onError: (_error, _payload, context) => {
-      if (context?.hadPreviousAutoUpgrade)
-        queryClient.setQueryData(
-          pluginAutoUpgradeSettingsQueryKey(category),
-          context.previousAutoUpgrade,
-        )
-      else queryClient.removeQueries({ queryKey: pluginAutoUpgradeSettingsQueryKey(category) })
+      // Roll back the category this save started for; the caller may have moved to another one.
+      if (!context) return
+      if (context.hadPreviousAutoUpgrade)
+        queryClient.setQueryData(context.queryKey, context.previousAutoUpgrade)
+      else queryClient.removeQueries({ queryKey: context.queryKey })
     },
     onSuccess: () => {
       onSuccess?.()
@@ -1152,14 +1249,16 @@ export const useMutationReferenceSettings = ({
 
       if (!arePermissionsEqual(payload.permission, currentReferenceSetting?.permission))
         mutations.push(
-          post('/workspaces/current/plugin/permission/change', { body: payload.permission }),
+          consoleClient.workspaces.current.plugin.permission.change.post({
+            body: payload.permission,
+          }),
         )
 
       if (
         !areAutoUpgradeSettingsEqual(payload.auto_upgrade, currentReferenceSetting?.auto_upgrade)
       ) {
         mutations.push(
-          post('/workspaces/current/plugin/auto-upgrade/change', {
+          consoleClient.workspaces.current.plugin.autoUpgrade.change.post({
             body: {
               category,
               auto_upgrade: payload.auto_upgrade,
@@ -1240,7 +1339,7 @@ export const useRemoveAutoUpgrade = () => {
 
   return useMutation({
     mutationFn: (payload: { plugin_id: string; category: PluginCategoryEnum }) => {
-      return post('/workspaces/current/plugin/auto-upgrade/exclude', { body: payload })
+      return consoleClient.workspaces.current.plugin.autoUpgrade.exclude.post({ body: payload })
     },
     onSuccess: (_data, payload) => {
       queryClient.invalidateQueries({
@@ -1296,7 +1395,9 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
     enabled: canManagement,
     queryKey: usePluginTaskListKey,
     queryFn: () =>
-      get<{ tasks: PluginTask[] }>('/workspaces/current/plugin/tasks?page=1&page_size=100'),
+      consoleClient.workspaces.current.plugin.tasks
+        .get({ query: { page: 1, page_size: 100 } })
+        .then(({ tasks }) => ({ tasks: tasks.map(normalizeStartedPluginTask) })),
     structuralSharing: (previousData, nextData) =>
       preserveLocalUnfinishedPluginTasks(
         previousData as PluginTaskListResponse | undefined,
@@ -1328,7 +1429,10 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
     )
     const taskAllFailed = lastData?.tasks.every((task) => task.status === TaskStatus.failed)
     if (taskDone && lastData?.tasks.length && !taskAllFailed)
-      refreshPluginList(category ? { category } : undefined, !category)
+      refreshPluginList(
+        category ? { category: category as PluginCategoryEnum } : undefined,
+        !category,
+      )
   }, [category, data, isRefetching, refreshPluginList])
 
   const handleRefetch = useCallback(() => {
@@ -1336,7 +1440,7 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   }, [refetch])
 
   const handleInstallTaskStart = useCallback(
-    (response: InstallPackageResponse) => {
+    (response: PluginInstallTaskStartResponse) => {
       if (response.all_installed) return
 
       upsertStartedPluginTask(queryClient, response)
@@ -1357,10 +1461,9 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
 export const useMutationClearTaskPlugin = () => {
   return useMutation({
     mutationFn: ({ taskId, pluginId }: { taskId: string; pluginId: string }) => {
-      const encodedPluginId = encodeURIComponent(pluginId)
-      return post<{ success: boolean }>(
-        `/workspaces/current/plugin/tasks/${taskId}/delete/${encodedPluginId}`,
-      )
+      return consoleClient.workspaces.current.plugin.tasks.byTaskId.delete.byIdentifier.post({
+        params: { task_id: taskId, identifier: pluginId },
+      })
     },
   })
 }
@@ -1377,114 +1480,42 @@ export const usePluginManifestInfo = (pluginUID: string) => {
   })
 }
 
-export const useMutationCheckDependencies = () => {
-  return useMutation({
-    mutationFn: (appId: string) => {
-      return get<{ leaked_dependencies: Dependency[] }>(`/apps/imports/${appId}/check-dependencies`)
-    },
-  })
-}
-
-export const useModelInList = (currentProvider?: ModelProvider, modelId?: string) => {
-  const provider = currentProvider?.provider
-  return useQuery({
-    queryKey: ['modelInList', provider, modelId],
-    queryFn: async () => {
-      if (!modelId || !provider) return false
-      try {
-        const modelsData = await fetchModelProviderModelList(
-          `/workspaces/current/model-providers/${provider}/models`,
-        )
-        return !!modelId && modelsData.data.some((item) => item.model === modelId)
-      } catch {
-        return false
-      }
-    },
-    enabled: !!modelId && !!provider,
-  })
-}
-
-export const usePluginInfo = (providerName?: string) => {
-  return useQuery({
-    queryKey: ['pluginInfo', providerName],
-    queryFn: async () => {
-      if (!providerName) return null
-      const parts = providerName.split('/')
-      const org = parts[0]
-      const name = parts[1]
-      try {
-        const response = await fetchPluginInfoFromMarketPlace({ org: org!, name: name! })
-        return response.data.plugin.category === PluginCategoryEnum.model
-          ? response.data.plugin
-          : null
-      } catch {
-        return null
-      }
-    },
-    enabled: !!providerName,
-  })
-}
+// Untranslated labels fall back to en_US, matching renderI18nObject. Dynamic options have no
+// display conditions.
+const toDynamicOption = ({ value, label, icon }: PluginParameterOption): FormOption => ({
+  value,
+  label: {
+    en_US: label.en_US,
+    zh_Hans: label.zh_Hans ?? label.en_US,
+    ...(label.ja_JP != null && { ja_JP: label.ja_JP }),
+    ...(label.pt_BR != null && { pt_BR: label.pt_BR }),
+  },
+  icon: icon ?? undefined,
+  show_on: [],
+})
 
 export const useFetchDynamicOptions = (
   plugin_id: string,
   provider: string,
   action: string,
   parameter: string,
-  provider_type?: 'tool' | 'trigger',
+  // The backend requires a provider type; callers without one render tool options.
+  provider_type: 'tool' | 'trigger' = 'tool',
   extra?: Record<string, unknown>,
 ) => {
   return useMutation({
     mutationFn: () =>
-      get<{ options: FormOption[] }>('/workspaces/current/plugin/parameters/dynamic-options', {
-        params: {
-          plugin_id,
-          provider,
-          action,
-          parameter,
-          provider_type,
-          ...extra,
-        },
-      }),
-  })
-}
-
-export const usePluginReadme = ({
-  plugin_unique_identifier,
-  language,
-}: {
-  plugin_unique_identifier: string
-  language?: string
-}) => {
-  return useQuery({
-    queryKey: ['pluginReadme', plugin_unique_identifier, language],
-    queryFn: () =>
-      get<{ readme: string }>(
-        '/workspaces/current/plugin/readme',
-        { params: { plugin_unique_identifier, language } },
-        { silent: true },
-      ),
-    enabled: !!plugin_unique_identifier,
-    retry: 0,
-  })
-}
-
-export const usePluginReadmeAsset = ({
-  file_name,
-  plugin_unique_identifier,
-}: {
-  file_name?: string
-  plugin_unique_identifier?: string
-}) => {
-  const normalizedFileName = file_name?.replace(/^\.\/_assets\//, '').replace(/^_assets\//, '')
-  const isAssetFile = file_name?.startsWith('./_assets') || file_name?.startsWith('_assets')
-  return useQuery({
-    queryKey: ['pluginReadmeAsset', plugin_unique_identifier, normalizedFileName],
-    queryFn: () =>
-      get<Blob>(
-        '/workspaces/current/plugin/asset',
-        { params: { plugin_unique_identifier, file_name: normalizedFileName } },
-        { silent: true },
-      ),
-    enabled: !!plugin_unique_identifier && !!isAssetFile,
+      consoleClient.workspaces.current.plugin.parameters.dynamicOptions
+        .get({
+          query: {
+            plugin_id,
+            provider,
+            action,
+            parameter,
+            provider_type,
+            ...extra,
+          },
+        })
+        .then(({ options }) => ({ options: options.map(toDynamicOption) })),
   })
 }

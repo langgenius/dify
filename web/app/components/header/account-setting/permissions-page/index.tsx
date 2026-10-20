@@ -3,17 +3,14 @@
 import type { RoleModalMode, submitRoleData } from './role-modal'
 import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
-import {
-  useCreateWorkspaceRole,
-  useUpdateWorkspaceRole,
-} from '@/service/access-control/use-workspace-roles'
+import { getAccessControlTemplateLanguage } from '@/i18n/language'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { useRoleGroups } from './hooks'
 import RoleList from './role-list'
@@ -31,7 +28,7 @@ type ModalState = {
 const PAGE_SIZE = 20
 
 const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['permission'])
   const locale = useLocale()
   const [modalState, setModalState] = useState<ModalState>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
@@ -48,8 +45,12 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
       language,
     })
 
-  const { mutateAsync: createWorkspaceRole } = useCreateWorkspaceRole()
-  const { mutateAsync: updateWorkspaceRole } = useUpdateWorkspaceRole()
+  const { mutateAsync: createWorkspaceRole } = useMutation(
+    consoleQuery.workspaces.current.rbac.roles.post.mutationOptions(),
+  )
+  const { mutateAsync: updateWorkspaceRole } = useMutation(
+    consoleQuery.workspaces.current.rbac.roles.byRoleId.put.mutationOptions(),
+  )
 
   const openCreate = useCallback(() => {
     setModalState({ mode: 'create' })
@@ -66,33 +67,20 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
   const closeModal = useCallback(() => setModalState(null), [])
 
   const handleSubmit = useCallback(
-    (data: submitRoleData) => {
+    async (data: submitRoleData) => {
       const { name, description, permissionKeys } = data
       const mode = modalState?.mode ?? ''
       const roleId = modalState?.role?.id ?? ''
       if (mode === 'create') {
-        createWorkspaceRole(
-          { name, description, permission_keys: permissionKeys },
-          {
-            onSuccess: () => {
-              toast.success(t(($) => $['role.created'], { ns: 'permission' }))
-              closeModal()
-            },
-          },
-        )
+        await createWorkspaceRole({ body: { name, description, permission_keys: permissionKeys } })
       } else if (mode === 'edit') {
-        updateWorkspaceRole(
-          { id: roleId, name, description, permission_keys: permissionKeys },
-          {
-            onSuccess: () => {
-              toast.success(t(($) => $['role.updated'], { ns: 'permission' }))
-              closeModal()
-            },
-          },
-        )
+        await updateWorkspaceRole({
+          params: { role_id: roleId },
+          body: { name, description, permission_keys: permissionKeys },
+        })
       }
     },
-    [createWorkspaceRole, updateWorkspaceRole, closeModal, modalState, t],
+    [createWorkspaceRole, updateWorkspaceRole, modalState],
   )
 
   useEffect(() => {
@@ -128,7 +116,7 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
   return (
     <>
       <div className="flex min-w-0 flex-col gap-y-6">
-        <div className="flex min-h-[67px] min-w-0 items-center gap-3 overflow-hidden rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-regular bg-linear-to-b from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 px-4 py-3">
+        <div className="flex min-h-16.75 min-w-0 items-center gap-3 overflow-hidden rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-regular bg-linear-to-b from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 px-4 py-3">
           <div className="flex min-w-0 grow flex-col gap-y-1 overflow-hidden">
             <div className="truncate system-md-semibold text-text-secondary">
               {t(($) => $['role.workspaceRoles.title'], { ns: 'permission' })}

@@ -1,22 +1,24 @@
 'use client'
+
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiCloseLine } from '@remixicon/react'
-import { useMount } from 'ahooks'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
 import { capitalize } from 'es-toolkit/string'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Copy, CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
-import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { useStore } from '@/app/components/workflow/store'
 import useTimestamp from '@/hooks/use-timestamp'
-import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
+import { consoleQuery } from '@/service/console'
 
 type Props = Readonly<{
   conversationID: string
@@ -24,58 +26,39 @@ type Props = Readonly<{
 }>
 
 const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common', 'workflow'])
   const { formatTime } = useTimestamp()
   const varList = useStore((s) => s.conversationVariables) as ConversationVariable[]
-  const appID = useStore((s) => s.appId)
+  const appID = useAtomValue(editorAppIdAtom)
   const [currentVar, setCurrentVar] = React.useState<ConversationVariable>(varList[0]!)
-  const [latestValueMap, setLatestValueMap] = React.useState<Record<string, string>>({})
-  const [latestValueTimestampMap, setLatestValueTimestampMap] = React.useState<
-    Record<string, number>
-  >({})
-
-  const getChatVarLatestValues = useCallback(async () => {
-    if (conversationID && varList.length > 0) {
-      const res = await fetchCurrentValueOfConversationVariable({
-        url: `/apps/${appID}/conversation-variables`,
-        params: { conversation_id: conversationID },
-      })
-      if (res.data.length > 0) {
-        const valueMap = res.data.reduce((acc: any, cur) => {
-          acc[cur.id] = cur.value
-          return acc
-        }, {})
-        setLatestValueMap(valueMap)
-        const timestampMap = res.data.reduce((acc: any, cur) => {
-          acc[cur.id] = cur.updated_at
-          return acc
-        }, {})
-        setLatestValueTimestampMap(timestampMap)
-      }
-    }
-  }, [appID, conversationID, varList.length])
-
+  const { data: latestValues } = useQuery(
+    consoleQuery.apps.byAppId.conversationVariables.get.queryOptions({
+      input:
+        appID && conversationID
+          ? { params: { app_id: appID }, query: { conversation_id: conversationID } }
+          : skipToken,
+      enabled: varList.length > 0,
+      staleTime: 0,
+    }),
+  )
+  const latestVariable = latestValues?.data.find((variable) => variable.id === currentVar.id)
+  const currentValue = latestVariable?.value ?? currentVar.value
+  const updatedAt = latestVariable?.updated_at
+  const copyResetTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(copyResetTimer.current), [])
   const [isCopied, setIsCopied] = React.useState(false)
   const handleCopy = useCallback(() => {
-    copy(currentVar.value)
+    copy(currentValue)
     setIsCopied(true)
-    setTimeout(() => {
+    clearTimeout(copyResetTimer.current)
+    copyResetTimer.current = setTimeout(() => {
       setIsCopied(false)
     }, 2000)
-  }, [currentVar.value])
-
-  useMount(() => {
-    getChatVarLatestValues()
-  })
+  }, [currentValue])
 
   return (
     <Dialog open>
-      <DialogContent
-        className={cn(
-          'w-full overflow-hidden! border-none text-left align-middle',
-          cn('h-[min(640px,calc(100dvh-2rem))] max-h-none! w-[920px] max-w-[calc(100vw-2rem)] p-0'),
-        )}
-      >
+      <DialogContent className="h-[min(640px,calc(100dvh-2rem))] w-230 overflow-hidden">
         <button
           type="button"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
@@ -86,7 +69,7 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
         </button>
         <div className="flex size-full">
           {/* LEFT */}
-          <div className="flex h-full w-[224px] shrink-0 flex-col border-r border-divider-burn bg-background-sidenav-bg">
+          <div className="flex h-full w-56 shrink-0 flex-col border-r border-divider-burn bg-background-sidenav-bg">
             <div className="shrink-0 pt-5 pr-4 pb-3 pl-5 system-xl-semibold text-text-primary">
               {t(($) => $['chatVariable.panelTitle'], { ns: 'workflow' })}
             </div>
@@ -99,14 +82,21 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
                     'group mb-0.5 flex w-full cursor-pointer items-center rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
                     currentVar.id === chatVar.id && 'bg-state-base-hover',
                   )}
-                  onClick={() => setCurrentVar(chatVar)}
+                  onClick={() => {
+                    clearTimeout(copyResetTimer.current)
+                    setIsCopied(false)
+                    setCurrentVar(chatVar)
+                  }}
                 >
-                  <BubbleX
-                    className={cn(
-                      'mr-1 size-4 shrink-0 text-text-tertiary group-hover:text-util-colors-teal-teal-700',
-                      currentVar.id === chatVar.id && 'text-util-colors-teal-teal-700',
-                    )}
+                  <span
                     aria-hidden="true"
+                    className={cn(
+                      'i-custom-vender-line-others-bubble-x h-4 w-4',
+                      cn(
+                        'mr-1 size-4 shrink-0 text-text-tertiary group-hover:text-util-colors-teal-teal-700',
+                        currentVar.id === chatVar.id && 'text-util-colors-teal-teal-700',
+                      ),
+                    )}
                   />
                   <div
                     title={chatVar.name}
@@ -145,13 +135,10 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
                       'linear-gradient(to right, rgba(16, 24, 40, 0.08) 0%, rgba(255, 255, 255) 100%)',
                   }}
                 ></div>
-                {!!latestValueTimestampMap[currentVar.id] && (
+                {!!updatedAt && (
                   <div className="shrink-0 system-xs-regular text-text-tertiary">
                     {t(($) => $['chatVariable.updatedAt'], { ns: 'workflow' })}
-                    {formatTime(
-                      latestValueTimestampMap[currentVar.id]!,
-                      t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                    )}
+                    {formatTime(updatedAt!, t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string)}
                   </div>
                 )}
               </div>
@@ -162,14 +149,24 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
                       <div className="flex h-7 shrink-0 items-center justify-between pt-1 pr-2 pl-3">
                         <div className="system-xs-semibold text-text-secondary">JSON</div>
                         <div className="flex items-center p-1">
-                          {!isCopied ? (
-                            <Copy
-                              className="size-4 cursor-pointer text-text-tertiary"
-                              onClick={handleCopy}
+                          <IconButton
+                            aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
+                            aria-disabled={isCopied}
+                            size="xs"
+                            onClick={() => {
+                              if (!isCopied) handleCopy()
+                            }}
+                          >
+                            <span
+                              aria-hidden
+                              className={cn(
+                                'size-4',
+                                isCopied
+                                  ? 'i-custom-vender-line-files-copy-check'
+                                  : 'i-custom-vender-line-files-copy',
+                              )}
                             />
-                          ) : (
-                            <CopyCheck className="size-4 text-text-tertiary" />
-                          )}
+                          </IconButton>
                         </div>
                       </div>
                       <div className="grow pl-4">
@@ -178,7 +175,7 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
                           noWrapper
                           isExpand
                           language={CodeLanguage.json}
-                          value={latestValueMap[currentVar.id] || ''}
+                          value={currentValue}
                           isJSONStringifyBeauty
                         />
                       </div>
@@ -187,7 +184,7 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
                 {(currentVar.value_type === ChatVarType.Number ||
                   currentVar.value_type === ChatVarType.String) && (
                   <div className="h-full overflow-x-hidden overflow-y-auto rounded-lg bg-components-input-bg-normal px-4 py-3 system-md-regular text-components-input-text-filled">
-                    {latestValueMap[currentVar.id] || ''}
+                    {currentValue}
                   </div>
                 )}
               </div>

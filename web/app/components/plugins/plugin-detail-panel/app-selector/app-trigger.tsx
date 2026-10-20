@@ -1,17 +1,20 @@
 'use client'
 
-import type { App } from '@/types/app'
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 
 type AppTriggerProps = {
   open: boolean
-  appDetail?: App
+  appDetail?: Pick<
+    AppPartial,
+    'icon' | 'icon_background' | 'icon_type' | 'icon_url' | 'id' | 'name'
+  >
 }
 
 export function AppTrigger({ open, appDetail }: AppTriggerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return (
     <span
@@ -21,16 +24,7 @@ export function AppTrigger({ open, appDetail }: AppTriggerProps) {
         appDetail && 'py-1.5 pl-1.5',
       )}
     >
-      {appDetail && (
-        <AppIcon
-          className="mr-2 shrink-0"
-          size="xs"
-          iconType={appDetail.icon_type}
-          icon={appDetail.icon}
-          background={appDetail.icon_background}
-          imageUrl={appDetail.icon_url}
-        />
-      )}
+      {appDetail && <AppIcon className="mr-2 shrink-0" size="xs" icon={appDetail} />}
       {appDetail ? (
         <span className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
           {appDetail.name}

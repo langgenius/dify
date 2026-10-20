@@ -1,86 +1,87 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
 import AppInputsPanel from '../app-inputs-panel'
 
-let mockHookResult = {
-  inputFormSchema: [] as Array<Record<string, unknown>>,
-  isLoading: false,
-}
-
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div data-testid="loading">Loading</div>,
-}))
-
-vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form', () => ({
-  default: ({ onFormChange }: { onFormChange: (value: Record<string, unknown>) => void }) => (
-    <button data-testid="app-inputs-form" onClick={() => onFormChange({ topic: 'updated' })}>
-      Form
-    </button>
-  ),
-}))
-
-vi.mock(
-  '@/app/components/plugins/plugin-detail-panel/app-selector/hooks/use-app-inputs-form-schema',
-  () => ({
-    useAppInputsFormSchema: () => mockHookResult,
-  }),
-)
-
-describe('AppInputsPanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockHookResult = {
-      inputFormSchema: [],
-      isLoading: false,
-    }
+const { getApp } = vi.hoisted(() => ({ getApp: vi.fn() }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { createFileUploadConfigFixture } = await import('@/test/fixtures/file-upload-config')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'files.upload.get': async () => createFileUploadConfigFixture(),
+      'apps.byAppId.get': getApp,
+    }),
+  }
+})
+const appDetail = { id: 'app-1', mode: 'completion' } as const
+const appWithInputs = () =>
+  createAppDetailFixture({
+    id: 'app-1',
+    mode: 'completion',
+    model_config: createAppModelConfigFixture({
+      user_input_form: [
+        { 'text-input': { variable: 'topic', label: 'Topic', required: true } },
+        { select: { variable: 'tone', label: 'Tone', options: ['Formal', 'Casual'] } },
+      ],
+    }),
   })
 
-  it('should render a loading state', () => {
-    mockHookResult = {
-      inputFormSchema: [],
-      isLoading: true,
-    }
-
-    render(
+it('loads real input schemas and preserves the other field when inputs change', async () => {
+  const request = createDeferred<AppDetailWithSite>()
+  getApp.mockReturnValue(request.promise)
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  const Harness = () => {
+    const [inputs, setInputs] = useState<Record<string, unknown>>({
+      topic: 'Initial',
+      tone: 'Formal',
+    })
+    return (
       <AppInputsPanel
-        value={{ app_id: 'app-1', inputs: {} }}
-        appDetail={{ id: 'app-1' } as never}
-        onFormChange={vi.fn()}
-      />,
+        appDetail={appDetail}
+        value={{ app_id: 'app-1', inputs }}
+        onFormChange={(next) => {
+          setInputs(next)
+          onChange(next)
+        }}
+      />
     )
+  }
+  renderWithConsoleQuery(<Harness />)
+  expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
+  request.resolve(appWithInputs())
+  const topic = await screen.findByRole('textbox', { name: 'Topic' })
+  expect(topic).toHaveValue('Initial')
+  await user.clear(topic)
+  await user.type(topic, 'Updated')
+  await user.click(screen.getByRole('combobox', { name: 'Tone' }))
+  await user.click(await screen.findByRole('option', { name: 'Casual' }))
+  expect(onChange).toHaveBeenLastCalledWith({ topic: 'Updated', tone: 'Casual' })
+  expect(topic).toHaveValue('Updated')
+  expect(getApp).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
+})
 
-    expect(screen.getByTestId('loading')).toBeInTheDocument()
-  })
+it('retries a failed app query and replaces the error with its actual fields', async () => {
+  getApp.mockRejectedValueOnce(new Error('Unavailable')).mockResolvedValue(appWithInputs())
+  const user = userEvent.setup()
+  renderWithConsoleQuery(<AppInputsPanel appDetail={appDetail} onFormChange={vi.fn()} />)
+  expect(await screen.findByRole('alert')).toHaveTextContent('common.errorBoundary.title')
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  expect(await screen.findByRole('textbox', { name: 'Topic' })).toBeInTheDocument()
+  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+  expect(getApp).toHaveBeenCalledTimes(2)
+})
 
-  it('should render an empty state when no inputs are available', () => {
-    render(
-      <AppInputsPanel
-        value={{ app_id: 'app-1', inputs: {} }}
-        appDetail={{ id: 'app-1' } as never}
-        onFormChange={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('app.appSelector.noParams')).toBeInTheDocument()
-  })
-
-  it('should render the inputs form and propagate changes', () => {
-    const onFormChange = vi.fn()
-    mockHookResult = {
-      inputFormSchema: [{ variable: 'topic' }],
-      isLoading: false,
-    }
-
-    render(
-      <AppInputsPanel
-        value={{ app_id: 'app-1', inputs: { topic: 'initial' } }}
-        appDetail={{ id: 'app-1' } as never}
-        onFormChange={onFormChange}
-      />,
-    )
-
-    fireEvent.click(screen.getByTestId('app-inputs-form'))
-
-    expect(onFormChange).toHaveBeenCalledWith({ topic: 'updated' })
-  })
+it('shows no parameters when the app has no user input fields', async () => {
+  getApp.mockResolvedValue(createAppDetailFixture({ id: 'app-1', mode: 'completion' }))
+  renderWithConsoleQuery(<AppInputsPanel appDetail={appDetail} onFormChange={vi.fn()} />)
+  expect(await screen.findByText('app.appSelector.noParams')).toBeInTheDocument()
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
 })

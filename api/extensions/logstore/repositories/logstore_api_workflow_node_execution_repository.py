@@ -8,7 +8,7 @@ WorkflowNodeExecutionModel operations using Aliyun SLS LogStore.
 import logging
 import time
 from collections.abc import Mapping, Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, override
 
 from sqlalchemy.orm import sessionmaker
@@ -17,9 +17,11 @@ from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value
 from graphon.enums import WorkflowNodeExecutionStatus
+from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
+from repositories.workflow_run_control import apply_workflow_stop_to_node, get_stopped_workflow_run
 
 logger = logging.getLogger(__name__)
 
@@ -86,28 +88,29 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
     model.execution_metadata = data.get("execution_metadata")
 
     # Handle datetime fields
+    # Every branch must yield naive UTC, matching what the database path stores.
     created_at = data.get("created_at")
     match created_at:
         case None:
             # Provide default created_at if missing
-            model.created_at = datetime.now()
+            model.created_at = naive_utc_now()
         case str():
-            model.created_at = datetime.fromisoformat(created_at)
+            model.created_at = ensure_naive_utc(datetime.fromisoformat(created_at))
         case int() | float():
-            model.created_at = datetime.fromtimestamp(created_at)
+            model.created_at = datetime.fromtimestamp(created_at, tz=UTC).replace(tzinfo=None)
         case _:
-            model.created_at = created_at
+            model.created_at = ensure_naive_utc(created_at)
 
     finished_at = data.get("finished_at")
     match finished_at:
-        case None:
+        case None | "":
             ...
         case str():
-            model.finished_at = datetime.fromisoformat(finished_at)
+            model.finished_at = ensure_naive_utc(datetime.fromisoformat(finished_at))
         case int() | float():
-            model.finished_at = datetime.fromtimestamp(finished_at)
+            model.finished_at = datetime.fromtimestamp(finished_at, tz=UTC).replace(tzinfo=None)
         case _:
-            model.finished_at = finished_at
+            model.finished_at = ensure_naive_utc(finished_at)
 
     return model
 
@@ -129,6 +132,17 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         """
         logger.debug("LogstoreAPIWorkflowNodeExecutionRepository.__init__: initializing")
         self.logstore_client = AliyunLogStore()
+        self._session_maker = session_maker
+
+    def _apply_stopped_run(
+        self, executions: Sequence[WorkflowNodeExecutionModel], tenant_id: str, workflow_run_id: str
+    ) -> None:
+        if self._session_maker is None:
+            return
+        with self._session_maker() as session:
+            stopped = get_stopped_workflow_run(session, tenant_id=tenant_id, workflow_run_id=workflow_run_id)
+            for execution in executions:
+                apply_workflow_stop_to_node(execution, stopped)
 
     @override
     def load_full_process_data(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
@@ -218,10 +232,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                 # For each id, select the row with max log_version
                 deduplicated_results = []
                 for rows in id_to_results.values():
-                    if len(rows) > 1:
-                        max_row = max(rows, key=lambda x: int(x.get("log_version", 0)))
-                    else:
-                        max_row = rows[0]
+                    max_row = max(rows, key=lambda x: int(x.get("log_version", 0))) if len(rows) > 1 else rows[0]
                     deduplicated_results.append(max_row)
             else:
                 # For PG mode, results are already deduplicated by the SQL query
@@ -323,10 +334,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
 
                 # For each id, select the row with max log_version
                 for rows in id_to_results.values():
-                    if len(rows) > 1:
-                        max_row = max(rows, key=lambda x: int(x.get("log_version", 0)))
-                    else:
-                        max_row = rows[0]
+                    max_row = max(rows, key=lambda x: int(x.get("log_version", 0))) if len(rows) > 1 else rows[0]
 
                     model = _dict_to_workflow_node_execution_model(max_row)
                     if model and model.id:  # Ensure model is valid
@@ -338,6 +346,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                     if model and model.id:  # Ensure model is valid
                         models.append(model)
 
+            self._apply_stopped_run(models, tenant_id, workflow_run_id)
             models = [model for model in models if model.status != WorkflowNodeExecutionStatus.PAUSED]
 
             # Sort by index DESC for trace visualization
@@ -415,10 +424,13 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
             # For PG mode, result is already the latest version
             # For SDK mode, if multiple results, select the one with max log_version
             if self.logstore_client.supports_pg_protocol or len(results) == 1:
-                return _dict_to_workflow_node_execution_model(results[0])
+                execution = _dict_to_workflow_node_execution_model(results[0])
             else:
                 max_result = max(results, key=lambda x: int(x.get("log_version", 0)))
-                return _dict_to_workflow_node_execution_model(max_result)
+                execution = _dict_to_workflow_node_execution_model(max_result)
+            if execution.workflow_run_id is not None:
+                self._apply_stopped_run([execution], execution.tenant_id, execution.workflow_run_id)
+            return execution
 
         except Exception:
             logger.exception("Failed to get execution by ID from LogStore: execution_id=%s", execution_id)

@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from ast_grep_guard import Match, has_reasoned_noqa, is_python_source_path, rule_path, run_guard
+from ast_grep_guard import Match, has_reasoned_guard_ignore, is_python_source_path, rule_path, run_guard
 
 
 RULE_ID = "no-new-getattr"
@@ -12,7 +12,7 @@ VIOLATION_MESSAGE = "no-new-getattr net-new getattr() in added code"
 
 
 def is_reportable_match(match: Match) -> bool:
-    return not has_reasoned_noqa(match.source_line, RULE_ID)
+    return not has_reasoned_guard_ignore(match.source_line, RULE_ID)
 
 
 def main() -> int:

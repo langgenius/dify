@@ -1,334 +1,176 @@
-/**
- * Integration test: Cloud Plan Payment Flow
- *
- * Tests the payment flow for cloud plan items:
- *   CloudPlanItem → Button click → payment capability check → fetch URL → redirect
- *
- * Covers plan comparison, downgrade prevention, monthly/yearly pricing,
- * and workspace manager permission enforcement.
- */
-import type { BasicPlan } from '@/app/components/billing/type'
-import { toast, ToastHost } from '@langgenius/dify-ui/toast'
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import type { GetBillingSubscriptionData } from '@dify/contracts/api/console/billing/types.gen'
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
 import { ALL_PLANS } from '@/app/components/billing/config'
-import { PlanRange } from '@/app/components/billing/pricing/plan-switcher/plan-range-switcher'
-import CloudPlanItem from '@/app/components/billing/pricing/plans/cloud-plan-item'
-import { Plan } from '@/app/components/billing/type'
+import { CloudPlanItem } from '@/app/components/billing/pricing/plans/cloud-plan-item'
+import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
+import { createDeferred } from '@/test/deferred'
 
-// ─── Mock state ──────────────────────────────────────────────────────────────
-let mockConsoleState: Record<string, unknown> = {}
-const mockFetchSubscriptionUrls = vi.fn()
-const mockInvoices = vi.fn()
-const mockOpenAsyncWindow = vi.fn()
-
-// ─── Context mocks ───────────────────────────────────────────────────────────
-
+const { mockGetSubscription, mockGetInvoices } = vi.hoisted(() => ({
+  mockGetSubscription: vi.fn(),
+  mockGetInvoices: vi.fn(),
+}))
+let canManageBilling = true
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => mockConsoleState)
+  return createWorkspaceStateModuleMock(() => ({ isCurrentWorkspaceManager: canManageBilling }))
 })
-
-// ─── Service mocks ───────────────────────────────────────────────────────────
-vi.mock('@/service/billing', () => ({
-  fetchSubscriptionUrls: (...args: unknown[]) => mockFetchSubscriptionUrls(...args),
-}))
-
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    billing: {
-      invoices: {
-        get: () => mockInvoices(),
-      },
-    },
-  },
-}))
-
-vi.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => mockOpenAsyncWindow,
-}))
-
-// ─── Navigation mocks ───────────────────────────────────────────────────────
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'billing.subscription.get': mockGetSubscription,
+      'billing.invoices.get': mockGetInvoices,
+    }),
+  }
+})
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/billing',
   useSearchParams: () => new URLSearchParams(),
 }))
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-const setupConsoleState = (overrides: Record<string, unknown> = {}) => {
-  mockConsoleState = {
-    isCurrentWorkspaceManager: true,
-    ...overrides,
-  }
-}
-
-type RenderCloudPlanItemOptions = {
-  currentPlan?: BasicPlan
-  plan?: BasicPlan
-  planRange?: PlanRange
-  canPay?: boolean
-}
-
-const renderCloudPlanItem = ({
-  currentPlan = Plan.sandbox,
-  plan = Plan.professional,
-  planRange = PlanRange.monthly,
-  canPay = true,
-}: RenderCloudPlanItemOptions = {}) => {
+const renderPlan = ({
+  currentPlan = 'sandbox',
+  plan = 'professional',
+  billingInterval = 'month',
+}: {
+  currentPlan?: CloudPlan
+  plan?: CloudPlan
+  billingInterval?: GetBillingSubscriptionData['query']['interval']
+} = {}) => {
+  const { wrapper } = createConsoleQueryWrapper()
   return render(
     <>
-      <ToastHost timeout={0} />
-      <CloudPlanItem currentPlan={currentPlan} plan={plan} planRange={planRange} canPay={canPay} />
+      <AppToastHost timeout={0} />
+      <CloudPlanItem
+        plan={plan}
+        billingInterval={billingInterval}
+        billing={{
+          currentPlan,
+          currentBillingInterval: 'month',
+          isEducationDiscountEligible: false,
+          isEducationDiscountActivated: false,
+        }}
+      />
     </>,
+    { wrapper },
   )
 }
+const popup = { opener: null as unknown, location: { href: '' }, close: vi.fn() }
 
-const getPlanButton = (name: string) => screen.getByRole('button', { name })
+beforeEach(() => {
+  vi.clearAllMocks()
+  toast.dismiss()
+  canManageBilling = true
+  mockGetSubscription.mockReset().mockResolvedValue({ url: 'https://pay.example.com/checkout' })
+  mockGetInvoices.mockReset().mockResolvedValue({ url: 'https://pay.example.com/invoices' })
+  vi.stubGlobal('location', { href: 'https://app.example.com/billing' })
+  popup.opener = window
+  popup.location.href = ''
+  vi.spyOn(window, 'open').mockReturnValue(popup as unknown as Window)
+})
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
 
-// ═══════════════════════════════════════════════════════════════════════════════
-describe('Cloud Plan Payment Flow', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    cleanup()
-    toast.dismiss()
-    setupConsoleState()
-    mockFetchSubscriptionUrls.mockResolvedValue({ url: 'https://pay.example.com/checkout' })
-    mockInvoices.mockResolvedValue({ url: 'https://billing.example.com/invoices' })
-  })
+describe('Cloud plan payment flow', () => {
+  it.each([
+    { plan: 'professional', interval: 'month', label: 'startBuilding' },
+    { plan: 'team', interval: 'year', label: 'getStarted' },
+  ] as const)(
+    'displays $plan pricing and redirects to its $interval checkout',
+    async ({ plan, interval, label }) => {
+      const user = userEvent.setup()
+      renderPlan({ plan, billingInterval: interval })
+      const price = ALL_PLANS[plan].price
+      expect(screen.getByText(`$${price * (interval === 'year' ? 10 : 1)}`)).toBeInTheDocument()
+      if (interval === 'year') expect(screen.getByText(`$${price * 12}`)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: `billing.plansCommon.${label}` }))
+      await waitFor(() => expect(window.location.href).toBe('https://pay.example.com/checkout'))
+      expect(mockGetSubscription).toHaveBeenCalledExactlyOnceWith({ query: { plan, interval } })
+      expect(mockGetInvoices).not.toHaveBeenCalled()
+    },
+  )
 
-  // ─── 1. Plan Display ────────────────────────────────────────────────────
-  describe('Plan display', () => {
-    it('should render plan name and description', () => {
-      renderCloudPlanItem({ plan: Plan.professional })
-
-      expect(screen.getByText(/plans\.professional\.name/i)).toBeInTheDocument()
-      expect(screen.getByText(/plans\.professional\.description/i)).toBeInTheDocument()
-    })
-
-    it('should show "Free" price for sandbox plan', () => {
-      renderCloudPlanItem({ plan: Plan.sandbox })
-
-      expect(screen.getByText(/plansCommon\.free/i)).toBeInTheDocument()
-    })
-
-    it('should show monthly price for paid plans', () => {
-      renderCloudPlanItem({ plan: Plan.professional, planRange: PlanRange.monthly })
-
-      expect(screen.getByText(`$${ALL_PLANS.professional.price}`)).toBeInTheDocument()
-    })
-
-    it('should show yearly discounted price (10 months) and strikethrough original (12 months)', () => {
-      renderCloudPlanItem({ plan: Plan.professional, planRange: PlanRange.yearly })
-
-      const yearlyPrice = ALL_PLANS.professional.price * 10
-      const originalPrice = ALL_PLANS.professional.price * 12
-
-      expect(screen.getByText(`$${yearlyPrice}`)).toBeInTheDocument()
-      expect(screen.getByText(`$${originalPrice}`)).toBeInTheDocument()
-    })
-
-    it('should show "most popular" badge for professional plan', () => {
-      renderCloudPlanItem({ plan: Plan.professional })
-
-      expect(screen.getByText(/plansCommon\.mostPopular/i)).toBeInTheDocument()
-    })
-
-    it('should not show "most popular" badge for sandbox or team plans', () => {
-      const { unmount } = renderCloudPlanItem({ plan: Plan.sandbox })
-      expect(screen.queryByText(/plansCommon\.mostPopular/i)).not.toBeInTheDocument()
-      unmount()
-
-      renderCloudPlanItem({ plan: Plan.team })
-      expect(screen.queryByText(/plansCommon\.mostPopular/i)).not.toBeInTheDocument()
-    })
-  })
-
-  // ─── 2. Button Text Logic ───────────────────────────────────────────────
-  describe('Button text logic', () => {
-    it('should show "Current Plan" when plan matches current plan', () => {
-      renderCloudPlanItem({ currentPlan: Plan.professional, plan: Plan.professional })
-
-      expect(screen.getByText(/plansCommon\.currentPlan/i)).toBeInTheDocument()
-    })
-
-    it('should show "Start for Free" for sandbox plan when not current', () => {
-      renderCloudPlanItem({ currentPlan: Plan.professional, plan: Plan.sandbox })
-
-      expect(screen.getByText(/plansCommon\.startForFree/i)).toBeInTheDocument()
-    })
-
-    it('should show "Start Building" for professional plan when not current', () => {
-      renderCloudPlanItem({ currentPlan: Plan.sandbox, plan: Plan.professional })
-
-      expect(screen.getByText(/plansCommon\.startBuilding/i)).toBeInTheDocument()
-    })
-
-    it('should show "Get Started" for team plan when not current', () => {
-      renderCloudPlanItem({ currentPlan: Plan.sandbox, plan: Plan.team })
-
-      expect(screen.getByText(/plansCommon\.getStarted/i)).toBeInTheDocument()
-    })
-  })
-
-  // ─── 3. Downgrade Prevention ────────────────────────────────────────────
-  describe('Downgrade prevention', () => {
-    it('should disable sandbox button when user is on professional plan (downgrade)', () => {
-      renderCloudPlanItem({ currentPlan: Plan.professional, plan: Plan.sandbox })
-
-      const button = getPlanButton('billing.plansCommon.startForFree')
+  it.each([
+    { currentPlan: 'sandbox', plan: 'sandbox', label: 'currentPlan' },
+    { currentPlan: 'professional', plan: 'sandbox', label: 'startForFree' },
+    { currentPlan: 'team', plan: 'sandbox', label: 'startForFree' },
+    { currentPlan: 'team', plan: 'professional', label: 'startBuilding' },
+  ] as const)(
+    'prevents purchasing $plan from $currentPlan',
+    async ({ currentPlan, plan, label }) => {
+      const user = userEvent.setup()
+      renderPlan({ currentPlan, plan })
+      const button = screen.getByRole('button', { name: `billing.plansCommon.${label}` })
       expect(button).toBeDisabled()
-    })
+      await user.click(button)
+      expect(mockGetSubscription).not.toHaveBeenCalled()
+      expect(mockGetInvoices).not.toHaveBeenCalled()
+      expect(window.open).not.toHaveBeenCalled()
+    },
+  )
 
-    it('should disable sandbox and professional buttons when user is on team plan', () => {
-      const { unmount } = renderCloudPlanItem({ currentPlan: Plan.team, plan: Plan.sandbox })
-      expect(getPlanButton('billing.plansCommon.startForFree')).toBeDisabled()
-      unmount()
-
-      renderCloudPlanItem({ currentPlan: Plan.team, plan: Plan.professional })
-      expect(getPlanButton('billing.plansCommon.startBuilding')).toBeDisabled()
-    })
-
-    it('should not disable current paid plan button (for invoice management)', () => {
-      renderCloudPlanItem({ currentPlan: Plan.professional, plan: Plan.professional })
-
-      const button = getPlanButton('billing.plansCommon.currentPlan')
-      expect(button).not.toBeDisabled()
-    })
-
-    it('should enable higher-tier plan buttons for upgrade', () => {
-      renderCloudPlanItem({ currentPlan: Plan.sandbox, plan: Plan.team })
-
-      const button = getPlanButton('billing.plansCommon.getStarted')
-      expect(button).not.toBeDisabled()
-    })
+  it('opens the billing portal for the current paid subscription after resolving its URL', async () => {
+    const user = userEvent.setup()
+    const request = createDeferred<{ url: string }>()
+    mockGetInvoices.mockReturnValue(request.promise)
+    renderPlan({ currentPlan: 'professional', plan: 'professional' })
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+    expect(window.open).toHaveBeenCalledWith('about:blank', '_blank', undefined)
+    expect(popup.opener).toBeNull()
+    expect(popup.location.href).toBe('')
+    await act(async () => request.resolve({ url: 'https://pay.example.com/invoices' }))
+    await waitFor(() => expect(popup.location.href).toBe('https://pay.example.com/invoices'))
+    expect(mockGetInvoices).toHaveBeenCalledOnce()
+    expect(mockGetSubscription).not.toHaveBeenCalled()
   })
 
-  // ─── 4. Payment URL Flow ────────────────────────────────────────────────
-  describe('Payment URL flow', () => {
-    it('should call fetchSubscriptionUrls with plan and "month" for monthly range', async () => {
-      const user = userEvent.setup()
-      // Simulate clicking on a professional plan button (user is on sandbox)
-      renderCloudPlanItem({
-        currentPlan: Plan.sandbox,
-        plan: Plan.professional,
-        planRange: PlanRange.monthly,
-      })
-
-      const button = getPlanButton('billing.plansCommon.startBuilding')
-      await user.click(button)
-
-      await waitFor(() => {
-        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'month')
-      })
-    })
-
-    it('should call fetchSubscriptionUrls with plan and "year" for yearly range', async () => {
-      const user = userEvent.setup()
-      renderCloudPlanItem({
-        currentPlan: Plan.sandbox,
-        plan: Plan.team,
-        planRange: PlanRange.yearly,
-      })
-
-      const button = getPlanButton('billing.plansCommon.getStarted')
-      await user.click(button)
-
-      await waitFor(() => {
-        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.team, 'year')
-      })
-    })
-
-    it('should open invoice management for current paid plan', async () => {
-      const user = userEvent.setup()
-      renderCloudPlanItem({ currentPlan: Plan.professional, plan: Plan.professional })
-
-      const button = getPlanButton('billing.plansCommon.currentPlan')
-      await user.click(button)
-
-      await waitFor(() => {
-        expect(mockOpenAsyncWindow).toHaveBeenCalled()
-      })
-      // Should NOT call fetchSubscriptionUrls (invoice, not subscription)
-      expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
-    })
-
-    it('should not do anything when clicking on sandbox free plan button', async () => {
-      const user = userEvent.setup()
-      renderCloudPlanItem({ currentPlan: Plan.sandbox, plan: Plan.sandbox })
-
-      const button = getPlanButton('billing.plansCommon.currentPlan')
-      await user.click(button)
-
-      // Wait a tick and verify no actions were taken
-      await waitFor(() => {
-        expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
-        expect(mockOpenAsyncWindow).not.toHaveBeenCalled()
-      })
-    })
+  it('closes the pending portal and reports its URL request failure', async () => {
+    const user = userEvent.setup()
+    mockGetInvoices.mockRejectedValueOnce(new Error('Billing unavailable'))
+    renderPlan({ currentPlan: 'professional', plan: 'professional' })
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+    expect(await screen.findByText('Billing unavailable')).toBeInTheDocument()
+    expect(popup.close).toHaveBeenCalledOnce()
+    expect(popup.location.href).toBe('')
   })
 
-  // ─── 5. Payment capability ──────────────────────────────────────────────
-  describe('Payment capability', () => {
-    it('should change plans when payment is allowed', async () => {
-      const user = userEvent.setup()
-      renderCloudPlanItem({ currentPlan: Plan.sandbox, plan: Plan.professional, canPay: true })
-
-      const button = getPlanButton('billing.plansCommon.startBuilding')
-      await user.click(button)
-
-      await waitFor(() => {
-        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'month')
-      })
-    })
-
-    it('should block plan changes when payment is not allowed', async () => {
-      const user = userEvent.setup()
-      renderCloudPlanItem({ currentPlan: Plan.sandbox, plan: Plan.professional, canPay: false })
-
-      const button = getPlanButton('billing.plansCommon.startBuilding')
-      await user.click(button)
-
-      await waitFor(() => {
-        expect(screen.getByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
-      })
-      expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
-    })
-
-    it('should open billing portal when payment is allowed', async () => {
-      const user = userEvent.setup()
-      renderCloudPlanItem({
-        currentPlan: Plan.professional,
-        plan: Plan.professional,
-        canPay: true,
-      })
-
-      const button = getPlanButton('billing.plansCommon.currentPlan')
-      await user.click(button)
-
-      await waitFor(() => {
-        expect(mockOpenAsyncWindow).toHaveBeenCalled()
-      })
-      expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
-    })
-
-    it('should block billing portal access when payment is not allowed', async () => {
-      const user = userEvent.setup()
-      renderCloudPlanItem({
-        currentPlan: Plan.professional,
-        plan: Plan.professional,
-        canPay: false,
-      })
-
-      const button = getPlanButton('billing.plansCommon.currentPlan')
-      await user.click(button)
-
-      await waitFor(() => {
-        expect(screen.getByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
-      })
-      expect(mockOpenAsyncWindow).not.toHaveBeenCalled()
-    })
+  it('prevents duplicate subscription requests while checkout is pending', async () => {
+    const request = createDeferred<{ url: string }>()
+    mockGetSubscription.mockReturnValue(request.promise)
+    const user = userEvent.setup()
+    renderPlan()
+    const button = screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })
+    await user.click(button)
+    await user.click(button)
+    expect(mockGetSubscription).toHaveBeenCalledOnce()
+    await act(async () => request.resolve({ url: 'https://pay.example.com/checkout' }))
+    expect(window.location.href).toBe('https://pay.example.com/checkout')
   })
+
+  it.each([
+    { currentPlan: 'sandbox', label: 'startBuilding' },
+    { currentPlan: 'professional', label: 'currentPlan' },
+  ] as const)(
+    'blocks the $label action without billing permission',
+    async ({ currentPlan, label }) => {
+      const user = userEvent.setup()
+      canManageBilling = false
+      renderPlan({ currentPlan })
+      await user.click(screen.getByRole('button', { name: `billing.plansCommon.${label}` }))
+      expect(await screen.findByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
+      expect(mockGetSubscription).not.toHaveBeenCalled()
+      expect(mockGetInvoices).not.toHaveBeenCalled()
+      expect(window.open).not.toHaveBeenCalled()
+    },
+  )
 })

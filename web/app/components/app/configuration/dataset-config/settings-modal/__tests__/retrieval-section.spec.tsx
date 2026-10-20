@@ -1,67 +1,37 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { TFunction } from 'i18next'
+import type { ReactElement } from 'react'
 import type { RetrievalConfig } from '@/types/app'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  ChunkingMode,
-  DatasetPermission,
-  DataSourceType,
-  RerankingModeEnum,
-} from '@/models/datasets'
+import { ChunkingMode, DataSourceType, RerankingModeEnum } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
+import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { withSelectorKey } from '@/test/i18n-mock'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { RetrievalChangeTip, RetrievalSection } from '../retrieval-section'
 
-const mockUseModelList = vi.fn()
-const mockUseModelListAndDefaultModel = vi.fn()
-const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.fn()
-const mockUseCurrentProviderAndModel = vi.fn()
-
-vi.mock('ky', () => {
-  const ky = () => ky
-  ky.extend = () => ky
-  ky.create = () => ky
-  return { __esModule: true, default: ky }
+const render = createNuqsTestRenderer((ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryOptions().queryKey, {
+    retrieval_method: [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid],
+  })
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+    }).queryKey,
+    { data: [] },
+  )
+  return renderWithConsoleQuery(ui, { queryClient })
 })
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    modelProviders: [],
-    textGenerationModelList: [],
-    supportRetrievalMethods: [
-      RETRIEVE_METHOD.semantic,
-      RETRIEVE_METHOD.fullText,
-      RETRIEVE_METHOD.hybrid,
-      RETRIEVE_METHOD.keywordSearch,
-    ],
-  }),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: (...args: unknown[]) =>
-    mockUseModelListAndDefaultModelAndCurrentProviderAndModel(...args),
-  useModelListAndDefaultModel: (...args: unknown[]) => mockUseModelListAndDefaultModel(...args),
-  useModelList: (...args: unknown[]) => mockUseModelList(...args),
-  useCurrentProviderAndModel: (...args: unknown[]) => mockUseCurrentProviderAndModel(...args),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
-    <div data-testid="model-selector">
-      {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/datasets/create/step-two', () => ({
-  IndexingType: {
-    QUALIFIED: 'high_quality',
-    ECONOMICAL: 'economy',
-  },
-}))
 
 const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): RetrievalConfig => ({
   search_method: RETRIEVE_METHOD.semantic,
@@ -78,20 +48,20 @@ const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): Retrie
 })
 
 const createDataset = (
-  overrides: Partial<DataSet> = {},
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
   retrievalOverrides: Partial<RetrievalConfig> = {},
-): DataSet => {
+): DatasetDetailWithPartialMembersResponse => {
   const retrievalConfig = createRetrievalConfig(retrievalOverrides)
   return {
+    ...createDatasetFixture(),
     id: 'dataset-id',
     name: 'Test Dataset',
-    indexing_status: 'completed',
     icon_info: {
       icon: 'icon',
       icon_type: 'emoji',
     },
     description: 'Description',
-    permission: DatasetPermission.allTeamMembers,
+    permission: PermissionLevel.allTeamMembers,
     data_source_type: DataSourceType.FILE,
     indexing_technique: IndexingType.QUALIFIED,
     author_name: 'Author',
@@ -101,7 +71,6 @@ const createDataset = (
     app_count: 0,
     doc_form: ChunkingMode.text,
     document_count: 0,
-    total_document_count: 0,
     total_available_documents: 0,
     word_count: 0,
     provider: 'internal',
@@ -134,10 +103,6 @@ const createDataset = (
       ...retrievalConfig,
       ...overrides.retrieval_model_dict,
     },
-    retrieval_model: {
-      ...retrievalConfig,
-      ...overrides.retrieval_model,
-    },
   }
 }
 
@@ -153,55 +118,20 @@ describe('RetrievalChangeTip', () => {
   })
 
   it('renders and supports dismiss', async () => {
-    // Arrange
+    const user = userEvent.setup()
+
     const onDismiss = vi.fn()
     render(<RetrievalChangeTip {...defaultProps} onDismiss={onDismiss} />)
 
-    // Act
-    await userEvent.click(screen.getByRole('button', { name: 'close-retrieval-change-tip' }))
+    await user.click(screen.getByRole('button', { name: 'close-retrieval-change-tip' }))
 
-    // Assert
-    // Assert
     expect(screen.getByText('Test message'))!.toBeInTheDocument()
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
 
   it('does not render when hidden', () => {
-    // Arrange & Act
     render(<RetrievalChangeTip {...defaultProps} visible={false} />)
 
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
     expect(screen.queryByText('Test message')).not.toBeInTheDocument()
   })
 })
@@ -210,27 +140,17 @@ describe('RetrievalSection', () => {
   const t = withSelectorKey((key: string, options?: { ns?: string }) => {
     const prefix = options?.ns ? `${options.ns}.` : ''
     return `${prefix}${key}`
-  }, 'datasetSettings')
+  }, 'datasetSettings') as TFunction<['datasetSettings']>
   const rowClass = 'row'
   const labelClass = 'label'
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseModelList.mockImplementation((type: ModelTypeEnum) => {
-      if (type === ModelTypeEnum.rerank)
-        return { data: [{ provider: 'rerank-provider', models: [{ model: 'rerank-model' }] }] }
-      return { data: [] }
-    })
-    mockUseModelListAndDefaultModel.mockReturnValue({ modelList: [], defaultModel: null })
-    mockUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
-      defaultModel: null,
-      currentModel: null,
-    })
-    mockUseCurrentProviderAndModel.mockReturnValue({ currentProvider: null, currentModel: null })
   })
 
   it('renders external retrieval details and propagates changes', async () => {
-    // Arrange
+    const user = userEvent.setup()
+
     const dataset = createDataset({
       provider: 'external',
       external_knowledge_info: {
@@ -242,7 +162,6 @@ describe('RetrievalSection', () => {
     })
     const handleExternalChange = vi.fn()
 
-    // Act
     render(
       <RetrievalSection
         isExternal
@@ -257,10 +176,8 @@ describe('RetrievalSection', () => {
       />,
     )
     const [topKIncrement] = screen.getAllByRole('button', { name: /increment/i })
-    await userEvent.click(topKIncrement!)
+    await user.click(topKIncrement!)
 
-    // Assert
-    // Assert
     expect(screen.getByText('External API'))!.toBeInTheDocument()
     expect(screen.getByText('https://api.external.com'))!.toBeInTheDocument()
     expect(screen.getByText('ext-id-999'))!.toBeInTheDocument()
@@ -268,11 +185,9 @@ describe('RetrievalSection', () => {
   })
 
   it('renders internal retrieval config with doc link', () => {
-    // Arrange
     const docLink = vi.fn((path: string) => `https://docs.example${path}`)
     const retrievalConfig = createRetrievalConfig()
 
-    // Act
     render(
       <RetrievalSection
         isExternal={false}
@@ -287,8 +202,6 @@ describe('RetrievalSection', () => {
       />,
     )
 
-    // Assert
-    // Assert
     expect(screen.getByText('dataset.retrieval.semantic_search.title'))!.toBeInTheDocument()
     const learnMoreLink = screen.getByRole('link', {
       name: 'datasetSettings.form.retrievalSetting.learnMore',
@@ -303,10 +216,10 @@ describe('RetrievalSection', () => {
   })
 
   it('propagates retrieval config changes for economical indexing', async () => {
-    // Arrange
+    const user = userEvent.setup()
+
     const handleRetrievalChange = vi.fn()
 
-    // Act
     render(
       <RetrievalSection
         isExternal={false}
@@ -321,10 +234,8 @@ describe('RetrievalSection', () => {
       />,
     )
     const [topKIncrement] = screen.getAllByRole('button', { name: /increment/i })
-    await userEvent.click(topKIncrement!)
+    await user.click(topKIncrement!)
 
-    // Assert
-    // Assert
     expect(screen.getByText('dataset.retrieval.keyword_search.title'))!.toBeInTheDocument()
     expect(handleRetrievalChange).toHaveBeenCalledWith(
       expect.objectContaining({

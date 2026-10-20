@@ -1,72 +1,72 @@
 'use client'
-import type { ComponentProps, FC } from 'react'
+import type { FC } from 'react'
 import type { ToolWithProvider } from '../../../workflow/types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import {
-  useAuthorizeMCP,
-  useDeleteMCP,
-  useInvalidateAllMCPTools,
-  useInvalidateMCPTools,
-  useMCPTools,
-  useUpdateMCP,
-  useUpdateMCPTools,
-} from '@/service/use-tools'
-import MCPModal from '../modal'
+import { consoleQuery } from '@/service/console'
+import { selectToolProviderTools } from '../../utils/query-select'
 import ListLoading from './list-loading'
 import OperationDropdown from './operation-dropdown'
 import ToolItem from './tool-item'
 
 type Props = Readonly<{
   detail: ToolWithProvider
-  onUpdate: (isDelete?: boolean) => void
+  onUpdate: () => void
+  onEdit: (providerID: string) => void
+  onDelete: (providerID: string) => void
   onHide: () => void
   isTriggerAuthorize: boolean
   onFirstCreate: () => void
 }>
 
-type MCPModalConfirmPayload = Parameters<ComponentProps<typeof MCPModal>['onConfirm']>[0]
-type MutationResult = {
-  result?: string
-}
-
 const MCPDetailContent: FC<Props> = ({
   detail,
   onUpdate,
+  onEdit,
+  onDelete,
   onHide,
   isTriggerAuthorize,
   onFirstCreate,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const canManageMCP = useCanManageMCP()
 
-  const { data, isFetching: isGettingTools } = useMCPTools(
-    detail.is_team_authorization ? detail.id : '',
+  const queryClient = useQueryClient()
+  const { data, isFetching: isGettingTools } = useQuery(
+    consoleQuery.workspaces.current.toolProvider.mcp.tools.byProviderId.get.queryOptions({
+      input: { params: { provider_id: detail.id } },
+      enabled: !!detail.is_team_authorization && !!detail.id,
+      select: selectToolProviderTools,
+    }),
   )
-  const invalidateMCPTools = useInvalidateMCPTools()
-  const invalidateAllMCPTools = useInvalidateAllMCPTools()
-  const { mutateAsync: updateTools, isPending: isUpdating } = useUpdateMCPTools()
-  const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useAuthorizeMCP()
+  const { mutateAsync: updateTools, isPending: isUpdating } = useMutation(
+    consoleQuery.workspaces.current.toolProvider.mcp.update.byProviderId.get.mutationOptions(),
+  )
+  const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useMutation(
+    consoleQuery.workspaces.current.toolProvider.mcp.auth.post.mutationOptions(),
+  )
   const toolList = data?.tools || []
 
   const [isShowUpdateConfirm, { setTrue: showUpdateConfirm, setFalse: hideUpdateConfirm }] =
@@ -75,30 +75,19 @@ const MCPDetailContent: FC<Props> = ({
   const handleUpdateTools = useCallback(async () => {
     hideUpdateConfirm()
     if (!canManageMCP || !detail) return
-    await updateTools(detail.id)
-    invalidateMCPTools(detail.id)
-    invalidateAllMCPTools()
+    await updateTools({ params: { provider_id: detail.id } })
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.toolProvider.mcp.tools.byProviderId.get.queryKey({
+        input: { params: { provider_id: detail.id } },
+      }),
+    })
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.tools.mcp.get.queryKey(),
+    })
     onUpdate()
-  }, [
-    canManageMCP,
-    detail,
-    hideUpdateConfirm,
-    invalidateAllMCPTools,
-    invalidateMCPTools,
-    onUpdate,
-    updateTools,
-  ])
+  }, [canManageMCP, detail, hideUpdateConfirm, onUpdate, queryClient, updateTools])
 
-  const { mutateAsync: updateMCP } = useUpdateMCP({})
-  const { mutateAsync: deleteMCP } = useDeleteMCP({})
-
-  const [isShowUpdateModal, { setTrue: showUpdateModal, setFalse: hideUpdateModal }] =
-    useBoolean(false)
-
-  const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] =
-    useBoolean(false)
-
-  const [deleting, { setTrue: showDeleting, setFalse: hideDeleting }] = useBoolean(false)
+  const hasTriggeredAuthorizeRef = useRef(false)
 
   const handleOAuthCallback = useCallback(() => {
     if (!canManageMCP) return
@@ -111,9 +100,7 @@ const MCPDetailContent: FC<Props> = ({
     onFirstCreate()
     if (!detail) return
     try {
-      const res = await authorizeMcp({
-        provider_id: detail.id,
-      })
+      const res = await authorizeMcp({ body: { provider_id: detail.id } })
       if (res.result === 'success') handleUpdateTools()
       else if (res.authorization_url) openOAuthPopup(res.authorization_url, handleOAuthCallback)
     } catch {
@@ -131,36 +118,12 @@ const MCPDetailContent: FC<Props> = ({
     onUpdate,
   ])
 
-  const handleUpdate = useCallback(
-    async (data: MCPModalConfirmPayload) => {
-      if (!canManageMCP || !detail) return
-      const res = (await updateMCP({
-        ...data,
-        provider_id: detail.id,
-      })) as MutationResult
-      if (res.result === 'success') {
-        hideUpdateModal()
-        onUpdate()
-        handleAuthorize()
-      }
-    },
-    [canManageMCP, detail, updateMCP, hideUpdateModal, onUpdate, handleAuthorize],
-  )
-
-  const handleDelete = useCallback(async () => {
-    if (!canManageMCP || !detail) return
-    showDeleting()
-    const res = (await deleteMCP(detail.id)) as MutationResult
-    hideDeleting()
-    if (res.result === 'success') {
-      hideDeleteConfirm()
-      onUpdate(true)
-    }
-  }, [canManageMCP, detail, showDeleting, deleteMCP, hideDeleting, hideDeleteConfirm, onUpdate])
-
   useEffect(() => {
-    if (isTriggerAuthorize) handleAuthorize()
-  }, [])
+    if (!isTriggerAuthorize || hasTriggeredAuthorizeRef.current) return
+
+    hasTriggeredAuthorizeRef.current = true
+    handleAuthorize()
+  }, [handleAuthorize, isTriggerAuthorize])
 
   if (!detail) return null
   const identifierLabel = t(($) => $['mcp.identifier'], { ns: 'tools' })
@@ -187,11 +150,11 @@ const MCPDetailContent: FC<Props> = ({
                       type="button"
                       variant="ghost"
                       size="small"
-                      aria-label={identifierLabel}
                       className="h-auto shrink-0 cursor-pointer rounded bg-transparent p-0 text-left system-xs-regular text-text-secondary hover:bg-transparent focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                       onClick={() => copy(detail.server_identifier || '')}
                     >
                       {detail.server_identifier}
+                      <span className="sr-only"> {identifierLabel}</span>
                     </Button>
                   }
                 />
@@ -201,10 +164,8 @@ const MCPDetailContent: FC<Props> = ({
               <Tooltip>
                 <TooltipTrigger
                   render={
-                    <div
-                      aria-label={serverUrlLabel}
-                      className="truncate system-xs-regular text-text-secondary"
-                    >
+                    <div className="truncate system-xs-regular text-text-secondary">
+                      <span className="sr-only">{`${serverUrlLabel}: `}</span>
                       {detail.server_url}
                     </div>
                   }
@@ -215,14 +176,17 @@ const MCPDetailContent: FC<Props> = ({
           </div>
           <div className="flex gap-1">
             {canManageMCP && (
-              <OperationDropdown onEdit={showUpdateModal} onRemove={showDeleteConfirm} />
+              <OperationDropdown
+                onEdit={() => onEdit(detail.id)}
+                onRemove={() => onDelete(detail.id)}
+              />
             )}
-            <ActionButton
+            <IconButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               onClick={onHide}
             >
               <span aria-hidden className="i-ri-close-line size-4" />
-            </ActionButton>
+            </IconButton>
           </div>
         </div>
         <div className="mt-5">
@@ -233,7 +197,7 @@ const MCPDetailContent: FC<Props> = ({
               onClick={handleAuthorize}
               disabled={!canManageMCP}
             >
-              <StatusDot className="mr-2" status="success" />
+              <StatusDot status="success" />
               {t(($) => $['auth.authorized'], { ns: 'tools' })}
             </Button>
           )}
@@ -249,7 +213,7 @@ const MCPDetailContent: FC<Props> = ({
           )}
           {isAuthorizing && (
             <Button variant="primary" className="w-full" disabled>
-              <span aria-hidden className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
+              <span aria-hidden className="i-ri-loader-2-line size-4 animate-spin" />
               {t(($) => $['mcp.authorizing'], { ns: 'tools' })}
             </Button>
           )}
@@ -305,7 +269,7 @@ const MCPDetailContent: FC<Props> = ({
               </div>
               <div>
                 <Button size="small" onClick={showUpdateConfirm} disabled={!canManageMCP}>
-                  <span aria-hidden className="mr-1 i-ri-loop-left-line size-3.5" />
+                  <span aria-hidden className="i-ri-loop-left-line size-3.5" />
                   {t(($) => $['mcp.update'], { ns: 'tools' })}
                 </Button>
               </div>
@@ -336,58 +300,27 @@ const MCPDetailContent: FC<Props> = ({
           </div>
         )}
       </div>
-      {canManageMCP && isShowUpdateModal && (
-        <MCPModal
-          data={detail}
-          show={isShowUpdateModal}
-          onConfirm={handleUpdate}
-          onHide={hideUpdateModal}
-        />
-      )}
-      <AlertDialog
-        open={canManageMCP && isShowDeleteConfirm}
-        onOpenChange={(open) => !open && hideDeleteConfirm()}
-      >
-        <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t(($) => $['mcp.delete'], { ns: 'tools' })}
-            </AlertDialogTitle>
-            <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t(($) => $['mcp.deleteConfirmTitle'], { ns: 'tools', mcp: detail.name })}
-            </div>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={handleDelete}>
-              {t(($) => $['operation.confirm'], { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
       <AlertDialog
         open={canManageMCP && isShowUpdateConfirm}
         onOpenChange={(open) => !open && hideUpdateConfirm()}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['mcp.toolUpdateConfirmTitle'], { ns: 'tools' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['mcp.toolUpdateConfirmContent'], { ns: 'tools' })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={handleUpdateTools}>
+            <AlertDialogConfirmButton tone="default" onClick={handleUpdateTools}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

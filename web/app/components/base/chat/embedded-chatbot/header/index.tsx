@@ -1,14 +1,14 @@
 import type { FC } from 'react'
-import type { Theme } from '../theme/theme-context'
+import type { Theme } from '../theme/theme'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
-import Divider from '@/app/components/base/divider'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isClient } from '@/utils/client'
@@ -31,7 +31,7 @@ const Header: FC<IHeaderProps> = ({
   theme,
   onCreateNewChat,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const { appData, currentConversationId, inputsForms, allInputsHidden } =
     useEmbeddedChatbotContext()
 
@@ -43,6 +43,13 @@ const Header: FC<IHeaderProps> = ({
 
   const handleMessageReceived = useCallback(
     (event: MessageEvent) => {
+      if (event.source !== window.parent || event.data?.type !== 'dify-chatbot-config') return
+      const payload = event.data.payload
+      if (
+        typeof payload?.isToggledByButton !== 'boolean' ||
+        typeof payload?.isDraggable !== 'boolean'
+      )
+        return
       let currentParentOrigin = parentOrigin
       if (!currentParentOrigin && event.data.type === 'dify-chatbot-config') {
         currentParentOrigin = event.origin
@@ -110,13 +117,15 @@ const Header: FC<IHeaderProps> = ({
               </div>
             )}
           </div>
-          {currentConversationId && <Divider type="vertical" className="h-3.5" />}
+          {currentConversationId && (
+            <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
+          )}
           {showToggleExpandButton && (
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton
-                    size="l"
+                  <IconButton
+                    size="lg"
                     aria-label={
                       expanded
                         ? t(($) => $['chat.collapse'], { ns: 'share' })
@@ -126,16 +135,13 @@ const Header: FC<IHeaderProps> = ({
                   >
                     {expanded ? (
                       <div
-                        className="i-ri-collapse-diagonal-2-line h-[18px] w-[18px]"
+                        className="i-ri-collapse-diagonal-2-line h-4.5 w-4.5"
                         aria-hidden="true"
                       />
                     ) : (
-                      <div
-                        className="i-ri-expand-diagonal-2-line h-[18px] w-[18px]"
-                        aria-hidden="true"
-                      />
+                      <div className="i-ri-expand-diagonal-2-line h-4.5 w-4.5" aria-hidden="true" />
                     )}
-                  </ActionButton>
+                  </IconButton>
                 }
               />
               <TooltipContent>
@@ -149,13 +155,13 @@ const Header: FC<IHeaderProps> = ({
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton
-                    size="l"
+                  <IconButton
+                    size="lg"
                     aria-label={t(($) => $['chat.resetChat'], { ns: 'share' })}
                     onClick={onCreateNewChat}
                   >
-                    <div className="i-ri-reset-left-line h-[18px] w-[18px]" aria-hidden="true" />
-                  </ActionButton>
+                    <div className="i-ri-reset-left-line h-4.5 w-4.5" aria-hidden="true" />
+                  </IconButton>
                 }
               />
               <TooltipContent>{t(($) => $['chat.resetChat'], { ns: 'share' })}</TooltipContent>
@@ -188,8 +194,8 @@ const Header: FC<IHeaderProps> = ({
           <Tooltip>
             <TooltipTrigger
               render={
-                <ActionButton
-                  size="l"
+                <IconButton
+                  size="lg"
                   aria-label={
                     expanded
                       ? t(($) => $['chat.collapse'], { ns: 'share' })
@@ -200,7 +206,7 @@ const Header: FC<IHeaderProps> = ({
                   {expanded ? (
                     <div
                       className={cn(
-                        'i-ri-collapse-diagonal-2-line h-[18px] w-[18px]',
+                        'i-ri-collapse-diagonal-2-line h-4.5 w-4.5',
                         theme?.colorPathOnHeader,
                       )}
                       aria-hidden="true"
@@ -208,13 +214,13 @@ const Header: FC<IHeaderProps> = ({
                   ) : (
                     <div
                       className={cn(
-                        'i-ri-expand-diagonal-2-line h-[18px] w-[18px]',
+                        'i-ri-expand-diagonal-2-line h-4.5 w-4.5',
                         theme?.colorPathOnHeader,
                       )}
                       aria-hidden="true"
                     />
                   )}
-                </ActionButton>
+                </IconButton>
               }
             />
             <TooltipContent>
@@ -228,19 +234,16 @@ const Header: FC<IHeaderProps> = ({
           <Tooltip>
             <TooltipTrigger
               render={
-                <ActionButton
-                  size="l"
+                <IconButton
+                  size="lg"
                   aria-label={t(($) => $['chat.resetChat'], { ns: 'share' })}
                   onClick={onCreateNewChat}
                 >
                   <div
-                    className={cn(
-                      'i-ri-reset-left-line h-[18px] w-[18px]',
-                      theme?.colorPathOnHeader,
-                    )}
+                    className={cn('i-ri-reset-left-line h-4.5 w-4.5', theme?.colorPathOnHeader)}
                     aria-hidden="true"
                   />
-                </ActionButton>
+                </IconButton>
               }
             />
             <TooltipContent>{t(($) => $['chat.resetChat'], { ns: 'share' })}</TooltipContent>

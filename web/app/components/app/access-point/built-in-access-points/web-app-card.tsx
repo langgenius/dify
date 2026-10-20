@@ -1,0 +1,311 @@
+'use client'
+
+import type {
+  AppDetailWithSite,
+  AppSiteUpdatePayload,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { SelectorParam } from 'i18next'
+import type { PublishedWorkflow } from '../shared/utils'
+import type { AccessPointAvailability } from '@/app/components/base/access-point/status'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { useMutation } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import AccessControl from '@/app/components/app/app-access-control'
+import { CustomizeDialog } from '@/app/components/app/overview/customize'
+import { EmbeddedDialogContent } from '@/app/components/app/overview/embedded'
+import { SettingsDialog } from '@/app/components/app/overview/settings'
+import { WorkflowLaunchDialog } from '@/app/components/app/overview/workflow-launch-dialog'
+import { AccessPointCard } from '@/app/components/base/access-point/card'
+import { getAccessPointStatus } from '@/app/components/base/access-point/status'
+import { AccessPointUrl } from '@/app/components/base/access-point/url'
+import AppIcon from '@/app/components/base/app-icon'
+import { toast } from '@/app/notifications'
+import { AccessMode } from '@/models/access-control'
+import {
+  useAppWhiteListSubjects,
+  useGetUserCanAccessApp,
+} from '@/service/access-control/use-app-access-control'
+import { consoleQuery } from '@/service/console'
+import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
+import { getBuiltInAccessUrls, getHiddenStartInputs } from '../shared/utils'
+import {
+  WebAppAccessControlEntry,
+  WebAppAccessControlEntrySkeleton,
+} from '../shared/web-app-access-control'
+
+const ACCESS_MODE_ICON_MAP: Record<AccessMode, string> = {
+  [AccessMode.ORGANIZATION]: 'i-ri-building-line',
+  [AccessMode.SPECIFIC_GROUPS_MEMBERS]: 'i-ri-lock-line',
+  [AccessMode.PUBLIC]: 'i-ri-global-line',
+  [AccessMode.EXTERNAL_MEMBERS]: 'i-ri-verified-badge-line',
+}
+
+const ACCESS_MODE_LABEL_MAP: Record<AccessMode, SelectorParam<'app'>> = {
+  [AccessMode.ORGANIZATION]: ($) => $['accessControlDialog.accessItems.organization'],
+  [AccessMode.SPECIFIC_GROUPS_MEMBERS]: ($) => $['accessControlDialog.accessItems.specific'],
+  [AccessMode.PUBLIC]: ($) => $['accessControlDialog.accessItems.anyone'],
+  [AccessMode.EXTERNAL_MEMBERS]: ($) => $['accessControlDialog.accessItems.external'],
+}
+
+type WebAppAccessPointCardProps = {
+  appInfo: AppDetailWithSite
+  availability: AccessPointAvailability
+  canDeploy: boolean
+  canManageAccessPoint: boolean
+  highlighted?: boolean
+  showAccessControl: boolean
+  onRefreshApp: () => Promise<void>
+  onSaveSiteConfig: (params: AppSiteUpdatePayload) => Promise<boolean>
+  workflow: PublishedWorkflow
+}
+
+export function WebAppAccessPointCard({
+  appInfo,
+  availability,
+  canDeploy,
+  canManageAccessPoint,
+  highlighted,
+  onRefreshApp,
+  onSaveSiteConfig,
+  showAccessControl,
+  workflow,
+}: WebAppAccessPointCardProps) {
+  const { t } = useTranslation([
+    'agentV2',
+    'app',
+    'appOverview',
+    'common',
+    'deployments',
+    'navigation',
+  ])
+  const [showAccess, setShowAccess] = useState(false)
+  const [showRegenerate, setShowRegenerate] = useState(false)
+  const [showWorkflowLaunch, setShowWorkflowLaunch] = useState(false)
+  const toggleSiteMutation = useMutation(
+    consoleQuery.apps.byAppId.siteEnable.post.mutationOptions({
+      scope: {
+        id: `app-web-app-toggle:${appInfo.id}`,
+      },
+      onError: () => {
+        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      },
+    }),
+  )
+  const resetSiteAccessToken = useMutation(
+    consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
+      onSuccess: () => setShowRegenerate(false),
+      onError: () => {
+        toast.error(t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }))
+        setShowRegenerate(false)
+      },
+    }),
+  )
+  const site = appInfo.site
+  const siteAvailability = site ? availability : 'unavailable'
+  const { webApp: webAppUrl } = getBuiltInAccessUrls(appInfo)
+  const pendingEnabled = toggleSiteMutation.variables?.body.enable_site
+  const optimisticEnabled =
+    toggleSiteMutation.isPending && pendingEnabled !== undefined
+      ? pendingEnabled
+      : appInfo.enable_site
+  const running = siteAvailability === 'available' && optimisticEnabled
+  const actionsAvailable = running && Boolean(webAppUrl) && !toggleSiteMutation.isPending
+  const supportsEmbedded = appInfo.mode !== 'completion' && appInfo.mode !== 'workflow'
+  const hiddenLaunchVariables = getHiddenStartInputs(workflow)
+  const { data: accessSubjects } = useAppWhiteListSubjects(
+    appInfo.id,
+    showAccessControl &&
+      canManageAccessPoint &&
+      appInfo.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
+  )
+  const accessConfigured =
+    !accessSubjects ||
+    appInfo.access_mode !== AccessMode.SPECIFIC_GROUPS_MEMBERS ||
+    Boolean(accessSubjects?.groups?.length || accessSubjects?.members?.length)
+  const { data: userCanAccessApp, refetch: refetchUserCanAccessApp } = useGetUserCanAccessApp({
+    appId: appInfo.id,
+    enabled: showAccessControl,
+  })
+  const noAccessPermission =
+    showAccessControl &&
+    (appInfo.access_mode === null ||
+      (appInfo.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result))
+
+  const handleRegenerate = () => {
+    if (!canManageAccessPoint || resetSiteAccessToken.isPending) return
+
+    resetSiteAccessToken.mutate({ params: { app_id: appInfo.id } })
+  }
+
+  const handleEnabledChange = (enabled: boolean) => {
+    if (!canManageAccessPoint) return
+
+    toggleSiteMutation.mutate({
+      params: {
+        app_id: appInfo.id,
+      },
+      body: {
+        enable_site: enabled,
+      },
+    })
+  }
+
+  const status = getAccessPointStatus(siteAvailability, running)
+  const statusLabel = useAccessPointStatusLabel(status)
+
+  return (
+    <>
+      <AccessPointCard
+        title={t(($) => $['agentDetail.access.webApp.title'], { ns: 'agentV2' })}
+        description={t(($) => $['studio.accessPoint.webAppDescription'], {
+          ns: 'deployments',
+        })}
+        icon={<AppIcon size="large" icon={appInfo} />}
+        status={status}
+        statusLabel={statusLabel}
+        highlighted={highlighted}
+        switchDisabled={!canManageAccessPoint}
+        switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
+        onEnabledChange={siteAvailability === 'available' ? handleEnabledChange : undefined}
+        actions={
+          <>
+            {hiddenLaunchVariables.length > 0 && (
+              <Button
+                className="flex items-center gap-1 px-3"
+                variant="secondary"
+                disabled={!actionsAvailable || !canManageAccessPoint}
+                onClick={() => setShowWorkflowLaunch(true)}
+              >
+                <span aria-hidden className="i-ri-settings-2-line size-4" />
+                {t(($) => $['operation.config'], { ns: 'common' })}
+              </Button>
+            )}
+            {supportsEmbedded && (
+              <Dialog>
+                <DialogTrigger
+                  disabled={!actionsAvailable || !canManageAccessPoint || !site?.access_token}
+                  render={<Button variant="secondary" className="px-3" />}
+                >
+                  <span aria-hidden className="i-ri-window-line size-4" />
+                  {t(($) => $['studio.accessPoint.embedIntoSite'], { ns: 'deployments' })}
+                </DialogTrigger>
+                {site?.access_token && (
+                  <EmbeddedDialogContent
+                    siteInfo={site}
+                    appBaseUrl={site.app_base_url}
+                    accessToken={site.access_token}
+                    hiddenInputs={hiddenLaunchVariables}
+                  />
+                )}
+              </Dialog>
+            )}
+            <CustomizeDialog
+              appId={appInfo.id}
+              api_base_url={appInfo.api_base_url}
+              mode={appInfo.mode}
+              disabled={!actionsAvailable || !canManageAccessPoint}
+            />
+            <SettingsDialog
+              key={appInfo.id}
+              isChat={appInfo.mode !== 'completion' && appInfo.mode !== 'workflow'}
+              canDeploy={canDeploy}
+              appInfo={site ? { id: appInfo.id, mode: appInfo.mode, site } : undefined}
+              disabled={siteAvailability !== 'available' || !canManageAccessPoint}
+              onSave={onSaveSiteConfig}
+            />
+          </>
+        }
+      >
+        <AccessPointUrl
+          label={t(($) => $['agentDetail.access.webApp.accessUrl'], { ns: 'agentV2' })}
+          value={webAppUrl}
+          enabled={running}
+          loading={siteAvailability === 'loading'}
+          unavailable={siteAvailability === 'unavailable'}
+          unavailableLabel={t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], {
+            ns: 'deployments',
+          })}
+          showOpen
+          showQrCode
+          showRegenerate
+          openLabel={t(($) => $['studio.accessPoint.open'], { ns: 'deployments' })}
+          openDisabledReason={
+            noAccessPermission ? t(($) => $.noAccessPermission, { ns: 'app' }) : undefined
+          }
+          openUrl={actionsAvailable && !noAccessPermission ? webAppUrl : undefined}
+          regenerateLabel={t(($) => $['overview.appInfo.regenerate'], {
+            ns: 'appOverview',
+          })}
+          regenerateDisabled={!site || !canManageAccessPoint}
+          regenerating={resetSiteAccessToken.isPending}
+          onRegenerate={() => setShowRegenerate(true)}
+        />
+        {showAccessControl &&
+          (siteAvailability === 'available' && appInfo.access_mode !== null ? (
+            <WebAppAccessControlEntry
+              accessConfigured={accessConfigured}
+              accessIcon={ACCESS_MODE_ICON_MAP[appInfo.access_mode]}
+              accessLabel={t(ACCESS_MODE_LABEL_MAP[appInfo.access_mode], { ns: 'app' })}
+              disabled={!canManageAccessPoint}
+              onClick={() => setShowAccess(true)}
+            />
+          ) : (
+            <WebAppAccessControlEntrySkeleton loading={siteAvailability === 'loading'} />
+          ))}
+      </AccessPointCard>
+
+      {showAccess && (
+        <AccessControl
+          app={appInfo}
+          onClose={() => setShowAccess(false)}
+          onConfirm={async () => {
+            await Promise.all([onRefreshApp(), refetchUserCanAccessApp()])
+            setShowAccess(false)
+          }}
+        />
+      )}
+      <WorkflowLaunchDialog
+        hiddenVariables={hiddenLaunchVariables}
+        launchDisabled={noAccessPermission}
+        open={showWorkflowLaunch}
+        targetUrl={webAppUrl}
+        onOpenChange={setShowWorkflowLaunch}
+      />
+      <AlertDialog open={showRegenerate} onOpenChange={(open) => !open && setShowRegenerate(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(($) => $['overview.appInfo.regenerateNotice'], { ns: 'appOverview' })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              disabled={resetSiteAccessToken.isPending}
+              onClick={handleRegenerate}
+            >
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}

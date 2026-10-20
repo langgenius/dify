@@ -3,16 +3,10 @@ import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing, NodeTracingListResponse } from '@/types/workflow'
 import { useEffect } from 'react'
-import { useStore } from '@/app/components/app/store'
+import { fn } from 'storybook/test'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { BlockEnum } from '@/app/components/workflow/types'
 import MessageLogModal from '.'
-
-const SAMPLE_APP_DETAIL = {
-  id: 'app-demo-1',
-  name: 'Support Assistant',
-  mode: 'chat',
-} as any
 
 const mockRunDetail: WorkflowRunDetailResponse = {
   id: 'run-demo-1',
@@ -96,9 +90,6 @@ const mockCurrentLogItem: IChatItem = {
 
 const useMessageLogMocks = () => {
   useEffect(() => {
-    const store = useStore.getState()
-    store.setAppDetail(SAMPLE_APP_DETAIL)
-
     const originalFetch = globalThis.fetch?.bind(globalThis) ?? null
 
     const handle = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -124,11 +115,10 @@ const useMessageLogMocks = () => {
       throw new Error(`Unmocked fetch call for ${url}`)
     }
 
-    globalThis.fetch = handle as typeof globalThis.fetch
+    globalThis.fetch = handle
 
     return () => {
       globalThis.fetch = originalFetch || globalThis.fetch
-      useStore.getState().setAppDetail(undefined)
     }
   }, [])
 }
@@ -139,7 +129,7 @@ const MessageLogPreview = (props: MessageLogModalProps) => {
   useMessageLogMocks()
 
   return (
-    <div className="relative min-h-[640px] w-full bg-background-default-subtle p-6">
+    <div className="relative min-h-160 w-full bg-background-default-subtle p-6">
       <WorkflowContextProvider>
         <MessageLogModal {...props} currentLogItem={mockCurrentLogItem} />
       </WorkflowContextProvider>
@@ -160,12 +150,11 @@ const meta = {
     },
   },
   args: {
+    appId: 'app-demo-1',
     defaultTab: 'DETAIL',
     width: 960,
     fixedWidth: true,
-    onCancel: () => {
-      console.log('Modal closed')
-    },
+    onCancel: fn(),
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof MessageLogPreview>

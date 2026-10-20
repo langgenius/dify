@@ -3,8 +3,15 @@ import type { FormRefObject, FormSchema } from '@/app/components/base/form/types
 import type { ParametersSchema, PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { isEqual } from 'es-toolkit/predicate'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +19,7 @@ import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
+import { toast } from '@/app/notifications'
 import { useUpdateTriggerSubscription, useVerifyTriggerSubscription } from '@/service/use-triggers'
 import { parsePluginErrorMessage } from '@/utils/error-parser'
 import { usePluginStore } from '../../store'
@@ -97,7 +105,7 @@ const MultiSteps = ({
   currentStep: EditStep
   onStepClick?: (step: EditStep) => void
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pluginTrigger'])
   return (
     <div className="mb-6 flex w-1/3 items-center gap-2">
       <StatusStep
@@ -116,7 +124,7 @@ const MultiSteps = ({
 }
 
 export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pluginTrigger'])
   const detail = usePluginStore((state) => state.detail)
   const { refetch } = useSubscriptionList()
 
@@ -168,9 +176,9 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
           setVerifiedCredentials(areAllCredentialsHidden(credentials) ? null : credentials)
           setCurrentStep(EditStep.EditConfiguration)
         },
-        onError: async (error: unknown) => {
+        onError: (error: unknown) => {
           const errorMessage =
-            (await parsePluginErrorMessage(error)) ||
+            parsePluginErrorMessage(error) ||
             t(($) => $['modal.apiKey.verify.error'], { ns: 'pluginTrigger' })
           toast.error(errorMessage)
         },
@@ -206,15 +214,12 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       },
       {
         onSuccess: () => {
-          toast.success(
-            t(($) => $['subscription.list.item.actions.edit.success'], { ns: 'pluginTrigger' }),
-          )
           refetch?.()
           onClose()
         },
-        onError: async (error: unknown) => {
+        onError: (error: unknown) => {
           const errorMessage =
-            (await parsePluginErrorMessage(error)) ||
+            parsePluginErrorMessage(error) ||
             t(($) => $['subscription.list.item.actions.edit.error'], { ns: 'pluginTrigger' })
           toast.error(errorMessage)
         },
@@ -257,7 +262,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
   const credentialsFormSchemas: FormSchema[] = useMemo(() => {
     return apiKeyCredentialsSchema.map((schema) => ({
       ...schema,
-      type: normalizeFormType(schema.type as string),
+      type: normalizeFormType(schema.type),
       tooltip: schema.help,
       default: subscription.credentials?.[schema.name] || schema.default,
     }))
@@ -265,7 +270,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
 
   const parametersFormSchemas: FormSchema[] = useMemo(() => {
     return parametersSchema.map((schema: ParametersSchema) => {
-      const normalizedType = normalizeFormType(schema.type as string)
+      const normalizedType = normalizeFormType(schema.type)
       return {
         ...schema,
         type: normalizedType,
@@ -323,84 +328,67 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
         if (!open) onClose()
       }}
     >
-      <DialogContent backdropProps={{ forceRender: true }} className="p-0">
-        <div
-          data-testid="modal"
-          data-title={title}
-          data-disabled={isDisabled}
-          className="flex max-h-[80dvh] flex-col"
-        >
-          <div className="relative shrink-0 p-6 pr-14 pb-3">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">{title}</DialogTitle>
-            <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
-          </div>
-          <div data-testid="modal-content" className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
-            {pluginDetail && <ReadmeEntrance pluginDetail={pluginDetail} presentation="dialog" />}
+      <DialogContent backdropProps={{ forceRender: true }}>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
+          {pluginDetail && <ReadmeEntrance pluginDetail={pluginDetail} presentation="dialog" />}
 
-            <MultiSteps currentStep={currentStep} onStepClick={handleBack} />
+          <MultiSteps currentStep={currentStep} onStepClick={handleBack} />
 
-            {currentStep === EditStep.EditCredentials ? (
-              <div className="mb-4">
-                {credentialsFormSchemas.length > 0 && (
-                  <BaseForm
-                    formSchemas={credentialsFormSchemas}
-                    ref={credentialsFormRef}
-                    labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
-                    formClassName="space-y-4"
-                    preventDefaultSubmit={true}
-                  />
-                )}
-              </div>
-            ) : (
-              <div className="max-h-[70vh]">
+          {currentStep === EditStep.EditCredentials ? (
+            <div className="mb-4">
+              {credentialsFormSchemas.length > 0 && (
                 <BaseForm
-                  formSchemas={basicFormSchemas}
-                  ref={basicFormRef}
+                  key="credentials"
+                  formSchemas={credentialsFormSchemas}
+                  ref={credentialsFormRef}
                   labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
-                  formClassName="space-y-4 mb-4"
+                  formClassName="space-y-4"
+                  preventDefaultSubmit={true}
                 />
-
-                {parametersFormSchemas.length > 0 && (
-                  <BaseForm
-                    formSchemas={parametersFormSchemas}
-                    ref={parametersFormRef}
-                    labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
-                    formClassName="space-y-4"
-                  />
-                )}
-              </div>
-            )}
-          </div>
-          <div className="flex shrink-0 justify-between p-6 pt-5">
-            <div />
-            <div className="flex items-center">
-              {currentStep === EditStep.EditConfiguration && (
-                <>
-                  <Button variant="secondary" onClick={handleBack} disabled={isDisabled}>
-                    {t(($) => $['modal.common.back'], { ns: 'pluginTrigger' })}
-                  </Button>
-                  <div className="mx-3 h-4 w-px bg-divider-regular"></div>
-                </>
               )}
-              <Button onClick={onClose} disabled={isDisabled}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
-              <Button
-                className="ml-2"
-                variant="primary"
-                onClick={handleConfirm}
-                disabled={isDisabled}
-              >
-                {confirmButtonText}
-              </Button>
             </div>
-          </div>
-          {currentStep === EditStep.EditCredentials && (
-            <div data-testid="modal-bottom-slot" className="shrink-0">
-              <EncryptedBottom />
+          ) : (
+            <div className="max-h-[70vh]">
+              <BaseForm
+                key="configuration"
+                formSchemas={basicFormSchemas}
+                ref={basicFormRef}
+                labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
+                formClassName="space-y-4 mb-4"
+              />
+
+              {parametersFormSchemas.length > 0 && (
+                <BaseForm
+                  formSchemas={parametersFormSchemas}
+                  ref={parametersFormRef}
+                  labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
+                  formClassName="space-y-4"
+                />
+              )}
             </div>
           )}
-        </div>
+        </DialogBody>
+        <DialogFooter>
+          {currentStep === EditStep.EditConfiguration && (
+            <>
+              <Button variant="secondary" onClick={handleBack} disabled={isDisabled}>
+                {t(($) => $['modal.common.back'], { ns: 'pluginTrigger' })}
+              </Button>
+              <div className="mx-1 h-4 w-px bg-divider-regular"></div>
+            </>
+          )}
+          <Button onClick={onClose} disabled={isDisabled}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
+          <Button variant="primary" onClick={handleConfirm} disabled={isDisabled}>
+            {confirmButtonText}
+          </Button>
+        </DialogFooter>
+        {currentStep === EditStep.EditCredentials && <EncryptedBottom />}
       </DialogContent>
     </Dialog>
   )

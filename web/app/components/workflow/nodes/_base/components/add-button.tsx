@@ -14,7 +14,7 @@ type Props = Readonly<{
 const AddButton: FC<Props> = ({ className, text, onClick }) => {
   return (
     <Button className={cn('w-full', className)} variant="tertiary" size="medium" onClick={onClick}>
-      <RiAddLine className="mr-1 size-3.5" />
+      <RiAddLine className="size-3.5" />
       <div>{text}</div>
     </Button>
   )

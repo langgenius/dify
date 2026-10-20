@@ -2,9 +2,18 @@ import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import useDocumentTitle from './use-document-title'
 
 describe('useDocumentTitle', () => {
-  it('keeps the title empty while system features are pending', () => {
+  let originalTitle: string
+  beforeEach(() => {
+    originalTitle = document.title
+  })
+  afterEach(() => {
+    document.title = originalTitle
+  })
+
+  it('preserves route metadata while system features are pending', () => {
+    document.title = 'Route title'
     renderHookWithConsoleQuery(() => useDocumentTitle('Settings'), { systemFeatures: null })
-    expect(document.title).toBe('')
+    expect(document.title).toBe('Route title')
   })
 
   it('uses the default product name', () => {
@@ -23,5 +32,35 @@ describe('useDocumentTitle', () => {
     expect(document.title).toBe('Settings - Acme')
     rerender({ title: '' })
     expect(document.title).toBe('Acme')
+  })
+
+  it('preserves route metadata when no client title is provided', () => {
+    document.title = 'Route title - Dify'
+
+    renderHookWithConsoleQuery(() => useDocumentTitle(null))
+
+    expect(document.title).toBe('Route title - Dify')
+  })
+
+  it('does not mutate framework-owned favicon metadata', () => {
+    const favicon = document.createElement('link')
+    favicon.rel = 'icon'
+    favicon.href = '/favicon.ico'
+    document.head.appendChild(favicon)
+    onTestFinished(() => favicon.remove())
+
+    renderHookWithConsoleQuery(() => useDocumentTitle('Settings'), {
+      systemFeatures: {
+        branding: {
+          application_title: 'Acme',
+          enabled: true,
+          favicon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>',
+        },
+      },
+    })
+
+    expect(favicon.isConnected).toBe(true)
+    expect(favicon).toHaveAttribute('rel', 'icon')
+    expect(favicon).toHaveAttribute('href', '/favicon.ico')
   })
 })

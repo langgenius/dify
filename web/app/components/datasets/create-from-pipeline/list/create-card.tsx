@@ -1,19 +1,24 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiAddCircleLine } from '@remixicon/react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
-import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { consoleQuery } from '@/service/console'
 
 const CreateCard = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const { push } = useRouter()
 
-  const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()
-  const invalidDatasetList = useInvalidDatasetList()
+  const { mutateAsync: createEmptyDataset } = useMutation(
+    consoleQuery.rag.pipeline.emptyDataset.post.mutationOptions(),
+  )
+  const queryClient = useQueryClient()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
 
   const handleCreate = useCallback(async () => {
     await createEmptyDataset(undefined, {
@@ -36,7 +41,7 @@ const CreateCard = () => {
 
   return (
     <div
-      className="group relative flex h-[132px] cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3"
+      className="group relative flex h-33 cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3"
       onClick={handleCreate}
     >
       <div className="flex items-center gap-x-3 p-4 pb-2">

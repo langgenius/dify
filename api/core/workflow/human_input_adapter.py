@@ -21,6 +21,7 @@ from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from graphon.runtime import VariablePool
 from graphon.variables.consts import SELECTORS_LENGTH
+from graphon.variables.template_resolution import convert_template
 
 
 class DeliveryMethodType(enum.StrEnum):
@@ -116,7 +117,7 @@ class EmailDeliveryConfig(BaseModel):
         templated_body = cls.replace_url_placeholder(body, url)
         if variable_pool is None:
             return templated_body
-        return variable_pool.convert_template(templated_body).text
+        return convert_template(variable_pool, templated_body).text
 
     @classmethod
     def render_markdown_body(cls, body: str) -> str:
@@ -236,6 +237,8 @@ def adapt_node_data_for_graph(node_data: Mapping[str, Any] | BaseModel) -> dict[
         raise TypeError(f"node data must be a mapping, got {type(node_data).__name__}")
 
     node_type = normalized.get("type")
+    if node_type == BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR:
+        normalized["type"] = BuiltinNodeTypes.VARIABLE_AGGREGATOR
     if node_type == BuiltinNodeTypes.HUMAN_INPUT:
         return adapt_human_input_node_data_for_graph(normalized)
     if node_type == BuiltinNodeTypes.TOOL:

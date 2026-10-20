@@ -30,7 +30,7 @@ from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 AGENT_STUB_TOKEN_ISSUER = "dify-agent-server"
 AGENT_STUB_TOKEN_AUDIENCE = "dify-agent-agent-stub"
 AGENT_STUB_TOKEN_SCOPE_CONNECT = "agent_stub:connect"
-AGENT_STUB_TOKEN_TTL_SECONDS = 24 * 60 * 60
+AGENT_STUB_TOKEN_TTL_SECONDS = 5 * 60
 _AGENT_STUB_JWE_PURPOSE = b"dify-agent:agent-stub:jwe:v1"
 _REQUIRED_SERVER_SECRET_BYTES = 32
 _BASE64URL_TEXT_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
@@ -39,6 +39,10 @@ _DEFAULT_SERVER_SECRET_ENV_VAR = "DIFY_AGENT_SERVER_SECRET_KEY"
 
 class AgentStubTokenError(RuntimeError):
     """Raised when an Agent Stub bearer token is missing or invalid."""
+
+
+class AgentStubTokenExpiredError(AgentStubTokenError):
+    """Raised when an otherwise valid Agent Stub bearer token has expired."""
 
 
 class AgentStubShellClaims(BaseModel):
@@ -100,7 +104,7 @@ class AgentStubTokenCodec:
         session_id: str | None = None,
         now: int | None = None,
     ) -> AgentStubTokenClaims:
-        """Build the fixed-24h claim set for one Agent Stub connection token."""
+        """Build the fixed-five-minute claim set for one Agent Stub connection token."""
         issued_at = _timestamp(now)
         shell_claims = AgentStubShellClaims(session_id=session_id) if session_id is not None else None
         return AgentStubTokenClaims(
@@ -122,7 +126,7 @@ class AgentStubTokenCodec:
         session_id: str | None = None,
         now: int | None = None,
     ) -> str:
-        """Encode one fixed-24h Agent Stub compact JWE bearer token."""
+        """Encode one fixed-five-minute Agent Stub compact JWE bearer token."""
         return self.encode_claims(self.build_connection_claims(execution_context, session_id=session_id, now=now))
 
     def encode_claims(self, claims: AgentStubTokenClaims) -> str:
@@ -198,12 +202,16 @@ def _validate_claims(claims: AgentStubTokenClaims, *, now: int) -> None:
         raise AgentStubTokenError(f"Agent Stub bearer token issuer must be {AGENT_STUB_TOKEN_ISSUER!r}")
     if claims.aud != AGENT_STUB_TOKEN_AUDIENCE:
         raise AgentStubTokenError(f"Agent Stub bearer token audience must be {AGENT_STUB_TOKEN_AUDIENCE!r}")
+    if claims.exp <= claims.iat:
+        raise AgentStubTokenError("Agent Stub bearer token expiration must be after its issue time")
+    if claims.exp - claims.iat > AGENT_STUB_TOKEN_TTL_SECONDS:
+        raise AgentStubTokenError("Agent Stub bearer token lifetime exceeds the maximum allowed lifetime")
+    if AGENT_STUB_TOKEN_SCOPE_CONNECT not in claims.scope:
+        raise AgentStubTokenError(f"Agent Stub bearer token scope must include {AGENT_STUB_TOKEN_SCOPE_CONNECT!r}")
     if now < claims.nbf:
         raise AgentStubTokenError("Agent Stub bearer token is not valid yet")
     if now >= claims.exp:
-        raise AgentStubTokenError("Agent Stub bearer token is expired")
-    if AGENT_STUB_TOKEN_SCOPE_CONNECT not in claims.scope:
-        raise AgentStubTokenError(f"Agent Stub bearer token scope must include {AGENT_STUB_TOKEN_SCOPE_CONNECT!r}")
+        raise AgentStubTokenExpiredError("Agent Stub bearer token is expired")
 
 
 def _hkdf_sha256(input_key_material: bytes, *, info: bytes, length: int) -> bytes:
@@ -249,6 +257,7 @@ __all__ = [
     "AgentStubTokenClaims",
     "AgentStubTokenCodec",
     "AgentStubTokenError",
+    "AgentStubTokenExpiredError",
     "decode_server_secret_key",
     "derive_agent_stub_jwe_key",
 ]

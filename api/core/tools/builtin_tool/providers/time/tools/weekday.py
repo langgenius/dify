@@ -19,7 +19,7 @@ class WeekdayTool(BuiltinTool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         Calculate the day of the week for a given date
         """
@@ -35,20 +35,23 @@ class WeekdayTool(BuiltinTool):
             return
 
         weekday_name = calendar.day_name[date_obj.weekday()]
-        month_name = calendar.month_name[month]
+        month_name = calendar.month_name[date_obj.month]
         readable_date = f"{month_name} {date_obj.day}, {date_obj.year}"
         yield self.create_text_message(f"{readable_date} is {weekday_name}.")
 
     @staticmethod
     def convert_datetime(year, month, day) -> datetime | None:
         try:
-            # allowed range in datetime module
-            if not (year >= 1 and 1 <= month <= 12 and 1 <= day <= 31):
+            if year is None or month is None or day is None:
                 return None
 
             year = int(year)
             month = int(month)
             day = int(day)
+            # allowed range in datetime module
+            if not (year >= 1 and 1 <= month <= 12 and 1 <= day <= 31):
+                return None
+
             return datetime(year, month, day)
-        except ValueError:
+        except (TypeError, ValueError):
             return None

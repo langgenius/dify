@@ -1,5 +1,4 @@
 'use client'
-import type { Placement } from '@langgenius/dify-ui/popover'
 import type { ReactElement, Ref } from 'react'
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
@@ -33,7 +32,6 @@ type TriggerProps =
 
 type Props = Readonly<{
   disabled?: boolean
-  placement?: Placement
   scope?: string
   value?: ToolValue
   selectedTools?: ToolValue[]
@@ -55,7 +53,6 @@ function ToolSelector({
   selectedTools,
   isEdit,
   disabled,
-  placement = 'left',
   onSelect,
   onSelectMultiple,
   onDelete,
@@ -71,7 +68,7 @@ function ToolSelector({
   nodeId = '',
   triggerRef,
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const {
     isShow,
     setIsShow,
@@ -109,7 +106,7 @@ function ToolSelector({
   }
 
   const renderErrorTip = () => (
-    <div className="max-w-[240px] space-y-1 text-xs">
+    <div className="max-w-60 space-y-1 text-xs">
       <h3 className="font-semibold text-text-primary">
         {currentTool
           ? t(($) => $['detailPanel.toolSelector.uninstalledTitle'], { ns: 'plugin' })
@@ -171,13 +168,13 @@ function ToolSelector({
       ) : null}
 
       <PopoverContent
-        placement={placement}
+        placement="left"
         sideOffset={4}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div
           className={cn(
-            'relative max-h-[642px] min-h-20 w-[361px] rounded-xl',
+            'relative max-h-160.5 min-h-20 w-90.25 rounded-xl',
             'border-[0.5px] border-components-panel-border bg-components-panel-bg-blur',
             'overflow-y-auto pb-4 shadow-lg backdrop-blur-xs',
           )}

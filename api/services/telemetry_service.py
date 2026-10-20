@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from enums import DeploymentEdition
 from libs.datetime_utils import naive_utc_now
 from models.model import DifySetup
 
@@ -74,8 +75,7 @@ class CommunityTelemetryService:
     @classmethod
     def _is_enabled(cls) -> bool:
         return (
-            dify_config.EDITION == "SELF_HOSTED"
-            and not dify_config.ENTERPRISE_ENABLED
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.COMMUNITY
             and not dify_config.DISABLE_TELEMETRY
             and not dify_config.DO_NOT_TRACK
             and not dify_config.CI
@@ -88,7 +88,7 @@ class CommunityTelemetryService:
             "event": event,
             "instance_id": setup.instance_id or "",
             "version": setup.version if event == "install" else dify_config.project.version,
-            "edition": dify_config.EDITION,
+            "edition": dify_config.DEPLOYMENT_EDITION.value,
             "deployment_type": "unknown",
             "schema_version": SCHEMA_VERSION,
             "os": cls._normalize_os(platform.system()),
@@ -135,10 +135,7 @@ class CommunityTelemetryService:
         if setup.instance_id is None:
             return False
 
-        if setup.last_heartbeat_at is not None and setup.last_heartbeat_at.date() >= now.date():
-            return False
-
-        return True
+        return not (setup.last_heartbeat_at is not None and setup.last_heartbeat_at.date() >= now.date())
 
     @staticmethod
     def _format_datetime(value: datetime) -> str:

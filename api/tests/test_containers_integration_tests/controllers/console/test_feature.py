@@ -8,7 +8,8 @@ from unittest.mock import patch
 from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
-from services.feature_service import FeatureModel, FeatureService, LimitationModel
+from services.entities.feature_entities import FeatureModel, LimitationModel
+from services.feature_service import FeatureService
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
     create_console_account_and_tenant,

@@ -1,0 +1,46 @@
+"""External ports used by the change-email application service."""
+
+from typing import Protocol
+
+from services.entities.account_entities import AccountChangeEmailPhase, AccountChangeEmailTokenData
+
+
+class ChangeEmailTokenGateway(Protocol):
+    def get(self, token: str) -> AccountChangeEmailTokenData | None: ...
+
+    def issue(self, token_data: AccountChangeEmailTokenData) -> str: ...
+
+    def revoke(self, token: str) -> None: ...
+
+
+class ChangeEmailCodeGenerator(Protocol):
+    def generate(self) -> str: ...
+
+
+class ChangeEmailNotificationGateway(Protocol):
+    def send_code(self, *, email: str, code: str, language: str, phase: AccountChangeEmailPhase) -> None: ...
+
+    def send_completed(self, *, email: str, language: str) -> None: ...
+
+
+class ChangeEmailSendLimiter(Protocol):
+    def is_limited(self, email: str) -> bool: ...
+
+    def record(self, email: str) -> None: ...
+
+    @property
+    def retry_after_minutes(self) -> int: ...
+
+
+class ChangeEmailSecurityGateway(Protocol):
+    def is_ip_limited(self, ip_address: str) -> bool: ...
+
+    def is_verification_limited(self, email: str) -> bool: ...
+
+    def record_verification_failure(self, email: str) -> None: ...
+
+    def reset_verification_failures(self, email: str) -> None: ...
+
+
+class AccountEmailPolicyGateway(Protocol):
+    def is_frozen(self, email: str) -> str | None: ...

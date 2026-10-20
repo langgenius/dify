@@ -1,5 +1,6 @@
 # base image
-FROM node:22.22.1-alpine AS base
+ARG NODE_VERSION=24.20.0
+FROM node:${NODE_VERSION}-alpine AS base
 LABEL maintainer="takatost@gmail.com"
 
 # if you located in China, you can use aliyun mirror to speed up
@@ -31,7 +32,7 @@ COPY packages /app/packages
 RUN corepack install
 
 # Install workspace dependencies for the Docker build environment.
-RUN VITE_GIT_HOOKS=0 pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # build resources
 FROM base AS builder

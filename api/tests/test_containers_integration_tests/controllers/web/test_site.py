@@ -7,15 +7,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
 
-from configs import dify_config
+from controllers.web.error import WebAppNotFoundError
 from controllers.web.site import AppSiteApi, WebAppSiteResponse, WebModelConfigResponse
-from extensions.storage.storage_type import StorageType
 from models import Tenant, TenantStatus
 from models.account import TenantCustomConfigDict
 from models.model import App, AppMode, AppModelConfig, CustomizeTokenStrategy, EndUser, Site
-from services.feature_service import FeatureModel
+from services.entities.feature_entities import FeatureModel
 
 
 @pytest.fixture
@@ -81,7 +79,7 @@ def _site_model(*, app_id: str) -> Site:
 
 
 class TestAppSiteApi:
-    @patch("controllers.web.site.FeatureService.get_features")
+    @patch("services.feature_service.FeatureService.get_features")
     def test_happy_path(self, mock_features: MagicMock, app: Flask, db_session_with_containers: Session) -> None:
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
         tenant = _create_tenant(db_session_with_containers)
@@ -99,50 +97,17 @@ class TestAppSiteApi:
         assert result["enable_site"] is True
         assert result["mode"] == AppMode.CHAT
 
-    @patch("controllers.web.site.FileService.get_file_presigned_url")
-    @patch("controllers.web.site.FeatureService.get_features")
-    def test_image_icon_uses_s3_presigned_url(
-        self,
-        mock_features: MagicMock,
-        mock_get_file_presigned_url: MagicMock,
-        app: Flask,
-        db_session_with_containers: Session,
-    ) -> None:
-        app.config["RESTX_MASK_HEADER"] = "X-Fields"
-        tenant = _create_tenant(db_session_with_containers)
-        app_model = _create_app(db_session_with_containers, tenant.id)
-        site = _create_site(db_session_with_containers, app_model.id)
-        site.icon_type = "image"
-        site.icon = "11111111-1111-4111-8111-111111111111"
-        db_session_with_containers.commit()
-        end_user = _end_user(tenant.id, app_model.id)
-        mock_features.return_value = FeatureModel(can_replace_logo=False)
-        mock_get_file_presigned_url.return_value = "https://s3.example.com/icon.png?signature=test"
-
-        with (
-            patch.object(dify_config, "EDITION", "CLOUD"),
-            patch.object(dify_config, "STORAGE_TYPE", StorageType.S3),
-            app.test_request_context("/site"),
-        ):
-            result = AppSiteApi().get(app_model, end_user)
-
-        assert result["site"]["icon_url"] == "https://s3.example.com/icon.png?signature=test"
-        mock_get_file_presigned_url.assert_called_once_with(
-            file_id="11111111-1111-4111-8111-111111111111",
-            tenant_id=tenant.id,
-        )
-
-    def test_missing_site_raises_forbidden(self, app: Flask, db_session_with_containers: Session) -> None:
+    def test_missing_site_raises_not_found(self, app: Flask, db_session_with_containers: Session) -> None:
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
         tenant = _create_tenant(db_session_with_containers)
         app_model = _create_app(db_session_with_containers, tenant.id)
         end_user = _end_user(tenant.id, app_model.id)
 
         with app.test_request_context("/site"):
-            with pytest.raises(Forbidden):
+            with pytest.raises(WebAppNotFoundError):
                 AppSiteApi().get(app_model, end_user)
 
-    def test_archived_tenant_raises_forbidden(self, app: Flask, db_session_with_containers: Session) -> None:
+    def test_archived_tenant_raises_not_found(self, app: Flask, db_session_with_containers: Session) -> None:
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
         tenant = _create_tenant(db_session_with_containers, status=TenantStatus.ARCHIVE)
         app_model = _create_app(db_session_with_containers, tenant.id)
@@ -150,7 +115,7 @@ class TestAppSiteApi:
         end_user = _end_user(tenant.id, app_model.id)
 
         with app.test_request_context("/site"):
-            with pytest.raises(Forbidden):
+            with pytest.raises(WebAppNotFoundError):
                 AppSiteApi().get(app_model, end_user)
 
 

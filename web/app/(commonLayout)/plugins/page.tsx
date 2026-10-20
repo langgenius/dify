@@ -1,7 +1,4 @@
 import type { LegacyPluginsSearchParams } from '@/app/components/plugins/plugin-routes'
-import Marketplace from '@/app/components/plugins/marketplace'
-import PluginPage from '@/app/components/plugins/plugin-page'
-import PluginsPanel from '@/app/components/plugins/plugin-page/plugins-panel'
 import {
   getFirstPackageIdFromSearchParams,
   getInstallRedirectPathByPluginCategory,
@@ -60,14 +57,7 @@ const PluginList = async ({ searchParams }: PluginListProps) => {
 
   const redirectPath = getLegacyPluginRedirectPath(resolvedSearchParams)
 
-  if (redirectPath) redirect(redirectPath)
-
-  return (
-    <PluginPage
-      plugins={<PluginsPanel />}
-      marketplace={<Marketplace showInstallButton pluginTypeSwitchClassName="top-[60px]" />}
-    />
-  )
+  redirect(redirectPath)
 }
 
 export default PluginList

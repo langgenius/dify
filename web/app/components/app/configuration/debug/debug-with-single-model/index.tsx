@@ -1,27 +1,30 @@
-import type { InputForm } from '@/app/components/base/chat/chat/type'
+import type { Ref } from 'react'
+import type { IChatItem, InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import { Avatar } from '@langgenius/dify-ui/avatar'
-import { useAtomValue } from 'jotai'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useImperativeHandle, useMemo } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { toast } from '@/app/components/app/configuration/toast'
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { userProfileAtom } from '@/context/account-state'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   fetchConversationMessages,
   fetchSuggestedQuestions,
   stopChatMessageResponding,
 } from '@/service/debug'
-import { canFindTool } from '@/utils'
+import { getAvatarInitial } from '@/utils/avatar'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { useConfigFromDebugContext, useFormattingChangedSubscription } from '../hooks'
 
 type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean
+  onOpenLog: (item: IChatItem) => void
+  chatContainerRef: Ref<HTMLDivElement>
 }
 export type DebugWithSingleModelRefType = {
   handleRestart: () => void
@@ -29,13 +32,19 @@ export type DebugWithSingleModelRefType = {
 const DebugWithSingleModel = ({
   ref,
   checkCanSend,
+  onOpenLog,
+  chatContainerRef,
 }: DebugWithSingleModelProps & {
-  ref: React.RefObject<DebugWithSingleModelRefType>
+  ref: Ref<DebugWithSingleModelRefType>
 }) => {
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const {
     readonly,
     canTestAndRun = false,
+    onOpenFeatures,
     modelConfig,
     appId,
     inputs,
@@ -45,7 +54,6 @@ const DebugWithSingleModel = ({
   } = useDebugConfigurationContext()
   const debugInputReadonly = !canTestAndRun
   const canManageAnnotation = !readonly && canTestAndRun
-  const { textGenerationModelList } = useProviderContext()
   const features = useFeatures((s) => s.features)
   const configTemplate = useConfigFromDebugContext()
   const config = useMemo(() => {
@@ -117,6 +125,7 @@ const DebugWithSingleModel = ({
       if ((config.file_upload as any)?.enabled && files?.length) data.files = files
 
       handleSend(`apps/${appId}/chat-messages`, data, {
+        onNotifyError: (message) => toast.error(message),
         onGetConversationMessages: (conversationId, getAbortController) =>
           fetchConversationMessages(appId, conversationId, getAbortController),
         onGetSuggestedQuestions: (responseItemId, getAbortController) =>
@@ -135,7 +144,6 @@ const DebugWithSingleModel = ({
       modelConfig.mode,
       modelConfig.model_id,
       modelConfig.provider,
-      textGenerationModelList,
     ],
   )
 
@@ -158,8 +166,8 @@ const DebugWithSingleModel = ({
   const allToolIcons = useMemo(() => {
     const icons: Record<string, any> = {}
     modelConfig.agentConfig.tools?.forEach((item: any) => {
-      icons[item.tool_name] = collectionList.find((collection: any) =>
-        canFindTool(collection.id, item.provider_id),
+      icons[item.tool_name] = collectionList.find((collection) =>
+        matchesProviderReference(collection, item.provider_id),
       )?.icon
     })
     return icons
@@ -170,8 +178,6 @@ const DebugWithSingleModel = ({
       handleRestart,
     }
   }, [handleRestart])
-
-  const setShowAppConfigureFeaturesModal = useAppStore((s) => s.setShowAppConfigureFeaturesModal)
 
   return (
     <Chat
@@ -185,7 +191,7 @@ const DebugWithSingleModel = ({
       showFeatureBar
       featureBarReadonly={readonly}
       showFileUpload={false}
-      onFeatureBarClick={setShowAppConfigureFeaturesModal}
+      onFeatureBarClick={onOpenFeatures}
       inputDisabled={!canTestAndRun}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
@@ -194,8 +200,14 @@ const DebugWithSingleModel = ({
       onRegenerate={doRegenerate}
       switchSibling={(siblingMessageId) => setTargetMessageId(siblingMessageId)}
       onStopResponding={handleStop}
-      showPromptLog
-      questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xl" />}
+      onOpenLog={onOpenLog}
+      chatContainerRef={chatContainerRef}
+      questionIcon={
+        <Avatar size="xl" role="img" aria-label={userProfile.name}>
+          <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+          <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+        </Avatar>
+      }
       allToolIcons={allToolIcons}
       onAnnotationEdited={canManageAnnotation ? handleAnnotationEdited : undefined}
       onAnnotationAdded={canManageAnnotation ? handleAnnotationAdded : undefined}

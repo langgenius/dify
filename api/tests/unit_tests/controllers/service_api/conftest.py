@@ -9,7 +9,6 @@ Service API controller tests.
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
-from unittest.mock import Mock
 
 import pytest
 from flask import Flask
@@ -19,7 +18,7 @@ from sqlalchemy.orm import Session
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.base import TypeBase
-from models.model import App, AppMode, EndUser
+from models.model import ApiToken, App, AppMode, EndUser, EndUserType
 
 
 @dataclass(frozen=True)
@@ -82,119 +81,122 @@ def mock_app_id():
 
 @pytest.fixture
 def mock_end_user(mock_tenant_id):
-    """Create a mock EndUser model with required attributes."""
-    user = Mock(spec=EndUser)
-    user.id = str(uuid.uuid4())
-    user.external_user_id = f"external_{uuid.uuid4().hex[:8]}"
-    user.tenant_id = mock_tenant_id
+    """Create a real EndUser model with required attributes."""
+    user = EndUser(
+        id=str(uuid.uuid4()),
+        external_user_id=f"external_{uuid.uuid4().hex[:8]}",
+        tenant_id=mock_tenant_id,
+        app_id=None,
+        type=EndUserType.SERVICE_API,
+        name="Service API User",
+        session_id=str(uuid.uuid4()),
+    )
     return user
 
 
 @pytest.fixture
 def mock_app_model(mock_app_id, mock_tenant_id):
-    """Create a mock App model with all required attributes for API testing."""
-    app = Mock(spec=App)
-    app.id = mock_app_id
-    app.tenant_id = mock_tenant_id
-    app.name = "Test App"
-    app.description = "A test application"
-    app.mode = AppMode.CHAT
-    app.author_name = "Test Author"
-    app.status = "normal"
-    app.enable_api = True
-    app.tags = []
-
-    # Mock workflow for workflow apps
-    app.workflow = None
-    app.app_model_config = None
-
+    """Create an App model with all required attributes for API testing."""
+    app = App(
+        id=mock_app_id,
+        tenant_id=mock_tenant_id,
+        name="Test App",
+        description="A test application",
+        mode=AppMode.CHAT,
+        status="normal",
+        enable_api=True,
+    )
     return app
 
 
 @pytest.fixture
 def mock_tenant(mock_tenant_id):
-    """Create a mock Tenant model."""
-    tenant = Mock()
+    """Create a Tenant model."""
+    tenant = Tenant(name="Service API Tenant", status=TenantStatus.NORMAL)
     tenant.id = mock_tenant_id
-    tenant.status = TenantStatus.NORMAL
     return tenant
 
 
 @pytest.fixture
 def mock_account():
-    """Create a mock Account model."""
-    account = Mock()
+    """Create an Account model."""
+    account = Account(name="Service API Account", email=f"service-{uuid.uuid4()}@example.com")
     account.id = str(uuid.uuid4())
     return account
 
 
 @pytest.fixture
 def mock_api_token(mock_app_id, mock_tenant_id):
-    """Create a mock API token for authentication tests."""
-    token = Mock()
-    token.app_id = mock_app_id
-    token.tenant_id = mock_tenant_id
-    token.token = f"test_token_{uuid.uuid4().hex[:8]}"
-    token.type = "app"
-    return token
+    """Create a real API token for authentication tests."""
+    return ApiToken(
+        app_id=mock_app_id,
+        tenant_id=mock_tenant_id,
+        token=f"test_token_{uuid.uuid4().hex[:8]}",
+        type="app",
+    )
 
 
 @pytest.fixture
 def mock_dataset_api_token(mock_tenant_id):
-    """Create a mock API token for dataset endpoints."""
-    token = Mock()
-    token.tenant_id = mock_tenant_id
-    token.token = f"dataset_token_{uuid.uuid4().hex[:8]}"
-    token.type = "dataset"
-    return token
+    """Create a real API token for dataset endpoints."""
+    return ApiToken(
+        tenant_id=mock_tenant_id,
+        token=f"dataset_token_{uuid.uuid4().hex[:8]}",
+        type="dataset",
+    )
 
 
 @pytest.fixture
 def mock_dataset():
-    """Create a mock Dataset model."""
+    """Create a Dataset model."""
     from models.dataset import Dataset
 
-    dataset = Mock(spec=Dataset)
-    dataset.id = str(uuid.uuid4())
-    dataset.tenant_id = str(uuid.uuid4())
-    dataset.name = "Test Dataset"
-    dataset.indexing_technique = "economy"
-    dataset.embedding_model = None
-    dataset.embedding_model_provider = None
+    dataset = Dataset(
+        id=str(uuid.uuid4()),
+        tenant_id=str(uuid.uuid4()),
+        name="Test Dataset",
+        indexing_technique="economy",
+        embedding_model=None,
+        embedding_model_provider=None,
+    )
     return dataset
 
 
 @pytest.fixture
 def mock_document():
-    """Create a mock Document model."""
+    """Create a Document model."""
     from models.dataset import Document
 
-    document = Mock(spec=Document)
-    document.id = str(uuid.uuid4())
-    document.dataset_id = str(uuid.uuid4())
-    document.tenant_id = str(uuid.uuid4())
-    document.name = "test_document.txt"
-    document.indexing_status = "completed"
-    document.enabled = True
-    document.doc_form = IndexStructureType.PARAGRAPH_INDEX
+    document = Document(
+        id=str(uuid.uuid4()),
+        dataset_id=str(uuid.uuid4()),
+        tenant_id=str(uuid.uuid4()),
+        name="test_document.txt",
+        indexing_status="completed",
+        enabled=True,
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+    )
     return document
 
 
 @pytest.fixture
 def mock_segment():
-    """Create a mock DocumentSegment model."""
+    """Create a DocumentSegment model."""
     from models.dataset import DocumentSegment
 
-    segment = Mock(spec=DocumentSegment)
+    segment = DocumentSegment(
+        tenant_id=str(uuid.uuid4()),
+        dataset_id=str(uuid.uuid4()),
+        document_id=str(uuid.uuid4()),
+        position=1,
+        content="Test segment content",
+        word_count=3,
+        tokens=0,
+        created_by="account-id",
+        enabled=True,
+        status="completed",
+    )
     segment.id = str(uuid.uuid4())
-    segment.document_id = str(uuid.uuid4())
-    segment.dataset_id = str(uuid.uuid4())
-    segment.tenant_id = str(uuid.uuid4())
-    segment.content = "Test segment content"
-    segment.word_count = 3
-    segment.position = 1
-    segment.enabled = True
-    segment.status = "completed"
     return segment
 
 
@@ -203,9 +205,15 @@ def mock_child_chunk():
     """Create a mock ChildChunk model."""
     from models.dataset import ChildChunk
 
-    child_chunk = Mock(spec=ChildChunk)
+    child_chunk = ChildChunk(
+        tenant_id=str(uuid.uuid4()),
+        dataset_id="dataset-id",
+        document_id="document-id",
+        segment_id=str(uuid.uuid4()),
+        position=1,
+        content="Test child chunk content",
+        word_count=0,
+        created_by="account-id",
+    )
     child_chunk.id = str(uuid.uuid4())
-    child_chunk.segment_id = str(uuid.uuid4())
-    child_chunk.tenant_id = str(uuid.uuid4())
-    child_chunk.content = "Test child chunk content"
     return child_chunk

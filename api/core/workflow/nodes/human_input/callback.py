@@ -2,21 +2,23 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime, timedelta
 from typing import Any
 
 from configs import dify_config
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormEntity, HumanInputFormRepository
 from core.workflow.human_input_adapter import DeliveryChannelConfig
+from core.workflow.human_input_policy import resolve_variable_select_input_options
 from core.workflow.node_runtime import DifyFileReferenceFactory
 from graphon.nodes.human_input.entities import Completed, Expired, HITLContext, HITLDecision, PauseRequested
-from graphon.runtime import VariablePool
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.factory import build_segment
 from graphon.variables.segments import Segment
+from graphon.variables.template_resolution import convert_template
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 
+from .constants import OUTPUT_FIELD_ACTION_ID, OUTPUT_FIELD_ACTION_VALUE, OUTPUT_FIELD_RENDERED_CONTENT, TIMEOUT_HANDLE
 from .entities import (
     FileInputConfig,
     FileListInputConfig,
@@ -31,24 +33,13 @@ from .session_binding import default_session_binding
 logger = logging.getLogger(__name__)
 
 
-def _require_template_variable_pool(pool: ReadOnlyVariablePool) -> VariablePool:
-    """Return the concrete graphon pool required for template expansion."""
-    if isinstance(pool, VariablePool):
-        return pool
-
-    msg = "human input rendering requires graphon.runtime.VariablePool for template expansion"
-    raise TypeError(msg)
-
-
 def render_form_content_before_submission(
     node_data: HumanInputNodeData,
     *,
     variable_pool: ReadOnlyVariablePool,
 ) -> str:
     """Process form content by substituting runtime variables before pause."""
-    # NOTE(QuantumGhost): This is not ideal, we should expose
-    # VariablePool method in Graphon.
-    rendered_form_content = _require_template_variable_pool(variable_pool).convert_template(node_data.form_content)
+    rendered_form_content = convert_template(variable_pool, node_data.form_content)
     return rendered_form_content.markdown
 
 
@@ -76,11 +67,6 @@ class DifyHITLCallback:
 
     pause_requested_type = PauseRequested
 
-    _OUTPUT_FIELD_ACTION_ID = "__action_id"
-    _OUTPUT_FIELD_ACTION_VALUE = "__action_value"
-    _OUTPUT_FIELD_RENDERED_CONTENT = "__rendered_content"
-    _TIMEOUT_HANDLE = "__timeout__"
-
     def __init__(
         self,
         *,
@@ -91,6 +77,7 @@ class DifyHITLCallback:
         delivery_methods: Sequence[DeliveryChannelConfig] = (),
         display_in_ui: bool = False,
         file_reference_factory: DifyFileReferenceFactory | None = None,
+        execution_id_getter: Callable[[], str | None] | None = None,
     ) -> None:
         self._form_repository = form_repository
         self._session_binding = default_session_binding
@@ -100,17 +87,31 @@ class DifyHITLCallback:
         self._delivery_methods = tuple(delivery_methods)
         self._display_in_ui = display_in_ui
         self._file_reference_factory = file_reference_factory
+        self._execution_id_getter = execution_id_getter
 
     def __call__(self, ctx: HITLContext) -> HITLDecision:
-        form = self._form_repository.get_form(ctx.node_id)
+        form_id = self._execution_id_getter() if self._execution_id_getter is not None else None
+        form = (
+            self._form_repository.get_form(ctx.node_id, form_id=form_id)
+            if form_id is not None
+            else self._form_repository.get_form(ctx.node_id)
+        )
         if form is None:
-            created = self._create_form(ctx)
+            created = self._create_form(ctx, form_id=form_id)
             return PauseRequested(session_id=self._session_binding.issue_session_id_for_form(form_id=created.id))
 
         status = self._normalize_status(form.status)
+        if status == HumanInputFormStatus.WAITING.value and not form.submitted:
+            if self._is_past_global_deadline(form.created_at):
+                msg = f"cannot resume waiting human input form after global timeout, form_id={form.id}"
+                raise AssertionError(msg)
+            if self._is_past_node_deadline(form.expiration_time):
+                form = self._form_repository.mark_timeout(ctx.node_id, form_id=form.id)
+                status = self._normalize_status(form.status)
+
         if status == HumanInputFormStatus.TIMEOUT.value:
             return Expired(
-                selected_handle=self._TIMEOUT_HANDLE,
+                selected_handle=TIMEOUT_HANDLE,
                 outputs=self._build_special_outputs(
                     action_id="",
                     action_value="",
@@ -123,18 +124,6 @@ class DifyHITLCallback:
             raise AssertionError(msg)
 
         if not form.submitted:
-            if status == HumanInputFormStatus.WAITING.value and self._is_past_global_deadline(form.created_at):
-                msg = f"cannot resume waiting human input form after global timeout, form_id={form.id}"
-                raise AssertionError(msg)
-            if self._is_past_node_deadline(form.expiration_time):
-                return Expired(
-                    selected_handle=self._TIMEOUT_HANDLE,
-                    outputs=self._build_special_outputs(
-                        action_id="",
-                        action_value="",
-                        rendered_content=form.rendered_content,
-                    ),
-                )
             return PauseRequested(session_id=self._session_binding.issue_session_id_for_form(form_id=form.id))
 
         selected_action_id = form.selected_action_id
@@ -163,12 +152,20 @@ class DifyHITLCallback:
             outputs=outputs,
         )
 
-    def _create_form(self, ctx: HITLContext) -> HumanInputFormEntity:
+    def _create_form(self, ctx: HITLContext, *, form_id: str | None = None) -> HumanInputFormEntity:
+        form_config = self._node_data.model_copy(
+            update={
+                "inputs": resolve_variable_select_input_options(
+                    self._node_data.inputs,
+                    variable_pool=ctx.variable_pool,
+                )
+            }
+        )
         params = FormCreateParams(
             workflow_execution_id=self._workflow_execution_id or ctx.workflow_execution_id,
             conversation_id=self._conversation_id,
             node_id=ctx.node_id,
-            form_config=self._node_data,
+            form_config=form_config,
             rendered_content=render_form_content_before_submission(
                 self._node_data,
                 variable_pool=ctx.variable_pool,
@@ -181,6 +178,7 @@ class DifyHITLCallback:
                     variable_pool=ctx.variable_pool,
                 )
             ),
+            form_id=form_id,
         )
         return self._form_repository.create_form(params)
 
@@ -314,16 +312,15 @@ class DifyHITLCallback:
             raise ValueError("file_reference_factory is required to restore file submissions")
         return self._file_reference_factory.build_from_mapping(mapping=mapping)
 
-    @classmethod
+    @staticmethod
     def _build_special_outputs(
-        cls,
         *,
         action_id: str,
         action_value: str,
         rendered_content: str,
     ) -> dict[str, Segment]:
         return {
-            cls._OUTPUT_FIELD_ACTION_ID: build_segment(action_id),
-            cls._OUTPUT_FIELD_ACTION_VALUE: build_segment(action_value),
-            cls._OUTPUT_FIELD_RENDERED_CONTENT: build_segment(rendered_content),
+            OUTPUT_FIELD_ACTION_ID: build_segment(action_id),
+            OUTPUT_FIELD_ACTION_VALUE: build_segment(action_value),
+            OUTPUT_FIELD_RENDERED_CONTENT: build_segment(rendered_content),
         }

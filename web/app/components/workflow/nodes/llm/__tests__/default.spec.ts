@@ -1,7 +1,5 @@
 import type { LLMNodeType } from '../types'
 import { withSelectorKey } from '@/test/i18n-mock'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
 import { EditionType, PromptRole } from '../../../types'
 import nodeDefault from '../default'
 
@@ -13,7 +11,7 @@ const createPayload = (overrides: Partial<LLMNodeType> = {}): LLMNodeType =>
     model: {
       ...nodeDefault.defaultValue.model,
       provider: 'langgenius/openai/gpt-4.1',
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
     },
     prompt_template: [
       {
@@ -33,7 +31,7 @@ describe('llm default node validation', () => {
           ...nodeDefault.defaultValue.model,
           provider: '',
           name: 'gpt-4.1',
-          mode: AppModeEnum.CHAT,
+          mode: 'chat' as const,
           completion_params: {
             temperature: 0.7,
           },
@@ -53,6 +51,78 @@ describe('llm default node validation', () => {
     expect(result.errorMessage).toBe('')
   })
 
+  it('should validate a configured LLM environment model reference', () => {
+    const result = nodeDefault.checkValid(
+      createPayload({ model_selector: ['env', 'for_summarize'] }),
+      t,
+      {
+        environmentVariables: [
+          {
+            id: 'env-1',
+            name: 'for_summarize',
+            value_type: 'llm',
+            value: {
+              provider: 'langgenius/anthropic/anthropic',
+              name: 'claude-sonnet',
+              mode: 'chat' as const,
+            },
+            description: '',
+          },
+        ],
+      },
+    )
+
+    expect(result.isValid).toBe(true)
+    expect(result.errorMessage).toBe('')
+  })
+
+  it('should reject a missing LLM environment model reference', () => {
+    const result = nodeDefault.checkValid(
+      createPayload({ model_selector: ['env', 'missing'] }),
+      t,
+      { environmentVariables: [] },
+    )
+
+    expect(result.isValid).toBe(false)
+    expect(result.errorMessage).toBe('errorMsg.fieldRequired')
+  })
+
+  it('should preserve legacy non-environment model selectors as static models', () => {
+    const result = nodeDefault.checkValid(
+      createPayload({ model_selector: ['start', 'MODEL_NAME'] }),
+      t,
+      { environmentVariables: [] },
+    )
+
+    expect(result.isValid).toBe(true)
+    expect(result.errorMessage).toBe('')
+  })
+
+  it('should reject an LLM environment model whose mode differs from the node mode', () => {
+    const result = nodeDefault.checkValid(
+      createPayload({ model_selector: ['env', 'for_summarize'] }),
+      t,
+      {
+        environmentVariables: [
+          {
+            id: 'env-1',
+            name: 'for_summarize',
+            value_type: 'llm',
+            value: {
+              provider: 'langgenius/anthropic/anthropic',
+              name: 'claude-sonnet',
+              mode: 'completion' as const,
+            },
+            description: '',
+          },
+        ],
+      },
+    )
+
+    expect(result.isValid).toBe(false)
+    expect(result.errorMessage).toBe('errorMsg.fieldRequired')
+  })
+
   it('should require sys.query in memory user prompt outside snippet flows', () => {
     const result = nodeDefault.checkValid(
       createPayload({
@@ -65,7 +135,7 @@ describe('llm default node validation', () => {
         },
       }),
       t,
-      { flowType: FlowType.appFlow },
+      { resourceKind: 'app' },
     )
 
     expect(result.isValid).toBe(false)
@@ -84,7 +154,7 @@ describe('llm default node validation', () => {
         },
       }),
       t,
-      { flowType: FlowType.snippet },
+      { resourceKind: 'snippet' },
     )
 
     expect(result.isValid).toBe(true)

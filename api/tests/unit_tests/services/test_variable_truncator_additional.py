@@ -1,5 +1,3 @@
-from typing import Any
-
 import pytest
 
 from graphon.nodes.variable_assigner.common.helpers import UpdatedVariable
@@ -7,13 +5,17 @@ from graphon.variables.segments import IntegerSegment, ObjectSegment, StringSegm
 from graphon.variables.types import SegmentType
 from services import variable_truncator as truncator_module
 from services.variable_truncator import VariableTruncator
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class TestVariableTruncatorAdditionalBehavior:
     def test_default_should_use_dify_config_limits(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(truncator_module.dify_config, "WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE", 111)
-        monkeypatch.setattr(truncator_module.dify_config, "WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH", 7)
-        monkeypatch.setattr(truncator_module.dify_config, "WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH", 33)
+        apply_config_overrides(
+            monkeypatch,
+            WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE=111,
+            WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH=7,
+            WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH=33,
+        )
 
         truncator = VariableTruncator.default()
 
@@ -53,7 +55,7 @@ class TestVariableTruncatorAdditionalBehavior:
     )
     def test_json_value_needs_truncation_should_match_expected_rules(
         self,
-        value: Any,
+        value: object,
         expected: bool,
     ) -> None:
         result = VariableTruncator._json_value_needs_truncation(value)

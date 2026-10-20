@@ -1,193 +1,144 @@
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { Shape } from '../../store/workflow'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ControlMode } from '../../types'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createNode } from '../../__tests__/fixtures'
+import { baseRunningData, renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
+import { CUSTOM_NOTE_NODE } from '../../note-node/constants'
+import { ControlMode, WorkflowRunningStatus } from '../../types'
 import Control from '../control'
 
-type WorkflowStoreState = {
-  controlMode: ControlMode
+vi.mock('../../hooks/use-nodes-sync-draft', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-nodes-sync-draft')>()
+  return {
+    ...actual,
+    useNodesSyncDraft: () => ({
+      handleSyncWorkflowDraft: vi.fn(),
+    }),
+  }
+})
+
+// The add-block selector and image export own their own suites and service setup.
+vi.mock('../add-block', () => ({
+  default: () => null,
+}))
+
+vi.mock('../export-image', () => ({
+  ExportImage: () => null,
+}))
+
+const renderControl = ({
+  initialStoreState,
+  collaborationEnabled = true,
+}: {
+  initialStoreState?: Partial<Shape>
+  collaborationEnabled?: boolean
+} = {}) => {
+  const { queryClient } = createConsoleQueryWrapper({
+    accountProfile: { name: 'Ada' },
+    systemFeatures: { enable_collaboration_mode: collaborationEnabled },
+  })
+  return renderWorkflowFlowComponent(<Control />, {
+    queryClient,
+    nodes: [createNode({ id: 'node-1' })],
+    initialStoreState: { controlMode: ControlMode.Pointer, ...initialStoreState },
+  })
 }
 
-const {
-  mockHandleAddNote,
-  mockHandleLayout,
-  mockHandleModeComment,
-  mockHandleModeHand,
-  mockHandleModePointer,
-} = vi.hoisted(() => ({
-  mockHandleAddNote: vi.fn(),
-  mockHandleLayout: vi.fn(),
-  mockHandleModeComment: vi.fn(),
-  mockHandleModeHand: vi.fn(),
-  mockHandleModePointer: vi.fn(),
-}))
-
-let mockNodesReadOnly = false
-let mockCanUseCommentMode = true
-let mockIsCommentModeAvailable = true
-let mockStoreState: WorkflowStoreState
-
-vi.mock('../../hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({
-    nodesReadOnly: mockNodesReadOnly,
-    getNodesReadOnly: () => mockNodesReadOnly,
-  }),
-}))
-
-vi.mock('../../hooks/use-workflow-panel-interactions', () => ({
-  useWorkflowMoveMode: () => ({
-    handleModePointer: mockHandleModePointer,
-    handleModeHand: mockHandleModeHand,
-    handleModeComment: mockHandleModeComment,
-    isCommentModeAvailable: mockIsCommentModeAvailable,
-    canUseCommentMode: mockCanUseCommentMode,
-  }),
-}))
-
-vi.mock('../../hooks/use-workflow-organize', () => ({
-  useWorkflowOrganize: () => ({
-    handleLayout: mockHandleLayout,
-  }),
-}))
-
-vi.mock('../hooks', () => ({
-  useOperator: () => ({
-    handleAddNote: mockHandleAddNote,
-  }),
-}))
-
-vi.mock('../../store', () => ({
-  useStore: (selector: (state: WorkflowStoreState) => unknown) => selector(mockStoreState),
-}))
-
-vi.mock('../add-block', () => ({
-  default: () => <div data-testid="add-block" />,
-}))
-
-vi.mock('../more-actions', () => ({
-  default: () => <div data-testid="more-actions" />,
-}))
-
-vi.mock('../tip-popup', () => ({
-  default: ({ children, title }: { children?: ReactNode; title?: string }) => (
-    <div data-testid={title}>{children}</div>
-  ),
-}))
+const getModeButton = (mode: 'pointerMode' | 'handMode' | 'commentMode') =>
+  screen.getByRole('button', { name: `workflow.common.${mode}` })
 
 describe('Control', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockNodesReadOnly = false
-    mockCanUseCommentMode = true
-    mockIsCommentModeAvailable = true
-    mockStoreState = {
+  it('switches the canvas between pointer, hand, and comment modes', async () => {
+    const user = userEvent.setup()
+    const { store } = renderControl()
+
+    expect(getModeButton('pointerMode')).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(getModeButton('handMode'))
+    expect(store.getState().controlMode).toBe(ControlMode.Hand)
+    expect(getModeButton('handMode')).toHaveAttribute('aria-pressed', 'true')
+    expect(getModeButton('pointerMode')).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(getModeButton('commentMode'))
+    expect(store.getState().controlMode).toBe(ControlMode.Comment)
+    expect(getModeButton('commentMode')).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(getModeButton('pointerMode'))
+    expect(store.getState().controlMode).toBe(ControlMode.Pointer)
+  })
+
+  it('creates a note candidate attributed to the current user', async () => {
+    const user = userEvent.setup()
+    const { store } = renderControl()
+
+    await user.click(screen.getByRole('button', { name: 'workflow.nodes.note.addNote' }))
+
+    expect(store.getState().candidateNode).toMatchObject({
+      type: CUSTOM_NOTE_NODE,
+      data: expect.objectContaining({ author: 'Ada', showAuthor: true, _isCandidate: true }),
+    })
+  })
+
+  it('starts organizing blocks when the canvas is editable', async () => {
+    const user = userEvent.setup()
+    const { store } = renderControl()
+
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.organizeBlocks' }))
+
+    await waitFor(() => expect(store.getState().nodeAnimation).toBe(true))
+  })
+
+  it('keeps read-only editing actions focusable without changing the canvas', async () => {
+    const user = userEvent.setup()
+    const { store } = renderControl({ initialStoreState: { canvasReadOnly: true } })
+
+    const noteButton = screen.getByRole('button', { name: 'workflow.nodes.note.addNote' })
+    expect(noteButton).toHaveAttribute('aria-disabled', 'true')
+    noteButton.focus()
+    expect(noteButton).toHaveFocus()
+    await user.keyboard('{Enter}')
+    await user.click(getModeButton('handMode'))
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.organizeBlocks' }))
+
+    expect(store.getState()).toMatchObject({
+      candidateNode: undefined,
       controlMode: ControlMode.Pointer,
-    }
-  })
-
-  // Rendering and visual states for control buttons.
-  describe('Rendering', () => {
-    it('should render the child action groups and highlight the active pointer mode', () => {
-      render(<Control />)
-
-      expect(screen.getByTestId('add-block')).toBeInTheDocument()
-      expect(screen.getByTestId('more-actions')).toBeInTheDocument()
-      expect(screen.getByTestId('workflow.common.pointerMode').firstElementChild).toHaveClass(
-        'bg-state-accent-active',
-      )
-      expect(screen.getByTestId('workflow.common.handMode').firstElementChild).not.toHaveClass(
-        'bg-state-accent-active',
-      )
-    })
-
-    it('should highlight hand mode when it is active', () => {
-      mockStoreState = {
-        controlMode: ControlMode.Hand,
-      }
-
-      render(<Control />)
-
-      expect(screen.getByTestId('workflow.common.handMode').firstElementChild).toHaveClass(
-        'bg-state-accent-active',
-      )
+      nodeAnimation: false,
     })
   })
 
-  // User interactions exposed by the control bar.
-  describe('User Interactions', () => {
-    it('should trigger the note, mode, and organize handlers', () => {
-      render(<Control />)
+  it('still allows comment mode on a read-only canvas', async () => {
+    const user = userEvent.setup()
+    const { store } = renderControl({ initialStoreState: { canvasReadOnly: true } })
 
-      fireEvent.click(
-        screen.getByTestId('workflow.nodes.note.addNote').firstElementChild as HTMLElement,
-      )
-      fireEvent.click(
-        screen.getByTestId('workflow.common.pointerMode').firstElementChild as HTMLElement,
-      )
-      fireEvent.click(
-        screen.getByTestId('workflow.common.handMode').firstElementChild as HTMLElement,
-      )
-      fireEvent.click(
-        screen.getByTestId('workflow.common.commentMode').firstElementChild as HTMLElement,
-      )
-      fireEvent.click(
-        screen.getByTestId('workflow.panel.organizeBlocks').firstElementChild as HTMLElement,
-      )
+    await user.click(getModeButton('commentMode'))
 
-      expect(mockHandleAddNote).toHaveBeenCalledTimes(1)
-      expect(mockHandleModePointer).toHaveBeenCalledTimes(1)
-      expect(mockHandleModeHand).toHaveBeenCalledTimes(1)
-      expect(mockHandleModeComment).toHaveBeenCalledTimes(1)
-      expect(mockHandleLayout).toHaveBeenCalledTimes(1)
+    expect(store.getState().controlMode).toBe(ControlMode.Comment)
+  })
+
+  it('blocks comment mode while a workflow run is in progress', async () => {
+    const user = userEvent.setup()
+    const { store } = renderControl({
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          result: { status: WorkflowRunningStatus.Running },
+        }),
+      },
     })
 
-    it('should keep read-only actions focusable without activating them', async () => {
-      const user = userEvent.setup()
-      mockNodesReadOnly = true
+    const commentButton = getModeButton('commentMode')
+    expect(commentButton).toHaveAttribute('aria-disabled', 'true')
+    await user.click(commentButton)
 
-      render(<Control />)
+    expect(store.getState().controlMode).toBe(ControlMode.Pointer)
+  })
 
-      const noteButton = screen.getByTestId('workflow.nodes.note.addNote')
-        .firstElementChild as HTMLButtonElement
+  it('hides comment mode when collaboration is unavailable', () => {
+    renderControl({ collaborationEnabled: false })
 
-      expect(noteButton).toHaveAttribute('aria-disabled', 'true')
-      await user.tab()
-      expect(noteButton).toHaveFocus()
-      await user.keyboard('{Enter}')
-
-      expect(mockHandleAddNote).not.toHaveBeenCalled()
-    })
-
-    it('should keep comment mode enabled when nodes are read-only', () => {
-      mockNodesReadOnly = true
-      mockCanUseCommentMode = true
-
-      render(<Control />)
-
-      const commentButton = screen.getByTestId('workflow.common.commentMode')
-        .firstElementChild as HTMLButtonElement
-      expect(commentButton).toBeEnabled()
-
-      fireEvent.click(commentButton)
-
-      expect(mockHandleModeComment).toHaveBeenCalledTimes(1)
-    })
-
-    it('should keep blocked comment mode focusable without activating it', async () => {
-      const user = userEvent.setup()
-      mockCanUseCommentMode = false
-
-      render(<Control />)
-
-      const commentButton = screen.getByTestId('workflow.common.commentMode')
-        .firstElementChild as HTMLButtonElement
-      expect(commentButton).toHaveAttribute('aria-disabled', 'true')
-
-      commentButton.focus()
-      expect(commentButton).toHaveFocus()
-      await user.keyboard('{Enter}')
-
-      expect(mockHandleModeComment).not.toHaveBeenCalled()
-    })
+    expect(
+      screen.queryByRole('button', { name: 'workflow.common.commentMode' }),
+    ).not.toBeInTheDocument()
   })
 })

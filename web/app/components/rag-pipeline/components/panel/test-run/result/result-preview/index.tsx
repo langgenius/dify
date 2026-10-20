@@ -15,7 +15,7 @@ type ResultTextProps = {
 }
 
 const ResultPreview = ({ isRunning, outputs, error, onSwitchToDetail }: ResultTextProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pipeline'])
 
   const previewChunks = useMemo(() => {
     return formatPreviewChunks(outputs)
@@ -47,7 +47,6 @@ const ResultPreview = ({ isRunning, outputs, error, onSwitchToDetail }: ResultTe
           <div className="mt-1 flex items-center gap-x-2 system-xs-regular text-text-tertiary">
             <div className="h-px flex-1 bg-linear-to-r from-background-gradient-mask-transparent to-divider-regular" />
             <span
-              className="shrink-0truncate"
               title={t(($) => $['result.resultPreview.footerTip'], {
                 ns: 'pipeline',
                 count: RAG_PIPELINE_PREVIEW_CHUNK_NUM,

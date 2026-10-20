@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import queue
@@ -34,21 +35,26 @@ from core.workflow.human_input_policy import (
     resolve_human_input_pause_reason_inputs,
     resolve_variable_select_input_options,
 )
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import (
     DifyHITLEventType,
     HumanInputRequired,
+    PauseReason,
 )
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime import RuntimeState
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from libs.broadcast_channel.exc import SubscriptionClosedError
+from libs.datetime_utils import to_utc_timestamp
 from models.human_input import HumanInputForm
 from models.model import AppMode, Message
 from models.workflow import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.factory import DifyAPIRepositoryFactory
+from services.app_task_service import AppTaskService
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +87,7 @@ def build_workflow_event_stream(
     idle_timeout: float = 300,
     ping_interval: float = 10.0,
     close_on_pause: bool = True,
-) -> Generator[Mapping[str, Any] | str, None, None]:
+) -> Generator[Mapping[str, Any] | str]:
     topic = MessageGenerator.get_response_topic(app_mode, workflow_run.id)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
     node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
@@ -95,6 +101,18 @@ def build_workflow_event_stream(
             pause_entity = None
 
     resumption_context = _load_resumption_context(pause_entity)
+    if (
+        pause_entity is not None
+        and resumption_context is not None
+        and workflow_run.tenant_id == tenant_id
+        and workflow_run.app_id == app_id
+    ):
+        AppTaskService.index_workflow_pause_task(
+            workflow_run=workflow_run,
+            pause_entity=pause_entity,
+            resumption_context=resumption_context,
+            workflow_run_repo=workflow_run_repo,
+        )
     message_context: MessageContext | None = None
     if app_mode == AppMode.ADVANCED_CHAT:
         if workflow_run.status == WorkflowExecutionStatus.PAUSED:
@@ -142,7 +160,7 @@ def build_workflow_event_stream(
         workflow_run_id=workflow_run.id,
     )
 
-    def _generate() -> Generator[Mapping[str, Any] | str, None, None]:
+    def _generate() -> Generator[Mapping[str, Any] | str]:
         # send a PING event immediately to prevent the connection staying in pending state for a long time.
         #
         # This simplify the debugging process as the DevTools in Chrome does not
@@ -343,11 +361,15 @@ def _build_snapshot_events(
             _apply_message_context(node_finished, message_context)
             events.append(node_finished)
 
+    pause_reasons: list[PauseReason] = []
     if workflow_run.status == WorkflowExecutionStatus.PAUSED and pause_entity is not None:
+        pause_reasons = _filter_open_pause_reasons(pause_entity.get_pause_reasons(), session_maker=session_maker)
+
+    if pause_reasons:
         for human_input_event in _build_human_input_required_events(
             workflow_run_id=workflow_run.id,
             task_id=task_id,
-            pause_entity=pause_entity,
+            pause_reasons=pause_reasons,
             session_maker=session_maker,
             human_input_surface=human_input_surface,
             variable_pool=variable_pool,
@@ -359,7 +381,7 @@ def _build_snapshot_events(
             workflow_run=workflow_run,
             workflow_run_id=workflow_run.id,
             task_id=task_id,
-            pause_entity=pause_entity,
+            pause_reasons=pause_reasons,
             resumption_context=resumption_context,
             session_maker=session_maker,
             human_input_surface=human_input_surface,
@@ -430,17 +452,42 @@ def _build_node_started_event(
     return response.to_ignore_detail_dict()
 
 
+def _filter_open_pause_reasons(
+    reasons: Sequence[PauseReason],
+    *,
+    session_maker: sessionmaker[Session] | None,
+) -> list[PauseReason]:
+    """Drop human-input reasons whose form is no longer waiting.
+
+    Submitting a form only queues the resume, so the run stays paused until a worker picks it up.
+    Replaying that form would ask again for an answer that was already given. Without a session the
+    form status is unknown, so every reason is kept.
+    """
+    form_ids = [reason.form_id for reason in reasons if isinstance(reason, HumanInputRequired)]
+    if not form_ids or session_maker is None:
+        return list(reasons)
+
+    stmt = select(HumanInputForm.id).where(
+        HumanInputForm.id.in_(form_ids),
+        HumanInputForm.status == HumanInputFormStatus.WAITING,
+    )
+    with session_maker() as session:
+        waiting_form_ids = {str(form_id) for form_id in session.scalars(stmt)}
+    return [
+        reason for reason in reasons if not isinstance(reason, HumanInputRequired) or reason.form_id in waiting_form_ids
+    ]
+
+
 def _build_human_input_required_events(
     *,
     workflow_run_id: str,
     task_id: str,
-    pause_entity: WorkflowPauseEntity,
+    pause_reasons: Sequence[PauseReason],
     session_maker: sessionmaker[Session] | None,
     human_input_surface: HumanInputSurface | None,
     variable_pool: ReadOnlyVariablePool | None,
 ) -> list[dict[str, Any]]:
-    reasons = pause_entity.get_pause_reasons()
-    human_input_form_ids = [reason.form_id for reason in reasons if isinstance(reason, HumanInputRequired)]
+    human_input_form_ids = [reason.form_id for reason in pause_reasons if isinstance(reason, HumanInputRequired)]
 
     expiration_times_by_form_id: dict[str, int] = {}
     display_in_ui_by_form_id: dict[str, bool] = {}
@@ -451,7 +498,7 @@ def _build_human_input_required_events(
         )
         with session_maker() as session:
             for form_id, expiration_time, form_definition in session.execute(stmt):
-                expiration_times_by_form_id[str(form_id)] = int(expiration_time.timestamp())
+                expiration_times_by_form_id[str(form_id)] = to_utc_timestamp(expiration_time)
                 try:
                     definition_payload = json.loads(form_definition) if form_definition else {}
                 except (TypeError, json.JSONDecodeError):
@@ -464,7 +511,7 @@ def _build_human_input_required_events(
             )
 
     events: list[dict[str, Any]] = []
-    for reason in reasons:
+    for reason in pause_reasons:
         if not isinstance(reason, HumanInputRequired):
             continue
 
@@ -509,7 +556,7 @@ def _load_variable_pool_from_resumption_context(
 ) -> ReadOnlyVariablePool | None:
     if resumption_context is None:
         return None
-    state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
 
     return state.variable_pool
 
@@ -554,7 +601,7 @@ def _build_pause_event(
     workflow_run: WorkflowRun,
     workflow_run_id: str,
     task_id: str,
-    pause_entity: WorkflowPauseEntity,
+    pause_reasons: Sequence[PauseReason],
     resumption_context: WorkflowResumptionContext | None,
     session_maker: sessionmaker[Session] | None,
     human_input_surface: HumanInputSurface | None = None,
@@ -563,14 +610,16 @@ def _build_pause_event(
     outputs: dict[str, Any] = {}
     variable_pool: ReadOnlyVariablePool | None = None
     if resumption_context is not None:
-        state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
-        paused_nodes = state.get_paused_nodes()
+        state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
         outputs = dict(WorkflowRuntimeTypeConverter().to_json_encodable(state.outputs or {}))
         variable_pool = state.variable_pool
 
     resolved_pause_reasons = resolve_human_input_pause_reason_inputs(
-        pause_entity.get_pause_reasons(),
+        pause_reasons,
         variable_pool=variable_pool,
+    )
+    paused_nodes = list(
+        dict.fromkeys(reason.node_id for reason in resolved_pause_reasons if isinstance(reason, HumanInputRequired))
     )
     reasons = [reason.model_dump(mode="json") for reason in resolved_pause_reasons]
     human_input_form_ids = [
@@ -594,7 +643,7 @@ def _build_pause_event(
             )
             for row in session.execute(stmt):
                 form_id, expiration_time, *_rest = row
-                expiration_times_by_form_id[str(form_id)] = int(expiration_time.timestamp())
+                expiration_times_by_form_id[str(form_id)] = to_utc_timestamp(expiration_time)
         # Reconnect paths must preserve the same pause-reason contract as live streams;
         # otherwise clients see schema drift after resume.
         reasons = enrich_human_input_pause_reasons(
@@ -657,15 +706,15 @@ def _start_buffering(subscription) -> BufferState:
                     buffer_state.queue.put_nowait(event)
                 except queue.Full:
                     dropped_count += 1
-                    try:
+                    with contextlib.suppress(queue.Empty):
                         buffer_state.queue.get_nowait()
-                    except queue.Empty:
-                        pass
                     try:
                         buffer_state.queue.put_nowait(event)
                     except queue.Full:
                         continue
                     logger.warning("Dropped buffered workflow event, total_dropped=%s", dropped_count)
+        except SubscriptionClosedError:
+            pass
         except Exception:
             logger.exception("Failed while buffering workflow events")
         finally:

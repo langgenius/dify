@@ -1,4 +1,4 @@
-"""Paragraph index processor."""
+"""Question-and-answer index processor."""
 
 import logging
 import re
@@ -29,7 +29,7 @@ from libs import helper
 from models.account import Account
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from services.summary_index_service import SummaryIndexService
+from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                 raise ValueError("The CSV file is empty.")
 
         except Exception as e:
-            raise ValueError(str(e))
+            raise ValueError(str(e)) from e
         return text_docs
 
     @override
@@ -180,10 +180,10 @@ class QAIndexProcessor(BaseIndexProcessor):
                 ).all()
                 segment_ids = [segment.id for segment in segments]
                 if segment_ids:
-                    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids, session=session)
+                    SummaryIndexAdapter.delete_summaries_for_segments(dataset, segment_ids, session=session)
             else:
                 # Delete all summaries for the dataset
-                SummaryIndexService.delete_summaries_for_segments(dataset, None, session=session)
+                SummaryIndexAdapter.delete_summaries_for_segments(dataset, None, session=session)
 
         vector = Vector(dataset, session=session)
         if node_ids:

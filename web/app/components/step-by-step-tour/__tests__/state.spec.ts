@@ -1,10 +1,10 @@
-import type {
-  StepByStepTourStatePatchPayload,
-  StepByStepTourStateResponse,
-} from '@dify/contracts/api/console/onboarding/types.gen'
+import type { StepByStepTourStatePatchPayload } from '@dify/contracts/api/console/onboarding/types.gen'
+import type { zStepByStepTourStateResponse } from '@dify/contracts/api/console/onboarding/zod.gen'
+import type { z } from 'zod'
 import { QueryClient } from '@tanstack/react-query'
 import { createStore } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
+import { consoleQuery } from '@/service/console'
 import {
   activeStepByStepTourGuideGroupAtom,
   activeStepByStepTourGuideIndexAtom,
@@ -24,7 +24,9 @@ import {
   uncompleteStepByStepTourTaskAtom,
 } from '../state'
 
-const stepByStepTourStateQueryKey = ['console', 'onboarding', 'step-by-step-tour', 'state'] as const
+type StepByStepTourStateResponse = z.output<typeof zStepByStepTourStateResponse>
+
+const stepByStepTourStateQueryKey = consoleQuery.onboarding.stepByStepTour.state.get.queryKey()
 let mockStepByStepTourState: StepByStepTourStateResponse
 
 const getStepByStepTourState = vi.fn(async () => mockStepByStepTourState)
@@ -79,34 +81,24 @@ vi.mock('@/context/workspace-state', async () => {
   return { currentWorkspaceIdAtom: atom('workspace-1') }
 })
 
-vi.mock('@/context/system-features-state', async () => {
+vi.mock('@/features/system-features/state', async () => {
   const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
   return { deploymentEditionAtom: atom('CLOUD') }
 })
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    onboarding: {
-      stepByStepTour: {
-        state: {
-          get: {
-            queryKey: () => stepByStepTourStateQueryKey,
-            queryOptions: () => ({
-              queryKey: stepByStepTourStateQueryKey,
-              queryFn: getStepByStepTourState,
-            }),
-          },
-          patch: {
-            mutationOptions: (options = {}) => ({
-              mutationFn: patchStepByStepTourState,
-              ...options,
-            }),
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'onboarding.stepByStepTour.state.get': () => getStepByStepTourState(),
+      'onboarding.stepByStepTour.state.patch': (
+        input: Parameters<typeof patchStepByStepTourState>[0],
+      ) => patchStepByStepTourState(input),
+    }),
+  }
+})
 
 const createStepByStepTourState = (
   overrides: Partial<StepByStepTourStateResponse> = {},
@@ -151,6 +143,8 @@ describe('step-by-step tour state', () => {
     store.set(queryClientAtom, queryClient)
     queryClient.setQueryData(stepByStepTourStateQueryKey, mockStepByStepTourState)
   })
+
+  afterEach(() => queryClient.clear())
 
   it.each([
     ['first workspace', createStepByStepTourState(), true],
@@ -247,8 +241,8 @@ describe('step-by-step tour state', () => {
   ] as const)(
     'sends the generated patch action through a domain command',
     async (command, value, body) => {
-      if (value) store.set(command, value)
-      else store.set(command)
+      if (value) await store.set(command, value)
+      else await store.set(command)
 
       await vi.waitFor(() => {
         expect(patchStepByStepTourState.mock.calls[0]?.[0]).toEqual({ body })

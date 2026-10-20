@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from ast_grep_guard import Match, has_reasoned_noqa, rule_path, run_guard
+from ast_grep_guard import Match, has_reasoned_guard_ignore, rule_path, run_guard
 
 
 RULE_ID = "no-new-controller-sqlalchemy"
@@ -40,7 +40,7 @@ def is_flask_session_get(match: Match) -> bool:
 
 
 def is_suppressed(match: Match) -> bool:
-    return has_reasoned_noqa(match.source_line, RULE_ID)
+    return has_reasoned_guard_ignore(match.source_line, RULE_ID)
 
 
 def is_reportable_match(match: Match) -> bool:

@@ -1,29 +1,38 @@
-import logging
+from collections.abc import Generator
+from contextlib import contextmanager
 from datetime import datetime
+from uuid import UUID
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field, TypeAdapter, computed_field, field_validator
+from pydantic import BaseModel, Field, computed_field, field_validator
 
+from controllers.common.errors import ForbiddenError, InvalidArgumentError, NotFoundError
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import (
-    account_initialization_required,
-    edit_permission_required,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
-from extensions.ext_database import db
+from controllers.console.app.error import AppNotFoundError
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import model_validate
+from enums.account import TenantAccountRole
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.member_fields import AccountWithRole
+from libs.external_api import error_responses
 from libs.helper import build_avatar_url, dump_response, to_timestamp
-from libs.login import login_required
-from models import Account, App
-from services.account_service import TenantService
-from services.workflow_comment_service import WorkflowCommentService
+from machinery.context import RequestContext
+from services.app.workflow_comment_service import (
+    InvalidMentionedUserIdError,
+    InvalidWorkflowCommentContentError,
+    WorkflowCommentAppNotFoundError,
+    WorkflowCommentDraft,
+    WorkflowCommentEdit,
+    WorkflowCommentNotFoundError,
+    WorkflowCommentPermissionError,
+    WorkflowCommentReplyDraft,
+    WorkflowCommentReplyNotFoundError,
+)
 
-logger = logging.getLogger(__name__)
+# Same roles as the legacy `edit_permission_required` gate; like it, admission skips the role check under RBAC.
+_EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
 
 
 class WorkflowCommentCreatePayload(BaseModel):
@@ -208,51 +217,58 @@ register_response_schema_models(
 )
 
 
+@contextmanager
+def _translate_errors() -> Generator[None]:
+    """Map framework-neutral comment failures back to the existing transport errors."""
+    try:
+        yield
+    except WorkflowCommentAppNotFoundError as error:
+        raise AppNotFoundError() from error
+    except (WorkflowCommentNotFoundError, WorkflowCommentReplyNotFoundError) as error:
+        raise NotFoundError(str(error)) from error
+    except WorkflowCommentPermissionError as error:
+        raise ForbiddenError(str(error)) from error
+    except (InvalidWorkflowCommentContentError, InvalidMentionedUserIdError) as error:
+        raise InvalidArgumentError(str(error)) from error
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflow/comments")
 class WorkflowCommentListApi(Resource):
     """API for listing and creating workflow comments."""
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("list_workflow_comments")
     @console_ns.doc(description="Get all comments for a workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(200, "Comments retrieved successfully", console_ns.models[WorkflowCommentBasicList.__name__])
-    @login_required
-    @setup_required
-    @account_initialization_required
-    @with_current_tenant_id
-    @get_app_model()
-    def get(self, current_tenant_id: str, app_model: App):
+    @console_account_admission()
+    def get(self, request_context: RequestContext, app_id: UUID):
         """Get all comments for a workflow."""
-        comments = WorkflowCommentService.get_comments(tenant_id=current_tenant_id, app_id=app_model.id)
+        with _translate_errors():
+            comments = application_services().workflow_comments.list_comments(request_context, str(app_id))
+        return dump_response(WorkflowCommentBasicList, {"data": comments})
 
-        return WorkflowCommentBasicList.model_validate({"data": comments}).model_dump(mode="json")
-
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("create_workflow_comment")
     @console_ns.doc(description="Create a new workflow comment")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[WorkflowCommentCreatePayload.__name__])
     @console_ns.response(201, "Comment created successfully", console_ns.models[WorkflowCommentCreate.__name__])
-    @login_required
-    @setup_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @with_current_tenant_id
-    @get_app_model()
-    def post(self, current_tenant_id: str, current_user: Account, app_model: App):
+    @console_account_admission(allowed_roles=_EDIT_ROLES)
+    @model_validate(WorkflowCommentCreatePayload)
+    def post(self, req_data: WorkflowCommentCreatePayload, request_context: RequestContext, app_id: UUID):
         """Create a new workflow comment."""
-        payload = WorkflowCommentCreatePayload.model_validate(console_ns.payload or {})
-
-        result = WorkflowCommentService.create_comment(
-            tenant_id=current_tenant_id,
-            app_id=app_model.id,
-            created_by=current_user.id,
-            content=payload.content,
-            position_x=payload.position_x,
-            position_y=payload.position_y,
-            mentioned_user_ids=payload.mentioned_user_ids,
-        )
-
+        with _translate_errors():
+            result = application_services().workflow_comments.create_comment(
+                request_context,
+                str(app_id),
+                WorkflowCommentDraft(
+                    content=req_data.content,
+                    position_x=req_data.position_x,
+                    position_y=req_data.position_y,
+                    mentioned_user_ids=tuple(req_data.mentioned_user_ids),
+                ),
+            )
         return dump_response(WorkflowCommentCreate, result), 201
 
 
@@ -260,72 +276,59 @@ class WorkflowCommentListApi(Resource):
 class WorkflowCommentDetailApi(Resource):
     """API for managing individual workflow comments."""
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("get_workflow_comment")
     @console_ns.doc(description="Get a specific workflow comment")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
     @console_ns.response(200, "Comment retrieved successfully", console_ns.models[WorkflowCommentDetail.__name__])
-    @login_required
-    @setup_required
-    @account_initialization_required
-    @with_current_tenant_id
-    @get_app_model()
-    def get(self, current_tenant_id: str, app_model: App, comment_id: str):
+    @console_account_admission()
+    def get(self, request_context: RequestContext, app_id: UUID, comment_id: str):
         """Get a specific workflow comment."""
-        comment = WorkflowCommentService.get_comment(
-            tenant_id=current_tenant_id, app_id=app_model.id, comment_id=comment_id
-        )
-
+        with _translate_errors():
+            comment = application_services().workflow_comments.get_comment(request_context, str(app_id), comment_id)
         return dump_response(WorkflowCommentDetail, comment)
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("update_workflow_comment")
     @console_ns.doc(description="Update a workflow comment")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
     @console_ns.expect(console_ns.models[WorkflowCommentUpdatePayload.__name__])
     @console_ns.response(200, "Comment updated successfully", console_ns.models[WorkflowCommentUpdate.__name__])
-    @login_required
-    @setup_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @with_current_tenant_id
-    @get_app_model()
-    def put(self, current_tenant_id: str, current_user: Account, app_model: App, comment_id: str):
+    @console_account_admission(allowed_roles=_EDIT_ROLES)
+    @model_validate(WorkflowCommentUpdatePayload)
+    def put(
+        self,
+        req_data: WorkflowCommentUpdatePayload,
+        request_context: RequestContext,
+        app_id: UUID,
+        comment_id: str,
+    ):
         """Update a workflow comment."""
-        payload = WorkflowCommentUpdatePayload.model_validate(console_ns.payload or {})
-
-        result = WorkflowCommentService.update_comment(
-            tenant_id=current_tenant_id,
-            app_id=app_model.id,
-            comment_id=comment_id,
-            user_id=current_user.id,
-            content=payload.content,
-            position_x=payload.position_x,
-            position_y=payload.position_y,
-            mentioned_user_ids=payload.mentioned_user_ids,
-        )
-
+        mentioned_user_ids = req_data.mentioned_user_ids
+        with _translate_errors():
+            result = application_services().workflow_comments.update_comment(
+                request_context,
+                str(app_id),
+                comment_id,
+                WorkflowCommentEdit(
+                    content=req_data.content,
+                    position_x=req_data.position_x,
+                    position_y=req_data.position_y,
+                    mentioned_user_ids=tuple(mentioned_user_ids) if mentioned_user_ids is not None else None,
+                ),
+            )
         return dump_response(WorkflowCommentUpdate, result)
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("delete_workflow_comment")
     @console_ns.doc(description="Delete a workflow comment")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
     @console_ns.response(204, "Comment deleted successfully")
-    @login_required
-    @setup_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @with_current_tenant_id
-    @get_app_model()
-    def delete(self, current_tenant_id: str, current_user: Account, app_model: App, comment_id: str):
+    @console_account_admission(allowed_roles=_EDIT_ROLES)
+    def delete(self, request_context: RequestContext, app_id: UUID, comment_id: str):
         """Delete a workflow comment."""
-        WorkflowCommentService.delete_comment(
-            tenant_id=current_tenant_id,
-            app_id=app_model.id,
-            comment_id=comment_id,
-            user_id=current_user.id,
-        )
-
+        with _translate_errors():
+            application_services().workflow_comments.delete_comment(request_context, str(app_id), comment_id)
         return "", 204
 
 
@@ -333,61 +336,49 @@ class WorkflowCommentDetailApi(Resource):
 class WorkflowCommentResolveApi(Resource):
     """API for resolving and reopening workflow comments."""
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("resolve_workflow_comment")
     @console_ns.doc(description="Resolve a workflow comment")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
     @console_ns.response(200, "Comment resolved successfully", console_ns.models[WorkflowCommentResolve.__name__])
-    @login_required
-    @setup_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @with_current_tenant_id
-    @get_app_model()
-    def post(self, current_tenant_id: str, current_user: Account, app_model: App, comment_id: str):
+    @console_account_admission(allowed_roles=_EDIT_ROLES)
+    def post(self, request_context: RequestContext, app_id: UUID, comment_id: str):
         """Resolve a workflow comment."""
-        comment = WorkflowCommentService.resolve_comment(
-            tenant_id=current_tenant_id,
-            app_id=app_model.id,
-            comment_id=comment_id,
-            user_id=current_user.id,
-        )
-
-        return dump_response(WorkflowCommentResolve, comment)
+        with _translate_errors():
+            result = application_services().workflow_comments.resolve_comment(request_context, str(app_id), comment_id)
+        return dump_response(WorkflowCommentResolve, result)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/comments/<string:comment_id>/replies")
 class WorkflowCommentReplyApi(Resource):
     """API for managing comment replies."""
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("create_workflow_comment_reply")
     @console_ns.doc(description="Add a reply to a workflow comment")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
     @console_ns.expect(console_ns.models[WorkflowCommentReplyPayload.__name__])
     @console_ns.response(201, "Reply created successfully", console_ns.models[WorkflowCommentReplyCreate.__name__])
-    @login_required
-    @setup_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @with_current_tenant_id
-    @get_app_model()
-    def post(self, current_tenant_id: str, current_user: Account, app_model: App, comment_id: str):
+    @console_account_admission(allowed_roles=_EDIT_ROLES)
+    @model_validate(WorkflowCommentReplyPayload)
+    def post(
+        self,
+        req_data: WorkflowCommentReplyPayload,
+        request_context: RequestContext,
+        app_id: UUID,
+        comment_id: str,
+    ):
         """Add a reply to a workflow comment."""
-        # Validate comment access first
-        WorkflowCommentService.validate_comment_access(
-            comment_id=comment_id, tenant_id=current_tenant_id, app_id=app_model.id
-        )
-
-        payload = WorkflowCommentReplyPayload.model_validate(console_ns.payload or {})
-
-        result = WorkflowCommentService.create_reply(
-            comment_id=comment_id,
-            content=payload.content,
-            created_by=current_user.id,
-            mentioned_user_ids=payload.mentioned_user_ids,
-        )
-
+        with _translate_errors():
+            result = application_services().workflow_comments.create_reply(
+                request_context,
+                str(app_id),
+                comment_id,
+                WorkflowCommentReplyDraft(
+                    content=req_data.content,
+                    mentioned_user_ids=tuple(req_data.mentioned_user_ids),
+                ),
+            )
         return dump_response(WorkflowCommentReplyCreate, result), 201
 
 
@@ -395,65 +386,46 @@ class WorkflowCommentReplyApi(Resource):
 class WorkflowCommentReplyDetailApi(Resource):
     """API for managing individual comment replies."""
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("update_workflow_comment_reply")
     @console_ns.doc(description="Update a comment reply")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID", "reply_id": "Reply ID"})
     @console_ns.expect(console_ns.models[WorkflowCommentReplyPayload.__name__])
     @console_ns.response(200, "Reply updated successfully", console_ns.models[WorkflowCommentReplyUpdate.__name__])
-    @login_required
-    @setup_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @with_current_tenant_id
-    @get_app_model()
-    def put(self, current_tenant_id: str, current_user: Account, app_model: App, comment_id: str, reply_id: str):
+    @console_account_admission(allowed_roles=_EDIT_ROLES)
+    @model_validate(WorkflowCommentReplyPayload)
+    def put(
+        self,
+        req_data: WorkflowCommentReplyPayload,
+        request_context: RequestContext,
+        app_id: UUID,
+        comment_id: str,
+        reply_id: str,
+    ):
         """Update a comment reply."""
-        # Validate comment access first
-        WorkflowCommentService.validate_comment_access(
-            comment_id=comment_id, tenant_id=current_tenant_id, app_id=app_model.id
-        )
+        with _translate_errors():
+            result = application_services().workflow_comments.update_reply(
+                request_context,
+                str(app_id),
+                comment_id,
+                reply_id,
+                WorkflowCommentReplyDraft(
+                    content=req_data.content,
+                    mentioned_user_ids=tuple(req_data.mentioned_user_ids),
+                ),
+            )
+        return dump_response(WorkflowCommentReplyUpdate, result)
 
-        payload = WorkflowCommentReplyPayload.model_validate(console_ns.payload or {})
-
-        reply = WorkflowCommentService.update_reply(
-            tenant_id=current_tenant_id,
-            app_id=app_model.id,
-            comment_id=comment_id,
-            reply_id=reply_id,
-            user_id=current_user.id,
-            content=payload.content,
-            mentioned_user_ids=payload.mentioned_user_ids,
-        )
-
-        return dump_response(WorkflowCommentReplyUpdate, reply)
-
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("delete_workflow_comment_reply")
     @console_ns.doc(description="Delete a comment reply")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID", "reply_id": "Reply ID"})
     @console_ns.response(204, "Reply deleted successfully")
-    @login_required
-    @setup_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @with_current_tenant_id
-    @get_app_model()
-    def delete(self, current_tenant_id: str, current_user: Account, app_model: App, comment_id: str, reply_id: str):
+    @console_account_admission(allowed_roles=_EDIT_ROLES)
+    def delete(self, request_context: RequestContext, app_id: UUID, comment_id: str, reply_id: str):
         """Delete a comment reply."""
-        # Validate comment access first
-        WorkflowCommentService.validate_comment_access(
-            comment_id=comment_id, tenant_id=current_tenant_id, app_id=app_model.id
-        )
-
-        WorkflowCommentService.delete_reply(
-            tenant_id=current_tenant_id,
-            app_id=app_model.id,
-            comment_id=comment_id,
-            reply_id=reply_id,
-            user_id=current_user.id,
-        )
-
+        with _translate_errors():
+            application_services().workflow_comments.delete_reply(request_context, str(app_id), comment_id, reply_id)
         return "", 204
 
 
@@ -461,23 +433,18 @@ class WorkflowCommentReplyDetailApi(Resource):
 class WorkflowCommentMentionUsersApi(Resource):
     """API for getting mentionable users for workflow comments."""
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("workflow_comment_mention_users")
     @console_ns.doc(description="Get all users in current tenant for mentions")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(
         200, "Mentionable users retrieved successfully", console_ns.models[WorkflowCommentMentionUsersPayload.__name__]
     )
-    @login_required
-    @setup_required
-    @account_initialization_required
-    @with_current_user
-    @get_app_model()
-    def get(self, current_user: Account, app_model: App):
+    @console_account_admission()
+    def get(self, request_context: RequestContext, app_id: UUID):
         """Get all users in current tenant for mentions."""
-        current_tenant = current_user.current_tenant  # need the tenant object here
-        if current_tenant is None:
-            raise ValueError("current tenant is required")
-        members = TenantService.get_tenant_members(current_tenant, session=db.session())
-        users = TypeAdapter(list[AccountWithRole]).validate_python(members, from_attributes=True)
-        response = WorkflowCommentMentionUsersPayload(users=users)
-        return response.model_dump(mode="json"), 200
+        services = application_services()
+        with _translate_errors():
+            services.workflow_comments.ensure_app(request_context, str(app_id))
+        members = services.workspaces.member_queries.list_members(request_context.active_workspace_id)
+        return dump_response(WorkflowCommentMentionUsersPayload, {"users": members}), 200

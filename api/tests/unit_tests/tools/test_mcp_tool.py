@@ -2,7 +2,7 @@ import base64
 from collections.abc import Iterator
 from decimal import Decimal
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.engine import Engine
@@ -39,15 +39,14 @@ def _make_mcp_tool(output_schema: dict[str, Any] | None = None) -> MCPTool:
         provider="test_provider",
     )
     entity = ToolEntity(identity=identity, output_schema=output_schema or {})
-    runtime = Mock(spec=ToolRuntime)
-    runtime.credentials = {}
+    runtime = ToolRuntime(tenant_id="test_tenant")
     return MCPTool(
         entity=entity,
         runtime=runtime,
         tenant_id="test_tenant",
         icon="",
         server_url="https://server.invalid",
-        provider_id="provider_1",
+        server_identifier="provider_1",
         headers={},
     )
 
@@ -134,6 +133,19 @@ class TestMCPToolInvoke:
         # Validate values
         values = {m.message.variable_name: m.message.variable_value for m in var_msgs}
         assert values == {"a": 1, "b": "x"}
+
+    def test_invoke_yields_json_when_structured_content_has_no_output_schema(self, orm_session: Session) -> None:
+        tool = _make_mcp_tool()
+        result = CallToolResult(content=[], structuredContent={"a": 1, "b": "x"})
+
+        with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
+            messages = list(tool._invoke(session=orm_session, user_id="test_user", tool_parameters={}))
+
+        assert len(messages) == 1
+        msg = messages[0]
+        assert msg.type == ToolInvokeMessage.MessageType.JSON
+        assert isinstance(msg.message, ToolInvokeMessage.JsonMessage)
+        assert msg.message.json_object == {"a": 1, "b": "x"}
 
 
 class TestMCPToolUsageExtraction:

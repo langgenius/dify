@@ -1,7 +1,7 @@
 'use client'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
 import type { Recipient } from '@/app/components/workflow/nodes/human-input/types'
-import type { Member } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiContactsBookLine } from '@remixicon/react'
@@ -15,11 +15,11 @@ type Props = Readonly<{
   value: Recipient[]
   email: string
   onSelect: (value: string) => void
-  list: Member[]
+  list: AccountWithRoleResponse[]
 }>
 
 const MemberSelector: FC<Props> = ({ value, email, onSelect, list = [] }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowHumanInput'])
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
 
@@ -39,10 +39,10 @@ const MemberSelector: FC<Props> = ({ value, email, onSelect, list = [] }) => {
             className="w-full justify-between data-popup-open:bg-state-accent-hover"
             variant="ghost-accent"
           >
-            <RiContactsBookLine className="mr-1 size-4" />
+            <RiContactsBookLine className="size-4" />
             <div>
               {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.trigger`], {
-                ns: 'workflow',
+                ns: 'workflowHumanInput',
               })}
             </div>
           </Button>
@@ -52,7 +52,7 @@ const MemberSelector: FC<Props> = ({ value, email, onSelect, list = [] }) => {
         placement="bottom-end"
         sideOffset={4}
         alignOffset={35}
-        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <MemberList
           searchValue={searchValue}

@@ -1,8 +1,11 @@
-import type { ReactElement } from 'react'
-import type { Edge, Node } from '@/app/components/workflow/types'
-import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
-import { act, renderHook } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import type { CreateSnippetDialogPayload } from '../../create-snippet-dialog'
+import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
+import type { Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
+import { act, render, renderHook, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useCreateSnippetFromSelection } from '../use-create-snippet-from-selection'
 
@@ -24,9 +27,20 @@ vi.mock('../use-create-snippet', () => ({
   }),
 }))
 
-type DialogProps = {
-  selectedGraph?: SnippetCanvasData
-  inputFields?: SnippetInputField[]
+vi.mock('@/app/notifications', () => ({
+  toast: { error: vi.fn() },
+}))
+
+const submitDialog = async (dialog: ReactNode) => {
+  const user = userEvent.setup()
+  render(dialog)
+  await user.type(
+    screen.getByRole('textbox', { name: 'workflow.snippet.nameLabel' }),
+    'Reusable selection',
+  )
+  await user.click(screen.getByRole('button', { name: 'workflow.snippet.confirm' }))
+  expect(mockHandleCreateSnippet).toHaveBeenCalledOnce()
+  return mockHandleCreateSnippet.mock.calls[0]![0] as CreateSnippetDialogPayload
 }
 
 const createNode = (id: string, data: Record<string, unknown>): Node =>
@@ -39,12 +53,25 @@ const createNode = (id: string, data: Record<string, unknown>): Node =>
     data,
   }) as unknown as Node
 
+const llmEnvironmentVariable: EnvironmentVariable = {
+  id: 'model-env',
+  name: 'MODEL_NAME',
+  value: {
+    provider: 'new-provider',
+    name: 'new-model',
+    mode: 'chat',
+    completion_params: { temperature: 0.8 },
+  },
+  value_type: 'llm',
+  description: '',
+}
+
 describe('useCreateSnippetFromSelection', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
   })
 
-  it('should convert environment, conversation, and system variables into snippet input fields', () => {
+  it('should convert environment, conversation, and system variables into snippet input fields', async () => {
     const selectedNodes = [
       createNode('llm', {
         type: BlockEnum.LLM,
@@ -55,6 +82,7 @@ describe('useCreateSnippetFromSelection', () => {
           '{{#rag.query#}}',
           '{{#source.result#}}',
         ].join(' '),
+        model: { provider: 'old-provider', name: 'old-model', mode: 'chat', completion_params: {} },
         model_selector: ['env', 'MODEL_NAME'],
       }),
     ]
@@ -64,6 +92,7 @@ describe('useCreateSnippetFromSelection', () => {
     const { result } = renderHook(() =>
       useCreateSnippetFromSelection({
         edges,
+        environmentVariables: [llmEnvironmentVariable],
         selectedNodes,
         onClose,
       }),
@@ -73,9 +102,9 @@ describe('useCreateSnippetFromSelection', () => {
       result.current.handleOpenCreateSnippet()
     })
 
-    const dialogProps = (result.current.createSnippetDialog as ReactElement<DialogProps>).props
+    const submitted = await submitDialog(result.current.createSnippetDialog)
 
-    expect(dialogProps.inputFields).toEqual([
+    expect(submitted.input_fields).toEqual([
       {
         label: 'API_KEY',
         variable: 'API_KEY',
@@ -100,16 +129,8 @@ describe('useCreateSnippetFromSelection', () => {
         type: PipelineInputVarType.textInput,
         required: true,
       },
-      {
-        label: 'MODEL_NAME',
-        variable: 'MODEL_NAME',
-        type: PipelineInputVarType.textInput,
-        required: true,
-      },
     ])
-    const nodeData = dialogProps.selectedGraph?.nodes[0]?.data as
-      | Record<string, unknown>
-      | undefined
+    const nodeData = submitted.graph?.nodes[0]?.data as Record<string, unknown> | undefined
 
     expect(nodeData?.prompt).toBe(
       [
@@ -120,11 +141,82 @@ describe('useCreateSnippetFromSelection', () => {
         `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.result#}}`,
       ].join(' '),
     )
-    expect(nodeData?.model_selector).toEqual([SNIPPET_INPUT_FIELD_NODE_ID, 'MODEL_NAME'])
+    expect(nodeData?.model_selector).toBeUndefined()
+    expect(nodeData?.model).toEqual({
+      provider: 'new-provider',
+      name: 'new-model',
+      mode: 'chat',
+      completion_params: { temperature: 0.8 },
+    })
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('should convert system variables used by if-else and variable aggregator nodes', () => {
+  it('should preserve legacy non-environment model selectors', async () => {
+    const selectedNodes = [
+      createNode('llm', {
+        type: BlockEnum.LLM,
+        model: {
+          provider: 'static-provider',
+          name: 'static-model',
+          mode: 'chat',
+          completion_params: {},
+        },
+        model_selector: ['start', 'MODEL_NAME'],
+      }),
+    ]
+    const { result } = renderHook(() =>
+      useCreateSnippetFromSelection({
+        edges: [],
+        environmentVariables: [],
+        selectedNodes,
+        onClose: vi.fn(),
+      }),
+    )
+
+    act(() => result.current.handleOpenCreateSnippet())
+
+    const submitted = await submitDialog(result.current.createSnippetDialog)
+    expect(submitted.input_fields).toEqual([])
+    expect((submitted.graph?.nodes[0]?.data as LLMNodeType).model_selector).toEqual([
+      'start',
+      'MODEL_NAME',
+    ])
+  })
+
+  it('should reject an unresolved LLM environment model when creating a snippet', async () => {
+    const selectedNodes = [
+      createNode('llm', {
+        type: BlockEnum.LLM,
+        model: {
+          provider: 'stale-provider',
+          name: 'stale-model',
+          mode: 'chat',
+          completion_params: {},
+        },
+        model_selector: [],
+      }),
+    ]
+    const onClose = vi.fn()
+    const { result } = renderHook(() =>
+      useCreateSnippetFromSelection({
+        edges: [],
+        environmentVariables: [],
+        selectedNodes,
+        onClose,
+      }),
+    )
+
+    act(() => result.current.handleOpenCreateSnippet())
+
+    expect(toast.error).toHaveBeenCalledWith(
+      'workflow.errorMsg.fieldRequired:{"field":"workflow.errorMsg.fields.model"}',
+    )
+    expect(mockHandleCreateSnippet).not.toHaveBeenCalled()
+    expect(mockHandleOpenCreateSnippetDialog).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('should convert system variables used by if-else and variable aggregator nodes', async () => {
     const selectedNodes = [
       createNode('llm', {
         type: BlockEnum.LLM,
@@ -169,6 +261,7 @@ describe('useCreateSnippetFromSelection', () => {
     const { result } = renderHook(() =>
       useCreateSnippetFromSelection({
         edges: [],
+        environmentVariables: [],
         selectedNodes,
         onClose,
       }),
@@ -178,9 +271,9 @@ describe('useCreateSnippetFromSelection', () => {
       result.current.handleOpenCreateSnippet()
     })
 
-    const dialogProps = (result.current.createSnippetDialog as ReactElement<DialogProps>).props
+    const submitted = await submitDialog(result.current.createSnippetDialog)
 
-    expect(dialogProps.inputFields).toEqual([
+    expect(submitted.input_fields).toEqual([
       {
         label: 'query',
         variable: 'query',
@@ -201,10 +294,8 @@ describe('useCreateSnippetFromSelection', () => {
       },
     ])
 
-    const ifElseNode = dialogProps.selectedGraph?.nodes.find((node) => node.id === 'if-else')
-    const aggregatorNode = dialogProps.selectedGraph?.nodes.find(
-      (node) => node.id === 'variable-aggregator',
-    )
+    const ifElseNode = submitted.graph?.nodes.find((node) => node.id === 'if-else')
+    const aggregatorNode = submitted.graph?.nodes.find((node) => node.id === 'variable-aggregator')
     const ifElseData = ifElseNode?.data as Record<string, unknown>
     const aggregatorData = aggregatorNode?.data as {
       variables?: string[][]
@@ -233,7 +324,7 @@ describe('useCreateSnippetFromSelection', () => {
     ])
   })
 
-  it('should keep #context# prompt placeholders when creating a snippet from workflow selection', () => {
+  it('should keep #context# prompt placeholders when creating a snippet from workflow selection', async () => {
     const selectedNodes = [
       createNode('llm', {
         type: BlockEnum.LLM,
@@ -249,6 +340,7 @@ describe('useCreateSnippetFromSelection', () => {
     const { result } = renderHook(() =>
       useCreateSnippetFromSelection({
         edges: [],
+        environmentVariables: [],
         selectedNodes,
         onClose,
       }),
@@ -258,8 +350,8 @@ describe('useCreateSnippetFromSelection', () => {
       result.current.handleOpenCreateSnippet()
     })
 
-    const dialogProps = (result.current.createSnippetDialog as ReactElement<DialogProps>).props
-    const nodeData = dialogProps.selectedGraph?.nodes[0]?.data as {
+    const submitted = await submitDialog(result.current.createSnippetDialog)
+    const nodeData = submitted.graph?.nodes[0]?.data as {
       context?: {
         enabled: boolean
         variable_selector: string[]
@@ -267,7 +359,7 @@ describe('useCreateSnippetFromSelection', () => {
       prompt?: string
     }
 
-    expect(dialogProps.inputFields).toEqual([
+    expect(submitted.input_fields).toEqual([
       {
         label: 'result',
         variable: 'result',

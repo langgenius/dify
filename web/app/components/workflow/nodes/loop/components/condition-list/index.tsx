@@ -71,19 +71,19 @@ const ConditionList = ({
   }, [conditions.length, isSubVariable, logicalOperator])
 
   return (
-    <div className={cn('relative', conditions.length > 1 && !isSubVariable && 'pl-[60px]')}>
+    <div className={cn('relative', conditions.length > 1 && !isSubVariable && 'pl-15')}>
       {conditions.length > 1 && (
         <div
           className={cn(
-            'absolute top-0 bottom-0 left-0 w-[60px]',
-            isSubVariable && logicalOperator === LogicalOperator.and && 'left-[-10px]',
-            isSubVariable && logicalOperator === LogicalOperator.or && 'left-[-18px]',
+            'absolute top-0 bottom-0 left-0 w-15',
+            isSubVariable && logicalOperator === LogicalOperator.and && '-left-2.5',
+            isSubVariable && logicalOperator === LogicalOperator.or && '-left-4.5',
           )}
         >
-          <div className="absolute top-4 bottom-4 left-[46px] w-2.5 rounded-l-[8px] border border-r-0 border-divider-deep"></div>
-          <div className="absolute top-1/2 right-0 h-[29px] w-4 -translate-y-1/2 bg-components-panel-bg"></div>
+          <div className="absolute top-4 bottom-4 left-11.5 w-2.5 rounded-l-lg border border-r-0 border-divider-deep"></div>
+          <div className="absolute top-1/2 right-0 h-7.25 w-4 -translate-y-1/2 bg-components-panel-bg"></div>
           <div
-            className="absolute top-1/2 right-1 flex h-[21px] -translate-y-1/2 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1 text-[10px] font-semibold text-text-accent-secondary shadow-xs select-none"
+            className="absolute top-1/2 right-1 flex h-5.25 -translate-y-1/2 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1 text-2xs font-semibold text-text-accent-secondary shadow-xs select-none"
             onClick={() => doToggleConditionLogicalOperator(conditionId)}
           >
             {!!logicalOperator && logicalOperator.toUpperCase()}

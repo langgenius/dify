@@ -1,25 +1,31 @@
-import type { DataSet } from '@/models/datasets'
-import { createEvent, fireEvent, screen, waitFor } from '@testing-library/react'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import DatasetDetailContext from '@/context/dataset-detail'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetInfo from '..'
 import Dropdown from '../dropdown'
-import Menu from '../menu'
-import MenuItem from '../menu-item'
 
-let mockDataset: DataSet
+let mockDataset: ReturnType<typeof createDatasetFixture>
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
-const mockInvalidDatasetList = vi.fn()
-const mockInvalidDatasetDetail = vi.fn()
+const datasetListKey = consoleQuery.datasets.get.queryKey({
+  input: { query: { page: 1, limit: 20 } },
+})
+const datasetDetailKey = consoleQuery.datasets.byDatasetId.get.queryKey({
+  input: { params: { dataset_id: 'dataset-1' } },
+})
 const mockExportPipeline = vi.fn()
 const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
-const TestEditIcon = () => <span aria-hidden className="i-ri-edit-line" />
+const mockUpdateDataset = vi.fn()
 let mockIsRbacEnabled = true
 const mockConsoleState = vi.hoisted(() => ({
   current: {
@@ -28,84 +34,87 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
-const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
-  renderWithConsoleQuery(ui, {
-    systemFeatures: {
-      rbac_enabled: mockIsRbacEnabled,
-    },
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(datasetListKey, {
+    data: [mockDataset],
+    has_more: false,
+    page: 1,
+    limit: 20,
+    total: 1,
   })
+  queryClient.setQueryData(datasetDetailKey, mockDataset)
+  return renderWithConsoleQuery(
+    <DatasetDetailContext.Provider value={{ dataset: mockDataset }}>
+      {ui}
+    </DatasetDetailContext.Provider>,
+    {
+      queryClient,
+      systemFeatures: { rbac_enabled: mockIsRbacEnabled },
+    },
+  )
+}
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
-  id: 'dataset-1',
-  name: 'Dataset Name',
-  indexing_status: 'completed',
-  icon_info: {
-    icon: '📙',
-    icon_background: '#FFF4ED',
-    icon_type: 'emoji',
-    icon_url: '',
-  },
-  description: 'Dataset description',
-  permission: DatasetPermission.onlyMe,
-  data_source_type: DataSourceType.FILE,
-  indexing_technique: 'high_quality' as DataSet['indexing_technique'],
-  created_by: 'user-1',
-  updated_by: 'user-1',
-  updated_at: 1690000000,
-  app_count: 0,
-  doc_form: ChunkingMode.text,
-  document_count: 1,
-  total_document_count: 1,
-  word_count: 1000,
-  provider: 'internal',
-  embedding_model: 'text-embedding-3',
-  embedding_model_provider: 'openai',
-  embedding_available: true,
-  retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
+const createDataset = (overrides: Partial<DatasetDetailWithPartialMembersResponse> = {}) =>
+  createDatasetFixture({
+    ...createDatasetFixture(),
+    id: 'dataset-1',
+    name: 'Dataset Name',
+    icon_info: {
+      icon: '📙',
+      icon_background: '#FFF4ED',
+      icon_type: 'emoji',
+      icon_url: '',
     },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
+    description: 'Dataset description',
+    permission: PermissionLevel.onlyMe,
+    data_source_type: DataSourceType.FILE,
+    indexing_technique: 'high_quality',
+    created_by: 'user-1',
+    updated_by: 'user-1',
+    updated_at: 1690000000,
+    app_count: 0,
+    doc_form: ChunkingMode.text,
+    document_count: 1,
+    word_count: 1000,
+    provider: 'internal',
+    embedding_model: 'text-embedding-3',
+    embedding_model_provider: 'openai',
+    embedding_available: true,
+    retrieval_model_dict: {
+      search_method: RETRIEVE_METHOD.semantic,
+      reranking_enable: false,
+      reranking_model: {
+        reranking_provider_name: '',
+        reranking_model_name: '',
+      },
+      top_k: 5,
+      score_threshold_enabled: false,
+      score_threshold: 0,
     },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  tags: [],
-  external_knowledge_info: {
-    external_knowledge_id: '',
-    external_knowledge_api_id: '',
-    external_knowledge_api_name: '',
-    external_knowledge_api_endpoint: '',
-  },
-  external_retrieval_model: {
-    top_k: 0,
-    score_threshold: 0,
-    score_threshold_enabled: false,
-  },
-  built_in_field_enabled: false,
-  runtime_mode: 'rag_pipeline',
-  enable_api: false,
-  is_multimodal: false,
-  permission_keys: [
-    DatasetACLPermission.Edit,
-    DatasetACLPermission.Delete,
-    DatasetACLPermission.ImportExportDSL,
-  ],
-  ...overrides,
-})
+    tags: [],
+    external_knowledge_info: {
+      external_knowledge_id: '',
+      external_knowledge_api_id: '',
+      external_knowledge_api_name: '',
+      external_knowledge_api_endpoint: '',
+    },
+    external_retrieval_model: {
+      top_k: 0,
+      score_threshold: 0,
+      score_threshold_enabled: false,
+    },
+    built_in_field_enabled: false,
+    runtime_mode: 'rag_pipeline',
+    enable_api: false,
+    is_multimodal: false,
+    permission_keys: [
+      DatasetACLPermission.Edit,
+      DatasetACLPermission.Delete,
+      DatasetACLPermission.ImportExportDSL,
+    ],
+    ...overrides,
+  })
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -114,72 +123,30 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) =>
-    selector({ dataset: mockDataset }),
-}))
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current)
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  datasetDetailQueryKeyPrefix: ['dataset', 'detail'],
-  useInvalidDatasetList: () => mockInvalidDatasetList,
-}))
-
-vi.mock('@/service/use-base', () => ({
-  useInvalid: () => mockInvalidDatasetDetail,
-}))
-
-vi.mock('@/service/use-pipeline', () => ({
-  useExportPipelineDSL: () => ({
-    mutateAsync: mockExportPipeline,
-  }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.exports.get': (input) => mockExportPipeline(input),
+    }),
+  }
+})
 
 vi.mock('@/service/datasets', () => ({
   checkIsUsedInApp: (...args: unknown[]) => mockCheckIsUsedInApp(...args),
   deleteDataset: (...args: unknown[]) => mockDeleteDataset(...args),
-}))
-
-vi.mock('@/hooks/use-knowledge', () => ({
-  useKnowledge: () => ({
-    formatIndexingTechniqueAndMethod: () => 'indexing-technique',
-  }),
-}))
-
-vi.mock('@/app/components/datasets/rename-modal', () => ({
-  default: ({
-    show,
-    onClose,
-    onSuccess,
-  }: {
-    show: boolean
-    onClose: () => void
-    onSuccess?: () => void
-  }) => {
-    if (!show) return null
-    return (
-      <div data-testid="rename-modal">
-        <button type="button" onClick={onSuccess}>
-          Success
-        </button>
-        <button type="button" onClick={onClose}>
-          Close
-        </button>
-      </div>
-    )
-  },
+  updateDatasetSetting: (...args: unknown[]) => mockUpdateDataset(...args),
 }))
 
 const openMenu = async (user: ReturnType<typeof userEvent.setup>) => {
-  const trigger = screen.getByRole('button')
+  const trigger = screen.getByRole('button', { name: 'common.operation.more' })
   await user.click(trigger)
 }
 
@@ -201,7 +168,7 @@ describe('DatasetInfo', () => {
       expect(screen.getByText('Dataset Name')).toBeInTheDocument()
       expect(screen.queryByText('Dataset description')).not.toBeInTheDocument()
       expect(screen.getByText('dataset.chunkingMode.general')).toBeInTheDocument()
-      expect(screen.getByText('indexing-technique')).toBeInTheDocument()
+      expect(screen.getByText(/dataset.indexingTechnique.high_quality/)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.more' })).toBeInTheDocument()
     })
 
@@ -215,184 +182,13 @@ describe('DatasetInfo', () => {
       expect(screen.queryByText('dataset.chunkingMode.general')).not.toBeInTheDocument()
     })
 
-    it('should hide detailed fields when collapsed', () => {
+    it('should keep the dataset name available when collapsed and omit detailed fields', () => {
       // Arrange
       render(<DatasetInfo expand={false} />)
 
       // Assert
-      expect(screen.queryByText('Dataset Name')).not.toBeInTheDocument()
+      expect(screen.getByText('Dataset Name')).toBeInTheDocument()
       expect(screen.queryByText('Dataset description')).not.toBeInTheDocument()
-    })
-  })
-})
-
-describe('MenuItem', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // Event handling for menu item interactions.
-  describe('Interactions', () => {
-    it('should call handler when clicked', async () => {
-      const user = userEvent.setup()
-      const handleClick = vi.fn()
-      // Arrange
-      render(<MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />)
-
-      // Act
-      await user.click(screen.getByText('Edit'))
-
-      // Assert
-      expect(handleClick).toHaveBeenCalledTimes(1)
-    })
-
-    it('should stop propagation before invoking the handler', () => {
-      const parentClick = vi.fn()
-      const handleClick = vi.fn()
-
-      render(
-        <div role="button" tabIndex={0} onClick={parentClick} onKeyDown={parentClick}>
-          <MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />
-        </div>,
-      )
-
-      fireEvent.click(screen.getByText('Edit'))
-
-      expect(handleClick).toHaveBeenCalledTimes(1)
-      expect(parentClick).not.toHaveBeenCalled()
-    })
-
-    it('should prevent the default action when no click handler is provided', () => {
-      render(<MenuItem name="Edit" Icon={TestEditIcon} />)
-
-      const event = createEvent.click(screen.getByText('Edit'))
-      fireEvent(screen.getByText('Edit'), event)
-
-      expect(event.defaultPrevented).toBe(true)
-    })
-  })
-})
-
-describe('Menu', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockDataset = createDataset()
-  })
-
-  // Rendering of menu options based on runtime mode and delete visibility.
-  describe('Rendering', () => {
-    it('should show edit, export, and delete options when rag pipeline and deletable', () => {
-      // Arrange
-      mockDataset = createDataset({ runtime_mode: 'rag_pipeline' })
-      render(
-        <Menu
-          showDelete
-          openRenameModal={vi.fn()}
-          handleExportPipeline={vi.fn()}
-          detectIsUsedByApp={vi.fn()}
-        />,
-      )
-
-      // Assert
-      expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
-      expect(screen.getByText('datasetPipeline.operations.exportPipeline')).toBeInTheDocument()
-      expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
-    })
-
-    it('should show resource access option when enabled', () => {
-      render(
-        <Menu
-          showDelete={false}
-          showAccessConfig
-          openRenameModal={vi.fn()}
-          handleExportPipeline={vi.fn()}
-          detectIsUsedByApp={vi.fn()}
-          openAccessConfig={vi.fn()}
-        />,
-      )
-
-      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
-    })
-
-    it('should hide export and delete options when not rag pipeline and not deletable', () => {
-      // Arrange
-      mockDataset = createDataset({ runtime_mode: 'general' })
-      render(
-        <Menu
-          showDelete={false}
-          openRenameModal={vi.fn()}
-          handleExportPipeline={vi.fn()}
-          detectIsUsedByApp={vi.fn()}
-        />,
-      )
-
-      // Assert
-      expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
-      expect(
-        screen.queryByText('datasetPipeline.operations.exportPipeline'),
-      ).not.toBeInTheDocument()
-      expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Interactions', () => {
-    it('should invoke the rename callback when edit is clicked', async () => {
-      const user = userEvent.setup()
-      const openRenameModal = vi.fn()
-
-      render(
-        <Menu
-          showDelete
-          openRenameModal={openRenameModal}
-          handleExportPipeline={vi.fn()}
-          detectIsUsedByApp={vi.fn()}
-        />,
-      )
-
-      await user.click(screen.getByText('common.operation.edit'))
-
-      expect(openRenameModal).toHaveBeenCalledTimes(1)
-    })
-
-    it('should invoke export and delete callbacks from their menu items', async () => {
-      const user = userEvent.setup()
-      const handleExportPipeline = vi.fn()
-      const detectIsUsedByApp = vi.fn()
-
-      render(
-        <Menu
-          showDelete
-          openRenameModal={vi.fn()}
-          handleExportPipeline={handleExportPipeline}
-          detectIsUsedByApp={detectIsUsedByApp}
-        />,
-      )
-
-      await user.click(screen.getByText('datasetPipeline.operations.exportPipeline'))
-      await user.click(screen.getByText('common.operation.delete'))
-
-      expect(handleExportPipeline).toHaveBeenCalledTimes(1)
-      expect(detectIsUsedByApp).toHaveBeenCalledTimes(1)
-    })
-
-    it('should invoke access config callback from its menu item', async () => {
-      const user = userEvent.setup()
-      const openAccessConfig = vi.fn()
-
-      render(
-        <Menu
-          showDelete={false}
-          showAccessConfig
-          openRenameModal={vi.fn()}
-          handleExportPipeline={vi.fn()}
-          detectIsUsedByApp={vi.fn()}
-          openAccessConfig={openAccessConfig}
-        />,
-      )
-
-      await user.click(screen.getByText('common.settings.resourceAccess'))
-
-      expect(openAccessConfig).toHaveBeenCalledTimes(1)
     })
   })
 })
@@ -405,6 +201,7 @@ describe('Dropdown', () => {
     mockExportPipeline.mockResolvedValue({ data: 'pipeline-content' })
     mockCheckIsUsedInApp.mockResolvedValue({ is_using: false })
     mockDeleteDataset.mockResolvedValue({})
+    mockUpdateDataset.mockResolvedValue({})
     if (!('createObjectURL' in URL)) {
       Object.defineProperty(URL, 'createObjectURL', {
         value: vi.fn(),
@@ -451,7 +248,7 @@ describe('Dropdown', () => {
       await openMenu(user)
 
       // Assert
-      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
+      expect(screen.getByText('navigation.settings.resourceAccess')).toBeInTheDocument()
       expect(screen.queryByText('common.operation.edit')).not.toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
     })
@@ -471,29 +268,49 @@ describe('Dropdown', () => {
 
       // Assert
       expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
-      expect(screen.queryByText('common.settings.resourceAccess')).not.toBeInTheDocument()
+      expect(screen.queryByText('navigation.settings.resourceAccess')).not.toBeInTheDocument()
     })
   })
 
   // User interactions that trigger modals and exports.
   describe('Interactions', () => {
-    it('should open rename modal when edit is clicked', async () => {
+    it('renames the dataset and invalidates cached list and detail', async () => {
       const user = userEvent.setup()
       // Arrange
-      render(<Dropdown expand />)
+      const { queryClient } = render(<Dropdown expand />)
 
       // Act
       await openMenu(user)
       await user.click(screen.getByText('common.operation.edit'))
 
       // Assert
-      expect(screen.getByTestId('rename-modal')).toBeInTheDocument()
+      const input = await screen.findByRole('textbox', { name: 'datasetSettings.form.name' })
+      await user.clear(input)
+      await user.type(input, 'Renamed Dataset{Enter}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(mockUpdateDataset).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          name: 'Renamed Dataset',
+          description: 'Dataset description',
+        }),
+      })
+      expect(queryClient.getQueryState(datasetListKey)?.isInvalidated).toBe(true)
+      expect(queryClient.getQueryState(datasetDetailKey)?.isInvalidated).toBe(true)
     })
 
     it('should export pipeline when export is clicked', async () => {
       const user = userEvent.setup()
-      const anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click')
-      const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL')
+      const downloads: Array<{ href: string; name: string }> = []
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+        this: HTMLAnchorElement,
+      ) {
+        downloads.push({ href: this.href, name: this.download })
+      })
+      const createObjectURLSpy = vi
+        .spyOn(URL, 'createObjectURL')
+        .mockReturnValue('blob:pipeline-export')
+      const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL')
       // Arrange
       render(<Dropdown expand />)
 
@@ -504,33 +321,19 @@ describe('Dropdown', () => {
       // Assert
       await waitFor(() => {
         expect(mockExportPipeline).toHaveBeenCalledWith({
-          pipelineId: 'pipeline-1',
-          include: false,
+          params: { pipeline_id: 'pipeline-1' },
+          query: { include_secret: 'false' },
         })
       })
       expect(createObjectURLSpy).toHaveBeenCalledTimes(1)
-      expect(anchorClickSpy).toHaveBeenCalledTimes(1)
-    })
-
-    it('should show delete confirmation when delete is clicked', async () => {
-      const user = userEvent.setup()
-      // Arrange
-      render(<Dropdown expand />)
-
-      // Act
-      await openMenu(user)
-      await user.click(screen.getByText('common.operation.delete'))
-
-      // Assert
-      await waitFor(() => {
-        expect(screen.getByText('dataset.deleteDatasetConfirmContent')).toBeInTheDocument()
-      })
+      expect(downloads).toEqual([{ href: 'blob:pipeline-export', name: 'Dataset Name.pipeline' }])
+      expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:pipeline-export')
     })
 
     it('should delete dataset and redirect when confirm is clicked', async () => {
       const user = userEvent.setup()
       // Arrange
-      render(<Dropdown expand />)
+      const { queryClient } = render(<Dropdown expand />)
 
       // Act
       await openMenu(user)
@@ -541,7 +344,7 @@ describe('Dropdown', () => {
       await waitFor(() => {
         expect(mockDeleteDataset).toHaveBeenCalledWith('dataset-1')
       })
-      expect(mockInvalidDatasetList).toHaveBeenCalledTimes(1)
+      expect(queryClient.getQueryState(datasetListKey)?.isInvalidated).toBe(true)
       expect(mockReplace).toHaveBeenCalledWith('/datasets')
     })
 
@@ -556,10 +359,12 @@ describe('Dropdown', () => {
 
       // Act
       await openMenu(user)
-      await user.click(screen.getByText('common.settings.resourceAccess'))
+      await user.click(screen.getByText('navigation.settings.resourceAccess'))
 
       // Assert
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/access-config')
     })
   })
 })
+
+afterEach(() => vi.restoreAllMocks())

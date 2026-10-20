@@ -5,15 +5,53 @@ export type ClientOptions = {
 }
 
 export type InstalledAppListResponse = {
+  has_more: boolean
   installed_apps: Array<InstalledAppResponse>
+  next_cursor: string | null
 }
 
-export type InstalledAppCreatePayload = {
-  app_id: string
+export type InvalidCursorError = ErrorResponse & {
+  code: 'invalid_cursor'
+  status: 400
 }
 
-export type SimpleMessageResponse = {
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
   message: string
+  params?: string
+  status: number
+}
+
+export type WebAppAccessUnavailableError = ErrorResponse & {
+  code: 'web_app_access_unavailable'
+  status: 503
+}
+
+export type InstalledAppResponse = {
+  app: InstalledAppInfoResponse
+  app_owner_tenant_id: string
+  editable: boolean
+  id: string
+  is_pinned: boolean
+  last_used_at: number | null
+}
+
+export type AccessDeniedError = ErrorResponse & {
+  code: 'access_denied'
+  status: 403
+}
+
+export type InstalledAppNotFoundError = ErrorResponse & {
+  code: 'installed_app_not_found'
+  status: 404
+}
+
+export type InstalledAppUnavailableError = ErrorResponse & {
+  code: 'installed_app_unavailable'
+  status: 404
 }
 
 export type InstalledAppUpdatePayload = {
@@ -29,20 +67,82 @@ export type AudioTranscriptResponse = {
   text: string
 }
 
-export type ChatMessagePayload = {
+export type AppUnavailableError = ErrorResponse & {
+  code: 'app_unavailable'
+  status: 400
+}
+
+export type CompletionRequestError = ErrorResponse & {
+  code: 'completion_request_error'
+  status: 400
+}
+
+export type ModelCurrentlyNotSupportError = ErrorResponse & {
+  code: 'model_currently_not_support'
+  status: 400
+}
+
+export type NoAudioUploadedError = ErrorResponse & {
+  code: 'no_audio_uploaded'
+  status: 400
+}
+
+export type ProviderNotInitializeError = ErrorResponse & {
+  code: 'provider_not_initialize'
+  status: 400
+}
+
+export type ProviderNotSupportSpeechToTextError = ErrorResponse & {
+  code: 'provider_not_support_speech_to_text'
+  status: 400
+}
+
+export type ProviderQuotaExceededError = ErrorResponse & {
+  code: 'provider_quota_exceeded'
+  status: 400
+}
+
+export type SpeechToTextDisabledError = ErrorResponse & {
+  code: 'speech_to_text_disabled'
+  status: 400
+}
+
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status: 404
+}
+
+export type AudioTooLargeError = ErrorResponse & {
+  code: 'audio_too_large'
+  status: 413
+}
+
+export type UnsupportedAudioTypeError = ErrorResponse & {
+  code: 'unsupported_audio_type'
+  status: 415
+}
+
+export type ChatMessageExplorePayload = {
   conversation_id?: string | null
-  draft_type?: 'debug_build' | 'draft'
-  files?: Array<unknown> | null
-  inputs: {
+  files?: Array<{
     [key: string]: unknown
-  }
-  model_config?: {
+  }> | null
+  inputs: {
     [key: string]: unknown
   }
   parent_message_id?: string | null
   query: string
-  response_mode?: 'blocking' | 'streaming'
   retriever_from?: string
+}
+
+export type NotChatAppError = ErrorResponse & {
+  code: 'not_chat_app'
+  status: 400
+}
+
+export type RateLimitError = ErrorResponse & {
+  code: 'rate_limit_error'
+  status: 429
 }
 
 export type SimpleResultResponse = {
@@ -61,10 +161,25 @@ export type CompletionMessageExplorePayload = {
   retriever_from?: string
 }
 
+export type NotCompletionAppError = ErrorResponse & {
+  code: 'not_completion_app'
+  status: 400
+}
+
 export type ConversationInfiniteScrollPagination = {
   data: Array<SimpleConversation>
   has_more: boolean
   limit: number
+}
+
+export type ConversationCursorNotFoundError = ErrorResponse & {
+  code: 'conversation_cursor_not_found'
+  status: 404
+}
+
+export type ConversationNotFoundError = ErrorResponse & {
+  code: 'conversation_not_found'
+  status: 404
 }
 
 export type ConversationRenamePayload = (
@@ -85,12 +200,22 @@ export type SimpleConversation = {
   created_at?: number | null
   id: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: AnyJsonValue
   }
   introduction?: string | null
   name: string
   status: string
   updated_at?: number | null
+}
+
+export type ConversationNameRequiredError = ErrorResponse & {
+  code: 'conversation_name_required'
+  status: 400
+}
+
+export type ConversationFirstMessageNotFoundError = ErrorResponse & {
+  code: 'conversation_first_message_not_found'
+  status: 404
 }
 
 export type ResultResponse = {
@@ -103,14 +228,38 @@ export type ExploreMessageInfiniteScrollPagination = {
   limit: number
 }
 
+export type MessageCursorNotFoundError = ErrorResponse & {
+  code: 'message_cursor_not_found'
+  status: 404
+}
+
 export type MessageFeedbackPayload = {
   content?: string | null
-  message_id: string
   rating?: 'dislike' | 'like' | null
+}
+
+export type MessageFeedbackRatingRequiredError = ErrorResponse & {
+  code: 'message_feedback_rating_required'
+  status: 400
+}
+
+export type MessageNotFoundError = ErrorResponse & {
+  code: 'message_not_found'
+  status: 404
+}
+
+export type AppMoreLikeThisDisabledError = ErrorResponse & {
+  code: 'app_more_like_this_disabled'
+  status: 403
 }
 
 export type SuggestedQuestionsResponse = {
   data: Array<string>
+}
+
+export type AppSuggestedQuestionsAfterAnswerDisabledError = ErrorResponse & {
+  code: 'app_suggested_questions_after_answer_disabled'
+  status: 403
 }
 
 export type ExploreAppMetaResponse = {
@@ -124,18 +273,327 @@ export type ExploreAppMetaResponse = {
 }
 
 export type Parameters = {
-  annotation_reply: JsonObject
-  file_upload: JsonObject
-  more_like_this: JsonObject
+  annotation_reply: {
+    enabled?: boolean
+  }
+  file_upload: {
+    allowed_file_extensions?: Array<string>
+    allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
+    allowed_file_upload_methods?: Array<'local_file' | 'remote_url'>
+    enabled?: boolean
+    image?: {
+      detail?: string
+      enabled?: boolean
+      number_limits?: number
+      transfer_methods?: Array<string>
+    }
+    number_limits?: number
+  }
+  more_like_this: {
+    enabled?: boolean
+  }
   opening_statement?: string | null
-  retriever_resource: JsonObject
-  sensitive_word_avoidance: JsonObject
-  speech_to_text: JsonObject
+  retriever_resource: {
+    enabled?: boolean
+  }
+  sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  speech_to_text: {
+    enabled?: boolean
+  }
   suggested_questions: Array<string>
-  suggested_questions_after_answer: JsonObject
+  suggested_questions_after_answer: {
+    enabled?: boolean
+  }
   system_parameters: SystemParameters
-  text_to_speech: JsonObject
-  user_input_form: Array<JsonObject>
+  text_to_speech: {
+    autoPlay?: string
+    enabled?: boolean
+    language?: string
+    voice?: string
+  }
+  user_input_form: Array<
+    | {
+        'text-input': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        select: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        paragraph: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        number: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        external_data_tool: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        file: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        'file-list': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        checkbox: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        json_object: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+  >
 }
 
 export type SavedMessageInfiniteScrollPagination = {
@@ -157,38 +615,65 @@ export type TextToAudioPayload = {
 
 export type AudioBinaryResponse = Blob | File
 
+export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
+  code: 'provider_not_support_text_to_speech'
+  status: 400
+}
+
 export type WorkflowRunPayload = {
-  files?: Array<{
-    transfer_method: 'local_file' | 'remote_url'
-    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
-    upload_file_id?: string
-    url?: string
-  }> | null
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
   inputs: {
     [key: string]: unknown
   }
 }
 
-export type InstalledAppResponse = {
-  app: InstalledAppInfoResponse
-  app_owner_tenant_id: string
-  editable: boolean
-  id: string
-  is_pinned: boolean
-  last_used_at?: number | null
-  uninstallable: boolean
+export type NotWorkflowAppError = ErrorResponse & {
+  code: 'not_workflow_app'
+  status: 400
 }
 
-export type JsonValue =
-  | string
-  | number
-  | number
-  | boolean
-  | {
-      [key: string]: unknown
-    }
-  | Array<unknown>
-  | null
+export type InstalledAppInfoResponse = {
+  description: string
+  icon: string | null
+  icon_background: string | null
+  icon_type: IconType | null
+  readonly icon_url: string | null
+  id: string
+  mode: AppMode
+  name: string
+  use_icon_as_answer_icon: boolean
+}
+
+export type AnyJsonValue = unknown
 
 export type ExploreMessageListItem = {
   agent_thoughts: Array<AgentThought>
@@ -216,10 +701,6 @@ export type ExploreMessageListItem = {
   readonly total_tokens: number
 }
 
-export type JsonObject = {
-  [key: string]: unknown
-}
-
 export type SystemParameters = {
   audio_file_size_limit: number
   file_size_limit: number
@@ -240,17 +721,17 @@ export type SavedMessageItem = {
   query: string
 }
 
-export type InstalledAppInfoResponse = {
-  description?: string | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  readonly icon_url: string | null
-  id: string
-  mode?: string | null
-  name?: string | null
-  use_icon_as_answer_icon?: boolean | null
-}
+export type IconType = 'emoji' | 'image' | 'link'
+
+export type AppMode =
+  | 'advanced-chat'
+  | 'agent'
+  | 'agent-chat'
+  | 'channel'
+  | 'chat'
+  | 'completion'
+  | 'rag-pipeline'
+  | 'workflow'
 
 export type AgentThought = {
   answer?: string | null
@@ -264,7 +745,7 @@ export type AgentThought = {
   thought?: string | null
   tool?: string | null
   tool_input?: string | null
-  tool_labels: JsonValue
+  tool_labels: AnyJsonValue
 }
 
 export type HumanInputContent = {
@@ -299,17 +780,26 @@ export type RetrieverResource = {
   data_source_type?: string | null
   dataset_id?: string | null
   dataset_name?: string | null
+  doc_metadata?: {
+    [key: string]: JsonValueType
+  } | null
   document_id?: string | null
   document_name?: string | null
+  files?: Array<{
+    [key: string]: JsonValueType
+  }> | null
   hit_count?: number | null
   id?: string
   index_node_hash?: string | null
   message_id?: string
+  page?: number | null
   position: number
+  retriever_from?: string | null
   score?: number | null
   segment_id?: string | null
   segment_position?: number | null
   summary?: string | null
+  title?: string | null
   word_count?: number | null
 }
 
@@ -335,7 +825,7 @@ export type HumanInputFormSubmissionData = {
   node_title: string
   rendered_content: string
   submitted_data?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   } | null
 }
 
@@ -361,7 +851,7 @@ export type FormInputConfig =
       type: 'file-list'
     } & FileListInputConfig)
 
-export type JsonValue2 = unknown
+export type JsonValue = unknown
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
@@ -413,13 +903,9 @@ export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url'
 export type ValueSourceType = 'constant' | 'variable'
 
 export type InstalledAppListResponseWritable = {
-  installed_apps: Array<InstalledAppResponseWritable>
-}
-
-export type ExploreMessageInfiniteScrollPaginationWritable = {
-  data: Array<ExploreMessageListItemWritable>
   has_more: boolean
-  limit: number
+  installed_apps: Array<InstalledAppResponseWritable>
+  next_cursor: string | null
 }
 
 export type InstalledAppResponseWritable = {
@@ -428,8 +914,24 @@ export type InstalledAppResponseWritable = {
   editable: boolean
   id: string
   is_pinned: boolean
-  last_used_at?: number | null
-  uninstallable: boolean
+  last_used_at: number | null
+}
+
+export type ExploreMessageInfiniteScrollPaginationWritable = {
+  data: Array<ExploreMessageListItemWritable>
+  has_more: boolean
+  limit: number
+}
+
+export type InstalledAppInfoResponseWritable = {
+  description: string
+  icon: string | null
+  icon_background: string | null
+  icon_type: IconType | null
+  id: string
+  mode: AppMode
+  name: string
+  use_icon_as_answer_icon: boolean
 }
 
 export type ExploreMessageListItemWritable = {
@@ -457,25 +959,25 @@ export type ExploreMessageListItemWritable = {
   total_price?: string | null
 }
 
-export type InstalledAppInfoResponseWritable = {
-  description?: string | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  id: string
-  mode?: string | null
-  name?: string | null
-  use_icon_as_answer_icon?: boolean | null
-}
-
 export type GetInstalledAppsData = {
   body?: never
   path?: never
   query?: {
     app_id?: string
+    cursor?: string
+    limit?: number
+    name?: string
   }
   url: '/installed-apps'
 }
+
+export type GetInstalledAppsErrors = {
+  400: InvalidCursorError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsError = GetInstalledAppsErrors[keyof GetInstalledAppsErrors]
 
 export type GetInstalledAppsResponses = {
   200: InstalledAppListResponse
@@ -483,20 +985,7 @@ export type GetInstalledAppsResponses = {
 
 export type GetInstalledAppsResponse = GetInstalledAppsResponses[keyof GetInstalledAppsResponses]
 
-export type PostInstalledAppsData = {
-  body: InstalledAppCreatePayload
-  path?: never
-  query?: never
-  url: '/installed-apps'
-}
-
-export type PostInstalledAppsResponses = {
-  200: SimpleMessageResponse
-}
-
-export type PostInstalledAppsResponse = PostInstalledAppsResponses[keyof PostInstalledAppsResponses]
-
-export type DeleteInstalledAppsByInstalledAppIdData = {
+export type GetInstalledAppsByInstalledAppIdData = {
   body?: never
   path: {
     installed_app_id: string
@@ -505,12 +994,22 @@ export type DeleteInstalledAppsByInstalledAppIdData = {
   url: '/installed-apps/{installed_app_id}'
 }
 
-export type DeleteInstalledAppsByInstalledAppIdResponses = {
-  204: void
+export type GetInstalledAppsByInstalledAppIdErrors = {
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | InstalledAppUnavailableError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
 }
 
-export type DeleteInstalledAppsByInstalledAppIdResponse =
-  DeleteInstalledAppsByInstalledAppIdResponses[keyof DeleteInstalledAppsByInstalledAppIdResponses]
+export type GetInstalledAppsByInstalledAppIdError =
+  GetInstalledAppsByInstalledAppIdErrors[keyof GetInstalledAppsByInstalledAppIdErrors]
+
+export type GetInstalledAppsByInstalledAppIdResponses = {
+  200: InstalledAppResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdResponse =
+  GetInstalledAppsByInstalledAppIdResponses[keyof GetInstalledAppsByInstalledAppIdResponses]
 
 export type PatchInstalledAppsByInstalledAppIdData = {
   body: InstalledAppUpdatePayload
@@ -520,6 +1019,16 @@ export type PatchInstalledAppsByInstalledAppIdData = {
   query?: never
   url: '/installed-apps/{installed_app_id}'
 }
+
+export type PatchInstalledAppsByInstalledAppIdErrors = {
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchInstalledAppsByInstalledAppIdError =
+  PatchInstalledAppsByInstalledAppIdErrors[keyof PatchInstalledAppsByInstalledAppIdErrors]
 
 export type PatchInstalledAppsByInstalledAppIdResponses = {
   200: SimpleResultMessageResponse
@@ -537,6 +1046,28 @@ export type PostInstalledAppsByInstalledAppIdAudioToTextData = {
   url: '/installed-apps/{installed_app_id}/audio-to-text'
 }
 
+export type PostInstalledAppsByInstalledAppIdAudioToTextErrors = {
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NoAudioUploadedError
+    | ProviderNotInitializeError
+    | ProviderNotSupportSpeechToTextError
+    | ProviderQuotaExceededError
+    | SpeechToTextDisabledError
+    | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: AgentVersionNotFoundError | InstalledAppNotFoundError | ErrorResponse
+  413: AudioTooLargeError | ErrorResponse
+  415: UnsupportedAudioTypeError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdAudioToTextError =
+  PostInstalledAppsByInstalledAppIdAudioToTextErrors[keyof PostInstalledAppsByInstalledAppIdAudioToTextErrors]
+
 export type PostInstalledAppsByInstalledAppIdAudioToTextResponses = {
   200: AudioTranscriptResponse
 }
@@ -545,13 +1076,32 @@ export type PostInstalledAppsByInstalledAppIdAudioToTextResponse =
   PostInstalledAppsByInstalledAppIdAudioToTextResponses[keyof PostInstalledAppsByInstalledAppIdAudioToTextResponses]
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesData = {
-  body: ChatMessagePayload
+  body: ChatMessageExplorePayload
   path: {
     installed_app_id: string
   }
   query?: never
   url: '/installed-apps/{installed_app_id}/chat-messages'
 }
+
+export type PostInstalledAppsByInstalledAppIdChatMessagesErrors = {
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotChatAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  429: RateLimitError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdChatMessagesError =
+  PostInstalledAppsByInstalledAppIdChatMessagesErrors[keyof PostInstalledAppsByInstalledAppIdChatMessagesErrors]
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesResponses = {
   200: {
@@ -572,6 +1122,17 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopData = {
   url: '/installed-apps/{installed_app_id}/chat-messages/{task_id}/stop'
 }
 
+export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopErrors = {
+  400: NotChatAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopError =
+  PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopErrors[keyof PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopErrors]
+
 export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
@@ -587,6 +1148,24 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesData = {
   query?: never
   url: '/installed-apps/{installed_app_id}/completion-messages'
 }
+
+export type PostInstalledAppsByInstalledAppIdCompletionMessagesErrors = {
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotCompletionAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdCompletionMessagesError =
+  PostInstalledAppsByInstalledAppIdCompletionMessagesErrors[keyof PostInstalledAppsByInstalledAppIdCompletionMessagesErrors]
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesResponses = {
   200: {
@@ -606,6 +1185,17 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopData 
   query?: never
   url: '/installed-apps/{installed_app_id}/completion-messages/{task_id}/stop'
 }
+
+export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopErrors = {
+  400: NotCompletionAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopError =
+  PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopErrors[keyof PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopErrors]
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
@@ -627,6 +1217,17 @@ export type GetInstalledAppsByInstalledAppIdConversationsData = {
   url: '/installed-apps/{installed_app_id}/conversations'
 }
 
+export type GetInstalledAppsByInstalledAppIdConversationsErrors = {
+  400: NotChatAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: ConversationCursorNotFoundError | InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdConversationsError =
+  GetInstalledAppsByInstalledAppIdConversationsErrors[keyof GetInstalledAppsByInstalledAppIdConversationsErrors]
+
 export type GetInstalledAppsByInstalledAppIdConversationsResponses = {
   200: ConversationInfiniteScrollPagination
 }
@@ -643,6 +1244,17 @@ export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdData = {
   query?: never
   url: '/installed-apps/{installed_app_id}/conversations/{c_id}'
 }
+
+export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdErrors = {
+  400: NotChatAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: ConversationNotFoundError | InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdError =
+  DeleteInstalledAppsByInstalledAppIdConversationsByCIdErrors[keyof DeleteInstalledAppsByInstalledAppIdConversationsByCIdErrors]
 
 export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponses = {
   204: void
@@ -661,6 +1273,21 @@ export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameData = {
   url: '/installed-apps/{installed_app_id}/conversations/{c_id}/name'
 }
 
+export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameErrors = {
+  400: ConversationNameRequiredError | NotChatAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404:
+    | ConversationFirstMessageNotFoundError
+    | ConversationNotFoundError
+    | InstalledAppNotFoundError
+    | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameError =
+  PostInstalledAppsByInstalledAppIdConversationsByCIdNameErrors[keyof PostInstalledAppsByInstalledAppIdConversationsByCIdNameErrors]
+
 export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameResponses = {
   200: SimpleConversation
 }
@@ -678,6 +1305,17 @@ export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinData = {
   url: '/installed-apps/{installed_app_id}/conversations/{c_id}/pin'
 }
 
+export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinErrors = {
+  400: NotChatAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: ConversationNotFoundError | InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinError =
+  PatchInstalledAppsByInstalledAppIdConversationsByCIdPinErrors[keyof PatchInstalledAppsByInstalledAppIdConversationsByCIdPinErrors]
+
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponses = {
   200: ResultResponse
 }
@@ -694,6 +1332,17 @@ export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinData = {
   query?: never
   url: '/installed-apps/{installed_app_id}/conversations/{c_id}/unpin'
 }
+
+export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinErrors = {
+  400: NotChatAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: ConversationNotFoundError | InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinError =
+  PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinErrors[keyof PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinErrors]
 
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponses = {
   200: ResultResponse
@@ -715,6 +1364,21 @@ export type GetInstalledAppsByInstalledAppIdMessagesData = {
   url: '/installed-apps/{installed_app_id}/messages'
 }
 
+export type GetInstalledAppsByInstalledAppIdMessagesErrors = {
+  400: NotChatAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404:
+    | ConversationNotFoundError
+    | InstalledAppNotFoundError
+    | MessageCursorNotFoundError
+    | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdMessagesError =
+  GetInstalledAppsByInstalledAppIdMessagesErrors[keyof GetInstalledAppsByInstalledAppIdMessagesErrors]
+
 export type GetInstalledAppsByInstalledAppIdMessagesResponses = {
   200: ExploreMessageInfiniteScrollPagination
 }
@@ -731,6 +1395,17 @@ export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksData = 
   query?: never
   url: '/installed-apps/{installed_app_id}/messages/{message_id}/feedbacks'
 }
+
+export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors = {
+  400: MessageFeedbackRatingRequiredError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | MessageNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksError =
+  PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors[keyof PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors]
 
 export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponses = {
   200: ResultResponse
@@ -751,6 +1426,24 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisData 
   url: '/installed-apps/{installed_app_id}/messages/{message_id}/more-like-this'
 }
 
+export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisErrors = {
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotCompletionAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  403: AccessDeniedError | AppMoreLikeThisDisabledError | ErrorResponse
+  404: InstalledAppNotFoundError | MessageNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisError =
+  GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisErrors[keyof GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisErrors]
+
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponses = {
   200: {
     [key: string]: unknown
@@ -770,6 +1463,24 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestion
   url: '/installed-apps/{installed_app_id}/messages/{message_id}/suggested-questions'
 }
 
+export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsErrors = {
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotChatAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  403: AccessDeniedError | AppSuggestedQuestionsAfterAnswerDisabledError | ErrorResponse
+  404: ConversationNotFoundError | InstalledAppNotFoundError | MessageNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsError =
+  GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsErrors[keyof GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsErrors]
+
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponses = {
   200: SuggestedQuestionsResponse
 }
@@ -786,6 +1497,17 @@ export type GetInstalledAppsByInstalledAppIdMetaData = {
   url: '/installed-apps/{installed_app_id}/meta'
 }
 
+export type GetInstalledAppsByInstalledAppIdMetaErrors = {
+  400: AppUnavailableError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdMetaError =
+  GetInstalledAppsByInstalledAppIdMetaErrors[keyof GetInstalledAppsByInstalledAppIdMetaErrors]
+
 export type GetInstalledAppsByInstalledAppIdMetaResponses = {
   200: ExploreAppMetaResponse
 }
@@ -801,6 +1523,17 @@ export type GetInstalledAppsByInstalledAppIdParametersData = {
   query?: never
   url: '/installed-apps/{installed_app_id}/parameters'
 }
+
+export type GetInstalledAppsByInstalledAppIdParametersErrors = {
+  400: AppUnavailableError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdParametersError =
+  GetInstalledAppsByInstalledAppIdParametersErrors[keyof GetInstalledAppsByInstalledAppIdParametersErrors]
 
 export type GetInstalledAppsByInstalledAppIdParametersResponses = {
   200: Parameters
@@ -821,6 +1554,17 @@ export type GetInstalledAppsByInstalledAppIdSavedMessagesData = {
   url: '/installed-apps/{installed_app_id}/saved-messages'
 }
 
+export type GetInstalledAppsByInstalledAppIdSavedMessagesErrors = {
+  400: NotCompletionAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdSavedMessagesError =
+  GetInstalledAppsByInstalledAppIdSavedMessagesErrors[keyof GetInstalledAppsByInstalledAppIdSavedMessagesErrors]
+
 export type GetInstalledAppsByInstalledAppIdSavedMessagesResponses = {
   200: SavedMessageInfiniteScrollPagination
 }
@@ -836,6 +1580,17 @@ export type PostInstalledAppsByInstalledAppIdSavedMessagesData = {
   query?: never
   url: '/installed-apps/{installed_app_id}/saved-messages'
 }
+
+export type PostInstalledAppsByInstalledAppIdSavedMessagesErrors = {
+  400: NotCompletionAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdSavedMessagesError =
+  PostInstalledAppsByInstalledAppIdSavedMessagesErrors[keyof PostInstalledAppsByInstalledAppIdSavedMessagesErrors]
 
 export type PostInstalledAppsByInstalledAppIdSavedMessagesResponses = {
   200: ResultResponse
@@ -854,6 +1609,17 @@ export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdData = {
   url: '/installed-apps/{installed_app_id}/saved-messages/{message_id}'
 }
 
+export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdErrors = {
+  400: NotCompletionAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdError =
+  DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdErrors[keyof DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdErrors]
+
 export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponses = {
   204: void
 }
@@ -870,6 +1636,24 @@ export type PostInstalledAppsByInstalledAppIdTextToAudioData = {
   url: '/installed-apps/{installed_app_id}/text-to-audio'
 }
 
+export type PostInstalledAppsByInstalledAppIdTextToAudioErrors = {
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderNotSupportTextToSpeechError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: AgentVersionNotFoundError | InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdTextToAudioError =
+  PostInstalledAppsByInstalledAppIdTextToAudioErrors[keyof PostInstalledAppsByInstalledAppIdTextToAudioErrors]
+
 export type PostInstalledAppsByInstalledAppIdTextToAudioResponses = {
   200: AudioBinaryResponse
 }
@@ -885,6 +1669,24 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsRunData = {
   query?: never
   url: '/installed-apps/{installed_app_id}/workflows/run'
 }
+
+export type PostInstalledAppsByInstalledAppIdWorkflowsRunErrors = {
+  400:
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotWorkflowAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  429: RateLimitError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdWorkflowsRunError =
+  PostInstalledAppsByInstalledAppIdWorkflowsRunErrors[keyof PostInstalledAppsByInstalledAppIdWorkflowsRunErrors]
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsRunResponses = {
   200: {
@@ -904,6 +1706,17 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopData = {
   query?: never
   url: '/installed-apps/{installed_app_id}/workflows/tasks/{task_id}/stop'
 }
+
+export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopErrors = {
+  400: NotWorkflowAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopError =
+  PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopErrors[keyof PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopErrors]
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse

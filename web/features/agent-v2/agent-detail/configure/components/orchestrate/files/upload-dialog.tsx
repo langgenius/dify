@@ -12,20 +12,26 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation } from '@tanstack/react-query'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import { consoleQuery } from '@/service/client'
+import { getFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
+import { getSupportFileType } from '@/app/components/base/file-uploader/utils'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
+import { getFileIconType } from '@/features/agent-v2/file-icon'
+import { consoleQuery } from '@/service/console'
 import { formatFileSize } from '@/utils/format'
-import { getFileIconType } from './file-icon'
 
 function toAgentFileNode(committedFile: AgentConfigFileItemResponse): AgentFileNode {
   return {
@@ -45,15 +51,49 @@ function hasDraggedFiles(event: DragEvent<HTMLDivElement>) {
 }
 
 function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: File) => void }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tAppDebug } = useTranslation(['appDebug'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { data: fileUploadConfig } = useQuery(consoleQuery.files.upload.get.queryOptions())
+  const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } =
+    getFileSizeLimit(fileUploadConfig)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragDepthRef = useRef(0)
   const [dragging, setDragging] = useState(false)
+
+  const getSizeLimit = (uploadFile: File) => {
+    const fileType = getSupportFileType(uploadFile.name, uploadFile.type)
+
+    switch (fileType) {
+      case SupportUploadFileTypes.image:
+        return { fileType, sizeLimit: imgSizeLimit }
+      case SupportUploadFileTypes.audio:
+        return { fileType, sizeLimit: audioSizeLimit }
+      case SupportUploadFileTypes.video:
+        return { fileType, sizeLimit: videoSizeLimit }
+      default:
+        return {
+          fileType: SupportUploadFileTypes.document,
+          sizeLimit: docSizeLimit,
+        }
+    }
+  }
 
   const setUploadFiles = (files: File[]) => {
     const [uploadFile] = files
     if (files.length !== 1 || !uploadFile) {
       toast.error(t(($) => $['agentDetail.configure.files.upload.invalidFile']))
+      return
+    }
+
+    const { fileType, sizeLimit } = getSizeLimit(uploadFile)
+    if (uploadFile.size > sizeLimit) {
+      toast.error(
+        tCommon(($) => $['fileUploader.uploadFromComputerLimit'], {
+          type: fileType,
+          size: formatFileSize(sizeLimit),
+        }),
+      )
       return
     }
 
@@ -104,7 +144,6 @@ function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: 
 
   return (
     <div
-      className="mt-6"
       role="group"
       aria-label={t(($) => $['agentDetail.configure.files.upload.title'])}
       onDragEnter={handleDragEnter}
@@ -137,7 +176,7 @@ function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: 
         </div>
       )}
       {file && (
-        <div className="group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
+        <div className="flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
           <div className="flex items-center justify-center p-3">
             <FileTreeIcon type={getFileIconType(file.name, file.type)} />
           </div>
@@ -145,19 +184,30 @@ function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: 
             <span className="max-w-full min-w-0 truncate text-[12px] leading-4 font-medium text-text-secondary">
               {file.name}
             </span>
-            <div className="flex h-3 items-center gap-1 self-stretch text-[10px] leading-3 font-medium text-text-tertiary uppercase">
+            <div className="flex h-3 items-center gap-1 self-stretch text-2xs leading-3 font-medium text-text-tertiary uppercase">
               <span>{t(($) => $['agentDetail.configure.files.upload.fileType'])}</span>
               <span className="text-text-quaternary">·</span>
               <span>{formatFileSize(file.size)}</span>
             </div>
           </div>
-          <div className="hidden items-center pr-3 group-hover:flex">
-            <ActionButton onClick={() => onChange(undefined)}>
+          <div className="flex items-center pr-3">
+            <IconButton
+              aria-label={tCommon(($) => $['operation.remove'])}
+              onClick={() => onChange(undefined)}
+            >
               <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
-            </ActionButton>
+            </IconButton>
           </div>
         </div>
       )}
+      <p className="mt-2 system-xs-regular text-text-tertiary">
+        {tAppDebug(($) => $['variableConfig.maxNumberTip'], {
+          docLimit: formatFileSize(docSizeLimit),
+          imgLimit: formatFileSize(imgSizeLimit),
+          audioLimit: formatFileSize(audioSizeLimit),
+          videoLimit: formatFileSize(videoSizeLimit),
+        })}
+      </p>
     </div>
   )
 }
@@ -173,8 +223,8 @@ export function AgentFileUploadDialog({
   onOpenChange: (open: boolean) => void
   onUploaded: (file: AgentFileNode) => void
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2', 'common'])
+  const { t: tCommon } = useTranslation(['common'])
   const [file, setFile] = useState<File>()
   const uploadFileMutation = useMutation(consoleQuery.files.upload.post.mutationOptions())
   const commitAgentFileMutation = useMutation(
@@ -274,16 +324,18 @@ export function AgentFileUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-      <DialogContent backdropProps={{ forceRender: true }} backdropClassName="fixed">
-        <DialogCloseButton />
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['agentDetail.configure.files.upload.title'])}
-        </DialogTitle>
-        <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-          {t(($) => $['agentDetail.configure.files.upload.description'])}
-        </DialogDescription>
-        <AgentFileUploader file={file} onChange={setFile} />
-        <div className="flex justify-end gap-2 pt-6">
+      <DialogContent backdropProps={{ forceRender: true, className: 'fixed' }}>
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['agentDetail.configure.files.upload.title'])}</DialogTitle>
+          <DialogDescription>
+            {t(($) => $['agentDetail.configure.files.upload.description'])}
+          </DialogDescription>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
+          <AgentFileUploader file={file} onChange={setFile} />
+        </DialogBody>
+        <DialogFooter>
           <Button type="button" onClick={() => handleOpenChange(false)} disabled={isUploading}>
             {tCommon(($) => $['operation.cancel'])}
           </Button>
@@ -296,7 +348,7 @@ export function AgentFileUploadDialog({
           >
             {t(($) => $['agentDetail.configure.files.upload.action'])}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

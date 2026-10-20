@@ -27,7 +27,7 @@ const SystemQuotaCard = ({ variant = 'default', children }: SystemQuotaCardProps
     <VariantContext.Provider value={variant}>
       <div
         className={cn(
-          'relative isolate ml-1 flex w-[128px] shrink-0 flex-col justify-between rounded-lg border-[0.5px] p-1 shadow-xs',
+          'relative isolate ml-1 flex w-32 shrink-0 flex-col justify-between rounded-lg border-[0.5px] p-1 shadow-xs',
           containerVariants[variant],
         )}
       >

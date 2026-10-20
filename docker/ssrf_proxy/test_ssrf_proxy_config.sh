@@ -9,6 +9,7 @@ SANDBOX_CONTAINER_NAME="${CONTAINER_NAME}-sandbox"
 AGENT_PROXY_CONTAINER_NAME="${CONTAINER_NAME}-agent-proxy"
 API_CONTAINER_NAME="${CONTAINER_NAME}-api"
 AGENT_BACKEND_CONTAINER_NAME="${CONTAINER_NAME}-agent-backend"
+INTERNAL_SERVICE_CONTAINER_NAME="${CONTAINER_NAME}-internal-service"
 NETWORK_NAME="${SSRF_PROXY_TEST_NETWORK:-dify-ssrf-proxy-test-$$}"
 RUN_PUBLIC_CHECK="${SSRF_PROXY_TEST_PUBLIC_CHECK:-true}"
 
@@ -18,6 +19,7 @@ cleanup() {
   docker rm -f "$AGENT_PROXY_CONTAINER_NAME" >/dev/null 2>&1 || true
   docker rm -f "$API_CONTAINER_NAME" >/dev/null 2>&1 || true
   docker rm -f "$AGENT_BACKEND_CONTAINER_NAME" >/dev/null 2>&1 || true
+  docker rm -f "$INTERNAL_SERVICE_CONTAINER_NAME" >/dev/null 2>&1 || true
   docker network rm "$NETWORK_NAME" >/dev/null 2>&1 || true
 }
 
@@ -34,6 +36,24 @@ http_code_for() {
       --env "https_proxy=$proxy_url" \
       "$CLIENT_IMAGE" \
       wget -S -O /dev/null -T 10 "$target_url" 2>&1 || true
+  )"
+
+  printf '%s\n' "$output" | awk '$1 ~ /^HTTP\// { code = $2 } END { print code }'
+}
+
+http_code_for_post() {
+  local proxy_url="$1"
+  local target_url="$2"
+  local output
+
+  output="$(
+    docker run \
+      --rm \
+      --network "$NETWORK_NAME" \
+      --env "http_proxy=$proxy_url" \
+      --env "https_proxy=$proxy_url" \
+      "$CLIENT_IMAGE" \
+      wget -S -O /dev/null -T 10 --post-data=file-bytes "$target_url" 2>&1 || true
   )"
 
   printf '%s\n' "$output" | awk '$1 ~ /^HTTP\// { code = $2 } END { print code }'
@@ -76,6 +96,19 @@ assert_public_target_allowed() {
   if [[ ! "$status_code" =~ ^[234][0-9][0-9]$ || "$status_code" == "403" ]]; then
     echo "Expected $target_url to remain reachable, got ${status_code:-no response}."
     docker logs "$CONTAINER_NAME" >&2 || true
+    exit 1
+  fi
+}
+
+assert_post_target_not_blocked() {
+  local proxy_url="$1"
+  local target_url="$2"
+  local status_code
+
+  status_code="$(http_code_for_post "$proxy_url" "$target_url")"
+  if [[ -z "$status_code" || "$status_code" == "403" ]]; then
+    echo "Expected POST $target_url to pass the proxy ACL, got ${status_code:-no response}."
+    docker logs "$AGENT_PROXY_CONTAINER_NAME" >&2 || true
     exit 1
   fi
 }
@@ -173,6 +206,16 @@ docker run \
   sh -c "mkdir -p /www/agent-stub && echo stub-ok > /www/agent-stub/config && echo denied > /www/index.html && httpd -f -p 5050 -h /www" \
   >/dev/null
 
+# Mock internal service reachable only on the private Docker network.
+docker run \
+  --detach \
+  --name "$INTERNAL_SERVICE_CONTAINER_NAME" \
+  --network "$NETWORK_NAME" \
+  --network-alias internal_api \
+  "$CLIENT_IMAGE" \
+  sh -c "mkdir -p /www && echo internal-ok > /www/health && httpd -f -p 8080 -h /www" \
+  >/dev/null
+
 docker run \
   --detach \
   --name "$AGENT_PROXY_CONTAINER_NAME" \
@@ -183,6 +226,8 @@ docker run \
   --volume "$ROOT_DIR/docker/ssrf_proxy/docker-agent-entrypoint.sh:/docker-entrypoint-mount.sh:ro" \
   --env HTTP_PORT=3128 \
   --env COREDUMP_DIR=/var/spool/squid \
+  --env "SSRF_PROXY_ALLOW_PRIVATE_IPS=${SSRF_PROXY_ALLOW_PRIVATE_IPS:-}" \
+  --env "SSRF_PROXY_ALLOW_PRIVATE_DOMAINS=${SSRF_PROXY_ALLOW_PRIVATE_DOMAINS:-internal_api}" \
   "$IMAGE" \
   -c "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" \
   >/dev/null
@@ -206,6 +251,9 @@ fi
 assert_private_target_blocked "$agent_proxy_url" "http://127.0.0.1:80/"
 assert_private_target_blocked "$agent_proxy_url" "http://169.254.169.254/latest/meta-data/"
 
+# Allowlisted private domains must be reachable for agent skills.
+assert_public_target_allowed "$agent_proxy_url" "http://internal_api:8080/health"
+
 # agent_backend /agent-stub/* must be allowed.
 assert_public_target_allowed "$agent_proxy_url" "http://agent_backend:5050/agent-stub/config"
 
@@ -214,6 +262,8 @@ assert_private_target_blocked "$agent_proxy_url" "http://agent_backend:5050/inde
 
 # api /files/* must be allowed.
 assert_public_target_allowed "$agent_proxy_url" "http://api:5001/files/test"
+assert_public_target_allowed "$agent_proxy_url" "http://api:5001/files/test?timestamp=1&nonce=2&sign=3"
+assert_post_target_not_blocked "$agent_proxy_url" "http://api:5001/files/upload/for-plugin?timestamp=1&nonce=2&sign=3"
 
 # api non-/files paths must be blocked.
 assert_private_target_blocked "$agent_proxy_url" "http://api:5001/index.html"

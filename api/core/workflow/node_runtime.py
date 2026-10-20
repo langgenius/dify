@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal, cast, overload, override
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override
 
 from pydantic import JsonValue
 from sqlalchemy import select
@@ -20,7 +20,8 @@ from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import ParentTraceContext
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
-from core.model_manager import ModelInstance
+from core.model_context import use_credit_usage_metadata
+from core.model_manager import ModelInstance, QuotaManagedModelInstance
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
 from core.plugin.impl.plugin import PluginInstaller
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
@@ -49,6 +50,7 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMMode
 from graphon.model_runtime.entities.llm_entities import (
     LLMPollingResult,
+    LLMPollingStatus,
     LLMResult,
     LLMResultChunk,
     LLMResultChunkWithStructuredOutput,
@@ -87,7 +89,35 @@ from .human_input_adapter import (
 )
 from .system_variables import SystemVariableKey, get_system_text
 
+
+class PollingLLMRuntimeProtocol(Protocol):
+    """Runtime capability required by the workflow polling adapter."""
+
+    def start_llm_polling(
+        self,
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        model_parameters: dict[str, Any],
+        prompt_messages: Sequence[PromptMessage],
+        tools: Sequence[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        json_schema: dict[str, Any] | None,
+    ) -> LLMPollingResult: ...
+
+    def check_llm_polling(
+        self,
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        plugin_state: dict[str, JsonValue],
+    ) -> LLMPollingResult: ...
+
+
 if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
     from core.tools.__base.tool import Tool
     from core.tools.entities.tool_entities import ToolInvokeMessage as CoreToolInvokeMessage
     from graphon.nodes.llm.file_saver import LLMFileSaver
@@ -213,7 +243,7 @@ class DifyPreparedLLM(LLMProtocol):
         tools: Sequence[PromptMessageTool] | None,
         stop: Sequence[str] | None,
         stream: Literal[True],
-    ) -> Generator[LLMResultChunk, None, None]: ...
+    ) -> Generator[LLMResultChunk]: ...
 
     @override
     def invoke_llm(
@@ -224,7 +254,7 @@ class DifyPreparedLLM(LLMProtocol):
         tools: Sequence[PromptMessageTool] | None,
         stop: Sequence[str] | None,
         stream: bool,
-    ) -> LLMResult | Generator[LLMResultChunk, None, None]:
+    ) -> LLMResult | Generator[LLMResultChunk]:
         return self._model_instance.invoke_llm(
             prompt_messages=list(prompt_messages),
             model_parameters=dict(model_parameters),
@@ -254,7 +284,7 @@ class DifyPreparedLLM(LLMProtocol):
         model_parameters: Mapping[str, Any],
         stop: Sequence[str] | None,
         stream: Literal[True],
-    ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
+    ) -> Generator[LLMResultChunkWithStructuredOutput]: ...
 
     @override
     def invoke_llm_with_structured_output(
@@ -265,7 +295,7 @@ class DifyPreparedLLM(LLMProtocol):
         model_parameters: Mapping[str, Any],
         stop: Sequence[str] | None,
         stream: bool,
-    ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
+    ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput]:
         return invoke_llm_with_structured_output(
             provider=self.provider,
             model_schema=self.get_model_schema(),
@@ -275,29 +305,52 @@ class DifyPreparedLLM(LLMProtocol):
             model_parameters=model_parameters,
             stop=list(stop or []),
             stream=stream,
+            request_metadata=self._request_metadata,
         )
 
     @override
     def is_structured_output_parse_error(self, error: Exception) -> bool:
         return isinstance(error, OutputParserError)
 
+    def finalize_llm_polling(self) -> None:
+        """Finalize resources held by a polling invocation, if any."""
+
 
 class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
     """Prepared workflow LLM adapter that exposes Graphon's polling protocol."""
 
     def __init__(self, model_instance: ModelInstance, request_metadata: Mapping[str, object] | None = None) -> None:
-        from core.plugin.impl.model_runtime import PluginModelRuntime
-
         super().__init__(model_instance, request_metadata=request_metadata)
-        model_type_instance = model_instance.model_type_instance
-        if not isinstance(model_type_instance, LargeLanguageModel):
-            raise TypeError("Polling wrapper requires a large-language-model instance.")
+        model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
+        self._polling_runtime = cast(PollingLLMRuntimeProtocol, model_type_instance.model_runtime)
+        self._polling_quota_reservation = None
 
-        plugin_model_runtime = model_type_instance.model_runtime
-        if not isinstance(plugin_model_runtime, PluginModelRuntime):
-            raise TypeError("Polling wrapper requires a plugin-backed model runtime.")
+    @override
+    def finalize_llm_polling(self) -> None:
+        reservation = self._polling_quota_reservation
+        self._polling_quota_reservation = None
+        if reservation is not None:
+            QuotaManagedModelInstance.release_quota_safely(reservation)
 
-        self._plugin_model_runtime = plugin_model_runtime
+    def _settle_polling_quota(self, polling_result: LLMPollingResult) -> LLMPollingResult:
+        reservation = self._polling_quota_reservation
+        if reservation is None or polling_result.status == LLMPollingStatus.RUNNING:
+            return polling_result
+
+        try:
+            if polling_result.status == LLMPollingStatus.SUCCEEDED:
+                if polling_result.result is None:
+                    raise ValueError("A successful LLM polling result must include a model result.")
+                reservation.commit(polling_result.result.usage)
+            else:
+                reservation.release()
+        except Exception:
+            QuotaManagedModelInstance.release_quota_safely(reservation)
+            raise
+        finally:
+            self._polling_quota_reservation = None
+
+        return polling_result
 
     @override
     def start_llm_polling(
@@ -309,16 +362,26 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         stop: Sequence[str] | None,
         json_schema: Mapping[str, Any] | None,
     ) -> LLMPollingResult:
-        return self._plugin_model_runtime.start_llm_polling(
-            provider=self.provider,
-            model=self.model_name,
-            credentials=self._model_instance.credentials,
-            prompt_messages=prompt_messages,
-            model_parameters=dict(model_parameters),
-            tools=tools,
-            stop=stop,
-            json_schema=dict(json_schema) if json_schema is not None else None,
-        )
+        self.finalize_llm_polling()
+
+        if isinstance(self._model_instance, QuotaManagedModelInstance):
+            self._polling_quota_reservation = self._model_instance._reserve_quota_for_request(self._request_metadata)
+
+        try:
+            polling_result = self._polling_runtime.start_llm_polling(
+                provider=self.provider,
+                model=self.model_name,
+                credentials=self._model_instance.credentials,
+                prompt_messages=prompt_messages,
+                model_parameters=dict(model_parameters),
+                tools=tools,
+                stop=stop,
+                json_schema=dict(json_schema) if json_schema is not None else None,
+            )
+            return self._settle_polling_quota(polling_result)
+        except Exception:
+            self.finalize_llm_polling()
+            raise
 
     @override
     def check_llm_polling(
@@ -326,12 +389,17 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         *,
         plugin_state: Mapping[str, JsonValue],
     ) -> LLMPollingResult:
-        return self._plugin_model_runtime.check_llm_polling(
-            provider=self.provider,
-            model=self.model_name,
-            credentials=self._model_instance.credentials,
-            plugin_state=dict(plugin_state),
-        )
+        try:
+            polling_result = self._polling_runtime.check_llm_polling(
+                provider=self.provider,
+                model=self.model_name,
+                credentials=self._model_instance.credentials,
+                plugin_state=dict(plugin_state),
+            )
+            return self._settle_polling_quota(polling_result)
+        except Exception:
+            self.finalize_llm_polling()
+            raise
 
 
 class DifyPromptMessageSerializer(PromptMessageSerializerProtocol):
@@ -461,10 +529,12 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         self,
         run_context: Mapping[str, Any] | DifyRunContext,
         session_maker: sessionmaker[Session] | None = None,
+        execution_driver: WorkflowRunDriver | None = None,
     ) -> None:
         self._run_context = resolve_dify_run_context(run_context)
         self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
         self._session_maker = session_maker
+        self._execution_driver = execution_driver
 
     @property
     def file_reference_factory(self) -> FileReferenceFactoryProtocol:
@@ -492,6 +562,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 self._run_context.user_id,
                 self._run_context.invoke_from,
                 variable_pool,
+                execution_driver=self._execution_driver,
             )
         except ToolNodeError:
             raise
@@ -545,7 +616,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         tool_parameters: Mapping[str, Any],
         workflow_call_depth: int,
         provider_name: str,
-    ) -> Generator[ToolRuntimeMessage, None, None]:
+    ) -> Generator[ToolRuntimeMessage]:
         runtime_binding = self._binding_from_handle(tool_runtime)
         tool = runtime_binding.tool
         callback = DifyWorkflowCallbackHandler()
@@ -562,25 +633,29 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             tool.clear_trace_session_id()
 
         try:
-            session_maker = self._session_maker or session_factory.get_session_maker()
-            with session_maker.begin() as session:
-                messages = ToolEngine.generic_invoke(
-                    session=session,
-                    tool=tool,
-                    tool_parameters=dict(tool_parameters),
-                    user_id=self._run_context.user_id,
-                    workflow_tool_callback=callback,
-                    workflow_call_depth=workflow_call_depth,
-                    app_id=self._run_context.app_id,
-                    conversation_id=runtime_binding.conversation_id,
-                )
-                transformed_messages = ToolFileMessageTransformer.transform_tool_invoke_messages(
-                    messages=messages,
-                    user_id=self._run_context.user_id,
-                    tenant_id=self._run_context.tenant_id,
-                    conversation_id=runtime_binding.conversation_id,
-                )
-                yield from self._adapt_messages(transformed_messages, provider_name=provider_name)
+            request_metadata = (
+                {"app_type": self._run_context.app_type} if self._run_context.app_type is not None else None
+            )
+            with use_credit_usage_metadata(request_metadata):
+                session_maker = self._session_maker or session_factory.get_session_maker()
+                with session_maker.begin() as session:
+                    messages = ToolEngine.generic_invoke(
+                        session=session,
+                        tool=tool,
+                        tool_parameters=dict(tool_parameters),
+                        user_id=self._run_context.user_id,
+                        workflow_tool_callback=callback,
+                        workflow_call_depth=workflow_call_depth,
+                        app_id=self._run_context.app_id,
+                        conversation_id=runtime_binding.conversation_id,
+                    )
+                    transformed_messages = ToolFileMessageTransformer.transform_tool_invoke_messages(
+                        messages=messages,
+                        user_id=self._run_context.user_id,
+                        tenant_id=self._run_context.tenant_id,
+                        conversation_id=runtime_binding.conversation_id,
+                    )
+                    yield from self._adapt_messages(transformed_messages, provider_name=provider_name)
         except Exception as exc:
             raise self._map_invocation_exception(exc, provider_name=provider_name) from exc
 
@@ -660,10 +735,10 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
 
     def _adapt_messages(
         self,
-        messages: Generator[CoreToolInvokeMessage, None, None],
+        messages: Generator[CoreToolInvokeMessage],
         *,
         provider_name: str,
-    ) -> Generator[ToolRuntimeMessage, None, None]:
+    ) -> Generator[ToolRuntimeMessage]:
         try:
             for message in messages:
                 yield self._convert_message(message)
@@ -839,11 +914,11 @@ class DifyHumanInputNodeRuntime:
     def restore_submitted_data(
         self,
         *,
-        node_data: HumanInputNodeData,
+        inputs: Sequence[FormInputConfig],
         submitted_data: Mapping[str, Any],
     ) -> Mapping[str, Any]:
         restored_data: dict[str, Any] = dict(submitted_data)
-        for input_config in node_data.inputs:
+        for input_config in inputs:
             output_variable_name = input_config.output_variable_name
             if output_variable_name not in submitted_data:
                 continue

@@ -1,6 +1,5 @@
 import type { Var } from '../../types'
 import type { Authorization, Body, HttpNodeType, Method, Timeout } from './types'
-import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useEffect, useState } from 'react'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
@@ -11,6 +10,19 @@ import useVarList from '../_base/hooks/use-var-list'
 import useKeyValueList from './hooks/use-key-value-list'
 import { BodyType } from './types'
 import { transformToBodyPayload } from './utils'
+
+const keyValueBodyTypes: readonly BodyType[] = [BodyType.formData, BodyType.xWwwFormUrlencoded]
+
+// Stored and imported bodies may still carry the legacy string form of their data.
+const normalizeBody = (body: Body): Body => {
+  if (typeof body.data === 'string') {
+    return {
+      ...body,
+      data: transformToBodyPayload(body.data, keyValueBodyTypes.includes(body.type)),
+    }
+  }
+  return body.data ? body : { ...body, data: [] }
+}
 
 const useConfig = (id: string, payload: HttpNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -33,21 +45,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
         ...defaultConfig,
         ...inputs,
       }
-      const bodyData = newInputs.body.data
-      if (typeof bodyData === 'string') {
-        newInputs.body = {
-          ...newInputs.body,
-          data: transformToBodyPayload(
-            bodyData,
-            [BodyType.formData, BodyType.xWwwFormUrlencoded].includes(newInputs.body.type),
-          ),
-        }
-      } else if (!bodyData) {
-        newInputs.body = {
-          ...newInputs.body,
-          data: [],
-        }
-      }
+      newInputs.body = normalizeBody(newInputs.body)
 
       setInputs(newInputs)
       setIsDataReady(true)
@@ -112,10 +110,6 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     [inputs, setInputs],
   )
 
-  // authorization
-  const [isShowAuthorization, { setTrue: showAuthorization, setFalse: hideAuthorization }] =
-    useBoolean(false)
-
   const setAuthorization = useCallback(
     (authorization: Authorization) => {
       const newInputs = produce(inputs, (draft: HttpNodeType) => {
@@ -137,11 +131,10 @@ const useConfig = (id: string, payload: HttpNodeType) => {
   )
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
-  }, [])
+    const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
 
-  // curl import panel
-  const [isShowCurlPanel, { setTrue: showCurlPanel, setFalse: hideCurlPanel }] = useBoolean(false)
+    return textVariableTypes.includes(varPayload.type)
+  }, [])
 
   const handleCurlImport = useCallback(
     (newNode: HttpNodeType) => {
@@ -150,7 +143,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
         draft.url = newNode.url
         draft.headers = newNode.headers
         draft.params = newNode.params
-        draft.body = newNode.body
+        draft.body = normalizeBody(newNode.body)
       })
       setInputs(newInputs)
     },
@@ -193,15 +186,9 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     // ssl verify
     handleSSLVerifyChange,
     // authorization
-    isShowAuthorization,
-    showAuthorization,
-    hideAuthorization,
     setAuthorization,
     setTimeout,
     // curl import
-    isShowCurlPanel,
-    showCurlPanel,
-    hideCurlPanel,
     handleCurlImport,
   }
 }

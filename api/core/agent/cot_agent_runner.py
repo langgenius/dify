@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 from abc import ABC, abstractmethod
@@ -12,6 +13,8 @@ from core.agent.errors import AgentMaxIterationError
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
+from core.model_context import use_credit_usage_metadata
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.__base.tool import Tool
@@ -135,6 +138,12 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             session.close()
 
             # invoke model
+            request_metadata: dict[str, object] = {
+                "app_id": self.app_config.app_id,
+                "app_type": CreditUsageAppType.AGENT,
+                "created_by": CreditUsageCreatedBy.APP,
+            }
+
             chunks = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=app_generate_entity.model_conf.parameters,
@@ -142,7 +151,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 stop=app_generate_entity.model_conf.stop,
                 stream=True,
                 callbacks=[],
-                request_metadata={"app_id": self.app_config.app_id},
+                request_metadata=request_metadata,
             )
 
             usage_dict: dict[str, LLMUsage | None] = {}
@@ -325,23 +334,22 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             return answer, ToolInvokeMeta.error_instance(answer)
 
         if isinstance(tool_call_args, str):
-            try:
+            with contextlib.suppress(json.JSONDecodeError):
                 tool_call_args = json.loads(tool_call_args)
-            except json.JSONDecodeError:
-                pass
 
         # invoke tool
-        tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
-            session=session,
-            tool=tool_instance,
-            tool_parameters=tool_call_args,
-            user_id=self.user_id,
-            tenant_id=self.tenant_id,
-            message=self.message,
-            invoke_from=self.application_generate_entity.invoke_from,
-            agent_tool_callback=self.agent_callback,
-            trace_manager=trace_manager,
-        )
+        with use_credit_usage_metadata({"app_type": CreditUsageAppType.AGENT}):
+            tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
+                session=session,
+                tool=tool_instance,
+                tool_parameters=tool_call_args,
+                user_id=self.user_id,
+                tenant_id=self.tenant_id,
+                message=self.message,
+                invoke_from=self.application_generate_entity.invoke_from,
+                agent_tool_callback=self.agent_callback,
+                trace_manager=trace_manager,
+            )
         session.commit()
         session.close()
 

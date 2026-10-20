@@ -1,31 +1,19 @@
 import type { PluginDetail } from '../types'
-import { useQuery } from '@tanstack/react-query'
-import { renderHook } from '@testing-library/react'
-import { consoleQuery } from '@/service/client'
+import { waitFor } from '@testing-library/react'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { usePluginsWithLatestVersion } from '../hooks'
 import { PluginSource } from '../types'
-
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: vi.fn(),
-}))
-
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    workspaces: {
-      current: {
-        plugin: {
-          list: {
-            latestVersions: {
-              post: {
-                queryOptions: vi.fn((options: unknown) => options),
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+const getVersions = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.latestVersions.post': getVersions,
+    }),
+  }
+})
 
 const createPlugin = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
   id: 'plugin-1',
@@ -53,7 +41,7 @@ const createPlugin = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
 describe('usePluginsWithLatestVersion', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useQuery).mockReturnValue({ data: undefined } as never)
+    getVersions.mockReset().mockImplementation(() => new Promise(() => {}))
   })
 
   it('should disable latest-version querying when there are no marketplace plugins', () => {
@@ -61,12 +49,7 @@ describe('usePluginsWithLatestVersion', () => {
 
     const { result } = renderHook(() => usePluginsWithLatestVersion(plugins))
 
-    expect(
-      consoleQuery.workspaces.current.plugin.list.latestVersions.post.queryOptions,
-    ).toHaveBeenCalledWith({
-      input: { body: { plugin_ids: [] } },
-      enabled: false,
-    })
+    expect(getVersions).not.toHaveBeenCalled()
     expect(result.current).toEqual(plugins)
   })
 
@@ -78,18 +61,17 @@ describe('usePluginsWithLatestVersion', () => {
     expect(result.current).toEqual(plugins)
   })
 
-  it('should keep plugins unchanged when a plugin has no matching latest version', () => {
+  it('should keep plugins unchanged when a plugin has no matching latest version', async () => {
     const plugins = [createPlugin()]
-    vi.mocked(useQuery).mockReturnValue({
-      data: { versions: {} },
-    } as never)
+    getVersions.mockResolvedValue({ versions: {} })
 
-    const { result } = renderHook(() => usePluginsWithLatestVersion(plugins))
+    const { result, queryClient } = renderHook(() => usePluginsWithLatestVersion(plugins))
 
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
     expect(result.current).toEqual(plugins)
   })
 
-  it('should merge latest version fields for marketplace plugins with version data', () => {
+  it('should merge latest version fields for marketplace plugins with version data', async () => {
     const plugins = [
       createPlugin(),
       createPlugin({
@@ -101,28 +83,22 @@ describe('usePluginsWithLatestVersion', () => {
         source: PluginSource.github,
       }),
     ]
-    vi.mocked(useQuery).mockReturnValue({
-      data: {
-        versions: {
-          'plugin-1': {
-            version: '1.1.0',
-            unique_identifier: 'plugin-1@1.1.0',
-            status: 'deleted',
-            deprecated_reason: 'replaced',
-            alternative_plugin_id: 'plugin-3',
-          },
+    getVersions.mockResolvedValue({
+      versions: {
+        'plugin-1': {
+          version: '1.1.0',
+          unique_identifier: 'plugin-1@1.1.0',
+          status: 'deleted',
+          deprecated_reason: 'replaced',
+          alternative_plugin_id: 'plugin-3',
         },
       },
-    } as never)
+    })
 
     const { result } = renderHook(() => usePluginsWithLatestVersion(plugins))
 
-    expect(
-      consoleQuery.workspaces.current.plugin.list.latestVersions.post.queryOptions,
-    ).toHaveBeenCalledWith({
-      input: { body: { plugin_ids: ['plugin-1'] } },
-      enabled: true,
-    })
+    await waitFor(() => expect(result.current[0]?.latest_version).toBe('1.1.0'))
+    expect(getVersions).toHaveBeenCalledWith({ body: { plugin_ids: ['plugin-1'] } })
     expect(result.current).toEqual([
       expect.objectContaining({
         plugin_id: 'plugin-1',

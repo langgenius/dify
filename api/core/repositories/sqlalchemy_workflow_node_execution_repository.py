@@ -18,6 +18,7 @@ from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_att
 
 from configs import dify_config
 from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
+from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
 from extensions.ext_storage import storage
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -34,6 +35,7 @@ from models import (
 from models.enums import ExecutionOffLoadType
 from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionOffload
+from repositories.workflow_run_control import apply_workflow_stop_to_node, get_stopped_workflow_run
 from services.file_service import FileService
 from services.variable_truncator import VariableTruncator
 
@@ -300,14 +302,15 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             user=self._user,
             tenant_id=self._tenant_id,
         )
+        assert self._app_id
         offload = WorkflowNodeExecutionOffload(
-            id=uuidv7(),
             tenant_id=self._tenant_id,
             app_id=self._app_id,
             node_execution_id=execution_id,
             type_=type_,
             file_id=upload_file.id,
         )
+        offload.id = str(uuidv7())
         return _InputsOutputsTruncationResult(
             truncated_value=truncated_values,
             file=upload_file,
@@ -372,6 +375,12 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             logger.exception("Failed to save workflow node execution after all retries")
             raise
 
+    @override
+    def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
+        """Persist a caller row before an Agent v2 participant is materialized."""
+
+        self.save(execution)
+
     def _persist_to_database(self, db_model: WorkflowNodeExecutionModel):
         """
         Persist the database model to the database.
@@ -382,10 +391,28 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             db_model: The database model to persist
         """
         with self._session_factory() as session:
+            if db_model.status in (
+                WorkflowNodeExecutionStatus.RUNNING,
+                WorkflowNodeExecutionStatus.PAUSED,
+                WorkflowNodeExecutionStatus.RETRY,
+            ):
+                apply_workflow_stop_to_node(
+                    db_model,
+                    get_stopped_workflow_run(
+                        session, tenant_id=self._tenant_id, workflow_run_id=db_model.workflow_run_id, lock=True
+                    ),
+                )
             # Check if record already exists
             existing = session.get(WorkflowNodeExecutionModel, db_model.id)
 
             if existing:
+                merged_process_data = preserve_workflow_agent_binding_id(
+                    existing.process_data_dict,
+                    db_model.process_data_dict,
+                )
+                db_model.process_data = (
+                    _deterministic_json_dump(merged_process_data) if merged_process_data is not None else None
+                )
                 # Update existing record by copying all non-private attributes
                 for key, value in db_model.__dict__.items():
                     if not key.startswith("_"):
@@ -442,21 +469,39 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             else:
                 db_model.outputs = self._json_encode(domain_model.outputs)
 
-        if domain_model.process_data is not None:
+        process_data = preserve_workflow_agent_binding_id(db_model.process_data_dict, domain_model.process_data)
+        if process_data is not None:
             result = self._truncate_and_upload(
-                domain_model.process_data,
+                process_data,
                 domain_model.id,
                 ExecutionOffLoadType.PROCESS_DATA,
             )
             if result is not None:
-                db_model.process_data = self._json_encode(result.truncated_value)
-                domain_model.set_truncated_process_data(result.truncated_value)
+                truncated_process_data = preserve_workflow_agent_binding_id(
+                    process_data,
+                    result.truncated_value,
+                )
+                if truncated_process_data is None:
+                    raise ValueError("truncated process data is unavailable")
+                db_model.process_data = self._json_encode(truncated_process_data)
+                domain_model.set_truncated_process_data(truncated_process_data)
                 offload_data = _replace_or_append_offload(offload_data, result.offload)
             else:
-                db_model.process_data = self._json_encode(domain_model.process_data)
+                db_model.process_data = self._json_encode(process_data)
 
         db_model.offload_data = offload_data
         with self._session_factory() as session, session.begin():
+            if db_model.status in (
+                WorkflowNodeExecutionStatus.RUNNING,
+                WorkflowNodeExecutionStatus.PAUSED,
+                WorkflowNodeExecutionStatus.RETRY,
+            ):
+                apply_workflow_stop_to_node(
+                    db_model,
+                    get_stopped_workflow_run(
+                        session, tenant_id=self._tenant_id, workflow_run_id=db_model.workflow_run_id, lock=True
+                    ),
+                )
             session.merge(db_model)
             session.flush()
 
@@ -464,7 +509,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self,
         workflow_run_id: str,
         order_config: OrderConfig | None = None,
-        triggered_from: WorkflowNodeExecutionTriggeredFrom = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        *,
+        include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
         Retrieve all WorkflowNodeExecution database models for a specific workflow run.
@@ -490,9 +536,12 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             stmt = stmt.where(
                 WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
                 WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
-                WorkflowNodeExecutionModel.triggered_from == triggered_from,
-                WorkflowNodeExecutionModel.status != WorkflowNodeExecutionStatus.PAUSED,
+                WorkflowNodeExecutionModel.triggered_from
+                == (self._triggered_from or WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),
             )
+
+            if not include_paused:
+                stmt = stmt.where(WorkflowNodeExecutionModel.status != WorkflowNodeExecutionStatus.PAUSED)
 
             if self._app_id:
                 stmt = stmt.where(WorkflowNodeExecutionModel.app_id == self._app_id)
@@ -526,7 +575,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self,
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
-        triggered_from: WorkflowNodeExecutionTriggeredFrom = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        *,
+        include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all node executions for a workflow execution.
@@ -543,7 +593,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         Returns:
             A list of node execution instances
         """
-        db_models = self.get_db_models_by_workflow_run(workflow_execution_id, order_config, triggered_from)
+        db_models = self.get_db_models_by_workflow_run(
+            workflow_execution_id, order_config, include_paused=include_paused
+        )
 
         with ThreadPoolExecutor(max_workers=10) as executor:
             domain_models = executor.map(self._to_domain_model, db_models, timeout=30)

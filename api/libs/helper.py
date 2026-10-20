@@ -7,7 +7,8 @@ import struct
 import subprocess
 import time
 import uuid
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Callable, Generator, Iterable, Mapping
+from contextlib import contextmanager
 from datetime import datetime
 from hashlib import sha256
 from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, override
@@ -16,7 +17,7 @@ from zoneinfo import available_timezones
 
 from flask import Request, Response, stream_with_context
 from flask_restx import fields
-from pydantic import BaseModel, ConfigDict, TypeAdapter, with_config
+from pydantic import BaseModel, ConfigDict, TypeAdapter, WithJsonSchema, with_config
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import TypedDict
 
@@ -208,9 +209,13 @@ def to_timestamp(value: datetime | int | None) -> int | None:
     return value
 
 
-def dump_response(model: type[BaseModel], data: Any) -> dict[str, Any]:
-    """Serialize a Pydantic response model to JSON-compatible dict output."""
-    return model.model_validate(data, from_attributes=True).model_dump(mode="json")
+def dump_response(model: type[BaseModel], data: Any, **dump_kwargs: Any) -> dict[str, Any]:
+    """Serialize a Pydantic response model to JSON-compatible dict output.
+
+    Extra keyword arguments are forwarded to ``model_dump`` (e.g. ``include=...``,
+    ``exclude=...``, ``exclude_unset=True``).
+    """
+    return model.model_validate(data, from_attributes=True).model_dump(mode="json", **dump_kwargs)
 
 
 def current_timestamp() -> int:
@@ -245,9 +250,9 @@ def uuid_value(value: str | UUID) -> str:
     try:
         uuid_obj = uuid.UUID(value)
         return str(uuid_obj)
-    except ValueError:
+    except ValueError as caught_error:
         error = f"{value} is not a valid uuid."
-        raise ValueError(error)
+        raise ValueError(error) from caught_error
 
 
 def normalize_uuid(value: str | UUID) -> str:
@@ -284,12 +289,20 @@ def _strict_uuid(value: str | UUID) -> str:
         raise ValueError("must be a valid UUID") from exc
 
 
-UUIDStr = Annotated[str, AfterValidator(_strict_uuid)]
+UUIDStr = Annotated[
+    str,
+    AfterValidator(_strict_uuid),
+    WithJsonSchema({"format": "uuid", "type": "string"}),
+]
 
 
 def alphanumeric(value: str):
     # check if the value is alphanumeric and underlined
-    if re.match(r"^[a-zA-Z0-9_]+$", value):
+    # Use re.fullmatch instead of re.match to reject trailing newlines.
+    # In Python, '$' matches at end-of-string OR just before a trailing newline,
+    # so re.match accepts "tool_name\n". re.fullmatch requires the entire
+    # string to match. Regression for #39666 (sibling of #39234 / #39548).
+    if re.fullmatch(r"^[a-zA-Z0-9_]+$", value):
         return value
 
     raise ValueError(f"{value} is not a valid alphanumeric value")
@@ -301,9 +314,9 @@ def timestamp_value(timestamp):
         if int_timestamp < 0:
             raise ValueError
         return int_timestamp
-    except ValueError:
+    except ValueError as caught_error:
         error = f"{timestamp} is not a valid timestamp."
-        raise ValueError(error)
+        raise ValueError(error) from caught_error
 
 
 class StrLen:
@@ -316,9 +329,7 @@ class StrLen:
     def __call__(self, value):
         length = len(value)
         if length > self.max_length:
-            error = "Invalid {arg}: {val}. {arg} cannot exceed length {length}".format(
-                arg=self.argument, val=value, length=self.max_length
-            )
+            error = f"Invalid {self.argument}: {value}. {self.argument} cannot exceed length {self.max_length}"
             raise ValueError(error)
 
         return value
@@ -332,11 +343,9 @@ class DatetimeString:
     def __call__(self, value):
         try:
             datetime.strptime(value, self.format)
-        except ValueError:
-            error = "Invalid {arg}: {val}. {arg} must be conform to the format {format}".format(
-                arg=self.argument, val=value, format=self.format
-            )
-            raise ValueError(error)
+        except ValueError as caught_error:
+            error = f"Invalid {self.argument}: {value}. {self.argument} must be conform to the format {self.format}"
+            raise ValueError(error) from caught_error
 
         return value
 
@@ -388,12 +397,8 @@ def generate_string(n):
 
 
 def extract_remote_ip(request: Request) -> str:
-    if request.headers.get("CF-Connecting-IP"):
-        return cast(str, request.headers.get("CF-Connecting-IP"))
-    elif request.headers.getlist("X-Forwarded-For"):
-        return cast(str, request.headers.getlist("X-Forwarded-For")[0])
-    else:
-        return cast(str, request.remote_addr)
+    """Use the WSGI address, normalized by opt-in trusted proxy middleware."""
+    return cast(str, request.remote_addr)
 
 
 def generate_text_hash(text: str) -> str:
@@ -402,7 +407,7 @@ def generate_text_hash(text: str) -> str:
 
 
 def compact_generate_response(
-    response: Mapping[str, Any] | Generator[str, None, None] | RateLimitGenerator,
+    response: Mapping[str, Any] | Iterable[str],
 ) -> Response:
     if isinstance(response, Mapping):
         return Response(
@@ -413,7 +418,7 @@ def compact_generate_response(
     else:
         stream_response = response
 
-        def generate() -> Generator[str, None, None]:
+        def generate() -> Generator[str]:
             yield from stream_response
 
         return Response(
@@ -425,7 +430,7 @@ def compact_generate_response(
 
 def length_prefixed_response(
     magic_number: int,
-    response: Mapping[str, Any] | BaseModel | Generator[str | bytes, None, None] | RateLimitGenerator,
+    response: Mapping[str, Any] | BaseModel | Generator[str | bytes] | RateLimitGenerator,
 ) -> Response:
     """
     This function is used to return a response with a length prefix.
@@ -473,7 +478,7 @@ def length_prefixed_response(
 
     stream_response = response
 
-    def generate() -> Generator[bytes, None, None]:
+    def generate() -> Generator[bytes]:
         for chunk in stream_response:
             if isinstance(chunk, str):
                 yield pack_response_with_length_prefix(chunk.encode("utf-8"))
@@ -492,15 +497,12 @@ class TokenManager:
     def generate_token(
         cls,
         token_type: str,
-        account: "Account | None" = None,
+        account_id: str | None = None,
         email: str | None = None,
         additional_data: dict[str, Any] | None = None,
     ) -> str:
-        if account is None and email is None:
+        if account_id is None and email is None:
             raise ValueError("Account or email must be provided")
-
-        account_id = account.id if account else None
-        account_email = email if email is not None else account.email if account else None
 
         if account_id:
             old_token = cls._get_current_token_for_account(account_id, token_type)
@@ -510,7 +512,7 @@ class TokenManager:
                 cls.revoke_token(old_token, token_type)
 
         token = str(uuid.uuid4())
-        token_data = {"account_id": account_id, "email": account_email, "token_type": token_type}
+        token_data = {"account_id": account_id, "email": email, "token_type": token_type}
         if additional_data:
             token_data.update(additional_data)
 
@@ -562,7 +564,11 @@ class TokenManager:
 
 
 class _RateLimiterRedisClient(Protocol):
+    def register_script(self, script: str) -> Callable[..., Any]: ...
+
     def zadd(self, name: str | bytes, mapping: dict[str | bytes | int | float, float | int | str | bytes]) -> int: ...
+
+    def zrem(self, name: str | bytes, *values: str | bytes) -> int: ...
 
     def zremrangebyscore(self, name: str | bytes, min: str | float, max: str | float) -> int: ...
 
@@ -594,6 +600,30 @@ class RateLimiter:
     def _get_key(self, email: str) -> str:
         return f"{self.prefix}:{email}"
 
+    @contextmanager
+    def reserve(self, email: str) -> Generator[bool]:
+        """Reserve a slot atomically, releasing only this slot if the operation fails."""
+        key = self._get_key(email)
+        member = self._member_factory()
+        script = self._redis_client.register_script("""
+            redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1] - ARGV[2])
+            if redis.call('ZSCORE', KEYS[1], ARGV[4]) then return 1 end
+            if redis.call('ZCARD', KEYS[1]) >= tonumber(ARGV[3]) then return 0 end
+            redis.call('ZADD', KEYS[1], ARGV[1], ARGV[4])
+            redis.call('EXPIRE', KEYS[1], ARGV[2] * 2)
+            return 1
+        """)
+        acquired = bool(script(keys=[key], args=[int(time.time()), self.time_window, self.max_attempts, member]))
+        try:
+            yield acquired
+        except BaseException:
+            if acquired:
+                try:
+                    self._redis_client.zrem(key, member)
+                except Exception:
+                    logger.exception("Failed to release rate limit reservation")
+            raise
+
     def is_rate_limited(self, email: str) -> bool:
         key = self._get_key(email)
         current_time = int(time.time())
@@ -602,9 +632,7 @@ class RateLimiter:
         self._redis_client.zremrangebyscore(key, "-inf", window_start_time)
         attempts = self._redis_client.zcard(key)
 
-        if attempts and int(attempts) >= self.max_attempts:
-            return True
-        return False
+        return bool(attempts and int(attempts) >= self.max_attempts)
 
     def increment_rate_limit(self, email: str):
         key = self._get_key(email)

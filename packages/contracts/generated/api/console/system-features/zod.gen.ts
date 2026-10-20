@@ -3,6 +3,22 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * BrandingModel
  */
 export const zBrandingModel = z.object({
@@ -19,6 +35,11 @@ export const zBrandingModel = z.object({
  * Enum representing the deployment edition of the platform.
  */
 export const zDeploymentEdition = z.enum(['CLOUD', 'COMMUNITY', 'ENTERPRISE'])
+
+/**
+ * SSOProtocol
+ */
+export const zSsoProtocol = z.enum(['oauth2', 'oidc', 'saml'])
 
 /**
  * LicenseLimitationModel
@@ -43,6 +64,7 @@ export const zLicenseStatus = z.enum(['active', 'expired', 'expiring', 'inactive
  */
 export const zLicenseModel = z.object({
   expired_at: z.string().default(''),
+  license_expiry_notice_enabled: z.boolean().default(false),
   seats: zLicenseLimitationModel.default({
     enabled: false,
     limit: 0,
@@ -85,7 +107,7 @@ export const zPluginInstallationPermissionModel = z.object({
  * WebAppAuthSSOModel
  */
 export const zWebAppAuthSsoModel = z.object({
-  protocol: z.string().default(''),
+  protocol: zSsoProtocol.nullable(),
 })
 
 /**
@@ -97,7 +119,7 @@ export const zWebAppAuthModel = z.object({
   allow_public_access: z.boolean().default(true),
   allow_sso: z.boolean().default(false),
   enabled: z.boolean().default(false),
-  sso_config: zWebAppAuthSsoModel.default({ protocol: '' }),
+  sso_config: zWebAppAuthSsoModel,
 })
 
 /**
@@ -127,7 +149,6 @@ export const zSystemFeatureModel = z.object({
   enable_step_by_step_tour: z.boolean().default(false),
   is_allow_register: z.boolean().default(false),
   is_email_setup: z.boolean().default(false),
-  knowledge_fs_enabled: z.boolean().default(false),
   license: zLicenseStatusModel.default({ status: 'none' }),
   plugin_installation_permission: zPluginInstallationPermissionModel.default({
     plugin_installation_scope: 'all',
@@ -135,15 +156,8 @@ export const zSystemFeatureModel = z.object({
   }),
   rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
-  sso_enforced_for_signin_protocol: z.string().default(''),
-  webapp_auth: zWebAppAuthModel.default({
-    allow_email_code_login: false,
-    allow_email_password_login: false,
-    allow_public_access: true,
-    allow_sso: false,
-    enabled: false,
-    sso_config: { protocol: '' },
-  }),
+  sso_enforced_for_signin_protocol: zSsoProtocol.nullable(),
+  webapp_auth: zWebAppAuthModel,
 })
 
 /**

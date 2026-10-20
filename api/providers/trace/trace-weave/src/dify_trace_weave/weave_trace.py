@@ -75,8 +75,8 @@ class WeaveDataTrace(BaseTraceInstance):
             project_url = f"https://wandb.ai/{project_identifier}"
             return project_url
         except Exception as e:
-            logger.debug("Weave get run url failed: %s", str(e))
-            raise ValueError(f"Weave get run url failed: {str(e)}")
+            logger.debug("Weave get run url failed", exc_info=True)
+            raise ValueError(f"Weave get run url failed: {str(e)}") from e
 
     @override
     def trace(self, trace_info: BaseTraceInfo):
@@ -433,8 +433,8 @@ class WeaveDataTrace(BaseTraceInstance):
                 logger.info("Weave login successful")
                 return True
         except Exception as e:
-            logger.debug("Weave API check failed: %s", str(e))
-            raise ValueError(f"Weave API check failed: {str(e)}")
+            logger.debug("Weave API check failed", exc_info=True)
+            raise ValueError(f"Weave API check failed: {str(e)}") from e
 
     def _normalize_time(self, dt: datetime | None) -> datetime:
         if dt is None:

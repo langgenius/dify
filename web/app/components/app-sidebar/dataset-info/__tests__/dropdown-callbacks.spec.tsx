@@ -1,17 +1,25 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
+import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
+import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import Dropdown from '../dropdown'
 
-let mockDataset: DataSet
+let mockDataset: DatasetDetailWithPartialMembersResponse
 const mockReplace = vi.fn()
-const mockInvalidDatasetList = vi.fn()
-const mockInvalidDatasetDetail = vi.fn()
+let invalidateQueries: ReturnType<typeof vi.spyOn>
+const mockUpdateDatasetSetting = vi.fn()
+const datasetListKey = consoleQuery.datasets.get.key()
+const datasetDetailKey = consoleQuery.datasets.byDatasetId.get.queryKey({
+  input: { params: { dataset_id: 'dataset-1' } },
+})
 const mockExportPipeline = vi.fn()
 const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
@@ -24,17 +32,22 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
-const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
-  renderWithConsoleQuery(ui, {
-    systemFeatures: {
-      rbac_enabled: mockIsRbacEnabled,
-    },
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const { queryClient } = createConsoleQueryWrapper({
+    systemFeatures: { rbac_enabled: mockIsRbacEnabled },
+    accountProfile: mockConsoleState.current.userProfile,
+    workspacePermissionKeys: mockConsoleState.current.workspacePermissionKeys,
   })
+  invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse => ({
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Dataset Name',
-  indexing_status: 'completed',
   icon_info: {
     icon: '📙',
     icon_background: '#FFF4ED',
@@ -42,30 +55,22 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
     icon_url: '',
   },
   description: 'Dataset description',
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   data_source_type: DataSourceType.FILE,
-  indexing_technique: 'high_quality' as DataSet['indexing_technique'],
+  indexing_technique:
+    'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
   created_by: 'user-1',
   updated_by: 'user-1',
   updated_at: 1690000000,
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 1,
-  total_document_count: 1,
   word_count: 1000,
   provider: 'internal',
   embedding_model: 'text-embedding-3',
   embedding_model_provider: 'openai',
   embedding_available: true,
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
@@ -102,64 +107,32 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) =>
-    selector({ dataset: mockDataset }),
+  useDatasetDetailContextWithSelector: (
+    selector: (state: { dataset?: DatasetDetailWithPartialMembersResponse }) => unknown,
+  ) => selector({ dataset: mockDataset }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current)
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.exports.get': (input) => mockExportPipeline(input),
+    }),
+  }
 })
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState.current)
-})
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  datasetDetailQueryKeyPrefix: ['dataset', 'detail'],
-  useInvalidDatasetList: () => mockInvalidDatasetList,
-}))
-
-vi.mock('@/service/use-base', () => ({
-  useInvalid: () => mockInvalidDatasetDetail,
-}))
-
-vi.mock('@/service/use-pipeline', () => ({
-  useExportPipelineDSL: () => ({ mutateAsync: mockExportPipeline }),
-}))
-
-vi.mock('@/service/datasets', () => ({
+vi.mock('@/service/datasets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/datasets')>()),
+  updateDatasetSetting: (...args: unknown[]) => mockUpdateDatasetSetting(...args),
   checkIsUsedInApp: (...args: unknown[]) => mockCheckIsUsedInApp(...args),
   deleteDataset: (...args: unknown[]) => mockDeleteDataset(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (...args: unknown[]) => mockToast(...args),
-  },
-}))
-
-vi.mock('@/app/components/datasets/rename-modal', () => ({
-  default: ({
-    show,
-    onClose,
-    onSuccess,
-  }: {
-    show: boolean
-    onClose: () => void
-    onSuccess?: () => void
-  }) => {
-    if (!show) return null
-    return (
-      <div data-testid="rename-modal">
-        <button type="button" onClick={onSuccess}>
-          Success
-        </button>
-        <button type="button" onClick={onClose}>
-          Close
-        </button>
-      </div>
-    )
   },
 }))
 
@@ -171,6 +144,7 @@ describe('Dropdown callback coverage', () => {
     mockExportPipeline.mockResolvedValue({ data: 'pipeline-content' })
     mockCheckIsUsedInApp.mockResolvedValue({ is_using: false })
     mockDeleteDataset.mockResolvedValue({})
+    mockUpdateDatasetSetting.mockResolvedValue({})
   })
 
   it('should call refreshDataset when rename succeeds', async () => {
@@ -180,12 +154,21 @@ describe('Dropdown callback coverage', () => {
     await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('common.operation.edit'))
 
-    expect(screen.getByTestId('rename-modal')).toBeInTheDocument()
-    await user.click(screen.getByText('Success'))
+    expect(screen.getByRole('dialog', { name: 'datasetSettings.title' })).toBeInTheDocument()
+    const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(name)
+    await user.type(name, 'Renamed dataset')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() =>
+      expect(mockUpdateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({ name: 'Renamed dataset' }),
+      }),
+    )
 
     await waitFor(() => {
-      expect(mockInvalidDatasetList).toHaveBeenCalled()
-      expect(mockInvalidDatasetDetail).toHaveBeenCalled()
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: datasetListKey })
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: datasetDetailKey })
     })
   })
 
@@ -196,11 +179,13 @@ describe('Dropdown callback coverage', () => {
     await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('common.operation.edit'))
 
-    expect(screen.getByTestId('rename-modal')).toBeInTheDocument()
-    await user.click(screen.getByText('Close'))
+    expect(screen.getByRole('dialog', { name: 'datasetSettings.title' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     await waitFor(() => {
-      expect(screen.queryByTestId('rename-modal')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('dialog', { name: 'datasetSettings.title' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -262,20 +247,11 @@ describe('Dropdown callback coverage', () => {
     expect(mockExportPipeline).not.toHaveBeenCalled()
   })
 
-  it('should render and open correctly when collapsed', async () => {
-    const user = userEvent.setup()
-    render(<Dropdown expand={false} />)
-
-    await user.click(screen.getByRole('button'))
-
-    expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
-  })
-
   it('should surface the backend message when checking app usage fails', async () => {
     const user = userEvent.setup()
-    mockCheckIsUsedInApp.mockRejectedValueOnce({
-      json: vi.fn().mockResolvedValue({ message: 'check failed' }),
-    })
+    mockCheckIsUsedInApp.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), { message: 'check failed' }),
+    )
 
     render(<Dropdown expand />)
 

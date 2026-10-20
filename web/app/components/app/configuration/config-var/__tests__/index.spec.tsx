@@ -2,34 +2,26 @@ import type { ReactNode } from 'react'
 import type { IConfigVarProps } from '../index'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
-import { toast } from '@langgenius/dify-ui/toast'
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
+import { toast } from '@/app/components/app/configuration/toast'
 import DebugConfigurationContext from '@/context/debug-configuration'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createDebugConfigurationFixture } from '@/test/fixtures/debug-configuration'
 import ConfigVar, { ADD_EXTERNAL_DATA_TOOL } from '../index'
 
 const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 
 const setShowExternalDataToolModal = vi.fn()
 
-type SubscriptionEvent = {
-  type: string
-  payload: ExternalDataTool
-}
-
-let subscriptionCallback: ((event: SubscriptionEvent) => void) | null = null
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: (callback: (event: SubscriptionEvent) => void) => {
-        subscriptionCallback = callback
-      },
-    },
-  }),
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({}),
 }))
 
 vi.mock('@/context/modal-context', () => ({
@@ -62,21 +54,32 @@ type DebugConfigurationState = React.ComponentProps<
   typeof DebugConfigurationContext.Provider
 >['value']
 
-const defaultDebugConfigValue = {
-  mode: AppModeEnum.CHAT,
-  dataSets: [],
-  modelConfig: {
-    model_id: 'test-model',
-  },
-} as unknown as DebugConfigurationState
+const createDebugConfigValue = (overrides: Partial<DebugConfigurationState> = {}) =>
+  createDebugConfigurationFixture(overrides)
 
-const createDebugConfigValue = (
-  overrides: Partial<DebugConfigurationState> = {},
-): DebugConfigurationState =>
-  ({
-    ...defaultDebugConfigValue,
-    ...overrides,
-  }) as unknown as DebugConfigurationState
+function ExternalToolEventSource() {
+  const { eventEmitter } = useEventEmitterContextContext()
+  return (
+    <button
+      onClick={() =>
+        eventEmitter?.emit({
+          type: ADD_EXTERNAL_DATA_TOOL,
+          payload: {
+            variable: 'api_var',
+            label: 'API Var',
+            enabled: true,
+            type: 'api',
+            config: {},
+            icon: 'icon',
+            icon_background: 'bg',
+          } satisfies ExternalDataTool,
+        })
+      }
+    >
+      Install external data tool
+    </button>
+  )
+}
 
 let variableIndex = 0
 const createPromptVariable = (overrides: Partial<PromptVariable> = {}): PromptVariable => {
@@ -106,9 +109,12 @@ const renderConfigVar = (
   }
 
   return render(
-    <DebugConfigurationContext.Provider value={createDebugConfigValue(debugOverrides)}>
-      <ConfigVar {...mergedProps} />
-    </DebugConfigurationContext.Provider>,
+    <EventEmitterContextProvider>
+      <ExternalToolEventSource />
+      <DebugConfigurationContext.Provider value={createDebugConfigValue(debugOverrides)}>
+        <ConfigVar {...mergedProps} />
+      </DebugConfigurationContext.Provider>
+    </EventEmitterContextProvider>,
   )
 }
 
@@ -118,7 +124,6 @@ describe('ConfigVar', () => {
     beforeEach(() => {
       vi.clearAllMocks()
       latestSortableProps = null
-      subscriptionCallback = null
       variableIndex = 0
       toastErrorSpy.mockClear()
     })
@@ -126,11 +131,12 @@ describe('ConfigVar', () => {
     it('should show empty state when no variables exist', () => {
       renderConfigVar({ promptVariables: [] })
 
-      expect(screen.getByText('appDebug.notSetVar'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.notSetVar:{"input":"{{input}}"}'))!.toBeInTheDocument()
     })
 
     it('should render variable items and allow reordering via sortable list', () => {
-      const onPromptVariablesChange = vi.fn()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const firstVar = createPromptVariable({ key: 'first', name: 'First' })
       const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
 
@@ -151,6 +157,51 @@ describe('ConfigVar', () => {
 
       expect(onPromptVariablesChange).toHaveBeenCalledWith([secondVar, firstVar])
     })
+
+    it('commits variable keyboard sorting only after confirmation', async () => {
+      const user = userEvent.setup()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
+      const first = createPromptVariable({ key: 'first', name: 'First' })
+      const second = createPromptVariable({ key: 'second', name: 'Second' })
+      renderConfigVar({ promptVariables: [first, second], onPromptVariablesChange })
+      const handle = screen.getAllByRole('button', { name: /sort.handle/ })[0]!
+      handle.focus()
+      await user.keyboard('{Enter}{ArrowDown}')
+      expect(handle).toHaveFocus()
+      expect(onPromptVariablesChange).not.toHaveBeenCalled()
+      await user.keyboard('{Enter}')
+      expect(onPromptVariablesChange).toHaveBeenCalledExactlyOnceWith([second, first])
+    })
+
+    it('does not expose keyboard sorting in readonly mode', () => {
+      renderConfigVar({
+        readonly: true,
+        promptVariables: [createPromptVariable(), createPromptVariable()],
+      })
+      expect(screen.queryByRole('button', { name: /sort.handle/ })).not.toBeInTheDocument()
+    })
+
+    it('should ignore sortable updates when the variable order is unchanged', () => {
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
+      const firstVar = createPromptVariable({ key: 'first', name: 'First' })
+      const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
+
+      renderConfigVar({
+        promptVariables: [firstVar, secondVar],
+        onPromptVariablesChange,
+      })
+
+      act(() => {
+        latestSortableProps?.setList([
+          { id: 'first', variable: firstVar },
+          { id: 'second', variable: secondVar },
+        ])
+      })
+
+      expect(onPromptVariablesChange).not.toHaveBeenCalled()
+    })
   })
 
   // Variable creation flows using the add menu.
@@ -158,52 +209,35 @@ describe('ConfigVar', () => {
     beforeEach(() => {
       vi.clearAllMocks()
       latestSortableProps = null
-      subscriptionCallback = null
       variableIndex = 0
       toastErrorSpy.mockClear()
     })
 
     it('should add a text variable when selecting the string option', async () => {
-      const onPromptVariablesChange = vi.fn()
+      const user = userEvent.setup()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       renderConfigVar({ promptVariables: [], onPromptVariablesChange })
 
-      fireEvent.click(screen.getByText('common.operation.add'))
-      fireEvent.click(await screen.findByText('appDebug.variableConfig.string'))
+      await user.click(screen.getByText('common.operation.add'))
+      await user.click(await screen.findByText('appDebug.variableConfig.string'))
 
       expect(onPromptVariablesChange).toHaveBeenCalledTimes(1)
-      const [nextVariables] = (onPromptVariablesChange.mock.calls[0] ?? []) as [any]
+      const [nextVariables] = onPromptVariablesChange.mock.calls[0]!
       expect(nextVariables).toHaveLength(1)
-      expect(nextVariables[0].type).toBe('string')
-    })
-
-    it('should open the external data tool modal when adding an api variable', async () => {
-      const onPromptVariablesChange = vi.fn()
-      renderConfigVar({ promptVariables: [], onPromptVariablesChange })
-
-      fireEvent.click(screen.getByText('common.operation.add'))
-      fireEvent.click(await screen.findByText('appDebug.variableConfig.apiBasedVar'))
-
-      expect(onPromptVariablesChange).toHaveBeenCalledTimes(1)
-      expect(setShowExternalDataToolModal).toHaveBeenCalledTimes(1)
-
-      const modalState = setShowExternalDataToolModal.mock.calls[0]![0]
-      expect(modalState.payload.type).toBe('api')
-
-      act(() => {
-        modalState.onCancelCallback?.()
-      })
-
-      expect(onPromptVariablesChange).toHaveBeenLastCalledWith([])
+      expect(nextVariables[0]!.type).toBe('string')
     })
 
     it('should restore previous variables when cancelling api variable with existing items', async () => {
-      const onPromptVariablesChange = vi.fn()
+      const user = userEvent.setup()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const existingVar = createPromptVariable({ key: 'existing', name: 'Existing' })
 
       renderConfigVar({ promptVariables: [existingVar], onPromptVariablesChange })
 
-      fireEvent.click(screen.getByText('common.operation.add'))
-      fireEvent.click(await screen.findByText('appDebug.variableConfig.apiBasedVar'))
+      await user.click(screen.getByText('common.operation.add'))
+      await user.click(await screen.findByText('appDebug.variableConfig.apiBasedVar'))
 
       const modalState = setShowExternalDataToolModal.mock.calls[0]![0]
       act(() => {
@@ -211,10 +245,10 @@ describe('ConfigVar', () => {
       })
 
       expect(onPromptVariablesChange).toHaveBeenCalledTimes(2)
-      const [addedVariables] = (onPromptVariablesChange.mock.calls[0] ?? []) as [any]
+      const [addedVariables] = onPromptVariablesChange.mock.calls[0]!
       expect(addedVariables).toHaveLength(2)
       expect(addedVariables[0]).toBe(existingVar)
-      expect(addedVariables[1].type).toBe('api')
+      expect(addedVariables[1]!.type).toBe('api')
       expect(onPromptVariablesChange).toHaveBeenLastCalledWith([existingVar])
     })
   })
@@ -224,13 +258,14 @@ describe('ConfigVar', () => {
     beforeEach(() => {
       vi.clearAllMocks()
       latestSortableProps = null
-      subscriptionCallback = null
       variableIndex = 0
       toastErrorSpy.mockClear()
     })
 
     it('should save updates when editing a basic variable', async () => {
-      const onPromptVariablesChange = vi.fn()
+      const user = userEvent.setup()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const variable = createPromptVariable({ key: 'name', name: 'Name' })
 
       renderConfigVar({
@@ -238,24 +273,28 @@ describe('ConfigVar', () => {
         onPromptVariablesChange,
       })
 
-      const item = screen.getByTitle('name · Name')
-      const itemContainer = item.closest('div.group')
-      expect(itemContainer).not.toBeNull()
-      fireEvent.click(
-        within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }),
-      )
+      await user.click(screen.getAllByRole('button', { name: 'common.operation.edit' })[0]!)
 
       const editDialog = await screen.findByRole('dialog')
+      const label = within(editDialog).getByRole('textbox', {
+        name: 'appDebug.variableConfig.labelName',
+      })
+      await user.clear(label)
+      await user.type(label, 'Updated Name')
       const saveButton = within(editDialog).getByRole('button', { name: 'common.operation.save' })
-      fireEvent.click(saveButton)
+      await user.click(saveButton)
 
       await waitFor(() => {
-        expect(onPromptVariablesChange).toHaveBeenCalledTimes(1)
+        expect(onPromptVariablesChange).toHaveBeenCalledWith([
+          expect.objectContaining({ key: 'name', name: 'Updated Name' }),
+        ])
       })
     })
 
     it('should show error when variable key is duplicated', async () => {
-      const onPromptVariablesChange = vi.fn()
+      const user = userEvent.setup()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const firstVar = createPromptVariable({ key: 'first', name: 'First' })
       const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
 
@@ -264,26 +303,22 @@ describe('ConfigVar', () => {
         onPromptVariablesChange,
       })
 
-      const item = screen.getByTitle('first · First')
-      const itemContainer = item.closest('div.group')
-      expect(itemContainer).not.toBeNull()
-      fireEvent.click(
-        within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }),
-      )
+      await user.click(screen.getAllByRole('button', { name: 'common.operation.edit' })[0]!)
 
-      const inputs = await screen.findAllByPlaceholderText(
-        'appDebug.variableConfig.inputPlaceholder',
-      )
-      fireEvent.change(inputs[0]!, { target: { value: 'second' } })
+      const input = screen.getByRole('textbox', { name: 'appDebug.variableConfig.varName' })
+      await user.clear(input)
+      await user.type(input, 'second')
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(toastErrorSpy).toHaveBeenCalled()
       expect(onPromptVariablesChange).not.toHaveBeenCalled()
     })
 
     it('should show error when variable label is duplicated', async () => {
-      const onPromptVariablesChange = vi.fn()
+      const user = userEvent.setup()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const firstVar = createPromptVariable({ key: 'first', name: 'First' })
       const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
 
@@ -292,19 +327,13 @@ describe('ConfigVar', () => {
         onPromptVariablesChange,
       })
 
-      const item = screen.getByTitle('first · First')
-      const itemContainer = item.closest('div.group')
-      expect(itemContainer).not.toBeNull()
-      fireEvent.click(
-        within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }),
-      )
+      await user.click(screen.getAllByRole('button', { name: 'common.operation.edit' })[0]!)
 
-      const inputs = await screen.findAllByPlaceholderText(
-        'appDebug.variableConfig.inputPlaceholder',
-      )
-      fireEvent.change(inputs[1]!, { target: { value: 'Second' } })
+      const input = screen.getByRole('textbox', { name: 'appDebug.variableConfig.labelName' })
+      await user.clear(input)
+      await user.type(input, 'Second')
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(toastErrorSpy).toHaveBeenCalled()
       expect(onPromptVariablesChange).not.toHaveBeenCalled()
@@ -316,13 +345,14 @@ describe('ConfigVar', () => {
     beforeEach(() => {
       vi.clearAllMocks()
       latestSortableProps = null
-      subscriptionCallback = null
       variableIndex = 0
       toastErrorSpy.mockClear()
     })
 
-    it('should remove variable directly when context confirmation is not required', () => {
-      const onPromptVariablesChange = vi.fn()
+    it('should remove variable directly when context confirmation is not required', async () => {
+      const user = userEvent.setup()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const variable = createPromptVariable({ key: 'name', name: 'Name' })
 
       renderConfigVar({
@@ -331,13 +361,15 @@ describe('ConfigVar', () => {
       })
 
       const removeBtn = screen.getByRole('button', { name: 'common.operation.delete' })
-      fireEvent.click(removeBtn)
+      await user.click(removeBtn)
 
       expect(onPromptVariablesChange).toHaveBeenCalledWith([])
     })
 
-    it('should require confirmation when removing context variable with datasets in completion mode', () => {
-      const onPromptVariablesChange = vi.fn()
+    it('should require confirmation when removing context variable with datasets in completion mode', async () => {
+      const user = userEvent.setup()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const variable = createPromptVariable({
         key: 'context',
         name: 'Context',
@@ -350,15 +382,15 @@ describe('ConfigVar', () => {
           onPromptVariablesChange,
         },
         {
-          mode: AppModeEnum.COMPLETION,
-          dataSets: [{ id: 'dataset-1' } as DebugConfigurationState['dataSets'][number]],
+          mode: 'completion' as const,
+          dataSets: [createDatasetFixture({ id: 'dataset-1' })],
         },
       )
 
       const deleteBtn = screen.getByRole('button', { name: 'common.operation.delete' })
-      fireEvent.click(deleteBtn)
-      // confirmation modal should show up
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+      await user.click(deleteBtn)
+      expect(onPromptVariablesChange).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       expect(onPromptVariablesChange).toHaveBeenCalledWith([])
     })
@@ -369,32 +401,20 @@ describe('ConfigVar', () => {
     beforeEach(() => {
       vi.clearAllMocks()
       latestSortableProps = null
-      subscriptionCallback = null
       variableIndex = 0
       toastErrorSpy.mockClear()
     })
 
-    it('should append external data tool variables from event emitter', () => {
-      const onPromptVariablesChange = vi.fn()
+    it('should append external data tool variables from event emitter', async () => {
+      const user = userEvent.setup()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       renderConfigVar({
         promptVariables: [],
         onPromptVariablesChange,
       })
 
-      act(() => {
-        subscriptionCallback?.({
-          type: ADD_EXTERNAL_DATA_TOOL,
-          payload: {
-            variable: 'api_var',
-            label: 'API Var',
-            enabled: true,
-            type: 'api',
-            config: {},
-            icon: 'icon',
-            icon_background: 'bg',
-          },
-        })
-      })
+      await user.click(screen.getByRole('button', { name: 'Install external data tool' }))
 
       expect(onPromptVariablesChange).toHaveBeenCalledWith([
         expect.objectContaining({
@@ -406,8 +426,10 @@ describe('ConfigVar', () => {
       ])
     })
 
-    it('should update an api variable with the modal save callback', () => {
-      const onPromptVariablesChange = vi.fn()
+    it('should update an api variable with the modal save callback', async () => {
+      const user = userEvent.setup()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const apiVar = createPromptVariable({
         key: 'api_var',
         name: 'API Var',
@@ -419,13 +441,7 @@ describe('ConfigVar', () => {
         onPromptVariablesChange,
       })
 
-      const item = screen.getByTitle('api_var · API Var')
-      const itemContainer = item.closest('div.group')
-      expect(itemContainer).not.toBeNull()
-
-      fireEvent.click(
-        within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }),
-      )
+      await user.click(screen.getAllByRole('button', { name: 'common.operation.edit' })[0]!)
 
       const modalState = setShowExternalDataToolModal.mock.calls.at(-1)?.[0]
 
@@ -451,8 +467,10 @@ describe('ConfigVar', () => {
       ])
     })
 
-    it('should ignore empty external tool saves and reject duplicate variable names during validation', () => {
-      const onPromptVariablesChange = vi.fn()
+    it('should ignore empty external tool saves and reject duplicate variable names during validation', async () => {
+      const user = userEvent.setup()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const firstVar = createPromptVariable({
         key: 'api_var',
         name: 'API Var',
@@ -469,13 +487,7 @@ describe('ConfigVar', () => {
         onPromptVariablesChange,
       })
 
-      const item = screen.getByTitle('api_var · API Var')
-      const itemContainer = item.closest('div.group')
-      expect(itemContainer).not.toBeNull()
-
-      fireEvent.click(
-        within(itemContainer as HTMLElement).getByRole('button', { name: 'common.operation.edit' }),
-      )
+      await user.click(screen.getAllByRole('button', { name: 'common.operation.edit' })[0]!)
 
       const modalState = setShowExternalDataToolModal.mock.calls.at(-1)?.[0]
 

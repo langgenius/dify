@@ -1,72 +1,77 @@
-from types import SimpleNamespace
 from typing import override
-from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.models.document import Document
+from models import Dataset
+from tests.unit_tests.model_factories import make_dataset
+
+
+def _dataset() -> Dataset:
+    return make_dataset()
 
 
 class _KeywordThatRaises(BaseKeyword):
     @override
-    def create(self, texts: list[Document], session, **kwargs):
+    def create(self, texts: list[Document], session: Session, **kwargs: object) -> BaseKeyword:
         return super().create(texts, session, **kwargs)
 
     @override
-    def add_texts(self, texts: list[Document], session, **kwargs):
+    def add_texts(self, texts: list[Document], session: Session, **kwargs: object) -> None:
         return super().add_texts(texts, session, **kwargs)
 
     @override
-    def text_exists(self, id: str, *, session) -> bool:
+    def text_exists(self, id: str, *, session: Session) -> bool:
         return super().text_exists(id, session=session)
 
     @override
-    def delete_by_ids(self, ids: list[str], session, **kwargs):
+    def delete_by_ids(self, ids: list[str], session: Session, **kwargs: object) -> None:
         return super().delete_by_ids(ids, session, **kwargs)
 
     @override
-    def delete(self, *, session):
+    def delete(self, *, session: Session) -> None:
         return super().delete(session=session)
 
     @override
-    def search(self, query: str, *, session, **kwargs):
+    def search(self, query: str, *, session: Session, **kwargs: object) -> list[Document]:
         return super().search(query, session=session, **kwargs)
 
 
 class _KeywordForHelpers(BaseKeyword):
-    def __init__(self, dataset, existing_ids: set[str] | None = None):
+    def __init__(self, dataset: Dataset, existing_ids: set[str] | None = None) -> None:
         super().__init__(dataset)
         self._existing_ids = existing_ids or set()
 
     @override
-    def create(self, texts: list[Document], session, **kwargs):
+    def create(self, texts: list[Document], session: Session, **kwargs: object) -> BaseKeyword:
         return self
 
     @override
-    def add_texts(self, texts: list[Document], session, **kwargs):
+    def add_texts(self, texts: list[Document], session: Session, **kwargs: object) -> None:
         return None
 
     @override
-    def text_exists(self, id: str, *, session) -> bool:
+    def text_exists(self, id: str, *, session: Session) -> bool:
         return id in self._existing_ids
 
     @override
-    def delete_by_ids(self, ids: list[str], session, **kwargs):
+    def delete_by_ids(self, ids: list[str], session: Session, **kwargs: object) -> None:
         return None
 
     @override
-    def delete(self, *, session):
+    def delete(self, *, session: Session) -> None:
         return None
 
     @override
-    def search(self, query: str, *, session, **kwargs):
+    def search(self, query: str, *, session: Session, **kwargs: object) -> list[Document]:
         return []
 
 
-def test_abstract_methods_raise_not_implemented():
-    keyword = _KeywordThatRaises(SimpleNamespace(id="dataset-1"))
-    session = MagicMock()
+def test_abstract_methods_raise_not_implemented(unbound_session: Session) -> None:
+    keyword = _KeywordThatRaises(_dataset())
+    session = unbound_session
 
     with pytest.raises(NotImplementedError):
         keyword.create([], session)
@@ -87,26 +92,26 @@ def test_abstract_methods_raise_not_implemented():
         keyword.search("query", session=session)
 
 
-def test_filter_duplicate_texts_removes_existing_doc_ids():
-    keyword = _KeywordForHelpers(SimpleNamespace(id="dataset-1"), existing_ids={"duplicate"})
+def test_filter_duplicate_texts_removes_existing_doc_ids(unbound_session: Session) -> None:
+    keyword = _KeywordForHelpers(_dataset(), existing_ids={"duplicate"})
     texts = [
         Document(page_content="keep", metadata={"doc_id": "keep"}),
         Document(page_content="duplicate", metadata={"doc_id": "duplicate"}),
-        SimpleNamespace(page_content="without-metadata", metadata=None),
+        Document.model_construct(page_content="without-metadata", metadata=None),
     ]
 
-    filtered = keyword._filter_duplicate_texts(texts, session=MagicMock())
+    filtered = keyword._filter_duplicate_texts(texts, session=unbound_session)
 
     assert [text.metadata["doc_id"] for text in filtered if text.metadata] == ["keep"]
     assert any(text.metadata is None for text in filtered)
 
 
-def test_get_uuids_returns_only_docs_with_metadata():
-    keyword = _KeywordForHelpers(SimpleNamespace(id="dataset-1"))
+def test_get_uuids_returns_only_docs_with_metadata() -> None:
+    keyword = _KeywordForHelpers(_dataset())
     texts = [
         Document(page_content="doc-1", metadata={"doc_id": "doc-1"}),
         Document(page_content="doc-2", metadata={"doc_id": "doc-2"}),
-        SimpleNamespace(page_content="doc-3", metadata=None),
+        Document.model_construct(page_content="doc-3", metadata=None),
     ]
 
     assert keyword._get_uuids(texts) == ["doc-1", "doc-2"]

@@ -1,16 +1,19 @@
 import { QueryClient } from '@tanstack/react-query'
 import { createStore } from 'jotai'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vite-plus/test'
 import { atomWithResolvedSuspenseQuery } from './query-atoms'
 
-const createQueryClient = () =>
-  new QueryClient({
+const createQueryClient = () => {
+  const client = new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
       },
     },
   })
+  onTestFinished(() => client.clear())
+  return client
+}
 
 describe('atomWithResolvedSuspenseQuery', () => {
   it('should return the resolved suspense query result when query data is cached', () => {
@@ -51,22 +54,5 @@ describe('atomWithResolvedSuspenseQuery', () => {
       'Suspense query must be resolved before reading: ["pending-query"]',
     )
     expect(queryFn).toHaveBeenCalledTimes(1)
-  })
-
-  it('should keep the wrapped suspense query atom writable', () => {
-    const queryClient = createQueryClient()
-    const queryKey = ['writable-query']
-    queryClient.setQueryData(queryKey, 'cached data')
-
-    const queryAtom = atomWithResolvedSuspenseQuery(
-      () => ({
-        queryKey,
-        queryFn: async () => 'fetched data',
-      }),
-      () => queryClient,
-    )
-    const store = createStore()
-
-    expect(() => store.set(queryAtom)).not.toThrow()
   })
 })

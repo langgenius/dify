@@ -53,7 +53,7 @@ class TraceClient:
             attributes={
                 service_attributes.SERVICE_NAME: service_name,
                 service_attributes.SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
-                DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
+                DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.DEPLOYMENT_EDITION.value}",
                 HOST_NAME: socket.gethostname(),
                 ACS_ARMS_SERVICE_FEATURE: "genai_app",
             }
@@ -86,8 +86,8 @@ class TraceClient:
                 logger.warning("AliyunTrace API check failed: Unexpected status code: %s", response.status_code)
                 return False
         except httpx.RequestError as e:
-            logger.warning("AliyunTrace API check failed: %s", str(e))
-            raise ValueError(f"AliyunTrace API check failed: {str(e)}")
+            logger.warning("AliyunTrace API check failed", exc_info=True)
+            raise ValueError(f"AliyunTrace API check failed: {str(e)}") from e
 
     def get_project_url(self) -> str:
         return "https://arms.console.aliyun.com/#/llm"

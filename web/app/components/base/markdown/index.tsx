@@ -1,8 +1,8 @@
 import type { SimplePluginInfo, StreamdownWrapperProps } from './streamdown-wrapper'
 import { cn } from '@langgenius/dify-ui/cn'
 import { flow } from 'es-toolkit/compat'
+import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
-import dynamic from '@/next/dynamic'
 import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'
 
 const StreamdownWrapper = dynamic(() => import('./streamdown-wrapper'), { ssr: false })
@@ -10,6 +10,8 @@ const StreamdownWrapper = dynamic(() => import('./streamdown-wrapper'), { ssr: f
 const preprocess = flow([preprocessThinkTag, preprocessLaTeX])
 
 const EMPTY_COMPONENTS = {} as const
+const MARKDOWN_DIVIDER_ONLY_RE =
+  /^(?:[ \t]*\r?\n)*[ \t]{0,3}(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})(?:\r?\n[ \t]*)*$/
 
 /**
  * @fileoverview Main Markdown rendering component.
@@ -45,22 +47,25 @@ export const Markdown = memo((props: MarkdownProps) => {
     className,
   } = props
   const latexContent = useMemo(() => preprocess(content), [content])
+  const hasContent = !!latexContent.trim() && !MARKDOWN_DIVIDER_ONLY_RE.test(latexContent)
 
   return (
     <div
       className={cn('markdown-body', 'text-text-primary!', className)}
       data-testid="markdown-body"
     >
-      <StreamdownWrapper
-        pluginInfo={pluginInfo}
-        latexContent={latexContent}
-        customComponents={customComponents}
-        customDisallowedElements={customDisallowedElements}
-        remarkPlugins={remarkPlugins}
-        rehypePlugins={rehypePlugins}
-        isAnimating={isAnimating}
-        mode={mode}
-      />
+      {hasContent && (
+        <StreamdownWrapper
+          pluginInfo={pluginInfo}
+          latexContent={latexContent}
+          customComponents={customComponents}
+          customDisallowedElements={customDisallowedElements}
+          remarkPlugins={remarkPlugins}
+          rehypePlugins={rehypePlugins}
+          isAnimating={isAnimating}
+          mode={mode}
+        />
+      )}
     </div>
   )
 })

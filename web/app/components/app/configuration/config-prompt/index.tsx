@@ -1,7 +1,8 @@
 'use client'
+
 import type { FC } from 'react'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { PromptItem, PromptVariable } from '@/models/debug'
-import type { AppModeEnum } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiAddLine } from '@remixicon/react'
 import { produce } from 'immer'
@@ -16,7 +17,7 @@ import { ModelModeType } from '@/types/app'
 import SimplePromptInput from './simple-prompt-input'
 
 export type IPromptProps = {
-  mode: AppModeEnum
+  mode: ConfigurationAppMode
   promptTemplate: string
   promptVariables: PromptVariable[]
   readonly?: boolean
@@ -38,7 +39,7 @@ const Prompt: FC<IPromptProps> = ({
   noResize,
   onChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
 
   const {
     isAdvancedMode,
@@ -159,7 +160,7 @@ const Prompt: FC<IPromptProps> = ({
       {modelModeType === ModelModeType.chat &&
         (currentAdvancedPrompt as PromptItem[]).length < MAX_PROMPT_MESSAGE_LENGTH && (
           <Button onClick={handleAddMessage} className="mt-3 w-full">
-            <RiAddLine className="mr-2 size-4" />
+            <RiAddLine className="size-4" />
             <div>{t(($) => $['promptMode.operation.addMessage'], { ns: 'appDebug' })}</div>
           </Button>
         )}

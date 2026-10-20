@@ -16,6 +16,8 @@ from dify_trace_tencent.entities.tencent_trace_entity import SpanData
 from opentelemetry.sdk.trace import Event
 from opentelemetry.trace import SpanContext, Status, StatusCode, TraceFlags
 
+from enums import DeploymentEdition
+
 metric_reader_instances: list[DummyMetricReader] = []
 meter_provider_instances: list[DummyMeterProvider] = []
 
@@ -158,7 +160,7 @@ def patch_core_components(monkeypatch: pytest.MonkeyPatch) -> PatchedCoreCompone
         project=SimpleNamespace(version="test"),
         COMMIT_SHA="sha",
         DEPLOY_ENV="dev",
-        EDITION="cloud",
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
     )
     monkeypatch.setattr(client_module, "dify_config", fake_config)
 
@@ -331,6 +333,7 @@ def test_create_and_export_span_exception_logs_error(
     client = _build_client()
     span = patch_core_components["span"]
     span.get_span_context.return_value = _make_span_context(span_id=2)
+    # pyrefly: ignore [missing-attribute]
     client.tracer.start_span.side_effect = RuntimeError("boom")
 
     caplog.set_level(logging.DEBUG, logger=client_module.logger.name)
@@ -430,6 +433,7 @@ def test_shutdown_logs_when_meter_provider_fails(caplog: pytest.LogCaptureFixtur
     meter_provider = meter_provider_instances[-1]
     meter_provider.shutdown.side_effect = RuntimeError("boom")
     assert client.metric_reader is not None
+    # pyrefly: ignore [missing-attribute]
     client.metric_reader.shutdown.side_effect = RuntimeError("boom")
 
     caplog.set_level(logging.DEBUG, logger=client_module.logger.name)
@@ -486,7 +490,7 @@ def test_create_and_export_span_converts_attribute_types(patch_core_components: 
         parent_span_id=None,
         span_id=2,
         name="span",
-        attributes={"num": 5, "flag": True, "pi": 3.14, "text": "value"},
+        attributes={"num": 5, "flag": True, "pi": float("3.14"), "text": "value"},
         events=[],
         links=[],
         status=Status(StatusCode.OK),
@@ -498,7 +502,7 @@ def test_create_and_export_span_converts_attribute_types(patch_core_components: 
     (attrs,) = span.set_attributes.call_args.args
     assert attrs["num"] == 5
     assert attrs["flag"] is True
-    assert attrs["pi"] == 3.14
+    assert attrs["pi"] == float("3.14")
     assert attrs["text"] == "value"
 
 
@@ -553,7 +557,7 @@ def test_record_methods_handle_exceptions(
 def test_metrics_initializes_grpc_metric_exporter() -> None:
     client = _build_client()
     metric_reader = metric_reader_instances[-1]
-    exporter = cast(DummyGrpcMetricExporter, metric_reader.exporter)
+    exporter = metric_reader.exporter
 
     assert isinstance(exporter, DummyGrpcMetricExporter)
     assert metric_reader.export_interval_millis == client.metrics_export_interval_sec * 1000
@@ -566,7 +570,7 @@ def test_metrics_initializes_http_protobuf_metric_exporter(monkeypatch: pytest.M
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf")
     client = _build_client()
     metric_reader = metric_reader_instances[-1]
-    exporter = cast(DummyHttpMetricExporter, metric_reader.exporter)
+    exporter = metric_reader.exporter
 
     assert isinstance(exporter, DummyHttpMetricExporter)
     assert metric_reader.export_interval_millis == client.metrics_export_interval_sec * 1000
@@ -578,7 +582,7 @@ def test_metrics_initializes_http_json_metric_exporter(monkeypatch: pytest.Monke
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "http/json")
     client = _build_client()
     metric_reader = metric_reader_instances[-1]
-    exporter = cast(DummyJsonMetricExporter, metric_reader.exporter)
+    exporter = metric_reader.exporter
 
     assert isinstance(exporter, DummyJsonMetricExporter)
     assert metric_reader.export_interval_millis == client.metrics_export_interval_sec * 1000
@@ -593,7 +597,7 @@ def test_metrics_http_json_metric_exporter_falls_back_without_temporality(monkey
     monkeypatch.setattr(exporter_module, "OTLPMetricExporter", DummyJsonMetricExporterNoTemporality)
     _ = _build_client()
     metric_reader = metric_reader_instances[-1]
-    exporter = cast(DummyJsonMetricExporterNoTemporality, metric_reader.exporter)
+    exporter = metric_reader.exporter
 
     assert isinstance(exporter, DummyJsonMetricExporterNoTemporality)
     assert "preferred_temporality" not in exporter.kwargs

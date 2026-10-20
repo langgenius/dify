@@ -1,40 +1,25 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
 import Header from '../header'
 
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <span data-testid="divider" />,
-}))
-
-vi.mock('../credential-selector', () => ({
-  default: () => <div data-testid="credential-selector" />,
-}))
-
-describe('Header', () => {
-  const defaultProps = {
-    docTitle: 'Documentation',
-    docLink: 'https://docs.example.com',
-    onClickConfiguration: vi.fn(),
-    pluginName: 'TestPlugin',
-    credentials: [],
-    currentCredentialId: '',
-    onCredentialChange: vi.fn(),
-  }
-
-  it('should render doc link with title', () => {
-    render(<Header {...defaultProps} />)
-    expect(screen.getByText('Documentation')).toBeInTheDocument()
-  })
-
-  it('should render credential selector', () => {
-    render(<Header {...defaultProps} />)
-    expect(screen.getByTestId('credential-selector')).toBeInTheDocument()
-  })
-
-  it('should link to external doc', () => {
-    render(<Header {...defaultProps} />)
-    const link = screen.getByText('Documentation').closest('a')
-    expect(link).toHaveAttribute('href', 'https://docs.example.com')
-    expect(link).toHaveAttribute('target', '_blank')
-  })
+it('links to datasource documentation and opens that plugin configuration', async () => {
+  const user = userEvent.setup()
+  const onClickConfiguration = vi.fn()
+  render(
+    <Header
+      docTitle="Datasource documentation"
+      docLink="https://docs.example.com/source"
+      pluginName="Drive"
+      onClickConfiguration={onClickConfiguration}
+      credentials={[]}
+      currentCredentialId=""
+      onCredentialChange={vi.fn()}
+    />,
+  )
+  expect(screen.getByRole('link', { name: 'Datasource documentation' })).toHaveAttribute(
+    'href',
+    'https://docs.example.com/source',
+  )
+  await user.click(screen.getByRole('button', { name: /datasetPipeline.configurationTip/ }))
+  expect(onClickConfiguration).toHaveBeenCalledOnce()
 })

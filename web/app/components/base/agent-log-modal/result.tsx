@@ -11,8 +11,8 @@ type ResultPanelProps = Readonly<{
   elapsed_time?: number
   total_tokens?: number
   error?: string
-  inputs?: any
-  outputs?: any
+  inputs?: string | object
+  outputs?: string | object
   created_by?: string
   created_at: string
   agentMode?: string
@@ -21,6 +21,7 @@ type ResultPanelProps = Readonly<{
 }>
 
 const ResultPanel: FC<ResultPanelProps> = ({
+  status,
   elapsed_time,
   total_tokens,
   error,
@@ -32,13 +33,18 @@ const ResultPanel: FC<ResultPanelProps> = ({
   tools,
   iterations,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'appLog', 'runLog'])
   const { formatTime } = useTimestamp()
 
   return (
     <div className="bg-components-panel-bg py-2">
       <div className="px-4 py-2">
-        <StatusPanel status="succeeded" time={elapsed_time} tokens={total_tokens} error={error} />
+        <StatusPanel
+          status={status === 'success' ? 'succeeded' : status}
+          time={elapsed_time}
+          tokens={total_tokens}
+          error={error}
+        />
       </div>
       <div className="flex flex-col gap-2 px-4 py-2">
         <CodeEditor
@@ -66,26 +72,26 @@ const ResultPanel: FC<ResultPanelProps> = ({
           </div>
           <div className="py-1">
             <div className="flex">
-              <div className="w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px] text-text-tertiary">
+              <div className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary">
                 {t(($) => $['meta.status'], { ns: 'runLog' })}
               </div>
-              <div className="grow px-2 py-[5px] text-xs leading-[18px] text-text-primary">
-                <span>SUCCESS</span>
+              <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
+                <span>{status === 'succeeded' ? 'SUCCESS' : status.toUpperCase()}</span>
               </div>
             </div>
             <div className="flex">
-              <div className="w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px] text-text-tertiary">
+              <div className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary">
                 {t(($) => $['meta.executor'], { ns: 'runLog' })}
               </div>
-              <div className="grow px-2 py-[5px] text-xs leading-[18px] text-text-primary">
+              <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
                 <span>{created_by || 'N/A'}</span>
               </div>
             </div>
             <div className="flex">
-              <div className="w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px] text-text-tertiary">
+              <div className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary">
                 {t(($) => $['meta.startTime'], { ns: 'runLog' })}
               </div>
-              <div className="grow px-2 py-[5px] text-xs leading-[18px] text-text-primary">
+              <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
                 <span>
                   {formatTime(
                     Date.parse(created_at) / 1000,
@@ -95,26 +101,26 @@ const ResultPanel: FC<ResultPanelProps> = ({
               </div>
             </div>
             <div className="flex">
-              <div className="w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px] text-text-tertiary">
+              <div className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary">
                 {t(($) => $['meta.time'], { ns: 'runLog' })}
               </div>
-              <div className="grow px-2 py-[5px] text-xs leading-[18px] text-text-primary">
+              <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
                 <span>{`${elapsed_time?.toFixed(3)}s`}</span>
               </div>
             </div>
             <div className="flex">
-              <div className="w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px] text-text-tertiary">
+              <div className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary">
                 {t(($) => $['meta.tokens'], { ns: 'runLog' })}
               </div>
-              <div className="grow px-2 py-[5px] text-xs leading-[18px] text-text-primary">
+              <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
                 <span>{`${total_tokens || 0} Tokens`}</span>
               </div>
             </div>
             <div className="flex">
-              <div className="w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px] text-text-tertiary">
+              <div className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary">
                 {t(($) => $['agentLogDetail.agentMode'], { ns: 'appLog' })}
               </div>
-              <div className="grow px-2 py-[5px] text-xs leading-[18px] text-text-primary">
+              <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
                 <span>
                   {agentMode === 'function_call'
                     ? t(($) => $['agent.agentModeType.functionCall'], { ns: 'appDebug' })
@@ -123,18 +129,18 @@ const ResultPanel: FC<ResultPanelProps> = ({
               </div>
             </div>
             <div className="flex">
-              <div className="w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px] text-text-tertiary">
+              <div className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary">
                 {t(($) => $['agentLogDetail.toolUsed'], { ns: 'appLog' })}
               </div>
-              <div className="grow px-2 py-[5px] text-xs leading-[18px] text-text-primary">
+              <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
                 <span>{tools?.length ? tools?.join(', ') : 'Null'}</span>
               </div>
             </div>
             <div className="flex">
-              <div className="w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px] text-text-tertiary">
+              <div className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary">
                 {t(($) => $['agentLogDetail.iterations'], { ns: 'appLog' })}
               </div>
-              <div className="grow px-2 py-[5px] text-xs leading-[18px] text-text-primary">
+              <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
                 <span>{iterations}</span>
               </div>
             </div>

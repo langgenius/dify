@@ -1,6 +1,5 @@
 'use client'
 
-import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/components/knowledge-view-switcher'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
@@ -16,9 +15,8 @@ import {
   getStepByStepTourDropdownMenuContentProps,
   useStepByStepTourControlledDropdown,
 } from '@/app/components/step-by-step-tour/dropdown-menu'
-import { KnowledgeViewSwitcher } from '@/features/new-rag/components/knowledge-view-switcher'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
-import ServiceApi from '../extra-info/service-api'
+import { ServiceApi } from '../extra-info/service-api'
 
 type Props = {
   apiBaseUrl: string
@@ -39,7 +37,6 @@ type Props = {
   stepByStepTourCreateMenuHighlightPart?: string
   stepByStepTourCreateMenuOpen?: boolean
   stepByStepTourCreateMenuTarget?: string
-  knowledgeViewSwitcherProps?: KnowledgeViewSwitcherProps
 }
 
 const DatasetListHeader = ({
@@ -61,36 +58,34 @@ const DatasetListHeader = ({
   stepByStepTourCreateMenuHighlightPart,
   stepByStepTourCreateMenuOpen,
   stepByStepTourCreateMenuTarget,
-  knowledgeViewSwitcherProps,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const showCreateMenu = canCreateDataset || canConnectExternalDataset
   const createMenu = useStepByStepTourControlledDropdown({
     controlledOpen: stepByStepTourCreateMenuOpen,
   })
 
   return (
-    <div className="sticky top-0 z-10 flex flex-col gap-[14px] bg-background-body px-8 pt-4 pb-2">
+    <div className="sticky top-0 z-10 flex flex-col gap-3.5 bg-background-body px-8 pt-4 pb-2">
       <div className="flex min-h-6 w-full flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <h1 className="min-w-0 text-[18px]/[21.6px] font-semibold text-text-primary">
             {t(($) => $.knowledge, { ns: 'dataset' })}
           </h1>
-          {knowledgeViewSwitcherProps && <KnowledgeViewSwitcher {...knowledgeViewSwitcherProps} />}
         </div>
         <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">
           {canConnectExternalDataset && (
             <Button
               variant="ghost"
               size="small"
-              className="gap-1 overflow-hidden px-1.5 text-text-tertiary"
+              className="overflow-hidden text-text-tertiary"
               onClick={onExternalApiClick}
             >
               <span
                 aria-hidden
                 className="i-custom-vender-solid-development-api-connection-mod size-3.5 shrink-0"
               />
-              <span className="px-0.5 system-xs-medium">
+              <span className="system-xs-medium">
                 {t(($) => $.externalAPIPanelTitle, { ns: 'dataset' })}
               </span>
             </Button>
@@ -107,7 +102,7 @@ const DatasetListHeader = ({
             onOpenTagManagement={onOpenTagManagement}
             showLeadingIcon={false}
           />
-          <SearchInput className="w-[200px]" value={keywords} onValueChange={onKeywordsChange} />
+          <SearchInput className="w-50" value={keywords} onValueChange={onKeywordsChange} />
           {isCurrentWorkspaceOwner && (
             <>
               <div className="h-3.5 w-px bg-divider-regular" />
@@ -134,13 +129,11 @@ const DatasetListHeader = ({
                   <Button
                     variant="primary"
                     size="medium"
-                    className="gap-0.5 px-2 shadow-xs"
+                    className="px-2 shadow-xs"
                     data-step-by-step-tour-target={stepByStepTourCreateMenuTarget}
                   >
                     <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-                    <span className="pl-1">
-                      {t(($) => $['operation.create'], { ns: 'common' })}
-                    </span>
+                    <span>{t(($) => $['operation.create'], { ns: 'common' })}</span>
                     <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0" />
                   </Button>
                 }
@@ -154,7 +147,7 @@ const DatasetListHeader = ({
                     ? stepByStepTourCreateMenuHighlightPart
                     : undefined,
                   interactionMode: createMenu.controlled ? 'presentation' : 'interactive',
-                  popupClassName: 'w-80',
+                  className: 'w-80',
                 })}
               >
                 {canCreateDataset && (

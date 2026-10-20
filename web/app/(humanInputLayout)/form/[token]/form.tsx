@@ -1,11 +1,12 @@
 'use client'
+
 import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { CustomConfigValueType, SiteInfo } from '@/models/share'
-import type { HumanInputFormError } from '@/service/use-share'
 import type { HumanInputResolvedValue } from '@/types/workflow'
+import { ORPCError } from '@orpc/client'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from '@/next/navigation'
 import { useGetHumanInputForm } from '@/service/use-share'
@@ -26,10 +27,9 @@ export type FormData = {
 }
 
 const FormContent = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
 
   const { token } = useParams<{ token: string }>()
-  useDocumentTitle('')
 
   const { data: formData, isLoading, error } = useGetHumanInputForm(token)
   const { isSubmitting, submit, success } = useFormSubmit(token)
@@ -40,13 +40,25 @@ const FormContent = () => {
       ? formData.site.custom_config.replace_webapp_logo
       : null
 
-  const expired = (error as HumanInputFormError | null)?.code === 'human_input_form_expired'
-  const submitted = (error as HumanInputFormError | null)?.code === 'human_input_form_submitted'
-  const rateLimitExceeded =
-    (error as HumanInputFormError | null)?.code === 'web_form_rate_limit_exceeded'
+  const errorCode = error instanceof ORPCError ? error.code : undefined
+  const expired = errorCode === 'human_input_form_expired'
+  const submitted = errorCode === 'human_input_form_submitted'
+  const rateLimitExceeded = errorCode === 'web_form_rate_limit_exceeded'
+  const documentTitle = isLoading
+    ? t(($) => $.loading, { ns: 'common' })
+    : success
+      ? t(($) => $['humanInput.thanks'], { ns: 'share' })
+      : expired
+        ? t(($) => $['humanInput.expired'], { ns: 'share' })
+        : submitted
+          ? t(($) => $['humanInput.completed'], { ns: 'share' })
+          : rateLimitExceeded
+            ? t(($) => $['humanInput.rateLimitExceeded'], { ns: 'share' })
+            : formData?.site.site.title || t(($) => $['humanInput.formNotFound'], { ns: 'share' })
+  useDocumentTitle(documentTitle)
 
   if (isLoading) {
-    return <Loading type="app" />
+    return <LoadingPlaceholder className="h-full" />
   }
 
   if (success) {

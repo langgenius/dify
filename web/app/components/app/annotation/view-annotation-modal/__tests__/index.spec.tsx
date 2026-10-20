@@ -1,8 +1,7 @@
-import type { Mock } from 'vitest'
-import type { AnnotationItem, HitHistoryItem } from '../../type'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { Annotation, AnnotationHitHistory } from '@dify/contracts/api/console/apps/types.gen'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { fetchHitHistoryList } from '@/service/annotation'
 import ViewAnnotationModal from '../index'
 
 const mockFormatTime = vi.fn(() => 'formatted-time')
@@ -13,40 +12,21 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/service/annotation', () => ({
-  fetchHitHistoryList: vi.fn(),
+const { fetchHitHistoryListMock } = vi.hoisted(() => ({
+  fetchHitHistoryListMock: vi.fn(),
 }))
 
-vi.mock('../../edit-annotation-modal/edit-item', () => {
-  const EditItemType = {
-    Query: 'query',
-    Answer: 'answer',
-  }
-  return {
-    default: ({
-      type,
-      content,
-      onSave,
-    }: {
-      type: string
-      content: string
-      onSave: (value: string) => void
-    }) => (
-      <div>
-        <div data-testid={`content-${type}`}>{content}</div>
-        <button data-testid={`edit-${type}`} onClick={() => onSave(`${type}-updated`)}>
-          edit-
-          {type}
-        </button>
-      </div>
-    ),
-    EditItemType,
-  }
-})
+vi.mock('@/service/console', () => ({
+  consoleClient: {
+    apps: {
+      byAppId: {
+        annotations: { byAnnotationId: { hitHistories: { get: fetchHitHistoryListMock } } },
+      },
+    },
+  },
+}))
 
-const fetchHitHistoryListMock = fetchHitHistoryList as Mock
-
-const createAnnotationItem = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({
+const createAnnotationItem = (overrides: Partial<Annotation> = {}): Annotation => ({
   id: overrides.id ?? 'annotation-id',
   question: overrides.question ?? 'question',
   answer: overrides.answer ?? 'answer',
@@ -54,7 +34,9 @@ const createAnnotationItem = (overrides: Partial<AnnotationItem> = {}): Annotati
   hit_count: overrides.hit_count ?? 0,
 })
 
-const createHitHistoryItem = (overrides: Partial<HitHistoryItem> = {}): HitHistoryItem => ({
+const createHitHistoryItem = (
+  overrides: Partial<AnnotationHitHistory> = {},
+): AnnotationHitHistory => ({
   id: overrides.id ?? 'hit-id',
   question: overrides.question ?? 'query',
   match: overrides.match ?? 'match',
@@ -87,7 +69,29 @@ describe('ViewAnnotationModal', () => {
     fetchHitHistoryListMock.mockResolvedValue({ data: [], total: 0 })
   })
 
-  it('should render annotation tab and allow saving updated query', async () => {
+  it.each([
+    { type: 'query', index: 0, label: 'yourQuery', question: 'updated', answer: 'answer' },
+    { type: 'answer', index: 1, label: 'yourAnswer', question: 'question', answer: 'updated' },
+  ])(
+    'saves the edited $type while retaining the other field',
+    async ({ index, label, question, answer }) => {
+      const user = userEvent.setup()
+      const { props } = renderComponent()
+      const panel = screen.getByRole('tabpanel', {
+        name: 'appAnnotation.viewModal.annotatedResponse',
+      })
+      await user.click(within(panel).getAllByText('common.operation.edit')[index]!)
+      await user.type(
+        screen.getByRole('textbox', { name: `appAnnotation.editModal.${label}` }),
+        'updated',
+      )
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      expect(props.onSave).toHaveBeenCalledWith(question, answer)
+    },
+  )
+
+  it('switches named panels with the keyboard while preserving the drawer name', async () => {
+    const user = userEvent.setup()
     // Arrange
     const { props } = renderComponent()
 
@@ -96,41 +100,19 @@ describe('ViewAnnotationModal', () => {
     })
 
     // Act
-    fireEvent.click(screen.getByTestId('edit-query'))
-
-    // Assert
-    await waitFor(() => {
-      expect(props.onSave).toHaveBeenCalledWith('query-updated', props.item.answer)
-    })
-  })
-
-  it('should render annotation tab and allow saving updated answer', async () => {
-    // Arrange
-    const { props } = renderComponent()
-
-    await waitFor(() => {
-      expect(fetchHitHistoryListMock).toHaveBeenCalled()
-    })
-
-    // Act
-    fireEvent.click(screen.getByTestId('edit-answer'))
-
-    // Assert
-    await waitFor(() => {
-      expect(props.onSave).toHaveBeenCalledWith(props.item.question, 'answer-updated')
-    })
-  })
-
-  it('should switch to hit history tab and show no data message', async () => {
-    // Arrange
-    const { props } = renderComponent()
-
-    await waitFor(() => {
-      expect(fetchHitHistoryListMock).toHaveBeenCalled()
-    })
-
-    // Act
-    fireEvent.click(screen.getByText('appAnnotation.viewModal.hitHistory'))
+    expect(
+      screen.getByRole('dialog', { name: 'appAnnotation.viewModal.annotatedResponse' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'appAnnotation.viewModal.annotatedResponse' }))
+    await user.keyboard('{ArrowRight}{Enter}')
+    expect(screen.getByRole('tab', { name: 'appAnnotation.viewModal.hitHistory' })).toHaveFocus()
+    expect(
+      screen.getByRole('tabpanel', { name: 'appAnnotation.viewModal.hitHistory' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('common.operation.edit')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', { name: 'appAnnotation.viewModal.annotatedResponse' }),
+    ).toBeInTheDocument()
 
     // Assert
     // Assert
@@ -138,7 +120,8 @@ describe('ViewAnnotationModal', () => {
     expect(mockFormatTime).toHaveBeenCalledWith(props.item.created_at, 'appLog.dateTimeFormat')
   })
 
-  it('should render hit history entries with pagination badge when data exists', async () => {
+  it('should render hit history entries with their hit count when data exists', async () => {
+    const user = userEvent.setup()
     const hits = [
       createHitHistoryItem({ question: 'user input' }),
       createHitHistoryItem({ id: 'hit-2', question: 'second' }),
@@ -147,7 +130,7 @@ describe('ViewAnnotationModal', () => {
 
     renderComponent()
 
-    fireEvent.click(await screen.findByText('appAnnotation.viewModal.hitHistory'))
+    await user.click(await screen.findByText('appAnnotation.viewModal.hitHistory'))
 
     expect(await screen.findByText('user input'))!.toBeInTheDocument()
     expect(screen.getByText('15 appAnnotation.viewModal.hits'))!.toBeInTheDocument()
@@ -155,15 +138,17 @@ describe('ViewAnnotationModal', () => {
   })
 
   it('should confirm before removing the annotation and hide on success', async () => {
+    const user = userEvent.setup()
     const { props } = renderComponent()
 
-    fireEvent.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
+    await user.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
     expect(
       await screen.findByText('appDebug.feature.annotation.removeConfirm'),
     )!.toBeInTheDocument()
 
     const confirmButton = await screen.findByRole('button', { name: 'common.operation.confirm' })
-    fireEvent.click(confirmButton)
+    expect(props.onRemove).not.toHaveBeenCalled()
+    await user.click(confirmButton)
 
     await waitFor(() => {
       expect(props.onRemove).toHaveBeenCalledTimes(1)
@@ -172,14 +157,17 @@ describe('ViewAnnotationModal', () => {
   })
 
   it('should close the remove confirmation when cancelled', async () => {
-    renderComponent()
+    const user = userEvent.setup()
+    const { props } = renderComponent()
 
-    fireEvent.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
+    await user.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
     expect(
       await screen.findByText('appDebug.feature.annotation.removeConfirm'),
     )!.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(props.onRemove).not.toHaveBeenCalled()
+    expect(props.onHide).not.toHaveBeenCalled()
 
     await waitFor(() => {
       expect(

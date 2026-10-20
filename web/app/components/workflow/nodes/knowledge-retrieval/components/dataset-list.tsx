@@ -1,19 +1,21 @@
 'use client'
+
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { DataSet } from '@/models/datasets'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Item from './dataset-item'
 
 type Props = Readonly<{
-  list: DataSet[]
-  onChange: (list: DataSet[]) => void
+  list: DatasetDetailWithPartialMembersResponse[]
+  onChange: (list: DatasetDetailWithPartialMembersResponse[]) => void
   readonly?: boolean
   settingsDrawerBackdropClassName?: string
   settingsDrawerBackdropForceRender?: boolean
@@ -30,8 +32,11 @@ const DatasetList: FC<Props> = ({
   settingsDrawerPopupClassName,
   settingsModalHeight,
 }) => {
-  const { t } = useTranslation()
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { t } = useTranslation(['appDebug'])
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const handleRemove = useCallback(
@@ -48,7 +53,7 @@ const DatasetList: FC<Props> = ({
 
   const handleChange = useCallback(
     (index: number) => {
-      return (value: DataSet) => {
+      return (value: DatasetDetailWithPartialMembersResponse) => {
         const newList = produce(list, (draft) => {
           draft[index] = value
         })

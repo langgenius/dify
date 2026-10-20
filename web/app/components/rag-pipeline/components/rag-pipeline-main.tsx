@@ -1,19 +1,20 @@
 import type { WorkflowProps } from '@/app/components/workflow'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
+import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { useAvailableNodesMetaData } from '../hooks/use-available-nodes-meta-data'
-import { useConfigsMap } from '../hooks/use-configs-map'
 import { useDSLByCanEdit } from '../hooks/use-DSL'
+import { useFileSettings } from '../hooks/use-file-settings'
 import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
-import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
 import { useNodesSyncDraftByCanEdit } from '../hooks/use-nodes-sync-draft'
 import { usePipelineRefreshDraft } from '../hooks/use-pipeline-refresh-draft'
 import { usePipelineRunByCanEdit } from '../hooks/use-pipeline-run'
@@ -24,7 +25,10 @@ type RagPipelineMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const RagPipelineMain = ({ nodes, edges, viewport }: RagPipelineMainProps) => {
   const workflowStore = useWorkflowStore()
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetACLCapabilities = useMemo(
     () =>
@@ -76,12 +80,12 @@ const RagPipelineMain = ({ nodes, edges, viewport }: RagPipelineMainProps) => {
   )
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
-  const { exportCheck, handleExportDSL } = useDSLByCanEdit(datasetACLCapabilities.canEdit)
+  const { exportCheck, handleExportDSL, isExporting } = useDSLByCanEdit(
+    datasetACLCapabilities.canEdit,
+  )
 
-  const configsMap = useConfigsMap()
-  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    ...configsMap,
-  })
+  const fileSettings = useFileSettings()
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const {
     hasNodeInspectVars,
     hasSetInspectVar,
@@ -115,6 +119,7 @@ const RagPipelineMain = ({ nodes, edges, viewport }: RagPipelineMainProps) => {
       getWorkflowRunAndTraceUrl,
       exportCheck,
       handleExportDSL,
+      isExporting,
       fetchInspectVars,
       hasNodeInspectVars,
       hasSetInspectVar,
@@ -136,7 +141,7 @@ const RagPipelineMain = ({ nodes, edges, viewport }: RagPipelineMainProps) => {
         canImportExportDSL: datasetACLCapabilities.canImportExportDSL,
         canReleaseAndVersion: datasetACLCapabilities.canPipelineRelease,
       },
-      configsMap,
+      fileSettings,
     }
   }, [
     availableNodesMetaData,
@@ -153,6 +158,7 @@ const RagPipelineMain = ({ nodes, edges, viewport }: RagPipelineMainProps) => {
     getWorkflowRunAndTraceUrl,
     exportCheck,
     handleExportDSL,
+    isExporting,
     fetchInspectVars,
     hasNodeInspectVars,
     hasSetInspectVar,
@@ -169,7 +175,7 @@ const RagPipelineMain = ({ nodes, edges, viewport }: RagPipelineMainProps) => {
     resetConversationVar,
     invalidateConversationVarValues,
     datasetACLCapabilities,
-    configsMap,
+    fileSettings,
   ])
 
   return (

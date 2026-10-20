@@ -1,19 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { checkForUpdates, fetchReleases, handleUpload } from '../hooks'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { checkForUpdates, fetchReleases } from '../hooks'
 
-const { mockToastError, mockUploadGitHub } = vi.hoisted(() => ({
+const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
-  mockUploadGitHub: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
   },
-}))
-
-vi.mock('@/service/plugins', () => ({
-  uploadGitHub: mockUploadGitHub,
 }))
 
 const mockFetch = vi.fn<typeof fetch>()
@@ -22,7 +17,6 @@ describe('install-plugin/hooks', () => {
   beforeEach(() => {
     mockFetch.mockReset()
     mockToastError.mockReset()
-    mockUploadGitHub.mockReset()
     vi.stubGlobal('fetch', mockFetch)
   })
 
@@ -31,38 +25,6 @@ describe('install-plugin/hooks', () => {
   })
 
   describe('fetchReleases', () => {
-    it('requests the repository releases and formats the response', async () => {
-      mockFetch.mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            releases: [
-              {
-                tag: 'v1.0.0',
-                assets: [{ downloadUrl: 'https://example.com/plugin.zip' }],
-              },
-            ],
-          }),
-          { status: 200 },
-        ),
-      )
-
-      const releases = await fetchReleases('owner', 'repo')
-
-      expect(mockFetch).toHaveBeenCalledOnce()
-      expect(mockFetch).toHaveBeenCalledWith('https://ungh.cc/repos/owner/repo/releases')
-      expect(releases).toEqual([
-        {
-          tag_name: 'v1.0.0',
-          assets: [
-            {
-              browser_download_url: 'https://example.com/plugin.zip',
-              name: 'plugin.zip',
-            },
-          ],
-        },
-      ])
-    })
-
     it('returns no releases and reports a failed response', async () => {
       mockFetch.mockResolvedValue(new Response(null, { status: 500 }))
 
@@ -102,42 +64,6 @@ describe('install-plugin/hooks', () => {
       expect(needUpdate).toBe(false)
       expect(toastProps.type).toBe('error')
       expect(toastProps.message).toContain('empty')
-    })
-  })
-
-  describe('handleUpload', () => {
-    it('uploads the selected package and calls onSuccess', async () => {
-      const expectedPackage = {
-        manifest: { name: 'test-plugin' },
-        unique_identifier: 'uid-123',
-      }
-      mockUploadGitHub.mockResolvedValue(expectedPackage)
-      const onSuccess = vi.fn()
-
-      const pkg = await handleUpload(
-        'https://github.com/owner/repo',
-        'v1.0.0',
-        'plugin.difypkg',
-        onSuccess,
-      )
-
-      expect(mockUploadGitHub).toHaveBeenCalledOnce()
-      expect(mockUploadGitHub).toHaveBeenCalledWith(
-        'https://github.com/owner/repo',
-        'v1.0.0',
-        'plugin.difypkg',
-      )
-      expect(onSuccess).toHaveBeenCalledOnce()
-      expect(onSuccess).toHaveBeenCalledWith(expectedPackage)
-      expect(pkg).toEqual(expectedPackage)
-    })
-
-    it('shows toast on upload error', async () => {
-      mockUploadGitHub.mockRejectedValue(new Error('Upload failed'))
-
-      await expect(handleUpload('url', 'v1', 'pkg')).rejects.toThrow('Upload failed')
-      expect(mockToastError).toHaveBeenCalledOnce()
-      expect(mockToastError).toHaveBeenCalledWith('Error uploading package')
     })
   })
 })

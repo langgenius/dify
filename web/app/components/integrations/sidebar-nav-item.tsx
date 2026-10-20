@@ -70,7 +70,6 @@ export function IntegrationSidebarNavItem({
   if (!item.section) {
     return (
       <div
-        aria-label={item.label}
         className={cn(
           integrationSidebarNavItemClassName,
           integrationSidebarDisabledNavItemClassName,
@@ -105,8 +104,7 @@ export function IntegrationSidebarNavItem({
     return (
       <button
         type="button"
-        aria-label={item.label}
-        aria-pressed={isActive}
+        aria-current={isActive ? 'true' : undefined}
         className={cn('border-none bg-transparent', className)}
         onClick={() => onSelect(item.section!)}
       >
@@ -119,7 +117,6 @@ export function IntegrationSidebarNavItem({
   return (
     <Link
       href={buildIntegrationPath(item.section)}
-      aria-label={item.label}
       aria-current={isActive ? 'page' : undefined}
       className={className}
     >

@@ -1,12 +1,20 @@
 import type { PluginPayload } from '../types'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useForm, useStore } from '@tanstack/react-form'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
+import { toast } from '@/app/notifications'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import {
   useDeletePluginOAuthCustomClientHook,
@@ -14,7 +22,7 @@ import {
   useSetPluginOAuthCustomClientHook,
 } from '../hooks/use-credential'
 
-export type OAuthClientSettingsProps = {
+type OAuthClientSettingsProps = {
   pluginPayload: PluginPayload
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -22,7 +30,7 @@ export type OAuthClientSettingsProps = {
   editValues?: Record<string, unknown>
   disabled?: boolean
   schemas: FormSchema[]
-  onAuth?: () => Promise<void>
+  onRequestAuthorization?: () => Promise<void> | void
   hasOriginalClientParams?: boolean
   onUpdate?: () => void
 }
@@ -34,11 +42,11 @@ const OAuthClientSettings = ({
   editValues,
   disabled,
   schemas,
-  onAuth,
+  onRequestAuthorization,
   hasOriginalClientParams,
   onUpdate,
 }: OAuthClientSettingsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [doingAction, setDoingAction] = useState(false)
   const doingActionRef = useRef(doingAction)
   const handleSetDoingAction = useCallback((value: boolean) => {
@@ -64,7 +72,7 @@ const OAuthClientSettings = ({
   const invalidPluginOAuthClientSchema = useInvalidPluginOAuthClientSchemaHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
-    if (doingActionRef.current) return
+    if (doingActionRef.current) return false
 
     try {
       const { isCheckValidated, values } = formRef.current?.getFormValues({
@@ -85,6 +93,7 @@ const OAuthClientSettings = ({
       onClose?.()
       onUpdate?.()
       invalidPluginOAuthClientSchema()
+      return true
     } finally {
       handleSetDoingAction(false)
     }
@@ -99,9 +108,14 @@ const OAuthClientSettings = ({
   ])
 
   const handleConfirmAndAuthorize = useCallback(async () => {
-    await handleConfirm()
-    if (onAuth) await onAuth()
-  }, [handleConfirm, onAuth])
+    try {
+      const isSaved = await handleConfirm()
+      if (isSaved) await onRequestAuthorization?.()
+    } catch {
+      // The request layer reports the save error. Keep settings open and stop
+      // before opening the permission dialog.
+    }
+  }, [handleConfirm, onRequestAuthorization])
   const { mutateAsync: deletePluginOAuthCustomClient } =
     useDeletePluginOAuthCustomClientHook(pluginPayload)
   const handleRemove = useCallback(async () => {
@@ -135,65 +149,45 @@ const OAuthClientSettings = ({
 
   return (
     <Dialog open={open} disablePointerDismissal onOpenChange={handleOpenChange}>
-      <DialogContent
-        backdropProps={{ forceRender: true }}
-        className="w-[480px]! max-w-[calc(100vw-2rem)]! p-0!"
-      >
-        <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
-          <div className="relative shrink-0 p-6 pr-14 pb-3">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}
-            </DialogTitle>
-            <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3 pt-0">
-            {pluginPayload.detail && (
-              <ReadmeEntrance pluginDetail={pluginPayload.detail} presentation="dialog" />
-            )}
-            <AuthForm
-              formFromProps={form}
-              ref={formRef}
-              formSchemas={schemas}
-              defaultValues={editValues || defaultValues}
-              disabled={disabled}
-            />
-          </div>
-          <div className="flex shrink-0 justify-between p-6 pt-5">
-            <div>
-              {__oauth_client__ === 'custom' && hasOriginalClientParams && (
-                <Button
-                  variant="secondary"
-                  className="text-components-button-destructive-secondary-text"
-                  disabled={isDisabled || !editValues}
-                  onClick={handleRemove}
-                >
-                  {t(($) => $['operation.remove'], { ns: 'common' })}
-                </Button>
-              )}
-            </div>
-            <div className="flex items-center">
-              <Button
-                variant="secondary"
-                onClick={() => handleOpenChange(false)}
-                disabled={isDisabled}
-              >
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
-              <div className="mx-3 h-4 w-px bg-divider-regular"></div>
-              <Button onClick={handleConfirm} disabled={isDisabled}>
-                {t(($) => $['auth.saveOnly'], { ns: 'plugin' })}
-              </Button>
-              <Button
-                className="ml-2"
-                variant="primary"
-                onClick={handleConfirmAndAuthorize}
-                disabled={isDisabled}
-              >
-                {t(($) => $['auth.saveAndAuth'], { ns: 'plugin' })}
-              </Button>
-            </div>
-          </div>
-        </div>
+      <DialogContent backdropProps={{ forceRender: true }}>
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}</DialogTitle>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
+          {pluginPayload.detail && (
+            <ReadmeEntrance pluginDetail={pluginPayload.detail} presentation="dialog" />
+          )}
+          <AuthForm
+            formFromProps={form}
+            ref={formRef}
+            formSchemas={schemas}
+            defaultValues={editValues || defaultValues}
+            disabled={disabled}
+          />
+        </DialogBody>
+        <DialogFooter>
+          {__oauth_client__ === 'custom' && hasOriginalClientParams && (
+            <Button
+              variant="secondary"
+              className="me-auto text-components-button-destructive-secondary-text"
+              disabled={isDisabled || !editValues}
+              onClick={handleRemove}
+            >
+              {t(($) => $['operation.remove'], { ns: 'common' })}
+            </Button>
+          )}
+          <Button variant="secondary" onClick={() => handleOpenChange(false)} disabled={isDisabled}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
+          <div className="mx-1 h-4 w-px bg-divider-regular"></div>
+          <Button onClick={handleConfirm} disabled={isDisabled}>
+            {t(($) => $['auth.saveOnly'], { ns: 'plugin' })}
+          </Button>
+          <Button variant="primary" onClick={handleConfirmAndAuthorize} disabled={isDisabled}>
+            {t(($) => $['auth.saveAndAuth'], { ns: 'plugin' })}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

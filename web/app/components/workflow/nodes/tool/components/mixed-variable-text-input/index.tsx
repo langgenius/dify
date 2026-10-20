@@ -27,7 +27,7 @@ const MixedVariableTextInput = ({
   onManageInputField,
   disableVariableInsertion = false,
 }: MixedVariableTextInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const controlPromptEditorRerenderKey = useStore((s) => s.controlPromptEditorRerenderKey)
 
   return (
@@ -38,7 +38,6 @@ const MixedVariableTextInput = ({
         'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
         'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
       )}
-      className="caret:text-text-accent"
       editable={!readOnly}
       value={value}
       workflowVariableBlock={{

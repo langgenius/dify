@@ -4,6 +4,7 @@ Only the external model, form repositories and transport boundaries are mocked.
 Nodes, scheduling, response filtering, message persistence and resume count run.
 """
 
+from collections.abc import Iterator
 from contextlib import nullcontext
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -21,23 +22,26 @@ from core.app.apps.advanced_chat.generate_task_pipeline import AdvancedChatAppGe
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.queue_entities import QueueTextChunkEvent, QueueWorkflowPausedEvent
 from core.repositories.human_input_repository import HumanInputFormRepository
+from core.workflow.nodes.human_input.boundary import build_human_input_pause_reason
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import build_system_variables
 from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
-from graphon.filters import ResponseStreamFilter
-from graphon.graph import Graph
-from graphon.graph_engine import GraphEngine
-from graphon.graph_engine.command_channels import InMemoryChannel
-from graphon.graph_events import (
+from graphon.engine import Engine
+from graphon.engine.command import InMemoryChannel
+from graphon.engine.filter import ResponseStreamFilter
+from graphon.engine_events import (
     GraphRunPausedEvent,
     GraphRunSucceededEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
+from graphon.entities.pause_reason import HitlRequired
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.graph import Graph
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessageRole
@@ -52,15 +56,16 @@ from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMProtocol, PromptMessageSerializerProtocol
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import GraphRuntimeState, VariablePool
-from models.enums import ConversationFromSource, MessageStatus
+from graphon.runtime import RuntimeState, VariablePool
+from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.execution_extra_content import HumanInputContent
 from models.model import Message
+from models.workflow import WorkflowRun
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
 def _build_graph(
-    state: GraphRuntimeState,
+    state: RuntimeState,
     completion_tokens: int,
     visible_before_pause: bool,
     *,
@@ -71,7 +76,7 @@ def _build_graph(
     model = Mock(spec=LLMProtocol)
     model.provider = "openai"
     model.model_name = "test-model"
-    model.parameters = {}
+    model.parameters = dict[str, object]()
     model.stop = ()
     model.get_model_schema.return_value = AIModelEntity(
         model="test-model",
@@ -83,7 +88,7 @@ def _build_graph(
     model.get_llm_num_tokens.return_value = 0
     # Supply only the external model response, never runtime usage or node results.
 
-    def invoke_model(**_kwargs):
+    def invoke_model(**_kwargs) -> Iterator[LLMResultChunk]:
         yield LLMResultChunk(
             model="test-model",
             delta=LLMResultChunkDelta(
@@ -101,8 +106,8 @@ def _build_graph(
     start = StartNode(
         node_id="start",
         data=StartNodeData(title="start", variables=[]),
-        graph_init_params=params,
-        graph_runtime_state=state,
+        init_params=params,
+        runtime_state=state,
     )
     llm = LLMNode(
         node_id="llm",
@@ -112,8 +117,8 @@ def _build_graph(
             prompt_template=[LLMNodeChatModelMessage(role=PromptMessageRole.USER, text="question")],
             context=ContextConfig(enabled=False),
         ),
-        graph_init_params=params,
-        graph_runtime_state=state,
+        init_params=params,
+        runtime_state=state,
         model_instance=model,
         llm_file_saver=Mock(spec=LLMFileSaver),
         prompt_message_serializer=Mock(spec=PromptMessageSerializerProtocol),
@@ -142,15 +147,15 @@ def _build_graph(
     human = HumanInputNode(
         node_id="human",
         data=GraphHumanInputNodeData(title=data.title),
-        graph_init_params=params,
-        graph_runtime_state=state,
+        init_params=params,
+        runtime_state=state,
         hitl_callback=DifyHITLCallback(form_repository=repo, node_data=data),
     )
     answer = AnswerNode(
         node_id="answer",
         data=AnswerNodeData(title="answer", answer="{{#llm.text#}}"),
-        graph_init_params=params,
-        graph_runtime_state=state,
+        init_params=params,
+        runtime_state=state,
     )
     builder = Graph.new().add_root(start).add_node(llm, from_node_id="start")
     if visible_before_pause:
@@ -164,7 +169,7 @@ def _build_graph(
     ("answer", "completion_tokens", "expected_length"),
     [("", 5, 2), ("", 0, 1), ("private model output", 5, 2)],
 )
-@pytest.mark.parametrize("sqlite_session", [(Message, HumanInputContent)], indirect=True)
+@pytest.mark.parametrize("sqlite_session", [(Message, HumanInputContent, WorkflowRun)], indirect=True)
 def test_resume_counts_message_written_by_pause(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, answer: str, completion_tokens: int, expected_length: int
 ) -> None:
@@ -204,11 +209,9 @@ def test_resume_counts_message_written_by_pause(
         user_inputs={},
         conversation_variables=[],
     )
-    state = GraphRuntimeState(variable_pool=pool, start_at=0.0)
+    state = RuntimeState(workflow_id="workflow", variable_pool=pool, start_at=0.0)
     graph, model, repo, form, data = _build_graph(state, completion_tokens, bool(answer))
-    engine = GraphEngine(
-        workflow_id="workflow", graph=graph, graph_runtime_state=state, command_channel=InMemoryChannel()
-    )
+    engine = Engine(graph=graph, runtime_state=state, command_channel=InMemoryChannel())
     response_filter = ResponseStreamFilter()
     events = list(iter_dify_graph_engine_events(engine, response_filter))
     assert isinstance(events[-1], GraphRunPausedEvent)
@@ -220,19 +223,36 @@ def test_resume_counts_message_written_by_pause(
     model.invoke_llm.assert_called_once()
     repo.create_form.assert_called_once()
     assert repo.create_form.call_args[0][0].rendered_content == "Approve private model output"
-    restored_state = GraphRuntimeState.from_snapshot(state.dumps())
+    restored_state = RuntimeState.from_snapshot(state.dumps())
     assert restored_state.llm_usage.completion_tokens == completion_tokens
 
     pipeline = AdvancedChatAppGenerateTaskPipeline.__new__(AdvancedChatAppGenerateTaskPipeline)
     pipeline._message_id = current_id
     pipeline._graph_runtime_state = state
     pipeline._workflow_run_id = str(uuid4())
-    pipeline._application_generate_entity = Mock(task_id="task")
+    pipeline._workflow_tenant_id = "tenant"
+    pipeline._application_generate_entity = Mock(task_id="task", app_config=SimpleNamespace(app_id="app"))
+    sqlite_session.add(
+        WorkflowRun(
+            id=pipeline._workflow_run_id,
+            tenant_id="tenant",
+            app_id="app",
+            workflow_id="workflow",
+            task_id="task",
+            type=WorkflowType.CHAT,
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+            version="1",
+            status=WorkflowExecutionStatus.PAUSED,
+            created_by_role=CreatorUserRole.END_USER,
+            created_by="user",
+        )
+    )
+    sqlite_session.commit()
     pipeline._workflow_response_converter = Mock()
-    pipeline._workflow_response_converter.workflow_pause_to_stream_response.return_value = []
+    pipeline._workflow_response_converter.workflow_pause_to_stream_response.return_value = ()
     pipeline._base_task_pipeline = Mock(start_at=0.0, queue_manager=Mock())
     pipeline._task_state = Mock(answer="", is_streaming_response=False, first_token_time=None)
-    pipeline._task_state.metadata.model_dump.return_value = {}
+    pipeline._task_state.metadata.model_dump.return_value = dict[str, object]()
     pipeline._recorded_files = []
     pipeline._message_saved_on_pause = False
     pipeline._message_cycle_manager = Mock()
@@ -251,11 +271,22 @@ def test_resume_counts_message_written_by_pause(
             inputs=[], user_actions=list(data.user_actions), default_values={}, node_title="human"
         ),
     )
-    monkeypatch.setattr("core.app.apps.workflow_app_runner.HumanInputFormSubmissionRepository", lambda: submission_repo)
     # Real runner mapping enriches the real HITL pause and forwards only answer-visible chunks.
     for event in events:
         if isinstance(event, (NodeRunStreamChunkEvent, GraphRunPausedEvent)):
-            runner._handle_event(Mock(spec=WorkflowEntry, graph_engine=engine), event)
+            runner.handle_event(
+                Mock(spec=WorkflowEntry),
+                event,
+                pause_reasons=[
+                    build_human_input_pause_reason(
+                        reason=reason, record=submission_repo.get_by_form_id(reason.session_id), variable_pool=pool
+                    )
+                    for reason in event.reasons
+                    if isinstance(reason, HitlRequired)
+                ]
+                if isinstance(event, GraphRunPausedEvent)
+                else (),
+            )
     for event in published:
         if isinstance(event, QueueTextChunkEvent):
             list(pipeline._handle_text_chunk_event(event))
@@ -311,10 +342,9 @@ def test_resume_counts_message_written_by_pause(
     resumed_graph, resumed_model, _, _, _ = _build_graph(
         restored_state, completion_tokens, bool(answer), submitted=True, form_id=form.id
     )
-    resumed_engine = GraphEngine(
-        workflow_id="workflow",
+    resumed_engine = Engine(
         graph=resumed_graph,
-        graph_runtime_state=restored_state,
+        runtime_state=restored_state,
         command_channel=InMemoryChannel(),
     )
     restored_filter = ResponseStreamFilter()

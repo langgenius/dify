@@ -3,7 +3,9 @@ import type { WorkflowNodesMap } from './node'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import {
   PreviewCard,
-  PreviewCardContent,
+  PreviewCardPopup,
+  PreviewCardPortal,
+  PreviewCardPositioner,
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -44,7 +46,7 @@ const WorkflowVariableBlockComponent = ({
   availableVariables,
   getVarType,
 }: WorkflowVariableBlockComponentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [editor] = useLexicalComposerContext()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND)
   const variablesLength = variables.length
@@ -89,7 +91,8 @@ const WorkflowVariableBlockComponent = ({
         (payload: UpdateWorkflowNodesMapPayload) => {
           setLocalWorkflowNodesMap(payload.workflowNodesMap)
           setLocalAvailableVariables(payload.availableVariables)
-          return true
+          // Every rendered variable block must receive this broadcast update.
+          return false
         },
         COMMAND_PRIORITY_EDITOR,
       ),
@@ -98,15 +101,16 @@ const WorkflowVariableBlockComponent = ({
 
   const handleVariableJump = useCallback(() => {
     const workflowContainer = document.getElementById('workflow-container')
-    const { clientWidth, clientHeight } = workflowContainer!
+    if (!workflowContainer || !node?.position) return
+    const { clientWidth, clientHeight } = workflowContainer
 
     const { setViewport } = reactflow
     const { transform } = store.getState()
     const zoom = transform[2]
-    const position = node!.position
+    const position = node.position
     setViewport({
-      x: (clientWidth - 400 - node!.width! * zoom) / 2 - position!.x * zoom,
-      y: (clientHeight - node!.height! * zoom) / 2 - position!.y * zoom,
+      x: (clientWidth - 400 - (node.width ?? 0) * zoom) / 2 - position.x * zoom,
+      y: (clientHeight - (node.height ?? 0) * zoom) / 2 - position.y * zoom,
       zoom: transform[2],
     })
   }, [node, reactflow, store])
@@ -139,21 +143,25 @@ const WorkflowVariableBlockComponent = ({
   return (
     <PreviewCard>
       <PreviewCardTrigger delay={300} closeDelay={200} render={<div>{Item}</div>} />
-      <PreviewCardContent popupClassName="border-0 bg-transparent p-0 shadow-none">
-        <VarFullPathPanel
-          nodeName={node.title}
-          path={variables.slice(1)}
-          varType={
-            getVarType
-              ? getVarType({
-                  nodeId: variables[0]!,
-                  valueSelector: variables,
-                })
-              : Type.string
-          }
-          nodeType={node?.type}
-        />
-      </PreviewCardContent>
+      <PreviewCardPortal>
+        <PreviewCardPositioner>
+          <PreviewCardPopup>
+            <VarFullPathPanel
+              nodeName={node.title}
+              path={variables.slice(1)}
+              varType={
+                getVarType
+                  ? getVarType({
+                      nodeId: variables[0]!,
+                      valueSelector: variables,
+                    })
+                  : Type.string
+              }
+              nodeType={node?.type}
+            />
+          </PreviewCardPopup>
+        </PreviewCardPositioner>
+      </PreviewCardPortal>
     </PreviewCard>
   )
 }

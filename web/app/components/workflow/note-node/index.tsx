@@ -27,9 +27,8 @@ const Icon = () => {
 }
 
 const NoteNode = ({ id, data }: NodeProps<NoteNodeType>) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const controlPromptEditorRerenderKey = useStore((s) => s.controlPromptEditorRerenderKey)
-  const setHistoryShortcutsEnabled = useStore((s) => s.setHistoryShortcutsEnabled)
   const ref = useRef<HTMLDivElement | null>(null)
   const theme = data.theme
   const { handleThemeChange, handleEditorChange, handleShowAuthorChange } = useNote(id)
@@ -43,7 +42,7 @@ const NoteNode = ({ id, data }: NodeProps<NoteNodeType>) => {
   return (
     <div
       className={cn(
-        'relative flex flex-col rounded-md border shadow-xs hover:shadow-md',
+        'group relative flex flex-col rounded-md border shadow-xs hover:shadow-md',
         THEME_MAP[theme]!.bg,
         data.selected ? THEME_MAP[theme]!.border : 'border-black/5',
       )}
@@ -72,7 +71,7 @@ const NoteNode = ({ id, data }: NodeProps<NoteNodeType>) => {
             className={cn('h-2 shrink-0 rounded-t-md opacity-50', THEME_MAP[theme]!.title)}
           ></div>
           {data.selected && !data._isTempNode && (
-            <div className="pointer-events-auto absolute top-[-41px] left-1/2 z-40 -translate-x-1/2">
+            <div className="pointer-events-auto absolute -top-10.25 left-1/2 z-40 -translate-x-1/2">
               <NoteEditorToolbar
                 theme={theme}
                 onThemeChange={handleThemeChange}
@@ -90,7 +89,6 @@ const NoteNode = ({ id, data }: NodeProps<NoteNodeType>) => {
                 containerElement={ref.current}
                 placeholder={t(($) => $['nodes.note.editor.placeholder'], { ns: 'workflow' }) || ''}
                 onChange={handleEditorChange}
-                setHistoryShortcutsEnabled={setHistoryShortcutsEnabled}
               />
             </div>
           </div>

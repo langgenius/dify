@@ -1,15 +1,29 @@
 import importlib
+import json
 import os
 import sys
 import types
 from collections import UserDict
+from pathlib import Path
 from types import SimpleNamespace
-from typing import override
+from typing import Protocol, cast, override
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
 
+from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document
+from models.dataset import Dataset, DatasetCollectionBinding
+from models.enums import CollectionBindingType
+
+
+class ScrollMock(Protocol):
+    side_effect: object
+    call_count: int
+
+    def assert_not_called(self) -> None: ...
 
 
 def _build_fake_qdrant_modules():
@@ -272,7 +286,7 @@ def test_search_and_helper_methods(qdrant_module):
             None,
         ),
     ]
-    vector._client.scroll.side_effect = scroll_results
+    cast(ScrollMock, vector._client.scroll).side_effect = scroll_results
     docs = vector.search_by_full_text("hello world", top_k=2, document_ids_filter=["d-1"])
     assert len(docs) == 2
     assert vector.search_by_full_text("   ", top_k=2) == []
@@ -290,15 +304,83 @@ def test_search_and_helper_methods(qdrant_module):
     assert doc.page_content == "doc"
 
 
-def test_qdrant_factory_paths(qdrant_module, monkeypatch: pytest.MonkeyPatch):
-    factory = qdrant_module.QdrantVectorFactory()
-    dataset = SimpleNamespace(
-        id="dataset-1",
-        tenant_id="tenant-1",
-        collection_binding_id=None,
-        index_struct_dict=None,
-        index_struct=None,
+def test_qdrant_full_text_search_does_not_starve_later_keywords(qdrant_module: types.ModuleType) -> None:
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+    common_first = qdrant_module.rest.PointStruct(
+        id="p1", payload={"page_content": "common", "metadata": {"doc_id": "1"}}, vector=[0.1]
     )
+    common_second = qdrant_module.rest.PointStruct(
+        id="p2", payload={"page_content": "common", "metadata": {"doc_id": "2"}}, vector=[0.2]
+    )
+    rare_match = qdrant_module.rest.PointStruct(
+        id="p3", payload={"page_content": "rare", "metadata": {"doc_id": "3"}}, vector=[0.3]
+    )
+    scroll = cast(ScrollMock, vector._client.scroll)
+    scroll.side_effect = [([common_first, common_second], None), ([rare_match], None)]
+
+    docs = vector.search_by_full_text("common rare", top_k=2)
+
+    assert [doc.metadata["doc_id"] for doc in docs] == ["1", "3"]
+    assert scroll.call_count == 2
+
+
+def test_qdrant_full_text_search_deduplicates_overlapping_keyword_matches(qdrant_module: types.ModuleType) -> None:
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+    first_match = qdrant_module.rest.PointStruct(
+        id="p1", payload={"page_content": "common rare", "metadata": {"doc_id": "1"}}, vector=[0.1]
+    )
+    second_match = qdrant_module.rest.PointStruct(
+        id="p2", payload={"page_content": "common", "metadata": {"doc_id": "2"}}, vector=[0.2]
+    )
+    later_match = qdrant_module.rest.PointStruct(
+        id="p3", payload={"page_content": "rare", "metadata": {"doc_id": "3"}}, vector=[0.3]
+    )
+    cast(ScrollMock, vector._client.scroll).side_effect = [
+        ([first_match, second_match], None),
+        ([first_match, later_match], None),
+    ]
+
+    docs = vector.search_by_full_text("common rare", top_k=3)
+
+    assert [doc.metadata["doc_id"] for doc in docs] == ["1", "3", "2"]
+
+
+def test_qdrant_full_text_search_stops_after_exhausting_duplicate_matches(qdrant_module: types.ModuleType) -> None:
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+    first_match = qdrant_module.rest.PointStruct(
+        id="p1", payload={"page_content": "common rare", "metadata": {"doc_id": "1"}}, vector=[0.1]
+    )
+    second_match = qdrant_module.rest.PointStruct(
+        id="p2", payload={"page_content": "common", "metadata": {"doc_id": "2"}}, vector=[0.2]
+    )
+    scroll = cast(ScrollMock, vector._client.scroll)
+    scroll.side_effect = [([first_match, second_match], None), ([first_match], None)]
+
+    docs = vector.search_by_full_text("common rare", top_k=4)
+
+    assert [doc.metadata["doc_id"] for doc in docs] == ["1", "2"]
+    assert scroll.call_count == 2
+
+
+@pytest.mark.parametrize("top_k", [0, -1])
+def test_qdrant_full_text_search_skips_nonpositive_top_k(qdrant_module: types.ModuleType, top_k: int) -> None:
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+
+    assert vector.search_by_full_text("hello world", top_k=top_k) == []
+    cast(ScrollMock, vector._client.scroll).assert_not_called()
+
+
+@pytest.mark.parametrize("sqlite3_session", [(DatasetCollectionBinding,)], indirect=True)
+@pytest.mark.parametrize("use_caller_session", [True, False])
+def test_qdrant_factory_paths(
+    qdrant_module,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite3_session: Session,
+    use_caller_session: bool,
+):
+    factory = qdrant_module.QdrantVectorFactory()
+    session = sqlite3_session if use_caller_session else None
+    dataset = Dataset(id="dataset-1", tenant_id="tenant-1", collection_binding_id=None)
     monkeypatch.setattr(qdrant_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
     monkeypatch.setattr(qdrant_module, "current_app", SimpleNamespace(config=SimpleNamespace(root_path="/root")))
     monkeypatch.setattr(qdrant_module.dify_config, "QDRANT_URL", "http://localhost:6333")
@@ -309,22 +391,72 @@ def test_qdrant_factory_paths(qdrant_module, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(qdrant_module.dify_config, "QDRANT_REPLICATION_FACTOR", 1)
 
     with patch.object(qdrant_module, "QdrantVector", return_value="vector") as vector_cls:
-        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=session)
     assert result == "vector"
     assert vector_cls.call_args.kwargs["collection_name"] == "AUTO_COLLECTION"
     assert dataset.index_struct is not None
 
     # collection binding lookup path
-    dataset.collection_binding_id = "binding-1"
-    dataset.index_struct_dict = {"vector_store": {"class_prefix": "existing"}}
-    monkeypatch.setattr(qdrant_module, "select", lambda _model: SimpleNamespace(where=lambda *_args: "stmt"))
-    qdrant_module.db.session.scalars = MagicMock(
-        return_value=SimpleNamespace(one_or_none=lambda: SimpleNamespace(collection_name="BOUND_COLLECTION"))
+    binding = DatasetCollectionBinding(
+        provider_name="provider",
+        model_name="model",
+        type=CollectionBindingType.DATASET,
+        collection_name="BOUND_COLLECTION",
     )
+    sqlite3_session.add(binding)
+    sqlite3_session.commit()
+    dataset.collection_binding_id = binding.id
+    dataset.index_struct = json.dumps({"vector_store": {"class_prefix": "existing"}})
+    monkeypatch.setattr(qdrant_module.db, "session", sqlite3_session)
+
     with patch.object(qdrant_module, "QdrantVector", return_value="vector") as vector_cls:
-        factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=session)
     assert vector_cls.call_args.kwargs["collection_name"] == "BOUND_COLLECTION"
 
-    qdrant_module.db.session.scalars = MagicMock(return_value=SimpleNamespace(one_or_none=lambda: None))
+    sqlite3_session.delete(binding)
+    sqlite3_session.commit()
     with pytest.raises(ValueError, match="Dataset Collection Bindings does not exist"):
-        factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=session)
+
+
+@pytest.mark.parametrize("vector_type", [None, "qdrant"])
+def test_vector_reads_uncommitted_annotation_binding(
+    qdrant_module, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, vector_type: str | None
+):
+    # Separate connections must not see each other's uncommitted rows. An
+    # in-memory SQLite engine would share a connection and hide this regression.
+    engine = create_engine(f"sqlite:///{tmp_path / 'bindings.db'}")
+    DatasetCollectionBinding.__table__.create(engine)
+    monkeypatch.setattr(Vector, "get_vector_factory", staticmethod(lambda _: qdrant_module.QdrantVectorFactory))
+    monkeypatch.setattr(qdrant_module, "current_app", SimpleNamespace(config=SimpleNamespace(root_path="/root")))
+    monkeypatch.setattr(qdrant_module.dify_config, "VECTOR_STORE", "qdrant")
+    monkeypatch.setattr(qdrant_module.dify_config, "VECTOR_STORE_WHITELIST_ENABLE", False)
+    monkeypatch.setattr(qdrant_module.dify_config, "QDRANT_URL", "http://localhost:6333")
+
+    try:
+        with Session(engine) as session, Session(engine) as other_session:
+            monkeypatch.setattr(qdrant_module.db, "session", other_session)
+            binding = DatasetCollectionBinding(
+                provider_name="provider",
+                model_name="model",
+                type=CollectionBindingType.ANNOTATION,
+                collection_name="ANNOTATION_COLLECTION",
+            )
+            session.add(binding)
+            session.flush()
+            stmt = select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == binding.id)
+            assert other_session.scalar(stmt) is None
+            dataset = Dataset(id="app-1", tenant_id="tenant-1", collection_binding_id=binding.id)
+
+            vector = Vector(
+                dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session, vector_type=vector_type
+            )
+
+            assert vector._vector_processor.collection_name == "ANNOTATION_COLLECTION"
+            assert dataset.index_struct_dict is not None
+            assert dataset.index_struct_dict["vector_store"]["class_prefix"] == "ANNOTATION_COLLECTION"
+            assert other_session.scalar(stmt) is None
+            session.rollback()
+            assert session.scalar(stmt) is None
+    finally:
+        engine.dispose()

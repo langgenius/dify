@@ -26,7 +26,7 @@ const ContainerDemo = () => {
   const [isMobile, setIsMobile] = useState(false)
 
   return (
-    <div className="flex h-[360px] flex-col gap-4 bg-background-default-subtle p-6">
+    <div className="flex h-90 flex-col gap-4 bg-background-default-subtle p-6">
       <div className="flex items-center gap-3">
         <button
           type="button"

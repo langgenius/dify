@@ -1,4 +1,5 @@
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.protocol import CreateRunRequest
 
 from clients.agent_backend import (
     AgentBackendModelConfig,
@@ -9,7 +10,7 @@ from clients.agent_backend import (
 )
 
 
-def _request():
+def _request() -> CreateRunRequest:
     return AgentBackendRunRequestBuilder().build_for_workflow_node(
         AgentBackendWorkflowNodeRunInput(
             model=AgentBackendModelConfig(
@@ -23,13 +24,14 @@ def _request():
                 agent_mode="workflow_run",
                 invoke_from="debugger",
             ),
+            backend_binding_ref="binding-ref-1",
             workflow_node_job_prompt="Do the task.",
             user_prompt="hello",
         )
     )
 
 
-def test_fake_client_stream_is_deterministic():
+def test_fake_client_stream_is_deterministic() -> None:
     client = FakeAgentBackendRunClient()
     request = _request()
 
@@ -44,14 +46,14 @@ def test_fake_client_stream_is_deterministic():
     assert first[-1]["data"]["output"] == {"text": "hello agent"}
 
 
-def test_fake_client_stream_honors_cursor():
+def test_fake_client_stream_honors_cursor() -> None:
     events = list(FakeAgentBackendRunClient().stream_events("fake-run-1", after="1-0"))
 
     assert len(events) == 1
     assert events[0].type == "run_succeeded"
 
 
-def test_fake_client_failed_scenario_returns_failed_status_and_event():
+def test_fake_client_failed_scenario_returns_failed_status_and_event() -> None:
     client = FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.FAILED)
 
     status = client.wait_run("fake-run-1")
@@ -63,28 +65,14 @@ def test_fake_client_failed_scenario_returns_failed_status_and_event():
     assert events[-1].data.error == "fake failure"
 
 
-def test_fake_client_cancel_run_returns_cancelled_status():
+def test_fake_client_cancel_run_returns_cancelled_status() -> None:
     cancelled = FakeAgentBackendRunClient().cancel_run("fake-run-1")
 
     assert cancelled.run_id == "fake-run-1"
     assert cancelled.status == "cancelled"
 
 
-def test_fake_client_paused_scenario_returns_deferred_tool_call_success_event():
-    """The API pause scenario follows the Dify Agent deferred-tool wire shape."""
-    client = FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.PAUSED)
-
-    status = client.wait_run("fake-run-1")
-    events = list(client.stream_events("fake-run-1"))
-
-    assert status.status == "succeeded"
-    assert status.error is None
-    assert events[-1].type == "run_succeeded"
-    assert events[-1].data.deferred_tool_call is not None
-    assert events[-1].data.deferred_tool_call.tool_name == "ask_human"
-
-
-def test_fake_client_success_wait_run_returns_succeeded_status():
+def test_fake_client_success_wait_run_returns_succeeded_status() -> None:
     """Covers the default SUCCESS branch of ``wait_run`` directly."""
     status = FakeAgentBackendRunClient().wait_run("fake-run-1")
 

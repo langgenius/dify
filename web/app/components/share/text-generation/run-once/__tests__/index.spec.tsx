@@ -1,10 +1,11 @@
 import type { InputValueTypes } from '../../types'
 import type { PromptConfig, PromptVariable } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
-import type { VisionFile, VisionSettings } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { VisionSettings } from '@/types/app'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Resolution, TransferMethod } from '@/types/app'
 import RunOnce from '../index'
 
@@ -31,21 +32,20 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
   ),
 }))
 
-vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', () => {
-  function TextGenerationImageUploaderMock({
-    onFilesChange,
-  }: {
-    onFilesChange: (files: VisionFile[]) => void
-  }) {
-    useEffect(() => {
-      onFilesChange([])
-    }, [onFilesChange])
-    return <div data-testid="vision-uploader-mock" />
-  }
-  return {
-    default: TextGenerationImageUploaderMock,
-  }
-})
+vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', () => ({
+  default: () => <div data-testid="vision-uploader-mock" />,
+}))
+
+const uploadedFile = {
+  id: 'test-file',
+  name: 'example.txt',
+  size: 128,
+  type: 'text/plain',
+  progress: 100,
+  transferMethod: TransferMethod.local_file,
+  supportFileType: 'document',
+  uploadedId: 'upload-1',
+}
 
 vi.mock('@/app/components/base/file-uploader', () => ({
   FileUploaderInAttachmentWrapper: ({
@@ -56,7 +56,7 @@ vi.mock('@/app/components/base/file-uploader', () => ({
     onChange: (files: object[]) => void
   }) => (
     <div data-testid="file-uploader-mock">
-      <button onClick={() => onChange([{ id: 'test-file' }])}>Upload</button>
+      <button onClick={() => onChange([uploadedFile])}>Upload</button>
       <span>{value?.length || 0} files</span>
     </div>
   ),
@@ -121,12 +121,10 @@ const setup = (
   const onInputsChange = vi.fn()
   const onSend = vi.fn()
   const onVisionFilesChange = vi.fn()
-  let inputsRefCapture: React.MutableRefObject<Record<string, InputValueTypes>> | null = null
 
   const Wrapper = () => {
     const [inputs, setInputs] = useState<Record<string, InputValueTypes>>({})
     const inputsRef = useRef<Record<string, InputValueTypes>>({})
-    inputsRefCapture = inputsRef
     return (
       <RunOnce
         siteInfo={siteInfo}
@@ -152,13 +150,12 @@ const setup = (
     onInputsChange,
     onSend,
     onVisionFilesChange,
-    getInputsRef: () => inputsRefCapture,
   }
 }
 
 describe('RunOnce', () => {
   it('should initialize inputs using prompt defaults', async () => {
-    const { onInputsChange, onVisionFilesChange } = setup()
+    const { onInputsChange } = setup()
 
     await waitFor(() => {
       expect(onInputsChange).toHaveBeenCalledWith({
@@ -169,35 +166,31 @@ describe('RunOnce', () => {
       })
     })
 
-    await waitFor(() => {
-      expect(onVisionFilesChange).toHaveBeenCalledWith([])
-    })
-
     expect(screen.getByText('common.imageUploader.imageUpload'))!.toBeInTheDocument()
   })
 
   it('should update inputs when user edits fields', async () => {
-    const { onInputsChange, getInputsRef } = setup()
+    const user = userEvent.setup()
+    const { onInputsChange } = setup()
 
     await waitFor(() => {
       expect(onInputsChange).toHaveBeenCalled()
     })
     onInputsChange.mockClear()
 
-    fireEvent.change(screen.getByPlaceholderText('Text Input'), {
-      target: { value: 'new text' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('Paragraph Input'), {
-      target: { value: 'paragraph value' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('Number Input'), {
-      target: { value: '99' },
-    })
+    const textInput = screen.getByRole('textbox', { name: 'Text Input' })
+    await user.clear(textInput)
+    await user.type(textInput, 'new text')
 
-    const label = screen.getByText('Checkbox Input')
-    const checkbox = label.closest('div')?.parentElement?.querySelector('div')
-    expect(checkbox).toBeTruthy()
-    fireEvent.click(checkbox as HTMLElement)
+    const paragraphInput = screen.getByRole('textbox', { name: 'Paragraph Input' })
+    await user.clear(paragraphInput)
+    await user.type(paragraphInput, 'paragraph value')
+
+    const numberInput = screen.getByRole('spinbutton', { name: 'Number Input' })
+    await user.clear(numberInput)
+    await user.type(numberInput, '99')
+
+    await user.click(screen.getByRole('checkbox', { name: 'Checkbox Input' }))
 
     const latest = onInputsChange.mock.calls[onInputsChange.mock.calls.length - 1]![0]
     expect(latest).toEqual({
@@ -206,17 +199,17 @@ describe('RunOnce', () => {
       numberInput: '99',
       checkboxInput: true,
     })
-    expect(getInputsRef()?.current).toEqual(latest)
   })
 
   it('should clear inputs when Clear button is pressed', async () => {
+    const user = userEvent.setup()
     const { onInputsChange } = setup()
     await waitFor(() => {
       expect(onInputsChange).toHaveBeenCalled()
     })
     onInputsChange.mockClear()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
     expect(onInputsChange).toHaveBeenCalledWith({
       textInput: '',
@@ -227,15 +220,17 @@ describe('RunOnce', () => {
   })
 
   it('should submit form and call onSend when Run button clicked', async () => {
+    const user = userEvent.setup()
     const { onSend, onInputsChange } = setup()
     await waitFor(() => {
       expect(onInputsChange).toHaveBeenCalled()
     })
-    fireEvent.click(screen.getByRole('button', { name: 'share.generation.run' }))
+    await user.click(screen.getByRole('button', { name: 'share.generation.run' }))
     expect(onSend).toHaveBeenCalledTimes(1)
   })
 
   it('should display stop controls when runControl is provided', async () => {
+    const user = userEvent.setup()
     const onStop = vi.fn()
     const runControl = {
       onStop,
@@ -248,7 +243,7 @@ describe('RunOnce', () => {
     const stopButton = screen.getByRole('button', {
       name: 'share.generation.stopRun:{"defaultValue":"Stop Run"}',
     })
-    fireEvent.click(stopButton)
+    await user.click(stopButton)
     expect(onStop).toHaveBeenCalledTimes(1)
   })
 
@@ -269,6 +264,7 @@ describe('RunOnce', () => {
 
   describe('select input type', () => {
     it('should render select input and handle selection', async () => {
+      const user = userEvent.setup()
       const promptConfig: PromptConfig = {
         prompt_template: 'template',
         prompt_variables: [
@@ -290,12 +286,15 @@ describe('RunOnce', () => {
           selectInput: 'Option A',
         })
       })
-      expect(screen.getByText('Select Input'))!.toBeInTheDocument()
+      await user.click(screen.getByRole('combobox', { name: 'Select Input' }))
+      await user.click(screen.getByRole('option', { name: 'Option B' }))
+      expect(onInputsChange).toHaveBeenLastCalledWith({ selectInput: 'Option B' })
     })
   })
 
   describe('file input types', () => {
     it('should render file uploader for single file input', async () => {
+      const user = userEvent.setup()
       const promptConfig: PromptConfig = {
         prompt_template: 'template',
         prompt_variables: [
@@ -315,10 +314,12 @@ describe('RunOnce', () => {
           fileInput: undefined,
         })
       })
-      expect(screen.getByText('File Input'))!.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Upload' }))
+      expect(onInputsChange).toHaveBeenLastCalledWith({ fileInput: uploadedFile })
     })
 
     it('should render file uploader for file-list input', async () => {
+      const user = userEvent.setup()
       const promptConfig: PromptConfig = {
         prompt_template: 'template',
         prompt_variables: [
@@ -338,37 +339,14 @@ describe('RunOnce', () => {
           fileListInput: [],
         })
       })
-      expect(screen.getByText('File List Input'))!.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Upload' }))
+      expect(onInputsChange).toHaveBeenLastCalledWith({ fileListInput: [uploadedFile] })
     })
   })
 
   describe('json_object input type', () => {
-    it('should render code editor for json_object input', async () => {
-      const promptConfig: PromptConfig = {
-        prompt_template: 'template',
-        prompt_variables: [
-          createPromptVariable({
-            key: 'jsonInput',
-            name: 'JSON Input',
-            type: 'json_object' as PromptVariable['type'],
-            json_schema: '{"type": "object"}',
-          }),
-        ],
-      }
-      const { onInputsChange } = setup({
-        promptConfig,
-        visionConfig: { ...baseVisionConfig, enabled: false },
-      })
-      await waitFor(() => {
-        expect(onInputsChange).toHaveBeenCalledWith({
-          jsonInput: undefined,
-        })
-      })
-      expect(screen.getByText('JSON Input'))!.toBeInTheDocument()
-      expect(screen.getByTestId('code-editor-mock'))!.toBeInTheDocument()
-    })
-
     it('should update json_object input when code editor changes', async () => {
+      const user = userEvent.setup()
       const promptConfig: PromptConfig = {
         prompt_template: 'template',
         prompt_variables: [
@@ -389,7 +367,8 @@ describe('RunOnce', () => {
       onInputsChange.mockClear()
 
       const codeEditor = screen.getByTestId('code-editor-mock')
-      fireEvent.change(codeEditor, { target: { value: '{"key": "value"}' } })
+      await user.click(codeEditor)
+      await user.paste('{"key": "value"}')
 
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalledWith({
@@ -463,6 +442,7 @@ describe('RunOnce', () => {
 
   describe('clear with different input types', () => {
     it('should clear select input to undefined', async () => {
+      const user = userEvent.setup()
       const promptConfig: PromptConfig = {
         prompt_template: 'template',
         prompt_variables: [
@@ -484,7 +464,7 @@ describe('RunOnce', () => {
       })
       onInputsChange.mockClear()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(onInputsChange).toHaveBeenCalledWith({
         selectInput: undefined,
@@ -493,7 +473,7 @@ describe('RunOnce', () => {
   })
 
   describe('maxLength behavior', () => {
-    it('should not have maxLength attribute when max_length is not set', async () => {
+    it('should not have maxLength attribute when max_length is zero', async () => {
       const promptConfig: PromptConfig = {
         prompt_template: 'template',
         prompt_variables: [
@@ -501,6 +481,7 @@ describe('RunOnce', () => {
             key: 'textInput',
             name: 'Text Input',
             type: 'string',
+            max_length: 0,
           }),
         ],
       }
@@ -511,7 +492,7 @@ describe('RunOnce', () => {
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })
-      const input = screen.getByPlaceholderText('Text Input')
+      const input = screen.getByRole('textbox', { name: 'Text Input' })
       expect(input).not.toHaveAttribute('maxLength')
     })
 
@@ -534,7 +515,7 @@ describe('RunOnce', () => {
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })
-      const input = screen.getByPlaceholderText('Text Input')
+      const input = screen.getByRole('textbox', { name: 'Text Input' })
       expect(input)!.toHaveAttribute('maxLength', '100')
     })
   })

@@ -8,7 +8,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 
 export default function SignInLayout({ children }: PropsWithChildren) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   useDocumentTitle(t(($) => $['webapp.login'], { ns: 'login' }))
   return (
@@ -21,11 +21,9 @@ export default function SignInLayout({ children }: PropsWithChildren) {
         >
           {/* <Header /> */}
           <div
-            className={cn(
-              'flex w-full grow flex-col items-center justify-center px-6 md:px-[108px]',
-            )}
+            className={cn('flex w-full grow flex-col items-center justify-center px-6 md:px-27')}
           >
-            <div className="flex justify-center md:w-[440px] lg:w-[600px]">{children}</div>
+            <div className="flex justify-center md:w-110 lg:w-150">{children}</div>
           </div>
           {systemFeatures.branding.enabled === false && (
             <div className="px-8 py-6 system-xs-regular text-text-tertiary">

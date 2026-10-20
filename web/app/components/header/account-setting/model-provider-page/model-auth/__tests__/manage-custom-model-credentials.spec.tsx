@@ -1,121 +1,85 @@
 import type { ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { render, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
+import {
+  ConfigurationMethodEnum,
+  CustomConfigurationStatusEnum,
+  ModelTypeEnum,
+  PreferredProviderTypeEnum,
+} from '../../declarations'
 import ManageCustomModelCredentials from '../manage-custom-model-credentials'
 
-// Mock hooks
-const mockUseCustomModels = vi.fn()
-vi.mock('../hooks', () => ({
-  useCustomModels: () => mockUseCustomModels(),
+const editCredential = vi.fn()
+const deleteCredential = vi.fn()
+vi.mock('../hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../hooks')>()),
   useAuth: () => ({
-    handleOpenModal: vi.fn(),
+    handleOpenModal: editCredential,
+    openConfirmDelete: deleteCredential,
+    closeConfirmDelete: vi.fn(),
+    doingAction: false,
+    handleActiveCredential: vi.fn(),
+    handleConfirmDelete: vi.fn(),
+    deleteCredentialId: null,
   }),
 }))
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
+  }))
+})
+const credentials = [
+  { credential_id: 'c1', credential_name: 'Current key' },
+  { credential_id: 'c2', credential_name: 'Unused key' },
+]
+const model = {
+  model: 'gpt-4',
+  model_type: ModelTypeEnum.textGeneration,
+  available_model_credentials: credentials,
+  current_credential_id: 'c1',
+  current_credential_name: 'Current key',
+}
+const provider: ModelProvider = {
+  provider: 'openai',
+  label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+  supported_model_types: [ModelTypeEnum.textGeneration],
+  configurate_methods: [ConfigurationMethodEnum.customizableModel],
+  preferred_provider_type: PreferredProviderTypeEnum.custom,
+  custom_configuration: { status: CustomConfigurationStatusEnum.active, custom_models: [model] },
+  system_configuration: { enabled: false, quota_configurations: [] },
+}
 
-// Mock Authorized
-vi.mock('../authorized', () => ({
-  default: ({
-    renderTrigger,
-    items,
-    popupTitle,
-  }: {
-    renderTrigger: (o?: boolean) => React.ReactNode
-    items: Array<{
-      model?: { model?: string }
-      selectedCredential?: { credential_id?: string }
-    }>
-    popupTitle: string
-  }) => (
-    <div data-testid="authorized-mock">
-      <div data-testid="trigger-closed">{renderTrigger()}</div>
-      <div data-testid="trigger-open">{renderTrigger(true)}</div>
-      <div data-testid="popup-title">{popupTitle}</div>
-      <div data-testid="items-count">{items.length}</div>
-      <div data-testid="items-selected">
-        {items.map((item, index) => (
-          <span
-            key={
-              item.model?.model ?? item.selectedCredential?.credential_id ?? `missing-${popupTitle}`
-            }
-            data-testid={`selected-${index}`}
-          >
-            {item.selectedCredential ? 'has-cred' : 'no-cred'}
-          </span>
-        ))}
-      </div>
-    </div>
-  ),
-}))
+it('protects the current model credential and opens editing for the chosen credential', async () => {
+  const user = userEvent.setup()
+  render(<ManageCustomModelCredentials provider={provider} />)
+  await user.click(screen.getByRole('button', { name: /manageCredentials/ }))
+  expect(screen.getByText('gpt-4')).toBeInTheDocument()
+  expect(screen.getByText('Current key')).toBeInTheDocument()
+  expect(screen.getByText('Unused key')).toBeInTheDocument()
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[0]!)
+  expect(deleteCredential).not.toHaveBeenCalled()
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.edit' })[1]!)
+  expect(editCredential).toHaveBeenCalledWith(credentials[1], model)
+  await waitFor(() => expect(screen.queryByText('Unused key')).not.toBeInTheDocument())
+})
 
-describe('ManageCustomModelCredentials', () => {
-  const mockProvider = {
-    provider: 'openai',
-  } as unknown as ModelProvider
+it('allows removing an unused credential while retaining its model identity', async () => {
+  const user = userEvent.setup()
+  render(<ManageCustomModelCredentials provider={provider} isOpen />)
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[1]!)
+  expect(deleteCredential).toHaveBeenCalledWith(credentials[1], model)
+})
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should return null when no custom models exist', () => {
-    mockUseCustomModels.mockReturnValue([])
-    const { container } = render(<ManageCustomModelCredentials provider={mockProvider} />)
-    expect(container.firstChild).toBeNull()
-  })
-
-  it('should render authorized component when custom models exist', () => {
-    const mockModels = [
-      {
-        model: 'gpt-4',
-        available_model_credentials: [{ credential_id: 'c1', credential_name: 'Key 1' }],
-        current_credential_id: 'c1',
-        current_credential_name: 'Key 1',
-      },
-      {
-        model: 'gpt-3.5',
-        // testing undefined credentials branch
-      },
-    ]
-    mockUseCustomModels.mockReturnValue(mockModels)
-
-    render(<ManageCustomModelCredentials provider={mockProvider} />)
-
-    expect(screen.getByTestId('authorized-mock')).toBeInTheDocument()
-    expect(screen.getAllByText(/modelProvider.auth.manageCredentials/).length).toBeGreaterThan(0)
-    expect(screen.getByTestId('items-count')).toHaveTextContent('2')
-    expect(screen.getByTestId('popup-title')).toHaveTextContent(
-      'modelProvider.auth.customModelCredentials',
-    )
-  })
-
-  it('should render trigger in both open and closed states', () => {
-    const mockModels = [
-      {
-        model: 'gpt-4',
-        available_model_credentials: [{ credential_id: 'c1', credential_name: 'Key 1' }],
-        current_credential_id: 'c1',
-        current_credential_name: 'Key 1',
-      },
-    ]
-    mockUseCustomModels.mockReturnValue(mockModels)
-
-    render(<ManageCustomModelCredentials provider={mockProvider} />)
-
-    expect(screen.getByTestId('trigger-closed')).toBeInTheDocument()
-    expect(screen.getByTestId('trigger-open')).toBeInTheDocument()
-  })
-
-  it('should pass undefined selectedCredential when model has no current_credential_id', () => {
-    const mockModels = [
-      {
-        model: 'gpt-3.5',
-        available_model_credentials: [{ credential_id: 'c1', credential_name: 'Key 1' }],
-        current_credential_id: '',
-        current_credential_name: '',
-      },
-    ]
-    mockUseCustomModels.mockReturnValue(mockModels)
-
-    render(<ManageCustomModelCredentials provider={mockProvider} />)
-
-    expect(screen.getByTestId('selected-0')).toHaveTextContent('no-cred')
-  })
+it('omits credential management without custom models', () => {
+  render(
+    <ManageCustomModelCredentials
+      provider={{
+        ...provider,
+        custom_configuration: { status: CustomConfigurationStatusEnum.active, custom_models: [] },
+      }}
+    />,
+  )
+  expect(screen.queryByRole('button', { name: /manageCredentials/ })).not.toBeInTheDocument()
 })

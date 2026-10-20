@@ -1,22 +1,24 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiHistoryLine } from '@remixicon/react'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { Plan } from '@/app/components/billing/type'
-import { userProfileAtom } from '@/context/account-state'
-import { useProviderContext } from '@/context/provider-context'
+import { getEditorResourceId } from '@/app/components/workflow/editor-resource/resource'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
+import { toast } from '@/app/notifications'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import useTheme from '@/hooks/use-theme'
+import { consoleQuery } from '@/service/console'
 import {
-  useInvalidAllLastRun,
+  useInvalidateAllLastRun,
   useResetWorkflowVersionHistory,
   useRestoreWorkflow,
 } from '@/service/use-workflow'
-import { FlowType } from '@/types/common'
-import { useHooksStore } from '../hooks-store'
 import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
 import { useWorkflowRun } from '../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../store'
@@ -27,26 +29,36 @@ export type HeaderInRestoringProps = {
   onRestoreSettled?: () => void
 }
 const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'workflow', 'workflowHistory'])
   const { theme } = useTheme()
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
-  const { plan, enableBilling } = useProviderContext()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
   const workflowStore = useWorkflowStore()
-  const userProfile = useAtomValue(userProfileAtom)
-  const configsMap = useHooksStore((s) => s.configsMap)
-  const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
+  const resource = useAtomValue(editorResourceAtom)
+  const resourceId = getEditorResourceId(resource)
+  const invalidAllLastRun = useInvalidateAllLastRun(resource)
   const { deleteAllInspectVars } = workflowStore.getState()
   const currentVersion = useStore((s) => s.currentVersion)
   const setShowWorkflowVersionHistoryPanel = useStore((s) => s.setShowWorkflowVersionHistoryPanel)
 
   const { handleLoadBackupDraft } = useWorkflowRun()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
+  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow(resource)
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const canRestore =
-    !!currentVersion?.id && !!configsMap?.flowId && currentVersion.version !== WorkflowVersion.Draft
-  const canUseWorkflowVersionAction = !enableBilling || plan.type !== Plan.sandbox
-  const canEmitCollaborationEvents = configsMap?.flowType === FlowType.appFlow
+    !!currentVersion?.id && !!resourceId && currentVersion.version !== WorkflowVersion.Draft
+  const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
+  const canEmitCollaborationEvents = resource.kind === 'app'
 
   const handleCancelRestore = useCallback(() => {
     handleLoadBackupDraft()
@@ -54,32 +66,23 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
     setShowWorkflowVersionHistoryPanel(false)
   }, [workflowStore, handleLoadBackupDraft, setShowWorkflowVersionHistoryPanel])
 
-  const restoreVersionUrl = useCallback(
-    (versionId: string) => {
-      if (!configsMap?.flowId) return ''
-      if (configsMap.flowType === FlowType.ragPipeline)
-        return `/rag/pipelines/${configsMap.flowId}/workflows/${versionId}/restore`
-      if (configsMap.flowType === FlowType.snippet)
-        return `/snippets/${configsMap.flowId}/workflows/${versionId}/restore`
-      return `/apps/${configsMap.flowId}/workflows/${versionId}/restore`
-    },
-    [configsMap?.flowId, configsMap?.flowType],
-  )
-
   const emitRestoreIntent = useCallback(async () => {
     if (!currentVersion || !canEmitCollaborationEvents) return
     try {
       const { collaborationManager } = await import('../collaboration/core/collaboration-manager')
       collaborationManager.emitRestoreIntent({
         versionId: currentVersion.id,
-        versionName: currentVersion.marked_name,
+        versionName: getWorkflowVersionName(
+          currentVersion,
+          t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
+        ),
         initiatorUserId: userProfile.id,
         initiatorName: userProfile.name,
       })
     } catch (error) {
       console.error('Failed to emit restore intent:', error)
     }
-  }, [canEmitCollaborationEvents, currentVersion, userProfile.id, userProfile.name])
+  }, [canEmitCollaborationEvents, currentVersion, t, userProfile.id, userProfile.name])
 
   const emitRestoreComplete = useCallback(
     async (success: boolean, errorMessage?: string) => {
@@ -99,19 +102,19 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
   )
 
   const emitWorkflowUpdate = useCallback(async () => {
-    if (!configsMap?.flowId || !canEmitCollaborationEvents) return
+    if (!resourceId || !canEmitCollaborationEvents) return
     try {
       const { collaborationManager } = await import('../collaboration/core/collaboration-manager')
-      collaborationManager.emitWorkflowUpdate(configsMap.flowId)
+      collaborationManager.emitWorkflowUpdate(resourceId)
     } catch (error) {
       console.error('Failed to emit workflow update:', error)
     }
-  }, [canEmitCollaborationEvents, configsMap?.flowId])
+  }, [canEmitCollaborationEvents, resourceId])
 
   const handleRestore = useCallback(async () => {
-    if (!canRestore || !currentVersion) return
+    if (isPlanUnavailable || !canRestore || !currentVersion) return
 
-    if (!canUseWorkflowVersionAction) {
+    if (deploymentEdition === 'CLOUD' && plan === 'sandbox') {
       setIsRestorePlanUpgradeModalOpen(true)
       return
     }
@@ -120,30 +123,31 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
     await emitRestoreIntent()
 
     try {
-      await restoreWorkflow(restoreVersionUrl(currentVersion.id))
+      await restoreWorkflow(currentVersion.id)
       workflowStore.setState({ isRestoring: false })
       workflowStore.setState({ backupDraft: undefined })
       handleRefreshWorkflowDraft()
-      toast.success(t(($) => $['versionHistory.action.restoreSuccess'], { ns: 'workflow' }))
+      toast.success(t(($) => $['versionHistory.action.restoreSuccess'], { ns: 'workflowHistory' }))
       deleteAllInspectVars()
       invalidAllLastRun()
       await emitRestoreComplete(true)
       await emitWorkflowUpdate()
     } catch {
-      toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflow' }))
+      toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }))
       await emitRestoreComplete(false, 'restore failed')
     } finally {
       resetWorkflowVersionHistory()
       onRestoreSettled?.()
     }
   }, [
+    isPlanUnavailable,
     canRestore,
     currentVersion,
-    canUseWorkflowVersionAction,
+    deploymentEdition,
+    plan,
     setShowWorkflowVersionHistoryPanel,
     emitRestoreIntent,
     restoreWorkflow,
-    restoreVersionUrl,
     workflowStore,
     handleRefreshWorkflowDraft,
     t,
@@ -163,11 +167,11 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
       <div className="flex items-center justify-end gap-x-2">
         <Button
           onClick={handleRestore}
-          disabled={!canRestore}
+          disabled={isPlanUnavailable || !canRestore}
           variant="primary"
           className={cn(
-            'rounded-lg border border-transparent',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
+            'rounded-lg inset-ring-1 inset-ring-transparent',
+            theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
           )}
         >
           {t(($) => $['common.restore'], { ns: 'workflow' })}
@@ -175,8 +179,8 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
         <Button
           onClick={handleCancelRestore}
           className={cn(
-            'rounded-lg border border-transparent text-components-button-secondary-accent-text',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
+            'rounded-lg text-components-button-secondary-accent-text inset-ring-1 inset-ring-transparent',
+            theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
           )}
         >
           <div className="flex items-center gap-x-0.5">

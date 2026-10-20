@@ -1,11 +1,11 @@
-import type { MockedFunction } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import type { MockedFunction } from 'vite-plus/test'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { useSearchParams } from '@/next/navigation'
-import { useSendMail } from '@/service/use-common'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import Form from './input-mail'
+import SignupEmailForm from './input-mail'
 
 const mockSubmitMail = vi.fn()
 const mockOnSuccess = vi.fn()
@@ -30,7 +30,8 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(),
 }))
 
@@ -38,29 +39,16 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useSendMail: vi.fn(),
-}))
-
-type UseSendMailResult = ReturnType<typeof useSendMail>
-
-const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
-const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
-const mockUseSendMail = useSendMail as unknown as MockedFunction<typeof useSendMail>
+const mockUseLocale = useLocale as MockedFunction<typeof useLocale>
+const mockUseSearchParams = useSearchParams as MockedFunction<typeof useSearchParams>
 
 const renderForm = ({
   brandingEnabled = false,
-  isPending = false,
 }: {
   brandingEnabled?: boolean
-  isPending?: boolean
 } = {}) => {
   mockUseLocale.mockReturnValue('en-US')
-  mockUseSendMail.mockReturnValue({
-    mutateAsync: mockSubmitMail,
-    isPending,
-  } as unknown as UseSendMailResult)
-  return renderWithConsoleQuery(<Form onSuccess={mockOnSuccess} />, {
+  return renderWithConsoleQuery(<SignupEmailForm onSuccess={mockOnSuccess} />, {
     systemFeatures: { branding: { enabled: brandingEnabled } },
   })
 }
@@ -68,22 +56,11 @@ const renderForm = ({
 describe('InputMail Form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseSearchParams.mockReturnValue(
-      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
-    )
+    mockUseSearchParams.mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
     mockSubmitMail.mockResolvedValue({ result: 'success', data: 'token' })
   })
 
   // Rendering baseline UI elements.
-  describe('Rendering', () => {
-    it('should render email input and submit button', () => {
-      renderForm()
-
-      expect(screen.getByLabelText('login.email')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'login.signup.verifyMail' })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'login.signup.signIn' })).toBeInTheDocument()
-    })
-  })
 
   // Prop-driven branding content visibility.
   describe('Props', () => {
@@ -105,17 +82,19 @@ describe('InputMail Form', () => {
   // Submission flow and mutation integration.
   describe('User Interactions', () => {
     it('should submit email and call onSuccess when mutation succeeds', async () => {
+      const user = userEvent.setup()
       renderForm()
-      const input = screen.getByLabelText('login.email')
-      const button = screen.getByRole('button', { name: 'login.signup.verifyMail' })
+      const input = screen.getByRole('textbox', { name: 'login.email' })
 
-      fireEvent.change(input, { target: { value: 'test@example.com' } })
-      fireEvent.click(button)
+      await user.type(input, 'test@example.com{Enter}')
 
       expect(mockSubmitMail).toHaveBeenCalledWith({
-        email: 'test@example.com',
-        language: 'en-US',
+        body: {
+          email: 'test@example.com',
+          language: 'en-US',
+        },
       })
+      expect(mockSubmitMail).toHaveBeenCalledTimes(1)
 
       await waitFor(() => {
         expect(mockOnSuccess).toHaveBeenCalledWith('test@example.com', 'token')
@@ -127,9 +106,9 @@ describe('InputMail Form', () => {
   describe('Registration Navigation', () => {
     it('should preserve the current query when navigating to sign in', () => {
       mockUseSearchParams.mockReturnValue(
-        new URLSearchParams(
-          'redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing',
-        ) as unknown as ReturnType<typeof useSearchParams>,
+        new URLSearchParams('redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing') as ReturnType<
+          typeof useSearchParams
+        >,
       )
 
       renderForm()
@@ -143,27 +122,30 @@ describe('InputMail Form', () => {
 
   // Validation and failure paths.
   describe('Edge Cases', () => {
-    it('should block submission when email is invalid', () => {
-      const { container } = renderForm()
-      const form = container.querySelector('form')
+    it('should block submission when email is invalid', async () => {
+      const user = userEvent.setup()
+      renderForm()
       const input = screen.getByLabelText('login.email')
 
-      fireEvent.change(input, { target: { value: 'invalid-email' } })
-      expect(form).not.toBeNull()
-      fireEvent.submit(form as HTMLFormElement)
+      await user.type(input, 'invalid-email{Enter}')
 
+      const error = await screen.findByText('login.error.emailInValid')
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      expect(input).toHaveAccessibleDescription(error.textContent ?? '')
+      expect(input).toHaveFocus()
       expect(mockSubmitMail).not.toHaveBeenCalled()
       expect(mockOnSuccess).not.toHaveBeenCalled()
     })
 
     it('should not call onSuccess when mutation does not succeed', async () => {
+      const user = userEvent.setup()
       mockSubmitMail.mockResolvedValue({ result: 'failed', data: 'token' })
       renderForm()
       const input = screen.getByLabelText('login.email')
       const button = screen.getByRole('button', { name: 'login.signup.verifyMail' })
 
-      fireEvent.change(input, { target: { value: 'test@example.com' } })
-      fireEvent.click(button)
+      await user.type(input, 'test@example.com')
+      await user.click(button)
 
       await waitFor(() => {
         expect(mockSubmitMail).toHaveBeenCalled()
@@ -171,4 +153,15 @@ describe('InputMail Form', () => {
       expect(mockOnSuccess).not.toHaveBeenCalled()
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'emailRegister.sendEmail.post': (input) => mockSubmitMail(input),
+    }),
+  }
 })

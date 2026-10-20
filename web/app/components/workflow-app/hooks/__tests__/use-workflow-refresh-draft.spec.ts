@@ -1,314 +1,208 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactNode } from 'react'
+import { act } from '@testing-library/react'
+import { createElement } from 'react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { createTestWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { renderEditorHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
+import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { useWorkflowRefreshDraft } from '../use-workflow-refresh-draft'
 
-const mockHandleUpdateWorkflowCanvas = vi.fn()
-const mockSetSyncWorkflowDraftHash = vi.fn()
-const mockSetIsSyncingWorkflowDraft = vi.fn()
-const mockSetEnvironmentVariables = vi.fn()
-const mockSetEnvSecrets = vi.fn()
-const mockSetConversationVariables = vi.fn()
-const mockSetIsWorkflowDataLoaded = vi.fn()
-const mockCancel = vi.fn()
-let appStoreState: {
-  appDetail: {
-    mode: string
-  }
-}
-
-let workflowStoreState: {
-  appId: string
-  isWorkflowDataLoaded: boolean
-  debouncedSyncWorkflowDraft?: { cancel: () => void }
-  setSyncWorkflowDraftHash: typeof mockSetSyncWorkflowDraftHash
-  setIsSyncingWorkflowDraft: typeof mockSetIsSyncingWorkflowDraft
-  setEnvironmentVariables: typeof mockSetEnvironmentVariables
-  setEnvSecrets: typeof mockSetEnvSecrets
-  setConversationVariables: typeof mockSetConversationVariables
-  setIsWorkflowDataLoaded: typeof mockSetIsWorkflowDataLoaded
-}
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => workflowStoreState,
-  }),
+const { updateCanvas, fetchDraft } = vi.hoisted(() => ({
+  updateCanvas: vi.fn(),
+  fetchDraft: vi.fn(),
 }))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T>(selector: (state: typeof appStoreState) => T): T => selector(appStoreState),
-}))
-
 vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
-  useWorkflowUpdate: () => ({ handleUpdateWorkflowCanvas: mockHandleUpdateWorkflowCanvas }),
+  useWorkflowUpdate: () => ({ handleUpdateWorkflowCanvas: updateCanvas }),
 }))
-
-const mockFetchWorkflowDraft = vi.fn()
-vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
-}))
+vi.mock('@/service/workflow', () => ({ fetchWorkflowDraft: fetchDraft }))
 
 const draftResponse = {
   hash: 'server-hash',
-  graph: { nodes: [{ id: 'n1' }], edges: [], viewport: { x: 1, y: 2, zoom: 1 } },
+  graph: {
+    nodes: [createNode({ id: 'n1', data: { type: BlockEnum.Start } })],
+    edges: [],
+    viewport: { x: 1, y: 2, zoom: 1 },
+  },
   environment_variables: [],
   conversation_variables: [],
 }
+const setup = (mode: AppMode = 'advanced-chat') => {
+  const store = createTestWorkflowStore({
+    isWorkflowDataLoaded: true,
+    syncWorkflowDraftHash: 'local-hash',
+  })
+  const queryClient = createConsoleQueryClient()
+  seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode }))
+  const hook = renderEditorHook(() => useWorkflowRefreshDraft(), {
+    queryClient,
+    resource: { kind: 'app', appId: 'app-1', mode: mode === 'advanced-chat' ? mode : 'workflow' },
+    wrapper: ({ children }: { children: ReactNode }) =>
+      createElement(WorkflowContext, { value: store }, children),
+  })
+  return { ...hook, store }
+}
 
-describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
+describe('useWorkflowRefreshDraft', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    workflowStoreState = {
-      appId: 'app-1',
-      isWorkflowDataLoaded: true,
-      debouncedSyncWorkflowDraft: undefined,
-      setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
-      setIsSyncingWorkflowDraft: mockSetIsSyncingWorkflowDraft,
-      setEnvironmentVariables: mockSetEnvironmentVariables,
-      setEnvSecrets: mockSetEnvSecrets,
-      setConversationVariables: mockSetConversationVariables,
-      setIsWorkflowDataLoaded: mockSetIsWorkflowDataLoaded,
-    }
-    appStoreState = {
-      appDetail: { mode: AppModeEnum.ADVANCED_CHAT },
-    }
-    mockFetchWorkflowDraft.mockResolvedValue(draftResponse)
+    updateCanvas.mockReset()
+    fetchDraft.mockReset().mockResolvedValue(draftResponse)
   })
 
-  it('should update canvas by default (notUpdateCanvas omitted)', async () => {
-    const { result } = renderHook(() => useWorkflowRefreshDraft())
-    let refreshed = false
-    await act(async () => {
-      refreshed = await result.current.handleRefreshWorkflowDraft()
-    })
-    expect(refreshed).toBe(true)
-    expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledTimes(1)
-  })
-
-  it('should update canvas when notUpdateCanvas=false', async () => {
-    const { result } = renderHook(() => useWorkflowRefreshDraft())
-    await act(async () => {
-      result.current.handleRefreshWorkflowDraft(false)
-    })
-    expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledTimes(1)
-  })
-
-  it('should NOT update canvas when notUpdateCanvas=true', async () => {
-    // This is the key change: when called from a 409 error during editing,
-    // canvas must not be overwritten with server state.
-    const { result } = renderHook(() => useWorkflowRefreshDraft())
-    await act(async () => {
-      result.current.handleRefreshWorkflowDraft(true)
-    })
-    expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
-  })
-
-  it('should discard a stale guarded response before it mutates the canvas or draft metadata', async () => {
-    let resolveFetch: ((value: typeof draftResponse) => void) | undefined
-    mockFetchWorkflowDraft.mockReturnValue(
-      new Promise((resolve) => {
-        resolveFetch = resolve
-      }),
-    )
-    let isCurrent = true
-    const { result } = renderHook(() => useWorkflowRefreshDraft())
-    let refreshPromise: Promise<boolean> | undefined
-
-    act(() => {
-      refreshPromise = result.current.handleRefreshWorkflowDraft(false, {
-        shouldApply: () => isCurrent,
+  it.each([undefined, false, true])(
+    'refreshes draft metadata and respects notUpdateCanvas=%s',
+    async (notUpdateCanvas) => {
+      const { result, store } = setup()
+      await act(async () => {
+        expect(await result.current.handleRefreshWorkflowDraft(notUpdateCanvas)).toBe(true)
       })
+      expect(fetchDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
+      if (notUpdateCanvas) expect(updateCanvas).not.toHaveBeenCalled()
+      else expect(updateCanvas).toHaveBeenCalledExactlyOnceWith(draftResponse.graph)
+      expect(store.getState()).toMatchObject({
+        syncWorkflowDraftHash: 'server-hash',
+        isSyncingWorkflowDraft: false,
+        isWorkflowDataLoaded: true,
+      })
+    },
+  )
+
+  it('discards a stale guarded response before it mutates the canvas or draft metadata', async () => {
+    const deferred = createDeferred<typeof draftResponse>()
+    fetchDraft.mockReturnValue(deferred.promise)
+    let isCurrent = true
+    const { result, store } = setup()
+    let refresh!: Promise<boolean>
+    act(() => {
+      refresh = result.current.handleRefreshWorkflowDraft(false, { shouldApply: () => isCurrent })
     })
     isCurrent = false
     await act(async () => {
-      resolveFetch?.(draftResponse)
-      await refreshPromise
+      deferred.resolve(draftResponse)
+      expect(await refresh).toBe(false)
     })
-
-    await expect(refreshPromise).resolves.toBe(false)
-    expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
-    expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
-    expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
-    expect(mockSetConversationVariables).not.toHaveBeenCalled()
+    expect(updateCanvas).not.toHaveBeenCalled()
+    expect(store.getState()).toMatchObject({
+      syncWorkflowDraftHash: 'local-hash',
+      environmentVariables: [],
+      conversationVariables: [],
+    })
   })
 
   it('keeps the syncing guard active until the newest overlapping refresh completes', async () => {
-    let resolveFirst: ((value: typeof draftResponse) => void) | undefined
-    let resolveSecond: ((value: typeof draftResponse) => void) | undefined
-    mockFetchWorkflowDraft
-      .mockReturnValueOnce(
-        new Promise((resolve) => {
-          resolveFirst = resolve
-        }),
-      )
-      .mockReturnValueOnce(
-        new Promise((resolve) => {
-          resolveSecond = resolve
-        }),
-      )
+    const first = createDeferred<typeof draftResponse>()
+    const second = createDeferred<typeof draftResponse>()
+    fetchDraft.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
     let firstIsCurrent = true
-    const { result } = renderHook(() => useWorkflowRefreshDraft())
-    let firstRefresh: Promise<boolean> | undefined
-    let secondRefresh: Promise<boolean> | undefined
-
+    const { result, store } = setup()
+    let firstRefresh!: Promise<boolean>
+    let secondRefresh!: Promise<boolean>
     act(() => {
       firstRefresh = result.current.handleRefreshWorkflowDraft(false, {
         shouldApply: () => firstIsCurrent,
       })
-      secondRefresh = result.current.handleRefreshWorkflowDraft(false, {
-        shouldApply: () => true,
-      })
+      secondRefresh = result.current.handleRefreshWorkflowDraft(false, { shouldApply: () => true })
     })
     firstIsCurrent = false
-    mockSetIsSyncingWorkflowDraft.mockClear()
-
     await act(async () => {
-      resolveFirst?.(draftResponse)
+      first.resolve(draftResponse)
       await firstRefresh
     })
-    expect(mockSetIsSyncingWorkflowDraft).not.toHaveBeenCalledWith(false)
-
+    expect(store.getState().isSyncingWorkflowDraft).toBe(true)
     await act(async () => {
-      resolveSecond?.(draftResponse)
+      second.resolve(draftResponse)
       await secondRefresh
     })
-    expect(mockSetIsSyncingWorkflowDraft).toHaveBeenLastCalledWith(false)
+    expect(store.getState().isSyncingWorkflowDraft).toBe(false)
+    expect(updateCanvas).toHaveBeenCalledOnce()
   })
 
-  it('should still update hash even when notUpdateCanvas=true', async () => {
-    const { result } = renderHook(() => useWorkflowRefreshDraft())
-    await act(async () => {
-      result.current.handleRefreshWorkflowDraft(true)
-    })
-    await waitFor(() => {
-      expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('server-hash')
-    })
-  })
-
-  it('should cancel pending draft sync, use fallback viewport, and persist masked secrets', async () => {
-    workflowStoreState = {
-      ...workflowStoreState,
-      debouncedSyncWorkflowDraft: { cancel: mockCancel },
-    }
-    mockFetchWorkflowDraft.mockResolvedValue({
-      hash: 'server-hash',
-      graph: {
-        nodes: [{ id: 'n1' }],
-        edges: [],
-      },
+  it('cancels pending sync, restores the viewport, and separates secret values from displayed variables', async () => {
+    const { result, store } = setup()
+    const cancel = vi.spyOn(store.getState().debouncedSyncWorkflowDraft, 'cancel')
+    const conversationVariables = [
+      { id: 'conversation-1', name: 'name', value_type: 'string', value: 'Alice', description: '' },
+    ]
+    fetchDraft.mockResolvedValue({
+      ...draftResponse,
+      graph: { nodes: draftResponse.graph.nodes, edges: [] },
       environment_variables: [
         { id: 'env-secret', value_type: 'secret', value: 'top-secret', name: 'SECRET' },
         { id: 'env-plain', value_type: 'text', value: 'visible', name: 'PLAIN' },
       ],
-      conversation_variables: [{ id: 'conversation-1' }],
+      conversation_variables: conversationVariables,
     })
-
-    const { result } = renderHook(() => useWorkflowRefreshDraft())
-
-    act(() => {
-      result.current.handleRefreshWorkflowDraft()
+    await act(async () => {
+      await result.current.handleRefreshWorkflowDraft()
     })
-
-    await waitFor(() => {
-      expect(mockCancel).toHaveBeenCalled()
-      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-        nodes: [{ id: 'n1' }],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-      })
-      expect(mockSetEnvSecrets).toHaveBeenCalledWith({
-        'env-secret': 'top-secret',
-      })
-      expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(updateCanvas).toHaveBeenCalledWith({
+      nodes: draftResponse.graph.nodes,
+      edges: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    })
+    expect(store.getState()).toMatchObject({
+      envSecrets: { 'env-secret': 'top-secret' },
+      environmentVariables: [
         { id: 'env-secret', value_type: 'secret', value: '[__HIDDEN__]', name: 'SECRET' },
         { id: 'env-plain', value_type: 'text', value: 'visible', name: 'PLAIN' },
-      ])
-      expect(mockSetConversationVariables).toHaveBeenCalledWith([{ id: 'conversation-1' }])
+      ],
+      conversationVariables,
     })
+    cancel.mockRestore()
   })
 
-  it('should restore a local start placeholder for workflow drafts without an entry node', async () => {
-    appStoreState = {
-      appDetail: { mode: AppModeEnum.WORKFLOW },
-    }
-    mockFetchWorkflowDraft.mockResolvedValue({
-      hash: 'server-hash',
-      graph: {
-        nodes: [],
-        edges: [],
-      },
-      environment_variables: [],
-      conversation_variables: [],
-    })
-
-    const { result } = renderHook(() => useWorkflowRefreshDraft())
-
-    act(() => {
-      result.current.handleRefreshWorkflowDraft()
-    })
-
-    await waitFor(() => {
-      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-        nodes: [
-          expect.objectContaining({
-            data: expect.objectContaining({
-              type: BlockEnum.StartPlaceholder,
-              title: 'workflow.blocks.start-placeholder',
-              desc: '',
-              selected: true,
-            }),
-          }),
-        ],
+  it.each(['workflow', 'advanced-chat'] as const)(
+    'restores the appropriate empty canvas for %s',
+    async (mode) => {
+      fetchDraft.mockResolvedValue({ ...draftResponse, graph: { nodes: [], edges: [] } })
+      const { result } = setup(mode)
+      await act(async () => {
+        await result.current.handleRefreshWorkflowDraft()
+      })
+      expect(updateCanvas).toHaveBeenCalledWith({
+        nodes:
+          mode === 'workflow'
+            ? [
+                expect.objectContaining({
+                  data: expect.objectContaining({
+                    type: BlockEnum.StartPlaceholder,
+                    selected: true,
+                  }),
+                }),
+              ]
+            : [],
         edges: [],
         viewport: { x: 0, y: 0, zoom: 1 },
       })
-    })
-  })
+    },
+  )
 
-  it('should not restore a local start placeholder for non-workflow app modes', async () => {
-    mockFetchWorkflowDraft.mockResolvedValue({
-      hash: 'server-hash',
-      graph: {
-        nodes: [],
-        edges: [],
-      },
-      environment_variables: [],
-      conversation_variables: [],
-    })
-
-    const { result } = renderHook(() => useWorkflowRefreshDraft())
-
+  it('restores the previously loaded state and releases the sync guard after a failed refresh', async () => {
+    const deferred = createDeferred<typeof draftResponse>()
+    fetchDraft.mockReturnValue(deferred.promise)
+    const { result, store } = setup()
+    let refresh!: Promise<boolean>
     act(() => {
-      result.current.handleRefreshWorkflowDraft()
+      refresh = result.current.handleRefreshWorkflowDraft()
     })
-
-    await waitFor(() => {
-      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-        nodes: [],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-      })
+    expect(store.getState()).toMatchObject({
+      isWorkflowDataLoaded: false,
+      isSyncingWorkflowDraft: true,
     })
-  })
-
-  it('should restore loaded state when refresh fails after workflow data was already loaded', async () => {
-    mockFetchWorkflowDraft.mockRejectedValue(new Error('refresh failed'))
-
-    const { result } = renderHook(() => useWorkflowRefreshDraft())
-
-    let refreshed = true
     await act(async () => {
-      refreshed = await result.current.handleRefreshWorkflowDraft()
+      deferred.reject(new Error('refresh failed'))
+      expect(await refresh).toBe(false)
     })
-
-    expect(refreshed).toBe(false)
-
-    await waitFor(() => {
-      expect(mockSetIsWorkflowDataLoaded).toHaveBeenNthCalledWith(1, false)
-      expect(mockSetIsWorkflowDataLoaded).toHaveBeenNthCalledWith(2, true)
-      expect(mockSetIsSyncingWorkflowDraft).toHaveBeenCalledWith(true)
-      expect(mockSetIsSyncingWorkflowDraft).toHaveBeenLastCalledWith(false)
+    expect(store.getState()).toMatchObject({
+      isWorkflowDataLoaded: true,
+      isSyncingWorkflowDraft: false,
+      syncWorkflowDraftHash: 'local-hash',
     })
+    expect(updateCanvas).not.toHaveBeenCalled()
   })
 })

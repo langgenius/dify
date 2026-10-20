@@ -34,23 +34,25 @@ export default function DraggableBlockPlugin({
   const [isSupportDrag, setIsSupportDrag] = useState(false)
 
   useEffect(() => {
-    const root = editor.getRootElement()
-    if (!root) return
-
-    const onMove = (e: MouseEvent) => {
-      const isSupportDrag = checkSupportDrag(e.target as Element)
-      setIsSupportDrag(isSupportDrag)
+    const onMove = (event: MouseEvent) => {
+      setIsSupportDrag(checkSupportDrag(event.target instanceof Element ? event.target : null))
     }
-
-    root.addEventListener('mousemove', onMove)
-    return () => root.removeEventListener('mousemove', onMove)
+    const unregister = editor.registerRootListener((root, previousRoot) => {
+      previousRoot?.removeEventListener('mousemove', onMove)
+      setIsSupportDrag(false)
+      root?.addEventListener('mousemove', onMove)
+    })
+    return () => {
+      unregister()
+      editor.getRootElement()?.removeEventListener('mousemove', onMove)
+    }
   }, [editor])
 
   return (
     <DraggableBlockPlugin_EXPERIMENTAL
       anchorElem={anchorElem}
-      menuRef={menuRef as any}
-      targetLineRef={targetLineRef as any}
+      menuRef={menuRef}
+      targetLineRef={targetLineRef}
       menuComponent={
         isSupportDrag ? (
           <div
@@ -71,11 +73,11 @@ export default function DraggableBlockPlugin({
       targetLineComponent={
         <div
           ref={targetLineRef}
-          className="pointer-events-none absolute top-0 left-[-21px] opacity-0 will-change-transform"
+          className="pointer-events-none absolute top-0 -left-5.25 opacity-0 will-change-transform"
           data-testid="draggable-target-line"
           // style={{ width: 500 }} // width not worked here
         >
-          <div className="absolute top-0 -right-10 left-0 h-[2px] bg-text-accent-secondary"></div>
+          <div className="absolute top-0 -right-10 left-0 h-0.5 bg-text-accent-secondary"></div>
         </div>
       }
       isOnMenu={isOnMenu}

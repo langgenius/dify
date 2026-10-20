@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 from pytest_mock import MockerFixture
 
-from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
+from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginStringResultResponse
 from core.plugin.impl.exc import PluginInvokeError, PluginLLMPollingUnsupportedError
 from core.plugin.impl.model import PluginModelClient
 from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMPollingStatus, LLMResult, LLMUsage
@@ -27,6 +27,19 @@ class TestPluginModelClient:
             "plugin/tenant-1/management/models",
         )
         assert request_mock.call_args.kwargs["params"] == {"page": 1, "page_size": 256}
+
+    def test_fetch_model_provider_bindings(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", return_value=["binding-a"])
+
+        result = client.fetch_model_provider_bindings("tenant-1")
+
+        assert result == ["binding-a"]
+        assert request_mock.call_args.args[:2] == (
+            "GET",
+            "plugin/tenant-1/management/models/bindings",
+        )
+        assert "params" not in request_mock.call_args.kwargs
 
     def test_get_model_schema(self, mocker: MockerFixture):
         client = PluginModelClient()
@@ -498,7 +511,12 @@ class TestPluginModelClient:
         mocker.patch.object(
             client,
             "_request_with_plugin_daemon_response_stream",
-            return_value=iter([SimpleNamespace(result="68656c6c6f"), SimpleNamespace(result="21")]),
+            return_value=iter(
+                [
+                    SimpleNamespace(result="68656c6c6f", mime_type="audio/wav"),
+                    SimpleNamespace(result="21", mime_type="audio/wav"),
+                ]
+            ),
         )
 
         result = list(
@@ -515,6 +533,7 @@ class TestPluginModelClient:
         )
 
         assert result == [b"hello", b"!"]
+        assert [chunk.mime_type for chunk in result] == ["audio/wav", "audio/wav"]
 
     def test_invoke_tts_wraps_plugin_daemon_inner_error(self, mocker: MockerFixture):
         client = PluginModelClient()
@@ -568,7 +587,7 @@ class TestPluginModelClient:
         stream_mock = mocker.patch.object(
             client,
             "_request_with_plugin_daemon_response_stream",
-            return_value=iter([SimpleNamespace(result="transcribed text")]),
+            return_value=iter([PluginStringResultResponse(result="transcribed text")]),
         )
 
         result = client.invoke_speech_to_text(

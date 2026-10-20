@@ -1,8 +1,8 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { agentBuilderFixedInputs } from '../../agent-v2/support/agent-builder-resources'
-import { getAgentBuilderTestMaterialPath } from '../../agent-v2/support/test-materials'
+import { agentBuilderFixedInputs } from '../../agent-v2/support/agent-builder-resources.ts'
+import { getAgentBuilderTestMaterialPath } from '../../agent-v2/support/test-materials.ts'
 import {
   expectAgentEnvVariableAbsent,
   expectAgentEnvVariableHidden,
@@ -14,7 +14,7 @@ import {
   getCurrentAgentId,
   getEnvVariableKey,
   openAgentAdvancedSettings,
-} from './configure-helpers'
+} from './configure-helpers.ts'
 
 When(
   'I add the plain Agent v2 environment variable from Advanced Settings',
@@ -27,7 +27,6 @@ When(
     await advancedSettings
       .getByRole('textbox', { name: 'Value' })
       .fill(agentBuilderFixedInputs.envPlainValue)
-    await expect(advancedSettings.getByText('Plain', { exact: true })).toBeVisible()
   },
 )
 
@@ -61,7 +60,6 @@ When(
     await savedVariableRow
       .getByRole('textbox', { name: 'Value' })
       .fill(agentBuilderFixedInputs.envModeValue)
-    await expect(advancedSettings.getByText('Plain', { exact: true })).toHaveCount(2)
   },
 )
 
@@ -249,7 +247,6 @@ Then(
       agentBuilderFixedInputs.envModeKey,
       agentBuilderFixedInputs.envModeValue,
     )
-    await expect(advancedSettings.getByText('Plain', { exact: true })).toHaveCount(2)
   },
 )
 
@@ -264,7 +261,6 @@ Then(
       agentBuilderFixedInputs.envModeValue,
     )
     await expectAgentEnvVariableAbsent(advancedSettings, agentBuilderFixedInputs.envPlainKey)
-    await expect(advancedSettings.getByText('Plain', { exact: true })).toHaveCount(1)
   },
 )
 
@@ -284,8 +280,7 @@ Then(
     await expect(variableRow.getByRole('textbox', { name: 'Value' })).toHaveValue(
       agentBuilderFixedInputs.envPlainValue,
     )
-    await expect(variableRow.getByText('Plain', { exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: /^Build$/i })).toBeVisible()
+    await expect(page.getByRole('radio', { name: /^Build$/i })).toBeVisible()
   },
 )
 
@@ -323,6 +318,6 @@ Then(
       agentBuilderFixedInputs.envAfterInvalidImportKey,
       agentBuilderFixedInputs.envAfterInvalidImportValue,
     )
-    await expect(page.getByRole('button', { name: /^Build$/i })).toBeVisible()
+    await expect(page.getByRole('radio', { name: /^Build$/i })).toBeVisible()
   },
 )

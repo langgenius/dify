@@ -27,13 +27,12 @@ class TestSystemEncrypter:
         expected_key = hashlib.sha256(secret_key.encode()).digest()
         assert encrypter.key == expected_key
 
-    def test_init_with_none_secret_key(self):
+    def test_init_with_none_secret_key(self, config_overrides):
         """Test initialization with None secret key falls back to config"""
-        with patch("core.tools.utils.system_encryption.dify_config") as mock_config:
-            mock_config.SECRET_KEY = "config_secret"
-            encrypter = SystemEncrypter(secret_key=None)
-            expected_key = hashlib.sha256(b"config_secret").digest()
-            assert encrypter.key == expected_key
+        config_overrides(SECRET_KEY="config_secret")
+        encrypter = SystemEncrypter(secret_key=None)
+        expected_key = hashlib.sha256(b"config_secret").digest()
+        assert encrypter.key == expected_key
 
     def test_init_with_empty_secret_key(self):
         """Test initialization with empty secret key"""
@@ -41,13 +40,12 @@ class TestSystemEncrypter:
         expected_key = hashlib.sha256(b"").digest()
         assert encrypter.key == expected_key
 
-    def test_init_without_secret_key_uses_config(self):
+    def test_init_without_secret_key_uses_config(self, config_overrides):
         """Test initialization without secret key uses config"""
-        with patch("core.tools.utils.system_encryption.dify_config") as mock_config:
-            mock_config.SECRET_KEY = "default_secret"
-            encrypter = SystemEncrypter()
-            expected_key = hashlib.sha256(b"default_secret").digest()
-            assert encrypter.key == expected_key
+        config_overrides(SECRET_KEY="default_secret")
+        encrypter = SystemEncrypter()
+        expected_key = hashlib.sha256(b"default_secret").digest()
+        assert encrypter.key == expected_key
 
     def test_encrypt_params_basic(self):
         """Test basic parameters encryption"""
@@ -115,10 +113,12 @@ class TestSystemEncrypter:
         """Test encryption with invalid input types"""
         encrypter = SystemEncrypter("test_secret")
 
-        with pytest.raises(Exception):  # noqa: B017
+        with pytest.raises(Exception, match="Encryption failed: 'NoneType' object is not iterable"):
             encrypter.encrypt_params(None)
 
-        with pytest.raises(Exception):  # noqa: B017
+        with pytest.raises(
+            Exception, match=("Encryption failed: dictionary update sequence element \\#0 has length 1; 2 is required")
+        ):
             encrypter.encrypt_params("not_a_dict")
 
     def test_decrypt_params_basic(self):
@@ -197,7 +197,7 @@ class TestSystemEncrypter:
         """Test decryption with empty string"""
         encrypter = SystemEncrypter("test_secret")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="encrypted_data cannot be empty") as exc_info:
             encrypter.decrypt_params("")
 
         assert "encrypted_data cannot be empty" in str(exc_info.value)
@@ -206,12 +206,12 @@ class TestSystemEncrypter:
         """Test decryption with non-string input"""
         encrypter = SystemEncrypter("test_secret")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="encrypted_data must be a string") as exc_info:
             encrypter.decrypt_params(123)
 
         assert "encrypted_data must be a string" in str(exc_info.value)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="encrypted_data must be a string") as exc_info:
             encrypter.decrypt_params(None)
 
         assert "encrypted_data must be a string" in str(exc_info.value)
@@ -368,25 +368,23 @@ class TestFactoryFunctions:
         expected_key = hashlib.sha256(secret_key.encode()).digest()
         assert encrypter.key == expected_key
 
-    def test_create_system_encrypter_without_secret(self):
+    def test_create_system_encrypter_without_secret(self, config_overrides):
         """Test factory function without secret key"""
-        with patch("core.tools.utils.system_encryption.dify_config") as mock_config:
-            mock_config.SECRET_KEY = "config_secret"
-            encrypter = create_system_encrypter()
+        config_overrides(SECRET_KEY="config_secret")
+        encrypter = create_system_encrypter()
 
-            assert isinstance(encrypter, SystemEncrypter)
-            expected_key = hashlib.sha256(b"config_secret").digest()
-            assert encrypter.key == expected_key
+        assert isinstance(encrypter, SystemEncrypter)
+        expected_key = hashlib.sha256(b"config_secret").digest()
+        assert encrypter.key == expected_key
 
-    def test_create_system_encrypter_with_none_secret(self):
+    def test_create_system_encrypter_with_none_secret(self, config_overrides):
         """Test factory function with None secret key"""
-        with patch("core.tools.utils.system_encryption.dify_config") as mock_config:
-            mock_config.SECRET_KEY = "config_secret"
-            encrypter = create_system_encrypter(None)
+        config_overrides(SECRET_KEY="config_secret")
+        encrypter = create_system_encrypter(None)
 
-            assert isinstance(encrypter, SystemEncrypter)
-            expected_key = hashlib.sha256(b"config_secret").digest()
-            assert encrypter.key == expected_key
+        assert isinstance(encrypter, SystemEncrypter)
+        expected_key = hashlib.sha256(b"config_secret").digest()
+        assert encrypter.key == expected_key
 
 
 class TestGlobalEncrypterInstance:
@@ -405,19 +403,18 @@ class TestGlobalEncrypterInstance:
         assert encrypter1 is encrypter2
         assert isinstance(encrypter1, SystemEncrypter)
 
-    def test_get_system_encrypter_uses_config(self):
+    def test_get_system_encrypter_uses_config(self, config_overrides):
         """Test that global encrypter uses config"""
         # Clear the global instance first
         import core.tools.utils.system_encryption
 
         core.tools.utils.system_encryption._encrypter = None
 
-        with patch("core.tools.utils.system_encryption.dify_config") as mock_config:
-            mock_config.SECRET_KEY = "global_secret"
-            encrypter = get_system_encrypter()
+        config_overrides(SECRET_KEY="global_secret")
+        encrypter = get_system_encrypter()
 
-            expected_key = hashlib.sha256(b"global_secret").digest()
-            assert encrypter.key == expected_key
+        expected_key = hashlib.sha256(b"global_secret").digest()
+        assert encrypter.key == expected_key
 
 
 class TestConvenienceFunctions:
@@ -460,14 +457,14 @@ class TestConvenienceFunctions:
     def test_convenience_functions_with_errors(self):
         """Test convenience functions with error conditions"""
         # Test encryption with invalid input
-        with pytest.raises(Exception):  # noqa: B017
+        with pytest.raises(Exception, match="Encryption failed: 'NoneType' object is not iterable"):
             encrypt_system_params(None)
 
         # Test decryption with invalid input
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="encrypted_data cannot be empty"):
             decrypt_system_params("")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="encrypted_data must be a string"):
             decrypt_system_params(None)
 
 
@@ -495,12 +492,12 @@ class TestErrorHandling:
         encrypter = SystemEncrypter("test_secret")
 
         # Test empty string error
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="encrypted_data cannot be empty") as exc_info:
             encrypter.decrypt_params("")
         assert "encrypted_data cannot be empty" in str(exc_info.value)
 
         # Test non-string error
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="encrypted_data must be a string") as exc_info:
             encrypter.decrypt_params(123)
         assert "encrypted_data must be a string" in str(exc_info.value)
 
@@ -570,7 +567,7 @@ class TestEdgeCases:
         params = {
             "string": "test_string",
             "integer": 42,
-            "float": 3.14159,
+            "float": float("3.14159"),
             "boolean_true": True,
             "boolean_false": False,
             "null_value": None,
@@ -613,7 +610,7 @@ class TestPerformance:
         params = {"client_id": "test_id", "client_secret": "test_secret"}
 
         # Test multiple rounds of encryption/decryption
-        for i in range(100):
+        for _i in range(100):
             encrypted = encrypter.encrypt_params(params)
             decrypted = encrypter.decrypt_params(encrypted)
             assert decrypted == params

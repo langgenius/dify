@@ -1,468 +1,252 @@
-import { act, fireEvent, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import type { ComponentProps } from 'react'
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { createDeferred } from '@/test/deferred'
+import { selectToolsWithProvider } from '../../utils/query-select'
 import MCPList from '../index'
 
-type MockProvider = {
-  id: string
-  name: string | Record<string, string>
-  type: string
+const api = vi.hoisted(() => ({
+  list: vi.fn<typeof import('@/service/console').consoleClient.workspaces.current.tools.mcp.get>(),
+  update:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.mcp.put
+    >(),
+  remove:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.mcp.delete
+    >(),
+  authorize:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.mcp.auth.post
+    >(),
+  updateTools:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.mcp.update.byProviderId.get
+    >(),
+  tools:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.mcp.tools.byProviderId.get
+    >(),
+}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.mcp.get': api.list,
+      'workspaces.current.toolProvider.mcp.put': api.update,
+      'workspaces.current.toolProvider.mcp.delete': api.remove,
+      'workspaces.current.toolProvider.mcp.auth.post': api.authorize,
+      'workspaces.current.toolProvider.mcp.update.byProviderId.get': api.updateTools,
+      'workspaces.current.toolProvider.mcp.tools.byProviderId.get': api.tools,
+    }),
+  }
+})
+const provider = createToolProviderFixture({
+  id: 'mcp-database-id',
+  name: 'Weather MCP',
+  type: 'mcp',
+  label: { en_US: 'Weather MCP' },
+  server_identifier: 'weather',
+  server_url: 'https://weather.example.com',
+  is_team_authorization: false,
+})
+const connectedProvider = createToolProviderFixture({ ...provider, is_team_authorization: true })
+
+const renderList = (
+  props: Partial<ComponentProps<typeof MCPList>> = {},
+  permissions = ['mcp.manage'],
+  seed = true,
+) => {
+  const queryClient = createConsoleQueryClient()
+  if (seed)
+    queryClient.setQueryData(consoleQuery.workspaces.current.tools.mcp.get.queryKey(), [provider])
+  return renderWithConsoleQuery(<MCPList searchText="" {...props} />, {
+    queryClient,
+    workspacePermissionKeys: permissions,
+  })
 }
 
-type MockDetail = MockProvider | undefined
-
-// Mock dependencies
-const mockRefetch = vi.fn()
-const mockUseAllToolProviders = vi.fn()
-let mockProviders: MockProvider[] = []
-let mockIsLoadingToolProviders = false
-const mockConsoleState = vi.hoisted(() => ({
-  workspacePermissionKeys: ['mcp.manage'] as string[],
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useAllToolProviders: (enabled?: boolean) => {
-    mockUseAllToolProviders(enabled)
-    return {
-      data: mockProviders,
-      isLoading: mockIsLoadingToolProviders,
-      refetch: mockRefetch,
-    }
-  },
-}))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
-  }))
+beforeEach(() => {
+  api.list.mockReset().mockResolvedValue([provider])
+  api.update.mockReset().mockResolvedValue({ result: 'success' })
+  api.remove.mockReset().mockResolvedValue({ result: 'success' })
+  api.authorize.mockReset().mockResolvedValue({ result: 'success' })
+  api.updateTools.mockReset().mockResolvedValue(connectedProvider)
+  api.tools.mockReset().mockResolvedValue(connectedProvider)
+})
+afterEach(async () => {
+  await act(async () => cleanup())
 })
 
-vi.mock('@/app/components/tools/provider/tool-card-skeleton', () => ({
-  default: ({ variant }: { variant?: string }) => (
-    <>
-      {Array.from({ length: 6 }, (_, index) => (
-        <div key={index} data-testid="mcp-card-skeleton" data-variant={variant}>
-          Loading MCP
-        </div>
-      ))}
-    </>
-  ),
-}))
+it('loads the fallback catalog for read-only users and prevents management and authorization', async () => {
+  const user = userEvent.setup()
+  const response = createDeferred<Awaited<ReturnType<typeof api.list>>>()
+  api.list.mockReturnValue(response.promise)
+  renderList({}, [], false)
+  expect(screen.queryByRole('button', { name: /Weather MCP/ })).not.toBeInTheDocument()
+  await act(async () => response.resolve([provider]))
+  await user.click(await screen.findByRole('button', { name: /Weather MCP/ }))
+  const detail = await screen.findByRole('dialog')
+  expect(within(detail).getByText('Weather MCP')).toBeInTheDocument()
+  expect(within(detail).getByRole('button', { name: 'tools.mcp.authorize' })).toBeDisabled()
+  expect(
+    within(detail).queryByRole('button', { name: 'common.operation.more' }),
+  ).not.toBeInTheDocument()
+  await user.click(within(detail).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(
+    screen.queryByRole('button', { name: 'tools.mcp.create.cardTitle' }),
+  ).not.toBeInTheDocument()
+  expect(api.authorize).not.toHaveBeenCalled()
+})
 
-// Mock child components
-vi.mock('../create-card', () => ({
-  default: ({
-    handleCreate,
-  }: {
-    handleCreate: (provider: { id: string; name: string }) => void
-  }) => (
-    <button
-      data-testid="create-card"
-      type="button"
-      onClick={() => handleCreate({ id: 'new-id', name: 'New Provider' })}
-    >
-      Create Card
-    </button>
-  ),
-}))
+it('filters the parent catalog without requesting a fallback list', async () => {
+  const providers = selectToolsWithProvider([
+    provider,
+    createToolProviderFixture({ ...provider, id: 'second', name: 'Calendar MCP' }),
+  ])
+  const { rerender } = renderList({ providers, searchText: 'WEATHER', showCreateCard: false })
+  expect(screen.getByRole('button', { name: /Weather MCP/ })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Calendar MCP/ })).not.toBeInTheDocument()
+  rerender(<MCPList providers={providers} searchText="calendar" showCreateCard={false} />)
+  expect(screen.getByRole('button', { name: /Calendar MCP/ })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Weather MCP/ })).not.toBeInTheDocument()
+  await act(async () => {})
+  expect(api.list).not.toHaveBeenCalled()
+})
 
-vi.mock('../provider-card', () => ({
-  default: ({
-    data,
-    handleSelect,
-    onUpdate,
-    onDeleted,
-  }: {
-    data: MockProvider
-    handleSelect: (id: string) => void
-    onUpdate: (id: string) => void
-    onDeleted: () => void
-  }) => {
-    const displayName = typeof data.name === 'string' ? data.name : Object.values(data.name)[0]
-    return (
-      <div data-testid={`provider-card-${data.id}`}>
-        <button type="button" onClick={() => handleSelect(data.id)}>
-          {displayName}
-        </button>
-        <button data-testid={`update-btn-${data.id}`} onClick={() => onUpdate(data.id)}>
-          Update
-        </button>
-        <button data-testid={`delete-btn-${data.id}`} onClick={onDeleted}>
-          Delete
-        </button>
-      </div>
-    )
+it('opens editing from a card without selecting the details', async () => {
+  const user = userEvent.setup()
+  renderList()
+  await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'tools.mcp.operation.edit' }))
+  const edit = await screen.findByRole('dialog', { name: 'tools.mcp.modal.editTitle' })
+  expect(within(edit).getByRole('textbox', { name: 'tools.mcp.modal.name' })).toHaveValue(
+    'Weather MCP',
+  )
+  await user.click(within(edit).getByRole('button', { name: 'tools.mcp.modal.cancel' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(api.update).not.toHaveBeenCalled()
+})
+
+it('restores the selected details after cancelling an edit and discards the unsaved name', async () => {
+  const user = userEvent.setup()
+  renderList()
+  await user.click(screen.getByRole('button', { name: /Weather MCP/ }))
+  let detail = await screen.findByRole('dialog')
+  await user.click(within(detail).getByRole('button', { name: 'common.operation.more' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'tools.mcp.operation.edit' }))
+  let edit = await screen.findByRole('dialog', { name: 'tools.mcp.modal.editTitle' })
+  await user.clear(within(edit).getByRole('textbox', { name: 'tools.mcp.modal.name' }))
+  await user.type(within(edit).getByRole('textbox', { name: 'tools.mcp.modal.name' }), 'Unsaved')
+  await user.click(within(edit).getByRole('button', { name: 'tools.mcp.modal.cancel' }))
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', { name: 'tools.mcp.modal.editTitle' }),
+    ).not.toBeInTheDocument(),
+  )
+  detail = await screen.findByRole('dialog')
+  expect(within(detail).getByText('Weather MCP')).toBeInTheDocument()
+  await user.click(within(detail).getByRole('button', { name: 'common.operation.more' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'tools.mcp.operation.edit' }))
+  edit = await screen.findByRole('dialog', { name: 'tools.mcp.modal.editTitle' })
+  expect(within(edit).getByRole('textbox', { name: 'tools.mcp.modal.name' })).toHaveValue(
+    'Weather MCP',
+  )
+  expect(api.update).not.toHaveBeenCalled()
+})
+
+it('saves the edited provider, refreshes its details and authorizes it once', async () => {
+  const user = userEvent.setup()
+  const updated = createToolProviderFixture({ ...provider, name: 'Updated MCP' })
+  const connected = createToolProviderFixture({ ...updated, is_team_authorization: true })
+  api.list.mockResolvedValue([updated])
+  api.updateTools.mockImplementation(async () => {
+    api.list.mockResolvedValue([connected])
+    return connected
+  })
+  api.tools.mockResolvedValue(connected)
+  renderList()
+  await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'tools.mcp.operation.edit' }))
+  const edit = await screen.findByRole('dialog', { name: 'tools.mcp.modal.editTitle' })
+  await user.clear(within(edit).getByRole('textbox', { name: 'tools.mcp.modal.name' }))
+  await user.type(
+    within(edit).getByRole('textbox', { name: 'tools.mcp.modal.name' }),
+    'Updated MCP',
+  )
+  await user.click(within(edit).getByRole('button', { name: 'tools.mcp.modal.save' }))
+  await waitFor(() =>
+    expect(api.update).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        provider_id: provider.id,
+        name: 'Updated MCP',
+        server_url: '[__HIDDEN__]',
+        server_identifier: 'weather',
+      }),
+    }),
+  )
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', { name: 'tools.mcp.modal.editTitle' }),
+    ).not.toBeInTheDocument(),
+  )
+  const detail = await screen.findByRole('dialog')
+  expect(within(detail).getByText('Updated MCP')).toBeInTheDocument()
+  await waitFor(() =>
+    expect(api.authorize).toHaveBeenCalledExactlyOnceWith({ body: { provider_id: provider.id } }),
+  )
+  await waitFor(() =>
+    expect(api.updateTools).toHaveBeenCalledWith({ params: { provider_id: provider.id } }),
+  )
+  expect(
+    await within(detail).findByRole('button', { name: 'tools.auth.authorized' }),
+  ).toBeInTheDocument()
+  await user.click(within(detail).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await user.click(screen.getByRole('button', { name: /Updated MCP/ }))
+  expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  expect(api.authorize).toHaveBeenCalledTimes(1)
+})
+
+it.each(['cancel', 'escape'] as const)(
+  'restores selected details when deletion is dismissed with %s',
+  async (dismiss) => {
+    const user = userEvent.setup()
+    renderList()
+    await user.click(screen.getByRole('button', { name: /Weather MCP/ }))
+    const detail = await screen.findByRole('dialog')
+    await user.click(within(detail).getByRole('button', { name: 'common.operation.more' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'tools.mcp.operation.remove' }))
+    const confirm = await screen.findByRole('alertdialog', { name: 'tools.mcp.delete' })
+    if (dismiss === 'cancel')
+      await user.click(within(confirm).getByRole('button', { name: 'common.operation.cancel' }))
+    else await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(within(await screen.findByRole('dialog')).getByText('Weather MCP')).toBeInTheDocument()
+    expect(api.remove).not.toHaveBeenCalled()
   },
-}))
-
-vi.mock('../detail/provider-detail', () => ({
-  default: ({
-    detail,
-    onHide,
-    onUpdate,
-    isTriggerAuthorize,
-    onFirstCreate,
-  }: {
-    detail: MockDetail
-    onHide: () => void
-    onUpdate: () => void
-    isTriggerAuthorize: boolean
-    onFirstCreate: () => void
-  }) => {
-    const displayName = detail?.name
-      ? typeof detail.name === 'string'
-        ? detail.name
-        : Object.values(detail.name)[0]
-      : ''
-    return (
-      <div data-testid="detail-panel">
-        <div data-testid="detail-name">{displayName}</div>
-        <div data-testid="trigger-authorize">{isTriggerAuthorize ? 'true' : 'false'}</div>
-        <button data-testid="close-detail" onClick={onHide}>
-          Close
-        </button>
-        <button data-testid="update-detail" onClick={onUpdate}>
-          Update List
-        </button>
-        <button data-testid="first-create-done" onClick={onFirstCreate}>
-          First Create Done
-        </button>
-      </div>
-    )
-  },
-}))
-
-describe('MCPList', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.useFakeTimers()
-    mockProviders = []
-    mockIsLoadingToolProviders = false
-    mockConsoleState.workspacePermissionKeys = ['mcp.manage']
-    mockRefetch.mockResolvedValue(undefined)
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  describe('Rendering', () => {
-    it('should render create card', () => {
-      render(<MCPList searchText="" />)
-
-      expect(screen.getByTestId('create-card')).toBeInTheDocument()
-    })
-
-    it('should render providers read-only when user lacks mcp.manage', () => {
-      mockConsoleState.workspacePermissionKeys = []
-      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
-
-      render(<MCPList searchText="" />)
-
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith(undefined)
-      expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
-      expect(screen.queryByTestId('create-card')).not.toBeInTheDocument()
-    })
-
-    it('should hide create card when parent moves creation into the toolbar', () => {
-      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
-
-      render(<MCPList searchText="" showCreateCard={false} />)
-
-      expect(screen.queryByTestId('create-card')).not.toBeInTheDocument()
-      expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
-    })
-
-    it('should render card skeletons while tool providers are loading', () => {
-      mockIsLoadingToolProviders = true
-      render(<MCPList searchText="" />)
-
-      expect(screen.getAllByTestId('mcp-card-skeleton')).toHaveLength(6)
-      expect(screen.getAllByTestId('mcp-card-skeleton')[0]).toHaveAttribute('data-variant', 'mcp')
-      expect(screen.queryByTestId('create-card')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('provider-card-1')).not.toBeInTheDocument()
-    })
-
-    it('should not render card skeletons when the loaded list is empty', () => {
-      render(<MCPList searchText="" />)
-
-      expect(screen.queryByTestId('mcp-card-skeleton')).not.toBeInTheDocument()
-    })
-
-    it('should not render skeleton cards when providers exist', () => {
-      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
-      render(<MCPList searchText="" />)
-
-      expect(screen.queryByTestId('mcp-card-skeleton')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('With Providers', () => {
-    beforeEach(() => {
-      mockProviders = [
-        { id: '1', name: 'Provider 1', type: 'mcp' },
-        { id: '2', name: 'Provider 2', type: 'mcp' },
-        { id: '3', name: 'API Tool', type: 'api' },
-      ]
-    })
-
-    it('should render provider cards for MCP type providers', () => {
-      render(<MCPList searchText="" />)
-
-      expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
-      expect(screen.getByTestId('provider-card-2')).toBeInTheDocument()
-      // API type should not be rendered (only MCP type)
-      expect(screen.queryByTestId('provider-card-3')).not.toBeInTheDocument()
-    })
-
-    it('should show detail panel when provider is selected', async () => {
-      render(<MCPList searchText="" />)
-
-      const providerName = screen.getByText('Provider 1')
-
-      await act(async () => {
-        fireEvent.click(providerName)
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
-      expect(screen.getByTestId('detail-name')).toHaveTextContent('Provider 1')
-    })
-
-    it('should hide detail panel when close is clicked', async () => {
-      render(<MCPList searchText="" />)
-
-      const providerName = screen.getByText('Provider 1')
-
-      await act(async () => {
-        fireEvent.click(providerName)
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
-
-      const closeBtn = screen.getByTestId('close-detail')
-
-      await act(async () => {
-        fireEvent.click(closeBtn)
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(screen.queryByTestId('detail-panel')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Search Filtering', () => {
-    beforeEach(() => {
-      mockProviders = [
-        { id: '1', name: { 'en-US': 'Search Tool' }, type: 'mcp' },
-        { id: '2', name: { 'en-US': 'Another Provider' }, type: 'mcp' },
-        { id: '3', name: { 'en-US': 'Search API Tool' }, type: 'api' },
-      ]
-    })
-
-    it('should filter providers based on search text', () => {
-      render(<MCPList searchText="search" />)
-
-      expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
-      expect(screen.queryByTestId('provider-card-2')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('provider-card-3')).not.toBeInTheDocument()
-    })
-
-    it('should filter case-insensitively', () => {
-      render(<MCPList searchText="SEARCH" />)
-
-      expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
-    })
-
-    it('should show all MCP type providers when search is empty', () => {
-      mockProviders = [
-        { id: '1', name: 'Provider 1', type: 'mcp' },
-        { id: '2', name: 'Provider 2', type: 'mcp' },
-      ]
-      render(<MCPList searchText="" />)
-
-      expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
-      expect(screen.getByTestId('provider-card-2')).toBeInTheDocument()
-    })
-  })
-
-  describe('Create Provider', () => {
-    beforeEach(() => {
-      mockProviders = []
-    })
-
-    it('should call refetch and set provider after create', async () => {
-      render(<MCPList searchText="" />)
-
-      const createCard = screen.getByTestId('create-card')
-
-      await act(async () => {
-        fireEvent.click(createCard)
-        vi.advanceTimersByTime(10)
-        await Promise.resolve()
-      })
-
-      expect(mockRefetch).toHaveBeenCalled()
-    })
-
-    it('should show detail panel with trigger authorize after create', async () => {
-      mockProviders = [{ id: 'new-id', name: 'New Provider', type: 'mcp' }]
-
-      render(<MCPList searchText="" />)
-
-      const createCard = screen.getByTestId('create-card')
-
-      await act(async () => {
-        fireEvent.click(createCard)
-        vi.advanceTimersByTime(10)
-        await Promise.resolve()
-      })
-
-      expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
-      expect(screen.getByTestId('trigger-authorize')).toHaveTextContent('true')
-    })
-
-    it('should reset trigger authorize when onFirstCreate is called', async () => {
-      mockProviders = [{ id: 'new-id', name: 'New Provider', type: 'mcp' }]
-
-      render(<MCPList searchText="" />)
-
-      const createCard = screen.getByTestId('create-card')
-
-      await act(async () => {
-        fireEvent.click(createCard)
-        vi.advanceTimersByTime(10)
-        await Promise.resolve()
-      })
-
-      expect(screen.getByTestId('trigger-authorize')).toHaveTextContent('true')
-
-      const firstCreateDone = screen.getByTestId('first-create-done')
-
-      await act(async () => {
-        fireEvent.click(firstCreateDone)
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(screen.getByTestId('trigger-authorize')).toHaveTextContent('false')
-    })
-
-    it('should refetch and open detail when provider is created from the toolbar', async () => {
-      mockProviders = [{ id: 'toolbar-id', name: 'Toolbar Provider', type: 'mcp' }]
-      const onCreatedProviderHandled = vi.fn()
-
-      await act(async () => {
-        render(
-          <MCPList
-            searchText=""
-            createdProviderId="toolbar-id"
-            showCreateCard={false}
-            onCreatedProviderHandled={onCreatedProviderHandled}
-          />,
-        )
-        await Promise.resolve()
-      })
-
-      expect(mockRefetch).toHaveBeenCalled()
-      expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
-      expect(screen.getByTestId('detail-name')).toHaveTextContent('Toolbar Provider')
-      expect(screen.getByTestId('trigger-authorize')).toHaveTextContent('true')
-      expect(onCreatedProviderHandled).toHaveBeenCalled()
-    })
-  })
-
-  describe('Update Provider', () => {
-    beforeEach(() => {
-      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
-    })
-
-    it('should call refetch and set provider after update', async () => {
-      render(<MCPList searchText="" />)
-
-      const updateBtn = screen.getByTestId('update-btn-1')
-
-      await act(async () => {
-        fireEvent.click(updateBtn)
-        vi.advanceTimersByTime(10)
-        await Promise.resolve()
-      })
-
-      expect(mockRefetch).toHaveBeenCalled()
-    })
-
-    it('should show detail panel with trigger authorize after update', async () => {
-      render(<MCPList searchText="" />)
-
-      const updateBtn = screen.getByTestId('update-btn-1')
-
-      await act(async () => {
-        fireEvent.click(updateBtn)
-        vi.advanceTimersByTime(10)
-        await Promise.resolve()
-      })
-
-      expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
-      expect(screen.getByTestId('trigger-authorize')).toHaveTextContent('true')
-    })
-  })
-
-  describe('Delete Provider', () => {
-    beforeEach(() => {
-      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
-    })
-
-    it('should call refetch after delete', async () => {
-      render(<MCPList searchText="" />)
-
-      const deleteBtn = screen.getByTestId('delete-btn-1')
-
-      await act(async () => {
-        fireEvent.click(deleteBtn)
-        vi.advanceTimersByTime(10)
-      })
-
-      expect(mockRefetch).toHaveBeenCalled()
-    })
-  })
-
-  describe('Grid Layout', () => {
-    it('should keep MCP cards to three columns at desktop width and above', () => {
-      render(<MCPList searchText="" />)
-
-      const grid = document.querySelector('.grid')
-      expect(grid).toHaveClass('grid-cols-1', 'sm:grid-cols-2', 'md:grid-cols-3')
-      expect(grid).not.toHaveClass('xl:grid-cols-4')
-      expect(grid).not.toHaveClass('2xl:grid-cols-5')
-      expect(grid).not.toHaveClass('2k:grid-cols-6')
-    })
-
-    it('should have overflow hidden while loading', () => {
-      mockProviders = []
-      mockIsLoadingToolProviders = true
-      render(<MCPList searchText="" />)
-
-      const grid = document.querySelector('.grid')
-      expect(grid).toHaveClass('overflow-hidden')
-    })
-
-    it('should not have overflow hidden when loading is complete', () => {
-      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
-      render(<MCPList searchText="" />)
-
-      const grid = document.querySelector('.grid')
-      expect(grid).not.toHaveClass('overflow-hidden')
-    })
-
-    it('should use compact content inset when requested by parent layout', () => {
-      render(<MCPList searchText="" contentInset="compact" />)
-
-      const grid = document.querySelector('.grid')
-      expect(grid).toHaveClass('px-6')
-      expect(grid).toHaveClass('max-w-[1600px]')
-      expect(grid).not.toHaveClass('px-12')
-    })
-  })
+)
+
+it('keeps a failed deletion available for retry and refreshes after success', async () => {
+  const user = userEvent.setup()
+  api.remove.mockResolvedValueOnce({ result: 'error' })
+  api.list.mockResolvedValue([])
+  renderList()
+  await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'tools.mcp.operation.remove' }))
+  const confirm = await screen.findByRole('alertdialog', { name: 'tools.mcp.delete' })
+  await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() => expect(api.remove).toHaveBeenCalledTimes(1))
+  expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+  expect(api.list).not.toHaveBeenCalled()
+  await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() => expect(api.remove).toHaveBeenCalledTimes(2))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(screen.queryByRole('button', { name: /Weather MCP/ })).not.toBeInTheDocument()
 })

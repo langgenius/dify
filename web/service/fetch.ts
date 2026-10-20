@@ -1,8 +1,8 @@
 import type { AfterResponseHook, BeforeRequestHook, Hooks } from 'ky'
 import type { IOtherOptions } from './base'
-import { toast } from '@langgenius/dify-ui/toast'
+import type { RequestGuard } from './request-guard'
 import Cookies from 'js-cookie'
-import ky, { HTTPError } from 'ky'
+import ky from 'ky'
 import {
   API_PREFIX,
   APP_VERSION,
@@ -14,6 +14,11 @@ import {
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
+import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
+import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
+import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
+import { captureRequestGuard } from './request-guard'
+import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
@@ -29,8 +34,8 @@ export const ContentType = {
 }
 
 export type FetchOptionType = Omit<RequestInit, 'body'> & {
-  params?: Record<string, any>
-  body?: BodyInit | Record<string, any> | null
+  params?: Record<string, string | number | boolean | undefined>
+  body?: BodyInit | Record<string, unknown> | null
 }
 
 const afterResponse204: AfterResponseHook = async ({ response }) => {
@@ -42,65 +47,34 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
   }
 }
 
-export type ResponseError = {
-  code: string
-  message: string
-  error?: string
-  status: number
-}
+const afterResponseErrorCode = (
+  otherOptions: IOtherOptions,
+  requestGuard: RequestGuard | undefined,
+): AfterResponseHook => {
+  return async ({ request, response }) => {
+    if (isHttpErrorStatus(response.status)) {
+      const error = await httpErrorFromResponse(response)
+      const errorData = error.data
+      const handled = requestGuard?.handleError(response.status, errorData, error)
+      if (handled || requestGuard?.isActive() === false) throw error
+      const shouldNotifyError =
+        response.status >= 400 &&
+        response.status !== 401 &&
+        errorData &&
+        !otherOptions.silent &&
+        !shouldSuppressAppDeletionErrorToast(request.url, response.status)
 
-const createResponseFromHTTPError = (error: HTTPError): Response => {
-  const headers = new Headers(error.response.headers)
-  headers.delete('content-length')
-
-  let body: BodyInit | null = null
-  if (typeof error.data === 'string') body = error.data
-  else if (error.data !== undefined) body = JSON.stringify(error.data)
-
-  if (body !== null && !headers.has('content-type')) headers.set('content-type', ContentType.json)
-
-  return new Response(body, {
-    status: error.response.status,
-    statusText: error.response.statusText,
-    headers,
-  })
-}
-
-const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
-  return async ({ response }) => {
-    if (!/^[23]\d{2}$/.test(String(response.status))) {
-      let errorData: ResponseError | null = null
-      try {
-        const data: unknown = await response.clone().json()
-        errorData = data as ResponseError
-      } catch {}
-      const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
-
-      const errorMessage = errorData?.message || errorData?.error
-      if (shouldNotifyError && errorMessage) toast.error(errorMessage)
+      const errorMessage = [errorData?.message, errorData?.error].find(
+        (value): value is string => typeof value === 'string' && !!value.trim(),
+      )
+      if (shouldNotifyError && errorMessage) notifyRequestError(request, errorMessage)
 
       if (response.status === 403 && errorData?.code === 'already_setup')
         globalThis.location.href = `${globalThis.location.origin}/signin`
+      throw error
+    } else {
+      clearRequestErrorToasts(request)
     }
-  }
-}
-
-const SHARE_ROUTE_DENY_LIST = new Set(['webapp-signin', 'check-code', 'login'])
-
-const resolveShareCode = () => {
-  const pathnameSegments = globalThis.location.pathname.split('/').filter(Boolean)
-  const lastSegment = pathnameSegments.at(-1) || ''
-  if (lastSegment && !SHARE_ROUTE_DENY_LIST.has(lastSegment)) return lastSegment
-
-  const redirectParam = new URLSearchParams(globalThis.location.search).get('redirect_url')
-  if (!redirectParam) return ''
-  try {
-    const redirectUrl = new URL(decodeURIComponent(redirectParam), globalThis.location.origin)
-    const redirectSegments = redirectUrl.pathname.split('/').filter(Boolean)
-    const redirectSegment = redirectSegments.at(-1) || ''
-    return SHARE_ROUTE_DENY_LIST.has(redirectSegment) ? '' : redirectSegment
-  } catch {
-    return ''
   }
 }
 
@@ -110,10 +84,10 @@ const beforeRequestPublicWithCode: BeforeRequestHook = ({ request }) => {
     if (accessToken) request.headers.set('Authorization', `Bearer ${accessToken}`)
     else request.headers.delete('Authorization')
   }
-  const shareCode = resolveShareCode()
-  if (!shareCode) return
-  request.headers.set(WEB_APP_SHARE_CODE_HEADER_NAME, shareCode)
-  request.headers.set(PASSPORT_HEADER_NAME, getWebAppPassport(shareCode))
+  const address = resolveWebAppAddress()
+  if (!address) return
+  request.headers.set(WEB_APP_SHARE_CODE_HEADER_NAME, address.code)
+  request.headers.set(PASSPORT_HEADER_NAME, getWebAppPassport(address))
 }
 
 const baseHooks: Hooks = {
@@ -122,6 +96,7 @@ const baseHooks: Hooks = {
 
 const baseClient = ky.create({
   hooks: baseHooks,
+  throwHttpErrors: isHttpErrorStatus,
   timeout: TIME_OUT,
 })
 
@@ -168,6 +143,8 @@ async function base<T>(
     fetchCompat = false,
     request,
   } = otherOptions
+  const requestGuard = captureRequestGuard(url, isPublicAPI, request?.method || init.method)
+  requestGuard?.beforeRequest()
 
   const headers = new Headers(headersFromProps || {})
 
@@ -182,7 +159,9 @@ async function base<T>(
     options.signal = abortController.signal
   }
 
-  const fetchPathname = base + (url.startsWith('/') ? url : `/${url}`)
+  const fetchPathname = isPublicAPI
+    ? base + getWebAppPublicApiPath(resolveWebAppAddress(), url)
+    : base + (url.startsWith('/') ? url : `/${url}`)
   if (!isMarketplaceAPI) headers.set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
 
   if (deleteContentType) headers.delete('Content-Type')
@@ -197,36 +176,33 @@ async function base<T>(
         ...(baseHooks.beforeRequest || []),
         isPublicAPI && beforeRequestPublicWithCode,
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
-      afterResponse: [...(baseHooks.afterResponse || []), afterResponseErrorCode(otherOptions)],
+      afterResponse: [
+        ...(baseHooks.afterResponse || []),
+        afterResponseErrorCode(otherOptions, requestGuard),
+      ],
     },
   })
 
-  let res: Response
-  try {
-    res = await client(request || fetchPathname, {
-      ...init,
-      headers,
-      credentials: isMarketplaceAPI ? 'omit' : options.credentials || 'include',
-      retry: {
-        methods: [],
-      },
-      ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
-      searchParams: !fetchCompat ? params : undefined,
-      fetch(resource: RequestInfo | URL, options?: RequestInit) {
-        if (resource instanceof Request && options) {
-          const mergedHeaders = new Headers(options.headers || {})
-          resource.headers.forEach((value, key) => {
-            mergedHeaders.append(key, value)
-          })
-          options.headers = mergedHeaders
-        }
-        return globalThis.fetch(resource, options)
-      },
-    })
-  } catch (error) {
-    if (error instanceof HTTPError) throw createResponseFromHTTPError(error)
-    throw error
-  }
+  const res = await client(request || fetchPathname, {
+    ...init,
+    headers,
+    credentials: isMarketplaceAPI ? 'omit' : options.credentials || 'include',
+    retry: {
+      methods: [],
+    },
+    ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
+    searchParams: !fetchCompat ? params : undefined,
+    fetch(resource: RequestInfo | URL, options?: RequestInit) {
+      if (resource instanceof Request && options) {
+        const mergedHeaders = new Headers(options.headers || {})
+        resource.headers.forEach((value, key) => {
+          mergedHeaders.append(key, value)
+        })
+        options.headers = mergedHeaders
+      }
+      return globalThis.fetch(resource, options)
+    },
+  })
 
   if (needAllResponseContent || fetchCompat) return res as T
   const contentType = res.headers.get('content-type')

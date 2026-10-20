@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ImagePreviewer from '../index'
 
 const mockFetch = vi.fn<typeof fetch>()
@@ -32,15 +32,11 @@ const images = [
 
 const successfulResponse = () => new Response(new Blob(['test'], { type: 'image/png' }))
 
-const getPreviewButtons = () => {
-  const [closeButton, previousButton, nextButton] = screen.getAllByRole('button')
-
-  expect(closeButton).toBeInTheDocument()
-  expect(previousButton).toBeInTheDocument()
-  expect(nextButton).toBeInTheDocument()
-
-  return { closeButton: closeButton!, previousButton: previousButton!, nextButton: nextButton! }
-}
+const getPreviewButtons = () => ({
+  closeButton: screen.getByRole('button', { name: 'common.operation.close' }),
+  previousButton: screen.getByRole('button', { name: 'common.pagination.previous' }),
+  nextButton: screen.getByRole('button', { name: 'common.pagination.next' }),
+})
 
 describe('ImagePreviewer', () => {
   beforeEach(() => {
@@ -63,8 +59,8 @@ describe('ImagePreviewer', () => {
 
     render(<ImagePreviewer images={images} onClose={vi.fn()} />)
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'image1.png' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
     expect(screen.getByText('Esc')).toBeInTheDocument()
   })
 
@@ -75,10 +71,19 @@ describe('ImagePreviewer', () => {
       'src',
       'blob:mock-url',
     )
+    expect(screen.getByRole('dialog', { name: 'image1.png' })).toBeInTheDocument()
     expect(screen.getByText(/800.*600/)).toBeInTheDocument()
     expect(screen.getByText('1.00 KB')).toBeInTheDocument()
     expect(mockFetch).toHaveBeenCalledTimes(3)
     expect(mockFetch.mock.calls.map(([url]) => url)).toEqual(images.map(({ url }) => url))
+  })
+
+  it('keeps a localized dialog name when the image name is empty', async () => {
+    render(<ImagePreviewer images={[{ ...images[0]!, name: '' }]} onClose={vi.fn()} />)
+
+    expect(screen.getByRole('dialog', { name: 'workflow.common.preview' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument())
+    expect(screen.getByRole('dialog', { name: 'workflow.common.preview' })).toBeInTheDocument()
   })
 
   it('starts from the requested image', async () => {
@@ -98,6 +103,7 @@ describe('ImagePreviewer', () => {
 
     await user.click(nextButton)
     expect(screen.getByRole('img', { name: 'image2.png' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'image2.png' })).toBeInTheDocument()
     expect(previousButton).toBeEnabled()
 
     await user.click(nextButton)
@@ -106,6 +112,28 @@ describe('ImagePreviewer', () => {
 
     await user.click(previousButton)
     expect(screen.getByRole('img', { name: 'image2.png' })).toBeInTheDocument()
+  })
+
+  it('changes images once per held arrow and resumes navigation after reaching a boundary', async () => {
+    const user = userEvent.setup()
+    render(<ImagePreviewer images={images} onClose={vi.fn()} />)
+    await screen.findByRole('img', { name: 'image1.png' })
+    const { closeButton, nextButton } = getPreviewButtons()
+    expect(closeButton).toHaveFocus()
+
+    await user.keyboard('{ArrowRight>3/}')
+    expect(screen.getByRole('img', { name: 'image2.png' })).toBeInTheDocument()
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('img', { name: 'image3.png' })).toBeInTheDocument()
+    expect(nextButton).toBeDisabled()
+
+    await user.keyboard('{ArrowRight>3/}')
+    expect(screen.getByRole('img', { name: 'image3.png' })).toBeInTheDocument()
+    await user.keyboard('{ArrowLeft}')
+    expect(screen.getByRole('img', { name: 'image2.png' })).toBeInTheDocument()
+    expect(nextButton).toBeEnabled()
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('img', { name: 'image3.png' })).toBeInTheDocument()
   })
 
   it('disables both navigation buttons for a single image', async () => {
@@ -137,10 +165,10 @@ describe('ImagePreviewer', () => {
     render(<ImagePreviewer images={images} onClose={vi.fn()} />)
 
     expect(await screen.findByText(/Failed to load image/)).toHaveTextContent(images[0]!.url)
-    const [, retryButton] = screen.getAllByRole('button')
-    expect(retryButton).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'image1.png' })).toBeInTheDocument()
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
 
-    await user.click(retryButton!)
+    await user.click(retryButton)
 
     expect(await screen.findByRole('img', { name: 'image1.png' })).toBeInTheDocument()
     expect(mockFetch).toHaveBeenCalledTimes(4)

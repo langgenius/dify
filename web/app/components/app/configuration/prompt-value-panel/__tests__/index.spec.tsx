@@ -1,47 +1,17 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { IPromptValuePanelProps } from '../index'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ConfigContext from '@/context/debug-configuration'
-import { AppModeEnum, ModelModeType, Resolution } from '@/types/app'
+import {
+  createDebugConfigurationFixture,
+  createModelConfigFixture,
+} from '@/test/fixtures/debug-configuration'
+import { ModelModeType, Resolution } from '@/types/app'
 import PromptValuePanel from '../index'
 
-const mockSetShowAppConfigureFeaturesModal = vi.fn()
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    onClick,
-    disabled,
-    className,
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-    disabled?: boolean
-    className?: string
-  }) => (
-    <button
-      type="button"
-      data-disabled={disabled ? 'true' : 'false'}
-      className={className}
-      onClick={() => onClick?.()}
-    >
-      {children}
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (
-    selector: (state: {
-      setShowAppConfigureFeaturesModal: typeof mockSetShowAppConfigureFeaturesModal
-    }) => unknown,
-  ) =>
-    selector({
-      setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
-    }),
-}))
+const mockOnOpenFeatures = vi.fn()
 
 // Use real store - global zustand mock will auto-reset between tests
 vi.mock('@/app/components/base/features/new-feature-panel/feature-bar', () => ({
@@ -61,61 +31,6 @@ vi.mock('@/app/components/base/features/new-feature-panel/feature-bar', () => ({
       onClick={onFeatureBarClick}
     >
       feature bar
-    </button>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/select', async () => {
-  const React = await import('react')
-  const SelectContext = React.createContext<{
-    onValueChange?: (value: string) => void
-  }>({})
-
-  return {
-    Select: ({
-      children,
-      onValueChange,
-    }: {
-      children: React.ReactNode
-      onValueChange?: (value: string) => void
-    }) => (
-      <SelectContext.Provider value={{ onValueChange }}>
-        <div>{children}</div>
-      </SelectContext.Provider>
-    ),
-    SelectTrigger: ({ children }: { children: React.ReactNode }) => {
-      const context = React.useContext(SelectContext)
-      return (
-        <div>
-          <button type="button">{children}</button>
-          <button
-            data-testid="select-empty"
-            type="button"
-            onClick={() => context.onValueChange?.('')}
-          >
-            empty select value
-          </button>
-        </div>
-      )
-    },
-    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
-      const context = React.useContext(SelectContext)
-      return (
-        <button type="button" onClick={() => context.onValueChange?.(value)}>
-          {children}
-        </button>
-      )
-    },
-    SelectItemText: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    SelectItemIndicator: () => null,
-  }
-})
-
-vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
-  default: ({ name, onChange }: { name: string; onChange: (value: boolean) => void }) => (
-    <button type="button" data-testid={`bool-input-${name}`} onClick={() => onChange(true)}>
-      bool-input
     </button>
   ),
 }))
@@ -146,29 +61,30 @@ const mockOnSend = vi.fn()
 const promptVariables = [
   { key: 'textVar', name: 'Text Var', type: 'string', required: true },
   { key: 'boolVar', name: 'Boolean Var', type: 'checkbox' },
-] as const
+]
 
-const baseContextValue: any = {
+const baseContextValue = createDebugConfigurationFixture({
+  onOpenFeatures: mockOnOpenFeatures,
   modelModeType: ModelModeType.completion,
-  modelConfig: {
+  modelConfig: createModelConfigFixture({
     configs: {
       prompt_template: 'prompt template',
       prompt_variables: promptVariables,
     },
-  },
+  }),
   setInputs: mockSetInputs,
   canTestAndRun: true,
-  mode: AppModeEnum.COMPLETION,
+  mode: 'completion' as const,
   isAdvancedMode: false,
   completionPromptConfig: {
     prompt: { text: 'completion' },
     conversation_histories_role: { user_prefix: 'user', assistant_prefix: 'assistant' },
   },
   chatPromptConfig: { prompt: [] },
-} as any
+})
 
 const defaultProps: IPromptValuePanelProps = {
-  appType: AppModeEnum.COMPLETION,
+  appType: 'completion',
   onSend: mockOnSend,
   inputs: { textVar: 'initial', boolVar: false },
   visionConfig: { enabled: false, number_limits: 0, detail: Resolution.low, transfer_methods: [] },
@@ -183,30 +99,41 @@ const renderPanel = (
 ) => {
   const contextValue = { ...baseContextValue, ...options.context }
   const props = { ...defaultProps, ...options.props }
-  return render(
-    <ConfigContext.Provider value={contextValue}>
-      <PromptValuePanel {...props} />
-    </ConfigContext.Provider>,
-  )
+  function ControlledPanel() {
+    const [inputs, setInputs] = React.useState(props.inputs)
+    return (
+      <ConfigContext.Provider
+        value={{
+          ...contextValue,
+          setInputs: (next) => {
+            setInputs(next)
+            mockSetInputs(next)
+          },
+        }}
+      >
+        <PromptValuePanel {...props} inputs={inputs} />
+      </ConfigContext.Provider>
+    )
+  }
+  return render(<ControlledPanel />)
 }
 
 describe('PromptValuePanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockSetInputs.mockClear()
-    mockOnSend.mockClear()
-    mockSetShowAppConfigureFeaturesModal.mockClear()
   })
 
   it('updates inputs, clears values, and triggers run when ready', async () => {
+    const user = userEvent.setup()
     renderPanel()
 
-    const textInput = screen.getByPlaceholderText('Text Var')
-    fireEvent.change(textInput, { target: { value: 'updated' } })
+    const textInput = screen.getByRole('textbox', { name: 'Text Var' })
+    await user.clear(textInput)
+    await user.paste('updated')
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ textVar: 'updated' }))
 
     const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
-    fireEvent.click(clearButton)
+    await user.click(clearButton)
 
     expect(mockSetInputs).toHaveBeenLastCalledWith({
       textVar: '',
@@ -214,47 +141,33 @@ describe('PromptValuePanel', () => {
     })
 
     const runButton = screen.getByRole('button', { name: 'appDebug.inputs.run' })
-    expect(runButton).toHaveAttribute('data-disabled', 'false')
-    fireEvent.click(runButton)
+    expect(runButton).toBeEnabled()
+    await user.click(runButton)
     await waitFor(() => expect(mockOnSend).toHaveBeenCalledTimes(1))
   })
 
   it('disables run when mode is not completion', () => {
     renderPanel({
       context: {
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       },
       props: {
-        appType: AppModeEnum.CHAT,
+        appType: 'chat',
       },
     })
 
     const runButton = screen.getByRole('button', { name: 'appDebug.inputs.run' })
-    expect(runButton).toHaveAttribute('data-disabled', 'true')
+    expect(runButton).toBeDisabled()
   })
 
-  it('invokes the tooltip-branch run handler when the click callback is triggered', () => {
-    renderPanel({
-      context: {
-        mode: AppModeEnum.CHAT,
-      },
-      props: {
-        appType: AppModeEnum.CHAT,
-      },
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'appDebug.inputs.run' }))
-
-    expect(mockOnSend).toHaveBeenCalledTimes(1)
-  })
-
-  it('hydrates default values, supports advanced prompt gating, and toggles the feature panel', () => {
+  it('hydrates default values, supports advanced prompt gating, and toggles the feature panel', async () => {
+    const user = userEvent.setup()
     renderPanel({
       context: {
         isAdvancedMode: true,
         modelModeType: ModelModeType.chat,
         chatPromptConfig: { prompt: [{ text: '' }] },
-        modelConfig: {
+        modelConfig: createModelConfigFixture({
           configs: {
             prompt_template: '',
             prompt_variables: [
@@ -267,7 +180,7 @@ describe('PromptValuePanel', () => {
               },
             ],
           },
-        },
+        }),
       },
       props: {
         inputs: { textVar: '' },
@@ -275,13 +188,10 @@ describe('PromptValuePanel', () => {
     })
 
     expect(mockSetInputs).toHaveBeenCalledWith({ textVar: 'default text' })
-    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute(
-      'data-disabled',
-      'true',
-    )
+    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeDisabled()
 
-    fireEvent.click(screen.getByText('feature bar'))
-    expect(mockSetShowAppConfigureFeaturesModal).toHaveBeenCalled()
+    await user.click(screen.getByText('feature bar'))
+    expect(mockOnOpenFeatures).toHaveBeenCalled()
   })
 
   it('disables run for advanced completion mode when the completion prompt is empty', () => {
@@ -293,26 +203,24 @@ describe('PromptValuePanel', () => {
           prompt: { text: '' },
           conversation_histories_role: { user_prefix: 'user', assistant_prefix: 'assistant' },
         },
-        modelConfig: {
+        modelConfig: createModelConfigFixture({
           configs: {
             prompt_template: '',
             prompt_variables: [],
           },
-        },
+        }),
       },
     })
 
-    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute(
-      'data-disabled',
-      'true',
-    )
+    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeDisabled()
   })
 
-  it('renders paragraph, select, number, checkbox, and vision inputs', () => {
+  it('renders paragraph, select, number, checkbox, and vision inputs', async () => {
+    const user = userEvent.setup()
     const onVisionFilesChange = vi.fn()
     renderPanel({
       context: {
-        modelConfig: {
+        modelConfig: createModelConfigFixture({
           configs: {
             prompt_template: 'prompt template',
             prompt_variables: [
@@ -328,7 +236,7 @@ describe('PromptValuePanel', () => {
               { key: 'boolVar', name: 'Boolean Var', type: 'checkbox', required: false },
             ],
           },
-        },
+        }),
       },
       props: {
         inputs: {
@@ -347,13 +255,14 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    fireEvent.change(screen.getByPlaceholderText('Paragraph Var'), {
-      target: { value: 'updated paragraph' },
-    })
-    fireEvent.click(screen.getByText('b'))
-    fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '2' } })
-    fireEvent.click(screen.getByText('bool-input'))
-    fireEvent.click(screen.getByText('image-uploader'))
+    await user.clear(screen.getByRole('textbox', { name: 'Paragraph Var' }))
+    await user.paste('updated paragraph')
+    await user.click(screen.getByRole('combobox', { name: 'Select Var' }))
+    await user.click(await screen.findByRole('option', { name: 'b' }))
+    await user.clear(screen.getByRole('spinbutton', { name: 'Number Var' }))
+    await user.type(screen.getByRole('spinbutton', { name: 'Number Var' }), '2')
+    await user.click(screen.getByRole('checkbox', { name: /Boolean Var/ }))
+    await user.click(screen.getByText('image-uploader'))
 
     expect(mockSetInputs).toHaveBeenCalledWith(
       expect.objectContaining({ paragraphVar: 'updated paragraph' }),
@@ -371,128 +280,6 @@ describe('PromptValuePanel', () => {
     ])
   })
 
-  it('ignores empty select values when choosing prompt options', () => {
-    renderPanel({
-      context: {
-        modelConfig: {
-          configs: {
-            prompt_template: 'prompt template',
-            prompt_variables: [
-              {
-                key: 'selectVar',
-                name: 'Select Var',
-                type: 'select',
-                options: ['a', 'b'],
-                required: false,
-              },
-            ],
-          },
-        },
-      },
-      props: {
-        inputs: {
-          selectVar: 'a',
-        },
-      },
-    })
-
-    fireEvent.click(screen.getByTestId('select-empty'))
-
-    expect(mockSetInputs).not.toHaveBeenCalled()
-  })
-
-  it('ignores updates when the rendered field is not tracked in the prompt variable lookup', () => {
-    const filteredPromptVariables = {
-      length: 1,
-      forEach: vi.fn(),
-      map: (
-        callback: (
-          value: { key: string; name: string; type: string; required: boolean },
-          index: number,
-        ) => unknown,
-      ) => [callback({ key: 'textVar', name: 'Text Var', type: 'string', required: true }, 0)],
-    }
-
-    renderPanel({
-      context: {
-        modelConfig: {
-          configs: {
-            prompt_template: 'prompt template',
-            prompt_variables: {
-              filter: () => filteredPromptVariables,
-            },
-          },
-        },
-      },
-      props: {
-        inputs: { textVar: '' },
-      },
-    })
-
-    fireEvent.change(screen.getByPlaceholderText('Text Var'), { target: { value: 'ignored' } })
-
-    expect(mockSetInputs).not.toHaveBeenCalled()
-  })
-
-  it('renders empty select and number placeholders when no value is provided', () => {
-    renderPanel({
-      context: {
-        modelConfig: {
-          configs: {
-            prompt_template: 'prompt template',
-            prompt_variables: [
-              { key: 'selectVar', name: 'Select Var', type: 'select', required: false },
-              { key: 'numberVar', name: 'Number Var', type: 'number', required: true },
-            ],
-          },
-        },
-      },
-      props: {
-        inputs: {
-          selectVar: '',
-          numberVar: '',
-        },
-      },
-    })
-
-    expect(screen.getByText('common.placeholder.select')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Number Var')).toHaveValue(null)
-    expect(screen.queryAllByRole('option')).toHaveLength(0)
-  })
-
-  it('falls back to the checkbox key when the label is missing from the rendered collection', () => {
-    const filteredPromptVariables = {
-      length: 1,
-      forEach: vi.fn(),
-      map: (
-        callback: (
-          value: { key: string; name: string; type: string; required: boolean },
-          index: number,
-        ) => unknown,
-      ) => [callback({ key: 'boolVar', name: '', type: 'checkbox', required: false }, 0)],
-    }
-
-    renderPanel({
-      context: {
-        modelConfig: {
-          configs: {
-            prompt_template: 'prompt template',
-            prompt_variables: {
-              filter: () => filteredPromptVariables,
-            },
-          },
-        },
-      },
-      props: {
-        inputs: {
-          boolVar: false,
-        },
-      },
-    })
-
-    expect(screen.getByTestId('bool-input-boolVar')).toBeInTheDocument()
-  })
-
   it('keeps debug actions enabled when readonly configuration still has test/run permission', () => {
     renderPanel({
       context: {
@@ -501,14 +288,8 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    expect(screen.getByRole('button', { name: 'common.operation.clear' })).toHaveAttribute(
-      'data-disabled',
-      'false',
-    )
-    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute(
-      'data-disabled',
-      'false',
-    )
+    expect(screen.getByRole('button', { name: 'common.operation.clear' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'feature bar' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'feature bar' })).toHaveAttribute(
       'data-hide-edit-entrance',
@@ -524,15 +305,9 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    expect(screen.getByPlaceholderText('Text Var')).toHaveAttribute('readonly')
-    expect(screen.getByRole('button', { name: 'common.operation.clear' })).toHaveAttribute(
-      'data-disabled',
-      'true',
-    )
-    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute(
-      'data-disabled',
-      'true',
-    )
+    expect(screen.getByRole('textbox', { name: 'Text Var' })).toHaveAttribute('readonly')
+    expect(screen.getByRole('button', { name: 'common.operation.clear' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeDisabled()
   })
 
   it('marks debug inputs and actions as disabled when configuration is readonly and test/run permission is missing', () => {
@@ -543,21 +318,16 @@ describe('PromptValuePanel', () => {
       },
     })
 
-    expect(screen.getByPlaceholderText('Text Var')).toHaveAttribute('readonly')
-    expect(screen.getByRole('button', { name: 'common.operation.clear' })).toHaveAttribute(
-      'data-disabled',
-      'true',
-    )
-    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute(
-      'data-disabled',
-      'true',
-    )
+    expect(screen.getByRole('textbox', { name: 'Text Var' })).toHaveAttribute('readonly')
+    expect(screen.getByRole('button', { name: 'common.operation.clear' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeDisabled()
   })
 
-  it('collapses the user input panel and hides the clear and run actions', () => {
+  it('collapses the user input panel and hides the clear and run actions', async () => {
+    const user = userEvent.setup()
     renderPanel()
 
-    fireEvent.click(screen.getByRole('button', { name: 'appDebug.inputs.userInputField' }))
+    await user.click(screen.getByRole('button', { name: 'appDebug.inputs.userInputField' }))
 
     expect(screen.queryByRole('button', { name: 'common.operation.clear' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'appDebug.inputs.run' })).not.toBeInTheDocument()

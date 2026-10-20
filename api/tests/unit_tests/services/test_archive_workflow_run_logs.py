@@ -6,20 +6,21 @@ This module contains tests for:
 - Rollback service
 """
 
+from collections.abc import Callable
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+
+from enums import DeploymentEdition
 
 
 class TestWorkflowRunArchiver:
     """Tests for the WorkflowRunArchiver class."""
 
-    @patch("services.retention.workflow_run.archive_paid_plan_workflow_run.dify_config")
-    @patch("services.retention.workflow_run.archive_paid_plan_workflow_run.get_archive_storage", autospec=True)
-    def test_archiver_initialization(self, mock_get_storage, mock_config):
+    def test_archiver_initialization(self, config_overrides: Callable[..., None]) -> None:
         """Test archiver can be initialized with various options."""
         from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
 
-        mock_config.BILLING_ENABLED = False
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
         archiver = WorkflowRunArchiver(
             days=90,
@@ -35,7 +36,7 @@ class TestWorkflowRunArchiver:
         assert archiver.limit == 50
         assert archiver.dry_run is True
 
-    def test_get_bundle_manifest_key(self):
+    def test_get_bundle_manifest_key(self) -> None:
         """Test V2 bundle manifest key generation."""
         from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
 

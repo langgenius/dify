@@ -7,7 +7,7 @@ import {
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { Fragment, memo, useCallback, useEffect, useId, useMemo } from 'react'
+import { Fragment, memo, useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import BlockIcon from '../block-icon'
@@ -44,9 +44,9 @@ const StartBlocks = ({
   showUserInputDisabled = false,
   disabled = false,
 }: StartBlocksProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools', 'workflow'])
   const nodes = useNodes()
-  const previewCardHandle = useMemo(() => createPreviewCardHandle<StartBlockPreviewPayload>(), [])
+  const [previewCardHandle] = useState(() => createPreviewCardHandle<StartBlockPreviewPayload>())
   const previewDescriptionBaseId = useId()
 
   const filteredBlocks = useMemo(() => {
@@ -159,7 +159,7 @@ const StartBlocks = ({
           <Fragment key={block.type}>
             <Tooltip>
               <TooltipTrigger render={row} />
-              <TooltipContent className="rounded-xl">{disabledReason}</TooltipContent>
+              <TooltipContent>{disabledReason}</TooltipContent>
             </Tooltip>
             <span id={previewDescriptionId} className="sr-only">
               {description}
@@ -214,9 +214,7 @@ const StartBlocks = ({
         ))}
       </div>
       <PreviewCard handle={previewCardHandle}>
-        {({ payload }) => (
-          <StartBlockPreviewCard payload={payload as StartBlockPreviewPayload | undefined} t={t} />
-        )}
+        {({ payload }) => <StartBlockPreviewCard payload={payload} t={t} />}
       </PreviewCard>
     </div>
   )

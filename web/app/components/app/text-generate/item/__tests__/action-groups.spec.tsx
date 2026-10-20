@@ -1,4 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { AppSourceType } from '@/service/share'
 import GenerationActionGroups from '../action-groups'
 
@@ -6,14 +8,14 @@ const mockCopy = vi.fn()
 const mockSuccess = vi.fn()
 const mockOnFeedback = vi.fn()
 const mockOnMoreLikeThis = vi.fn()
-const mockOnOpenLogModal = vi.fn()
+const mockOnOpenLog = vi.fn()
 const mockOnRetry = vi.fn()
 const mockOnSave = vi.fn()
 vi.mock('copy-to-clipboard', () => ({
   default: (...args: unknown[]) => mockCopy(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (...args: unknown[]) => mockSuccess(...args),
   },
@@ -24,7 +26,8 @@ describe('GenerationActionGroups', () => {
     vi.clearAllMocks()
   })
 
-  it('should copy content and show a success toast', () => {
+  it('should copy content and show a success toast', async () => {
+    const user = userEvent.setup()
     render(
       <GenerationActionGroups
         appSourceType={AppSourceType.webApp}
@@ -36,14 +39,14 @@ describe('GenerationActionGroups', () => {
         messageId="msg-1"
         onFeedback={mockOnFeedback}
         onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
+        onOpenLog={mockOnOpenLog}
         onRetry={mockOnRetry}
         onSave={mockOnSave}
         supportFeedback
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.copy(?=$|:)/ }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.copy(?=$|:)/ }))
 
     expect(mockCopy).toHaveBeenCalledWith('hello world')
     expect(mockSuccess).toHaveBeenCalledWith(
@@ -51,7 +54,8 @@ describe('GenerationActionGroups', () => {
     )
   })
 
-  it('should handle more-like-this and feedback actions', () => {
+  it('should handle more-like-this and feedback actions', async () => {
+    const user = userEvent.setup()
     render(
       <GenerationActionGroups
         appSourceType={AppSourceType.webApp}
@@ -65,18 +69,18 @@ describe('GenerationActionGroups', () => {
         moreLikeThis
         onFeedback={mockOnFeedback}
         onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
+        onOpenLog={mockOnOpenLog}
         onRetry={mockOnRetry}
         onSave={mockOnSave}
         supportFeedback
       />,
     )
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }),
     )
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.agree(?=$|:)/ }))
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.save(?=$|:)/ }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.agree(?=$|:)/ }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.save(?=$|:)/ }))
 
     expect(mockOnMoreLikeThis).toHaveBeenCalledTimes(1)
     expect(mockOnFeedback).toHaveBeenCalledWith({ rating: 'like' })
@@ -95,7 +99,7 @@ describe('GenerationActionGroups', () => {
         messageId="msg-1"
         moreLikeThis
         onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
+        onOpenLog={mockOnOpenLog}
         onRetry={mockOnRetry}
       />,
     )
@@ -105,7 +109,28 @@ describe('GenerationActionGroups', () => {
     ).toBeDisabled()
   })
 
-  it('should stringify non-string content before copying', () => {
+  it('should hide the log action when the owner does not provide it', () => {
+    render(
+      <GenerationActionGroups
+        appSourceType={AppSourceType.webApp}
+        content="hello world"
+        currentTab="DETAIL"
+        depth={1}
+        isError={false}
+        isInWebApp={false}
+        messageId="msg-1"
+        onMoreLikeThis={mockOnMoreLikeThis}
+        onRetry={mockOnRetry}
+      />,
+    )
+
+    expect(
+      screen.queryByRole('button', { name: /(?:^|\.)operation\.log(?=$|:)/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('should stringify non-string content before copying', async () => {
+    const user = userEvent.setup()
     render(
       <GenerationActionGroups
         appSourceType={AppSourceType.webApp}
@@ -116,17 +141,18 @@ describe('GenerationActionGroups', () => {
         isInWebApp
         messageId="msg-2"
         onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
+        onOpenLog={mockOnOpenLog}
         onRetry={mockOnRetry}
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.copy(?=$|:)/ }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.copy(?=$|:)/ }))
 
     expect(mockCopy).toHaveBeenCalledWith(JSON.stringify({ result: 'hello world' }))
   })
 
-  it('should expose retry and disagree actions in the appropriate states', () => {
+  it('should expose retry and disagree actions in the appropriate states', async () => {
+    const user = userEvent.setup()
     render(
       <GenerationActionGroups
         appSourceType={AppSourceType.webApp}
@@ -139,79 +165,54 @@ describe('GenerationActionGroups', () => {
         messageId="msg-3"
         onFeedback={mockOnFeedback}
         onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
+        onOpenLog={mockOnOpenLog}
         onRetry={mockOnRetry}
       />,
     )
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', { name: /(?:^|\.)generation\.batchFailed\.retry(?=$|:)/ }),
     )
 
     expect(mockOnRetry).toHaveBeenCalledTimes(1)
   })
 
-  it('should support disagree and cancel feedback actions', () => {
-    const { rerender } = render(
-      <GenerationActionGroups
-        appSourceType={AppSourceType.webApp}
-        content="hello"
-        currentTab="DETAIL"
-        depth={1}
-        feedback={{ rating: null }}
-        isError={false}
-        isInWebApp
-        messageId="msg-4"
-        onFeedback={mockOnFeedback}
-        onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
-        onRetry={mockOnRetry}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.disagree(?=$|:)/ }))
-    expect(mockOnFeedback).toHaveBeenCalledWith({ rating: 'dislike' })
-
-    rerender(
-      <GenerationActionGroups
-        appSourceType={AppSourceType.webApp}
-        content="hello"
-        currentTab="DETAIL"
-        depth={1}
-        feedback={{ rating: 'like' }}
-        isError={false}
-        isInWebApp
-        messageId="msg-4"
-        onFeedback={mockOnFeedback}
-        onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
-        onRetry={mockOnRetry}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.cancelAgree(?=$|:)/ }))
-    expect(mockOnFeedback).toHaveBeenCalledWith({ rating: null })
-
-    rerender(
-      <GenerationActionGroups
-        appSourceType={AppSourceType.webApp}
-        content="hello"
-        currentTab="DETAIL"
-        depth={1}
-        feedback={{ rating: 'dislike' }}
-        isError={false}
-        isInWebApp
-        messageId="msg-4"
-        onFeedback={mockOnFeedback}
-        onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
-        onRetry={mockOnRetry}
-      />,
-    )
-
-    fireEvent.click(
-      screen.getByRole('button', { name: /(?:^|\.)operation\.cancelDisagree(?=$|:)/ }),
-    )
-    expect(mockOnFeedback).toHaveBeenCalledWith({ rating: null })
+  it('selects and clears both feedback ratings through the controlled result', async () => {
+    const user = userEvent.setup()
+    function ResultActions() {
+      const [rating, setRating] = useState<'like' | 'dislike' | null>(null)
+      return (
+        <GenerationActionGroups
+          appSourceType={AppSourceType.webApp}
+          content="hello"
+          currentTab="DETAIL"
+          depth={1}
+          feedback={{ rating }}
+          isError={false}
+          isInWebApp
+          messageId="msg-4"
+          onFeedback={(next) => {
+            setRating(next.rating)
+            mockOnFeedback(next)
+          }}
+          onMoreLikeThis={mockOnMoreLikeThis}
+          onOpenLog={mockOnOpenLog}
+          onRetry={mockOnRetry}
+        />
+      )
+    }
+    render(<ResultActions />)
+    for (const [action, rating] of [
+      ['agree', 'like'],
+      ['disagree', 'dislike'],
+    ] as const) {
+      const button = screen.getByRole('button', { name: new RegExp(`operation\\.${action}$`) })
+      await user.click(button)
+      expect(mockOnFeedback).toHaveBeenLastCalledWith({ rating })
+      const selectedButton = screen.getByRole('button', { pressed: true })
+      await user.click(selectedButton)
+      expect(mockOnFeedback).toHaveBeenLastCalledWith({ rating: null })
+      expect(screen.queryByRole('button', { pressed: true })).not.toBeInTheDocument()
+    }
   })
 })

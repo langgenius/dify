@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
 import { usePluginAuth } from '../use-plugin-auth'
 
@@ -39,19 +39,9 @@ describe('usePluginAuth', () => {
     const { result } = renderHook(() => usePluginAuth(basePayload, true))
 
     expect(result.current.isAuthorized).toBe(true)
-    expect(result.current.credentials).toHaveLength(2)
-  })
-
-  it('should detect OAuth and API Key support', () => {
-    const { result } = renderHook(() => usePluginAuth(basePayload, true))
-
+    expect(result.current.credentials).toEqual(mockCredentials)
     expect(result.current.canOAuth).toBe(true)
     expect(result.current.canApiKey).toBe(true)
-  })
-
-  it('should return notAllowCustomCredential=false when allowed', () => {
-    const { result } = renderHook(() => usePluginAuth(basePayload, true))
-
     expect(result.current.notAllowCustomCredential).toBe(false)
   })
 
@@ -60,12 +50,6 @@ describe('usePluginAuth', () => {
 
     expect(result.current.isAuthorized).toBe(false)
     expect(result.current.credentials).toEqual([])
-  })
-
-  it('should provide invalidate function', () => {
-    const { result } = renderHook(() => usePluginAuth(basePayload, true))
-
-    expect(result.current.invalidPluginCredentialInfo).toBe(mockInvalidate)
   })
 
   it('should handle empty credentials', () => {

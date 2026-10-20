@@ -2,9 +2,15 @@ import type { Klass, LexicalEditor, LexicalNode } from 'lexical'
 import type { ReactNode } from 'react'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, waitFor } from '@testing-library/react'
-import { $createParagraphNode, $getRoot, $nodesOfType, createEditor } from 'lexical'
+import {
+  $createParagraphNode,
+  $createTextNode,
+  $getRoot,
+  $nodesOfType,
+  createEditor,
+  getNearestEditorFromDOMNode,
+} from 'lexical'
 import { createElement } from 'react'
-import { expect } from 'vitest'
 import { CaptureEditorPlugin } from './test-utils'
 
 type RenderLexicalEditorProps = {
@@ -148,13 +154,20 @@ export const createLexicalTestEditor = (namespace: string, nodes: Array<Klass<Le
   })
 }
 
-export const expectInlineWrapperDom = (dom: HTMLElement, extraClasses: string[] = []) => {
-  expect(dom.tagName).toBe('DIV')
-  expect(dom).toHaveClass('inline-flex')
-  expect(dom).toHaveClass('items-center')
-  expect(dom).toHaveClass('align-middle')
-
-  extraClasses.forEach((className) => {
-    expect(dom).toHaveClass(className)
-  })
+// Drive the editor model when testing a consumer callback; native typing has Browser Mode coverage.
+export const replacePromptEditorText = async (element: HTMLElement, value: string) => {
+  // Let the initial editor state commit before sending a consumer edit.
+  await act(async () => {})
+  const editor = getNearestEditorFromDOMNode(element)
+  if (!editor) throw new Error('Expected a mounted Lexical editor')
+  act(() =>
+    editor.update(
+      () => {
+        const text = $createTextNode(value)
+        $getRoot().clear().append($createParagraphNode().append(text))
+        text.selectEnd()
+      },
+      { discrete: true },
+    ),
+  )
 }

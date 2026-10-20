@@ -1,6 +1,5 @@
 'use client'
 
-import type { KeyboardEvent } from 'react'
 import type { Collection } from './types'
 import type { ToolCategory } from '@/app/components/integrations/routes'
 import type { CardPayload } from '@/app/components/plugins/card'
@@ -61,8 +60,6 @@ const collectionToCardPayload = (collection: Collection): CardPayload => {
     from: collection.plugin_id ? 'marketplace' : 'package',
   }
 }
-
-const isKeyboardSelectEvent = (event: KeyboardEvent) => event.key === 'Enter' || event.key === ' '
 
 export function ToolProviderGrid({
   activeTab,
@@ -133,22 +130,16 @@ export function ToolProviderGrid({
             />
           )}
           {collections.map((collection, index) => (
-            <div
+            <button
               key={collection.id}
-              role="button"
-              tabIndex={0}
-              aria-pressed={currentProviderId === collection.id}
+              type="button"
+              aria-current={currentProviderId === collection.id ? 'true' : undefined}
               data-step-by-step-tour-target={index === 0 ? stepByStepTourTarget : undefined}
               className={cn(
+                'block w-full appearance-none border-0 bg-transparent p-0 text-left',
                 useCustomToolGrid && 'min-w-0',
                 useIntegrationsCard && !useCustomToolGrid && 'min-w-0',
               )}
-              onKeyDown={(event) => {
-                if (!isKeyboardSelectEvent(event)) return
-
-                event.preventDefault()
-                onSelectProvider(collection.id)
-              }}
               onClick={() => onSelectProvider(collection.id)}
             >
               {useIntegrationsCard ? (
@@ -174,11 +165,11 @@ export function ToolProviderGrid({
                   }
                 />
               )}
-            </div>
+            </button>
           ))}
           {showWorkflowEmptyState && (
             <div
-              className="absolute top-1/2 left-1/2 w-full max-w-[1060px] -translate-x-1/2 -translate-y-1/2 px-6"
+              className="absolute top-1/2 left-1/2 w-full max-w-265 -translate-x-1/2 -translate-y-1/2 px-6"
               data-step-by-step-tour-target={stepByStepTourTarget}
             >
               <WorkflowToolEmpty type={getToolType(activeTab)} />

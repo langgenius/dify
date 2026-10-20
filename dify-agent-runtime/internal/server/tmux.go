@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
 )
 
 // TmuxController manages tmux sessions for shellctl jobs via a dedicated socket.
@@ -21,7 +23,11 @@ func NewTmuxController(config *Config) *TmuxController {
 
 // StartServer ensures the tmux server is running.
 func (t *TmuxController) StartServer() error {
-	_, err := t.runTmux("start-server")
+	_, err := t.runTmux(
+		"start-server",
+		";",
+		"set-option", "-g", "exit-empty", "off",
+	)
 	return err
 }
 
@@ -78,9 +84,13 @@ func (t *TmuxController) IsOutputPipeActive(jobID string) (*bool, error) {
 }
 
 // CreateJobSession creates a new tmux session for a job.
-func (t *TmuxController) CreateJobSession(jobID, jobDir, cwd string, cols, rows int) error {
+func (t *TmuxController) CreateJobSession(
+	jobID, jobDir, cwd string,
+	cols, rows int,
+	mode jobmode.Mode,
+) error {
 	runnerCmd := shellJoin([]string{
-		t.config.RunnerPath(), jobDir, jobID, cwd,
+		t.config.RunnerPath(), jobDir, jobID, cwd, string(mode),
 	})
 	result, err := t.runTmuxNoCheck(
 		"-f", "/dev/null",

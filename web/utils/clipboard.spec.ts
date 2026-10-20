@@ -1,165 +1,78 @@
-/**
- * Test suite for clipboard utilities
- *
- * This module provides cross-browser clipboard functionality with automatic fallback:
- * 1. Modern Clipboard API (navigator.clipboard.writeText) - preferred method
- * 2. Legacy execCommand('copy') - fallback for older browsers
- *
- * The implementation ensures clipboard operations work across all supported browsers
- * while gracefully handling permissions and API availability.
- */
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { writeTextToClipboard } from './clipboard'
 
-describe('Clipboard Utilities', () => {
-  describe('writeTextToClipboard', () => {
-    /**
-     * Setup global mocks required for the clipboard utility tests.
-     * We need to mock 'isSecureContext' because the modern Clipboard API
-     * is only available in secure contexts. We also provide a default mock
-     * for 'execCommand' to prevent 'is not a function' errors in fallback tests.
-     */
-    beforeAll(() => {
-      Object.defineProperty(window, 'isSecureContext', {
-        value: true,
-        writable: true,
-      })
-
-      // Provide a default mock for document.execCommand for JSDOM
-      document.execCommand = vi.fn().mockReturnValue(true)
-    })
-
-    afterEach(() => {
-      vi.restoreAllMocks()
-    })
-
-    /**
-     * Test modern Clipboard API usage
-     * When navigator.clipboard is available, should use the modern API
-     */
-    it('should use navigator.clipboard.writeText when available', async () => {
-      const mockWriteText = vi.fn().mockResolvedValue(undefined)
-      Object.defineProperty(navigator, 'clipboard', {
-        value: { writeText: mockWriteText },
-        writable: true,
-        configurable: true,
-      })
-
-      await writeTextToClipboard('test text')
-      expect(mockWriteText).toHaveBeenCalledWith('test text')
-    })
-
-    /**
-     * Test fallback to legacy execCommand method
-     * When Clipboard API is unavailable, should use document.execCommand('copy')
-     * This involves creating a temporary textarea element
-     */
-    it('should fallback to execCommand when clipboard API not available', async () => {
-      Object.defineProperty(navigator, 'clipboard', {
-        value: undefined,
-        writable: true,
-        configurable: true,
-      })
-
-      const mockExecCommand = vi.fn().mockReturnValue(true)
-      document.execCommand = mockExecCommand
-
-      const appendChildSpy = vi.spyOn(document.body, 'appendChild')
-      const removeChildSpy = vi.spyOn(document.body, 'removeChild')
-
-      await writeTextToClipboard('fallback text')
-
-      expect(appendChildSpy).toHaveBeenCalled()
-      expect(mockExecCommand).toHaveBeenCalledWith('copy')
-      expect(removeChildSpy).toHaveBeenCalled()
-    })
-
-    /**
-     * Test error handling when execCommand returns false
-     * execCommand returns false when the operation fails
-     */
-    it('should handle execCommand failure', async () => {
-      Object.defineProperty(navigator, 'clipboard', {
-        value: undefined,
-        writable: true,
-        configurable: true,
-      })
-
-      const mockExecCommand = vi.fn().mockReturnValue(false)
-      document.execCommand = mockExecCommand
-
-      await expect(writeTextToClipboard('fail text')).rejects.toThrow()
-    })
-
-    /**
-     * Test error handling when execCommand throws an exception
-     * Should propagate the error to the caller
-     */
-    it('should handle execCommand exception', async () => {
-      Object.defineProperty(navigator, 'clipboard', {
-        value: undefined,
-        writable: true,
-        configurable: true,
-      })
-
-      const mockExecCommand = vi.fn().mockImplementation(() => {
-        throw new Error('execCommand error')
-      })
-      document.execCommand = mockExecCommand
-
-      await expect(writeTextToClipboard('error text')).rejects.toThrow('execCommand error')
-    })
-
-    /**
-     * Test proper cleanup of temporary DOM elements
-     * The temporary textarea should be removed after copying
-     */
-    it('should clean up textarea after fallback', async () => {
-      Object.defineProperty(navigator, 'clipboard', {
-        value: undefined,
-        writable: true,
-        configurable: true,
-      })
-
-      document.execCommand = vi.fn().mockReturnValue(true)
-      const removeChildSpy = vi.spyOn(document.body, 'removeChild')
-
-      await writeTextToClipboard('cleanup test')
-
-      expect(removeChildSpy).toHaveBeenCalled()
-    })
-
-    /**
-     * Test copying empty strings
-     * Should handle edge case of empty clipboard content
-     */
-    it('should handle empty string', async () => {
-      const mockWriteText = vi.fn().mockResolvedValue(undefined)
-      Object.defineProperty(navigator, 'clipboard', {
-        value: { writeText: mockWriteText },
-        writable: true,
-        configurable: true,
-      })
-
-      await writeTextToClipboard('')
-      expect(mockWriteText).toHaveBeenCalledWith('')
-    })
-
-    /**
-     * Test copying text with special characters
-     * Should preserve newlines, tabs, quotes, unicode, and emojis
-     */
-    it('should handle special characters', async () => {
-      const mockWriteText = vi.fn().mockResolvedValue(undefined)
-      Object.defineProperty(navigator, 'clipboard', {
-        value: { writeText: mockWriteText },
-        writable: true,
-        configurable: true,
-      })
-
-      const specialText = 'Test\n\t"quotes"\n中文\n😀'
-      await writeTextToClipboard(specialText)
-      expect(mockWriteText).toHaveBeenCalledWith(specialText)
-    })
-  })
+let clipboardDescriptor: PropertyDescriptor | undefined
+let execCommandDescriptor: PropertyDescriptor | undefined
+beforeEach(() => {
+  clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+  execCommandDescriptor = Object.getOwnPropertyDescriptor(document, 'execCommand')
+  vi.stubGlobal('isSecureContext', true)
 })
+afterEach(() => {
+  if (clipboardDescriptor) Object.defineProperty(navigator, 'clipboard', clipboardDescriptor)
+  else Reflect.deleteProperty(navigator, 'clipboard')
+  if (execCommandDescriptor) Object.defineProperty(document, 'execCommand', execCommandDescriptor)
+  else Reflect.deleteProperty(document, 'execCommand')
+  vi.unstubAllGlobals()
+})
+const setClipboard = (writeText?: (text: string) => Promise<void>) =>
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: writeText ? { writeText } : undefined,
+  })
+const setExecCommand = (copy: () => boolean) =>
+  Object.defineProperty(document, 'execCommand', {
+    configurable: true,
+    value: copy,
+  })
+
+it('copies the original text with the modern API without falling back', async () => {
+  const write = vi.fn().mockResolvedValue(undefined)
+  const legacyCopy = vi.fn()
+  setClipboard(write)
+  setExecCommand(legacyCopy)
+  const text = 'Test\n\t"quotes"\n中文\n😀'
+  await writeTextToClipboard(text)
+  expect(write).toHaveBeenCalledExactlyOnceWith(text)
+  expect(legacyCopy).not.toHaveBeenCalled()
+})
+
+it.each(['unavailable', 'permission denied'] as const)(
+  'copies through the legacy API when the clipboard is %s and removes temporary content',
+  async (reason) => {
+    setClipboard(
+      reason === 'permission denied'
+        ? vi.fn().mockRejectedValue(new Error('Not allowed'))
+        : undefined,
+    )
+    let selected: HTMLTextAreaElement | undefined
+    const legacyCopy = vi.fn(() => {
+      selected = document.activeElement as HTMLTextAreaElement
+      expect(selected.value).toBe('Fallback text')
+      expect(selected.selectionStart).toBe(0)
+      expect(selected.selectionEnd).toBe(selected.value.length)
+      return true
+    })
+    setExecCommand(legacyCopy)
+    await writeTextToClipboard('Fallback text')
+    expect(legacyCopy).toHaveBeenCalledExactlyOnceWith('copy')
+    expect(selected?.isConnected).toBe(false)
+  },
+)
+
+it.each(['failure', 'exception'] as const)(
+  'rejects legacy %s and still removes the temporary selection',
+  async (outcome) => {
+    setClipboard()
+    const selection: { current: Element | null } = { current: null }
+    setExecCommand(() => {
+      selection.current = document.activeElement
+      if (outcome === 'exception') throw new Error('Copy denied')
+      return false
+    })
+    await expect(writeTextToClipboard('Cannot copy')).rejects.toThrow(
+      outcome === 'exception' ? 'Copy denied' : 'document.execCommand failed',
+    )
+    expect(selection.current).not.toBeNull()
+    expect(selection.current?.isConnected).toBe(false)
+  },
+)

@@ -56,7 +56,8 @@ def invoke_llm_with_structured_output(
     stop: list[str] | None = None,
     stream: Literal[True],
     callbacks: list[Callback] | None = None,
-) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
+    request_metadata: Mapping[str, object] | None = None,
+) -> Generator[LLMResultChunkWithStructuredOutput]: ...
 @overload
 def invoke_llm_with_structured_output(
     *,
@@ -70,6 +71,7 @@ def invoke_llm_with_structured_output(
     stop: list[str] | None = None,
     stream: Literal[False],
     callbacks: list[Callback] | None = None,
+    request_metadata: Mapping[str, object] | None = None,
 ) -> LLMResultWithStructuredOutput: ...
 @overload
 def invoke_llm_with_structured_output(
@@ -84,7 +86,8 @@ def invoke_llm_with_structured_output(
     stop: list[str] | None = None,
     stream: bool = True,
     callbacks: list[Callback] | None = None,
-) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
+    request_metadata: Mapping[str, object] | None = None,
+) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput]: ...
 def invoke_llm_with_structured_output(
     *,
     provider: str,
@@ -97,7 +100,8 @@ def invoke_llm_with_structured_output(
     stop: list[str] | None = None,
     stream: bool = True,
     callbacks: list[Callback] | None = None,
-) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
+    request_metadata: Mapping[str, object] | None = None,
+) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput]:
     """
     Invoke large language model with structured output
     1. This method invokes model_instance.invoke_llm with json_schema
@@ -139,6 +143,7 @@ def invoke_llm_with_structured_output(
         stop=stop,
         stream=stream,
         callbacks=callbacks,
+        request_metadata=request_metadata,
     )
 
     if isinstance(llm_result, LLMResult):
@@ -157,7 +162,7 @@ def invoke_llm_with_structured_output(
         )
     else:
 
-        def generator() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
+        def generator() -> Generator[LLMResultChunkWithStructuredOutput]:
             result_text: str = ""
             prompt_messages: Sequence[PromptMessage] = []
             system_fingerprint: str | None = None
@@ -286,9 +291,28 @@ def _parse_structured_output(result_text: str) -> Mapping[str, Any]:
         if not isinstance(parsed, dict):
             raise OutputParserError(f"Failed to parse structured output: {result_text}")
         structured_output = parsed
-    except ValidationError:
+    except ValidationError as caught_error:
         # if the result_text is not a valid json, try to repair it
         temp_parsed = json_repair.loads(result_text)
+        if isinstance(temp_parsed, list) and result_text.lstrip().lower().startswith("<think"):
+            # The response opens with a reasoning block and repaired into several objects.
+            # Reasoning models emit their chain of thought in a <think> block that the provider
+            # concatenates ahead of the answer, so a JSON object inside the reasoning becomes one
+            # of those candidates and the first one wins. Repair what follows the leading blocks
+            # instead, and keep that result only if it still yields candidates, so a truncated
+            # response behaves as it did before. This drops a prefix rather than substituting
+            # every <think> block, which would also empty literal tags inside the answer.
+            answer_text = result_text.lstrip()
+            while answer_text.lower().startswith("<think"):
+                close_index = answer_text.lower().find("</think>")
+                if close_index < 0:
+                    answer_text = ""
+                    break
+                answer_text = answer_text[close_index + len("</think>") :].lstrip()
+            if answer_text:
+                reparsed = json_repair.loads(answer_text)
+                if isinstance(reparsed, dict | list):
+                    temp_parsed = reparsed
         match temp_parsed:
             case dict():
                 pass
@@ -296,7 +320,7 @@ def _parse_structured_output(result_text: str) -> Mapping[str, Any]:
                 # handle reasoning model like deepseek-r1 got '<think>\n\n</think>\n' prefix
                 temp_parsed = next((item for item in temp_parsed if isinstance(item, dict)), {})
             case _:
-                raise OutputParserError(f"Failed to parse structured output: {result_text}")
+                raise OutputParserError(f"Failed to parse structured output: {result_text}") from caught_error
         structured_output = cast(dict, temp_parsed)
     return structured_output
 

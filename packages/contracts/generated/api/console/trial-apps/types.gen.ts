@@ -31,8 +31,161 @@ export type TrialAppDetailResponse = {
   workflow?: TrialWorkflowPartialResponse | null
 }
 
+export type AppUnavailableError = ErrorResponse & {
+  code: 'app_unavailable'
+  status: 400
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
+export type AppSiteUnavailableError = ErrorResponse & {
+  code: 'app_site_unavailable'
+  status: 403
+}
+
+export type AppNotFoundError = ErrorResponse & {
+  code: 'app_not_found'
+  status: 404
+}
+
+export type AgentAppComposerResponse = {
+  active_config_is_published: boolean
+  active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
+  agent: AgentComposerAgentResponse
+  agent_soul: AgentSoulConfig
+  app_id?: string | null
+  backing_app_id?: string | null
+  chat_endpoint?: string | null
+  draft?: AgentConfigDraftSummaryResponse | null
+  hidden_app_backed?: boolean
+  save_options: Array<ComposerSaveStrategy>
+  validation?: ComposerValidationFindingsResponse | null
+  variant: 'agent_app'
+}
+
+export type AgentConfigFileListResponse = {
+  agent_id: string
+  config_version: AgentConfigVersionResponse
+  items?: Array<AgentConfigFileItemResponse>
+}
+
+export type AgentConfigDownloadResponse = {
+  url: string
+}
+
+export type AgentConfigFilePreviewResponse = {
+  binary: boolean
+  name: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
+}
+
+export type AgentConfigSkillListResponse = {
+  agent_id: string
+  config_version: AgentConfigVersionResponse
+  items?: Array<AgentConfigSkillItemResponse>
+}
+
+export type AgentConfigSkillFilePreviewResponse = {
+  binary: boolean
+  path: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
+}
+
+export type AgentConfigSkillInspectResponse = {
+  description?: string
+  file_tree?: Array<{
+    [key: string]: unknown
+  }> | null
+  files?: Array<AgentConfigSkillFileResponse>
+  hash?: string | null
+  id: string
+  mime_type?: string | null
+  name: string
+  size?: number | null
+  skill_md: AgentConfigSkillMarkdownResponse
+  source: 'config_skill_zip'
+  warnings?: Array<string>
+}
+
 export type AudioTranscriptResponse = {
   text: string
+}
+
+export type CompletionRequestError = ErrorResponse & {
+  code: 'completion_request_error'
+  status: 400
+}
+
+export type ModelCurrentlyNotSupportError = ErrorResponse & {
+  code: 'model_currently_not_support'
+  status: 400
+}
+
+export type NoAudioUploadedError = ErrorResponse & {
+  code: 'no_audio_uploaded'
+  status: 400
+}
+
+export type ProviderNotInitializeError = ErrorResponse & {
+  code: 'provider_not_initialize'
+  status: 400
+}
+
+export type ProviderNotSupportSpeechToTextError = ErrorResponse & {
+  code: 'provider_not_support_speech_to_text'
+  status: 400
+}
+
+export type ProviderQuotaExceededError = ErrorResponse & {
+  code: 'provider_quota_exceeded'
+  status: 400
+}
+
+export type SpeechToTextDisabledError = ErrorResponse & {
+  code: 'speech_to_text_disabled'
+  status: 400
+}
+
+export type TrialAppFeatureDisabledError = ErrorResponse & {
+  code: 'trial_app_feature_disabled'
+  status: 403
+}
+
+export type TrialAppLimitExceededError = ErrorResponse & {
+  code: 'trial_app_limit_exceeded'
+  status: 403
+}
+
+export type TrialAppNotAllowedError = ErrorResponse & {
+  code: 'trial_app_not_allowed'
+  status: 403
+}
+
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status: 404
+}
+
+export type AudioTooLargeError = ErrorResponse & {
+  code: 'audio_too_large'
+  status: 413
+}
+
+export type UnsupportedAudioTypeError = ErrorResponse & {
+  code: 'unsupported_audio_type'
+  status: 415
 }
 
 export type ChatRequest = {
@@ -46,6 +199,20 @@ export type ChatRequest = {
   retriever_from?: string
 }
 
+export type NotChatAppError = ErrorResponse & {
+  code: 'not_chat_app'
+  status: 400
+}
+
+export type RateLimitError = ErrorResponse & {
+  code: 'rate_limit_error'
+  status: 429
+}
+
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type CompletionRequest = {
   files?: Array<unknown> | null
   inputs: {
@@ -56,12 +223,36 @@ export type CompletionRequest = {
   retriever_from?: string
 }
 
+export type NotCompletionAppError = ErrorResponse & {
+  code: 'not_completion_app'
+  status: 400
+}
+
 export type TrialDatasetListResponse = {
   data: Array<TrialDatasetResponse>
   has_more: boolean
   limit: number
   page: number
   total: number
+}
+
+export type NeedAddIdsError = ErrorResponse & {
+  code: 'need_add_ids'
+  status: 400
+}
+
+export type AppExportResponse = {
+  data: string
+}
+
+export type RecommendedAppNotFoundError = ErrorResponse & {
+  code: 'recommended_app_not_found'
+  status: 404
+}
+
+export type RosterAgentPackageExportFailedError = ErrorResponse & {
+  code: 'roster_agent_package_export_failed'
+  status: 500
 }
 
 export type FileResponse = {
@@ -82,23 +273,367 @@ export type FileResponse = {
   user_id?: string | null
 }
 
+export type FileExtensionBlockedError = ErrorResponse & {
+  code: 'file_extension_blocked'
+  status: 400
+}
+
+export type FilenameNotExistsError = ErrorResponse & {
+  code: 'filename_not_exists_error'
+  status: 400
+}
+
+export type NoFileUploadedError = ErrorResponse & {
+  code: 'no_file_uploaded'
+  status: 400
+}
+
+export type TooManyFilesError = ErrorResponse & {
+  code: 'too_many_files'
+  status: 400
+}
+
+export type FileTooLargeError = ErrorResponse & {
+  code: 'file_too_large'
+  status: 413
+}
+
+export type UnsupportedFileTypeError = ErrorResponse & {
+  code: 'unsupported_file_type'
+  status: 415
+}
+
 export type SuggestedQuestionsResponse = {
   data: Array<string>
 }
 
+export type AppSuggestedQuestionsAfterAnswerDisabledError = ErrorResponse & {
+  code: 'app_suggested_questions_after_answer_disabled'
+  status: 403
+}
+
 export type Parameters = {
-  annotation_reply: JsonObject
-  file_upload: JsonObject
-  more_like_this: JsonObject
+  annotation_reply: {
+    enabled?: boolean
+  }
+  file_upload: {
+    allowed_file_extensions?: Array<string>
+    allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
+    allowed_file_upload_methods?: Array<'local_file' | 'remote_url'>
+    enabled?: boolean
+    image?: {
+      detail?: string
+      enabled?: boolean
+      number_limits?: number
+      transfer_methods?: Array<string>
+    }
+    number_limits?: number
+  }
+  more_like_this: {
+    enabled?: boolean
+  }
   opening_statement?: string | null
-  retriever_resource: JsonObject
-  sensitive_word_avoidance: JsonObject
-  speech_to_text: JsonObject
+  retriever_resource: {
+    enabled?: boolean
+  }
+  sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  speech_to_text: {
+    enabled?: boolean
+  }
   suggested_questions: Array<string>
-  suggested_questions_after_answer: JsonObject
+  suggested_questions_after_answer: {
+    enabled?: boolean
+  }
   system_parameters: SystemParameters
-  text_to_speech: JsonObject
-  user_input_form: Array<JsonObject>
+  text_to_speech: {
+    autoPlay?: string
+    enabled?: boolean
+    language?: string
+    voice?: string
+  }
+  user_input_form: Array<
+    | {
+        'text-input': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        select: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        paragraph: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        number: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        external_data_tool: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        file: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        'file-list': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        checkbox: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        json_object: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+  >
 }
 
 export type RemoteFileUploadPayload = {
@@ -114,6 +649,36 @@ export type FileWithSignedUrl = {
   name: string
   size: number
   url: string | null
+}
+
+export type RemoteFileAccessDeniedError = ErrorResponse & {
+  code: 'remote_file_access_denied'
+  status: 400
+}
+
+export type RemoteFileInvalidUrlError = ErrorResponse & {
+  code: 'remote_file_invalid_url'
+  status: 400
+}
+
+export type RemoteFileUrlBlockedError = ErrorResponse & {
+  code: 'remote_file_url_blocked'
+  status: 400
+}
+
+export type RemoteFileNotFoundError = ErrorResponse & {
+  code: 'remote_file_not_found'
+  status: 404
+}
+
+export type RemoteFileInvalidResponseError = ErrorResponse & {
+  code: 'remote_file_invalid_response'
+  status: 502
+}
+
+export type RemoteFileUnavailableError = ErrorResponse & {
+  code: 'remote_file_unavailable'
+  status: 502
 }
 
 export type Site = {
@@ -134,6 +699,11 @@ export type Site = {
   use_icon_as_answer_icon: boolean
 }
 
+export type AppOwnerUnavailableError = ErrorResponse & {
+  code: 'app_owner_unavailable'
+  status: 403
+}
+
 export type TextToSpeechRequest = {
   message_id?: string | null
   streaming?: boolean | null
@@ -143,18 +713,23 @@ export type TextToSpeechRequest = {
 
 export type AudioBinaryResponse = Blob | File
 
+export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
+  code: 'provider_not_support_text_to_speech'
+  status: 400
+}
+
 export type TrialWorkflowResponse = {
   conversation_variables?: Array<WorkflowConversationVariableResponse>
   created_at?: number | null
   created_by?: TrialSimpleAccount | null
-  environment_variables?: Array<JsonObject2>
-  features?: JsonObject2
-  graph: JsonObject2
+  environment_variables?: Array<JsonObject>
+  features?: JsonObject
+  graph: JsonObject
   hash?: string | null
   id: string
   marked_comment?: string | null
   marked_name?: string | null
-  rag_pipeline_variables?: Array<JsonObject2>
+  rag_pipeline_variables?: Array<JsonObject>
   tool_published?: boolean | null
   updated_at?: number | null
   updated_by?: TrialSimpleAccount | null
@@ -168,8 +743,9 @@ export type WorkflowRunRequest = {
   }
 }
 
-export type SimpleResultResponse = {
-  result: string
+export type NotWorkflowAppError = ErrorResponse & {
+  code: 'not_workflow_app'
+  status: 400
 }
 
 export type TrialDeletedToolResponse = {
@@ -180,33 +756,39 @@ export type TrialDeletedToolResponse = {
 
 export type TrialIconType = 'emoji' | 'image' | 'link'
 
-export type TrialAppMode = 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
+export type TrialAppMode =
+  | 'advanced-chat'
+  | 'agent'
+  | 'agent-chat'
+  | 'chat'
+  | 'completion'
+  | 'workflow'
 
 export type TrialAppModelConfigResponse = {
   agent_mode?: TrialAppAgentMode | null
-  annotation_reply?: JsonObject2 | null
-  chat_prompt_config?: JsonObject2 | null
-  completion_prompt_config?: JsonObject2 | null
+  annotation_reply?: JsonObject | null
+  chat_prompt_config?: JsonObject | null
+  completion_prompt_config?: JsonObject | null
   created_at?: number | null
   created_by?: string | null
-  dataset_configs?: JsonObject2 | null
+  dataset_configs?: JsonObject | null
   dataset_query_variable?: string | null
-  external_data_tools?: Array<JsonObject2>
-  file_upload?: JsonObject2 | null
+  external_data_tools?: Array<JsonObject>
+  file_upload?: JsonObject | null
   model?: TrialAppModel | null
-  more_like_this?: JsonObject2 | null
+  more_like_this?: JsonObject | null
   opening_statement?: string | null
   pre_prompt?: string | null
   prompt_type?: string | null
-  retriever_resource?: JsonObject2 | null
-  sensitive_word_avoidance?: JsonObject2 | null
-  speech_to_text?: JsonObject2 | null
+  retriever_resource?: JsonObject | null
+  sensitive_word_avoidance?: JsonObject | null
+  speech_to_text?: JsonObject | null
   suggested_questions?: Array<string>
-  suggested_questions_after_answer?: JsonObject2 | null
-  text_to_speech?: JsonObject2 | null
+  suggested_questions_after_answer?: JsonObject | null
+  text_to_speech?: JsonObject | null
   updated_at?: number | null
   updated_by?: string | null
-  user_input_form?: Array<JsonObject2>
+  user_input_form?: Array<JsonObject>
 }
 
 export type TrialSiteResponse = {
@@ -251,6 +833,120 @@ export type TrialWorkflowPartialResponse = {
   updated_by?: string | null
 }
 
+export type AgentConfigSnapshotSummaryResponse = {
+  agent_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  display_version?: number | null
+  id: string
+  snapshot_version?: number | null
+  summary?: string | null
+  version: number
+  version_note?: string | null
+}
+
+export type AgentComposerAgentResponse = {
+  active_config_snapshot_id?: string | null
+  app_id?: string | null
+  backing_app_id?: string | null
+  description: string
+  hidden_app_backed?: boolean
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  id: string
+  name: string
+  role?: string | null
+  scope: AgentScope
+  source?: AgentSource | null
+  status: AgentStatus
+}
+
+export type AgentSoulConfig = {
+  app_features?: AgentSoulAppFeaturesConfig
+  app_variables?: Array<AppVariableConfig>
+  config_files?: Array<AgentConfigFileRefConfig>
+  config_note?: string
+  config_skills?: Array<AgentConfigSkillRefConfig>
+  env?: AgentSoulEnvConfig
+  human?: AgentSoulHumanConfig
+  knowledge?: AgentSoulKnowledgeConfig
+  memory?: AgentSoulMemoryConfig
+  misc_legacy?: AgentSoulAppFeaturesConfig
+  model?: AgentSoulModelConfig | null
+  prompt?: AgentSoulPromptConfig
+  sandbox?: AgentSoulSandboxConfig
+  schema_version?: number
+  tools?: AgentSoulToolsConfig
+}
+
+export type AgentConfigDraftSummaryResponse = {
+  account_id?: string | null
+  agent_id: string
+  base_snapshot_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  draft_type: AgentConfigDraftType
+  id: string
+  updated_at?: number | null
+  updated_by?: string | null
+}
+
+export type ComposerSaveStrategy =
+  | 'node_job_only'
+  | 'save_as_new_agent'
+  | 'save_as_new_version'
+  | 'save_to_current_version'
+  | 'save_to_roster'
+
+export type ComposerValidationFindingsResponse = {
+  knowledge_retrieval_placeholder?: Array<ComposerKnowledgePlaceholderResponse>
+  warnings?: Array<ComposerValidationWarningResponse>
+}
+
+export type AgentConfigVersionResponse = {
+  id: string
+  kind: 'build_draft' | 'draft' | 'snapshot'
+  writable: boolean
+}
+
+export type AgentConfigFileItemResponse = {
+  file_id?: string | null
+  hash?: string | null
+  id: string
+  is_missing?: boolean
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentConfigSkillItemResponse = {
+  description?: string
+  file_id?: string | null
+  hash?: string | null
+  id: string
+  is_missing?: boolean
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentConfigSkillFileResponse = {
+  downloadable: boolean
+  name: string
+  path: string
+  previewable: boolean
+  type: 'directory' | 'file'
+}
+
+export type AgentConfigSkillMarkdownResponse = {
+  binary: false
+  path: 'SKILL.md'
+  size?: number | null
+  text: string
+  truncated: boolean
+}
+
 export type TrialDatasetResponse = {
   created_at?: number | null
   created_by?: string | null
@@ -261,10 +957,6 @@ export type TrialDatasetResponse = {
   name: string
   permission?: string | null
   permission_keys?: Array<string>
-}
-
-export type JsonObject = {
-  [key: string]: unknown
 }
 
 export type SystemParameters = {
@@ -289,21 +981,489 @@ export type TrialSimpleAccount = {
   name?: string | null
 }
 
-export type JsonObject2 = {
+export type JsonObject = {
   [key: string]: unknown
 }
 
 export type TrialAppAgentMode = {
   enabled?: boolean | null
   strategy?: string | null
-  tools?: Array<JsonObject2>
+  tools?: Array<JsonObject>
 }
 
 export type TrialAppModel = {
-  completion_params?: JsonObject2
+  completion_params?: JsonObject
   mode?: string | null
   name: string
   provider: string
+}
+
+export type AgentScope = 'roster' | 'workflow_only'
+
+export type AgentSource = 'agent_app' | 'imported' | 'roster' | 'system' | 'workflow'
+
+export type AgentStatus = 'active' | 'archived'
+
+export type AgentSoulAppFeaturesConfig = {
+  file_upload?: AgentFileUploadFeatureConfig
+  opening_statement?: string | null
+  retriever_resource?: AgentFeatureToggleConfig | null
+  sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
+  speech_to_text?: AgentFeatureToggleConfig | null
+  suggested_questions?: Array<string> | null
+  suggested_questions_after_answer?: AgentSuggestedQuestionsAfterAnswerFeatureConfig | null
+  text_to_speech?: AgentTextToSpeechFeatureConfig | null
+  [key: string]: unknown
+}
+
+export type AppVariableConfig = {
+  default?: unknown
+  name: string
+  required?: boolean
+  type: string
+}
+
+export type AgentConfigFileRefConfig = {
+  file_id?: string
+  file_kind: 'tool_file' | 'upload_file'
+  hash?: string | null
+  is_missing?: boolean
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentConfigSkillRefConfig = {
+  description?: string
+  file_id?: string
+  file_kind?: 'tool_file'
+  hash?: string | null
+  is_missing?: boolean
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentSoulEnvConfig = {
+  secret_refs?: Array<AgentSecretRefConfig>
+  variables?: Array<AgentEnvVariableConfig>
+}
+
+export type AgentSoulHumanConfig = {
+  contacts?: Array<AgentHumanContactConfig>
+  tools?: Array<AgentHumanToolConfig>
+}
+
+export type AgentSoulKnowledgeConfig = {
+  sets?: Array<AgentKnowledgeSetConfig>
+}
+
+export type AgentSoulMemoryConfig = {
+  artifacts?: Array<AgentMemoryArtifactConfig>
+  budget?: string | null
+  scope?: string | null
+}
+
+export type AgentSoulModelConfig = {
+  credential_ref?: AgentSoulModelCredentialRef | null
+  model: string
+  model_provider: string
+  model_settings?: AgentSoulModelSettings
+  plugin_id: string
+}
+
+export type AgentSoulPromptConfig = {
+  system_prompt?: string
+}
+
+export type AgentSoulSandboxConfig = {
+  config?: AgentSandboxProviderConfig
+  provider?: string | null
+}
+
+export type AgentSoulToolsConfig = {
+  cli_tools?: Array<AgentCliToolConfig>
+  dify_tools?: Array<AgentSoulDifyToolConfig>
+}
+
+export type AgentConfigDraftType = 'debug_build' | 'draft'
+
+export type ComposerKnowledgePlaceholderResponse = {
+  id: string
+  placeholder_name: string
+}
+
+export type ComposerValidationWarningResponse = {
+  code: string
+  id?: string | null
+  kind?: string | null
+  message?: string | null
+  surface?: string | null
+}
+
+export type AgentFileUploadFeatureConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  enabled?: boolean
+  image?: AgentFileUploadImageFeatureConfig
+  number_limits?: number
+  [key: string]: unknown
+}
+
+export type AgentFeatureToggleConfig = {
+  enabled?: boolean
+  [key: string]: unknown
+}
+
+export type AgentSensitiveWordAvoidanceFeatureConfig = {
+  config?: AgentModerationProviderConfig | null
+  enabled?: boolean
+  type?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSuggestedQuestionsAfterAnswerFeatureConfig = {
+  enabled?: boolean
+  model?: AgentSuggestedQuestionsAfterAnswerModelConfig | null
+  prompt?: string | null
+  [key: string]: unknown
+}
+
+export type AgentTextToSpeechFeatureConfig = {
+  autoPlay?: 'disabled' | 'enabled' | null
+  enabled?: boolean
+  language?: string | null
+  voice?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSecretRefConfig = {
+  credential_id?: string | null
+  env_name?: string | null
+  id?: string | null
+  key?: string | null
+  name?: string | null
+  permission?: AgentPermissionConfig | null
+  permission_status?: string | null
+  provider?: string | null
+  provider_credential_id?: string | null
+  ref?: string | null
+  type?: string | null
+  value?: string | null
+  variable?: string | null
+  [key: string]: unknown
+}
+
+export type AgentEnvVariableConfig = {
+  default?:
+    | string
+    | number
+    | number
+    | boolean
+    | Array<string>
+    | Array<number>
+    | Array<number>
+    | Array<boolean>
+    | null
+  env_name?: string | null
+  key?: string | null
+  name?: string | null
+  required?: boolean
+  type?: string | null
+  value?:
+    | string
+    | number
+    | number
+    | boolean
+    | Array<string>
+    | Array<number>
+    | Array<number>
+    | Array<boolean>
+    | null
+  variable?: string | null
+  [key: string]: unknown
+}
+
+export type AgentHumanContactConfig = {
+  channel?: string | null
+  contact_id?: string | null
+  contact_method?: string | null
+  email?: string | null
+  human_id?: string | null
+  id?: string | null
+  method?: string | null
+  name?: string | null
+  tenant_id?: string | null
+  [key: string]: unknown
+}
+
+export type AgentHumanToolConfig = {
+  description?: string | null
+  enabled?: boolean
+  name?: string | null
+  [key: string]: unknown
+}
+
+export type AgentKnowledgeSetConfig = {
+  datasets: Array<AgentKnowledgeDatasetConfig>
+  description?: string | null
+  id: string
+  metadata_filtering?: AgentKnowledgeMetadataFilteringConfig
+  name: string
+  query: AgentKnowledgeQueryConfig
+  retrieval: AgentKnowledgeRetrievalConfig
+}
+
+export type AgentMemoryArtifactConfig = {
+  id?: string | null
+  name?: string | null
+  type?: string | null
+  url?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSoulModelCredentialRef = {
+  id?: string | null
+  provider?: string | null
+  type: string
+}
+
+export type AgentSoulModelSettings = {
+  frequency_penalty?: number | null
+  max_tokens?: number | null
+  presence_penalty?: number | null
+  response_format?: AgentModelResponseFormatConfig | null
+  stop?: Array<string> | null
+  temperature?: number | null
+  top_p?: number | null
+  [key: string]: unknown
+}
+
+export type AgentSandboxProviderConfig = {
+  cpu?: number | null
+  env?: Array<AgentEnvVariableConfig>
+  image?: string | null
+  working_dir?: string | null
+  [key: string]: unknown
+}
+
+export type AgentCliToolConfig = {
+  approved?: boolean
+  authorization_status?: AgentCliToolAuthorizationStatus | null
+  command?: string | null
+  dangerous?: boolean
+  dangerous_accepted?: boolean
+  dangerous_acknowledged?: boolean
+  dangerous_command?: boolean
+  description?: string | null
+  enabled?: boolean
+  env?: AgentCliToolEnvConfig
+  id?: string | null
+  inferred_from?: string | null
+  install?: string | null
+  install_command?: string | null
+  install_commands?: Array<string>
+  invoke_metadata?: {
+    [key: string]: unknown
+  }
+  label?: string | null
+  name?: string | null
+  permission?: AgentPermissionConfig | null
+  pre_authorized?: boolean | null
+  requires_confirmation?: boolean
+  risk_accepted?: boolean
+  risk_level?: AgentCliToolRiskLevel | null
+  setup_command?: string | null
+  tool_name?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSoulDifyToolConfig = {
+  credential_ref?: AgentSoulDifyToolCredentialRef | null
+  credential_type?: 'api-key' | 'oauth2' | 'unauthorized'
+  description?: string | null
+  enabled?: boolean
+  name?: string | null
+  plugin_id?: string | null
+  provider?: string | null
+  provider_id?: string | null
+  provider_type: ToolProviderType
+  runtime_parameters?: {
+    [key: string]:
+      | string
+      | number
+      | number
+      | boolean
+      | Array<string>
+      | Array<number>
+      | Array<number>
+      | Array<boolean>
+      | null
+  }
+  tool_name?: string | null
+}
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type AgentFileUploadImageFeatureConfig = {
+  enabled?: boolean
+  [key: string]: unknown
+}
+
+export type AgentModerationProviderConfig = {
+  api_based_extension_id?: string | null
+  inputs_config?: AgentModerationIoConfig | null
+  keywords?: string | null
+  outputs_config?: AgentModerationIoConfig | null
+  [key: string]: unknown
+}
+
+export type AgentSuggestedQuestionsAfterAnswerModelConfig = {
+  completion_params?: {
+    [key: string]: unknown
+  } | null
+  mode?: string | null
+  name: string
+  provider: string
+  [key: string]: unknown
+}
+
+export type AgentPermissionConfig = {
+  allowed?: boolean | null
+  state?: string | null
+  status?: string | null
+}
+
+export type AgentKnowledgeDatasetConfig = {
+  description?: string | null
+  id?: string | null
+  name?: string | null
+}
+
+export type AgentKnowledgeMetadataFilteringConfig = {
+  conditions?: AgentKnowledgeMetadataConditions | null
+  mode?: 'automatic' | 'disabled' | 'manual'
+  model_config?: AgentKnowledgeModelConfig | null
+}
+
+export type AgentKnowledgeQueryConfig = {
+  mode: AgentKnowledgeQueryMode
+  value?: string | null
+}
+
+export type AgentKnowledgeRetrievalConfig = {
+  mode: 'multiple' | 'single'
+  model?: AgentKnowledgeModelConfig | null
+  reranking_enable?: boolean
+  reranking_mode?: string
+  reranking_model?: AgentKnowledgeRerankingModelConfig | null
+  score_threshold?: number | null
+  top_k?: number | null
+  weights?: AgentKnowledgeWeightedScoreConfig | null
+}
+
+export type AgentModelResponseFormatConfig = {
+  type?: string | null
+  [key: string]: unknown
+}
+
+export type AgentCliToolAuthorizationStatus =
+  | 'allowed'
+  | 'authorized'
+  | 'denied'
+  | 'forbidden'
+  | 'not_required'
+  | 'pending'
+  | 'pre_authorized'
+  | 'unauthorized'
+
+export type AgentCliToolEnvConfig = {
+  secret_refs?: Array<AgentSecretRefConfig>
+  variables?: Array<AgentEnvVariableConfig>
+}
+
+export type AgentCliToolRiskLevel = 'dangerous' | 'safe' | 'unknown'
+
+export type AgentSoulDifyToolCredentialRef = {
+  id?: string | null
+  provider?: string | null
+  type?: 'provider' | 'tool'
+}
+
+export type ToolProviderType =
+  | 'api'
+  | 'app'
+  | 'builtin'
+  | 'dataset-retrieval'
+  | 'mcp'
+  | 'plugin'
+  | 'workflow'
+
+export type AgentModerationIoConfig = {
+  enabled?: boolean
+  preset_response?: string | null
+  [key: string]: unknown
+}
+
+export type AgentKnowledgeMetadataConditions = {
+  conditions?: Array<AgentKnowledgeMetadataCondition>
+  logical_operator?: 'and' | 'or'
+}
+
+export type AgentKnowledgeModelConfig = {
+  completion_params?: {
+    [key: string]: unknown
+  }
+  mode: string
+  name: string
+  provider: string
+}
+
+export type AgentKnowledgeQueryMode = 'generated_query' | 'user_query'
+
+export type AgentKnowledgeRerankingModelConfig = {
+  model: string
+  provider: string
+}
+
+export type AgentKnowledgeWeightedScoreConfig = {
+  keyword_setting?: {
+    [key: string]: unknown
+  } | null
+  vector_setting?: {
+    [key: string]: unknown
+  } | null
+  weight_type?: string | null
+  [key: string]: unknown
+}
+
+export type AgentKnowledgeMetadataCondition = {
+  comparison_operator:
+    | '<'
+    | '='
+    | '>'
+    | 'after'
+    | 'before'
+    | 'contains'
+    | 'empty'
+    | 'end with'
+    | 'in'
+    | 'is'
+    | 'is not'
+    | 'not contains'
+    | 'not empty'
+    | 'not in'
+    | 'start with'
+    | '≠'
+    | '≤'
+    | '≥'
+  id?: string | null
+  metadata_id?: string | null
+  name: string
+  value?: string | Array<string> | number | null
 }
 
 export type SiteWritable = {
@@ -332,12 +1492,299 @@ export type GetTrialAppsByAppIdData = {
   url: '/trial-apps/{app_id}'
 }
 
+export type GetTrialAppsByAppIdErrors = {
+  400: AppUnavailableError | ErrorResponse
+  403: AppSiteUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdError = GetTrialAppsByAppIdErrors[keyof GetTrialAppsByAppIdErrors]
+
 export type GetTrialAppsByAppIdResponses = {
   200: TrialAppDetailResponse
 }
 
 export type GetTrialAppsByAppIdResponse =
   GetTrialAppsByAppIdResponses[keyof GetTrialAppsByAppIdResponses]
+
+export type GetTrialAppsByAppIdAgentComposerData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/trial-apps/{app_id}/agent-composer'
+}
+
+export type GetTrialAppsByAppIdAgentComposerErrors = {
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentComposerError =
+  GetTrialAppsByAppIdAgentComposerErrors[keyof GetTrialAppsByAppIdAgentComposerErrors]
+
+export type GetTrialAppsByAppIdAgentComposerResponses = {
+  200: AgentAppComposerResponse
+}
+
+export type GetTrialAppsByAppIdAgentComposerResponse =
+  GetTrialAppsByAppIdAgentComposerResponses[keyof GetTrialAppsByAppIdAgentComposerResponses]
+
+export type GetTrialAppsByAppIdAgentConfigFilesData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/files'
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesErrors = {
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesError =
+  GetTrialAppsByAppIdAgentConfigFilesErrors[keyof GetTrialAppsByAppIdAgentConfigFilesErrors]
+
+export type GetTrialAppsByAppIdAgentConfigFilesResponses = {
+  200: AgentConfigFileListResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesResponse =
+  GetTrialAppsByAppIdAgentConfigFilesResponses[keyof GetTrialAppsByAppIdAgentConfigFilesResponses]
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/files/{name}/download'
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadErrors = {
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadError =
+  GetTrialAppsByAppIdAgentConfigFilesByNameDownloadErrors[keyof GetTrialAppsByAppIdAgentConfigFilesByNameDownloadErrors]
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponses = {
+  200: AgentConfigDownloadResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponse =
+  GetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponses[keyof GetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponses]
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/files/{name}/preview'
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewErrors = {
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewError =
+  GetTrialAppsByAppIdAgentConfigFilesByNamePreviewErrors[keyof GetTrialAppsByAppIdAgentConfigFilesByNamePreviewErrors]
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponses = {
+  200: AgentConfigFilePreviewResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponse =
+  GetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponses[keyof GetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsErrors = {
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsError =
+  GetTrialAppsByAppIdAgentConfigSkillsErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsErrors]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsResponses = {
+  200: AgentConfigSkillListResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills/{name}/download'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadErrors = {
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadError =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadErrors]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponses = {
+  200: AgentConfigDownloadResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query: {
+    path: string
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills/{name}/files/content'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentErrors = {
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentError =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentErrors]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponses = {
+  200: Blob | File
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query: {
+    path: string
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills/{name}/files/download'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors = {
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadError =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses = {
+  200: AgentConfigDownloadResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query: {
+    path: string
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills/{name}/files/preview'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors = {
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewError =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses = {
+  200: AgentConfigSkillFilePreviewResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills/{name}/inspect'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectErrors = {
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectError =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameInspectErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameInspectErrors]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponses = {
+  200: AgentConfigSkillInspectResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponses]
 
 export type PostTrialAppsByAppIdAudioToTextData = {
   body?: never
@@ -347,6 +1794,31 @@ export type PostTrialAppsByAppIdAudioToTextData = {
   query?: never
   url: '/trial-apps/{app_id}/audio-to-text'
 }
+
+export type PostTrialAppsByAppIdAudioToTextErrors = {
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NoAudioUploadedError
+    | ProviderNotInitializeError
+    | ProviderNotSupportSpeechToTextError
+    | ProviderQuotaExceededError
+    | SpeechToTextDisabledError
+    | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
+  404: AgentVersionNotFoundError | ErrorResponse
+  413: AudioTooLargeError | ErrorResponse
+  415: UnsupportedAudioTypeError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdAudioToTextError =
+  PostTrialAppsByAppIdAudioToTextErrors[keyof PostTrialAppsByAppIdAudioToTextErrors]
 
 export type PostTrialAppsByAppIdAudioToTextResponses = {
   200: AudioTranscriptResponse
@@ -364,6 +1836,27 @@ export type PostTrialAppsByAppIdChatMessagesData = {
   url: '/trial-apps/{app_id}/chat-messages'
 }
 
+export type PostTrialAppsByAppIdChatMessagesErrors = {
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotChatAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
+  429: RateLimitError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdChatMessagesError =
+  PostTrialAppsByAppIdChatMessagesErrors[keyof PostTrialAppsByAppIdChatMessagesErrors]
+
 export type PostTrialAppsByAppIdChatMessagesResponses = {
   200: {
     [key: string]: unknown
@@ -373,6 +1866,32 @@ export type PostTrialAppsByAppIdChatMessagesResponses = {
 export type PostTrialAppsByAppIdChatMessagesResponse =
   PostTrialAppsByAppIdChatMessagesResponses[keyof PostTrialAppsByAppIdChatMessagesResponses]
 
+export type PostTrialAppsByAppIdChatMessagesByTaskIdStopData = {
+  body?: never
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/trial-apps/{app_id}/chat-messages/{task_id}/stop'
+}
+
+export type PostTrialAppsByAppIdChatMessagesByTaskIdStopErrors = {
+  400: NotChatAppError | ErrorResponse
+  403: TrialAppFeatureDisabledError | TrialAppNotAllowedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdChatMessagesByTaskIdStopError =
+  PostTrialAppsByAppIdChatMessagesByTaskIdStopErrors[keyof PostTrialAppsByAppIdChatMessagesByTaskIdStopErrors]
+
+export type PostTrialAppsByAppIdChatMessagesByTaskIdStopResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostTrialAppsByAppIdChatMessagesByTaskIdStopResponse =
+  PostTrialAppsByAppIdChatMessagesByTaskIdStopResponses[keyof PostTrialAppsByAppIdChatMessagesByTaskIdStopResponses]
+
 export type PostTrialAppsByAppIdCompletionMessagesData = {
   body: CompletionRequest
   path: {
@@ -381,6 +1900,27 @@ export type PostTrialAppsByAppIdCompletionMessagesData = {
   query?: never
   url: '/trial-apps/{app_id}/completion-messages'
 }
+
+export type PostTrialAppsByAppIdCompletionMessagesErrors = {
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotCompletionAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
+  429: RateLimitError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdCompletionMessagesError =
+  PostTrialAppsByAppIdCompletionMessagesErrors[keyof PostTrialAppsByAppIdCompletionMessagesErrors]
 
 export type PostTrialAppsByAppIdCompletionMessagesResponses = {
   200: {
@@ -404,12 +1944,49 @@ export type GetTrialAppsByAppIdDatasetsData = {
   url: '/trial-apps/{app_id}/datasets'
 }
 
+export type GetTrialAppsByAppIdDatasetsErrors = {
+  400: NeedAddIdsError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdDatasetsError =
+  GetTrialAppsByAppIdDatasetsErrors[keyof GetTrialAppsByAppIdDatasetsErrors]
+
 export type GetTrialAppsByAppIdDatasetsResponses = {
   200: TrialDatasetListResponse
 }
 
 export type GetTrialAppsByAppIdDatasetsResponse =
   GetTrialAppsByAppIdDatasetsResponses[keyof GetTrialAppsByAppIdDatasetsResponses]
+
+export type GetTrialAppsByAppIdExportData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    format?: 'ifpkg' | 'yaml'
+    version_id: string
+  }
+  url: '/trial-apps/{app_id}/export'
+}
+
+export type GetTrialAppsByAppIdExportErrors = {
+  404: RecommendedAppNotFoundError | ErrorResponse
+  500: RosterAgentPackageExportFailedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdExportError =
+  GetTrialAppsByAppIdExportErrors[keyof GetTrialAppsByAppIdExportErrors]
+
+export type GetTrialAppsByAppIdExportResponses = {
+  200: AppExportResponse | Blob | File
+}
+
+export type GetTrialAppsByAppIdExportResponse =
+  GetTrialAppsByAppIdExportResponses[keyof GetTrialAppsByAppIdExportResponses]
 
 export type PostTrialAppsByAppIdFilesUploadData = {
   body: {
@@ -422,6 +1999,26 @@ export type PostTrialAppsByAppIdFilesUploadData = {
   query?: never
   url: '/trial-apps/{app_id}/files/upload'
 }
+
+export type PostTrialAppsByAppIdFilesUploadErrors = {
+  400:
+    | FileExtensionBlockedError
+    | FilenameNotExistsError
+    | NoFileUploadedError
+    | TooManyFilesError
+    | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdFilesUploadError =
+  PostTrialAppsByAppIdFilesUploadErrors[keyof PostTrialAppsByAppIdFilesUploadErrors]
 
 export type PostTrialAppsByAppIdFilesUploadResponses = {
   201: FileResponse
@@ -440,6 +2037,27 @@ export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsData = {
   url: '/trial-apps/{app_id}/messages/{message_id}/suggested-questions'
 }
 
+export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsErrors = {
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotChatAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  403:
+    | AppSuggestedQuestionsAfterAnswerDisabledError
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsError =
+  GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsErrors[keyof GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsErrors]
+
 export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses = {
   200: SuggestedQuestionsResponse
 }
@@ -455,6 +2073,15 @@ export type GetTrialAppsByAppIdParametersData = {
   query?: never
   url: '/trial-apps/{app_id}/parameters'
 }
+
+export type GetTrialAppsByAppIdParametersErrors = {
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdParametersError =
+  GetTrialAppsByAppIdParametersErrors[keyof GetTrialAppsByAppIdParametersErrors]
 
 export type GetTrialAppsByAppIdParametersResponses = {
   200: Parameters
@@ -472,6 +2099,28 @@ export type PostTrialAppsByAppIdRemoteFilesUploadData = {
   url: '/trial-apps/{app_id}/remote-files/upload'
 }
 
+export type PostTrialAppsByAppIdRemoteFilesUploadErrors = {
+  400:
+    | FileExtensionBlockedError
+    | RemoteFileAccessDeniedError
+    | RemoteFileInvalidUrlError
+    | RemoteFileUrlBlockedError
+    | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
+  404: RemoteFileNotFoundError | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdRemoteFilesUploadError =
+  PostTrialAppsByAppIdRemoteFilesUploadErrors[keyof PostTrialAppsByAppIdRemoteFilesUploadErrors]
+
 export type PostTrialAppsByAppIdRemoteFilesUploadResponses = {
   201: FileWithSignedUrl
 }
@@ -487,6 +2136,15 @@ export type GetTrialAppsByAppIdSiteData = {
   query?: never
   url: '/trial-apps/{app_id}/site'
 }
+
+export type GetTrialAppsByAppIdSiteErrors = {
+  403: AppOwnerUnavailableError | AppSiteUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdSiteError =
+  GetTrialAppsByAppIdSiteErrors[keyof GetTrialAppsByAppIdSiteErrors]
 
 export type GetTrialAppsByAppIdSiteResponses = {
   200: Site
@@ -504,6 +2162,27 @@ export type PostTrialAppsByAppIdTextToAudioData = {
   url: '/trial-apps/{app_id}/text-to-audio'
 }
 
+export type PostTrialAppsByAppIdTextToAudioErrors = {
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderNotSupportTextToSpeechError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
+  404: AgentVersionNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdTextToAudioError =
+  PostTrialAppsByAppIdTextToAudioErrors[keyof PostTrialAppsByAppIdTextToAudioErrors]
+
 export type PostTrialAppsByAppIdTextToAudioResponses = {
   200: AudioBinaryResponse
 }
@@ -520,6 +2199,15 @@ export type GetTrialAppsByAppIdWorkflowsData = {
   url: '/trial-apps/{app_id}/workflows'
 }
 
+export type GetTrialAppsByAppIdWorkflowsErrors = {
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdWorkflowsError =
+  GetTrialAppsByAppIdWorkflowsErrors[keyof GetTrialAppsByAppIdWorkflowsErrors]
+
 export type GetTrialAppsByAppIdWorkflowsResponses = {
   200: TrialWorkflowResponse
 }
@@ -535,6 +2223,27 @@ export type PostTrialAppsByAppIdWorkflowsRunData = {
   query?: never
   url: '/trial-apps/{app_id}/workflows/run'
 }
+
+export type PostTrialAppsByAppIdWorkflowsRunErrors = {
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotWorkflowAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
+  429: RateLimitError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdWorkflowsRunError =
+  PostTrialAppsByAppIdWorkflowsRunErrors[keyof PostTrialAppsByAppIdWorkflowsRunErrors]
 
 export type PostTrialAppsByAppIdWorkflowsRunResponses = {
   200: {
@@ -554,6 +2263,19 @@ export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopData = {
   query?: never
   url: '/trial-apps/{app_id}/workflows/tasks/{task_id}/stop'
 }
+
+export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopErrors = {
+  400: NotWorkflowAppError | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopError =
+  PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopErrors[keyof PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopErrors]
 
 export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse

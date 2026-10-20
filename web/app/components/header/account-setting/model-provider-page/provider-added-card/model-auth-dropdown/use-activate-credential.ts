@@ -1,31 +1,39 @@
 import type { Credential, ModelProvider } from '../../declarations'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useCallback, useRef, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useActiveProviderCredential } from '@/service/use-models'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { useUpdateModelList, useUpdateModelProviders } from '../../hooks'
 
 export function useActivateCredential(provider: ModelProvider) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
-  const { mutate, isPending } = useActiveProviderCredential(provider.provider)
+  const { mutate, isPending } = useMutation(
+    consoleQuery.workspaces.current.modelProviders.byProvider.credentials.switch.post.mutationOptions(),
+  )
   const [optimisticId, setOptimisticId] = useState<string>()
   const currentId = provider.custom_configuration.current_credential_id
   const selectedCredentialId = optimisticId ?? currentId
   const selectedIdRef = useRef(selectedCredentialId)
-  selectedIdRef.current = selectedCredentialId
   const supportedModelTypesRef = useRef(provider.supported_model_types)
-  supportedModelTypesRef.current = provider.supported_model_types
+
+  useEffect(() => {
+    selectedIdRef.current = selectedCredentialId
+    supportedModelTypesRef.current = provider.supported_model_types
+  }, [selectedCredentialId, provider.supported_model_types])
   const activate = useCallback(
     (credential: Credential) => {
       if (credential.credential_id === selectedIdRef.current) return
       setOptimisticId(credential.credential_id)
       mutate(
-        { credential_id: credential.credential_id },
+        {
+          params: { provider: provider.provider },
+          body: { credential_id: credential.credential_id },
+        },
         {
           onSuccess: () => {
-            toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
             updateModelProviders()
             supportedModelTypesRef.current.forEach((type) => updateModelList(type))
           },
@@ -36,7 +44,7 @@ export function useActivateCredential(provider: ModelProvider) {
         },
       )
     },
-    [mutate, t, updateModelProviders, updateModelList],
+    [mutate, provider.provider, t, updateModelProviders, updateModelList],
   )
   return {
     selectedCredentialId,

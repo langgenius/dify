@@ -2,9 +2,10 @@ import logging
 import threading
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import AbstractContextManager, nullcontext
-from typing import TYPE_CHECKING, Any, Union, final
+from typing import TYPE_CHECKING, Any, final
 
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import set_committed_value
 
 from core.app.apps.draft_variable_saver import (
     DraftVariableSaver,
@@ -19,7 +20,7 @@ from graphon.enums import NodeType
 from graphon.file import File, FileUploadConfig
 from graphon.variables.input_entities import VariableEntityType
 from libs.orjson import orjson_dumps
-from models import Account, EndUser
+from models import Account, EndUser, Workflow, WorkflowRun
 from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
@@ -71,6 +72,15 @@ class BaseAppGenerator:
     _file_access_controller: DatabaseFileAccessController = DatabaseFileAccessController()
 
     @staticmethod
+    def _restore_workflow_run_graph(*, session: Session, workflow: Workflow, workflow_run_id: str | None) -> None:
+        if workflow_run_id is None:
+            raise ValueError("Workflow run id is required when resuming")
+        workflow_run = session.get(WorkflowRun, workflow_run_id)
+        if workflow_run is None or workflow_run.graph is None:
+            raise ValueError(f"Workflow run graph not found: {workflow_run_id}")
+        set_committed_value(workflow, "graph", workflow_run.graph)
+
+    @staticmethod
     def _join_worker_thread(worker_thread: threading.Thread) -> None:
         # Bound the wait so a leaked app worker cannot occupy an execution slot indefinitely.
         worker_thread.join(timeout=_WORKER_THREAD_JOIN_TIMEOUT_SECONDS)
@@ -84,9 +94,9 @@ class BaseAppGenerator:
 
     @staticmethod
     def _wrap_stream_with_worker_thread_join[ResponseT](
-        response_stream: Generator[ResponseT, None, None],
+        response_stream: Generator[ResponseT],
         worker_thread: threading.Thread,
-    ) -> Generator[ResponseT, None, None]:
+    ) -> Generator[ResponseT]:
         """Keep the producer owned by the response stream until both finish."""
         try:
             yield from response_stream
@@ -240,8 +250,10 @@ class BaseAppGenerator:
                             return float(value)
                         else:
                             return int(value)
-                    except ValueError:
-                        raise ValueError(f"{variable_entity.variable} in input form must be a valid number")
+                    except ValueError as caught_error:
+                        raise ValueError(
+                            f"{variable_entity.variable} in input form must be a valid number"
+                        ) from caught_error
                 case _:
                     raise TypeError(f"expected value type int, float or str, got {type(value)}, value: {value}")
 
@@ -300,7 +312,7 @@ class BaseAppGenerator:
         return value
 
     @classmethod
-    def convert_to_event_stream(cls, generator: Union[Mapping, Generator[Mapping | str, None, None]]):
+    def convert_to_event_stream(cls, generator: Mapping | Generator[Mapping | str]):
         """
         Convert messages into event stream
         """

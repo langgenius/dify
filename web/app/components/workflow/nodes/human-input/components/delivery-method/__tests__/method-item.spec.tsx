@@ -1,8 +1,11 @@
+import type { ReactElement } from 'react'
 import type { EmailConfig, FormInputItem } from '../../../types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
-import { render } from '@/test/console/render'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { DeliveryMethodType } from '../../../types'
 import DeliveryMethodItem from '../method-item'
 
@@ -19,22 +22,19 @@ type TestEmailSenderProps = {
   jumpToEmailConfigModal: () => void
 }
 
-const mockEmailConfigureModal = vi.hoisted(() => vi.fn())
-const mockTestEmailSender = vi.hoisted(() => vi.fn())
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     email: 'owner@example.com',
   },
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+  })
 
 vi.mock('../email-configure-modal', () => ({
   default: (props: EmailConfigureModalProps) => {
-    mockEmailConfigureModal(props)
     return props.open ? (
       <div data-testid="email-configure-modal">
         <button
@@ -60,7 +60,6 @@ vi.mock('../email-configure-modal', () => ({
 
 vi.mock('../test-email-sender', () => ({
   default: (props: TestEmailSenderProps) => {
-    mockTestEmailSender(props)
     return props.open ? (
       <div data-testid="test-email-sender">
         <button type="button" onClick={props.jumpToEmailConfigModal}>
@@ -115,16 +114,13 @@ const nodesOutputVars = [
   },
 ] as NodeOutPutVar[]
 
-const getMethodRow = (label: string) => {
-  return screen.getByText(label).closest('div[class*="justify-between"]') as HTMLDivElement
-}
-
 describe('human-input/delivery-method/method-item', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('should toggle and delete a webapp delivery method', () => {
+  it('should toggle and delete a webapp delivery method', async () => {
+    const user = userEvent.setup()
     const handleChange = vi.fn()
     const handleDelete = vi.fn()
 
@@ -141,27 +137,21 @@ describe('human-input/delivery-method/method-item', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('switch'))
     expect(handleChange).toHaveBeenCalledWith({
       id: 'webapp-1',
       type: DeliveryMethodType.WebApp,
       enabled: false,
     })
 
-    const row = getMethodRow('webapp')
-    const actionButtons = within(row).getAllByRole('button')
-    const deleteButton = actionButtons[0]!
+    const deleteButton = screen.getByRole('button', { name: 'common.operation.remove' })
 
-    fireEvent.mouseEnter(deleteButton)
-    expect(row)!.toHaveClass('border-state-destructive-border')
-    fireEvent.mouseLeave(deleteButton)
-    expect(row).not.toHaveClass('border-state-destructive-border')
-
-    fireEvent.click(deleteButton)
+    await user.click(deleteButton)
     expect(handleDelete).toHaveBeenCalledWith(DeliveryMethodType.WebApp)
   })
 
-  it('should open configure and test flows for an email method with config', () => {
+  it('should open configure and test flows for an email method with config', async () => {
+    const user = userEvent.setup()
     const handleChange = vi.fn()
     const handleDelete = vi.fn()
 
@@ -185,26 +175,26 @@ describe('human-input/delivery-method/method-item', () => {
 
     expect(screen.getByText('DEBUG'))!.toBeInTheDocument()
 
-    const actionButtons = within(getMethodRow('email')).getAllByRole('button')
+    const testButton = screen.getByRole('button', { name: /emailSender.testSendTipInDebugMode/ })
 
-    fireEvent.click(actionButtons[0]!)
+    await user.click(testButton)
     expect(screen.getByTestId('test-email-sender'))!.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'close-test-sender' }))
+    await user.click(screen.getByRole('button', { name: 'close-test-sender' }))
     expect(screen.queryByTestId('test-email-sender')).not.toBeInTheDocument()
 
-    fireEvent.click(actionButtons[0]!)
-    fireEvent.click(screen.getByRole('button', { name: 'jump-to-config' }))
+    await user.click(testButton)
+    await user.click(screen.getByRole('button', { name: 'jump-to-config' }))
     expect(screen.queryByTestId('test-email-sender')).not.toBeInTheDocument()
     expect(screen.getByTestId('email-configure-modal'))!.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'close-email-config' }))
+    await user.click(screen.getByRole('button', { name: 'close-email-config' }))
     expect(screen.queryByTestId('email-configure-modal')).not.toBeInTheDocument()
 
-    fireEvent.click(actionButtons[1]!)
+    await user.click(screen.getByRole('button', { name: 'workflow.common.configure' }))
     expect(screen.getByTestId('email-configure-modal'))!.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'confirm-email-config' }))
+    await user.click(screen.getByRole('button', { name: 'confirm-email-config' }))
     expect(handleChange).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'email-1',
@@ -215,11 +205,12 @@ describe('human-input/delivery-method/method-item', () => {
       }),
     )
 
-    fireEvent.click(actionButtons[2]!)
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
     expect(handleDelete).toHaveBeenCalledWith(DeliveryMethodType.Email)
   })
 
-  it('should open email config from the unconfigured button and from the test sender jump action', () => {
+  it('should open email config from the unconfigured button and from the test sender jump action', async () => {
+    const user = userEvent.setup()
     render(
       <DeliveryMethodItem
         nodeId="node-1"
@@ -237,18 +228,19 @@ describe('human-input/delivery-method/method-item', () => {
       />,
     )
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', {
-        name: /workflow.nodes.humanInput.deliveryMethod.notConfigured/i,
+        name: /workflowHumanInput.nodes.humanInput.deliveryMethod.notConfigured/i,
       }),
     )
     expect(screen.getByTestId('email-configure-modal'))!.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'close-email-config' }))
+    await user.click(screen.getByRole('button', { name: 'close-email-config' }))
     expect(screen.queryByTestId('email-configure-modal')).not.toBeInTheDocument()
   })
 
-  it('should keep actions disabled in readonly mode', () => {
+  it('should keep actions disabled in readonly mode', async () => {
+    const user = userEvent.setup()
     const handleChange = vi.fn()
 
     render(
@@ -266,8 +258,14 @@ describe('human-input/delivery-method/method-item', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('switch'))
     expect(handleChange).not.toHaveBeenCalled()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.remove' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'workflow.common.configure' }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByTestId('email-configure-modal')).not.toBeInTheDocument()
     expect(screen.queryByTestId('test-email-sender')).not.toBeInTheDocument()
   })

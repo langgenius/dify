@@ -4,22 +4,32 @@ import type { MouseEventHandler } from 'react'
 import type { SnippetDSLImportResponse } from '@/types/snippet'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { ORPCError } from '@orpc/client'
 import { useAtomValue } from 'jotai'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
 import {
@@ -61,7 +71,7 @@ function SnippetDSLConfirmDialog({
   onCancel: () => void
   onConfirm: MouseEventHandler
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'snippet'])
 
   return (
     <AlertDialog
@@ -70,15 +80,12 @@ function SnippetDSLConfirmDialog({
         if (!open) onCancel()
       }}
     >
-      <AlertDialogContent className="w-120 overflow-hidden! border-none text-left align-middle shadow-xl">
-        <div className="flex flex-col items-start gap-2 self-stretch p-6 pb-4">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             {t(($) => $.dslVersionMismatchTitle, { ns: 'snippet' })}
           </AlertDialogTitle>
-          <AlertDialogDescription
-            render={<div />}
-            className="flex grow flex-col system-md-regular text-text-secondary"
-          >
+          <AlertDialogDescription render={<div />}>
             <div>{t(($) => $.dslVersionMismatchDescription, { ns: 'snippet' })}</div>
             <div>{t(($) => $.dslVersionMismatchQuestion, { ns: 'snippet' })}</div>
             <br />
@@ -91,22 +98,23 @@ function SnippetDSLConfirmDialog({
               <span className="system-md-medium">{versions.systemVersion}</span>
             </div>
           </AlertDialogDescription>
-        </div>
-        <AlertDialogActions>
-          <AlertDialogCancelButton variant="secondary">
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancelButton>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton onClick={onConfirm} disabled={confirmDisabled}>
+          <AlertDialogConfirmButton tone="default" onClick={onConfirm} disabled={confirmDisabled}>
             {t(($) => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )
 }
 
 function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps) {
-  const { t } = useTranslation()
+  const dslUrlInputId = useId()
+  const { t } = useTranslation(['common', 'snippet'])
   const { push } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
@@ -144,11 +152,10 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
       const snippetId = getImportedSnippetId(response)
 
       onClose()
-      toast.success(t(($) => $.importSuccess, { ns: 'snippet' }))
 
       if (snippetId) push(`/snippets/${snippetId}/orchestrate`)
     },
-    [onClose, push, t],
+    [onClose, push],
   )
 
   const handleImportResponse = useCallback(
@@ -188,7 +195,9 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
 
       handleImportResponse(response)
     } catch (error) {
-      if (error instanceof Error && error.message) toast.error(error.message)
+      // HTTP error notifications are owned by the request layer.
+      if (!(error instanceof ORPCError) && error instanceof Error && error.message)
+        toast.error(error.message)
     }
   }, [
     canCreateAndModifySnippet,
@@ -206,27 +215,21 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
       const response = await confirmSnippetImportMutation.mutateAsync({ importId })
       handleImportResponse(response)
     } catch (error) {
-      if (error instanceof Error && error.message) toast.error(error.message)
+      // HTTP error notifications are owned by the request layer.
+      if (!(error instanceof ORPCError) && error instanceof Error && error.message)
+        toast.error(error.message)
     }
   }, [canCreateAndModifySnippet, confirmSnippetImportMutation, handleImportResponse, importId])
 
-  const tabs = useMemo(
-    () => [
-      {
-        key: ImportSnippetDSLDialogTab.FromFile,
-        label: t(($) => $.importFromDSLFile, { ns: 'snippet' }),
-      },
-      {
-        key: ImportSnippetDSLDialogTab.FromUrl,
-        label: t(($) => $.importFromDSLUrl, { ns: 'snippet' }),
-      },
-    ],
-    [t],
-  )
+  const handleTabChange = (value: string | number) => {
+    if (value === ImportSnippetDSLDialogTab.FromFile)
+      setCurrentTab(ImportSnippetDSLDialogTab.FromFile)
+    if (value === ImportSnippetDSLDialogTab.FromUrl)
+      setCurrentTab(ImportSnippetDSLDialogTab.FromUrl)
+  }
 
   const isSubmitting = importSnippetMutation.isPending || confirmSnippetImportMutation.isPending
   const importDisabled =
-    isSubmitting ||
     !canCreateAndModifySnippet ||
     (currentTab === ImportSnippetDSLDialogTab.FromFile && !currentFile) ||
     (currentTab === ImportSnippetDSLDialogTab.FromUrl && !dslUrl.trim())
@@ -234,53 +237,61 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && !showConfirmModal && onClose()}>
-        <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
-          <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
-            {t(($) => $.importDialogTitle, { ns: 'snippet' })}
-            <button
-              type="button"
+        <DialogContent className="w-120">
+          <DialogHeader>
+            <DialogTitle>{t(($) => $.importDialogTitle, { ns: 'snippet' })}</DialogTitle>
+            <DialogHeaderCloseButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover"
-              onClick={onClose}
+            />
+          </DialogHeader>
+          <Tabs className="contents" value={currentTab} onValueChange={handleTabChange}>
+            <TabsList
+              aria-label={t(($) => $.importDialogTitle, { ns: 'snippet' })}
+              className="h-9 shrink-0 gap-6 border-b border-divider-subtle px-6"
             >
-              <span className="i-ri-close-line size-5" />
-            </button>
-          </div>
-          <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 system-md-semibold text-text-tertiary">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                className={cn(
-                  'relative flex h-full cursor-pointer items-center',
-                  currentTab === tab.key && 'text-text-primary',
-                )}
-                onClick={() => setCurrentTab(tab.key)}
+              <TabsTab
+                value={ImportSnippetDSLDialogTab.FromFile}
+                className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
+                disabled={isSubmitting}
               >
-                {tab.label}
-                {currentTab === tab.key && (
-                  <span className="absolute bottom-0 h-0.5 w-full bg-util-colors-blue-brand-blue-brand-600" />
-                )}
-              </button>
-            ))}
-          </div>
-          <div className="px-6 py-4">
-            {currentTab === ImportSnippetDSLDialogTab.FromFile && (
+                {t(($) => $.importFromDSLFile, { ns: 'snippet' })}
+              </TabsTab>
+              <TabsTab
+                value={ImportSnippetDSLDialogTab.FromUrl}
+                className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
+                disabled={isSubmitting}
+              >
+                {t(($) => $.importFromDSLUrl, { ns: 'snippet' })}
+              </TabsTab>
+            </TabsList>
+            <TabsPanel
+              value={ImportSnippetDSLDialogTab.FromFile}
+              tabIndex={-1}
+              render={<DialogBody />}
+            >
               <Uploader className="mt-0" file={currentFile} updateFile={handleFileChange} />
-            )}
-            {currentTab === ImportSnippetDSLDialogTab.FromUrl && (
-              <div>
-                <div className="mb-1 system-md-semibold text-text-secondary">DSL URL</div>
-                <Input
-                  placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'snippet' }) || ''}
-                  value={dslUrl}
-                  onChange={(event) => setDslUrl(event.target.value)}
-                />
-              </div>
-            )}
-          </div>
-          <div className="flex justify-end px-6 py-5">
-            <Button className="mr-2" disabled={isSubmitting} onClick={onClose}>
+            </TabsPanel>
+            <TabsPanel
+              value={ImportSnippetDSLDialogTab.FromUrl}
+              tabIndex={-1}
+              render={<DialogBody />}
+            >
+              <label
+                htmlFor={dslUrlInputId}
+                className="mb-1 block system-md-semibold text-text-secondary"
+              >
+                DSL URL
+              </label>
+              <Input
+                id={dslUrlInputId}
+                placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'snippet' }) || ''}
+                value={dslUrl}
+                onChange={(event) => setDslUrl(event.target.value)}
+              />
+            </TabsPanel>
+          </Tabs>
+          <DialogFooter>
+            <Button disabled={isSubmitting} onClick={onClose}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button
@@ -291,7 +302,7 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
             >
               {t(($) => $['operation.create'], { ns: 'common' })}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       {showConfirmModal && (

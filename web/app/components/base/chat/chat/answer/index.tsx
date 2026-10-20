@@ -31,7 +31,6 @@ type AnswerProps = {
   config?: ChatConfig
   answerIcon?: ReactNode
   responding?: boolean
-  showPromptLog?: boolean
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
   appData?: AppData
@@ -53,7 +52,6 @@ const Answer: FC<AnswerProps> = ({
   config,
   answerIcon,
   responding,
-  showPromptLog,
   chatAnswerContainerInner,
   hideProcessDetail,
   appData,
@@ -63,7 +61,7 @@ const Answer: FC<AnswerProps> = ({
   renderAgentContent,
   onHumanInputFormSubmit,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation'])
   const {
     content,
     citation,
@@ -163,7 +161,7 @@ const Answer: FC<AnswerProps> = ({
         <div className="relative size-10 shrink-0">
           {answerIcon || <AnswerIcon />}
           {responding && (
-            <div className="absolute top-[-3px] left-[-3px] flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-[6px] shadow-xs">
+            <div className="absolute -top-0.75 -left-0.75 flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-1.5 shadow-xs">
               <LoadingAnim type="avatar" />
             </div>
           )}
@@ -195,7 +193,6 @@ const Answer: FC<AnswerProps> = ({
                   item={item}
                   question={question}
                   index={index}
-                  showPromptLog={showPromptLog}
                   noChatInput={noChatInput}
                 />
               )}
@@ -256,7 +253,6 @@ const Answer: FC<AnswerProps> = ({
                   item={item}
                   question={question}
                   index={index}
-                  showPromptLog={showPromptLog}
                   noChatInput={noChatInput}
                 />
               )}
@@ -333,7 +329,6 @@ const Answer: FC<AnswerProps> = ({
                   item={item}
                   question={question}
                   index={index}
-                  showPromptLog={showPromptLog}
                   noChatInput={noChatInput}
                 />
               )}

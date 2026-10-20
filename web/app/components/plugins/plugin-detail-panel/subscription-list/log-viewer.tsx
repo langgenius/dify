@@ -1,7 +1,6 @@
 'use client'
 import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -15,19 +14,22 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { toast } from '@/app/notifications'
 
 type Props = Readonly<{
   logs: TriggerLogEntity[]
   className?: string
 }>
 
-enum LogTypeEnum {
-  REQUEST = 'request',
-  RESPONSE = 'response',
-}
+const LogTypeEnum = {
+  REQUEST: 'request',
+  RESPONSE: 'response',
+} as const
+
+type LogTypeEnum = (typeof LogTypeEnum)[keyof typeof LogTypeEnum]
 
 const LogViewer = ({ logs, className }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pluginTrigger'])
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set())
 
   const toggleLogExpansion = (logId: string) => {
@@ -122,7 +124,7 @@ const LogViewer = ({ logs, className }: Props) => {
             )}
           >
             {isError && (
-              <div className="pointer-events-none absolute top-0 left-0 h-7 w-[179px]">
+              <div className="pointer-events-none absolute top-0 left-0 h-7 w-44.75">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="179"

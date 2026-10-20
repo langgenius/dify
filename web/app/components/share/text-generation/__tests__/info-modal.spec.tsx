@@ -1,6 +1,7 @@
 import type { SiteInfo } from '@/models/share'
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import InfoModal from '../info-modal'
 
 const siteInfo: SiteInfo = {
@@ -13,24 +14,20 @@ const siteInfo: SiteInfo = {
 const renderModal = async (data: SiteInfo | undefined = siteInfo) => {
   const onClose = vi.fn()
   render(<InfoModal isShow onClose={onClose} data={data} />)
-  await act(async () => vi.runAllTimers())
   return onClose
 }
 
 describe('InfoModal', () => {
-  beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }))
-  afterEach(() => vi.useRealTimers())
-
   it('does not expose app information while hidden', () => {
     render(<InfoModal isShow={false} onClose={vi.fn()} data={siteInfo} />)
 
     expect(screen.queryByText('Test App')).not.toBeInTheDocument()
   })
 
-  it('shows the app identity when opened', async () => {
-    await renderModal()
+  it('names the dialog when the app title is empty', async () => {
+    await renderModal({ ...siteInfo, title: '' })
 
-    expect(screen.getByText('Test App')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'common.userProfile.about' })).toBeInTheDocument()
   })
 
   it('shows the copyright and custom disclaimer when provided', async () => {
@@ -49,7 +46,9 @@ describe('InfoModal', () => {
   it('closes from the dialog close button', async () => {
     const onClose = await renderModal()
 
-    fireEvent.click(screen.getByRole('button'))
+    const user = userEvent.setup()
+    const dialog = screen.getByRole('dialog', { name: 'Test App' })
+    await user.click(within(dialog).getByRole('button'))
 
     expect(onClose).toHaveBeenCalledOnce()
   })

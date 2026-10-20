@@ -1,10 +1,3 @@
-"""
-Unit tests for PipelineRunner behavior.
-Asserts correct event handling, error propagation, and user invocation logic.
-Primary collaborators: PipelineRunner, InvokeFrom, GraphRunFailedEvent, UserFrom, and mocked dependencies.
-Cross-references: core.app.apps.pipeline.pipeline_runner, core.app.entities.app_invoke_entities.
-"""
-
 """Unit tests for PipelineRunner behavior.
 
 This module validates core control-flow outcomes for
@@ -12,31 +5,110 @@ This module validates core control-flow outcomes for
 initialization guards, invoke-source to user-source resolution, and failed-run
 event handling. Invariants asserted here include strict graph-config
 validation, correct ``InvokeFrom`` to ``UserFrom`` mapping, and publishing
-error paths driven by ``GraphRunFailedEvent`` through mocked collaborators.
+error paths driven by ``GraphRunFailedEvent`` through real document persistence.
 Primary collaborators include ``PipelineRunner``,
 ``core.app.entities.app_invoke_entities.InvokeFrom``, ``GraphRunFailedEvent``,
-``UserFrom``, and patched DB/runtime dependencies used by the runner.
+``UserFrom``, and real ORM, graph, and runtime dependencies used by the runner.
 """
 
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+import json
+from collections.abc import Generator
 
 import pytest
-from pytest_mock import MockerFixture
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 import core.app.apps.pipeline.pipeline_runner as module
+from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
+from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from graphon.graph_events import GraphRunFailedEvent
+from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
+from core.app.entities.queue_entities import AppQueueEvent, QueueWorkflowFailedEvent
+from core.workflow.workflow_entry import WorkflowEntry
+from graphon.engine_events import EngineEvent, GraphRunFailedEvent
+from graphon.graph import Graph
+from graphon.runtime import RuntimeState, VariablePool
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER
+from models.dataset import Dataset, Document, Pipeline
+from models.enums import DocumentCreatedFrom
+from models.model import AppMode, EndUser
+from models.workflow import Workflow, WorkflowType
+from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from tests.unit_tests.model_factories import make_dataset, make_document, make_end_user, make_workflow
 
 
-def _build_app_generate_entity() -> SimpleNamespace:
-    app_config = SimpleNamespace(app_id="pipe", workflow_id="wf", tenant_id="tenant")
-    return SimpleNamespace(
+def _pipeline(*, tenant_id: str = "tenant", pipeline_id: str = "pipe") -> Pipeline:
+    pipeline = Pipeline(tenant_id=tenant_id, name="Pipeline", description="")
+    pipeline.id = pipeline_id
+    pipeline.workflow_id = "wf"
+    return pipeline
+
+
+def _dataset(*, tenant_id: str = "tenant", dataset_id: str = "ds", pipeline_id: str = "pipe") -> Dataset:
+    return make_dataset(
+        dataset_id=dataset_id,
+        tenant_id=tenant_id,
+        description="",
+        created_by="user",
+        pipeline_id=pipeline_id,
+    )
+
+
+def _workflow(*, tenant_id: str = "tenant", pipeline_id: str = "pipe", graph: dict | None = None) -> Workflow:
+    return make_workflow(
+        tenant_id=tenant_id,
+        app_id=pipeline_id,
+        workflow_type=WorkflowType.RAG_PIPELINE,
+        version="v1",
+        graph=graph,
+        created_by="user",
+    )
+
+
+def _end_user() -> EndUser:
+    return make_end_user(end_user_id="user", tenant_id="tenant", app_id="pipe", name="User", session_id="sess")
+
+
+def _document(*, document_id: str = "doc", dataset_id: str = "ds", tenant_id: str = "tenant") -> Document:
+    return make_document(
+        document_id=document_id,
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        batch="batch",
+        created_from=DocumentCreatedFrom.API,
+        created_by="user",
+    )
+
+
+def _persist_scope(
+    session: Session,
+    *,
+    pipeline: Pipeline | None = None,
+    dataset: Dataset | None = None,
+    workflow: Workflow | None = None,
+    end_user: EndUser | None = None,
+    documents: tuple[Document, ...] = (),
+) -> tuple[Pipeline, Dataset, Workflow]:
+    pipeline = pipeline or _pipeline()
+    dataset = dataset or _dataset(tenant_id=pipeline.tenant_id, pipeline_id=pipeline.id)
+    workflow = workflow or _workflow(tenant_id=pipeline.tenant_id, pipeline_id=pipeline.id)
+    workflow.id = "wf"
+    session.add_all([pipeline, dataset, workflow, *(documents or ()), *([end_user] if end_user else [])])
+    session.commit()
+    return pipeline, dataset, workflow
+
+
+def _build_app_generate_entity() -> RagPipelineGenerateEntity:
+    app_config = PipelineConfig(app_id="pipe", workflow_id="wf", tenant_id="tenant", app_mode=AppMode.RAG_PIPELINE)
+    return RagPipelineGenerateEntity(
+        task_id="task",
+        stream=True,
         app_config=app_config,
+        pipeline_config=app_config,
         invoke_from=InvokeFrom.WEB_APP,
         user_id="user",
-        trace_manager=MagicMock(),
+        trace_manager=None,
         inputs={"input1": "v1"},
         files=[],
         workflow_execution_id="run",
@@ -53,411 +125,339 @@ def _build_app_generate_entity() -> SimpleNamespace:
     )
 
 
-def _patch_create_session(mocker: MockerFixture, session: MagicMock, *, events: list[str] | None = None):
-    """Patch create_session() to yield ``session`` inside its ``with`` body and ``begin()`` block.
+@pytest.fixture(autouse=True)
+def isolate_queue_redis(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("core.app.apps.base_app_queue_manager.redis_client.setex", lambda *_args, **_kwargs: True)
 
-    The runner now obtains short-lived sessions via ``create_session()`` instead of the
-    Flask scoped ``db.session``, so tests patch the module-level ``create_session`` and
-    hand back a context manager that yields the mock session.
-    """
-    session_context = MagicMock()
 
-    def enter_session():
-        if events is not None:
-            events.append("session_enter")
-        return session
-
-    def exit_session(*args):
-        if events is not None:
-            events.append("session_exit")
-        return False
-
-    session_context.__enter__.side_effect = enter_session
-    session_context.__exit__.side_effect = exit_session
-    session.begin.return_value.__enter__.return_value = session
-    session.begin.return_value.__exit__.return_value = False
-    return mocker.patch.object(module, "create_session", return_value=session_context)
+def _build_runner(
+    app_generate_entity: RagPipelineGenerateEntity, sqlite_engine: Engine, workflow: Workflow
+) -> PipelineRunner:
+    return PipelineRunner(
+        application_generate_entity=app_generate_entity,
+        queue_manager=PipelineQueueManager(
+            task_id=app_generate_entity.task_id,
+            user_id=app_generate_entity.user_id,
+            invoke_from=app_generate_entity.invoke_from,
+            app_mode=AppMode.RAG_PIPELINE,
+        ),
+        variable_loader=DUMMY_VARIABLE_LOADER,
+        workflow=workflow,
+        system_user_id="sys",
+        documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
+    )
 
 
 @pytest.fixture
-def runner():
-    app_generate_entity = _build_app_generate_entity()
-    queue_manager = MagicMock()
-    variable_loader = MagicMock()
-    workflow = MagicMock()
-    workflow_execution_repository = MagicMock()
-    workflow_node_execution_repository = MagicMock()
-
-    return PipelineRunner(
-        application_generate_entity=app_generate_entity,
-        queue_manager=queue_manager,
-        variable_loader=variable_loader,
-        workflow=workflow,
-        system_user_id="sys",
-        workflow_execution_repository=workflow_execution_repository,
-        workflow_node_execution_repository=workflow_node_execution_repository,
-    )
+def runner(sqlite_engine: Engine):
+    return _build_runner(_build_app_generate_entity(), sqlite_engine, _workflow())
 
 
 def test_get_app_id(runner):
     assert runner._get_app_id() == "pipe"
 
 
-def test_get_workflow_returns_workflow(runner):
-    pipeline = MagicMock(tenant_id="tenant", id="pipe")
-    workflow = MagicMock(id="wf")
+def test_get_workflow_returns_workflow(runner, sqlite_session: Session):
+    pipeline, _, workflow = _persist_scope(sqlite_session)
 
-    session = MagicMock()
-    session.scalar.return_value = workflow
-
-    result = runner.get_workflow(session=session, pipeline=pipeline, workflow_id="wf")
+    result = runner.get_workflow(session=sqlite_session, pipeline=pipeline, workflow_id="wf")
 
     assert result == workflow
 
 
 def test_init_rag_pipeline_graph_invalid_config(mocker, runner):
-    workflow = MagicMock(id="wf", tenant_id="tenant", graph_dict={})
+    workflow = _workflow(graph={})
 
-    with pytest.raises(ValueError):
-        runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=MagicMock())
+    with pytest.raises(ValueError, match="nodes or edges not found in workflow graph"):
+        runner._init_rag_pipeline_graph(
+            workflow=workflow,
+            graph_runtime_state=RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0),
+        )
 
-    workflow.graph_dict = {"nodes": "bad", "edges": []}
-    with pytest.raises(ValueError):
-        runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=MagicMock())
+    workflow.graph = json.dumps({"nodes": "bad", "edges": []})
+    with pytest.raises(ValueError, match="nodes in workflow graph must be a list"):
+        runner._init_rag_pipeline_graph(
+            workflow=workflow,
+            graph_runtime_state=RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0),
+        )
 
-    workflow.graph_dict = {"nodes": [], "edges": "bad"}
-    with pytest.raises(ValueError):
-        runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=MagicMock())
+    workflow.graph = json.dumps({"nodes": [], "edges": "bad"})
+    with pytest.raises(ValueError, match="edges in workflow graph must be a list"):
+        runner._init_rag_pipeline_graph(
+            workflow=workflow,
+            graph_runtime_state=RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0),
+        )
 
 
 def test_init_rag_pipeline_graph_not_found(mocker, runner):
-    workflow = MagicMock(id="wf", tenant_id="tenant", graph_dict={"nodes": [], "edges": []})
+    workflow = _workflow()
     mocker.patch.object(module.Graph, "init", return_value=None)
 
-    with pytest.raises(ValueError):
-        runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=MagicMock())
+    with pytest.raises(ValueError, match="Unable to determine default root node ID from workflow graph"):
+        runner._init_rag_pipeline_graph(
+            workflow=workflow,
+            graph_runtime_state=RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0),
+        )
 
 
-def test_update_document_status_on_failure(mocker, runner):
-    document = MagicMock()
-    document_ref = MagicMock()
-
-    session = MagicMock()
-    _patch_create_session(mocker, session)
-    get_document_by_ref = mocker.patch.object(
-        module.DatasetRefService,
-        "get_document_by_ref",
-        return_value=document,
+def test_init_rag_pipeline_graph_honors_canonical_root_ownership(runner):
+    workflow = _workflow(
+        graph={
+            "nodes": [
+                {
+                    "id": "start",
+                    "parentId": "stale-owner",
+                    "data": {"type": "start", "title": "Start", "variables": [], "container_id": ""},
+                },
+                {"id": "end", "data": {"type": "end", "title": "Output", "outputs": []}},
+            ],
+            "edges": [{"id": "start-end", "source": "start", "target": "end"}],
+        }
     )
+    runtime_state = RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0.0)
+
+    graph = runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=runtime_state)
+
+    assert graph.root_node.id == "start"
+    assert set(graph.nodes) == {"start", "end"}
+
+
+def test_update_document_status_on_failure(runner, sqlite_session: Session):
+    document = _document()
+    _, dataset, _ = _persist_scope(sqlite_session, documents=(document,))
 
     event = GraphRunFailedEvent(error="boom")
 
-    runner._update_document_status(event, document_ref)
-
-    get_document_by_ref.assert_called_once_with(document_ref, session=session)
-    assert document.indexing_status == "error"
-    assert document.error == "boom"
-    session.add.assert_called_once_with(document)
-    session.begin.assert_called_once()
-    session.begin.return_value.__enter__.assert_called_once()
-    session.begin.return_value.__exit__.assert_called_once()
-
-
-def test_update_document_status_skips_when_document_not_found(mocker, runner):
-    document_ref = MagicMock()
-    session = MagicMock()
-    _patch_create_session(mocker, session)
-    get_document_by_ref = mocker.patch.object(
-        module.DatasetRefService,
-        "get_document_by_ref",
-        return_value=None,
+    runner._update_document_status(
+        event,
+        workspace_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=document.id,
     )
 
-    runner._update_document_status(GraphRunFailedEvent(error="boom"), document_ref)
-
-    get_document_by_ref.assert_called_once_with(document_ref, session=session)
-    session.add.assert_not_called()
-
-
-def test_update_document_status_skips_without_document_ref(mocker, runner):
-    create_session = mocker.patch.object(module, "create_session")
-
-    runner._update_document_status(GraphRunFailedEvent(error="boom"), None)
-
-    create_session.assert_not_called()
+    sqlite_session.expire_all()
+    updated = sqlite_session.get(Document, document.id)
+    assert updated is not None
+    assert updated.indexing_status == "error"
+    assert updated.error == "boom"
 
 
-def test_run_pipeline_not_found(mocker: MockerFixture):
+def test_update_document_status_skips_when_document_not_found(runner, sqlite_session: Session):
+    _, dataset, _ = _persist_scope(sqlite_session)
+
+    runner._update_document_status(
+        GraphRunFailedEvent(error="boom"),
+        workspace_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id="missing",
+    )
+
+    assert sqlite_session.get(Document, "missing") is None
+
+
+def test_update_document_status_skips_without_document_ref(runner, sqlite_engine: Engine):
+    checkouts = 0
+
+    def record_checkout(*_args) -> None:
+        nonlocal checkouts
+        checkouts += 1
+
+    event.listen(sqlite_engine, "checkout", record_checkout)
+    try:
+        runner._update_document_status(
+            GraphRunFailedEvent(error="boom"),
+            workspace_id="workspace-1",
+            dataset_id="dataset-1",
+            document_id=None,
+        )
+    finally:
+        event.remove(sqlite_engine, "checkout", record_checkout)
+
+    assert checkouts == 0
+
+
+def test_run_pipeline_not_found(sqlite_engine: Engine):
     app_generate_entity = _build_app_generate_entity()
     app_generate_entity.invoke_from = InvokeFrom.WEB_APP
     app_generate_entity.single_iteration_run = None
     app_generate_entity.single_loop_run = None
 
-    session = MagicMock()
-    session.get.side_effect = [None, None]
-    _patch_create_session(mocker, session)
-
-    runner = PipelineRunner(
-        application_generate_entity=app_generate_entity,
-        queue_manager=MagicMock(),
-        variable_loader=MagicMock(),
-        workflow=MagicMock(),
-        system_user_id="sys",
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
-    )
-
-    with pytest.raises(ValueError):
-        runner.run()
-
-
-def test_run_pipeline_from_other_tenant_is_not_found(mocker: MockerFixture, runner: PipelineRunner):
-    pipeline = MagicMock(id="pipe", tenant_id="other-tenant")
-    session = MagicMock()
-    session.get.side_effect = [None, pipeline]
-    _patch_create_session(mocker, session)
+    runner = _build_runner(app_generate_entity, sqlite_engine, _workflow())
 
     with pytest.raises(ValueError, match="Pipeline not found"):
-        runner.run()
+        runner.prepare()
 
-    pipeline.retrieve_dataset.assert_not_called()
+
+def test_run_pipeline_from_other_tenant_is_not_found(runner: PipelineRunner, sqlite_session: Session):
+    pipeline = _pipeline(tenant_id="other-tenant")
+    sqlite_session.add(pipeline)
+    sqlite_session.commit()
+
+    with pytest.raises(ValueError, match="Pipeline not found"):
+        runner.prepare()
+
+
+def _unexpected_workflow_lookup(session: Session, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
+    pytest.fail("Workflow lookup must follow successful dataset and document ownership checks")
 
 
 @pytest.mark.parametrize(
     "dataset",
     [
         pytest.param(None, id="missing"),
-        pytest.param(SimpleNamespace(id="ds", tenant_id="other-tenant"), id="other-tenant"),
-        pytest.param(SimpleNamespace(id="other-dataset", tenant_id="tenant"), id="other-dataset"),
+        pytest.param(_dataset(tenant_id="other-tenant"), id="other-tenant"),
+        pytest.param(_dataset(dataset_id="other-dataset"), id="other-dataset"),
     ],
 )
 def test_run_rejects_unowned_pipeline_dataset(
-    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
     runner: PipelineRunner,
-    dataset: SimpleNamespace | None,
+    dataset: Dataset | None,
+    sqlite_session: Session,
 ):
-    pipeline = MagicMock(id="pipe", tenant_id="tenant")
-    pipeline.retrieve_dataset.return_value = dataset
-    session = MagicMock()
-    session.get.side_effect = [None, pipeline]
-    _patch_create_session(mocker, session)
-    runner.get_workflow = MagicMock()
+    pipeline = _pipeline()
+    sqlite_session.add(pipeline)
+    if dataset is not None:
+        sqlite_session.add(dataset)
+    sqlite_session.commit()
+    monkeypatch.setattr(runner, "get_workflow", _unexpected_workflow_lookup)
 
     with pytest.raises(ValueError, match="Pipeline dataset not found"):
-        runner.run()
-
-    pipeline.retrieve_dataset.assert_called_once_with(session)
-    runner.get_workflow.assert_not_called()
+        runner.prepare()
 
 
 def test_run_rejects_document_outside_pipeline_dataset_after_async_boundary(
-    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
     runner: PipelineRunner,
+    sqlite_session: Session,
 ):
     runner.application_generate_entity.document_id = "foreign-doc"
     runner.application_generate_entity.original_document_id = "foreign-doc"
-    pipeline = MagicMock(id="pipe", tenant_id="tenant")
-    pipeline.retrieve_dataset.return_value = SimpleNamespace(id="ds", tenant_id="tenant")
-    session = MagicMock()
-    session.get.side_effect = [None, pipeline]
-    _patch_create_session(mocker, session)
-    runner.get_workflow = MagicMock()
-    get_document_by_ref = mocker.patch.object(
-        module.DatasetRefService,
-        "get_document_by_ref",
-        return_value=None,
-    )
+    _persist_scope(sqlite_session)
+    monkeypatch.setattr(runner, "get_workflow", _unexpected_workflow_lookup)
 
     with pytest.raises(ValueError, match="Pipeline document not found"):
-        runner.run()
-
-    document_ref = get_document_by_ref.call_args.args[0]
-    assert document_ref.dataset.tenant_id == "tenant"
-    assert document_ref.dataset.dataset_id == "ds"
-    assert document_ref.document_id == "foreign-doc"
-    get_document_by_ref.assert_called_once_with(document_ref, session=session)
-    runner.get_workflow.assert_not_called()
+        runner.prepare()
 
 
 def test_run_rejects_original_document_outside_pipeline_dataset_after_async_boundary(
-    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
     runner: PipelineRunner,
+    sqlite_session: Session,
 ):
     runner.application_generate_entity.document_id = "doc"
     runner.application_generate_entity.original_document_id = "foreign-doc"
-    pipeline = MagicMock(id="pipe", tenant_id="tenant")
-    pipeline.retrieve_dataset.return_value = SimpleNamespace(id="ds", tenant_id="tenant")
-    session = MagicMock()
-    session.get.side_effect = [None, pipeline]
-    _patch_create_session(mocker, session)
-    runner.get_workflow = MagicMock()
-    get_document_by_ref = mocker.patch.object(
-        module.DatasetRefService,
-        "get_document_by_ref",
-        side_effect=[SimpleNamespace(id="doc"), None],
-    )
+    _persist_scope(sqlite_session, documents=(_document(),))
+    monkeypatch.setattr(runner, "get_workflow", _unexpected_workflow_lookup)
 
     with pytest.raises(ValueError, match="Pipeline original document not found"):
-        runner.run()
-
-    document_refs = [call.args[0] for call in get_document_by_ref.call_args_list]
-    assert [document_ref.document_id for document_ref in document_refs] == ["doc", "foreign-doc"]
-    for document_ref in document_refs:
-        assert document_ref.dataset.tenant_id == "tenant"
-        assert document_ref.dataset.dataset_id == "ds"
-    runner.get_workflow.assert_not_called()
+        runner.prepare()
 
 
-def test_run_workflow_not_initialized(mocker: MockerFixture):
+def test_run_workflow_not_initialized(sqlite_session: Session, sqlite_engine: Engine):
     app_generate_entity = _build_app_generate_entity()
 
-    pipeline = MagicMock(id="pipe", tenant_id="tenant")
-    pipeline.retrieve_dataset.return_value = SimpleNamespace(id="ds", tenant_id="tenant")
+    pipeline = _pipeline()
+    dataset = _dataset()
+    document = _document()
+    sqlite_session.add_all([pipeline, dataset, document])
+    sqlite_session.commit()
 
-    session = MagicMock()
-    session.get.side_effect = [None, pipeline]
-    _patch_create_session(mocker, session)
+    runner = _build_runner(app_generate_entity, sqlite_engine, _workflow())
+    with pytest.raises(ValueError, match="Workflow not initialized"):
+        runner.prepare()
 
-    runner = PipelineRunner(
-        application_generate_entity=app_generate_entity,
-        queue_manager=MagicMock(),
-        variable_loader=MagicMock(),
-        workflow=MagicMock(),
-        system_user_id="sys",
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+
+def _start_workflow() -> Workflow:
+    return _workflow(
+        graph={"nodes": [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}], "edges": []}
     )
-    runner.get_workflow = MagicMock(return_value=None)
-
-    with pytest.raises(ValueError):
-        runner.run()
 
 
-def test_run_single_iteration_path(mocker: MockerFixture):
+def test_run_single_iteration_path(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine):
     app_generate_entity = _build_app_generate_entity()
-    app_generate_entity.single_iteration_run = MagicMock()
-
-    pipeline = MagicMock(id="pipe", tenant_id="tenant")
-    dataset = SimpleNamespace(id="ds", tenant_id="tenant")
-    pipeline.retrieve_dataset.return_value = dataset
-    session = MagicMock()
-    session.get.return_value = pipeline
-    _patch_create_session(mocker, session)
-
-    runner = PipelineRunner(
-        application_generate_entity=app_generate_entity,
-        queue_manager=MagicMock(),
-        variable_loader=MagicMock(),
-        workflow=MagicMock(),
-        system_user_id="sys",
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
+    app_generate_entity.single_iteration_run = RagPipelineGenerateEntity.SingleIterationRunEntity(
+        node_id="start", inputs={}
     )
+    _, dataset, workflow = _persist_scope(sqlite_session, workflow=_start_workflow(), documents=(_document(),))
+    runner = _build_runner(app_generate_entity, sqlite_engine, workflow)
+    prepared = []
+    published: list[AppQueueEvent] = []
+    failure = GraphRunFailedEvent(error="iteration failed")
+    variable_pool = VariablePool()
+    state = RuntimeState(workflow_id=workflow.id, variable_pool=variable_pool, start_at=0)
 
-    runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
-    runner.get_workflow = MagicMock(
-        return_value=MagicMock(
-            id="wf",
-            tenant_id="tenant",
-            app_id="pipe",
-            graph_dict={},
-            type="rag-pipeline",
-            version="v1",
-        )
-    )
-    runner._prepare_single_node_execution = MagicMock(return_value=("graph", "pool", "state"))
-    runner._update_document_status = MagicMock()
-    runner._handle_event = MagicMock()
+    def prepare_single_node_execution(
+        *,
+        workflow: Workflow,
+        single_iteration_run: RagPipelineGenerateEntity.SingleIterationRunEntity | None,
+        single_loop_run: RagPipelineGenerateEntity.SingleLoopRunEntity | None,
+        user_id: str,
+    ) -> tuple[Graph, VariablePool, RuntimeState]:
+        prepared.append((workflow.id, single_iteration_run, single_loop_run, user_id))
+        graph = runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=state, start_node_id="start")
+        return graph, variable_pool, state
 
-    dataset_ref = MagicMock()
-    document_ref = MagicMock()
-    create_dataset_ref = mocker.patch.object(
-        module.DatasetRefService,
-        "create_dataset_ref",
-        return_value=dataset_ref,
-    )
-    create_document_ref_from_id = mocker.patch.object(
-        module.DatasetRefService,
-        "create_document_ref_from_id",
-        return_value=document_ref,
-    )
+    def run_workflow(entry: WorkflowEntry) -> Generator[EngineEvent]:
+        assert entry.graph_engine.runtime_state is state
+        yield failure
 
-    event = MagicMock()
-    workflow_entry = MagicMock()
-    workflow_entry.graph_engine = MagicMock()
-    workflow_entry.run.return_value = [event]
-    mocker.patch.object(module, "WorkflowEntry", return_value=workflow_entry)
+    monkeypatch.setattr(runner, "_prepare_single_node_execution", prepare_single_node_execution)
+    monkeypatch.setattr(runner, "_publish_event", published.append)
+    monkeypatch.setattr(WorkflowEntry, "run", run_workflow)
 
-    mocker.patch.object(module, "WorkflowPersistenceLayer", return_value=MagicMock())
+    prepared_run = runner.prepare()
+    for engine_event in prepared_run.entry.run():
+        runner.handle_event(prepared_run.entry, engine_event)
 
-    runner.run()
-
-    create_dataset_ref.assert_called_once_with(dataset)
-    create_document_ref_from_id.assert_called_once_with(dataset_ref, "doc")
-    runner._prepare_single_node_execution.assert_called_once()
-    runner._update_document_status.assert_called_once_with(event, document_ref)
-    runner._handle_event.assert_called()
+    assert prepared == [("wf", app_generate_entity.single_iteration_run, None, "user")]
+    assert runner._queue_manager.graph_runtime_state is state
+    sqlite_session.expire_all()
+    document = sqlite_session.get(Document, "doc")
+    assert document is not None
+    assert document.tenant_id == dataset.tenant_id
+    assert document.dataset_id == dataset.id
+    assert document.indexing_status == "error"
+    assert document.error == failure.error
+    assert len(published) == 1
+    assert isinstance(published[0], QueueWorkflowFailedEvent)
+    assert published[0].error == failure.error
 
 
-def test_run_normal_path_builds_graph(mocker: MockerFixture):
+def test_run_normal_path_builds_graph(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine):
     app_generate_entity = _build_app_generate_entity()
+    events: list[str] = []
+    workflow = _start_workflow()
+    workflow.rag_pipeline_variables = [
+        {"variable": "input1", "belong_to_node_id": "start", "type": "text-input", "label": "Input"}
+    ]
+    _persist_scope(sqlite_session, workflow=workflow, end_user=_end_user(), documents=(_document(),))
+    runner = _build_runner(app_generate_entity, sqlite_engine, workflow)
+    entries: list[WorkflowEntry] = []
 
-    pipeline = MagicMock(id="pipe", tenant_id="tenant")
-    pipeline.retrieve_dataset.return_value = SimpleNamespace(id="ds", tenant_id="tenant")
-    end_user = MagicMock(session_id="sess")
-    events = []
+    def run_workflow(entry: WorkflowEntry) -> Generator[EngineEvent]:
+        events.append("workflow_run")
+        entries.append(entry)
+        yield from ()
 
-    session = MagicMock()
-    session.get.side_effect = [end_user, pipeline]
-    _patch_create_session(mocker, session, events=events)
+    monkeypatch.setattr(WorkflowEntry, "run", run_workflow)
 
-    workflow = MagicMock(
-        id="wf",
-        tenant_id="tenant",
-        app_id="pipe",
-        graph_dict={"nodes": [], "edges": []},
-        environment_variables=[],
-        rag_pipeline_variables=[{"variable": "input1", "belong_to_node_id": "start"}],
-        type="rag-pipeline",
-        version="v1",
-    )
+    def record_checkin(*_args) -> None:
+        events.append("session_checkin")
 
-    runner = PipelineRunner(
-        application_generate_entity=app_generate_entity,
-        queue_manager=MagicMock(),
-        variable_loader=MagicMock(),
-        workflow=workflow,
-        system_user_id="sys",
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
-    )
+    event.listen(sqlite_engine, "checkin", record_checkin)
+    try:
+        prepared_run = runner.prepare()
+        list(prepared_run.entry.run())
+    finally:
+        event.remove(sqlite_engine, "checkin", record_checkin)
 
-    runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
-    runner.get_workflow = MagicMock(return_value=workflow)
-    runner._init_rag_pipeline_graph = MagicMock(return_value="graph")
-    runner._update_document_status = MagicMock()
-    runner._handle_event = MagicMock()
-
-    mocker.patch.object(
-        module.RAGPipelineVariable,
-        "model_validate",
-        return_value=SimpleNamespace(belong_to_node_id="start", variable="input1"),
-    )
-    mocker.patch.object(module, "RAGPipelineVariableInput", side_effect=lambda **kwargs: SimpleNamespace(**kwargs))
-
-    class FakeVariablePool:
-        def add(self, selector, value):
-            return None
-
-    mocker.patch.object(module, "VariablePool", return_value=FakeVariablePool())
-
-    workflow_entry = MagicMock()
-    workflow_entry.graph_engine = MagicMock()
-    workflow_entry.run.side_effect = lambda: events.append("workflow_run") or []
-    mocker.patch.object(module, "WorkflowEntry", return_value=workflow_entry)
-    mocker.patch.object(module, "WorkflowPersistenceLayer", return_value=MagicMock())
-
-    runner.run()
-
-    assert events == ["session_enter", "session_exit", "workflow_run"]
-    runner._init_rag_pipeline_graph.assert_called_once()
+    assert events[-1] == "workflow_run"
+    assert "session_checkin" in events[:-1]
+    assert len(entries) == 1
+    graph_engine = entries[0].graph_engine
+    assert graph_engine.graph.root_node.id == "start"
+    assert graph_engine.runtime_state is runner._queue_manager.graph_runtime_state
+    input_variable = graph_engine.runtime_state.variable_pool.get(["start", "input1"])
+    assert input_variable is not None
+    assert input_variable.value == "v1"

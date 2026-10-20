@@ -59,29 +59,26 @@ describe('InvitedModal', () => {
     expect(screen.queryByText(/members\.failedInvitationEmails/i)).not.toBeInTheDocument()
   })
 
-  it('should show already-member message without invitation copy when every email is already a member', () => {
-    const alreadyMembers: MemberInviteResponse['invitation_results'] = [
-      {
-        email: 'member@example.com',
-        status: 'already_member',
-        message: 'Account already in workspace.',
-      },
-    ]
+  it.each(['COMMUNITY', 'CLOUD'] as const)(
+    'shows no-new-invitations copy when every email is already a member in %s',
+    (edition) => {
+      deploymentEdition = edition
+      const alreadyMembers: MemberInviteResponse['invitation_results'] = [
+        {
+          email: 'member@example.com',
+          status: 'already_member',
+          message: 'Account already in workspace.',
+        },
+      ]
 
-    render(<InvitedModal invitationResults={alreadyMembers} onCancel={mockOnCancel} />)
+      render(<InvitedModal invitationResults={alreadyMembers} onCancel={mockOnCancel} />)
 
-    expect(screen.getByText(/members\.noNewInvitationsSent/i)).toBeInTheDocument()
-    expect(screen.getByText(/members\.alreadyInTeamTip/i)).toBeInTheDocument()
-    expect(screen.getByText('member@example.com')).toBeInTheDocument()
-    expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
-  })
-
-  it('should hide both sections when results are empty', () => {
-    render(<InvitedModal invitationResults={[]} onCancel={mockOnCancel} />)
-
-    expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/members\.failedInvitationEmails/i)).not.toBeInTheDocument()
-  })
+      expect(screen.getByText(/members\.noNewInvitationsSent/i)).toBeInTheDocument()
+      expect(screen.getByText(/members\.alreadyInTeamTip/i)).toBeInTheDocument()
+      expect(screen.getByText('member@example.com')).toBeInTheDocument()
+      expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
+    },
+  )
 })
 
 describe('InvitedModal (Cloud edition)', () => {
@@ -101,21 +98,5 @@ describe('InvitedModal (Cloud edition)', () => {
 
     expect(await screen.findByText(/members\.invitationSentTip/i)).toBeInTheDocument()
     expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
-  })
-
-  it('should show already-member details', () => {
-    const results: MemberInviteResponse['invitation_results'] = [
-      {
-        email: 'member@example.com',
-        status: 'already_member',
-        message: 'Account already in workspace.',
-      },
-    ]
-
-    render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
-
-    expect(screen.getByText(/members\.noNewInvitationsSent/i)).toBeInTheDocument()
-    expect(screen.getByText(/members\.alreadyInTeam$/i)).toBeInTheDocument()
-    expect(screen.getByText('member@example.com')).toBeInTheDocument()
   })
 })

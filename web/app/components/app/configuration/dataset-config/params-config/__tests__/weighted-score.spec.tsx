@@ -1,82 +1,47 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import WeightedScore from '../weighted-score'
 
-describe('WeightedScore', () => {
-  const getSliderInput = () => screen.getByLabelText('dataset.weightedScore.semantic')
+it('keeps semantic and keyword weights complementary through changes and endpoint selection', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  function Weights() {
+    const [value, setValue] = useState({ value: [0.3, 0.7] })
+    return (
+      <WeightedScore
+        value={value}
+        onChange={(next) => {
+          setValue(next)
+          onChange(next)
+        }}
+      />
+    )
+  }
+  render(<Weights />)
+  const slider = screen.getByRole('slider', { name: 'dataset.weightedScore.semantic' })
+  expect(slider).toHaveAttribute(
+    'aria-valuetext',
+    'dataset.weightedScore.semantic: 0.3, dataset.weightedScore.keyword: 0.7',
+  )
+  slider.focus()
+  await user.keyboard('{ArrowRight}')
+  expect(onChange).toHaveBeenLastCalledWith({ value: [0.4, 0.6] })
+  expect(slider).toHaveAttribute(
+    'aria-valuetext',
+    'dataset.weightedScore.semantic: 0.4, dataset.weightedScore.keyword: 0.6',
+  )
+  await user.keyboard('{End}')
+  expect(onChange).toHaveBeenLastCalledWith({ value: [1, 0] })
+  expect(screen.getByText('1.0')).toBeInTheDocument()
+})
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // Rendering tests (REQUIRED)
-  describe('Rendering', () => {
-    it('should render semantic and keyword weights', () => {
-      // Arrange
-      const onChange = vi.fn<(arg: { value: number[] }) => void>()
-      const value = { value: [0.3, 0.7] }
-
-      // Act
-      render(<WeightedScore value={value} onChange={onChange} />)
-
-      // Assert
-      expect(screen.getByText('dataset.weightedScore.semantic')).toBeInTheDocument()
-      expect(screen.getByText('dataset.weightedScore.keyword')).toBeInTheDocument()
-      expect(screen.getByText('0.3')).toBeInTheDocument()
-      expect(screen.getByText('0.7')).toBeInTheDocument()
-    })
-
-    it('should format a weight of 1 as 1.0', () => {
-      // Arrange
-      const onChange = vi.fn<(arg: { value: number[] }) => void>()
-      const value = { value: [1, 0] }
-
-      // Act
-      render(<WeightedScore value={value} onChange={onChange} />)
-
-      // Assert
-      expect(screen.getByText('1.0')).toBeInTheDocument()
-      expect(screen.getByText('0')).toBeInTheDocument()
-    })
-  })
-
-  // User Interactions
-  describe('User Interactions', () => {
-    it('should emit complementary weights when the slider value changes', async () => {
-      // Arrange
-      const onChange = vi.fn<(arg: { value: number[] }) => void>()
-      const value = { value: [0.5, 0.5] }
-      const user = userEvent.setup()
-      render(<WeightedScore value={value} onChange={onChange} />)
-
-      // Act
-      const slider = getSliderInput()
-      slider.focus()
-      expect(slider).toHaveFocus()
-      const callsBefore = onChange.mock.calls.length
-      await user.keyboard('{ArrowRight}')
-
-      // Assert
-      expect(onChange.mock.calls.length).toBeGreaterThan(callsBefore)
-      const lastCall = onChange.mock.calls.at(-1)?.[0]
-      expect(lastCall?.value[0]).toBeCloseTo(0.6, 5)
-      expect(lastCall?.value[1]).toBeCloseTo(0.4, 5)
-    })
-
-    it('should not call onChange when readonly is true', async () => {
-      // Arrange
-      const onChange = vi.fn<(arg: { value: number[] }) => void>()
-      const value = { value: [0.5, 0.5] }
-      const user = userEvent.setup()
-      render(<WeightedScore value={value} onChange={onChange} readonly />)
-
-      // Act
-      const slider = getSliderInput()
-      expect(slider).toBeDisabled()
-      await user.keyboard('{ArrowRight}')
-
-      // Assert
-      expect(onChange).not.toHaveBeenCalled()
-    })
-  })
+it('keeps readonly weights disabled', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  render(<WeightedScore value={{ value: [0.5, 0.5] }} onChange={onChange} readonly />)
+  const slider = screen.getByRole('slider', { name: 'dataset.weightedScore.semantic' })
+  expect(slider).toBeDisabled()
+  await user.click(slider)
+  expect(onChange).not.toHaveBeenCalled()
 })

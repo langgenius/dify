@@ -1,57 +1,20 @@
+import type {
+  ModelProviderSummaryResponse,
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import type { DefaultModel, Model, ModelItem } from '../../declarations'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
-import ModelSelector from '../index'
+import { ModelSelector, SplitModelSelector } from '../index'
 
-vi.mock('../model-selector-trigger', () => ({
-  default: ({
-    currentProvider,
-    currentModel,
-    defaultModel,
-  }: {
-    currentProvider?: Model
-    currentModel?: ModelItem
-    defaultModel?: DefaultModel
-  }) => {
-    if (currentProvider && currentModel) return <div>model-trigger</div>
-
-    if (defaultModel) return <div>{`deprecated:${defaultModel.model}`}</div>
-
-    return <div>empty-trigger</div>
-  },
-}))
-
-vi.mock('../popup', async () => {
-  const { ComboboxItem } = await vi.importActual<typeof import('@langgenius/dify-ui/combobox')>(
-    '@langgenius/dify-ui/combobox',
-  )
-
-  return {
-    default: ({
-      onConfigureEmptyState,
-      onHide,
-    }: {
-      onConfigureEmptyState?: () => void
-      onHide: () => void
-    }) => (
-      <>
-        <ComboboxItem value={{ provider: 'openai', model: 'gpt-4' }}>select</ComboboxItem>
-        <button type="button" onClick={onHide}>
-          hide
-        </button>
-        {onConfigureEmptyState && (
-          <button type="button" onClick={onConfigureEmptyState}>
-            configure-empty-state
-          </button>
-        )}
-      </>
-    ),
-  }
-})
-
-const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
+const makeModelItem = (
+  overrides: Partial<ProviderModelWithStatusEntity> = {},
+): ProviderModelWithStatusEntity => ({
   model: 'gpt-4',
   label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
   model_type: ModelTypeEnum.textGeneration,
@@ -62,7 +25,10 @@ const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
   ...overrides,
 })
 
-const makeModel = (overrides: Partial<Model> = {}): Model => ({
+const makeModel = (
+  overrides: Partial<ProviderWithModelsResponse> = {},
+): ProviderWithModelsResponse => ({
+  tenant_id: 'test-workspace',
   provider: 'openai',
   icon_small: { en_US: '', zh_Hans: '' },
   label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
@@ -71,17 +37,56 @@ const makeModel = (overrides: Partial<Model> = {}): Model => ({
   ...overrides,
 })
 
-const createConsoleQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  })
+const makeProviderSummary = (): ModelProviderSummaryResponse => ({
+  provider: 'openai',
+  plugin_id: 'langgenius/openai',
+  label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+  supported_model_types: ['llm'],
+  configurate_methods: ['predefined-model'],
+  preferred_provider_type: 'system',
+  is_configured: true,
+  custom_configuration: {
+    status: 'active',
+    has_custom_models: false,
+    available_credentials: [],
+    current_credential_usable: false,
+  },
+  system_configuration: { enabled: true },
+})
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
 const renderWithQueryClient = (node: ReactNode) => {
-  const queryClient = createConsoleQueryClient()
-  return render(<QueryClientProvider client={queryClient}>{node}</QueryClientProvider>)
+  const { queryClient, wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { enable_marketplace: false },
+  })
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions().queryKey,
+    {
+      data: [makeProviderSummary()],
+      plugins: {},
+    },
+  )
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(), {
+    remaining_credits: 100,
+    quota_used: 0,
+    quota_limit: 100,
+    is_exhausted: false,
+    is_unlimited: false,
+    exhausted_at: null,
+    next_credit_reset_date: null,
+    pool_type: 'trial',
+  })
+  for (const model_type of ['llm', 'text-embedding', 'rerank', 'speech2text', 'tts'] as const) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+        input: { params: { model_type } },
+      }),
+      { data: [] },
+    )
+  }
+  return render(node, { wrapper })
 }
 
 describe('ModelSelector', () => {
@@ -89,110 +94,140 @@ describe('ModelSelector', () => {
     vi.clearAllMocks()
   })
 
-  it('should toggle popup and close it after selecting a model', () => {
-    renderWithQueryClient(<ModelSelector modelList={[makeModel()]} />)
+  it.each([
+    { value: { provider: 'openai', model: 'gpt-4' }, name: 'Embedding Model GPT-4' },
+    { value: undefined, name: 'Embedding Model plugin.detailPanel.configureModel' },
+  ])(
+    'should include the visible field label and current value in its name ($name)',
+    ({ value, name }) => {
+      renderWithQueryClient(
+        <>
+          <div id="embedding-model-label">Embedding Model</div>
+          <ModelSelector
+            aria-labelledby="embedding-model-label"
+            value={value}
+            models={[makeModel()]}
+          />
+        </>,
+      )
 
-    const triggerButton = screen.getByRole('combobox')
+      expect(screen.getByRole('button', { name })).toBeInTheDocument()
+    },
+  )
 
-    fireEvent.click(triggerButton)
-    expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('select')).toBeInTheDocument()
+  it('should call onValueChange when provided', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    renderWithQueryClient(<ModelSelector models={[makeModel()]} onValueChange={onValueChange} />)
 
-    fireEvent.click(screen.getByText('select'))
-    expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
-  })
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+    await user.click(screen.getByRole('button', { name: /GPT-4/ }))
 
-  it('should call onSelect when provided', () => {
-    const onSelect = vi.fn()
-    renderWithQueryClient(<ModelSelector modelList={[makeModel()]} onSelect={onSelect} />)
-
-    fireEvent.click(screen.getByRole('combobox'))
-    fireEvent.click(screen.getByText('select'))
-
-    expect(onSelect).toHaveBeenCalledWith({
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(onValueChange).toHaveBeenCalledWith({
       provider: 'openai',
       model: 'gpt-4',
       plugin_id: 'langgenius/openai',
     })
   })
 
-  it('should close popup when popup requests hide', () => {
-    renderWithQueryClient(<ModelSelector modelList={[makeModel()]} />)
+  it('should close popup with Escape', async () => {
+    const user = userEvent.setup()
+    renderWithQueryClient(<ModelSelector models={[makeModel()]} />)
 
-    const triggerButton = screen.getByRole('combobox')
-    fireEvent.click(triggerButton)
+    const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
+    await user.click(triggerButton)
     expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('hide')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('hide'))
+    await user.keyboard('{Escape}')
     expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('should close popup before running the empty-state configure action', () => {
+  it('should close popup before running the empty-state configure action', async () => {
+    const user = userEvent.setup()
     const onConfigureEmptyState = vi.fn()
     renderWithQueryClient(
-      <ModelSelector modelList={[makeModel()]} onConfigureEmptyState={onConfigureEmptyState} />,
+      <ModelSelector models={[]} onConfigureEmptyState={onConfigureEmptyState} />,
     )
 
-    const triggerButton = screen.getByRole('combobox')
-    fireEvent.click(triggerButton)
+    const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
+    await user.click(triggerButton)
     expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
 
-    fireEvent.click(screen.getByText('configure-empty-state'))
+    await user.click(
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.selector.configure' }),
+    )
 
     expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
     expect(onConfigureEmptyState).toHaveBeenCalledTimes(1)
   })
 
-  it('should use the default model settings popup width when the trigger is narrow', () => {
+  it('should close the popup before opening provider settings', async () => {
+    const user = userEvent.setup()
+    const onHide = vi.fn()
+    renderWithQueryClient(<ModelSelector models={[makeModel()]} onHide={onHide} />)
+
+    const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
+    await user.click(triggerButton)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'modelProvider.modelProvider.selector.modelProviderSettings',
+      }),
+    )
+
+    expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
+    expect(onHide).toHaveBeenCalledTimes(1)
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('provider'),
+    )
+  })
+
+  it('should not open popup when disabled', async () => {
+    const user = userEvent.setup()
+    renderWithQueryClient(<ModelSelector models={[makeModel()]} disabled />)
+
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('should open and select a model from the split trigger with the keyboard', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
     renderWithQueryClient(
-      <div className="w-[355px]">
-        <ModelSelector modelList={[makeModel()]} />
-      </div>,
+      <SplitModelSelector models={[makeModel()]} onValueChange={onValueChange} />,
     )
 
-    fireEvent.click(screen.getByRole('combobox'))
-
-    expect(
-      Array.from(document.body.querySelectorAll('[class]')).some(
-        (element) =>
-          element.className.includes('w-[432px]') && element.className.includes('max-w-[432px]'),
-      ),
-    ).toBe(true)
+    const trigger = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
+    trigger.focus()
+    await user.keyboard('{Enter}')
+    const model = screen.getByRole('button', { name: /GPT-4/ })
+    model.focus()
+    await user.keyboard('{Enter}')
+    expect(onValueChange).toHaveBeenCalledWith({
+      provider: 'openai',
+      model: 'gpt-4',
+      plugin_id: 'langgenius/openai',
+    })
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('should not open popup when readonly', () => {
-    renderWithQueryClient(<ModelSelector modelList={[makeModel()]} readonly />)
+  it.each(['openai', 'uninstalled-provider'])(
+    'should display a loaded default model as incompatible when missing from the list (%s)',
+    (provider) => {
+      const models = [makeModel()]
+      const { rerender } = renderWithQueryClient(<ModelSelector models={models} />)
 
-    fireEvent.click(screen.getByText('empty-trigger'))
-    expect(screen.queryByText('select')).not.toBeInTheDocument()
-  })
+      expect(
+        screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }),
+      ).toBeInTheDocument()
 
-  it('should render deprecated trigger when defaultModel is not in list', () => {
-    const { unmount } = renderWithQueryClient(
-      <ModelSelector
-        defaultModel={{ provider: 'openai', model: 'missing-model' }}
-        modelList={[makeModel()]}
-      />,
-    )
+      rerender(<ModelSelector models={models} value={{ provider, model: 'missing-model' }} />)
 
-    expect(screen.getByText('deprecated:missing-model')).toBeInTheDocument()
-
-    unmount()
-    renderWithQueryClient(
-      <ModelSelector defaultModel={{ provider: '', model: '' }} modelList={[makeModel()]} />,
-    )
-    expect(screen.getByText('deprecated:')).toBeInTheDocument()
-  })
-
-  it('should render model trigger when defaultModel matches', () => {
-    renderWithQueryClient(
-      <ModelSelector
-        defaultModel={{ provider: 'openai', model: 'gpt-4' }}
-        modelList={[makeModel()]}
-      />,
-    )
-
-    expect(screen.getByText('model-trigger')).toBeInTheDocument()
-  })
+      expect(
+        screen.getByRole('button', {
+          name: 'missing-model modelProvider.modelProvider.selector.incompatible',
+        }),
+      ).toBeEnabled()
+      expect(screen.queryByText('plugin.detailPanel.configureModel')).not.toBeInTheDocument()
+    },
+  )
 })

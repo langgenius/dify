@@ -1,0 +1,22 @@
+{
+  "dateFormats.compact": "YYYY/MM/DD HH:mm",
+  "dateFormats.withSeconds": "YYYY-MM-DD HH:mm:ss",
+  "operation.cancel": "取消",
+  "operation.now": "此刻",
+  "operation.ok": "确定",
+  "operation.pickDate": "选择日期",
+  "picker.chooseMonthAndYear": "选择月份和年份",
+  "picker.endDate": "结束日期",
+  "picker.hour": "小时",
+  "picker.minute": "分钟",
+  "picker.month": "月份",
+  "picker.nextMonth": "下个月",
+  "picker.period": "上午或下午",
+  "picker.previousMonth": "上个月",
+  "picker.required": "请选择一个值。",
+  "picker.requiredLabel": "必填",
+  "picker.startDate": "开始日期",
+  "picker.unavailable": "此日期或时间不可用。",
+  "picker.year": "年份",
+  "title.pickTime": "选择时间"
+}

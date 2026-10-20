@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -26,7 +26,18 @@ from models.model import (
     load_annotation_reply_config,
 )
 from models.workflow import Workflow
-from services.end_user_service import EndUserService
+
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+
+
+class AppScopedEndUserProvisioner(Protocol):
+    def get_or_create_end_user(
+        self,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None = None,
+    ) -> EndUser: ...
 
 
 class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
@@ -70,19 +81,21 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         inputs: Mapping,
         files: list[dict],
         session: Session,
-    ) -> Generator[Mapping | str, None, None] | Mapping:
+        execution_driver: "WorkflowRunDriver",
+        end_users: AppScopedEndUserProvisioner,
+    ) -> Generator[Mapping | str] | Mapping:
         """
         invoke app
         """
         app = cls._get_app(app_id, tenant_id)
         if not user_id:
-            user = EndUserService.get_or_create_end_user(app)
+            user = end_users.get_or_create_end_user(app.tenant_id, app.id, None)
         else:
             try:
                 user = cls._get_user(user_id, app)
             except ValueError:
                 # Plugins such as WeCom Bot pass external sender IDs rather than EndUser UUIDs.
-                user = EndUserService.get_or_create_end_user(app, user_id=user_id)
+                user = end_users.get_or_create_end_user(app.tenant_id, app.id, user_id)
 
         conversation_id = conversation_id or ""
 
@@ -91,12 +104,14 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 if not query:
                     raise ValueError("missing query")
 
-                return cls.invoke_chat_app(app, user, conversation_id, query, stream, inputs, files, session)
+                return cls.invoke_chat_app(
+                    app, user, conversation_id, query, stream, inputs, files, session, execution_driver
+                )
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app)
                 if not workflow:
                     raise ValueError("unexpected app type")
-                return cls.invoke_workflow_app(app, workflow, user, stream, inputs, files)
+                return cls.invoke_workflow_app(app, workflow, user, stream, inputs, files, execution_driver)
             case AppMode.COMPLETION:
                 return cls.invoke_completion_app(app, user, stream, inputs, files, session)
             case _:
@@ -113,7 +128,8 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         inputs: Mapping,
         files: list[dict],
         session: Session,
-    ) -> Generator[Mapping | str, None, None] | Mapping:
+        execution_driver: "WorkflowRunDriver",
+    ) -> Generator[Mapping | str] | Mapping:
         """
         invoke chat app
         """
@@ -128,7 +144,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     state_owner_user_id=workflow.created_by,
                 )
 
-                return AdvancedChatAppGenerator().generate(
+                return AdvancedChatAppGenerator(execution_driver=execution_driver).generate(
                     app_model=app,
                     workflow=workflow,
                     user=user,
@@ -145,7 +161,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     session=session,
                 )
             case AppMode.AGENT_CHAT:
-                return AgentChatAppGenerator().generate(
+                return AgentChatAppGenerator(execution_driver=execution_driver).generate(
                     app_model=app,
                     user=user,
                     args={
@@ -184,7 +200,8 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         stream: bool,
         inputs: Mapping,
         files: list[dict],
-    ) -> Generator[Mapping | str, None, None] | Mapping:
+        execution_driver: "WorkflowRunDriver",
+    ) -> Generator[Mapping | str] | Mapping:
         """
         invoke workflow app
         """
@@ -193,7 +210,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             state_owner_user_id=workflow.created_by,
         )
 
-        return WorkflowAppGenerator().generate(
+        return WorkflowAppGenerator(execution_driver=execution_driver).generate(
             app_model=app,
             workflow=workflow,
             user=user,
@@ -213,7 +230,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         inputs: Mapping,
         files: list[dict],
         session: Session,
-    ) -> Generator[Mapping | str, None, None] | Mapping:
+    ) -> Generator[Mapping | str] | Mapping:
         """
         invoke completion app
         """
@@ -270,8 +287,8 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id).limit(1))
                 if app:
                     session.expunge(app)
-        except Exception:
-            raise ValueError("app not found")
+        except Exception as e:
+            raise ValueError("app not found") from e
 
         if not app:
             raise ValueError("app not found")
@@ -281,7 +298,10 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
     @classmethod
     def _get_workflow(cls, app: App) -> Workflow | None:
         """
-        get workflow without relying on App.workflow's request-scoped session property
+        get workflow with an owned session, additionally scoped by tenant and app
+
+        `App.workflow_with_session` resolves by `workflow_id` alone; a plugin
+        invocation must also confirm the workflow belongs to this tenant and app.
         """
         if not app.workflow_id:
             return None

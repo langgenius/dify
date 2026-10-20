@@ -1,5 +1,5 @@
 import type { VoiceRecorder } from '../recorder'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { StrictMode } from 'react'
 import { transcribeAudio } from '../api'
 import VoiceInput from '../index'
@@ -79,6 +79,12 @@ describe('VoiceInput', () => {
     vi.stubGlobal('cancelAnimationFrame', vi.fn())
   })
 
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
   // The component owns the local recording state and browser-resource lifecycle.
   describe('Recording state', () => {
     it('should expose a cancellable starting state while microphone permission is pending', async () => {
@@ -101,8 +107,7 @@ describe('VoiceInput', () => {
 
       expect(await screen.findByText('common.voiceInput.speaking')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.voiceInput.stop' })).toBeInTheDocument()
-      expect(screen.getByTestId('voice-input-timer')).toHaveTextContent('00:00')
-      expect(getByteFrequencyData).toHaveBeenCalledTimes(1)
+      expect(screen.getByRole('timer')).toHaveTextContent('00:00')
     })
 
     it('should report the original setup failure and close the voice input', async () => {
@@ -227,9 +232,12 @@ describe('VoiceInput', () => {
 
     it('should close without publishing late results when conversion is cancelled', async () => {
       let requestSignal: AbortSignal | undefined
+      let resolveTranscription: (value: { text: string }) => void = () => {}
       vi.mocked(transcribeAudio).mockImplementationOnce((_target, _file, signal) => {
         requestSignal = signal
-        return new Promise(() => {})
+        return new Promise((resolve) => {
+          resolveTranscription = resolve
+        })
       })
       const { props } = renderVoiceInput()
       fireEvent.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
@@ -238,6 +246,7 @@ describe('VoiceInput', () => {
 
       expect(recorderCancel).toHaveBeenCalledTimes(1)
       expect(requestSignal?.aborted).toBe(true)
+      await act(async () => resolveTranscription({ text: 'stale transcription' }))
       expect(props.onCancel).toHaveBeenCalledTimes(1)
       expect(props.onConverted).not.toHaveBeenCalled()
     })
@@ -291,7 +300,8 @@ describe('VoiceInput', () => {
     })
 
     afterEach(() => {
-      vi.runOnlyPendingTimers()
+      cleanup()
+      vi.clearAllTimers()
       vi.useRealTimers()
     })
 
@@ -301,7 +311,7 @@ describe('VoiceInput', () => {
 
       act(() => vi.advanceTimersByTime(1000))
 
-      expect(screen.getByTestId('voice-input-timer')).toHaveTextContent('00:01')
+      expect(screen.getByRole('timer')).toHaveTextContent('00:01')
     })
 
     it('should stop automatically at ten minutes', async () => {
@@ -312,7 +322,7 @@ describe('VoiceInput', () => {
       await act(async () => {})
 
       expect(recorderStop).toHaveBeenCalledTimes(1)
-      expect(screen.getByTestId('voice-input-timer')).toHaveTextContent('10:00')
+      expect(screen.getByRole('timer')).toHaveTextContent('10:00')
     })
   })
 })

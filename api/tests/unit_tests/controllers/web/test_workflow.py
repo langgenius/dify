@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,21 +11,27 @@ from controllers.web.error import (
     NotWorkflowAppError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    TriggerWorkflowServiceModeUnavailableError,
 )
 from controllers.web.workflow import WorkflowRunApi, WorkflowTaskStopApi
 from core.errors.error import ProviderTokenNotInitError, QuotaExceededError
+from models.model import App, AppMode, EndUser
+from services.errors.app import (
+    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
+)
+from tests.unit_tests.model_factories import make_end_user
 
 
-def _workflow_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="workflow")
+def _workflow_app() -> App:
+    return App(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
 
 
-def _chat_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="chat")
+def _chat_app() -> App:
+    return App(id="app-1", tenant_id="tenant-1", mode=AppMode.CHAT)
 
 
-def _end_user() -> SimpleNamespace:
-    return SimpleNamespace(id="eu-1")
+def _end_user() -> EndUser:
+    return make_end_user(end_user_id="eu-1")
 
 
 # ---------------------------------------------------------------------------
@@ -64,6 +69,26 @@ class TestWorkflowRunApi:
 
     @patch(
         "controllers.web.workflow.AppGenerateService.generate",
+        side_effect=TriggerWorkflowServiceModeUnavailableServiceError(),
+    )
+    @patch("controllers.web.workflow.web_ns")
+    def test_trigger_workflow_returns_stable_unavailable_error(
+        self,
+        mock_ns: MagicMock,
+        mock_gen: MagicMock,
+        app: Flask,
+    ) -> None:
+        mock_ns.payload = {"inputs": {}}
+
+        with app.test_request_context("/workflows/run", method="POST"):
+            with pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc_info:
+                WorkflowRunApi().post(_workflow_app(), _end_user())
+
+        assert exc_info.value.code == 403
+        assert exc_info.value.error_code == "trigger_workflow_service_mode_unavailable"
+
+    @patch(
+        "controllers.web.workflow.AppGenerateService.generate",
         side_effect=QuotaExceededError(),
     )
     @patch("controllers.web.workflow.web_ns")
@@ -84,12 +109,12 @@ class TestWorkflowTaskStopApi:
             with pytest.raises(NotWorkflowAppError):
                 WorkflowTaskStopApi().post(_chat_app(), _end_user(), "task-1")
 
-    @patch("controllers.web.workflow.GraphEngineManager.send_stop_command")
-    @patch("controllers.web.workflow.AppQueueManager.set_stop_flag_no_user_check")
-    def test_stop_calls_both_mechanisms(self, mock_legacy: MagicMock, mock_graph: MagicMock, app: Flask) -> None:
+    @patch("controllers.web.workflow.AppTaskService.stop_workflow_task")
+    def test_stop_passes_app_scope(self, stop: MagicMock, app: Flask) -> None:
         with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
             result = WorkflowTaskStopApi().post(_workflow_app(), _end_user(), "task-1")
 
         assert result == {"result": "success"}
-        mock_legacy.assert_called_once_with("task-1")
-        mock_graph.assert_called_once_with("task-1")
+        stop.assert_called_once_with(
+            tenant_id="tenant-1", app_id="app-1", task_id="task-1", app_mode=AppMode.WORKFLOW, owner=None
+        )

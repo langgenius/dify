@@ -19,6 +19,7 @@ from graphon.model_runtime.entities import (
 )
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from graphon.runtime import VariablePool
+from graphon.variables.template_resolution import convert_template
 
 
 class AdvancedPromptTransform(PromptTransform):
@@ -171,7 +172,7 @@ class AdvancedPromptTransform(PromptTransform):
                             if k.startswith("#"):
                                 vp.add(k[1:-1].split("."), v)
                         raw_prompt = raw_prompt.replace("{{#context#}}", context or "")
-                        prompt = vp.convert_template(raw_prompt).text
+                        prompt = convert_template(vp, raw_prompt).text
                     else:
                         parser = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
                         prompt_inputs: Mapping[str, str] = {k: inputs[k] for k in parser.variable_keys if k in inputs}

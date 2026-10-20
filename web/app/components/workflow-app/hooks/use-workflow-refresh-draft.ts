@@ -1,7 +1,10 @@
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useRef } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
 
@@ -10,18 +13,20 @@ type RefreshWorkflowDraftOptions = {
 }
 
 export const useWorkflowRefreshDraft = () => {
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const workflowStore = useWorkflowStore()
   const refreshSequenceRef = useRef(0)
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
-  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail?.mode)
+  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
 
   const handleRefreshWorkflowDraft = useCallback(
     (notUpdateCanvas?: boolean, options?: RefreshWorkflowDraftOptions) => {
       if (options?.shouldApply && !options.shouldApply()) return Promise.resolve(false)
 
       const {
-        appId,
         setSyncWorkflowDraftHash,
         setIsSyncingWorkflowDraft,
         setEnvironmentVariables,
@@ -51,7 +56,7 @@ export const useWorkflowRefreshDraft = () => {
               .filter((env) => env.value_type === 'secret')
               .reduce(
                 (acc, env) => {
-                  acc[env.id] = env.value
+                  if (typeof env.value === 'string') acc[env.id] = env.value
                   return acc
                 },
                 {} as Record<string, string>,
@@ -74,7 +79,7 @@ export const useWorkflowRefreshDraft = () => {
           if (refreshSequence === refreshSequenceRef.current) setIsSyncingWorkflowDraft(false)
         })
     },
-    [getWorkflowDraftGraphForCanvas, handleUpdateWorkflowCanvas, workflowStore],
+    [appId, getWorkflowDraftGraphForCanvas, handleUpdateWorkflowCanvas, workflowStore],
   )
 
   return {

@@ -1,4 +1,5 @@
-import type { ComponentProps, MouseEventHandler } from 'react'
+import type { ButtonProps } from '@langgenius/dify-ui/button'
+import type { MouseEventHandler } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
@@ -8,7 +9,7 @@ import useWorkspacePluginInstallPermission from '@/app/components/plugins/instal
 import { TaskStatus } from '@/app/components/plugins/types'
 import { useCheckInstalled, useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 
-type InstallPluginButtonProps = Omit<ComponentProps<typeof Button>, 'children' | 'loading'> & {
+type InstallPluginButtonProps = Omit<ButtonProps, 'children' | 'loading'> & {
   uniqueIdentifier: string
   extraIdentifiers?: string[]
   onSuccess?: () => void
@@ -16,7 +17,7 @@ type InstallPluginButtonProps = Omit<ComponentProps<typeof Button>, 'children' |
 
 export const InstallPluginButton = (props: InstallPluginButtonProps) => {
   const { className, uniqueIdentifier, extraIdentifiers = [], onSuccess, ...rest } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowAgent'])
   const { canInstallPlugin } = useWorkspacePluginInstallPermission()
   const identifiers = Array.from(
     new Set(
@@ -96,12 +97,12 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
       className={cn('flex items-center', className)}
     >
       {!isLoading
-        ? t(($) => $['nodes.agent.pluginInstaller.install'], { ns: 'workflow' })
-        : t(($) => $['nodes.agent.pluginInstaller.installing'], { ns: 'workflow' })}
+        ? t(($) => $['nodes.agent.pluginInstaller.install'], { ns: 'workflowAgent' })
+        : t(($) => $['nodes.agent.pluginInstaller.installing'], { ns: 'workflowAgent' })}
       {!isLoading ? (
-        <span className="ml-1 i-ri-install-line size-3.5" />
+        <span className="i-ri-install-line size-3.5" />
       ) : (
-        <span className="ml-1 i-ri-loader-2-line size-3.5 animate-spin" />
+        <span className="i-ri-loader-2-line size-3.5 animate-spin" />
       )}
     </Button>
   )
