@@ -1,7 +1,6 @@
 import logging
 import time
 from collections.abc import Callable, Generator
-from typing import Union
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
@@ -57,9 +56,6 @@ from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTas
 from core.base.tts import AppGeneratorTTSPublisher
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.system_variables import build_system_variables
-from graphon.entities import WorkflowStartReason
-from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
@@ -68,6 +64,10 @@ from services.tools.provider_queries import ToolProviderIcons
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 from services.workflow.execution.ports import ExecutionContexts, WorkflowExecutionLogs
+
+from graphon.entities import WorkflowStartReason
+from graphon.enums import WorkflowExecutionStatus
+from graphon.runtime import RuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         application_generate_entity: WorkflowAppGenerateEntity,
         workflow: WorkflowSnapshot,
         queue_manager: AppQueueManager,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         stream: bool,
         draft_var_saver_factory: DraftVariableSaverFactory,
         contexts: ExecutionContexts,
@@ -125,13 +125,15 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             system_variables=self._workflow_system_variables,
             tool_providers=tool_providers,
         )
-        self._graph_runtime_state: GraphRuntimeState | None = self._base_task_pipeline.queue_manager.graph_runtime_state
+        self._graph_runtime_state: RuntimeState | None = self._base_task_pipeline.queue_manager.graph_runtime_state
 
     def process(
         self,
-    ) -> Union[
-        WorkflowAppBlockingResponse, WorkflowAppPausedBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]
-    ]:
+    ) -> (
+        WorkflowAppBlockingResponse
+        | WorkflowAppPausedBlockingResponse
+        | Generator[WorkflowAppStreamResponse, None, None]
+    ):
         """
         Process generate task pipeline.
         :return:
@@ -144,7 +146,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _to_blocking_response(
         self, generator: Generator[StreamResponse, None, None]
-    ) -> Union[WorkflowAppBlockingResponse, WorkflowAppPausedBlockingResponse]:
+    ) -> WorkflowAppBlockingResponse | WorkflowAppPausedBlockingResponse:
         """
         To blocking response.
         :return:
@@ -346,6 +348,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             workflow_run_id=run_id,
             workflow_id=self._workflow.id,
             reason=event.reason,
+            node_execution_snapshots=event.node_execution_snapshots,
         )
         yield start_resp
 
@@ -391,7 +394,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _handle_node_failed_events(
         self,
-        event: Union[QueueNodeFailedEvent, QueueNodeExceptionEvent],
+        event: QueueNodeFailedEvent | QueueNodeExceptionEvent,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle various node failure events."""
@@ -537,7 +540,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _handle_workflow_failed_and_stop_events(
         self,
-        event: Union[QueueWorkflowFailedEvent, QueueStopEvent],
+        event: QueueWorkflowFailedEvent | QueueStopEvent,
         *,
         trace_manager: TraceQueueManager | None = None,
         **kwargs,
@@ -570,7 +573,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         event: QueueTextChunkEvent,
         *,
         tts_publisher: AppGeneratorTTSPublisher | None = None,
-        queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
+        queue_message: WorkflowQueueMessage | MessageQueueMessage | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle text chunk events."""
@@ -659,7 +662,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         *,
         tts_publisher: AppGeneratorTTSPublisher | None = None,
         trace_manager: TraceQueueManager | None = None,
-        queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
+        queue_message: WorkflowQueueMessage | MessageQueueMessage | None = None,
     ) -> Generator[StreamResponse, None, None]:
         """Dispatch events using elegant pattern matching."""
         handlers = self._get_event_handlers()

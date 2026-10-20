@@ -9,6 +9,7 @@ import {
   seedModelProviderQueries,
 } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { ModelTypeEnum } from '../../declarations'
 import SystemModel from '../index'
@@ -104,14 +105,11 @@ vi.mock('../../hooks', async (importOriginal) => {
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.models.modelTypes.byModelType.get': getModelList,
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.defaultModel.post': mockUpdateDefaultModel,
     }),
   }
@@ -142,6 +140,7 @@ const defaultProps = {
 describe('SystemModel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUpdateDefaultModel.mockReset().mockResolvedValue({ result: 'success' })
     getModelList.mockResolvedValue({ data: [] })
     mockWorkspacePermissionKeys = ['plugin.model_config']
   })
@@ -276,10 +275,66 @@ describe('SystemModel', () => {
           ].map((model_type) => ({ model_type, provider: 'test', model: 'test' })),
         },
       })
-      expect(mockToastSuccess).toHaveBeenCalledWith('Modified successfully')
+      expect(mockToastSuccess).not.toHaveBeenCalled()
       expect(mockInvalidateDefaultModel).toHaveBeenCalledTimes(5)
       expect(mockUpdateModelList).toHaveBeenCalledTimes(5)
     })
+  })
+
+  it('blocks repeated submission, editing and dismissal until saving completes', async () => {
+    const user = userEvent.setup()
+    const request = createDeferred<{ result: string }>()
+    mockUpdateDefaultModel.mockReturnValueOnce(request.promise)
+    render(<SystemModel {...defaultProps} />)
+
+    await user.click(screen.getByRole('button', { name: /system model settings/i }))
+    const save = screen.getByRole('button', { name: 'Save' })
+    await user.click(save)
+    await waitFor(() => expect(save).toHaveAttribute('aria-disabled', 'true'))
+    expect(save).toBeEnabled()
+    expect(save).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Reset System Reasoning Model' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /gpt-4/ })).toBeDisabled()
+
+    await user.click(save)
+    await user.keyboard('{Enter}{Escape}')
+    expect(mockUpdateDefaultModel).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('dialog', { name: 'Default Model Settings' })).toBeInTheDocument()
+
+    request.resolve({ result: 'success' })
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Default Model Settings' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(mockToastSuccess).not.toHaveBeenCalled()
+  })
+
+  it('shows a save error inline, preserves the draft and allows retry', async () => {
+    const user = userEvent.setup()
+    mockUpdateDefaultModel.mockRejectedValueOnce(new Error('Unable to save model settings'))
+    render(<SystemModel {...defaultProps} />)
+
+    await user.click(screen.getByRole('button', { name: /system model settings/i }))
+    await user.click(screen.getByRole('button', { name: 'Reset System Reasoning Model' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to save model settings')
+    expect(
+      screen.queryByRole('button', { name: 'Reset System Reasoning Model' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled()
+    expect(mockInvalidateDefaultModel).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Default Model Settings' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(mockUpdateDefaultModel).toHaveBeenCalledTimes(2)
+    expect(mockUpdateDefaultModel.mock.calls[1]).toEqual(mockUpdateDefaultModel.mock.calls[0])
   })
 
   it('should keep the dialog open when saving does not succeed', async () => {

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
 from graphon.entities.pause_reason import HitlRequired
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from models import Account, EndUser
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from core.tools.__base.tool import Tool
     from core.tools.entities.tool_entities import ToolInvokeMessage
     from core.workflow.nodes.human_input.pause_reason import PauseReason
+    from services.workflow.execution.contracts import WorkflowRunDriver
 
 
 class PauseReasonResolver(Protocol):
@@ -104,6 +105,9 @@ class WorkflowToolInvoker(Protocol):
 
 class WorkflowRuntime(Protocol):
     """Capabilities needed to execute a graph, including nested Workflow Tools."""
+
+    @property
+    def execution_driver(self) -> WorkflowRunDriver: ...
 
     @property
     def history(self) -> ConversationHistory: ...
