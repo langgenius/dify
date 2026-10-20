@@ -9,7 +9,6 @@ from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController
 from core.entities import PluginCredentialType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
-from core.repositories import DifyCoreRepositoryFactory
 from core.trigger.constants import is_trigger_node_type
 from core.workflow.human_input_adapter import adapt_human_input_node_data_for_graph
 from core.workflow.llm_environment_variable import (
@@ -19,12 +18,19 @@ from core.workflow.llm_environment_variable import (
     should_resolve_llm_model_selector,
     validate_llm_environment_model_references,
 )
-from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
+from core.workflow.system_variables import (
+    SystemVariableKey,
+    build_bootstrap_variables,
+    build_system_variables,
+    default_system_variables,
+    get_system_text,
+)
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
+from graphon.engine_events import NodeEvent, NodeRunFailedEvent, NodeRunStartedEvent, NodeRunSucceededEvent
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import (
     ErrorStrategy,
@@ -34,7 +40,6 @@ from graphon.enums import (
 )
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File
-from graphon.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
@@ -286,7 +291,7 @@ class WorkflowService:
             if isinstance(e, ValueError):
                 raise e
             else:
-                raise ValueError(f"Node {node_id} ({node_type}): {str(e)}")
+                raise ValueError(f"Node {node_id} ({node_type}): {str(e)}") from e
 
     def _validate_llm_model_config(self, tenant_id: str, provider: str, model_name: str) -> None:
         """
@@ -339,7 +344,7 @@ class WorkflowService:
         except Exception as e:
             raise ValueError(
                 f"Failed to validate LLM model configuration (provider: {provider}, model: {model_name}): {str(e)}"
-            )
+            ) from e
 
     def _check_default_tool_credential(self, tenant_id: str, provider: str, *, credentials: CredentialQuery) -> None:
         """
@@ -368,7 +373,7 @@ class WorkflowService:
             )
 
         except Exception as e:
-            raise ValueError(f"Failed to validate default credential for tool provider {provider}: {str(e)}")
+            raise ValueError(f"Failed to validate default credential for tool provider {provider}: {str(e)}") from e
 
     def _validate_load_balancing_credentials(
         self, tenant_id: str, node_data: Mapping[str, Any], node_id: str, *, credentials: CredentialQuery
@@ -400,7 +405,7 @@ class WorkflowService:
                 for credential_id in credential_ids:
                     check_credential_policy_compliance(credential_id, provider, PluginCredentialType.MODEL)
             except Exception as e:
-                raise ValueError(f"Invalid load balancing credentials for {provider}/{model_name}: {str(e)}")
+                raise ValueError(f"Invalid load balancing credentials for {provider}/{model_name}: {str(e)}") from e
 
     def _is_load_balancing_enabled(self, tenant_id: str, provider: str, model_name: str) -> bool:
         """
@@ -571,25 +576,59 @@ class WorkflowService:
             variable_loader=variable_loader,
         )
 
-        # run draft workflow node
-        start_at = time.perf_counter()
-        node_execution = self._handle_single_step_result(
-            invoke_node_fn=lambda: run,
-            start_at=start_at,
-            node_id=node_id,
-        )
-
-        # Set workflow_id on the NodeExecution
-        node_execution.workflow_id = draft_workflow.id
-
-        # Create repository and save the node execution
-        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-            session_factory=self._sessions,
+        repository = self._runtime.node_writer(
             tenant_id=app_model.tenant_id,
             user=account,
             app_id=app_model.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
+        node, node_events = run
+        started_event: NodeRunStartedEvent | None = None
+        workflow_execution_id = get_system_text(variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID)
+
+        def persist_node_start() -> Generator[NodeEvent | ContainerAwaitRequest]:
+            nonlocal started_event
+            for event in node_events:
+                if isinstance(event, NodeRunStartedEvent) and event.node_id == node_id:
+                    started_event = event
+                    # Agent workspace allocation requires the caller row before
+                    # the node body materializes runtime participants.
+                    repository.save_synchronously(
+                        WorkflowNodeExecution(
+                            id=event.id,
+                            node_execution_id=event.id,
+                            workflow_id=draft_workflow.id,
+                            workflow_execution_id=workflow_execution_id,
+                            index=1,
+                            predecessor_node_id=event.predecessor_node_id,
+                            node_id=event.node_id,
+                            node_type=event.node_type,
+                            title=event.node_title,
+                            process_data=event.node_run_result.process_data or None,
+                            metadata=event.node_run_result.metadata,
+                            created_at=event.start_at,
+                        )
+                    )
+                yield event
+
+        start_at = time.perf_counter()
+        node_execution = self._handle_single_step_result(
+            invoke_node_fn=lambda: (node, persist_node_start()),
+            start_at=start_at,
+            node_id=node_id,
+        )
+
+        node_execution.workflow_id = draft_workflow.id
+        node_execution.workflow_execution_id = workflow_execution_id
+        if started_event is not None:
+            node_execution.id = started_event.id
+            node_execution.node_execution_id = started_event.id
+            node_execution.created_at = started_event.start_at
+            node_execution.predecessor_node_id = started_event.predecessor_node_id
+
+        # Keep the caller row committed for immediate debug reads, then publish
+        # the terminal append for asynchronous/log-store repository backends.
+        repository.save_synchronously(node_execution)
         repository.save(node_execution)
 
         workflow_node_execution = self._node_execution_service_repo.get_execution_by_id(
@@ -645,7 +684,7 @@ class WorkflowService:
         self,
         invoke_node_fn: Callable[
             [],
-            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest]],
+            tuple[Node, Generator[NodeEvent | ContainerAwaitRequest]],
         ],
         start_at: float,
         node_id: str,
@@ -685,7 +724,7 @@ class WorkflowService:
         self,
         invoke_node_fn: Callable[
             [],
-            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest]],
+            tuple[Node, Generator[NodeEvent | ContainerAwaitRequest]],
         ],
     ) -> tuple[Node, NodeRunResult | None, bool, str | None]:
         """
@@ -832,7 +871,7 @@ class WorkflowService:
         try:
             HumanInputNodeData.model_validate(adapt_human_input_node_data_for_graph(node_data))
         except Exception as e:
-            raise ValueError(f"Invalid HumanInput node data: {str(e)}")
+            raise ValueError(f"Invalid HumanInput node data: {str(e)}") from e
 
 
 def _setup_variable_pool(

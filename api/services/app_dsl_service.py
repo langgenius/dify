@@ -36,7 +36,6 @@ from core.workflow.llm_environment_variable import (
     resolve_llm_model_config,
     should_resolve_llm_model_selector,
 )
-from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from events.app_event import app_model_config_was_updated, app_was_created
@@ -55,12 +54,14 @@ from models.agent import AgentScope, WorkflowAgentBindingType, WorkflowAgentNode
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
+from repositories.agent.workflow_binding_repository import WorkflowAgentBindingRepository, workflow_binding_scope
 from repositories.workflow.definition_repository import WorkflowDefinitionStore
 from services.agent.dsl_entities import AGENT_NODE_JOB_DSL_KEY, AgentPackage, make_agent_app_dsl
 from services.agent.dsl_service import AgentDslService
-from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.workflow_contracts import WorkflowAgentBindingStore
+from services.agent.workflow_publish_service import WorkflowAgentPublishService
+from services.agent.workflow_validator import WorkflowAgentNodeValidator
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
 from services.enterprise import rbac_service
@@ -204,8 +205,8 @@ class AppDslService:
         # Validate import mode
         try:
             mode = ImportMode(import_mode)
-        except ValueError:
-            raise ValueError(f"Invalid import_mode: {import_mode}")
+        except ValueError as caught_error:
+            raise ValueError(f"Invalid import_mode: {import_mode}") from caught_error
 
         # Get YAML content
         content: str = ""
@@ -840,7 +841,7 @@ class AppDslService:
                             self._sync_copied_workflow_bindings(workflow=workflow_row, account_id=account.id)
                         )
                         imported_graph = workflow_row.graph_dict
-                    return DraftImportResult(imported_graph, retired)
+                    return DraftImportResult(dict(imported_graph), retired)
 
                 self._drafts.sync(
                     RequestContext(str(uuid4()), None, account.id, app.tenant_id),
@@ -923,8 +924,12 @@ class AppDslService:
 
     def _sync_copied_workflow_bindings(self, *, workflow: Workflow, account_id: str) -> set[str]:
         """Reuse roster Agents while retaining node-owned inline materialization and complete node jobs."""
-        retirement_candidates = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
-            session=self._session, draft_workflow=workflow, account_id=account_id
+        bindings = WorkflowAgentPublishService(repository=WorkflowAgentBindingRepository(self._session))
+        # WorkflowDraftService validates after this materializer restores the portable node-job payload.
+        # synchronize_draft would validate too early, against the default job created for a roster binding.
+        retirement_candidates = bindings.synchronize_bindings(
+            draft_workflow=workflow_binding_scope(workflow),
+            account_id=account_id,
         )
         graph = workflow.graph_dict
         agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
@@ -1062,8 +1067,10 @@ class AppDslService:
         graph = workflow_dict.get("graph", {})
         reference_nodes: dict[str, dict[str, Any]] = {}
         if preserve_agent_bindings:
-            graph = WorkflowAgentPublishService.project_draft_bindings_to_graph(
-                session=session, draft_workflow=workflow
+            graph = WorkflowAgentPublishService(
+                repository=WorkflowAgentBindingRepository(session)
+            ).project_draft_bindings_to_graph(
+                draft_workflow=workflow_binding_scope(workflow),
             )
             agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
             for binding in cls._workflow_agent_bindings(workflow=workflow, session=session):

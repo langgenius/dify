@@ -61,7 +61,6 @@ from controllers.service_api.app.error import (
     TriggerWorkflowServiceModeUnavailableError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import MessageEndStreamResponse, StreamEvent
 from core.errors.error import (
@@ -71,8 +70,6 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from extensions.ext_application_services import application_services
-from extensions.ext_redis import redis_client
-from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.model import App, AppMode
@@ -99,36 +96,36 @@ def _translate_service_errors() -> Generator[None]:
     try:
         yield
     except WorkflowNotFoundError as ex:
-        raise NotFoundError(str(ex))
+        raise NotFoundError(str(ex)) from ex
     except (IsDraftWorkflowError, WorkflowIdFormatError) as ex:
-        raise InvalidRequestError(str(ex))
-    except TriggerWorkflowServiceModeUnavailableServiceError:
-        raise TriggerWorkflowServiceModeUnavailableError()
-    except services.errors.conversation.ConversationNotExistsError:
-        raise NotFoundError("Conversation Not Exists.")
-    except services.errors.conversation.ConversationCompletedError:
-        raise ConversationCompletedError()
-    except services.errors.app_model_config.AppModelConfigBrokenError:
+        raise InvalidRequestError(str(ex)) from ex
+    except TriggerWorkflowServiceModeUnavailableServiceError as caught_error:
+        raise TriggerWorkflowServiceModeUnavailableError() from caught_error
+    except services.errors.conversation.ConversationNotExistsError as caught_error:
+        raise NotFoundError("Conversation Not Exists.") from caught_error
+    except services.errors.conversation.ConversationCompletedError as caught_error:
+        raise ConversationCompletedError() from caught_error
+    except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
         logger.exception("App model config broken.")
-        raise AppUnavailableError()
+        raise AppUnavailableError() from caught_error
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
-    except QuotaExceededError:
-        raise ProviderQuotaExceededError()
-    except ModelCurrentlyNotSupportError:
-        raise ProviderModelCurrentlyNotSupportError()
-    except AppInvokeQuotaExceededError:
+        raise ProviderNotInitializeError(ex.description) from ex
+    except QuotaExceededError as caught_error:
+        raise ProviderQuotaExceededError() from caught_error
+    except ModelCurrentlyNotSupportError as caught_error:
+        raise ProviderModelCurrentlyNotSupportError() from caught_error
+    except AppInvokeQuotaExceededError as caught_error:
         # App concurrency limit. Without this it falls through to the bare `except Exception`
         # below and surfaces as a 500. Render as the canonical 429 (code "too_many_requests");
         # the source message is dropped since it carries internal detail (client_id / limits).
-        raise TooManyRequestsError()
+        raise TooManyRequestsError() from caught_error
     except InvokeRateLimitError as ex:
-        raise InvokeRateLimitHttpError(ex.description)
+        raise InvokeRateLimitHttpError(ex.description) from ex
     except InvokeError as e:
-        raise CompletionRequestError(e.description)
-    except ValueError:
+        raise CompletionRequestError(e.description) from e
+    except ValueError as caught_error:
         logger.warning("run input refused by the service.", exc_info=True)
-        raise InvalidRequestError(_INVALID_RUN_INPUT)
+        raise InvalidRequestError(_INVALID_RUN_INPUT) from caught_error
     except Exception as error:
         raise_unexpected_error(error, message="App execution failed")
 
@@ -452,10 +449,13 @@ class AppRunTaskStopApi(Resource):
         returns=(200, TaskStopResponse, "Task stopped"),
     )
     def post(self, ctx: Context, app_id: str, task_id: str):
-        if isinstance(ctx.subject, ResourceAccessSubject):
-            owner = redis_client.get(AppQueueManager._generate_task_belong_cache_key(task_id))
-            if owner != f"end-user-{ctx.end_user.id}".encode():
-                raise NotFoundError("Task not found")
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
-        GraphEngineManager(redis_client).send_stop_command(task_id)
+        if not application_services().app_tasks.stop_app_task(
+            tenant_id=ctx.app.tenant_id,
+            app_id=ctx.app.id,
+            task_id=task_id,
+            app_mode=AppMode.value_of(ctx.app.mode),
+            caller_role=ctx.subject.caller_role,
+            caller_id=ctx.caller.id,
+        ):
+            raise NotFoundError("Task not found")
         return TaskStopResponse(result="success")

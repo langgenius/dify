@@ -59,7 +59,6 @@ select = [
 
 ignore = [
     "B901",    # allow return in yield
-    "B904",    # raise-without-from-inside-except
     "N815",    # mixed-case-variable-in-class-scope
     "SIM102",  # collapsible-if
     "SIM117",  # multiple-with-statements

@@ -36,7 +36,7 @@ from enums import DeploymentEdition
 from enums.human_input import FormInputType, HumanInputFormKind, HumanInputFormStatus, RecipientType
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import to_utc_timestamp
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType, MessageStatus
@@ -322,7 +322,7 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
         call_depth=0,
         workflow_execution_id="run-1",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     runtime_state.set_output("result", "value")
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
@@ -347,13 +347,8 @@ class TestHitlServiceApi:
             sqlite_engine=sqlite_engine,
         )
         msg_generator = Mock()
-        msg_generator.retrieve_events.return_value = ["raw-event"]
-        workflow_generator = Mock()
-        workflow_generator.convert_to_event_stream.return_value = iter(["data: streamed\n\n"])
+        msg_generator.retrieve_events.return_value = [{"event": "streamed"}]
         monkeypatch.setattr(workflow_events_module, "WorkflowEventStream", msg_generator)
-        monkeypatch.setattr(
-            workflow_events_module, "convert_to_event_stream", workflow_generator.convert_to_event_stream
-        )
 
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
@@ -363,13 +358,12 @@ class TestHitlServiceApi:
         with app.test_request_context("/workflow/run-1/events?user=u1&continue_on_pause=true", method="GET"):
             response = handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
-        assert response.get_data(as_text=True) == "data: streamed\n\n"
+        assert response.get_data(as_text=True) == 'data: {"event":"streamed"}\n\n'
         msg_generator.retrieve_events.assert_called_once_with(
             AppMode.WORKFLOW,
             "run-1",
             terminal_events=[],
         )
-        workflow_generator.convert_to_event_stream.assert_called_once_with(["raw-event"])
 
     def test_workflow_events_snapshot_continue_on_pause_keeps_pause_open(
         self,
@@ -385,13 +379,13 @@ class TestHitlServiceApi:
             sqlite_engine=sqlite_engine,
         )
         msg_generator = Mock()
-        workflow_generator = Mock()
-        workflow_generator.convert_to_event_stream.return_value = iter(["data: snapshot\n\n"])
-        snapshot_builder = Mock(return_value=["snapshot-events"])
+        snapshot_calls: list[dict[str, object]] = []
+
+        def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
+            snapshot_calls.append(kwargs)
+            return [{"event": "snapshot"}]
+
         monkeypatch.setattr(workflow_events_module, "WorkflowEventStream", msg_generator)
-        monkeypatch.setattr(
-            workflow_events_module, "convert_to_event_stream", workflow_generator.convert_to_event_stream
-        )
         monkeypatch.setattr(workflow_events_module, "build_workflow_event_stream", snapshot_builder)
 
         api = WorkflowEventsApi()
@@ -405,21 +399,22 @@ class TestHitlServiceApi:
         ):
             response = handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
-        assert response.get_data(as_text=True) == "data: snapshot\n\n"
+        assert response.get_data(as_text=True) == 'data: {"event":"snapshot"}\n\n'
         msg_generator.retrieve_events.assert_not_called()
-        snapshot_builder.assert_called_once_with(
-            app_mode=AppMode.WORKFLOW,
-            workflow_run=workflow_run,
-            tenant_id="tenant-1",
-            app_id="app-1",
-            session_maker=ANY,
-            human_input_surface=HumanInputSurface.SERVICE_API,
-            close_on_pause=False,
-        )
-        snapshot_session_maker = snapshot_builder.call_args.kwargs["session_maker"]
+        assert snapshot_calls == [
+            {
+                "app_mode": AppMode.WORKFLOW,
+                "workflow_run": workflow_run,
+                "tenant_id": "tenant-1",
+                "app_id": "app-1",
+                "session_maker": ANY,
+                "human_input_surface": HumanInputSurface.SERVICE_API,
+                "close_on_pause": False,
+            }
+        ]
+        snapshot_session_maker = snapshot_calls[0]["session_maker"]
         assert isinstance(snapshot_session_maker, sessionmaker)
         assert snapshot_session_maker.kw["bind"] is sqlite_engine
-        workflow_generator.convert_to_event_stream.assert_called_once_with(["snapshot-events"])
 
     def test_advanced_chat_blocking_injects_pause_state_config(
         self,
@@ -461,6 +456,7 @@ class TestHitlServiceApi:
         assert result == {"result": "advanced-blocking"}
         generator_factory.assert_called_once_with(
             runtime=workflow_runtime,
+            execution_driver=workflow_runtime.execution_driver,
             draft_variable_loader=workflow_variables.workflow_loader,
             draft_variable_saver=workflow_variables.saver_factory,
         )

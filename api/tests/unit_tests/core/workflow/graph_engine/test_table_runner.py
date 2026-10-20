@@ -1,5 +1,5 @@
 """
-Table-driven test framework for GraphEngine workflows.
+Table-driven test framework for Engine workflows.
 
 This module provides a robust table-driven testing framework with support for:
 - Parallel test execution
@@ -23,16 +23,15 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFr
 from core.tools.utils.yaml_utils import _load_yaml_file
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
-from graphon.entities import GraphInitParams
-from graphon.graph import Graph
-from graphon.graph_engine import GraphEngine, GraphEngineConfig
-from graphon.graph_engine.command_channels import InMemoryChannel
-from graphon.graph_events import (
-    GraphEngineEvent,
+from graphon.engine import Engine
+from graphon.engine.command import InMemoryChannel
+from graphon.engine_events import (
+    EngineEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.graph import Graph
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
@@ -64,8 +63,8 @@ class WorkflowTestCase:
     timeout: float = 30.0
     mock_config: MockConfig | None = None
     use_auto_mock: bool = False
-    expected_event_sequence: Sequence[type[GraphEngineEvent]] | None = None
-    graph_factory: Callable[[], tuple[Graph, GraphRuntimeState]] | None = None
+    expected_event_sequence: Sequence[type[EngineEvent]] | None = None
+    graph_factory: Callable[[], tuple[Graph, RuntimeState]] | None = None
 
 
 @dataclass
@@ -79,9 +78,9 @@ class WorkflowTestResult:
     execution_time: float = 0.0
     event_sequence_match: bool | None = None
     event_mismatch_details: str | None = None
-    events: list[GraphEngineEvent] = field(default_factory=list)
+    events: list[EngineEvent] = field(default_factory=list)
     graph: Graph | None = None
-    graph_runtime_state: GraphRuntimeState | None = None
+    graph_runtime_state: RuntimeState | None = None
     validation_details: str | None = None
 
 
@@ -110,7 +109,7 @@ class TestSuiteResult:
 class WorkflowRunner:
     """Core workflow execution engine for tests."""
 
-    def __init__(self, fixtures_dir: Path | None = None):
+    def __init__(self, fixtures_dir: Path | None = None) -> None:
         """Initialize the workflow runner."""
         if fixtures_dir is None:
             # Use the new central fixtures location
@@ -144,7 +143,7 @@ class WorkflowRunner:
         inputs: dict[str, Any] | None = None,
         use_mock_factory: bool = False,
         mock_config: MockConfig | None = None,
-    ) -> tuple[Graph, GraphRuntimeState]:
+    ) -> tuple[Graph, RuntimeState]:
         """Create a Graph instance from fixture data."""
         workflow_config = fixture_data.get("workflow", {})
         graph_config = workflow_config.get("graph", {})
@@ -152,7 +151,7 @@ class WorkflowRunner:
         if not graph_config:
             raise ValueError("Fixture missing workflow.graph configuration")
 
-        graph_init_params = GraphInitParams(
+        graph_init_params = InitParams(
             workflow_id="test_workflow",
             graph_config=graph_config,
             run_context={
@@ -215,14 +214,16 @@ class WorkflowRunner:
         )
         add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=root_node_inputs)
 
-        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+        graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter()
+        )
 
         if use_mock_factory:
             node_factory = MockNodeFactory(
-                graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state, mock_config=mock_config
+                init_params=graph_init_params, runtime_state=graph_runtime_state, mock_config=mock_config
             )
         else:
-            node_factory = DifyNodeFactory(graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state)
+            node_factory = DifyNodeFactory(init_params=graph_init_params, runtime_state=graph_runtime_state)
 
         graph = Graph.init(
             graph_config=graph_config,
@@ -252,11 +253,8 @@ class TableTestRunner:
         max_workers: int = 4,
         enable_logging: bool = False,
         log_level: str = "INFO",
-        graph_engine_min_workers: int = 3,
         graph_engine_max_workers: int = 1,
-        graph_engine_scale_up_threshold: int = 5,
-        graph_engine_scale_down_idle_time: float = 30.0,
-    ):
+    ) -> None:
         """
         Initialize the table test runner.
 
@@ -265,19 +263,12 @@ class TableTestRunner:
             max_workers: Maximum number of parallel workers for test execution
             enable_logging: Enable detailed logging
             log_level: Logging level (DEBUG, INFO, WARNING, ERROR)
-            graph_engine_min_workers: Minimum workers for GraphEngine (default: 3)
-            graph_engine_max_workers: Maximum workers for GraphEngine (default: 1)
-            graph_engine_scale_up_threshold: Queue depth to trigger scale up
-            graph_engine_scale_down_idle_time: Idle time before scaling down
+            graph_engine_max_workers: Maximum workers for Engine (default: 1)
         """
         self.workflow_runner = WorkflowRunner(fixtures_dir)
         self.max_workers = max_workers
 
-        # Store GraphEngine worker configuration
-        self.graph_engine_min_workers = graph_engine_min_workers
         self.graph_engine_max_workers = graph_engine_max_workers
-        self.graph_engine_scale_up_threshold = graph_engine_scale_up_threshold
-        self.graph_engine_scale_down_idle_time = graph_engine_scale_down_idle_time
 
         if enable_logging:
             logging.basicConfig(
@@ -317,26 +308,22 @@ class TableTestRunner:
     def _execute_test_case(self, test_case: WorkflowTestCase) -> WorkflowTestResult:
         """Internal method to execute a single test case."""
         start_time = time.perf_counter()
+        graph: Graph | None = None
+        graph_runtime_state: RuntimeState | None = None
 
         try:
             graph, graph_runtime_state = self._create_graph_runtime_state(test_case)
 
             # Create and run the engine with configured worker settings
-            engine = GraphEngine(
-                workflow_id="test_workflow",
+            engine = Engine(
                 graph=graph,
-                graph_runtime_state=graph_runtime_state,
+                runtime_state=graph_runtime_state,
                 command_channel=InMemoryChannel(),
-                config=GraphEngineConfig(
-                    min_workers=self.graph_engine_min_workers,
-                    max_workers=self.graph_engine_max_workers,
-                    scale_up_threshold=self.graph_engine_scale_up_threshold,
-                    scale_down_idle_time=self.graph_engine_scale_down_idle_time,
-                ),
+                workers=self.graph_engine_max_workers,
             )
 
             # Execute and collect events
-            events: list[GraphEngineEvent] = []
+            events: list[EngineEvent] = []
             for event in iter_dify_graph_engine_events(engine, human_form_reader=NO_HUMAN_INPUT_FORMS):
                 events.append(event)
 
@@ -403,11 +390,11 @@ class TableTestRunner:
                 success=False,
                 error=e,
                 execution_time=time.perf_counter() - start_time,
-                graph=graph if "graph" in locals() else None,
-                graph_runtime_state=graph_runtime_state if "graph_runtime_state" in locals() else None,
+                graph=graph,
+                graph_runtime_state=graph_runtime_state,
             )
 
-    def _create_graph_runtime_state(self, test_case: WorkflowTestCase) -> tuple[Graph, GraphRuntimeState]:
+    def _create_graph_runtime_state(self, test_case: WorkflowTestCase) -> tuple[Graph, RuntimeState]:
         """Create or retrieve graph/runtime state according to test configuration."""
 
         if test_case.graph_factory is not None:
@@ -470,7 +457,7 @@ class TableTestRunner:
         return True, None
 
     def _validate_event_sequence(
-        self, expected_sequence: list[type[GraphEngineEvent]], actual_events: list[GraphEngineEvent]
+        self, expected_sequence: Sequence[type[EngineEvent]], actual_events: list[EngineEvent]
     ) -> tuple[bool, str | None]:
         """
         Validate that actual events match the expected event sequence.
@@ -526,7 +513,7 @@ class TableTestRunner:
             )
 
         start_time = time.perf_counter()
-        results = []
+        results: list[WorkflowTestResult] = []
 
         if parallel and self.max_workers > 1:
             results = self._run_parallel(test_cases, fail_fast)
