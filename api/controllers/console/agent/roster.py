@@ -639,7 +639,7 @@ def _parse_observability_time_range(start: str | None, end: str | None, account:
     try:
         return parse_time_range(start, end, timezone)
     except ValueError as exc:
-        raise InvalidRequestError(str(exc))
+        raise InvalidRequestError(str(exc)) from exc
 
 
 def _query_values(name: str, alias_name: str | None = None) -> list[str]:
@@ -1226,7 +1226,7 @@ class AgentLogsApi(Resource):
                 ),
             )
         except ValueError as exc:
-            raise InvalidRequestError(str(exc))
+            raise InvalidRequestError(str(exc)) from exc
         return dump_response(AgentLogListResponse, payload)
 
 
@@ -1267,7 +1267,7 @@ class AgentLogMessagesApi(Resource):
                 ),
             )
         except ValueError as exc:
-            raise InvalidRequestError(str(exc))
+            raise InvalidRequestError(str(exc)) from exc
         return dump_response(AgentLogMessageListResponse, payload)
 
 
@@ -1323,7 +1323,7 @@ class AgentStatisticsSummaryApi(Resource):
                 params=AgentStatisticsQueryParams(source=req_data.source, start=start, end=end, timezone=timezone),
             )
         except ValueError as exc:
-            raise InvalidRequestError(str(exc))
+            raise InvalidRequestError(str(exc)) from exc
         return dump_response(AgentStatisticSummaryEnvelopeResponse, payload)
 
 

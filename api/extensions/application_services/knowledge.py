@@ -138,6 +138,7 @@ def build_knowledge_services(
         enable_task=enable_segments_to_index_task.delay,
         disable_task=disable_segments_from_index_task.delay,
     )
+    workflow_runtime = build_workflow_execution_dependencies(database_client)
     return KnowledgeServices(
         inner_retrieval=InnerKnowledgeRetrievalService(
             scopes=KnowledgeRetrievalRepository(database_client), retrieval=build_dataset_retrieval(database_client)
@@ -168,7 +169,8 @@ def build_knowledge_services(
             metadata_schema=DocumentService.DOCUMENT_METADATA_SCHEMA,
         ),
         pipeline_generator=PipelineGenerator(
-            runtime=build_workflow_execution_dependencies(database_client),
+            runtime=workflow_runtime,
+            execution_driver=workflow_runtime.execution_driver,
             documents=documents,
             datasource_providers=providers,
             draft_variable_loader=variables.workflow_loader,
@@ -180,7 +182,7 @@ def build_knowledge_services(
             PipelineIndexUpdateGateway(),
         ),
         pipeline_execution=RagPipelineExecutionService(
-            runtime=build_workflow_execution_dependencies(database_client),
+            runtime=workflow_runtime,
             workflows=WorkflowDefinitionRepository(session_factory=database_client),
             variables=variables,
             executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(database_client),

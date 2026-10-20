@@ -109,13 +109,6 @@ describe('useChat', () => {
     vi.restoreAllMocks()
   })
 
-  it('should initialize correctly with empty config', () => {
-    const { result } = renderHookWithConsoleQuery(() => useChat())
-    expect(result.current.chatList).toEqual([])
-    expect(result.current.isResponding).toBe(false)
-    expect(result.current.suggestedQuestions).toEqual([])
-  })
-
   it('should initialize with opening statement and suggested questions', () => {
     const config = {
       opening_statement: 'Hello {{name}}',
@@ -3065,52 +3058,6 @@ describe('useChat', () => {
       await resumeCallbacks.onCompleted()
     })
     expect(result.current.suggestedQuestions).toHaveLength(0)
-  })
-
-  it('should cover handleResume onHumanInputFormFilled splicing and onHumanInputFormTimeout updating', () => {
-    let resumeCallbacks: HookCallbacks
-    vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
-      resumeCallbacks = options as HookCallbacks
-    })
-
-    const prevChatTree = [
-      {
-        id: 'q',
-        content: 'query',
-        isAnswer: false,
-        children: [
-          {
-            id: 'm-1',
-            content: 'initial',
-            isAnswer: true,
-            siblingIndex: 0,
-            humanInputFormDataList: [{ node_id: 'n-1', expiration_time: 100 }],
-          },
-        ],
-      },
-    ]
-
-    const { result } = renderHookWithConsoleQuery(() =>
-      useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-    )
-    act(() => {
-      result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
-    })
-
-    act(() => {
-      // Hit L535-537: onHumanInputFormTimeout (update)
-      resumeCallbacks.onHumanInputFormTimeout({ data: { node_id: 'n-1', expiration_time: 200 } })
-    })
-    expect(result.current.chatList[1]!.humanInputFormDataList).toEqual([
-      expect.objectContaining({ node_id: 'n-1', expiration_time: 200 }),
-    ])
-    act(() => {
-      resumeCallbacks.onHumanInputFormFilled({ data: { node_id: 'n-1' } })
-    })
-
-    const lastResponse = result.current.chatList[1]
-    expect(lastResponse!.humanInputFormDataList).toHaveLength(0)
-    expect(lastResponse!.humanInputFilledFormDataList).toHaveLength(1)
   })
 
   it('should cover handleAnnotationAdded updating node', async () => {

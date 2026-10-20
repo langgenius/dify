@@ -3,7 +3,7 @@
 from threading import Lock
 from time import monotonic
 
-from graphon.runtime.graph_runtime_state import GraphExecutionProtocol
+from graphon.runtime.execution import GraphExecution
 from services.errors.workflow_service import WorkflowDebugReservationExpiredError
 
 LEASE_EXPIRED_MESSAGE = "Trigger debug worker lease expired"
@@ -13,7 +13,7 @@ class DebugExecutionCancellation:
     def __init__(self, *, deadline: float) -> None:
         self._deadline = deadline
         self._lock = Lock()
-        self._execution: GraphExecutionProtocol | None = None
+        self._execution: GraphExecution | None = None
         self._cancelled = False
         self._finished = False
 
@@ -54,7 +54,7 @@ class DebugExecutionCancellation:
             if not self._cancelled:
                 self._deadline = deadline
 
-    def bind(self, execution: GraphExecutionProtocol) -> None:
+    def bind(self, execution: GraphExecution) -> None:
         with self._lock:
             self._execution = execution
             if self._cancelled or monotonic() >= self._deadline:

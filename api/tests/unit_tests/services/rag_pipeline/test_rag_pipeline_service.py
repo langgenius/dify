@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.repositories.factory import DifyCoreRepositoryFactory
+from graphon.engine_events import NodeRunFailedEvent
 from graphon.entities.workflow_node_execution import WorkflowNodeExecution
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -22,8 +23,10 @@ from graphon.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from graphon.graph_events import NodeRunFailedEvent
 from graphon.node_events.base import NodeRunResult
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from models import Account, Tenant
 from models.dataset import (
@@ -212,26 +215,29 @@ def _persist(session: Session, *entities: object) -> None:
     session.commit()
 
 
-def _make_failed_published_node_run() -> tuple[SimpleNamespace, NodeRunFailedEvent]:
-    class FakeVariablePool:
-        def __init__(self) -> None:
-            self._values = {
-                ("sys", "invoke_from"): SimpleNamespace(value=InvokeFrom.PUBLISHED_PIPELINE),
-                ("sys", "app_id"): SimpleNamespace(value="pipeline-1"),
-                ("sys", "dataset_id"): SimpleNamespace(value="dataset-1"),
-                ("sys", "document_id"): SimpleNamespace(value="doc-1"),
-            }
-
-        def get(self, path: list[str]) -> SimpleNamespace | None:
-            return self._values.get(tuple(path))
-
-    node_instance = SimpleNamespace(
-        workflow_id="wf-1",
-        node_type="start",
-        title="Start",
-        graph_runtime_state=SimpleNamespace(variable_pool=FakeVariablePool()),
-        error_strategy=None,
+def _make_start_node(data: StartNodeData | None = None, variable_pool: VariablePool | None = None) -> StartNode:
+    return StartNode(
+        node_id="node-1",
+        data=data if data is not None else StartNodeData(title="Start"),
+        init_params=InitParams(workflow_id="wf-1", graph_config={}, run_context={}, call_depth=0),
+        runtime_state=RuntimeState(
+            workflow_id="wf-1",
+            variable_pool=variable_pool if variable_pool is not None else VariablePool(),
+            start_at=time.perf_counter(),
+        ),
     )
+
+
+def _make_failed_published_node_run() -> tuple[StartNode, NodeRunFailedEvent]:
+    variable_pool = VariablePool()
+    for name, value in {
+        "invoke_from": InvokeFrom.PUBLISHED_PIPELINE,
+        "app_id": "pipeline-1",
+        "dataset_id": "dataset-1",
+        "document_id": "doc-1",
+    }.items():
+        variable_pool.add(["sys", name], value)
+    node_instance = _make_start_node(variable_pool=variable_pool)
     run_result = NodeRunResult(
         status=WorkflowNodeExecutionStatus.FAILED,
         error="boom",
@@ -689,7 +695,7 @@ def test_run_datasource_node_preview_online_document(
 def test_handle_node_run_result_success(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    from graphon.graph_events import NodeRunSucceededEvent
+    from graphon.engine_events import NodeRunSucceededEvent
     from graphon.node_events.base import NodeRunResult
 
     # 1. Setup mock node and result
@@ -947,7 +953,11 @@ def test_set_datasource_variables_success(
         created_at=datetime(2026, 1, 1),
         finished_at=None,
     )
-    mocker.patch.object(rag_pipeline_service.execution, "_handle_node_run_result", return_value=execution)
+    run = (mocker.Mock(), (event for event in ()))
+    mocker.patch("services.rag_pipeline.execution_service.WorkflowEntry.single_step_run", return_value=run)
+    persist_single_step_run = mocker.patch.object(
+        rag_pipeline_service.execution, "_persist_single_step_run", return_value=execution
+    )
 
     # Mock Repository
     mock_repo_instance = mocker.Mock()
@@ -978,7 +988,8 @@ def test_set_datasource_variables_success(
     rag_pipeline_service.execution.set_datasource_variables(pipeline, args, user)
 
     # 3. Assertions
-    mock_repo_instance.save_synchronously.assert_called_once()
+    assert persist_single_step_run.call_args.kwargs["run"] is run
+    assert persist_single_step_run.call_args.kwargs["repository"] is mock_repo_instance
     factory_provider.assert_called_once_with(pipeline.tenant_id, user)
     saver_factory.assert_called_once_with(
         app_id=pipeline.id,
@@ -1110,10 +1121,13 @@ def test_run_draft_workflow_node_seeds_llm_environment_variable(
         process_data={},
         outputs={},
     )
-    handle_node_run_result = mocker.patch.object(
-        rag_pipeline_service.execution, "_handle_node_run_result", return_value=execution
+    run = (mocker.Mock(), (event for event in ()))
+    single_step_run = mocker.patch(
+        "services.rag_pipeline.execution_service.WorkflowEntry.single_step_run", return_value=run
     )
-    single_step_run = mocker.patch("services.rag_pipeline.execution_service.WorkflowEntry.single_step_run")
+    persist_single_step_run = mocker.patch.object(
+        rag_pipeline_service.execution, "_persist_single_step_run", return_value=execution
+    )
 
     repo = mocker.Mock()
     mocker.patch.object(
@@ -1133,8 +1147,7 @@ def test_run_draft_workflow_node_seeds_llm_environment_variable(
 
     factory_provider.assert_called_once_with(pipeline.tenant_id, account)
     saver.save.assert_called_once_with(process_data=execution.process_data, outputs=execution.outputs)
-    getter = handle_node_run_result.call_args.kwargs["getter"]
-    getter()
+    assert persist_single_step_run.call_args.kwargs["run"] is run
     variable_pool = single_step_run.call_args.kwargs["variable_pool"]
     llm_model = variable_pool.get(["env", "for_summarize"])
     assert llm_model is not None
@@ -1178,7 +1191,11 @@ def test_run_draft_workflow_node_saves_execution_and_variables(
         process_data={},
         outputs={},
     )
-    mocker.patch.object(rag_pipeline_service.execution, "_handle_node_run_result", return_value=execution)
+    run = (mocker.Mock(), (event for event in ()))
+    mocker.patch("services.rag_pipeline.execution_service.WorkflowEntry.single_step_run", return_value=run)
+    persist_single_step_run = mocker.patch.object(
+        rag_pipeline_service.execution, "_persist_single_step_run", return_value=execution
+    )
 
     repo = mocker.Mock()
     mocker.patch.object(
@@ -1198,8 +1215,9 @@ def test_run_draft_workflow_node_saves_execution_and_variables(
     result = rag_pipeline_service.execution.run_draft_workflow_node(pipeline, "node-1", {"q": "x"}, account)
 
     assert result == "db"
-    assert execution.workflow_id == "wf-1"
-    repo.save_synchronously.assert_called_once_with(execution)
+    assert persist_single_step_run.call_args.kwargs["run"] is run
+    assert persist_single_step_run.call_args.kwargs["repository"] is repo
+    assert persist_single_step_run.call_args.kwargs["workflow_id"] == "wf-1"
     factory_provider.assert_called_once_with(pipeline.tenant_id, account)
     saver_factory.assert_called_once_with(
         app_id=pipeline.id,
@@ -1240,10 +1258,11 @@ def test_single_node_uses_the_injected_variable_store(
     )
     loaded: list[str] = []
 
-    def execute(*, variable_loader: VariableLoader, **_kwargs: object) -> None:
+    def execute(*, variable_loader: VariableLoader, **_kwargs: object):
         value = variable_loader.load_variables([["previous", "text"]])[0].value
         assert isinstance(value, str)
         loaded.append(value)
+        return mocker.Mock(), (event for event in ())
 
     def result(getter: Callable[[], object], **_kwargs: object) -> WorkflowNodeExecution:
         getter()
@@ -1277,7 +1296,7 @@ def test_debug_execution_commits_before_variable_save_with_celery_repository(
         CeleryWorkflowNodeExecutionRepository,
         save_workflow_node_execution_task,
     )
-    from graphon.graph_events import NodeRunSucceededEvent
+    from graphon.engine_events import NodeRunSucceededEvent
     from models.workflow import WorkflowNodeExecutionTriggeredFrom
     from repositories.sqlalchemy_api_workflow_node_execution_repository import (
         DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
@@ -1319,7 +1338,11 @@ def test_debug_execution_commits_before_variable_save_with_celery_repository(
         node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, outputs={"text": "saved"}),
         route_node_id=None,
     )
-    monkeypatch.setattr(execution_module.WorkflowEntry, "single_step_run", lambda **_kwargs: (node, iter([result])))
+    monkeypatch.setattr(
+        execution_module.WorkflowEntry,
+        "single_step_run",
+        lambda **_kwargs: (node, (event for event in [result])),
+    )
     service = rag_pipeline_service.execution
     service._writer_factory = writer_factory
     service._node_execution_service_repo = executions
@@ -1329,7 +1352,8 @@ def test_debug_execution_commits_before_variable_save_with_celery_repository(
         saved = service.run_draft_workflow_node(pipeline, "node-1", {}, account)
     assert saved is not None
     assert executions.get_execution_by_id(saved.id, tenant_id=pipeline.tenant_id) is not None
-    queued.assert_called_once()  # Debug writes did not depend on the queued task running.
+    assert queued.call_count == 2
+    assert queued.call_args_list[-1].kwargs["execution_data"]["status"] == WorkflowNodeExecutionStatus.SUCCEEDED
     loaded = workflow_variables.workflow_loader(workflow_snapshot(workflow), account.id).load_variables(
         [["node-1", "text"]]
     )
@@ -1473,13 +1497,12 @@ def test_handle_node_run_result_default_value_strategy(
 
     from graphon.node_events.base import NodeRunResult
 
-    node_instance = SimpleNamespace(
-        workflow_id="wf-1",
-        node_type=BuiltinNodeTypes.START,
-        title="Start",
-        error_strategy=ErrorStrategy.DEFAULT_VALUE,
-        default_value_dict={"fallback": "ok"},
-        graph_runtime_state=SimpleNamespace(variable_pool=mocker.Mock()),
+    node_instance = _make_start_node(
+        StartNodeData(
+            title="Start",
+            error_strategy=ErrorStrategy.DEFAULT_VALUE,
+            default_value=[{"key": "fallback", "value": "ok", "type": "string"}],
+        )
     )
 
     failed_result = NodeRunResult(
@@ -1896,13 +1919,7 @@ def test_get_datasource_plugins_raises_when_workflow_not_found(
 def test_handle_node_run_result_raises_when_no_terminal_event(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    node_instance = SimpleNamespace(
-        workflow_id="wf-1",
-        node_type="start",
-        title="Start",
-        graph_runtime_state=SimpleNamespace(variable_pool=SimpleNamespace(get=lambda _: None)),
-        error_strategy=None,
-    )
+    node_instance = _make_start_node()
 
     def _event_generator():
         yield object()

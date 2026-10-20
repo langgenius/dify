@@ -110,7 +110,7 @@ def test_draft_sync_resolves_roster_agents(sqlite_session: Session) -> None:
             )
         )
     sqlite_session.commit()
-    build_workflow_agent_service(sqlite_session)._synchronize_bindings(
+    build_workflow_agent_service(sqlite_session).synchronize_bindings(
         draft_workflow=workflow_binding_scope(draft_workflow),
         account_id="account-1",
     )
@@ -541,7 +541,7 @@ def test_output_routes_round_trip_through_sync_projection_and_publication(sqlite
     }
     workflow = _workflow()
     workflow.graph = json.dumps({"nodes": [{"id": "route-node", "data": node_data}], "edges": []})
-    build_workflow_agent_service(sqlite_session)._synchronize_bindings(
+    build_workflow_agent_service(sqlite_session).synchronize_bindings(
         draft_workflow=workflow_binding_scope(workflow), account_id="account-1"
     )
     projected = build_workflow_agent_service(sqlite_session).project_draft_bindings_to_graph(
@@ -560,7 +560,7 @@ def test_output_routes_round_trip_through_sync_projection_and_publication(sqlite
     assert WorkflowNodeJobConfig.model_validate(frozen.node_job_config_dict).output_routes.model_dump() == routes
     node_data["agent_output_routes"] = {"enabled": False, "routes": routes["routes"]}
     workflow.graph = json.dumps({"nodes": [{"id": "route-node", "data": node_data}], "edges": []})
-    build_workflow_agent_service(sqlite_session)._synchronize_bindings(
+    build_workflow_agent_service(sqlite_session).synchronize_bindings(
         draft_workflow=workflow_binding_scope(workflow), account_id="account-1"
     )
     projected = build_workflow_agent_service(sqlite_session).project_draft_bindings_to_graph(

@@ -13,7 +13,7 @@ from core.workflow.system_variables import build_system_variables
 from extensions.application_services.workflow import build_workflow_execution_dependencies
 from extensions.ext_redis import RedisClientWrapper
 from graphon.entities import WorkflowStartReason
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from models.base import TypeBase
 from models.enums import CreatorUserRole
 from models.model import AppMode
@@ -58,7 +58,8 @@ def build_pipeline(runtime, invoke_from, user, *, tool_providers):
         invoke_from=invoke_from,
         workflow_execution_id="run-id",
     )
-    state = GraphRuntimeState(
+    state = RuntimeState(
+        workflow_id=workflow.id,
         variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
         start_at=0,
     )
