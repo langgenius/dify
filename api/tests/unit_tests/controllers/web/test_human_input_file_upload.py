@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
 
 import controllers.web.human_input_file_upload as upload_module
 from controllers.common.errors import (
@@ -28,6 +29,7 @@ from controllers.web.human_input_file_upload import (
     InvalidUploadTokenForbiddenError,
     InvalidUploadTokenUnauthorizedError,
 )
+from extensions.ext_application_services import ApplicationServices
 from models import Account
 from models.model import UploadFile
 from services.errors.file import (
@@ -145,6 +147,25 @@ def test_local_upload_requires_authorization_before_reading_files(app: Flask) ->
     ):
         with pytest.raises(InvalidUploadTokenUnauthorizedError):
             HumanInputFileUploadApi().post()
+
+
+@pytest.mark.parametrize("separator", ["\xa0", "\x1c", "\v", "\u2003"])
+def test_non_http_whitespace_cannot_bypass_gateway_upload_identity(
+    monkeypatch: pytest.MonkeyPatch, app: Flask, separator: str
+) -> None:
+    service = MagicMock()
+    _patch_upload_service(monkeypatch, service)
+    with app.test_request_context(
+        "/api/human-input-forms/files",
+        method="POST",
+        headers={"Authorization": f"Bearer{separator}hitl_upload_token-1"},
+        content_type="multipart/form-data",
+    ):
+        with pytest.raises(InvalidUploadTokenUnauthorizedError):
+            HumanInputFileUploadApi().post()
+    service.validate_upload_token.assert_not_called()
+    service.upload_local_file.assert_not_called()
+    service.upload_remote_file.assert_not_called()
 
 
 def test_local_upload_delegates_to_human_input_upload_service(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
@@ -314,14 +335,16 @@ def test_upload_maps_file_service_errors(
     service_error: Exception,
     http_error: type[Exception],
     remote: bool,
+    mocker: MockerFixture,
+    account_application_services: ApplicationServices,
 ) -> None:
-    service = MagicMock()
-    service.validate_upload_token.return_value = _upload_context()
+    service = account_application_services.human_input_file_uploads
+    mocker.patch.object(service, "validate_upload_token", return_value=_upload_context())
     if remote:
-        service.upload_remote_file.side_effect = service_error
+        mocker.patch.object(service, "upload_remote_file", side_effect=service_error)
         data = {"url": "https://example.com/file.txt"}
     else:
-        service.upload_local_file.side_effect = service_error
+        mocker.patch.object(service, "upload_local_file", side_effect=service_error)
         data = {"file": (BytesIO(b"content"), "sample.txt")}
     _patch_upload_service(monkeypatch, service)
 

@@ -3,6 +3,7 @@ from types import ModuleType
 from flask import Blueprint
 from flask_restx import Namespace
 
+from controllers.common.access_response import register_auth_error_response
 from controllers.common.errors import (
     InternalServerError,
     InvalidArgumentError,
@@ -13,6 +14,7 @@ from controllers.common.errors import (
 from libs.external_api import ExternalApi
 
 bp = Blueprint("service_api", __name__, url_prefix="/v1")
+register_auth_error_response(bp, www_authenticate='Bearer realm="api"')
 
 api = ExternalApi(
     bp,
