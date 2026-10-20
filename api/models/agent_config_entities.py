@@ -536,7 +536,8 @@ class AgentSoulModelSettings(AgentFlexibleConfig):
     frequency_penalty: float | None = None
     max_tokens: int | None = None
     stop: list[str] | None = None
-    response_format: AgentModelResponseFormatConfig | None = None
+    # Plugin parameter rules use string enums; existing saved configs may use native objects.
+    response_format: str | AgentModelResponseFormatConfig | None = None
 
 
 class AgentFeatureToggleConfig(AgentFlexibleConfig):

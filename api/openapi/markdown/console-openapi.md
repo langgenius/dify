@@ -17320,7 +17320,7 @@ rather than being dropped.
 | frequency_penalty | number |  | No |
 | max_tokens | integer |  | No |
 | presence_penalty | number |  | No |
-| response_format | [AgentModelResponseFormatConfig](#agentmodelresponseformatconfig) |  | No |
+| response_format | string<br>[AgentModelResponseFormatConfig](#agentmodelresponseformatconfig) |  | No |
 | stop | [ string ] |  | No |
 | temperature | number |  | No |
 | top_p | number |  | No |
