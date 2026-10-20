@@ -12,6 +12,7 @@ from pydantic_ai.messages import (
     ToolCallPart,
     ToolReturnPart,
 )
+from pydantic_core import ValidationError
 
 from core.workflow.nodes.agent.events import AgentLogEvent
 from core.workflow.nodes.agent_v2.agent_node import _AgentBackendLogTranslator
@@ -53,6 +54,24 @@ def test_function_tool_call_and_result_share_log_id_and_include_payloads() -> No
     assert finished[0].metadata["elapsed_time"] >= 0
 
 
+def test_tool_call_without_id_preserves_raw_args_and_result_stays_unpaired() -> None:
+    translator = _translator()
+    started = translator.translate(
+        {"part": {"tool_name": "custom", "args": "{invalid", "tool_call_id": None}},
+        event_kind="function_tool_call",
+    )
+    finished = translator.translate(
+        {"part": {"tool_name": "custom", "content": {"ok": True}, "tool_call_id": None}},
+        event_kind="function_tool_result",
+    )
+
+    assert started[0].data["tool_input"] == "{invalid"
+    assert started[0].data["tool_call_id"] is None
+    assert finished[0].data["tool_call_id"] is None
+    assert started[0].message_id != finished[0].message_id
+    assert "elapsed_time" not in finished[0].metadata
+
+
 def test_retry_prompt_is_reported_as_a_tool_error() -> None:
     failed = _translate(
         _translator(),
@@ -66,6 +85,27 @@ def test_retry_prompt_is_reported_as_a_tool_error() -> None:
     )
     assert failed[0].status == "error"
     assert failed[0].error == "tool arguments were invalid"
+
+
+def test_retry_prompt_serializes_structured_error_content() -> None:
+    validation_error = ValidationError.from_exception_data(
+        "ToolArgs",
+        [{"type": "missing", "loc": ("city",), "input": {}}],
+    )
+    failed = _translate(
+        _translator(),
+        FunctionToolResultEvent(
+            part=RetryPromptPart(
+                content=validation_error.errors(include_url=False, include_context=False),
+                tool_name="get_weather",
+                tool_call_id="call-1",
+            )
+        ),
+    )
+
+    assert failed[0].error is not None
+    assert '"type": "missing"' in failed[0].error
+    assert '"loc": ["city"]' in failed[0].error
 
 
 def test_builtin_tool_parts_are_streamed_and_correlated() -> None:
@@ -113,6 +153,17 @@ def test_unknown_or_malformed_events_are_ignored() -> None:
     assert translator.translate({"part": {"tool_name": "weather"}}, event_kind=None) == []
     assert translator.translate({"part": {"tool_name": "weather"}}, event_kind="unknown") == []
     assert translator.translate({"part": {"tool_call_id": "call-1"}}, event_kind="function_tool_call") == []
+    assert translator.translate({"part": {"part_kind": "unknown"}}, event_kind="part_end") == []
+
+
+def test_tool_result_without_a_name_uses_a_fallback_label() -> None:
+    translated = _translator().translate(
+        {"part": {"content": "result", "tool_call_id": "call-1"}},
+        event_kind="function_tool_result",
+    )
+
+    assert translated[0].label == "tool"
+    assert translated[0].metadata == {"kind": "tool"}
 
 
 def test_log_ids_are_stable_per_tool_call_and_scoped_to_run() -> None:
