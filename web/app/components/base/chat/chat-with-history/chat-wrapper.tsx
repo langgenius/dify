@@ -295,33 +295,35 @@ const ChatWrapper = () => {
   const [descExpanded, setDescExpanded] = useState(false)
 
   const description = appData?.site.description
+  const showIntroduction = !!description && !currentConversationId && !hasSent
   const [showDescToggle, setShowDescToggle] = useState(false)
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
     setShowDescToggle(!!node && node.scrollHeight > node.clientHeight)
   }, [])
 
-  const descriptionNode = useMemo(() => {
-    if (!description || currentConversationId || hasSent) return null
-    return (
-      <div className={cn('flex flex-col items-center px-4 pt-6', isMobile && 'pt-4')}>
-        <div className="w-full max-w-2xl rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md">
-          <div className={cn('p-6', isMobile && 'p-4')}>
+  const descriptionNode = showIntroduction ? (
+    <div className="px-4">
+      <div className="mx-auto flex w-full max-w-150 flex-col items-start gap-3">
+        <AppIcon size="xxl" icon={appData?.site} className="shadow-xs" />
+        <div className="flex w-full min-w-0 flex-col gap-2">
+          <h1 className="system-xl-semibold wrap-anywhere text-text-primary">
+            {appData?.site.title}
+          </h1>
+          <div>
             <div
               ref={handleDescRef}
               className={cn(
-                'relative system-xs-regular wrap-break-word whitespace-pre-wrap text-text-tertiary',
+                'system-xs-regular wrap-anywhere whitespace-pre-wrap text-text-tertiary',
                 !descExpanded && 'line-clamp-3',
                 descExpanded && 'max-h-32 overflow-y-auto',
               )}
             >
               {description}
-              {!descExpanded && showDescToggle && (
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
-              )}
             </div>
             {showDescToggle && (
               <button
                 type="button"
+                aria-expanded={descExpanded}
                 className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
                 onClick={() => setDescExpanded((v) => !v)}
               >
@@ -341,8 +343,8 @@ const ChatWrapper = () => {
           </div>
         </div>
       </div>
-    )
-  }, [description, isMobile, currentConversationId, hasSent, descExpanded, showDescToggle, t])
+    </div>
+  ) : null
 
   const chatNode = useMemo(() => {
     if (allInputsHidden || !inputsForms.length) return null
@@ -424,7 +426,12 @@ const ChatWrapper = () => {
         speechToTextTarget={speechToTextTarget}
         chatList={messageList}
         isResponding={respondingState}
-        chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[768px] ${isMobile && 'px-4'}`}
+        chatContainerClassName={showIntroduction ? 'flex flex-col' : undefined}
+        chatContainerInnerClassName={cn(
+          'mx-auto w-full max-w-192',
+          !showIntroduction && 'pt-6',
+          isMobile && 'px-4',
+        )}
         chatFooterClassName="pb-4"
         chatFooterInnerClassName={`mx-auto w-full max-w-[768px] ${isMobile ? 'px-2' : 'px-4'}`}
         onSend={doSend}
@@ -434,11 +441,11 @@ const ChatWrapper = () => {
         onStopResponding={handleStop}
         onHumanInputFormSubmit={handleSubmitHumanInputForm}
         chatNode={
-          <>
+          <div className={cn(showIntroduction && 'my-auto w-full shrink-0 py-6')}>
             {descriptionNode}
             {chatNode}
             {welcome}
-          </>
+          </div>
         }
         allToolIcons={appMeta?.tool_icons || {}}
         onFeedback={handleFeedback}

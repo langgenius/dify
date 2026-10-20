@@ -222,6 +222,64 @@ beforeEach(() => {
 })
 afterEach(() => unregisterTracker())
 
+it('shows the app introduction before the first message and restores it for a new conversation', async () => {
+  const user = userEvent.setup()
+  const appData = createAppData()
+  appData.site.description = 'Find useful sources for your research.'
+  const { updateContext } = renderChat({
+    appData,
+    currentConversationId: '',
+  })
+
+  expect(screen.getByRole('heading', { level: 1, name: appData.site.title })).toBeVisible()
+  expect(screen.getByText(appData.site.description)).toBeVisible()
+
+  await sendMessage(user, 'Find research about renewable energy')
+
+  expect(
+    screen.queryByRole('heading', { level: 1, name: appData.site.title }),
+  ).not.toBeInTheDocument()
+  expect(screen.queryByText(appData.site.description)).not.toBeInTheDocument()
+  await act(async () => {
+    stream().onData?.('Here are some useful sources.', true, {
+      messageId: 'research-answer',
+      conversationId: 'research-conversation',
+    })
+    await stream().onCompleted?.()
+  })
+  expect(await screen.findByText('Here are some useful sources.')).toBeVisible()
+  expect(screen.queryByText(appData.site.description)).not.toBeInTheDocument()
+
+  updateContext({ currentConversationId: 'research-conversation' })
+  updateContext({ currentConversationId: '' })
+
+  expect(screen.getByRole('heading', { level: 1, name: appData.site.title })).toBeVisible()
+  expect(screen.getByText(appData.site.description)).toBeVisible()
+})
+
+it('hides the app introduction while viewing history and restores it when returning to a new chat', () => {
+  const appData = createAppData()
+  appData.site.description = 'Find useful sources for your research.'
+  const { updateContext } = renderChat({
+    appData,
+    currentConversationId: '',
+  })
+
+  expect(screen.getByRole('heading', { level: 1, name: appData.site.title })).toBeVisible()
+
+  updateContext({ currentConversationId: 'saved-conversation' })
+
+  expect(
+    screen.queryByRole('heading', { level: 1, name: appData.site.title }),
+  ).not.toBeInTheDocument()
+  expect(screen.queryByText(appData.site.description)).not.toBeInTheDocument()
+
+  updateContext({ currentConversationId: '' })
+
+  expect(screen.getByRole('heading', { level: 1, name: appData.site.title })).toBeVisible()
+  expect(screen.getByText(appData.site.description)).toBeVisible()
+})
+
 it('sends an opening suggestion and keeps one opening statement in the conversation', async () => {
   const user = userEvent.setup()
   const { context } = renderChat({
