@@ -1,5 +1,6 @@
 import type { UpdateAppPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { ComponentProps } from 'react'
+import type { Mock } from 'vite-plus/test'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useMutation } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -27,7 +28,7 @@ function setup({
   quota = { size: 1, limit: 10 },
 }: {
   source?: ComponentProps<typeof AppMetadataForm>['appDetail']
-  onConfirm?: ReturnType<typeof vi.fn<(body: UpdateAppPayload) => Promise<void>>>
+  onConfirm?: Mock<(body: UpdateAppPayload) => Promise<void>>
   cloud?: boolean
   quota?: { size: number; limit: number }
 } = {}) {

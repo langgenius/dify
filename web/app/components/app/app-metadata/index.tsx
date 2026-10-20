@@ -1,6 +1,7 @@
 'use client'
 
 import type { AppPartial, UpdateAppPayload } from '@dify/contracts/api/console/apps/types.gen'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { IconPickerInputValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -40,7 +41,7 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 
-const SUBMIT_APP_HOTKEY = 'Mod+Enter' satisfies Parameters<typeof matchesKeyboardEvent>[1]
+const SUBMIT_APP_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
 type AppMetadataFormProps = {
   appDetail: Pick<
