@@ -31,8 +31,8 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from core.dify_builder.execution_policy import BuilderExecutionRefusal, ExecutionEvidenceSummary, HttpFixtureSetV1
 from core.dify_builder.state import PcState
+from runtime_contracts.builder.execution import BuilderExecutionRefusal, ExecutionEvidenceSummary, HttpFixtureSetV1
 
 
 class EntryMode(StrEnum):
@@ -328,6 +328,8 @@ class DifyBuilderContext:
     checkpoint_id: str = ""
     verify_run_id: str = ""
     test_input_ref: str = ""
+    # Prefill data only after a new task invalidates active test input/consent.
+    retained_test_input_ref: str = ""
     # Execution revision, distinct from the editor's full graph persistence hash.
     last_snapshot_hash: str = ""
     next_seq: int = 0
@@ -379,6 +381,9 @@ class DifyBuilderContext:
     # edit, so a refusal can never be quoted at an unrelated later change.
     last_edit_rejection: str = ""
 
+    # Current task mode after continuing a completed task in this transcript.
+    active_entry_mode: str = ""
+
     # -- Lifecycle fields (Slice 4, additive) --
     paused: bool = False
     checkpoint_seq: int = 0
@@ -400,6 +405,21 @@ class DifyBuilderContext:
     # terminal or recovery commit clears both.
     confirmed_consent_id: str = ""
     confirmed_command_id: str = ""
+
+    # -- Test Run effect confirmation (PRD §9.1, additive) --
+    # Side-effect node id -> the effect signature the user ticked in the
+    # test-data form. A node runs for real only while its current signature
+    # still matches; every other side effect, and every destructive node, is
+    # mocked. Empty (all older rows) means nothing was confirmed.
+    effect_confirmation: dict[str, str] = field(default_factory=dict)
+    # Configuration signatures actually shown in the latest server form.
+    # Separate from approval: submitting a checkbox cannot approve new config
+    # under the same node ID. Only hashes are persisted, never account secrets.
+    effect_confirmation_form: dict[str, str] = field(default_factory=dict)
+
+    # Server-prepared Code explanations, never public action authority. Only
+    # validated DTO projections (hashes, classification, notice) are persisted.
+    code_risk_assessments: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     # -- Governance fields (C-2, additive) --
     skill_learning_policy: str = "ask"

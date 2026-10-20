@@ -8,6 +8,7 @@ from collections.abc import Callable
 from typing import Any
 
 from core.dify_builder.models import Inputs, StartSchema
+from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.agent import llm
 
 _DEFAULT_BY_TYPE = {
@@ -57,8 +58,10 @@ def generate(
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
         produced = data.get("inputs")
         if not isinstance(produced, dict):
+            diagnostics.report("response_schema_invalid", fallback_used=True)
             return _deterministic(vars_)
     except Exception:
+        diagnostics.report("deterministic_fallback", fallback_used=True)
         return _deterministic(vars_)
     # keep only declared variable keys; fill any the model omitted with a default
     result: Inputs = {}

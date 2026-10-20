@@ -9,7 +9,7 @@ import json
 import logging
 import re
 from collections.abc import Callable, Sequence
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import UTC, datetime
 from typing import Any, Literal
 from urllib.parse import urlsplit
@@ -20,20 +20,21 @@ from core.app.app_config.entities import ModelConfig
 from core.dify_builder import urls
 from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import BuildNodesResult, MutationIntent
+from core.workflow.generator.prompts.builder_prompts import CODE_FAILURE_POLICY_RULES
 from core.workflow.generator.tool_catalogue import score_tool_relevance
 from graphon.enums import BUILT_IN_NODE_TYPES
-from services.dify_builder import preflight
+from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.presentation import copy_text
+from services.dify_builder import preflight, trace_diagnostics
 from services.dify_builder.agent import form_schema, graph_translate, llm, resources, user_supplied
 from services.dify_builder.agent.model_resolver import resolve_model_instance
 from services.dify_builder.agent.resources import ResourceRef
-from services.dify_builder.copy_ids import BuilderCopyId
 from services.dify_builder.generated_graph_completeness import generated_build_completeness_problems
 from services.dify_builder.native_constant_output_contract import (
     native_build_capability_system_rules,
     native_constant_output_system_rules,
 )
 from services.dify_builder.plan import PLAN_PRESENTATION_INSTRUCTION, WorkflowPlan, parse_plan_response
-from services.dify_builder.presentation import copy_text
 from services.dify_builder.tool_setup import reconcile_generated_tool_setup
 from services.workflow_generator_service import WorkflowGeneratorService
 
@@ -84,10 +85,12 @@ def analyze_goal(
     try:
         data = llm.invoke_json(model, system=system, user=f"GOAL:\n{goal_text}", on_reasoning=on_reasoning)
     except Exception:
+        trace_diagnostics.report("deterministic_fallback", fallback_used=True)
         return _degraded_form(goal_text)
     fields = data.get("fields")
     values = data.get("values")
     if not isinstance(fields, list) or not isinstance(values, dict):
+        trace_diagnostics.report("response_schema_invalid", fallback_used=True)
         return _degraded_form(goal_text)
     scrubbed_values = _scrub_invented_defaults(values, goal_text)
     answered_values = _answer_goal_restatements(fields, scrubbed_values, goal_text)
@@ -301,6 +304,7 @@ def propose_app_name(
     try:
         raw = llm.invoke_text(model, system=system, user=user, on_reasoning=on_reasoning).strip()
     except Exception:
+        trace_diagnostics.report("deterministic_fallback", fallback_used=True)
         logger.warning("dify_builder: app-name proposal failed; keeping the derived name", exc_info=True)
         return ""
     # A sentence ("Sure! Here is a good name for...") is worse than the
@@ -344,6 +348,9 @@ _DIFY_NODE_VOCABULARY = """\
 - "template-transform"  — Jinja2 string templating.
 - "http-request"        — call an external HTTP API.
 - "tool"                — call a Dify built-in or installed plugin tool (web search, Slack, JSON, …).
+- "agent"               — New Agent v2 (version=2, agent_node_kind=dify_agent): call a listed published Workspace Agent.
+                          Use only eligible roster candidates, never legacy Agent strategies.
+                          Inputs follow its published declarations; outputs are caller node-job declarations.
 - "if-else"             — branch on a condition.
 - "iteration"           — run a sub-pipeline over every item of a list.
 - "loop"                — repeat a sub-pipeline until an exit condition holds.
@@ -426,12 +433,32 @@ def ready_tool_catalogue(
     (``None``: team-shared only), never access to another member's credential.
     A listing failure yields ``[]`` -- the plan then just cannot name tools,
     which is the pre-existing behaviour, never a crashed advance."""
+    return planning_catalogue(tenant_id, account_id=account_id, goal_text=goal_text, requirements=requirements).tools
+
+
+def planning_catalogue(
+    tenant_id: str,
+    *,
+    account_id: str | None = None,
+    goal_text: str = "",
+    requirements: dict[str, Any] | None = None,
+) -> resources.TenantResources:
+    """One metadata read preserves eligible Agents beside ranked installed tools.
+
+    The resource owner enforces current actor/publication visibility; no actor
+    means no Agent catalog. This projection proposes a plan, never a binding.
+    """
     try:
-        tools = resources.list_tenant_resources(tenant_id, account_id=account_id).tools
-    except Exception:
-        logger.warning("dify_builder: tool listing failed; planning without a tool catalogue", exc_info=True)
-        return []
-    return _rank_tools(tools, _request_text(goal_text, requirements))[:_MAX_PLANNER_TOOLS]
+        inventory = resources.list_tenant_resources(tenant_id, account_id=account_id)
+    except Exception as exc:
+        trace_diagnostics.report("inventory_unavailable", error=exc, fallback_used=True)
+        logger.warning("dify_builder: resource listing failed; planning without a catalogue", exc_info=True)
+        return resources.TenantResources(
+            models=[], datasets=[], tools=[], agent_source_error="Published Agent catalog unavailable"
+        )
+    return replace(
+        inventory, tools=_rank_tools(inventory.tools, _request_text(goal_text, requirements))[:_MAX_PLANNER_TOOLS]
+    )
 
 
 def _planner_tool_section(tools: Sequence[ResourceRef]) -> str:
@@ -453,6 +480,23 @@ def _planner_tool_section(tools: Sequence[ResourceRef]) -> str:
     )
 
 
+def _planner_agent_section(agents: Sequence[ResourceRef], source_error: str | None) -> str:
+    if source_error:
+        return "\n\nPublished Agent catalog is unavailable; do not infer that the workspace has no matching Agents."
+    if not agents:
+        return ""
+    listing = "\n".join(_discovery_line(ref.id, "agent", ref) for ref in agents)
+    return (
+        "\n\n# Published Workspace Agents you may name (resource confirmation required)\n"
+        "When a listed candidate fits the original request, plan an `agent` node using New Agent v2 and name its "
+        "exact listed id. Resource confirmation must select that binding before generation. Its capability source "
+        "and dependencies are public metadata; setup/readiness is not runtime authorization. Inputs come from "
+        "published Soul app-variable declarations. Outputs must be declared by the caller's node job; "
+        "never invent a published Agent output schema.\n"
+        f"{listing}"
+    )
+
+
 def _cognition_source(goal_text: str, requirements: dict[str, Any] | None) -> str:
     """Keep the full source in every source-dependent cognition payload."""
     return f"ORIGINAL GOAL:\n{goal_text}\n\nCONFIRMED REQUIREMENTS:\n" + json.dumps(
@@ -466,6 +510,8 @@ def propose_plan_v1(
     on_reasoning: Callable[[str], None] | None = None,
     *,
     tools: Sequence[ResourceRef] = (),
+    agents: Sequence[ResourceRef] = (),
+    agent_source_error: str | None = None,
     goal_text: str = "",
     mode: str = "workflow",
 ) -> WorkflowPlan | None:
@@ -488,7 +534,8 @@ def propose_plan_v1(
         '"llm node drafts a reply from the ticket text". Bad: "Notify the team on Feishu" '
         "-- that names a product, not a node.\n\n"
         "Dify has no scheduler, database, email or messaging node. An external action can use "
-        "a ready matching installed `tool` node, an `http-request` node with a user-supplied "
+        "a matching installed `tool` node, a listed eligible published Workspace Agent, "
+        "an `http-request` node with a user-supplied "
         "endpoint, or an `http-request` node whose endpoint is a required Start input supplied "
         "at runtime. A missing URL alone is not an unsupported capability: retain the requested "
         "HTTP action and require the endpoint input rather than skipping it. Reserve work "
@@ -497,7 +544,8 @@ def propose_plan_v1(
         "deferral does not establish API availability, authentication, request schema or response "
         "schema; do not invent any of them. Resource mentions, including optional or negative "
         "mentions, do not alone require using a resource."
-        f"{_planner_tool_section(tools)}\n\n"
+        f"{CODE_FAILURE_POLICY_RULES}\n\n"
+        f"{_planner_tool_section(tools)}{_planner_agent_section(agents, agent_source_error)}\n\n"
         f"{PLAN_PRESENTATION_INSTRUCTION}"
     )
     system = _topology_directive(mode) + "\n\n" + system
@@ -511,14 +559,21 @@ def propose_plan_v1(
             # so parsing and schema correction share the same two-call budget.
             text = llm.invoke_text(model, system=system, user=user, on_reasoning=on_reasoning)
         except Exception:
+            trace_diagnostics.report("deterministic_fallback", fallback_used=True)
             return None
         try:
             data = json_repair.loads(text)
-        except Exception:
+            if not isinstance(data, dict):
+                trace_diagnostics.report("json_decode_failed", attempt=attempt + 1)
+        except Exception as exc:
+            trace_diagnostics.report("deterministic_fallback", fallback_used=True)
+            trace_diagnostics.report("json_decode_failed", error=exc, attempt=attempt + 1)
             data = None
         try:
             return parse_plan_response(data)
         except ValueError as exc:
+            if isinstance(data, dict):
+                trace_diagnostics.report("response_schema_invalid", error=exc, attempt=attempt + 1)
             issue = str(exc)
         if attempt == 0:
             user = f"{source}\n\nSCHEMA CORRECTION:\n{issue} Reply with ONLY the complete corrected JSON object."
@@ -540,14 +595,15 @@ def discover_resources(
     Tools are every installed tool -- ready or needing setup -- ranked by
     relevance to the goal, requirements and plan and bounded to
     ``_MAX_DISCOVERY_TOOLS``. A recommended missing_config tool keeps that
-    readiness and its setup note in ``meta``; binding and generation still
-    accept ready tools only. ``account_id`` is the acting member whose
+    readiness and its setup note in ``meta``; installed tools remain bindable
+    before setup, while native runtime authorization is still required. ``account_id`` is the acting member whose
     credentials decide readiness (``None``: team-shared only).
     """
     inv = resources.list_tenant_resources(tenant_id, account_id=account_id)
     tools = _rank_tools(inv.tools, _request_text(goal_text, requirements, plan_items))[:_MAX_DISCOVERY_TOOLS]
     catalog = {r.id: ("plugin", r) for r in tools}
     catalog.update({r.id: ("model", r) for r in inv.models})
+    catalog.update({r.id: ("agent", r) for r in inv.agents})
     if not catalog or model is None:
         return []
     system = (
@@ -558,15 +614,22 @@ def discover_resources(
         "but it requires setup -- its credentials are not authorized for this member, or the "
         "authorization could not be verified -- so it cannot run until set up). You may recommend a "
         "missing_config tool when it is the right fit; it is presented as requiring setup. Prefer a "
-        "ready resource that fits equally well. Use ONLY listed ids. Reply with ONLY JSON: "
+        "ready resource that fits equally well. Readiness proves configuration metadata only, not live availability. "
+        "Never infer provider retirement from a service error or an empty catalogue; "
+        "lifecycle needs explicit evidence. "
+        "Use ONLY listed ids. Reply with ONLY JSON: "
         '{"resource_ids": ["<id>", ...]}.'
     )
+    if inv.agent_source_error:
+        system += " Published Agent catalog is unavailable; do not infer that the workspace has no Agents."
+    system += " Agent resources are published Workspace Agents; their node-job outputs must be declared by the caller."
     listing = "\n".join(_discovery_line(rid, kind, ref) for rid, (kind, ref) in catalog.items())
     user = f"{_cognition_source(goal_text, requirements)}\n\nPLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
         chosen_ids = [rid for rid in (data.get("resource_ids") or []) if rid in catalog]
     except Exception:
+        trace_diagnostics.report("deterministic_fallback", fallback_used=True)
         logger.warning("dify_builder: resource recommendation failed; recommending none", exc_info=True)
         chosen_ids = []
     # Recommending nothing is the honest answer when there is no signal -- no
@@ -592,6 +655,13 @@ def _discovery_line(rid: str, kind: str, ref: ResourceRef) -> str:
     meta = ref.meta.replace("\n", " ").strip()
     if meta:
         line += f" — {meta[:240]}"
+    if ref.model_contract:
+        line += "\n  Model declaration: " + json.dumps(ref.model_contract, sort_keys=True)
+    if ref.availability:
+        line += "\n  Availability metadata: " + json.dumps(ref.availability, sort_keys=True)
+    if kind == "agent" and ref.agent_contract is not None:
+        # Public input/dependency declarations must survive the prose cap.
+        line += "\n  Agent contract: " + json.dumps(ref.agent_contract, sort_keys=True)
     return line
 
 
@@ -607,7 +677,9 @@ _GAP_SYSTEM = (
     "or selected before testing or publishing. Setup is not a missing capability. "
     "Name in ONE plain sentence any step not covered by a native building block or a confirmed selected binding, "
     "and say which coverage remains unconfirmed; absence from selected candidates is not proof of an unavailable "
-    "workspace capability. Never name a product to install. Reply with ONLY JSON: "
+    "workspace capability. Readiness is configuration metadata, not live health or supplier lifecycle proof. "
+    "Never infer retirement from a service failure or empty catalogue. "
+    "Never name a product to install. Reply with ONLY JSON: "
     '{"gap": "<sentence, or empty string when the plan is covered>"}.'
 )
 
@@ -653,6 +725,7 @@ def assess_capability_gap(
             ),
         )
     except Exception:
+        trace_diagnostics.report("deterministic_fallback", fallback_used=True)
         logger.warning("dify_builder: capability-gap assessment failed", exc_info=True)
         return ""
     gap = data.get("gap")
@@ -665,6 +738,7 @@ def assess_capability_gap(
 _STEP_KEYWORDS_BY_KIND: dict[str, tuple[str, ...]] = {
     "model": ("llm", "question-classifier", "parameter-extractor"),
     "plugin": ("tool",),
+    "agent": ("agent",),
 }
 
 
@@ -709,7 +783,7 @@ def _bound_name(kind: str, ref: ResourceRef) -> str:
     boundary treats '[' / ']' as non-word characters. A model's label already is
     its full id and keeps the label alone.
     """
-    return f"{ref.label} [{ref.id}]" if kind == "plugin" else ref.label
+    return f"{ref.label} [{ref.id}]" if kind in {"plugin", "agent"} else ref.label
 
 
 # A binder-produced suffix, or several stacked from repeated binds, trailing
@@ -747,12 +821,14 @@ def bind_resources(
     The fresh inventory remains authoritative for tenant/action identity;
     binding a schema does not select or authorize any stored credential.
     """
-    inv = resources.list_tenant_resources(tenant_id, account_id=account_id)
+    inv = _inventory_for_selection(tenant_id, account_id=account_id, resource_ids=resource_ids)
     installed_tools = inv.tools
     kinds: dict[str, str] = {}
     kinds.update({r.id: "plugin" for r in installed_tools})
     kinds.update({r.id: "model" for r in inv.models})
-    by_id = {r.id: r for r in (*installed_tools, *inv.models)}
+    kinds.update({r.id: "agent" for r in inv.agents})
+    _selected_agent_resources(inv, resource_ids)
+    by_id = {r.id: r for r in (*installed_tools, *inv.models, *inv.agents)}
     chosen = [by_id[rid] for rid in resource_ids if rid in by_id]
     stripped = [_TRAILING_USING_SUFFIX.sub("", item) for item in plan_items]
     if not chosen:
@@ -769,6 +845,43 @@ def bind_resources(
         if suffix not in bound[index]:
             bound[index] = bound[index] + suffix
     return bound
+
+
+def _inventory_for_selection(
+    tenant_id: str, *, account_id: str | None, resource_ids: Sequence[str]
+) -> resources.TenantResources:
+    from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
+
+    selected_ids = frozenset(
+        AgentBindingSelection.from_resource_id(rid).agent_id for rid in resource_ids if rid.startswith("agent:")
+    )
+    if selected_ids:
+        return resources.list_tenant_resources(tenant_id, account_id=account_id, selected_agent_ids=selected_ids)
+    return resources.list_tenant_resources(tenant_id, account_id=account_id)
+
+
+def _selected_agent_resources(inv: resources.TenantResources, resource_ids: Sequence[str]) -> list[ResourceRef]:
+    from services.dify_builder.native_testing.agent_binding import AgentBindingSelection, AgentSnapshotChanged
+
+    selected = [rid for rid in resource_ids if rid.startswith("agent:")]
+    if selected and inv.agent_source_error:
+        raise ValueError("Published Agent catalog unavailable; retry selection")
+    by_id = {ref.id: ref for ref in inv.agents}
+    for rid in selected:
+        selection = AgentBindingSelection.from_resource_id(rid)
+        if rid not in by_id:
+            replacement = next(
+                (
+                    AgentBindingSelection.from_resource_id(ref.id)
+                    for ref in inv.agents
+                    if AgentBindingSelection.from_resource_id(ref.id).agent_id == selection.agent_id
+                ),
+                None,
+            )
+            if replacement is not None:
+                raise AgentSnapshotChanged(effective_snapshot_id=replacement.snapshot_id)
+            raise ValueError("Selected published Agent is no longer available")
+    return [by_id[rid] for rid in selected]
 
 
 def learn_from_build(
@@ -794,6 +907,7 @@ def learn_from_build(
             or fallback
         )
     except Exception:
+        trace_diagnostics.report("deterministic_fallback", fallback_used=True)
         return fallback
 
 
@@ -1039,7 +1153,8 @@ def _installed_tool_refs(tenant_id: str, account_id: str | None) -> dict[tuple[s
     """Every verified installed Tool schema, uncapped; empty on lookup failure."""
     try:
         tools = resources.list_tenant_resources(tenant_id, account_id=account_id).tools
-    except Exception:
+    except Exception as exc:
+        trace_diagnostics.report("inventory_unavailable", error=exc, fallback_used=True)
         logger.warning("dify_builder: tool listing failed; generating without installed tools", exc_info=True)
         return {}
     return {_tool_key(t): t for t in tools}
@@ -1089,7 +1204,33 @@ def build_nodes(
         tool_refs = _installed_tool_refs(tenant_id, account_id)
         ready_tool_keys = frozenset(tool_refs)
         graph_mode: Literal["workflow", "advanced-chat"] = "advanced-chat" if mode == "advanced-chat" else "workflow"
+        agent_refs = (
+            _selected_agent_resources(
+                _inventory_for_selection(tenant_id, account_id=account_id, resource_ids=resource_ids), resource_ids
+            )
+            if any(rid.startswith("agent:") for rid in resource_ids)
+            else []
+        )
         base_instruction = f"{_topology_directive(graph_mode)}\n\nAPPROVED PLAN:\n" + "\n".join(plan_items)
+        if agent_refs:
+            from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
+
+            selected_agents = [
+                {
+                    **AgentBindingSelection.from_resource_id(ref.id).model_dump(mode="json"),
+                    "name": ref.label,
+                    "capability": ref.capability,
+                    "contract": ref.agent_contract,
+                }
+                for ref in agent_refs
+            ]
+            base_instruction += (
+                "\nSELECTED PUBLISHED WORKSPACE AGENTS (use only these exact bindings):\n"
+                + json.dumps(selected_agents, sort_keys=True)
+                + "\nUse native type=agent, version=2, agent_node_kind=dify_agent, "
+                "agent_binding={binding_type:roster_agent,agent_id,current_snapshot_id:snapshot_id}, agent_task, "
+                "and agent_declared_outputs. Outputs are caller node-job declarations, never a published Agent schema."
+            )
         if trusted_text:
             base_instruction += (
                 "\n\nORIGINAL USER REQUEST AND CONFIRMED REQUIREMENTS (authoritative):\n"
@@ -1127,6 +1268,21 @@ def build_nodes(
                     graph=graph,
                     tools=tool_refs,
                 )
+                from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
+
+                selected_bindings = {
+                    (
+                        AgentBindingSelection.from_resource_id(ref.id).agent_id,
+                        AgentBindingSelection.from_resource_id(ref.id).snapshot_id,
+                    )
+                    for ref in agent_refs
+                }
+                for node in graph.get("nodes") or []:
+                    data = node.get("data") or {}
+                    if data.get("type") == "agent" and data.get("version") == "2":
+                        binding = data.get("agent_binding") or {}
+                        if (binding.get("agent_id"), binding.get("current_snapshot_id")) not in selected_bindings:
+                            raise ValueError("Generated Agent node must use a confirmed published Agent selection")
                 candidate = _prepare_build_candidate(graph, grounding_mc, trusted_text, mode=graph_mode)
                 rejections = [*_uninstalled_tool_refusals(graph, ready_tool_keys), *candidate.rejections]
                 if not rejections and candidate.applicable:
@@ -1153,6 +1309,7 @@ def build_nodes(
         )
         return BuildNodesResult(intents=[], error=error, diagnostics=diagnostics)
     except Exception as exc:  # any generation/translation failure -> honest empty build
+        trace_diagnostics.report("deterministic_fallback", fallback_used=True)
         logger.exception(
             "Dify Builder: build_nodes generation failed for tenant %s (%d plan items); returning empty build",
             tenant_id,

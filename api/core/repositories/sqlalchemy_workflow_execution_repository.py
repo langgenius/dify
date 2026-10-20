@@ -2,6 +2,8 @@
 SQLAlchemy implementation of the WorkflowExecutionRepository.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from typing import override
@@ -9,7 +11,7 @@ from typing import override
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.repositories.factory import WorkflowExecutionRepository
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowRunObservation
 from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
@@ -21,6 +23,7 @@ from models import (
 )
 from models.enums import WorkflowRunTriggeredFrom
 from repositories.entities.workflow_execution import WorkflowExecution as TimedWorkflowExecution
+from runtime_contracts.builder.native.observation import NativeObservationError
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +39,23 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
     This implementation also includes an in-memory cache for workflow executions to improve
     performance by reducing database queries.
     """
+
+    _native_observation: WorkflowRunObservation | None = None
+    _native_observation_started: bool = False
+
+    def bind_native_observation(self, *, observation: WorkflowRunObservation) -> None:
+        """Attach the service-composed observer without constructing its application owner."""
+        previous = self._native_observation
+        if previous is not None and previous is not observation:
+            previous.fail()
+        self._native_observation = observation
+
+    def get_native_observation_run(self, *, workflow_run_id: str) -> WorkflowExecution:
+        """Read structural native history; status/claim authority belongs to the caller."""
+        if self._native_observation is None:
+            raise NativeObservationError() from None
+        self._native_observation_started = True
+        return self._native_observation.get_run(self, workflow_run_id)
 
     def __init__(
         self,
@@ -85,6 +105,12 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         self._execution_cache: dict[str, WorkflowRun] = {}
 
     def _to_domain_model(self, db_model: WorkflowRun) -> WorkflowExecution:
+        self._native_observation_started = True
+        if self._native_observation is not None:
+            return self._native_observation.to_domain_run(self, db_model)
+        return self._ordinary_to_domain_model(db_model)
+
+    def _ordinary_to_domain_model(self, db_model: WorkflowRun) -> WorkflowExecution:
         """
         Convert a database model to a domain model.
 
@@ -121,6 +147,11 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         )
 
     def _to_db_model(self, domain_model: WorkflowExecution) -> WorkflowRun:
+        if self._native_observation is not None:
+            return self._native_observation.to_db_run(self, domain_model)
+        return self._ordinary_to_db_model(domain_model)
+
+    def _ordinary_to_db_model(self, domain_model: WorkflowExecution) -> WorkflowRun:
         """
         Convert a domain model to a database model.
 
@@ -195,6 +226,9 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         Args:
             execution: The WorkflowExecution domain entity to persist
         """
+        self._native_observation_started = True
+        if self._native_observation is not None:
+            return self._native_observation.save_run(self, execution)
         # Convert domain model to database model using tenant context and other attributes
         db_model = self._to_db_model(execution)
 

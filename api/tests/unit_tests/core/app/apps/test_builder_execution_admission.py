@@ -5,9 +5,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.app.entities.app_invoke_entities import AppGenerateEntity, DifyRunContext, InvokeFrom, UserFrom
-from core.dify_builder.execution_policy import BuilderExecutionContext, BuilderExecutionPolicyError
 from models.model import Account, App
 from models.workflow import Workflow
+from services.dify_builder.application.execution_policy import BuilderExecutionContext, BuilderExecutionPolicyError
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, _Account
 
 
@@ -159,7 +159,7 @@ def test_json_generate_refuses_unsupported_transport_before_workflow_read(monkey
 
 @pytest.mark.parametrize("transport", ["missing_issuer", "files", "depth"])
 def test_json_workflow_generator_refuses_before_file_or_graph_effect(monkeypatch, transport):
-    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+    from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import _json_context
 
     marker = _json_context()
@@ -187,7 +187,7 @@ def test_json_workflow_generator_refuses_before_file_or_graph_effect(monkeypatch
 
 
 def test_json_resume_refuses_before_trace_or_graph_restore():
-    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+    from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import _json_context
 
     marker = _json_context()
@@ -207,9 +207,9 @@ def test_json_factory_refuses_nonissued_recorder_before_ordinary_setup(monkeypat
     import time
 
     from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
-    from core.workflow import node_factory
     from graphon.entities.graph_init_params import GraphInitParams
     from graphon.runtime import GraphRuntimeState, VariablePool
+    from services.workflow_runtime import node_factory
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import _json_context
 
     marker = _json_context()
@@ -293,11 +293,15 @@ def test_celery_refuses_marker_before_logging_or_initialization(monkeypatch):
 def test_factory_composes_restricted_without_live_adapters(monkeypatch, entry, has_recorder):
     import time
 
-    import core.workflow.node_factory as module
+    import services.workflow_runtime.node_factory as module
     from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
-    from core.dify_builder.execution_policy import admitted_node_bindings, context_digest, fixture_digest
     from graphon.entities.graph_init_params import GraphInitParams
     from graphon.runtime import GraphRuntimeState, VariablePool
+    from services.dify_builder.application.execution_policy import (
+        admitted_node_bindings,
+        context_digest,
+        fixture_digest,
+    )
     from tests.unit_tests.core.dify_builder.test_execution_policy import graph, snapshot
 
     marker = context().model_copy(
@@ -336,7 +340,7 @@ def test_factory_composes_restricted_without_live_adapters(monkeypatch, entry, h
                 execution_recorder=recorder,
             )
         else:
-            from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
+            from services.workflow_runtime.base_runner import WorkflowBasedAppRunner
 
             runner = WorkflowBasedAppRunner(queue_manager=MagicMock(), app_id="app")
             return runner._init_graph(
@@ -376,7 +380,7 @@ def test_worker_readmission_rejects_reload_races_inside_queue_lifecycle(owned, m
     from flask import current_app
     from sqlalchemy import delete
 
-    import core.app.apps.workflow.app_generator as module
+    import services.workflow_runtime.workflow_generator as module
     from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
     from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
     from models.account import TenantAccountJoin
@@ -430,8 +434,8 @@ def test_worker_readmission_rejects_reload_races_inside_queue_lifecycle(owned, m
     monkeypatch.setattr(encrypter, "decrypt_token", secret)
     import core.app.apps.base_app_queue_manager as queue_module
     from core.app.apps.execution_coordinator import AppExecutionCoordinator, AppExecutionState
-    from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
     from core.app.entities.queue_entities import QueueErrorEvent
+    from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
 
     monkeypatch.setattr(queue_module, "redis_client", MagicMock())
     monkeypatch.setattr(AppExecutionCoordinator, "start_watchdog", lambda _: None)
@@ -504,7 +508,7 @@ def test_worker_claims_once_and_shares_recorder_with_runner_and_completion(owned
 
     from flask import current_app
 
-    import core.app.apps.workflow.app_generator as module
+    import services.workflow_runtime.workflow_generator as module
     from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
     from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
     from core.dify_builder.models import Run
@@ -551,7 +555,7 @@ def test_worker_claims_once_and_shares_recorder_with_runner_and_completion(owned
         launch(workflow, app, entity, "start", False)
     assert runner.call_args.kwargs["execution_recorder"] is launch.recorder
     # An append failure latches the very recorder that the port completion receives.
-    from core.dify_builder.execution_policy import BuilderExecutionObservation
+    from services.dify_builder.application.execution_policy import BuilderExecutionObservation
 
     monkeypatch.setattr(service, "record", MagicMock(side_effect=OSError("append failed")))
     observation = BuilderExecutionObservation(
@@ -611,7 +615,7 @@ def test_native_worker_outer_finally_acknowledges_context_entry_failure(owned, m
     from flask import current_app
     from werkzeug.local import LocalProxy
 
-    import core.app.apps.workflow.app_generator as module
+    import services.workflow_runtime.workflow_generator as module
     from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
     from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import prepare_inputs, service_module

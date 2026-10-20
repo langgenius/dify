@@ -273,7 +273,7 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
 
     # replace `WorkflowAppGenerator.generate` 's return value.
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate",
+        "services.workflow_runtime.workflow_generator.WorkflowAppGenerator.generate",
         lambda *args, **kwargs: {"data": {"error": "oops"}},
     )
 
@@ -302,7 +302,7 @@ def test_workflow_tool_rejects_paused_generator_result(
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate)
+    monkeypatch.setattr("services.workflow_runtime.workflow_generator.WorkflowAppGenerator.generate", generate)
 
     with pytest.raises(ToolInvokeError, match="requires Engine-managed container execution"):
         list(tool.invoke(sqlite_session, "test_user", {}))
@@ -323,7 +323,7 @@ def test_legacy_tool_disables_human_input(
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     generate, generate_calls = _record_calls(return_value={"data": {}})
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate)
+    monkeypatch.setattr("services.workflow_runtime.workflow_generator.WorkflowAppGenerator.generate", generate)
 
     list(tool.invoke(sqlite_session, "test_user", {}))
 
@@ -350,7 +350,7 @@ def test_workflow_tool_passes_parent_trace_context_from_runtime(
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     generate, generate_calls = _record_calls(return_value={"data": {}})
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate)
+    monkeypatch.setattr("services.workflow_runtime.workflow_generator.WorkflowAppGenerator.generate", generate)
 
     list(tool.invoke(sqlite_session, "test_user", {}))
 
@@ -384,7 +384,7 @@ def test_workflow_tool_passes_parent_trace_session_id(
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     generate, generate_calls = _record_calls(return_value={"data": {}})
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate)
+    monkeypatch.setattr("services.workflow_runtime.workflow_generator.WorkflowAppGenerator.generate", generate)
 
     list(tool.invoke(sqlite_session, "test_user", {"trace_session_id": "user-input-session"}))
 
@@ -425,7 +425,7 @@ def test_workflow_tool_keeps_user_inputs_named_like_trace_runtime_keys(
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     generate, generate_calls = _record_calls(return_value={"data": {}})
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate)
+    monkeypatch.setattr("services.workflow_runtime.workflow_generator.WorkflowAppGenerator.generate", generate)
 
     list(
         tool.invoke(
@@ -466,7 +466,7 @@ def test_workflow_tool_can_clear_parent_trace_context(
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     generate, generate_calls = _record_calls(return_value={"data": {}})
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate)
+    monkeypatch.setattr("services.workflow_runtime.workflow_generator.WorkflowAppGenerator.generate", generate)
 
     list(tool.invoke(sqlite_session, "test_user", {}))
 
@@ -490,7 +490,7 @@ def test_workflow_tool_can_clear_trace_session_id(
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     generate, generate_calls = _record_calls(return_value={"data": {}})
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate)
+    monkeypatch.setattr("services.workflow_runtime.workflow_generator.WorkflowAppGenerator.generate", generate)
 
     list(tool.invoke(sqlite_session, "test_user", {}))
 
@@ -523,7 +523,7 @@ def test_workflow_tool_omits_parent_trace_context_when_runtime_is_incomplete(
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     generate, generate_calls = _record_calls(return_value={"data": {}})
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate)
+    monkeypatch.setattr("services.workflow_runtime.workflow_generator.WorkflowAppGenerator.generate", generate)
 
     list(tool.invoke(sqlite_session, "test_user", {}))
 
@@ -550,7 +550,7 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(
 
     # replace `WorkflowAppGenerator.generate` 's return value.
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate",
+        "services.workflow_runtime.workflow_generator.WorkflowAppGenerator.generate",
         lambda *args, **kwargs: {"data": {"outputs": mock_outputs}},
     )
 
@@ -594,7 +594,7 @@ def test_workflow_tool_should_handle_empty_outputs(
 
     # replace `WorkflowAppGenerator.generate` 's return value.
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate",
+        "services.workflow_runtime.workflow_generator.WorkflowAppGenerator.generate",
         lambda *args, **kwargs: {"data": {}},
     )
 
@@ -918,7 +918,7 @@ def test_workflow_tool_invocation_normalizes_optional_files_parameter(
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     generate, generate_calls = _record_calls(return_value={"data": {}})
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate)
+    monkeypatch.setattr("services.workflow_runtime.workflow_generator.WorkflowAppGenerator.generate", generate)
 
     list(tool.invoke(sqlite_session, "test_user", {"images": None}))
 

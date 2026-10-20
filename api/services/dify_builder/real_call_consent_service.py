@@ -63,18 +63,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.app.app_config.workflow_ui_based_app.variables.manager import WorkflowVariablesConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator
-from core.dify_builder import gmail_read_policy
 from core.dify_builder.errors import ConflictError, NotFoundError
-from core.dify_builder.execution_policy import (
-    AdmittedNodeBinding,
-    BuilderExecutionPolicyError,
-    ConfirmedToolExecutionContext,
-    canonical_digest,
-    canonical_json,
-    context_digest,
-    scalar_inputs_digest,
-    validate_execution_context,
-)
 from core.dify_builder.input_schema import schema_hash, start_schema
 from core.dify_builder.models import Actor, DifyBuilderContext
 from core.dify_builder.real_call_consent import (
@@ -109,6 +98,17 @@ from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow
 from services.dify_builder import real_call_metadata
+from services.dify_builder.application import gmail_read_policy
+from services.dify_builder.application.execution_policy import (
+    AdmittedNodeBinding,
+    BuilderExecutionPolicyError,
+    ConfirmedToolExecutionContext,
+    canonical_digest,
+    canonical_json,
+    context_digest,
+    scalar_inputs_digest,
+    validate_execution_context,
+)
 from services.dify_builder.execution_policy_service import (
     check_execution_permission,
     load_execution_owners,

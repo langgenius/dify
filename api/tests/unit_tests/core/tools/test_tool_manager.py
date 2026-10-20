@@ -86,7 +86,7 @@ class _ToolDatabase:
 
 
 @pytest.fixture
-def tool_database(sqlite_engine: Engine) -> Iterator[_ToolDatabase]:
+def tool_database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[_ToolDatabase]:
     """Provide isolated provider tables through the same engine/session split used in production."""
 
     tables = [
@@ -95,7 +95,9 @@ def tool_database(sqlite_engine: Engine) -> Iterator[_ToolDatabase]:
     ]
     TypeBase.metadata.create_all(sqlite_engine, tables=tables)
     with Session(sqlite_engine, expire_on_commit=False) as session:
-        yield _ToolDatabase(engine=sqlite_engine, session=_CallableSessionProxy(session))
+        database = _ToolDatabase(engine=sqlite_engine, session=_CallableSessionProxy(session))
+        monkeypatch.setattr("services.tools.ordinary_tool_credentials.db", database)
+        yield database
 
 
 def _builtin_provider(
@@ -508,6 +510,7 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
         )
 
     assert result == "runtime-tool"
+    # The bounded refresh writer commits independently of the original read.
     tool_database.session.expire_all()
     persisted = tool_database.session.get(BuiltinToolProvider, provider_id)
     assert persisted is not None
@@ -698,10 +701,12 @@ def test_get_tool_runtime_workflow_path(monkeypatch: pytest.MonkeyPatch, tool_da
 
 
 def test_get_tool_runtime_plugin_path():
+    tool = Mock()
+    tool.fork_tool_runtime.return_value = "plugin-tool"
     with patch.object(
         ToolManager,
         "get_plugin_provider",
-        return_value=SimpleNamespace(get_tool=lambda _: "plugin-tool"),
+        return_value=SimpleNamespace(get_tool=lambda _: tool, need_credentials=False),
     ):
         assert (
             ToolManager.get_tool_runtime(

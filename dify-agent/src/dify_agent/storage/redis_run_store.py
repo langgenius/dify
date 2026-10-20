@@ -11,16 +11,23 @@ run ids. Active writes refresh an unowned or same-run claim; passive replays
 never extend retention. Multi-key Lua coordination requires non-Cluster Redis.
 """
 
-from collections.abc import AsyncIterator, Awaitable
 import hashlib
+import json
+from collections.abc import AsyncIterator, Awaitable
 from typing import cast, override
 
+from pydantic import JsonValue
 from redis.asyncio import Redis
 
-from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.native_testing import (
+    AgentNativeTestRef,
+    AgentOperationKey,
+    AgentRuntimeIdentity,
+    AgentRuntimeIdentitySeed,
+)
 from dify_agent.protocol.schemas import (
-    AgentRunUsage,
     RUN_EVENT_ADAPTER,
+    AgentRunUsage,
     CancelRunRequest,
     RunCancelledEvent,
     RunCancelledEventData,
@@ -29,6 +36,7 @@ from dify_agent.protocol.schemas import (
     RunStatus,
     utc_now,
 )
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.event_sink import (
     NonTerminalRunEvent,
@@ -38,6 +46,7 @@ from dify_agent.runtime.event_sink import (
     TerminalRunEvent,
     terminal_event_status_fields,
 )
+from dify_agent.runtime.native_continuation import NativeContinuationConflict
 from dify_agent.server.schemas import RunRecord, new_run_id
 from dify_agent.server.settings import DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH, DEFAULT_RUN_RETENTION_SECONDS
 from dify_agent.storage.redis_keys import (
@@ -183,7 +192,7 @@ if record.status == "cancelled" then
     return {1, "cancelled"}
 end
 if redis.call("EXISTS", KEYS[2]) == 1 then
-    return {1, "running"}
+    return {1, tostring(record.status)}
 end
 
 local ttl = tonumber(ARGV[2])
@@ -213,7 +222,7 @@ local record = cjson.decode(record_json)
 if record.status == "cancelled" then
     return {0, "cancelled", ""}
 end
-if record.status ~= "running" then
+if record.status ~= "running" and record.status ~= "waiting" then
     return {0, tostring(record.status), ""}
 end
 if redis.call("EXISTS", KEYS[2]) == 0 then
@@ -221,6 +230,9 @@ if redis.call("EXISTS", KEYS[2]) == 0 then
 end
 
 record.status = "cancelled"
+record.native_checkpoint_json = cjson.null
+record.native_wait_event_id = cjson.null
+record.native_claim = cjson.null
 record.updated_at = ARGV[1]
 if ARGV[2] == "1" then
     record.error = ARGV[3]
@@ -240,6 +252,105 @@ redis.call("SET", KEYS[1], cjson.encode(record), "EX", ttl)
 return {1, "cancelled", event_id}
 """
 )
+
+
+_PERSIST_WAITING_SCRIPT = """
+local raw = redis.call("GET", KEYS[1])
+if not raw then return {-1, ""} end
+local r = cjson.decode(raw)
+local cp = cjson.decode(ARGV[1])
+if r.status ~= "running" or redis.call("EXISTS", KEYS[3]) == 1 or (r.native_generation or 0) ~= cp.generation then
+    return {-2, ""}
+end
+r.native_checkpoint_json = ARGV[1]
+r.status = "waiting"
+r.updated_at = ARGV[3]
+r.native_claim = cjson.null
+r.native_dispatch_started = false
+local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[5], "*", "payload", ARGV[2])
+r.native_wait_event_id = event_id
+redis.call("EXPIRE", KEYS[2], ARGV[4])
+redis.call("SET", KEYS[1], cjson.encode(r), "EX", ARGV[4])
+return {1, event_id}
+"""
+
+_CLAIM_CONTINUATION_SCRIPT = """
+local raw = redis.call("GET", KEYS[1])
+if not raw then return {-1, ""} end
+local r = cjson.decode(raw)
+if redis.call("EXISTS", KEYS[2]) == 1 or r.status == "cancelled" or r.status == "failed" or r.status == "succeeded" then
+    return {-2, ""}
+end
+local claim = cjson.decode(ARGV[1])
+if r.native_claim and r.native_claim ~= cjson.null then
+    if r.native_claim.generation == claim.generation and r.native_claim.idempotency_key == claim.idempotency_key then
+        return {1, cjson.encode(r.native_claim)}
+    end
+    return {-2, ""}
+end
+if r.status ~= "waiting" or not r.native_checkpoint_json or r.native_checkpoint_json == cjson.null or cjson.decode(r.native_checkpoint_json).generation ~= claim.generation - 1 then
+    return {-2, ""}
+end
+r.native_claim = claim
+redis.call("SET", KEYS[1], cjson.encode(r), "EX", ARGV[2])
+return {1, ARGV[1]}
+"""
+
+_START_CONTINUATION_SCRIPT = """
+local raw = redis.call("GET", KEYS[1])
+if not raw then return -1 end
+local r = cjson.decode(raw)
+if redis.call("EXISTS", KEYS[3]) == 1 or r.status == "cancelled" or r.status == "failed" or r.status == "succeeded" then
+    return -2
+end
+if not r.native_claim or r.native_claim == cjson.null or r.native_claim.claim_id ~= ARGV[1] then return -2 end
+if r.native_dispatch_started then return 0 end
+if r.status ~= "waiting" then return -2 end
+r.status = "running"
+r.native_generation = r.native_claim.generation
+r.native_dispatch_started = true
+r.updated_at = ARGV[3]
+redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[5], "*", "payload", ARGV[2])
+redis.call("EXPIRE", KEYS[2], ARGV[4])
+redis.call("SET", KEYS[1], cjson.encode(r), "EX", ARGV[4])
+return 1
+"""
+
+
+_STOP_NATIVE_SCRIPT = """
+local raw = redis.call("GET", KEYS[1])
+if not raw then return -1 end
+local r = cjson.decode(raw)
+if redis.call("EXISTS", KEYS[3]) == 1 or r.status ~= "waiting" or (r.native_generation or 0) ~= tonumber(ARGV[1]) then return -2 end
+r.status = "failed"
+r.error = ARGV[2]
+r.updated_at = ARGV[3]
+r.native_checkpoint_json = cjson.null
+r.native_wait_event_id = cjson.null
+r.native_claim = cjson.null
+redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[6], "*", "payload", ARGV[4])
+redis.call("EXPIRE", KEYS[2], ARGV[5])
+redis.call("SET", KEYS[1], cjson.encode(r), "EX", ARGV[5])
+return 1
+"""
+
+
+_READ_NATIVE_CHECKPOINT_SCRIPT = """
+if redis.call("EXISTS", KEYS[1]) == 0 then return {-1, "", "", ""} end
+if redis.call("STRLEN", KEYS[1]) > tonumber(ARGV[3]) then return {-2, "", "", ""} end
+local raw = redis.call("GET", KEYS[1])
+local ok, r = pcall(cjson.decode, raw)
+if not ok or type(r) ~= "table" then return {-2, "", "", ""} end
+if r.status ~= "waiting" or redis.call("EXISTS", KEYS[3]) == 1 or
+    r.native_dispatch_started == true or (r.native_generation or 0) ~= tonumber(ARGV[1]) or
+    r.native_wait_event_id ~= ARGV[2] or type(r.native_checkpoint_json) ~= "string" or
+    #r.native_checkpoint_json > tonumber(ARGV[4]) then return {-2, "", "", ""} end
+local entries = redis.call("XRANGE", KEYS[2], ARGV[2], ARGV[2], "COUNT", 1)
+if #entries ~= 1 or entries[1][1] ~= ARGV[2] then return {-2, "", "", ""} end
+local fields = entries[1][2]
+if #fields ~= 2 or fields[1] ~= "payload" or #fields[2] > tonumber(ARGV[5]) then return {-2, "", "", ""} end
+return {1, raw, entries[1][1], fields[2]}
+"""
 
 
 class RedisRunStore(RunEventSink):
@@ -283,10 +394,18 @@ class RedisRunStore(RunEventSink):
         self.run_retention_seconds = run_retention_seconds
         self.run_event_stream_max_length = run_event_stream_max_length
 
-    async def create_run(self) -> RunRecord:
-        """Persist a running run record without storing the create request."""
+    async def create_run(self, *, identity: AgentRuntimeIdentitySeed | None = None) -> RunRecord:
+        """Persist status and immutable private identity in the same SET, never config."""
         run_id = new_run_id()
-        record = RunRecord(run_id=run_id, status="running")
+        record = RunRecord(
+            run_id=run_id,
+            status="running",
+            runtime_identity=(
+                AgentRuntimeIdentity(run_id=run_id, agent_generation=0, **identity.model_dump())
+                if identity is not None
+                else None
+            ),
+        )
         await self.redis.set(
             run_record_key(self.prefix, run_id),
             record.model_dump_json(),
@@ -574,3 +693,90 @@ __all__ = [
     "RedisRunStore",
     "RunNotFoundError",
 ]
+
+
+class RedisAgentResultStore:
+    """Invocation-scoped immutable results; payloads stay out of audit events.
+
+    The server binds this owner to a trusted ref. Keys are opaque digests, reads
+    check the complete owner ref, and conflicting writes fail rather than
+    silently replacing a previously recorded effect result.
+    """
+
+    def __init__(
+        self,
+        redis: Redis,
+        *,
+        ref: AgentNativeTestRef,
+        prefix: str = "dify-agent",
+        retention_seconds: int = DEFAULT_RUN_RETENTION_SECONDS,
+    ):
+        self.redis = redis
+        self.ref = ref
+        self.prefix = prefix
+        self.retention_seconds = retention_seconds
+
+    async def store(self, *, ref: AgentNativeTestRef, key: AgentOperationKey, result: JsonValue) -> str:
+        if ref != self.ref or key.invocation_id != ref.invocation_id:
+            raise NativeContinuationConflict("result owner mismatch")
+        payload = json.dumps(
+            {"ref": ref.model_dump(mode="json"), "key": key.model_dump(mode="json"), "result": result},
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+        if len(payload.encode()) > 2**20:
+            raise ValueError("native result exceeds protected payload limit")
+        identity = json.dumps(
+            [ref.model_dump(mode="json"), key.model_dump(mode="json")], sort_keys=True, separators=(",", ":")
+        )
+        result_ref = "native-result-" + hashlib.sha256(identity.encode()).hexdigest()
+        redis_key = f"{self.prefix}:native-result:{result_ref}"
+        if not await self.redis.set(redis_key, payload, nx=True, ex=self.retention_seconds):
+            existing = await self.redis.get(redis_key)
+            if existing is None or _decode_redis_text(existing) != payload:
+                raise NativeContinuationConflict("immutable result conflict")
+        return result_ref
+
+    async def load(self, result_ref: str) -> JsonValue:
+        raw = await self.redis.get(f"{self.prefix}:native-result:{result_ref}")
+        if raw is None:
+            raise NativeContinuationConflict("protected result unavailable")
+        payload = json.loads(raw)
+        if AgentNativeTestRef.model_validate(payload["ref"]) != self.ref:
+            raise NativeContinuationConflict("result owner mismatch")
+        return payload["result"]
+
+
+_READ_RUN_IDENTITY_SCRIPT = """
+local raw = redis.call("GET", KEYS[1])
+if not raw then return {-1, "", 0} end
+local ok, r = pcall(cjson.decode, raw)
+if not ok or type(r.runtime_identity) ~= "table" or type(r.native_generation) ~= "number" then
+    return {-2, "", 0}
+end
+local identity = cjson.encode(r.runtime_identity)
+if #identity > tonumber(ARGV[1]) then return {-2, "", 0} end
+return {1, identity, r.native_generation}
+"""
+
+
+_READ_ACTIVE_STUB_SCRIPT = """
+if redis.call("EXISTS", KEYS[2]) == 1 or redis.call("STRLEN", KEYS[1]) > tonumber(ARGV[5]) then return false end
+local raw = redis.call("GET", KEYS[1])
+if not raw then return false end
+local ok, r = pcall(cjson.decode, raw)
+if not ok or type(r) ~= "table" or r.status ~= "running" or r.run_id ~= ARGV[1] then return false end
+local i = r.runtime_identity
+if type(i) ~= "table" then return false end
+if i.execution_mode == "ordinary" then
+    if i.parent_node ~= cjson.null then return false end
+elseif i.execution_mode == "builder_test" then
+    if i.native_test_profile ~= "confirmed" or type(i.parent_node) ~= "table" then return false end
+else return false end
+if i.run_id ~= ARGV[1] or i.request_digest ~= ARGV[2] or r.native_generation ~= tonumber(ARGV[3]) then return false end
+i.agent_generation = r.native_generation
+local result = cjson.encode(i)
+if #result > tonumber(ARGV[4]) then return false end
+return result
+"""

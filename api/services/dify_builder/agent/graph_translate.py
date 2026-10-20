@@ -35,6 +35,17 @@ def to_intents(graph: dict[str, Any]) -> list[MutationIntent]:
         node_id = node.get("id")
         if not node_type or not node_id:
             continue
+        if node_type == "agent" and str(data.get("version")) == "2":
+            from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
+            from models.agent_config_entities import WorkflowNodeJobConfig
+
+            DifyAgentNodeData.model_validate(data)
+            WorkflowNodeJobConfig.model_validate(
+                {
+                    "declared_outputs": data.get("agent_declared_outputs") or [],
+                    "output_routes": data.get("agent_output_routes") or {},
+                }
+            )
         config = {k: v for k, v in data.items() if k != "type"}
         args: dict[str, Any] = {
             "node_type": str(node_type),

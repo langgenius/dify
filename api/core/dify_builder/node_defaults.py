@@ -91,7 +91,7 @@ node.
 
 Scope: defaults fill MISSING structural fields. Fields that are present but
 WRONG are the deterministic heal set's job
-(``core.workflow.graph_normalizers.heal_nodes_for_preflight``) -- do not
+(``services.workflow_generation.graph_normalizers.heal_nodes_for_preflight``) -- do not
 duplicate its work here.
 
 ``default_config``/``default_config_or_empty`` return a deep copy every call:

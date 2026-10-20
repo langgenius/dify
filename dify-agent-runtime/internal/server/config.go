@@ -36,6 +36,11 @@ const (
 
 // Config holds runtime configuration for the shellctl server.
 type Config struct {
+	NativeOutputBytes            int64
+	NativeScopeID                string
+	NativeScopeGeneration        int64
+	NativeScopeConfigPath        string
+	NativeJobsDir                string
 	Listen                       string
 	AuthToken                    string
 	StateDir                     string
@@ -111,6 +116,9 @@ func DefaultConfig() (*Config, error) {
 
 // JobsDir returns the path to the jobs artifact directory.
 func (c *Config) JobsDir() string {
+	if c.NativeJobsDir != "" {
+		return c.NativeJobsDir
+	}
 	return filepath.Join(c.StateDir, "jobs")
 }
 

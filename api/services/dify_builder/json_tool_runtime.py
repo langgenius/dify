@@ -23,7 +23,7 @@ from core.workflow.node_runtime import DifyToolNodeRuntime
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool.exc import ToolRuntimeInvocationError, ToolRuntimeResolutionError
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
-from services.dify_builder.execution_contracts import (
+from runtime_contracts.builder.execution import (
     BuilderExecutionObservation,
     BuilderExecutionPolicyError,
     BuilderExecutionRecorder,

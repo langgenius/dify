@@ -10,23 +10,22 @@ session snapshots can resume without repeating unchanged retrievals.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
 import hashlib
 import json
 import logging
+from dataclasses import dataclass, replace
 from typing import cast, override
 
 import httpx
 from pydantic_ai import RunContext, Tool
-from pydantic_ai.tools import ToolDefinition
-
 from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.capabilities.abstract import WrapRunHandler
-from pydantic_ai.run import AgentRunResult
-from pydantic_ai.toolsets import FunctionToolset
-from pydantic_ai.models import ModelRequestContext
 from pydantic_ai.messages import ModelRequest, UserPromptPart
-from dify_agent.runtime.context import Deps
+from pydantic_ai.models import ModelRequestContext
+from pydantic_ai.run import AgentRunResult
+from pydantic_ai.tools import ToolDefinition
+from pydantic_ai.toolsets import FunctionToolset
+
 from dify_agent.layers.execution_context.layer import Config as ExecutionContextConfig
 from dify_agent.layers.knowledge.client import (
     DifyKnowledgeBaseClient,
@@ -39,6 +38,9 @@ from dify_agent.layers.knowledge.configs import (
     DifyKnowledgeRuntimeState,
     DifyKnowledgeSetConfig,
 )
+from dify_agent.runtime.context import Deps
+from dify_agent.runtime.native_continuation import NativePolicyStopped
+from dify_agent.runtime.native_effects import NativeToolBoundary
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +111,7 @@ class _KnowledgeTools(FunctionToolset[Deps]):
     async def get_tools(self, ctx: RunContext[Deps]):
         if not self._loaded:
             for tool in await _KnowledgeOperations(self.name, ctx.deps).build_tools(
-                http_client=ctx.deps.services.dify_api_http_client
+                http_client=ctx.deps.dify_api_http_client
             ):
                 self.add_tool(tool)
             self._loaded = True
@@ -173,6 +175,10 @@ class _KnowledgeOperations:
         )
         set_by_name = {knowledge_set.name: knowledge_set for knowledge_set in generated_sets}
 
+        async def native_arguments(arguments):
+            knowledge_set = set_by_name[arguments["set_name"]]
+            return self._native_parameters(knowledge_set, arguments["query"].strip())
+
         async def knowledge_base_search(_ctx: RunContext[Deps], set_name: str, query: str) -> str:
             knowledge_set = set_by_name.get(set_name)
             if knowledge_set is None:
@@ -198,6 +204,13 @@ class _KnowledgeOperations:
                 name=_KNOWLEDGE_BASE_TOOL_NAME,
                 description=_tool_description(generated_sets),
                 prepare=prepare_tool_definition,
+                metadata={
+                    "native_effect": NativeToolBoundary(
+                        boundary="generated_knowledge",
+                        target=lambda arguments: {"set_id": set_by_name[arguments["set_name"]].id},
+                        prepare_arguments=native_arguments,
+                    )
+                },
             )
         ]
 
@@ -241,23 +254,13 @@ class _KnowledgeOperations:
         client = DifyKnowledgeBaseClient(
             base_url=self.inner_api_url,
             api_key=self.inner_api_key,
-            http_client=self.deps.services.dify_api_http_client,
+            http_client=self.deps.dify_api_http_client,
         )
         eager_results: list[DifyKnowledgeEagerResult] = []
         for knowledge_set in user_query_sets:
             query = (knowledge_set.query.value or "").strip()
             try:
-                response = await client.retrieve(
-                    tenant_id=caller["tenant_id"],
-                    user_id=caller["user_id"],
-                    app_id=caller["app_id"],
-                    user_from=caller["user_from"],
-                    invoke_from=caller["invoke_from"],
-                    dataset_ids=knowledge_set.dataset_ids,
-                    query=query,
-                    retrieval=knowledge_set.retrieval,
-                    metadata_filtering=knowledge_set.metadata_filtering,
-                )
+                response = await self._retrieve_eager(client, caller, knowledge_set, query)
             except DifyKnowledgeBaseClientError as exc:
                 if exc.retryable:
                     logger.warning(
@@ -312,6 +315,46 @@ class _KnowledgeOperations:
             eager_results=eager_results, eager_config_fingerprint=fingerprint
         ).model_dump(mode="json")
 
+    @staticmethod
+    def _native_parameters(knowledge_set, query):
+        return {
+            "dataset_ids": knowledge_set.dataset_ids,
+            "query": query,
+            "retrieval": knowledge_set.retrieval.model_dump(mode="json"),
+            "metadata_filtering": knowledge_set.metadata_filtering.model_dump(mode="json")
+            if knowledge_set.metadata_filtering is not None
+            else None,
+        }
+
+    async def _retrieve_eager(self, client, caller, knowledge_set, query):
+        async def invoke(_permit):
+            if _permit is not None:
+                raise NativePolicyStopped("native_dispatch_fence_unavailable")
+            response = await client.retrieve(
+                tenant_id=caller["tenant_id"],
+                user_id=caller["user_id"],
+                app_id=caller["app_id"],
+                user_from=caller["user_from"],
+                invoke_from=caller["invoke_from"],
+                dataset_ids=knowledge_set.dataset_ids,
+                query=query,
+                retrieval=knowledge_set.retrieval,
+                metadata_filtering=knowledge_set.metadata_filtering,
+            )
+            return response.model_dump(mode="json")
+
+        if self.deps.native_effects is None:
+            return DifyKnowledgeRetrieveResponse.model_validate(await invoke(None))
+        result = await self.deps.native_effects.stage(
+            boundary="eager_knowledge",
+            call_id=knowledge_set.id,
+            target={"set_id": knowledge_set.id},
+            parameters=self._native_parameters(knowledge_set, query),
+            stage="eager",
+            invoke=invoke,
+        )
+        return DifyKnowledgeRetrieveResponse.model_validate(result)
+
     async def _retrieve_for_set(
         self,
         *,
@@ -321,6 +364,8 @@ class _KnowledgeOperations:
         query: str,
         retryable_observation: bool,
     ) -> str:
+        if self.deps.native_effects is not None:
+            raise NativePolicyStopped("native_dispatch_fence_unavailable")
         try:
             response = await client.retrieve(
                 tenant_id=caller["tenant_id"],
@@ -505,9 +550,9 @@ def _truncate_text(text: str, max_chars: int) -> str:
 
 __all__ = [
     "BLANK_QUERY_OBSERVATION",
-    "Config",
-    "State",
-    "Capability",
     "NO_RESULTS_OBSERVATION",
     "TEMPORARY_UNAVAILABLE_OBSERVATION",
+    "Capability",
+    "Config",
+    "State",
 ]

@@ -18,7 +18,6 @@ from core.app.file_access import (
 )
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.db.session_factory import session_factory
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.real_call_consent import ConfirmedToolGuard
 from core.helper.trace_id_helper import ParentTraceContext
 from core.llm_generator.output_parser.errors import OutputParserError
@@ -38,7 +37,7 @@ from core.tools.entities.tool_entities import ToolProviderType as CoreToolProvid
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_file_manager import ToolFileManager
-from core.tools.tool_manager import ToolManager
+from core.tools.tool_manager import ToolManager, WorkflowToolRuntimeKwargs
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.human_input.entities import (
@@ -80,6 +79,9 @@ from graphon.nodes.tool_runtime_entities import (
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models.dataset import SegmentAttachmentBinding
 from models.model import UploadFile
+from runtime_contracts.builder.execution import (
+    BuilderExecutionPolicyError,
+)
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .human_input_adapter import (
@@ -122,12 +124,12 @@ class PollingLLMRuntimeProtocol(Protocol):
 
 
 if TYPE_CHECKING:
-    from core.app.apps.workflow_app_runner import WorkflowRunDriver
     from core.tools.__base.tool import Tool
     from core.tools.entities.tool_entities import ToolInvokeMessage as CoreToolInvokeMessage
     from core.tools.workflow_as_tool.tool import WorkflowTool
     from graphon.nodes.llm.file_saver import LLMFileSaver
     from graphon.nodes.tool.entities import ToolNodeData
+    from runtime_contracts.workflow_driver import WorkflowRunDriver
 
 
 _file_access_controller = DatabaseFileAccessController()
@@ -607,6 +609,19 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         self._confirmed_guard_factory = confirmed_guard_factory
         self._confirmed_guard_factory_called = False
 
+    def _credential_refresh_recorder(self, node_id: str) -> Callable[[str], None]:
+        """Advance only this run's shared bindings after the native owner's successful CAS."""
+        bindings = self._run_context.builder_tool_credential_bindings
+        assert bindings is not None
+        expected = bindings[node_id]
+
+        def record(refreshed: str) -> None:
+            for bound_node, fingerprint in bindings.items():
+                if fingerprint == expected:
+                    bindings[bound_node] = refreshed
+
+        return record
+
     @property
     def _confirmed(self) -> bool:
         return self._confirmed_guard is not None or self._confirmed_guard_factory is not None
@@ -628,11 +643,18 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         variable_pool,
         node_execution_id: str | None = None,
     ) -> ToolRuntimeHandle:
+        bindings = self._run_context.builder_tool_credential_bindings
         try:
             guard = self._bind_confirmed_guard(
                 node_id=node_id, node_execution_id=node_execution_id, node_data=node_data
             )
             if guard is None:
+                draft_options: WorkflowToolRuntimeKwargs = {}
+                if bindings is not None and node_id in bindings:
+                    draft_options["builder_expected_credential_fingerprint"] = bindings[node_id]
+                    draft_options["builder_credential_refreshed"] = self._credential_refresh_recorder(node_id)
+                if self._workflow_id is not None:
+                    draft_options["draft_tool_workflow_id"] = self._workflow_id
                 tool_runtime = ToolManager.get_workflow_tool_runtime(
                     self._run_context.tenant_id,
                     self._run_context.app_id,
@@ -647,7 +669,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                         if self._is_workflow_tool_provider(node_data)
                         else None
                     ),
-                    **({"draft_tool_workflow_id": self._workflow_id} if self._workflow_id is not None else {}),
+                    **draft_options,
                 )
             else:
                 self._require_confirmed_node(
