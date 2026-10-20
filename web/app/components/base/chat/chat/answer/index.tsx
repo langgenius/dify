@@ -63,7 +63,7 @@ const Answer: FC<AnswerProps> = ({
   renderAgentContent,
   onHumanInputFormSubmit,
 }) => {
-  const { t } = useTranslation(['appAnnotation'])
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const {
     content,
     citation,
@@ -396,6 +396,11 @@ const Answer: FC<AnswerProps> = ({
           </div>
         )}
         <More more={more} />
+        {item.isError && (
+          <p role="alert" className="system-sm-regular text-text-destructive">
+            {t(($) => $['api.actionFailed'], { ns: 'common' })}
+          </p>
+        )}
         {footer}
       </div>
     </div>
