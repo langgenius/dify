@@ -1,14 +1,19 @@
 import logging
-from unittest.mock import Mock
+from unittest.mock import Mock, call, create_autospec
 
 import pytest
-from sqlalchemy import inspect
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.base_app_generator import BaseAppGenerator
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
-from models import CreatorUserRole, Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
+from models import CreatorUserRole, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
+from repositories.workflow.definition_repository import workflow_snapshot
+from repositories.workflow.runtime_context_repository import WorkflowRuntimeContextRepository
+from services.app.generation.input_adapter import AppInputAdapter
+from services.app.generation.response import convert_to_event_stream
+from services.errors.app import WorkflowNotFoundError
+from services.workflow.execution.generation_service import consume_stream, join_worker
+from tests.unit_tests.model_factories import make_workflow
 
 
 def _workflow_run(*, graph: str | None) -> WorkflowRun:
@@ -29,20 +34,25 @@ def _workflow_run(*, graph: str | None) -> WorkflowRun:
 
 
 def test_restore_workflow_run_graph(sqlite_session: Session):
-    workflow = Workflow(graph='{"nodes": [{"id": "edited"}]}')
+    workflow = make_workflow(
+        workflow_id="workflow-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        graph='{"nodes": [{"id": "edited"}]}',
+    )
     workflow_run = _workflow_run(graph='{"nodes": [{"id": "paused"}]}')
     sqlite_session.add(workflow_run)
     sqlite_session.commit()
 
-    BaseAppGenerator._restore_workflow_run_graph(
-        session=sqlite_session,
-        workflow=workflow,
+    snapshot = workflow_snapshot(workflow)
+    restored = WorkflowRuntimeContextRepository(sessionmaker(bind=sqlite_session.get_bind())).restore_graph(
+        workflow=snapshot,
         workflow_run_id="run-id",
     )
 
     assert sqlite_session.get(WorkflowRun, "run-id") is workflow_run
-    assert workflow.graph == '{"nodes": [{"id": "paused"}]}'
-    assert not inspect(workflow).attrs.graph.history.has_changes()
+    assert restored.graph == '{"nodes": [{"id": "paused"}]}'
+    assert snapshot.graph == '{"nodes": [{"id": "edited"}]}'
 
 
 @pytest.mark.parametrize(
@@ -59,17 +69,19 @@ def test_restore_workflow_run_graph_requires_persisted_snapshot(
         sqlite_session.commit()
 
     with pytest.raises(
-        ValueError, match=("(?:Workflow run graph not found: run\\-id|Workflow run id is required when resuming)")
+        WorkflowNotFoundError,
+        match="(?:Workflow run graph not found: run\\-id|Workflow run id is required when resuming)",
     ):
-        BaseAppGenerator._restore_workflow_run_graph(
-            session=sqlite_session,
-            workflow=Workflow(graph="{}"),
+        WorkflowRuntimeContextRepository(sessionmaker(bind=sqlite_session.get_bind())).restore_graph(
+            workflow=workflow_snapshot(
+                make_workflow(workflow_id="workflow-1", tenant_id="tenant-1", app_id="app-1", graph="{}")
+            ),
             workflow_run_id=workflow_run_id,
         )
 
 
 def test_validate_inputs_with_zero():
-    base_app_generator = BaseAppGenerator()
+    base_app_generator = AppInputAdapter()
 
     var = VariableEntity(
         variable="test_var",
@@ -96,7 +108,7 @@ def test_validate_inputs_with_zero():
 
 
 def test_validate_input_with_none_for_required_variable():
-    base_app_generator = BaseAppGenerator()
+    base_app_generator = AppInputAdapter()
 
     for var_type in VariableEntityType:
         var = VariableEntity(
@@ -118,7 +130,7 @@ def test_validate_input_with_none_for_required_variable():
 
 def test_validate_inputs_with_default_value():
     """Test that default values are used when input is None for optional variables"""
-    base_app_generator = BaseAppGenerator()
+    base_app_generator = AppInputAdapter()
 
     # Test with string default value for TEXT_INPUT
     var_string = VariableEntity(
@@ -333,7 +345,7 @@ def test_validate_inputs_with_default_value():
 
 def test_validate_inputs_optional_file_with_empty_string():
     """Test that optional FILE variable with empty string returns None"""
-    base_app_generator = BaseAppGenerator()
+    base_app_generator = AppInputAdapter()
 
     var_file = VariableEntity(
         variable="test_file",
@@ -352,7 +364,7 @@ def test_validate_inputs_optional_file_with_empty_string():
 
 def test_validate_inputs_optional_file_list_with_empty_list():
     """Test that optional FILE_LIST variable with empty list returns empty list (not None)"""
-    base_app_generator = BaseAppGenerator()
+    base_app_generator = AppInputAdapter()
 
     var_file_list = VariableEntity(
         variable="test_file_list",
@@ -373,7 +385,7 @@ def test_validate_inputs_optional_file_list_with_empty_list():
 
 def test_validate_inputs_optional_file_list_with_empty_string():
     """Test that optional FILE_LIST variable with empty string returns None"""
-    base_app_generator = BaseAppGenerator()
+    base_app_generator = AppInputAdapter()
 
     var_file_list = VariableEntity(
         variable="test_file_list",
@@ -393,7 +405,7 @@ def test_validate_inputs_optional_file_list_with_empty_string():
 
 def test_validate_inputs_required_file_with_empty_string_fails():
     """Test that required FILE variable with empty string still fails validation"""
-    base_app_generator = BaseAppGenerator()
+    base_app_generator = AppInputAdapter()
 
     var_file = VariableEntity(
         variable="test_file",
@@ -413,7 +425,7 @@ def test_validate_inputs_required_file_with_empty_string_fails():
 
 def test_validate_inputs_optional_file_with_empty_string_ignores_default():
     """Test that optional FILE variable with empty string returns None, not the default"""
-    base_app_generator = BaseAppGenerator()
+    base_app_generator = AppInputAdapter()
 
     var_file = VariableEntity(
         variable="test_file",
@@ -432,16 +444,15 @@ def test_validate_inputs_optional_file_with_empty_string_ignores_default():
     assert result is None
 
 
-class TestBaseAppGeneratorExtras:
+class TestAppInputAdapterExtras:
     def test_wrap_stream_joins_worker_after_stream_exhaustion(self):
-        base_app_generator = BaseAppGenerator()
         worker_thread = Mock()
         worker_thread.is_alive.return_value = False
 
         def response_stream():
             yield {"event": "workflow_finished"}
 
-        managed_stream = base_app_generator._wrap_stream_with_worker_thread_join(
+        managed_stream = consume_stream(
             response_stream(),
             worker_thread,
         )
@@ -455,7 +466,6 @@ class TestBaseAppGeneratorExtras:
         worker_thread.join.assert_called_once_with(timeout=300)
 
     def test_wrap_stream_joins_worker_when_stream_closes(self):
-        base_app_generator = BaseAppGenerator()
         worker_thread = Mock()
         worker_thread.is_alive.return_value = False
 
@@ -463,7 +473,7 @@ class TestBaseAppGeneratorExtras:
             yield {"event": "workflow_started"}
             yield {"event": "workflow_finished"}
 
-        managed_stream = base_app_generator._wrap_stream_with_worker_thread_join(
+        managed_stream = consume_stream(
             response_stream(),
             worker_thread,
         )
@@ -478,15 +488,15 @@ class TestBaseAppGeneratorExtras:
         worker_thread.name = "leaked-app-worker"
         worker_thread.is_alive.return_value = True
 
-        with caplog.at_level(logging.WARNING, logger="core.app.apps.base_app_generator"):
-            BaseAppGenerator._join_worker_thread(worker_thread)
+        with caplog.at_level(logging.WARNING, logger="services.workflow.execution.generation_service"):
+            join_worker(worker_thread)
 
         worker_thread.join.assert_called_once_with(timeout=300)
-        assert "Possible app worker thread leak" in caplog.text
+        assert "did not stop" in caplog.text
         assert "leaked-app-worker" in caplog.text
 
     def test_prepare_user_inputs_converts_files_and_lists(self, monkeypatch: pytest.MonkeyPatch):
-        base_app_generator = BaseAppGenerator()
+        base_app_generator = AppInputAdapter()
 
         variables = [
             VariableEntity(
@@ -516,11 +526,11 @@ class TestBaseAppGeneratorExtras:
         ]
 
         monkeypatch.setattr(
-            "core.app.apps.base_app_generator.file_factory.build_from_mapping",
+            "services.app.generation.input_adapter.file_factory.build_from_mapping",
             lambda mapping, tenant_id, config, strict_type_validation=False, access_controller=None: "file-object",
         )
         monkeypatch.setattr(
-            "core.app.apps.base_app_generator.file_factory.build_from_mappings",
+            "services.app.generation.input_adapter.file_factory.build_from_mappings",
             lambda mappings, tenant_id, config, access_controller=None: ["file-1", "file-2"],
         )
 
@@ -541,7 +551,7 @@ class TestBaseAppGeneratorExtras:
         assert prepared["json"] == {"key": "value"}
 
     def test_prepare_user_inputs_rejects_invalid_dict_inputs(self):
-        base_app_generator = BaseAppGenerator()
+        base_app_generator = AppInputAdapter()
         variables = [
             VariableEntity(
                 variable="text",
@@ -559,7 +569,7 @@ class TestBaseAppGeneratorExtras:
             )
 
     def test_prepare_user_inputs_rejects_invalid_list_inputs(self):
-        base_app_generator = BaseAppGenerator()
+        base_app_generator = AppInputAdapter()
         variables = [
             VariableEntity(
                 variable="text",
@@ -577,39 +587,39 @@ class TestBaseAppGeneratorExtras:
             )
 
     def test_convert_to_event_stream(self):
-        base_app_generator = BaseAppGenerator()
-
-        assert base_app_generator.convert_to_event_stream({"ok": True}) == {"ok": True}
+        assert convert_to_event_stream({"ok": True}) == {"ok": True}
 
         def _gen():
             yield {"delta": "hi"}
             yield "ping"
 
-        converted = list(base_app_generator.convert_to_event_stream(_gen()))
+        converted = list(convert_to_event_stream(_gen()))
 
         assert converted[0].startswith("data: ")
         assert "\n\n" in converted[0]
         assert converted[1] == "event: ping\n\n"
 
     def test_get_draft_var_saver_factory_debugger(self):
+        from core.app.apps.draft_variable_saver import DraftVariableSaver, DraftVariableSaverFactory
         from core.app.entities.app_invoke_entities import InvokeFrom
         from models import Account
 
-        base_app_generator = BaseAppGenerator()
+        saver = create_autospec(DraftVariableSaver, instance=True, spec_set=True)
+        factory = create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
+        factory.return_value = saver
+        provider = Mock(return_value=factory)
+        generator = AppInputAdapter(draft_variable_saver=provider)
         account = Account(name="Tester", email="tester@example.com")
         account.id = "account-id"
-        account.tenant_id = "tenant-id"
-
-        factory = base_app_generator._get_draft_var_saver_factory(
-            InvokeFrom.DEBUGGER,
-            account,
-            tenant_id="tenant-id",
+        bound_factory = generator._get_draft_var_saver_factory(InvokeFrom.DEBUGGER, account, tenant_id="tenant-id")
+        assert (
+            bound_factory(
+                app_id="app-id", node_id="node-id", node_type=BuiltinNodeTypes.START, node_execution_id="node-exec-id"
+            )
+            is saver
         )
-        saver = factory(
-            app_id="app-id",
-            node_id="node-id",
-            node_type=BuiltinNodeTypes.START,
-            node_execution_id="node-exec-id",
+        provider.assert_called_once_with("tenant-id", account)
+        assert factory.call_count == 1
+        assert factory.call_args == call(
+            app_id="app-id", node_id="node-id", node_type=BuiltinNodeTypes.START, node_execution_id="node-exec-id"
         )
-
-        assert saver is not None

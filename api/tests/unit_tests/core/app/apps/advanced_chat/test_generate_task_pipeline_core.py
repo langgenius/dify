@@ -1,18 +1,11 @@
 from __future__ import annotations
 
-from contextlib import nullcontext
 from types import SimpleNamespace
 
 import pytest
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
-from core.app.apps.advanced_chat.generate_task_pipeline import (
-    AdvancedChatAppGenerateTaskPipeline,
-    ConversationSnapshot,
-    MessageSnapshot,
-    WorkflowSnapshot,
-)
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
     QueueAdvancedChatMessageEndEvent,
@@ -60,11 +53,14 @@ from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import MessageStatus
 from models.human_input_entities import UserActionConfig
-from models.model import AppMode, EndUser, Message, MessageFile
+from models.model import App, AppMode, Conversation, EndUser, Message, MessageFile
+from services.app.generation.ports import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
+from services.workflow.execution.adapters.chatflow.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
+from tests.unit_tests.model_factories import make_app, make_conversation
 from tests.workflow_test_utils import build_test_variable_pool
 
 
-def _make_pipeline():
+def _make_pipeline(app_records, *, workflow_contexts, tool_providers):
     app_config = WorkflowUIBasedAppConfig(
         tenant_id="tenant",
         app_id="app",
@@ -99,6 +95,8 @@ def _make_pipeline():
     user = EndUser(tenant_id="tenant", type="session", name="tester", session_id="session")
 
     pipeline = AdvancedChatAppGenerateTaskPipeline(
+        contexts=workflow_contexts,
+        chat_records=app_records,
         application_generate_entity=application_generate_entity,
         workflow=workflow,
         queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
@@ -108,6 +106,7 @@ def _make_pipeline():
         stream=False,
         dialogue_count=1,
         draft_var_saver_factory=lambda **kwargs: None,
+        tool_providers=tool_providers,
     )
 
     return pipeline
@@ -142,20 +141,24 @@ def _persist_message(session: Session, *, message_id: str = "message-id") -> Mes
         status=MessageStatus.PAUSED,
     )
     message.id = message_id
+    if session.get(App, "app") is None:
+        session.add(make_app(app_id="app", tenant_id="tenant"))
+    if session.get(Conversation, "conv-id") is None:
+        session.add(make_conversation(conversation_id="conv-id", app_id="app", inputs={}, from_source="api"))
     session.add(message)
     session.commit()
     return message
 
 
 class TestAdvancedChatGenerateTaskPipeline:
-    def test_ensure_workflow_initialized_raises(self):
-        pipeline = _make_pipeline()
+    def test_ensure_workflow_initialized_raises(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
 
         with pytest.raises(ValueError, match="workflow run not initialized"):
             pipeline._ensure_workflow_initialized()
 
-    def test_to_blocking_response_returns_message_end(self):
-        pipeline = _make_pipeline()
+    def test_to_blocking_response_returns_message_end(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._task_state.answer = "done"
 
         def _gen():
@@ -166,8 +169,10 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert response.data.answer == "done"
         assert response.data.metadata == {"k": "v"}
 
-    def test_to_blocking_response_falls_back_to_human_input_required_when_pause_event_missing(self):
-        pipeline = _make_pipeline()
+    def test_to_blocking_response_falls_back_to_human_input_required_when_pause_event_missing(
+        self, app_records, *, workflow_contexts, tool_providers
+    ):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._task_state.answer = "partial answer"
         pipeline._workflow_run_id = "run-id"
         pipeline._graph_runtime_state = RuntimeState(
@@ -221,8 +226,8 @@ class TestAdvancedChatGenerateTaskPipeline:
             }
         ]
 
-    def test_handle_text_chunk_event_updates_state(self):
-        pipeline = _make_pipeline()
+    def test_handle_text_chunk_event_updates_state(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._message_cycle_manager = SimpleNamespace(
             message_to_stream_response=lambda **kwargs: MessageEndStreamResponse(
                 task_id="task", id="message-id", metadata={}
@@ -236,8 +241,8 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert pipeline._task_state.answer == "hi"
         assert responses
 
-    def test_handle_reasoning_chunk_event_emits_on_nonempty(self):
-        pipeline = _make_pipeline()
+    def test_handle_reasoning_chunk_event_emits_on_nonempty(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         event = QueueReasoningChunkEvent(reasoning="pondering", from_node_id="llm-1", is_final=False)
 
         responses = list(pipeline._handle_reasoning_chunk_event(event))
@@ -252,16 +257,18 @@ class TestAdvancedChatGenerateTaskPipeline:
         # reasoning never touches the answer stream
         assert pipeline._task_state.answer == ""
 
-    def test_handle_reasoning_chunk_event_drops_empty_nonfinal(self):
-        pipeline = _make_pipeline()
+    def test_handle_reasoning_chunk_event_drops_empty_nonfinal(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         event = QueueReasoningChunkEvent(reasoning="", from_node_id="llm-1", is_final=False)
 
         responses = list(pipeline._handle_reasoning_chunk_event(event))
 
         assert responses == []
 
-    def test_handle_reasoning_chunk_event_emits_empty_final_marker(self):
-        pipeline = _make_pipeline()
+    def test_handle_reasoning_chunk_event_emits_empty_final_marker(
+        self, app_records, *, workflow_contexts, tool_providers
+    ):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         event = QueueReasoningChunkEvent(reasoning="", from_node_id="llm-1", is_final=True)
 
         responses = list(pipeline._handle_reasoning_chunk_event(event))
@@ -272,33 +279,36 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert response.data.reasoning == ""
         assert response.data.is_final is True
 
-    def test_listen_audio_msg_returns_audio_stream(self):
-        pipeline = _make_pipeline()
+    def test_listen_audio_msg_returns_audio_stream(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         publisher = SimpleNamespace(check_and_get_audio=lambda: AudioTrunk(status="responding", audio="data"))
 
         response = pipeline._listen_audio_msg(publisher=publisher, task_id="task")
 
         assert isinstance(response, MessageAudioStreamResponse)
 
-    def test_handle_ping_event(self):
-        pipeline = _make_pipeline()
+    def test_handle_ping_event(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._base_task_pipeline.ping_stream_response = lambda: PingStreamResponse(task_id="task")
 
         responses = list(pipeline._handle_ping_event(QueuePingEvent()))
 
         assert isinstance(responses[0], PingStreamResponse)
 
-    def test_handle_error_event(self):
-        pipeline = _make_pipeline()
+    def test_handle_error_event(self, app_records, sqlite_session, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._base_task_pipeline.handle_error = lambda **kwargs: ValueError("boom")
+        app_records.fail_message = lambda identity, error: None
         pipeline._base_task_pipeline.error_to_stream_response = lambda err: err
 
         responses = list(pipeline._handle_error_event(QueueErrorEvent(error=ValueError("boom"))))
 
         assert isinstance(responses[0], ValueError)
 
-    def test_handle_workflow_started_event_sets_run_id(self, sqlite_session: Session):
-        pipeline = _make_pipeline()
+    def test_handle_workflow_started_event_sets_run_id(
+        self, app_records, sqlite_session: Session, *, workflow_contexts, tool_providers
+    ):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         message = _persist_message(sqlite_session)
         other_message = _persist_message(sqlite_session, message_id="other-message-id")
         pipeline._graph_runtime_state = RuntimeState(
@@ -318,8 +328,10 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert message.workflow_run_id == "run-id"
         assert other_message.workflow_run_id is None
 
-    def test_message_end_to_stream_response_strips_annotation_reply(self):
-        pipeline = _make_pipeline()
+    def test_message_end_to_stream_response_strips_annotation_reply(
+        self, app_records, *, workflow_contexts, tool_providers
+    ):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._task_state.metadata.annotation_reply = AnnotationReply(
             id="ann",
             account=AnnotationReplyAccount(id="acc", name="acc"),
@@ -329,8 +341,8 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert "annotation_reply" not in response.metadata
 
-    def test_handle_output_moderation_chunk_publishes_stop(self):
-        pipeline = _make_pipeline()
+    def test_handle_output_moderation_chunk_publishes_stop(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         events: list[object] = []
 
         class _Moderation:
@@ -352,8 +364,8 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert any(isinstance(event, QueueTextChunkEvent) for event in events)
         assert any(isinstance(event, QueueStopEvent) for event in events)
 
-    def test_handle_node_succeeded_event_records_files(self):
-        pipeline = _make_pipeline()
+    def test_handle_node_succeeded_event_records_files(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._workflow_response_converter.fetch_files_from_node_outputs = lambda outputs: [
             {"type": "file", "transfer_method": "local"}
         ]
@@ -372,8 +384,8 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert responses == ["done"]
         assert pipeline._recorded_files
 
-    def test_handle_node_succeeded_event_records_llm_reasoning(self):
-        pipeline = _make_pipeline()
+    def test_handle_node_succeeded_event_records_llm_reasoning(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._workflow_response_converter.fetch_files_from_node_outputs = lambda outputs: []
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "done"
         pipeline._save_output_for_event = lambda event, node_execution_id: None
@@ -389,8 +401,10 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert pipeline._task_state.metadata.reasoning == {"llm-1": "first pass "}
 
-    def test_handle_node_succeeded_event_accumulates_reasoning_across_passes(self):
-        pipeline = _make_pipeline()
+    def test_handle_node_succeeded_event_accumulates_reasoning_across_passes(
+        self, app_records, *, workflow_contexts, tool_providers
+    ):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._workflow_response_converter.fetch_files_from_node_outputs = lambda outputs: []
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "done"
         pipeline._save_output_for_event = lambda event, node_execution_id: None
@@ -409,8 +423,8 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert pipeline._task_state.metadata.reasoning == {"llm-1": "pass one pass two"}
 
-    def test_iteration_and_loop_handlers(self):
-        pipeline = _make_pipeline()
+    def test_iteration_and_loop_handlers(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._workflow_run_id = "run-id"
         pipeline._workflow_response_converter.workflow_iteration_start_to_stream_response = lambda **kwargs: (
             "iter_start"
@@ -473,8 +487,8 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert list(pipeline._handle_loop_next_event(loop_next)) == ["loop_next"]
         assert list(pipeline._handle_loop_completed_event(loop_done)) == ["loop_done"]
 
-    def test_workflow_finish_handlers(self):
-        pipeline = _make_pipeline()
+    def test_workflow_finish_handlers(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._workflow_run_id = "run-id"
         pipeline._graph_runtime_state = RuntimeState(
             workflow_id="test-workflow",
@@ -489,8 +503,8 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline._save_message = lambda **kwargs: None
         pipeline._base_task_pipeline.queue_manager.publish = lambda *args, **kwargs: None
         pipeline._base_task_pipeline.handle_error = lambda **kwargs: ValueError("boom")
+        app_records.fail_message = lambda identity, error: None
         pipeline._base_task_pipeline.error_to_stream_response = lambda err: err
-        pipeline._get_message = lambda **kwargs: Message(id="message-id")
 
         succeeded_responses = list(pipeline._handle_workflow_succeeded_event(QueueWorkflowSucceededEvent(outputs={})))
         assert len(succeeded_responses) == 2
@@ -513,8 +527,8 @@ class TestAdvancedChatGenerateTaskPipeline:
             "pause"
         ]
 
-    def test_node_failure_handlers(self):
-        pipeline = _make_pipeline()
+    def test_node_failure_handlers(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "node_finish"
         pipeline._save_output_for_event = lambda event, node_execution_id: None
 
@@ -542,8 +556,8 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert list(pipeline._handle_node_failed_events(failed_event)) == ["node_finish"]
         assert list(pipeline._handle_node_failed_events(exc_event)) == ["node_finish"]
 
-    def test_handle_text_chunk_event_tracks_streaming_metrics(self):
-        pipeline = _make_pipeline()
+    def test_handle_text_chunk_event_tracks_streaming_metrics(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         published: list[object] = []
 
         class _Publisher:
@@ -566,8 +580,8 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert pipeline._task_state.answer == "hi"
         assert published == [queue_message]
 
-    def test_handle_output_moderation_chunk_appends_token(self):
-        pipeline = _make_pipeline()
+    def test_handle_output_moderation_chunk_appends_token(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         seen: list[str] = []
 
         class _Moderation:
@@ -584,14 +598,22 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert result is False
         assert seen == ["token"]
 
-    def test_handle_retriever_and_annotation_events(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
-        pipeline = _make_pipeline()
+    def test_handle_retriever_and_annotation_events(
+        self,
+        app_records,
+        monkeypatch: pytest.MonkeyPatch,
+        unbound_session: Session,
+        *,
+        workflow_contexts,
+        tool_providers,
+    ):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         calls = {"retriever": 0, "annotation": 0}
 
         def _hit_retriever(event):
             calls["retriever"] += 1
 
-        def _hit_annotation(_manager, event, session):
+        def _hit_annotation(_manager, event):
             calls["annotation"] += 1
 
         pipeline._message_cycle_manager.handle_retriever_resources = _hit_retriever
@@ -600,14 +622,12 @@ class TestAdvancedChatGenerateTaskPipeline:
         retriever_event = QueueRetrieverResourcesEvent(retriever_resources=[])
         annotation_event = QueueAnnotationReplyEvent(message_annotation_id="ann")
 
-        monkeypatch.setattr(pipeline, "_database_session", lambda: nullcontext(unbound_session))
-
         assert list(pipeline._handle_retriever_resources_event(retriever_event)) == []
         assert list(pipeline._handle_annotation_reply_event(annotation_event)) == []
         assert calls == {"retriever": 1, "annotation": 1}
 
-    def test_handle_message_replace_event(self):
-        pipeline = _make_pipeline()
+    def test_handle_message_replace_event(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._message_cycle_manager.message_replace_to_stream_response = lambda **kwargs: "replace"
 
         event = QueueMessageReplaceEvent(
@@ -617,8 +637,8 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert list(pipeline._handle_message_replace_event(event)) == ["replace"]
 
-    def test_handle_human_input_events(self):
-        pipeline = _make_pipeline()
+    def test_handle_human_input_events(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         persisted: list[str] = []
         pipeline._persist_human_input_extra_content = lambda **kwargs: persisted.append("saved")
         pipeline._workflow_response_converter.human_input_form_filled_to_stream_response = lambda **kwargs: "filled"
@@ -645,8 +665,10 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert list(pipeline._handle_human_input_form_timeout_event(timeout_event)) == ["timeout"]
         assert persisted == ["saved"]
 
-    def test_save_message_preserves_full_answer_and_sets_usage(self, sqlite_session: Session):
-        pipeline = _make_pipeline()
+    def test_save_message_preserves_full_answer_and_sets_usage(
+        self, app_records, sqlite_session: Session, *, workflow_contexts, tool_providers
+    ):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._recorded_files = [
             {
                 "type": FileType.IMAGE,
@@ -671,7 +693,8 @@ class TestAdvancedChatGenerateTaskPipeline:
             start_at=0.0,
         )
 
-        pipeline._save_message(session=sqlite_session, graph_runtime_state=graph_runtime_state)
+        pipeline._save_message(graph_runtime_state=graph_runtime_state)
+        sqlite_session.refresh(message)
         sqlite_session.commit()
 
         assert message.status == MessageStatus.NORMAL
@@ -679,8 +702,8 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert message.message_metadata
         assert sqlite_session.query(MessageFile).filter_by(message_id=message.id).count() == 1
 
-    def test_handle_stop_event_saves_message_for_moderation(self):
-        pipeline = _make_pipeline()
+    def test_handle_stop_event_saves_message_for_moderation(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._message_end_to_stream_response = lambda: "end"
         saved: list[str] = []
 
@@ -694,8 +717,10 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert responses == ["end"]
         assert saved == ["saved"]
 
-    def test_handle_message_end_event_applies_output_moderation(self):
-        pipeline = _make_pipeline()
+    def test_handle_message_end_event_applies_output_moderation(
+        self, app_records, *, workflow_contexts, tool_providers
+    ):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._graph_runtime_state = RuntimeState(
             workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(
@@ -719,8 +744,8 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert responses == ["replace", "end"]
         assert saved == ["saved"]
 
-    def test_dispatch_event_handles_node_exception(self):
-        pipeline = _make_pipeline()
+    def test_dispatch_event_handles_node_exception(self, app_records, *, workflow_contexts, tool_providers):
+        pipeline = _make_pipeline(app_records, workflow_contexts=workflow_contexts, tool_providers=tool_providers)
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "failed"
         pipeline._save_output_for_event = lambda *args, **kwargs: None
 

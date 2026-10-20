@@ -5,11 +5,11 @@ import queue
 
 import pytest
 
-from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.streaming_utils import _normalize_terminal_events, stream_topic_events
 from core.app.entities.task_entities import StreamEvent
 from libs.broadcast_channel.channel import SupportsPreparedSubscription
 from models.model import AppMode
+from services.workflow.execution.adapters.response_stream import WorkflowEventStream
 
 
 class FakeSubscription:
@@ -107,14 +107,14 @@ def test_retrieve_events_falls_back_to_subscribe_and_invokes_hook_after_entry(mo
     def fake_get_response_topic(cls, app_mode, workflow_run_id):
         return topic
 
-    monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", classmethod(fake_get_response_topic))
+    monkeypatch.setattr(WorkflowEventStream, "get_response_topic", classmethod(fake_get_response_topic))
 
     def on_subscribe() -> None:
         assert topic.subscribed is True
         event = {"event": StreamEvent.WORKFLOW_FINISHED.value}
         topic.publish(json.dumps(event).encode())
 
-    generator = MessageBasedAppGenerator.retrieve_events(
+    generator = WorkflowEventStream.retrieve_events(
         AppMode.WORKFLOW,
         "workflow-run-id",
         idle_timeout=0.5,
@@ -137,9 +137,9 @@ def test_retrieve_events_prepares_capable_topic_before_generator_iteration(monke
     def fake_get_response_topic(cls, app_mode, workflow_run_id):
         return topic
 
-    monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", classmethod(fake_get_response_topic))
+    monkeypatch.setattr(WorkflowEventStream, "get_response_topic", classmethod(fake_get_response_topic))
 
-    generator = MessageBasedAppGenerator.retrieve_events(
+    generator = WorkflowEventStream.retrieve_events(
         AppMode.WORKFLOW,
         "workflow-run-id",
         idle_timeout=0.5,
@@ -161,10 +161,10 @@ def test_retrieve_events_propagates_preparation_error_before_generator_iteration
     def fake_get_response_topic(cls, app_mode, workflow_run_id):
         return topic
 
-    monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", classmethod(fake_get_response_topic))
+    monkeypatch.setattr(WorkflowEventStream, "get_response_topic", classmethod(fake_get_response_topic))
 
     with pytest.raises(RuntimeError, match="prepare failed"):
-        MessageBasedAppGenerator.retrieve_events(
+        WorkflowEventStream.retrieve_events(
             AppMode.WORKFLOW,
             "workflow-run-id",
             idle_timeout=0.5,

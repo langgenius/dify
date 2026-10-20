@@ -1,13 +1,11 @@
+import json
 from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass, field
 from decimal import Decimal
 
 import pytest
-from flask import Flask
 from redis import Redis
-from sqlalchemy import event
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import (
     AppAdditionalFeatures,
@@ -19,7 +17,6 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.app.apps.completion.app_config_manager import CompletionAppConfig
-from core.app.apps.completion.app_runner import CompletionAppRunner
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
@@ -30,7 +27,7 @@ from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.provider_manager import ProviderManager
-from extensions.ext_database import db
+from extensions.application_services.retrieval import build_dataset_retrieval
 from extensions.ext_redis import RedisClientWrapper
 from graphon.file import FileUploadConfig
 from graphon.file.models import ImageConfig
@@ -42,9 +39,12 @@ from graphon.model_runtime.entities.message_entities import (
 )
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
-from models.dataset import Dataset
+from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, IconType, Message
+from repositories.app.generation_repository import AppGenerationRepository
+from services.app.generation.adapters.completion_runner import CompletionAppRunner
+from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalKnowledgeApiSetting
 from services.knowledge.external.service import ExternalDatasetService
 from tests.unit_tests.core.model_fixtures import make_model_config
 
@@ -143,21 +143,13 @@ def model_runtime(monkeypatch: pytest.MonkeyPatch) -> tuple[ProviderModelBundle,
 
 
 @pytest.fixture
-def retrieval_app(sqlite_engine: Engine) -> Iterator[Flask]:
-    """Bind the real Flask database extension for independent retrieval audit writes."""
-    app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = sqlite_engine.url
-    db.init_app(app)
-    with app.app_context():
-        try:
-            yield app
-        finally:
-            db.engine.dispose()
-
-
-@pytest.fixture
-def runner() -> CompletionAppRunner:
-    return CompletionAppRunner()
+def runner(
+    *, app_records: AppGenerationRepository, sqlite_session_factory: sessionmaker[Session]
+) -> CompletionAppRunner:
+    return CompletionAppRunner(
+        retrieval=build_dataset_retrieval(sqlite_session_factory),
+        records=app_records,
+    )
 
 
 def _build_app_config(
@@ -254,19 +246,10 @@ def _persist_records(session: Session) -> tuple[App, Message]:
 
 
 class TestCompletionAppRunner:
-    def test_run_app_not_found(
-        self, runner: CompletionAppRunner, sqlite_session: Session, queue_manager: MessageBasedAppQueueManager
-    ) -> None:
-        app_config = _build_app_config()
-        app_generate_entity = _build_generate_entity(app_config)
-
-        with pytest.raises(ValueError, match="App not found"):
-            runner.run(app_generate_entity, queue_manager, _message(), sqlite_session)
-
     def test_run_moderation_error_outputs_direct(
         self, runner: CompletionAppRunner, sqlite_session: Session, queue_manager: MessageBasedAppQueueManager
     ) -> None:
-        _, message = _persist_records(sqlite_session)
+        app_record, message = _persist_records(sqlite_session)
 
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
@@ -278,7 +261,7 @@ class TestCompletionAppRunner:
         runner.direct_output = direct_output  # type: ignore[method-assign]
         runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
 
-        runner.run(app_generate_entity, queue_manager, message, sqlite_session)
+        runner.run(app_generate_entity, queue_manager, message, app_record=app_record)
 
         assert len(direct_output.calls) == 1
         assert handle_invoke_result.calls == []
@@ -286,7 +269,7 @@ class TestCompletionAppRunner:
     def test_run_hosting_moderation_stops(
         self, runner: CompletionAppRunner, sqlite_session: Session, queue_manager: MessageBasedAppQueueManager
     ) -> None:
-        _, message = _persist_records(sqlite_session)
+        app_record, message = _persist_records(sqlite_session)
 
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
@@ -299,7 +282,7 @@ class TestCompletionAppRunner:
         handle_invoke_result = CallRecorder()
         runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
 
-        runner.run(app_generate_entity, queue_manager, message, sqlite_session)
+        runner.run(app_generate_entity, queue_manager, message, app_record=app_record)
 
         assert handle_invoke_result.calls == []
 
@@ -310,13 +293,35 @@ class TestCompletionAppRunner:
         sqlite_session: Session,
         queue_manager: MessageBasedAppQueueManager,
         model_runtime: tuple[ProviderModelBundle, list[RecordedCall], list[str]],
-        retrieval_app: Flask,
     ) -> None:
-        _, message = _persist_records(sqlite_session)
+        app_record, message = _persist_records(sqlite_session)
         dataset = Dataset(
-            id="ds", tenant_id=TENANT_ID, name="External knowledge", provider="external", created_by="user"
+            id="ds",
+            tenant_id=TENANT_ID,
+            name="External knowledge",
+            provider="external",
+            retrieval_model={"top_k": 3},
+            created_by="user",
         )
-        sqlite_session.add(dataset)
+        external_api = ExternalKnowledgeApis(
+            name="External API",
+            description="",
+            tenant_id=TENANT_ID,
+            settings=json.dumps({"endpoint": "https://knowledge.example", "api_key": "secret"}),
+            created_by="user",
+            updated_by="user",
+        )
+        sqlite_session.add_all([dataset, external_api])
+        sqlite_session.flush()
+        sqlite_session.add(
+            ExternalKnowledgeBindings(
+                tenant_id=TENANT_ID,
+                external_knowledge_api_id=external_api.id,
+                dataset_id=dataset.id,
+                external_knowledge_id="external-dataset",
+                created_by="user",
+            )
+        )
         sqlite_session.commit()
 
         retrieve_config = DatasetRetrieveConfigEntity(
@@ -350,77 +355,29 @@ class TestCompletionAppRunner:
         handle_invoke_result = CallRecorder()
         runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
 
-        retrieval_calls: list[dict[str, object]] = []
+        retrieval_calls: list[ExternalKnowledgeApiSetting] = []
 
-        def retrieve_external(**kwargs: object) -> list[dict[str, object]]:
-            retrieval_calls.append(kwargs)
+        def retrieve_external(request: ExternalKnowledgeApiSetting) -> list[dict[str, object]]:
+            retrieval_calls.append(request)
             return [{"content": "ctx", "metadata": {}, "score": 1.0, "title": "Document"}]
 
-        monkeypatch.setattr(ExternalDatasetService, "fetch_external_knowledge_retrieval", retrieve_external)
+        monkeypatch.setattr(ExternalDatasetService, "execute_external_knowledge_retrieval", retrieve_external)
 
-        runner.run(app_generate_entity, queue_manager, message, sqlite_session)
+        runner.run(app_generate_entity, queue_manager, message, app_record=app_record)
 
         assert len(retrieval_calls) == 1
-        assert retrieval_calls[0]["query"] == "query_from_input"
-        assert retrieval_calls[0]["tenant_id"] == TENANT_ID
-        assert retrieval_calls[0]["dataset_id"] == dataset.id
+        request = retrieval_calls[0]
+        assert request.url == "https://knowledge.example/retrieval"
+        assert request.headers == {"Content-Type": "application/json", "Authorization": "Bearer secret"}
+        assert request.params == {
+            "retrieval_setting": {"top_k": 3, "score_threshold": 0.0},
+            "query": "query_from_input",
+            "knowledge_id": "external-dataset",
+            "metadata_condition": None,
+        }
         assert organize_prompt_messages.calls[-1].kwargs["context"] == "ctx"
         assert organize_prompt_messages.calls[-1].kwargs["context_files"] == []
         assert len(handle_invoke_result.calls) == 1
-
-    def test_run_closes_explicit_session_before_stream_consumption(
-        self,
-        runner: CompletionAppRunner,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_session: Session,
-        queue_manager: MessageBasedAppQueueManager,
-        model_runtime: tuple[ProviderModelBundle, list[RecordedCall], list[str]],
-    ) -> None:
-        _, message = _persist_records(sqlite_session)
-        app_config = _build_app_config()
-        app_generate_entity = _build_generate_entity(app_config)
-
-        _, _, events = model_runtime
-        session = sqlite_session
-        original_close = session.close
-
-        def record_commit(_session: Session) -> None:
-            events.append("commit")
-
-        def record_close() -> None:
-            events.append("close")
-            original_close()
-
-        runner.organize_prompt_messages = CallRecorder(result=([], None))  # type: ignore[method-assign]
-        runner.moderation_for_inputs = CallRecorder(  # type: ignore[method-assign]
-            result=(None, app_generate_entity.inputs, "query")
-        )
-        runner.check_hosting_moderation = CallRecorder(result=False)  # type: ignore[method-assign]
-        runner.recalc_llm_max_tokens = CallRecorder()  # type: ignore[method-assign]
-        handle_invoke_result = CallRecorder(implementation=lambda invoke_result, **kwargs: list(invoke_result))
-        runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
-
-        monkeypatch.setattr(session, "close", record_close)
-
-        event.listen(session, "after_commit", record_commit)
-        try:
-            runner.run(app_generate_entity, queue_manager, message, session)
-        finally:
-            event.remove(session, "after_commit", record_commit)
-
-        assert events == ["commit", "close", "invoke", "first-chunk"]
-        assert len(handle_invoke_result.calls) == 1
-        handle_call = handle_invoke_result.calls[0]
-        assert handle_call.args == ()
-        assert handle_call.kwargs["queue_manager"] is queue_manager
-        assert handle_call.kwargs | {"invoke_result": None} == {
-            "invoke_result": None,
-            "queue_manager": queue_manager,
-            "stream": True,
-            "message_id": "msg",
-            "user_id": "user",
-            "tenant_id": TENANT_ID,
-        }
 
     @pytest.mark.parametrize("stream", [False, True])
     def test_run_invokes_model_resolved_by_model_manager(
@@ -431,7 +388,7 @@ class TestCompletionAppRunner:
         queue_manager: MessageBasedAppQueueManager,
         model_runtime: tuple[ProviderModelBundle, list[RecordedCall], list[str]],
     ) -> None:
-        _, message = _persist_records(sqlite_session)
+        app_record, message = _persist_records(sqlite_session)
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
         app_generate_entity.stream = stream
@@ -451,7 +408,7 @@ class TestCompletionAppRunner:
 
         runner._handle_invoke_result = handle_result  # type: ignore[method-assign]
 
-        runner.run(app_generate_entity, queue_manager, message, sqlite_session)
+        runner.run(app_generate_entity, queue_manager, message, app_record=app_record)
 
         bundle, calls, _ = model_runtime
         assert bundle.configuration.tenant_id == TENANT_ID
@@ -499,7 +456,7 @@ class TestCompletionAppRunner:
     def test_run_uses_low_image_detail_default(
         self, runner: CompletionAppRunner, sqlite_session: Session, queue_manager: MessageBasedAppQueueManager
     ) -> None:
-        _, message = _persist_records(sqlite_session)
+        app_record, message = _persist_records(sqlite_session)
 
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config, file_upload_config=None)
@@ -511,6 +468,6 @@ class TestCompletionAppRunner:
         )
         runner.check_hosting_moderation = CallRecorder(result=True)  # type: ignore[method-assign]
 
-        runner.run(app_generate_entity, queue_manager, message, sqlite_session)
+        runner.run(app_generate_entity, queue_manager, message, app_record=app_record)
 
         assert organize_prompt_messages.calls[-1].kwargs["image_detail_config"] == ImagePromptMessageContent.DETAIL.LOW

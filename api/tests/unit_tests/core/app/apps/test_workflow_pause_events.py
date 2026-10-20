@@ -1,17 +1,14 @@
-import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from typing import cast
 
 import pytest
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.common import workflow_response_converter
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.app.apps.workflow.app_runner import WorkflowAppRunner
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.entities.queue_entities import QueueWorkflowPausedEvent
+from core.app.entities.queue_entities import AppQueueEvent, QueueWorkflowPausedEvent
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import build_system_variables
@@ -22,26 +19,21 @@ from graphon.entities.pause_reason import HitlRequired
 from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account
 from models.human_input import HumanInputForm, HumanInputFormRecipient
-from models.human_input_entities import ParagraphInputConfig, SelectInputConfig, StringListSource, UserActionConfig
+from models.human_input_entities import (
+    ParagraphInputConfig,
+    SelectInputConfig,
+    StringListSource,
+    UserActionConfig,
+)
 from models.model import AppMode
-from models.workflow import Workflow, WorkflowType
-from tests.unit_tests.core.app.apps.test_workflow_app_runner_core import _workflow_entry
+from services.tools.provider_queries import ToolProviders
+from services.workflow.execution.adapters.events import WorkflowEventPublisher
+from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
+from services.workflow.execution.ports import ExecutionContexts
 
 
-class _RecordingWorkflowAppRunner(WorkflowAppRunner):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.published_events = []
-
-    def _publish_event(self, event):
-        self.published_events.append(event)
-
-
-@pytest.fixture
-def sqlite_pause_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
-    """Bind pause-response queries to the shared SQLite session's database."""
-    monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
-    return sqlite_session
+class _FakeRuntimeState:
+    variable_pool = object()
 
 
 def _persist_human_input_form(
@@ -77,55 +69,20 @@ def _persist_human_input_form(
     return expiration_time
 
 
-def _build_runner():
-    app_entity = SimpleNamespace(
-        app_config=SimpleNamespace(app_id="app-id"),
-        inputs={},
-        files=[],
-        invoke_from=InvokeFrom.SERVICE_API,
-        single_iteration_run=None,
-        single_loop_run=None,
-        workflow_execution_id="run-id",
-        user_id="user-id",
-    )
-    workflow = Workflow.new(
-        tenant_id="tenant-id",
-        app_id="app-id",
-        type=WorkflowType.WORKFLOW,
-        version=Workflow.VERSION_DRAFT,
-        graph=json.dumps({}),
-        features="{}",
-        created_by="account-id",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
-    )
-    workflow.id = "workflow-id"
-    queue_manager = SimpleNamespace(publish=lambda event, pub_from: None)
-    return _RecordingWorkflowAppRunner(
-        application_generate_entity=app_entity,
-        queue_manager=queue_manager,
-        variable_loader=MagicMock(),
-        workflow=workflow,
-        system_user_id="sys-user",
-        root_node_id=None,
-        graph_engine_layers=(),
-        graph_runtime_state=None,
-    )
-
-
 @pytest.mark.parametrize("source_node_id", ["node-human", "nested-human"])
-def test_graph_run_paused_event_uses_projected_nodes_for_highlighting(
-    monkeypatch: pytest.MonkeyPatch, source_node_id: str
-):
-    runner = _build_runner()
+def test_graph_run_paused_event_uses_projected_nodes_for_highlighting(source_node_id: str) -> None:
+    published: list[AppQueueEvent] = []
+
+    def publish(event: AppQueueEvent, _pub_from: PublishFrom) -> None:
+        published.append(event)
+
     graph_reason = HitlRequired(
         session_id="form-1",
         node_id=source_node_id,
         node_title="Human Step",
     )
     event = GraphRunPausedEvent(reasons=[graph_reason], outputs={"foo": "bar"})
-    workflow_entry = _workflow_entry(runner)
+    workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(runtime_state=_FakeRuntimeState()))
 
     enriched_reason = HumanInputRequired(
         form_id="form-1",
@@ -135,12 +92,12 @@ def test_graph_run_paused_event_uses_projected_nodes_for_highlighting(
         node_id="node-human",
         node_title="Human Step",
     )
-    monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_email_task", MagicMock())
+    queue = cast(AppQueueManager, SimpleNamespace(publish=publish))
+    publisher = WorkflowEventPublisher(queue, notify_pause=lambda _: None)
+    publisher.publish(workflow_entry, event, pause_reasons=[enriched_reason])
 
-    runner.handle_event(workflow_entry, event, pause_reasons=[enriched_reason])
-
-    assert len(runner.published_events) == 1
-    queue_event = runner.published_events[0]
+    assert len(published) == 1
+    queue_event = published[0]
     assert isinstance(queue_event, QueueWorkflowPausedEvent)
     assert queue_event.reasons == [enriched_reason]
     assert queue_event.outputs == {"foo": "bar"}
@@ -148,7 +105,12 @@ def test_graph_run_paused_event_uses_projected_nodes_for_highlighting(
     assert graph_reason.node_id == source_node_id
 
 
-def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API) -> WorkflowResponseConverter:
+def _build_converter(
+    *,
+    invoke_from: InvokeFrom = InvokeFrom.SERVICE_API,
+    workflow_contexts: ExecutionContexts,
+    tool_providers: ToolProviders,
+) -> WorkflowResponseConverter:
     application_generate_entity = WorkflowAppGenerateEntity(
         task_id="task",
         workflow_execution_id="run-id",
@@ -170,9 +132,11 @@ def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API) -> Wor
     user = Account(name="Tester", email="tester@example.com")
     user.id = "account-id"
     return WorkflowResponseConverter(
+        contexts=workflow_contexts,
         application_generate_entity=application_generate_entity,
         user=user,
         system_variables=system_variables,
+        tool_providers=tool_providers,
     )
 
 
@@ -181,8 +145,10 @@ def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API) -> Wor
     [(HumanInputForm, HumanInputFormRecipient)],
     indirect=True,
 )
-def test_queue_workflow_paused_event_to_stream_responses(sqlite_pause_session: Session):
-    converter = _build_converter()
+def test_queue_workflow_paused_event_to_stream_responses(
+    sqlite_session: Session, *, workflow_contexts: ExecutionContexts, tool_providers: ToolProviders
+) -> None:
+    converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     converter.workflow_start_to_stream_response(
         task_id="task",
         workflow_run_id="run-id",
@@ -191,7 +157,7 @@ def test_queue_workflow_paused_event_to_stream_responses(sqlite_pause_session: S
     )
 
     expiration_time = _persist_human_input_form(
-        sqlite_pause_session,
+        sqlite_session,
         recipients=[
             (RecipientType.CONSOLE, "console-token"),
             (RecipientType.BACKSTAGE, "backstage-token"),
@@ -219,15 +185,15 @@ def test_queue_workflow_paused_event_to_stream_responses(sqlite_pause_session: S
         graph_runtime_state=runtime_state,
     )
 
-    assert isinstance(responses[-1], WorkflowPauseStreamResponse)
     pause_resp = responses[-1]
+    assert isinstance(pause_resp, WorkflowPauseStreamResponse)
     assert pause_resp.workflow_run_id == "run-id"
     assert pause_resp.data.paused_nodes == ["node-id"]
     assert pause_resp.data.outputs == {}
     assert pause_resp.data.reasons[0]["form_id"] == "form-1"
 
-    assert isinstance(responses[0], HumanInputRequiredResponse)
     hi_resp = responses[0]
+    assert isinstance(hi_resp, HumanInputRequiredResponse)
     assert hi_resp.data.form_id == "form-1"
     assert hi_resp.data.node_id == "node-id"
     assert hi_resp.data.node_title == "Human Step"
@@ -242,9 +208,14 @@ def test_queue_workflow_paused_event_to_stream_responses(sqlite_pause_session: S
 def _build_paused_human_input_response(
     session: Session,
     recipients: list[tuple[RecipientType, str]],
-):
+    *,
+    workflow_contexts: ExecutionContexts,
+    tool_providers: ToolProviders,
+) -> list[HumanInputRequiredResponse | WorkflowPauseStreamResponse]:
     """Drive the live OPENAPI pause path with persisted forms and recipients."""
-    converter = _build_converter(invoke_from=InvokeFrom.OPENAPI)
+    converter = _build_converter(
+        workflow_contexts=workflow_contexts, invoke_from=InvokeFrom.OPENAPI, tool_providers=tool_providers
+    )
     converter.workflow_start_to_stream_response(
         task_id="task",
         workflow_run_id="run-id",
@@ -275,7 +246,7 @@ def _build_paused_human_input_response(
         graph_runtime_state=runtime_state,
     )
     assert isinstance(responses[0], HumanInputRequiredResponse)
-    return responses
+    return cast(list[HumanInputRequiredResponse | WorkflowPauseStreamResponse], responses)
 
 
 @pytest.mark.parametrize(
@@ -283,20 +254,26 @@ def _build_paused_human_input_response(
     [(HumanInputForm, HumanInputFormRecipient)],
     indirect=True,
 )
-def test_openapi_pause_without_web_app_recipient_emits_approval_channels(sqlite_pause_session: Session):
+def test_openapi_pause_without_web_app_recipient_emits_approval_channels(
+    sqlite_session: Session, *, workflow_contexts: ExecutionContexts, tool_providers: ToolProviders
+) -> None:
     responses = _build_paused_human_input_response(
-        sqlite_pause_session,
+        sqlite_session,
+        workflow_contexts=workflow_contexts,
         recipients=[
             (RecipientType.EMAIL_MEMBER, "email-token"),
             (RecipientType.BACKSTAGE, "backstage-token"),
         ],
+        tool_providers=tool_providers,
     )
 
     hi_resp = responses[0]
+    assert isinstance(hi_resp, HumanInputRequiredResponse)
     assert hi_resp.data.form_token is None
     assert hi_resp.data.approval_channels == ["console", "email"]
 
     pause_resp = responses[-1]
+    assert isinstance(pause_resp, WorkflowPauseStreamResponse)
     assert pause_resp.data.reasons[0]["approval_channels"] == ["console", "email"]
 
 
@@ -305,20 +282,26 @@ def test_openapi_pause_without_web_app_recipient_emits_approval_channels(sqlite_
     [(HumanInputForm, HumanInputFormRecipient)],
     indirect=True,
 )
-def test_openapi_pause_with_web_app_recipient_sets_token_and_channels(sqlite_pause_session: Session):
+def test_openapi_pause_with_web_app_recipient_sets_token_and_channels(
+    sqlite_session: Session, *, workflow_contexts: ExecutionContexts, tool_providers: ToolProviders
+) -> None:
     responses = _build_paused_human_input_response(
-        sqlite_pause_session,
+        sqlite_session,
+        workflow_contexts=workflow_contexts,
         recipients=[
             (RecipientType.STANDALONE_WEB_APP, "web-app-token"),
             (RecipientType.BACKSTAGE, "backstage-token"),
         ],
+        tool_providers=tool_providers,
     )
 
     hi_resp = responses[0]
+    assert isinstance(hi_resp, HumanInputRequiredResponse)
     assert hi_resp.data.form_token == "web-app-token"
     assert hi_resp.data.approval_channels == ["console"]
 
     pause_resp = responses[-1]
+    assert isinstance(pause_resp, WorkflowPauseStreamResponse)
     assert pause_resp.data.reasons[0]["approval_channels"] == ["console"]
 
 
@@ -327,8 +310,10 @@ def test_openapi_pause_with_web_app_recipient_sets_token_and_channels(sqlite_pau
     [(HumanInputForm, HumanInputFormRecipient)],
     indirect=True,
 )
-def test_queue_workflow_paused_event_resolves_variable_select_options(sqlite_pause_session: Session):
-    converter = _build_converter()
+def test_queue_workflow_paused_event_resolves_variable_select_options(
+    sqlite_session: Session, *, workflow_contexts: ExecutionContexts, tool_providers: ToolProviders
+) -> None:
+    converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     converter.workflow_start_to_stream_response(
         task_id="task",
         workflow_run_id="run-id",
@@ -336,7 +321,7 @@ def test_queue_workflow_paused_event_resolves_variable_select_options(sqlite_pau
         reason=WorkflowStartReason.INITIAL,
     )
 
-    _persist_human_input_form(sqlite_pause_session)
+    _persist_human_input_form(sqlite_session)
 
     reason = HumanInputRequired(
         form_id="form-1",
@@ -369,10 +354,12 @@ def test_queue_workflow_paused_event_resolves_variable_select_options(sqlite_pau
         graph_runtime_state=runtime_state,
     )
 
-    assert isinstance(responses[0], HumanInputRequiredResponse)
     hi_resp = responses[0]
-    assert hi_resp.data.inputs[0].option_source.value == ["approve", "reject"]
+    assert isinstance(hi_resp, HumanInputRequiredResponse)
+    select_input = hi_resp.data.inputs[0]
+    assert isinstance(select_input, SelectInputConfig)
+    assert select_input.option_source.value == ["approve", "reject"]
 
-    assert isinstance(responses[-1], WorkflowPauseStreamResponse)
     pause_resp = responses[-1]
+    assert isinstance(pause_resp, WorkflowPauseStreamResponse)
     assert pause_resp.data.reasons[0]["inputs"][0]["option_source"]["value"] == ["approve", "reject"]

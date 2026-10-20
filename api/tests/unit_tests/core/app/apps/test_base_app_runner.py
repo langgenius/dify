@@ -4,8 +4,8 @@ import logging
 from dataclasses import dataclass
 
 import pytest
-from sqlalchemy import event, func, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     AdvancedChatMessageEntity,
@@ -13,7 +13,6 @@ from core.app.app_config.entities import (
     AdvancedCompletionPromptTemplateEntity,
     PromptTemplateEntity,
 )
-from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import (
@@ -26,7 +25,6 @@ from core.app.entities.queue_entities import (
     QueueAgentMessageEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
-    QueueMessageFileEvent,
 )
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -37,7 +35,8 @@ from graphon.model_runtime.entities.message_entities import (
 )
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError
-from models.model import App, AppMode, Message, MessageFile
+from models.model import App, AppMode, MessageFile
+from services.app.generation.adapters.base_runner import AppRunner
 
 
 @dataclass(eq=False, repr=False)
@@ -89,8 +88,10 @@ class _ClosableStream:
 
 
 class TestAppRunner:
-    def test_recalc_llm_max_tokens_updates_parameters(self, monkeypatch: pytest.MonkeyPatch):
-        runner = AppRunner()
+    def test_recalc_llm_max_tokens_updates_parameters(self, monkeypatch: pytest.MonkeyPatch, *, app_records):
+        runner = AppRunner(
+            records=app_records,
+        )
 
         model_schema = AIModelEntity.model_construct(
             model_properties={ModelPropertyKey.CONTEXT_SIZE: 100},
@@ -104,7 +105,7 @@ class TestAppRunner:
         )
 
         monkeypatch.setattr(
-            "core.app.apps.base_app_runner.ModelInstance",
+            "services.app.generation.adapters.base_runner.ModelInstance",
             lambda provider_model_bundle, model: _TokenCountingModel(80),
         )
 
@@ -112,8 +113,12 @@ class TestAppRunner:
 
         assert model_config.parameters["max_tokens"] == 20
 
-    def test_recalc_llm_max_tokens_returns_minus_one_when_no_context(self, monkeypatch: pytest.MonkeyPatch):
-        runner = AppRunner()
+    def test_recalc_llm_max_tokens_returns_minus_one_when_no_context(
+        self, monkeypatch: pytest.MonkeyPatch, *, app_records
+    ):
+        runner = AppRunner(
+            records=app_records,
+        )
 
         model_schema = AIModelEntity.model_construct(
             model_properties={},
@@ -127,14 +132,16 @@ class TestAppRunner:
         )
 
         monkeypatch.setattr(
-            "core.app.apps.base_app_runner.ModelInstance",
+            "services.app.generation.adapters.base_runner.ModelInstance",
             lambda provider_model_bundle, model: _TokenCountingModel(10),
         )
 
         assert runner.recalc_llm_max_tokens(model_config, prompt_messages=[]) == -1
 
-    def test_direct_output_streaming_publishes_chunks_and_end(self):
-        runner = AppRunner()
+    def test_direct_output_streaming_publishes_chunks_and_end(self, *, app_records):
+        runner = AppRunner(
+            records=app_records,
+        )
         queue = _queue_manager()
         model_config = ModelConfigWithCredentialsEntity.model_construct(model="mock")
         app_generate_entity = EasyUIBasedAppGenerateEntity.model_construct(model_conf=model_config, stream=True)
@@ -151,8 +158,10 @@ class TestAppRunner:
         assert any(isinstance(event, QueueLLMChunkEvent) for event in events)
         assert isinstance(events[-1], QueueMessageEndEvent)
 
-    def test_handle_invoke_result_direct_publishes_end_event(self):
-        runner = AppRunner()
+    def test_handle_invoke_result_direct_publishes_end_event(self, *, app_records):
+        runner = AppRunner(
+            records=app_records,
+        )
         queue = _queue_manager()
         llm_result = LLMResult(
             model="mock",
@@ -169,8 +178,10 @@ class TestAppRunner:
 
         assert isinstance(_published_events(queue)[-1], QueueMessageEndEvent)
 
-    def test_handle_invoke_result_invalid_type_raises(self):
-        runner = AppRunner()
+    def test_handle_invoke_result_invalid_type_raises(self, *, app_records):
+        runner = AppRunner(
+            records=app_records,
+        )
         queue = _queue_manager()
 
         with pytest.raises(NotImplementedError):
@@ -180,8 +191,10 @@ class TestAppRunner:
                 stream=True,
             )
 
-    def test_organize_prompt_messages_simple_template(self, monkeypatch: pytest.MonkeyPatch):
-        runner = AppRunner()
+    def test_organize_prompt_messages_simple_template(self, monkeypatch: pytest.MonkeyPatch, *, app_records):
+        runner = AppRunner(
+            records=app_records,
+        )
         model_config = ModelConfigWithCredentialsEntity.model_construct(mode="chat", stop=["STOP"])
         prompt_template_entity = PromptTemplateEntity(
             prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
@@ -189,7 +202,7 @@ class TestAppRunner:
         )
 
         monkeypatch.setattr(
-            "core.app.apps.base_app_runner.SimplePromptTransform.get_prompt",
+            "services.app.generation.adapters.base_runner.SimplePromptTransform.get_prompt",
             lambda self, **kwargs: (["simple-message"], ["simple-stop"]),
         )
 
@@ -205,8 +218,12 @@ class TestAppRunner:
         assert prompt_messages == ["simple-message"]
         assert stop == ["simple-stop"]
 
-    def test_organize_prompt_messages_advanced_completion_template(self, monkeypatch: pytest.MonkeyPatch):
-        runner = AppRunner()
+    def test_organize_prompt_messages_advanced_completion_template(
+        self, monkeypatch: pytest.MonkeyPatch, *, app_records
+    ):
+        runner = AppRunner(
+            records=app_records,
+        )
         model_config = ModelConfigWithCredentialsEntity.model_construct(mode="completion", stop=["<END>"])
         captured: dict[str, object] = {}
         prompt_template_entity = PromptTemplateEntity(
@@ -221,7 +238,9 @@ class TestAppRunner:
             captured.update(kwargs)
             return ["advanced-completion-message"]
 
-        monkeypatch.setattr("core.app.apps.base_app_runner.AdvancedPromptTransform.get_prompt", _fake_advanced_prompt)
+        monkeypatch.setattr(
+            "services.app.generation.adapters.base_runner.AdvancedPromptTransform.get_prompt", _fake_advanced_prompt
+        )
 
         prompt_messages, stop = runner.organize_prompt_messages(
             app_record=App(mode=AppMode.CHAT.value),
@@ -238,8 +257,10 @@ class TestAppRunner:
         assert memory_config.role_prefix.user == "U"
         assert memory_config.role_prefix.assistant == "A"
 
-    def test_organize_prompt_messages_advanced_chat_template(self, monkeypatch: pytest.MonkeyPatch):
-        runner = AppRunner()
+    def test_organize_prompt_messages_advanced_chat_template(self, monkeypatch: pytest.MonkeyPatch, *, app_records):
+        runner = AppRunner(
+            records=app_records,
+        )
         model_config = ModelConfigWithCredentialsEntity.model_construct(mode="chat", stop=["<END>"])
         captured: dict[str, object] = {}
         prompt_template_entity = PromptTemplateEntity(
@@ -256,7 +277,9 @@ class TestAppRunner:
             captured.update(kwargs)
             return ["advanced-chat-message"]
 
-        monkeypatch.setattr("core.app.apps.base_app_runner.AdvancedPromptTransform.get_prompt", _fake_advanced_prompt)
+        monkeypatch.setattr(
+            "services.app.generation.adapters.base_runner.AdvancedPromptTransform.get_prompt", _fake_advanced_prompt
+        )
 
         prompt_messages, stop = runner.organize_prompt_messages(
             app_record=App(mode=AppMode.CHAT.value),
@@ -271,8 +294,10 @@ class TestAppRunner:
         assert stop == ["<END>"]
         assert len(captured["prompt_template"]) == 2
 
-    def test_organize_prompt_messages_advanced_missing_templates_raise(self):
-        runner = AppRunner()
+    def test_organize_prompt_messages_advanced_missing_templates_raise(self, *, app_records):
+        runner = AppRunner(
+            records=app_records,
+        )
 
         with pytest.raises(InvokeBadRequestError, match="Advanced completion prompt template is required"):
             runner.organize_prompt_messages(
@@ -292,8 +317,12 @@ class TestAppRunner:
                 files=[],
             )
 
-    def test_handle_invoke_result_stream_routes_chunks_and_builds_message(self, caplog: pytest.LogCaptureFixture):
-        runner = AppRunner()
+    def test_handle_invoke_result_stream_routes_chunks_and_builds_message(
+        self, caplog: pytest.LogCaptureFixture, *, app_records
+    ):
+        runner = AppRunner(
+            records=app_records,
+        )
         queue = _queue_manager()
 
         image_content = ImagePromptMessageContent(
@@ -315,7 +344,7 @@ class TestAppRunner:
                 ),
             )
 
-        with caplog.at_level(logging.WARNING, logger="core.app.apps.base_app_runner"):
+        with caplog.at_level(logging.WARNING, logger="services.app.generation.adapters.base_runner"):
             runner._handle_invoke_result(
                 invoke_result=_stream(),
                 queue_manager=queue,
@@ -330,9 +359,11 @@ class TestAppRunner:
         assert "Received multimodal output but missing required parameters" in caplog.messages
 
     def test_handle_invoke_result_stream_agent_mode_handles_multimodal_errors(
-        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, *, app_records
     ):
-        runner = AppRunner()
+        runner = AppRunner(
+            records=app_records,
+        )
         queue = _queue_manager()
 
         def raise_multimodal_error(**kwargs):
@@ -365,7 +396,7 @@ class TestAppRunner:
                 ),
             )
 
-        with caplog.at_level(logging.ERROR, logger="core.app.apps.base_app_runner"):
+        with caplog.at_level(logging.ERROR, logger="services.app.generation.adapters.base_runner"):
             runner._handle_invoke_result_stream(
                 invoke_result=_stream(),
                 queue_manager=queue,
@@ -381,67 +412,12 @@ class TestAppRunner:
         assert events[-1].llm_result.usage == usage
         assert "Failed to handle multimodal image output" in caplog.messages
 
-    def test_handle_invoke_result_stream_commits_message_file_before_publish(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_session_factory: sessionmaker[Session],
+    def test_handle_invoke_result_stream_closes_generator_when_stopped(
+        self, monkeypatch: pytest.MonkeyPatch, *, app_records
     ):
-        runner = AppRunner()
-        monkeypatch.setattr(
-            runner,
-            "_handle_multimodal_image_content",
-            lambda **kwargs: "message-file-1",
+        runner = AppRunner(
+            records=app_records,
         )
-        events: list[str] = []
-
-        def record_commit(session: Session) -> None:
-            events.append("commit")
-
-        event.listen(sqlite_session_factory.class_, "after_commit", record_commit)
-        queue = _queue_manager()
-        original_publish = queue.publish
-
-        def publish(event, pub_from):
-            if isinstance(event, QueueMessageFileEvent):
-                events.append("publish")
-            original_publish(event, pub_from)
-
-        queue.publish = publish
-
-        def stream():
-            yield LLMResultChunk(
-                model="model",
-                prompt_messages=[AssistantPromptMessage(content="prompt")],
-                delta=LLMResultChunkDelta(
-                    index=0,
-                    message=AssistantPromptMessage(
-                        content=[
-                            ImagePromptMessageContent(
-                                url="https://example.com/image.png",
-                                format="png",
-                                mime_type="image/png",
-                            )
-                        ]
-                    ),
-                ),
-            )
-
-        try:
-            runner._handle_invoke_result_stream(
-                invoke_result=stream(),
-                queue_manager=queue,
-                agent=False,
-                message_id="message-1",
-                user_id="user-1",
-                tenant_id="tenant-1",
-            )
-        finally:
-            event.remove(sqlite_session_factory.class_, "after_commit", record_commit)
-
-        assert events == ["commit", "publish"]
-
-    def test_handle_invoke_result_stream_closes_generator_when_stopped(self, monkeypatch: pytest.MonkeyPatch):
-        runner = AppRunner()
         chunk = LLMResultChunk(
             model="stream-model",
             prompt_messages=[AssistantPromptMessage(content="prompt")],
@@ -462,11 +438,10 @@ class TestAppRunner:
         assert stream.closed is True
 
     @pytest.mark.parametrize("sqlite_session", [(MessageFile,)], indirect=True)
-    def test_handle_multimodal_image_content_fallback_return_branch(
-        self,
-        sqlite_session: Session,
-    ):
-        runner = AppRunner()
+    def test_handle_multimodal_image_content_fallback_return_branch(self, sqlite_session: Session, *, app_records):
+        runner = AppRunner(
+            records=app_records,
+        )
 
         class _ToggleBool:
             def __init__(self, values: list[bool]):
@@ -488,7 +463,6 @@ class TestAppRunner:
         queue_manager = _queue_manager()
 
         runner._handle_multimodal_image_content(
-            session=sqlite_session,
             content=content,
             message_id="message-id",
             user_id="user-id",
@@ -499,14 +473,16 @@ class TestAppRunner:
         message_file_count = sqlite_session.scalar(select(func.count()).select_from(MessageFile))
         assert message_file_count == 0
 
-    def test_check_hosting_moderation_direct_output_called(self, monkeypatch: pytest.MonkeyPatch):
-        runner = AppRunner()
+    def test_check_hosting_moderation_direct_output_called(self, monkeypatch: pytest.MonkeyPatch, *, app_records):
+        runner = AppRunner(
+            records=app_records,
+        )
         queue = _queue_manager()
         app_generate_entity = EasyUIBasedAppGenerateEntity.model_construct(stream=False)
         direct_output_calls: list[dict[str, object]] = []
 
         monkeypatch.setattr(
-            "core.app.apps.base_app_runner.HostingModerationFeature.check",
+            "services.app.generation.adapters.base_runner.HostingModerationFeature.check",
             lambda self, application_generate_entity, prompt_messages: True,
         )
         monkeypatch.setattr(runner, "direct_output", lambda **kwargs: direct_output_calls.append(kwargs))
@@ -520,10 +496,12 @@ class TestAppRunner:
         assert result is True
         assert len(direct_output_calls) == 1
 
-    def test_fill_in_inputs_from_external_data_tools(self, monkeypatch: pytest.MonkeyPatch):
-        runner = AppRunner()
+    def test_fill_in_inputs_from_external_data_tools(self, monkeypatch: pytest.MonkeyPatch, *, app_records):
+        runner = AppRunner(
+            records=app_records,
+        )
         monkeypatch.setattr(
-            "core.app.apps.base_app_runner.ExternalDataFetch.fetch",
+            "services.app.generation.adapters.base_runner.ExternalDataFetch.fetch",
             lambda self, tenant_id, app_id, external_data_tools, inputs, query: {"foo": "bar"},
         )
 
@@ -537,10 +515,12 @@ class TestAppRunner:
 
         assert result == {"foo": "bar"}
 
-    def test_moderation_for_inputs_returns_result(self, monkeypatch: pytest.MonkeyPatch):
-        runner = AppRunner()
+    def test_moderation_for_inputs_returns_result(self, monkeypatch: pytest.MonkeyPatch, *, app_records):
+        runner = AppRunner(
+            records=app_records,
+        )
         monkeypatch.setattr(
-            "core.app.apps.base_app_runner.InputModeration.check",
+            "services.app.generation.adapters.base_runner.InputModeration.check",
             lambda self, app_id, tenant_id, app_config, inputs, query, message_id, trace_manager: (True, {}, ""),
         )
         app_generate_entity = AppGenerateEntity.model_construct(app_config=None, trace_manager=None)
@@ -555,26 +535,3 @@ class TestAppRunner:
         )
 
         assert result == (True, {}, "")
-
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    def test_query_app_annotations_to_reply(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_session: Session,
-    ):
-        runner = AppRunner()
-        monkeypatch.setattr(
-            "core.app.apps.base_app_runner.AnnotationReplyFeature.query",
-            lambda self, app_record, message, query, user_id, invoke_from, session: "reply",
-        )
-
-        response = runner.query_app_annotations_to_reply(
-            app_record=App(),
-            message=Message(),
-            query="hello",
-            user_id="user",
-            invoke_from=InvokeFrom.WEB_APP,
-            session=sqlite_session,
-        )
-
-        assert response == "reply"

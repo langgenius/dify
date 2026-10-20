@@ -33,7 +33,7 @@ from graphon.enums import (
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
-from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from services.workflow.execution.adapters.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 
 
 class _RepoRecorder:
@@ -127,7 +127,7 @@ class TestWorkflowPersistenceLayer:
         layer, _, _, _ = _make_layer()
 
         monkeypatch.setattr(
-            "core.workflow.workflow_entry.WorkflowEntry.handle_special_values",
+            "services.workflow.execution.adapters.workflow_entry.WorkflowEntry.handle_special_values",
             lambda inputs: inputs,
         )
 

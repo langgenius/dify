@@ -1,13 +1,13 @@
 import json
 from datetime import datetime
 from decimal import Decimal
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
-import core.agent.base_agent_runner as module
-from core.agent.base_agent_runner import BaseAgentRunner
+import services.agent.chat.base_runner as module
 from core.agent.entities import AgentEntity, AgentToolEntity
 from core.app.app_config.entities import (
     AppAdditionalFeatures,
@@ -34,17 +34,29 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
-from core.tools.utils.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
-from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMUsage, PromptMessageTool
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
-from models.model import AppMode, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
-from services.workflow_run_agg import WorkflowRunAgg
+from models.model import (
+    AppMode,
+    AppModelConfig,
+    Conversation,
+    Message,
+    MessageAgentThought,
+    MessageFile,
+    UploadFile,
+)
+from repositories.app.generation_repository import AppGenerationRepository
+from services.agent.chat.base_runner import BaseAgentRunner
+from services.app.generation.ports import AgentHistoryMessage
+from services.knowledge.retrieval.dataset_retrieval import DatasetRetrieval
+from services.tools.dataset.tool import DatasetRetrieverTool
 from tests.tool_fixtures import make_runtime_tool
 from tests.unit_tests.core.model_fixtures import make_model_config
+from tests.unit_tests.model_factories import make_app
 
 
 def _message(
@@ -112,7 +124,10 @@ def _thought(
 
 
 def _persist_history(session: Session, *messages: Message, thoughts: list[MessageAgentThought] | None = None) -> None:
-    session.add_all([_conversation(), *messages, *(thoughts or [])])
+    for message in messages:
+        message.created_at = datetime(2030, 1, 1)
+        session.merge(message)
+    session.add_all(thoughts or [])
     session.commit()
 
 
@@ -190,26 +205,24 @@ def _tool_entity(name: str) -> ToolEntity:
     )
 
 
-def _dataset_tool(name: str) -> DatasetRetrieverTool:
+def _dataset_tool(mocker: MockerFixture, name: str, _sessions) -> DatasetRetrieverTool:
     return DatasetRetrieverTool(
         entity=_tool_entity(name),
         runtime=ToolRuntime(tenant_id="tenant"),
-        retrieval_tool=DatasetMultiRetrieverTool(
-            tenant_id="tenant",
-            dataset_ids=[],
-            return_resource=False,
-            retriever_from="dev",
-            reranking_provider_name="",
-            reranking_model_name="",
-        ),
+        retrieval=create_autospec(DatasetRetrieval, instance=True, spec_set=True),
+        dataset_id="dataset",
+        config=DatasetRetrieveConfigEntity(retrieve_strategy="single"),
+        top_k=2,
+        inputs={},
+        invoke_from=InvokeFrom.DEBUGGER,
+        return_resource=False,
+        hit_callback=mocker.Mock(),
+        app_id="app1",
     )
 
 
 @pytest.fixture
-def database_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
-    """Bind legacy global-session writes to a real SQLite Session."""
-
-    monkeypatch.setattr(module.db, "session", sqlite_session)
+def database_session(sqlite_session: Session) -> Session:
     return sqlite_session
 
 
@@ -228,7 +241,13 @@ def queue_manager(mocker: MockerFixture) -> MessageBasedAppQueueManager:
 
 @pytest.fixture
 def runner(
-    sqlite_session: Session, mocker: MockerFixture, queue_manager: MessageBasedAppQueueManager
+    sqlite_session: Session,
+    mocker: MockerFixture,
+    workflow_runtime: WorkflowExecutionDependencies,
+    queue_manager: MessageBasedAppQueueManager,
+    agent_tool_invoker: MagicMock,
+    *,
+    app_records: AppGenerationRepository,
 ) -> BaseAgentRunner:
     app_config = _app_config()
     model_config = make_model_config(provider="provider", model="model", mode="chat")
@@ -239,9 +258,14 @@ def runner(
     )
     mocker.patch.object(model_instance.model_type_instance, "get_model_schema", return_value=None)
 
+    sqlite_session.add_all([make_app(app_id="app1", tenant_id="tenant"), _conversation(), _message()])
+    sqlite_session.commit()
+
     return BaseAgentRunner(
-        execution_driver=WorkflowRunAgg.run,
-        session=sqlite_session,
+        dataset_tools=workflow_runtime.dataset_tools,
+        records=app_records,
+        workflow_runtime=workflow_runtime,
+        tool_invoker=agent_tool_invoker,
         tenant_id="tenant",
         application_generate_entity=_app_generate(app_config=app_config),
         conversation=_conversation(),
@@ -308,6 +332,8 @@ def test_create_agent_thought_persists_row(
     files: list[str],
     expected_files: str,
 ) -> None:
+    database_session.add(_message(message_id="message-1"))
+    database_session.commit()
     thought_id = runner.create_agent_thought("message-1", "message", "tool", "input", files)
 
     stored = database_session.get(MessageAgentThought, thought_id)
@@ -319,7 +345,7 @@ def test_create_agent_thought_persists_row(
 
 
 def _persist_thought(session: Session, *, tool: str = "tool1;tool2") -> MessageAgentThought:
-    thought = _thought(thought_id="thought-1", tool=tool, thought="")
+    thought = _thought(thought_id="thought-1", message_id="msg_current", tool=tool, thought="")
     session.add(thought)
     session.commit()
     return thought
@@ -366,6 +392,7 @@ def test_save_agent_thought_full_update(
         usage,
     )
 
+    database_session.expire_all()
     stored = database_session.get(MessageAgentThought, thought.id)
     assert stored is not None
     assert stored.answer == "answer"
@@ -386,6 +413,7 @@ def test_save_agent_thought_uses_label_fallback(
 
     runner.save_agent_thought(thought.id, None, None, None, None, None, None, [], None)
 
+    database_session.expire_all()
     stored = database_session.get(MessageAgentThought, thought.id)
     assert stored is not None
     assert json.loads(stored.tool_labels_str)["unknown_tool"]["en_US"] == "unknown_tool"
@@ -401,6 +429,7 @@ def test_save_agent_thought_preserves_existing_labels(
 
     runner.save_agent_thought(thought.id, None, None, None, None, None, None, [], None)
 
+    database_session.expire_all()
     stored = database_session.get(MessageAgentThought, thought.id)
     assert stored is not None
     assert json.loads(stored.tool_labels_str)["tool1"]["en_US"] == "existing"
@@ -418,10 +447,10 @@ def test_save_agent_thought_serialization_fallbacks(
     tool_meta = {"c": 3}
     real_dumps = json.dumps
 
-    def dumps_side_effect(value, *args, **kwargs):
-        if value in (tool_input, observation, tool_meta) and kwargs.get("ensure_ascii") is False:
+    def dumps_side_effect(value: object, *, ensure_ascii: bool = True) -> str:
+        if value in (tool_input, observation, tool_meta) and not ensure_ascii:
             raise TypeError("fail")
-        return real_dumps(value, *args, **kwargs)
+        return real_dumps(value, ensure_ascii=ensure_ascii)
 
     mocker.patch.object(module.json, "dumps", side_effect=dumps_side_effect)
 
@@ -437,6 +466,7 @@ def test_save_agent_thought_serialization_fallbacks(
         None,
     )
 
+    database_session.expire_all()
     stored = database_session.get(MessageAgentThought, thought.id)
     assert stored is not None
     assert isinstance(stored.tool_input, str)
@@ -454,6 +484,7 @@ def test_save_agent_thought_accepts_empty_message_ids(
     thought = _persist_thought(database_session)
     runner.save_agent_thought(thought.id, None, None, None, None, "meta_string", None, messages_ids, None)  # type: ignore[arg-type]
 
+    database_session.expire_all()
     stored = database_session.get(MessageAgentThought, thought.id)
     assert stored is not None
     assert stored.tool_meta_str == "meta_string"
@@ -508,8 +539,24 @@ def _upload_file() -> UploadFile:
     )
 
 
+def _history_entry(session: Session) -> AgentHistoryMessage:
+    from sqlalchemy import select
+
+    from models.model import load_annotation_reply_config
+
+    message = _message(message_id="m1")
+    files = list(session.scalars(select(MessageFile).where(MessageFile.message_id == message.id)))
+    config = message.app_model_config_with_session(session=session)
+    return AgentHistoryMessage(
+        message=message,
+        thoughts=[],
+        files=files,
+        model_config=config.to_dict(annotation_reply=load_annotation_reply_config(session, "app1")) if config else None,
+    )
+
+
 def test_organize_user_prompt_without_files(runner: BaseAgentRunner, sqlite_session: Session) -> None:
-    result = runner.organize_agent_user_prompt(_message(message_id="m1"), session=sqlite_session)
+    result = runner.organize_agent_user_prompt(_history_entry(sqlite_session))
     assert result.content == "hello"
 
 
@@ -517,7 +564,7 @@ def test_organize_user_prompt_with_files_but_no_config(runner: BaseAgentRunner, 
     sqlite_session.add(_message_file())
     sqlite_session.commit()
 
-    result = runner.organize_agent_user_prompt(_message(message_id="m1"), session=sqlite_session)
+    result = runner.organize_agent_user_prompt(_history_entry(sqlite_session))
 
     assert result.content == "hello"
 
@@ -527,12 +574,12 @@ def test_organize_user_prompt_uses_file_config(
     sqlite_session: Session,
 ) -> None:
     config = _file_enabled_app_model_config()
-    sqlite_session.add_all([config, _conversation(app_model_config_id=config.id), _message_file()])
+    sqlite_session.merge(_conversation(app_model_config_id=config.id))
+    sqlite_session.add_all([config, _message_file()])
     sqlite_session.commit()
 
     result = runner.organize_agent_user_prompt(
-        _message(message_id="m1"),
-        session=sqlite_session,
+        _history_entry(sqlite_session),
     )
 
     assert result.content == "hello"
@@ -549,13 +596,13 @@ def test_organize_user_prompt_builds_file_content(
         belongs_to=MessageFileBelongsTo.USER,
         upload_file_id=upload_file.id,
     )
-    sqlite_session.add_all([config, _conversation(app_model_config_id=config.id), upload_file, message_file])
+    sqlite_session.merge(_conversation(app_model_config_id=config.id))
+    sqlite_session.add_all([config, upload_file, message_file])
     sqlite_session.commit()
     mocker.patch.object(storage, "load", return_value=b"image")
 
     result = runner.organize_agent_user_prompt(
-        _message(message_id="m1"),
-        session=sqlite_session,
+        _history_entry(sqlite_session),
     )
 
     assert isinstance(result.content, list)
@@ -563,21 +610,21 @@ def test_organize_user_prompt_builds_file_content(
     assert isinstance(result.content[-1], module.TextPromptMessageContent)
 
 
-def test_organize_history_empty_preserves_system_prompt(runner: BaseAgentRunner, sqlite_session: Session) -> None:
+def test_organize_history_empty_preserves_system_prompt(runner: BaseAgentRunner) -> None:
     system_message = module.SystemPromptMessage(content="sys")
-    result = runner.organize_agent_history([system_message], session=sqlite_session)
+    result = runner.organize_agent_history([system_message], history=[])
     assert result == [system_message]
 
 
 def test_organize_history_with_answer_only(runner: BaseAgentRunner, sqlite_session: Session) -> None:
     _persist_history(sqlite_session, _message(message_id="m1", answer="answer"))
-    result = runner.organize_agent_history([], session=sqlite_session)
+    result = runner.organize_agent_history([], history=runner._records.agent_history(runner._identity))
     assert any(isinstance(item, module.AssistantPromptMessage) and item.content == "answer" for item in result)
 
 
 def test_organize_history_skips_current_message(runner: BaseAgentRunner, sqlite_session: Session) -> None:
     _persist_history(sqlite_session, _message(message_id="msg_current", answer="answer"))
-    result = runner.organize_agent_history([], session=sqlite_session)
+    result = runner.organize_agent_history([], history=runner._records.agent_history(runner._identity))
     assert result == []
 
 
@@ -607,7 +654,7 @@ def test_organize_history_reconstructs_tool_flows(
     )
     _persist_history(sqlite_session, message, thoughts=[thought])
 
-    result = runner.organize_agent_history([], session=sqlite_session)
+    result = runner.organize_agent_history([], history=runner._records.agent_history(runner._identity))
 
     assert isinstance(result, list)
     assert any(isinstance(item, module.AssistantPromptMessage) for item in result)
@@ -627,8 +674,9 @@ def test_organize_history_reuses_stable_tool_call_ids(
     )
     _persist_history(sqlite_session, message, thoughts=[thought])
 
-    first = runner.organize_agent_history([], session=sqlite_session)
-    second = runner.organize_agent_history([], session=sqlite_session)
+    history = runner._records.agent_history(runner._identity)
+    first = runner.organize_agent_history([], history=history)
+    second = runner.organize_agent_history([], history=history)
 
     def tool_call_ids(messages: list[module.PromptMessage]) -> tuple[list[str], list[str]]:
         call_ids = [
@@ -653,7 +701,7 @@ def test_organize_history_without_tool_name(runner: BaseAgentRunner, sqlite_sess
     thought = _thought(thought_id="thought-1", message_id=message.id, tool=None)
     _persist_history(sqlite_session, message, thoughts=[thought])
 
-    result = runner.organize_agent_history([], session=sqlite_session)
+    result = runner.organize_agent_history([], history=runner._records.agent_history(runner._identity))
 
     assert any(isinstance(item, module.AssistantPromptMessage) and item.content == "thinking" for item in result)
 
@@ -674,8 +722,10 @@ def test_convert_tool_to_prompt_message_tool(runner: BaseAgentRunner, mocker: Mo
     assert prompt_tool.parameters == schema
 
 
-def test_convert_dataset_retriever_tool(runner: BaseAgentRunner) -> None:
-    dataset_tool = _dataset_tool("ds")
+def test_convert_dataset_retriever_tool(
+    runner: BaseAgentRunner, mocker: MockerFixture, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    dataset_tool = _dataset_tool(mocker, "ds", sqlite_session_factory)
 
     prompt = runner._convert_dataset_retriever_tool_to_prompt_message_tool(dataset_tool)
 
@@ -683,11 +733,13 @@ def test_convert_dataset_retriever_tool(runner: BaseAgentRunner) -> None:
     assert prompt.parameters["required"] == ["query"]
 
 
-def test_init_prompt_tools_adds_agent_and_dataset_tools(runner: BaseAgentRunner, mocker: MockerFixture) -> None:
+def test_init_prompt_tools_adds_agent_and_dataset_tools(
+    runner: BaseAgentRunner, mocker: MockerFixture, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     agent_tool = _agent_tool("agent_tool")
     agent_runtime = _tool("agent_tool", [])
     mocker.patch.object(module.ToolManager, "get_agent_tool_runtime", return_value=agent_runtime)
-    dataset_tool = _dataset_tool("dataset_tool")
+    dataset_tool = _dataset_tool(mocker, "dataset_tool", sqlite_session_factory)
     runner.app_config.agent = _agent(agent_tool)
     runner.dataset_tools = [dataset_tool]
 
@@ -712,6 +764,10 @@ def test_init_uses_real_session_for_count_and_dependencies(
     sqlite_session: Session,
     mocker: MockerFixture,
     queue_manager: MessageBasedAppQueueManager,
+    agent_tool_invoker: MagicMock,
+    workflow_runtime: WorkflowExecutionDependencies,
+    *,
+    app_records: AppGenerationRepository,
 ) -> None:
     sqlite_session.add_all(
         [
@@ -721,11 +777,7 @@ def test_init_uses_real_session_for_count_and_dependencies(
         ]
     )
     sqlite_session.commit()
-    get_dataset_tools = mocker.patch.object(
-        module.DatasetRetrieverTool,
-        "get_dataset_tools",
-        return_value=["ds_tool"],
-    )
+    get_dataset_tools = mocker.Mock(return_value=["ds_tool"])
     model_config = make_model_config(provider="provider", model="m", mode="chat")
     model_config.model_schema.features = [module.ModelFeature.STREAM_TOOL_CALL, module.ModelFeature.VISION]
     model_instance = ModelInstance(
@@ -746,9 +798,13 @@ def test_init_uses_real_session_for_count_and_dependencies(
     app_generate = _app_generate(app_config=app_config, files=["file1"])
     message = _message(message_id="msg1")
 
+    sqlite_session.add_all([make_app(app_id="app1", tenant_id="tenant"), _conversation(), message])
+    sqlite_session.commit()
     initialized = BaseAgentRunner(
-        execution_driver=WorkflowRunAgg.run,
-        session=sqlite_session,
+        dataset_tools=get_dataset_tools,
+        records=app_records,
+        tool_invoker=agent_tool_invoker,
+        workflow_runtime=workflow_runtime,
         tenant_id="tenant",
         application_generate_entity=app_generate,
         conversation=_conversation(),
@@ -766,4 +822,6 @@ def test_init_uses_real_session_for_count_and_dependencies(
     assert initialized.dataset_tools == ["ds_tool"]
     assert initialized.agent_thought_count == 2
     assert initialized.history_prompt_messages == []
-    assert get_dataset_tools.call_args.kwargs["session"] is sqlite_session
+    assert initialized._workflow_runtime is workflow_runtime
+    assert "session" not in get_dataset_tools.call_args.kwargs
+    assert get_dataset_tools.call_args.kwargs["tenant_id"] == "tenant"

@@ -8,14 +8,15 @@ from pydantic import ValidationError
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
-from core.app.apps.workflow.app_runner import WorkflowAppRunner
-from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.credit_usage import CreditUsageAppType
 from core.workflow.system_variables import default_system_variables
 from graphon.runtime import RuntimeState, VariablePool
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind
+from services.workflow.execution.adapters.graph import WorkflowGraphBuilder
+from services.workflow.execution.adapters.workflow.app_runner import WorkflowAppRunner
+from services.workflow.execution.ports import WorkflowRuntime
 
 
 def _make_graph_state():
@@ -50,6 +51,8 @@ def test_run_uses_single_node_execution_branch(
     single_iteration_run: WorkflowAppGenerateEntity.SingleIterationRunEntity | None,
     single_loop_run: WorkflowAppGenerateEntity.SingleLoopRunEntity | None,
     queue_manager: WorkflowAppQueueManager,
+    *,
+    workflow_runtime: WorkflowRuntime,
 ) -> None:
     app_generate_entity = WorkflowAppGenerateEntity(
         app_config=WorkflowUIBasedAppConfig(
@@ -83,6 +86,7 @@ def test_run_uses_single_node_execution_branch(
         variable_loader=MagicMock(),
         workflow=workflow,
         system_user_id="system-user",
+        runtime=workflow_runtime,
     )
 
     graph, variable_pool, graph_runtime_state = _make_graph_state()
@@ -92,19 +96,21 @@ def test_run_uses_single_node_execution_branch(
     mock_workflow_entry.run.return_value = iter([])
 
     with (
-        patch("core.app.apps.workflow.app_runner.RedisChannel"),
-        patch("core.app.apps.workflow.app_runner.redis_client"),
-        patch("core.app.apps.workflow.app_runner.WorkflowEntry", return_value=mock_workflow_entry) as entry_class,
+        patch("services.workflow.execution.adapters.workflow.app_runner.RedisChannel"),
+        patch("services.workflow.execution.adapters.workflow.app_runner.redis_client"),
+        patch(
+            "services.workflow.execution.adapters.workflow.app_runner.WorkflowEntry", return_value=mock_workflow_entry
+        ) as entry_class,
         patch.object(
-            runner,
-            "_prepare_single_node_execution",
+            runner._graphs,
+            "build_single_node",
             return_value=(
                 graph,
                 variable_pool,
                 graph_runtime_state,
             ),
         ) as prepare_single,
-        patch.object(runner, "_init_graph") as init_graph,
+        patch.object(runner._graphs, "build") as init_graph,
     ):
         runner.prepare()
 
@@ -121,9 +127,8 @@ def test_run_uses_single_node_execution_branch(
     assert entry_class.call_args.kwargs["graph_runtime_state"] is graph_runtime_state
 
 
-def test_single_node_run_validates_target_node_config(queue_manager: WorkflowAppQueueManager) -> None:
-    runner = WorkflowBasedAppRunner(
-        queue_manager=queue_manager,
+def test_single_node_run_validates_target_node_config() -> None:
+    runner = WorkflowGraphBuilder(
         variable_loader=MagicMock(),
         app_id="app",
     )
@@ -157,11 +162,8 @@ def test_single_node_run_validates_target_node_config(queue_manager: WorkflowApp
         )
 
 
-def test_single_node_run_rejects_invalid_loop_count(queue_manager: WorkflowAppQueueManager) -> None:
-    runner = WorkflowBasedAppRunner(
-        queue_manager=queue_manager,
-        app_id="app",
-    )
+def test_single_node_run_rejects_invalid_loop_count() -> None:
+    runner = WorkflowGraphBuilder(app_id="app")
 
     workflow = Workflow(
         id="workflow",
@@ -202,7 +204,9 @@ def test_single_node_run_rejects_invalid_loop_count(queue_manager: WorkflowAppQu
         )
 
 
-def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: WorkflowAppQueueManager) -> None:
+def test_run_adds_inputs_with_snippet_compatible_start_aliases(
+    queue_manager: WorkflowAppQueueManager, *, workflow_runtime: WorkflowRuntime
+) -> None:
     app_generate_entity = WorkflowAppGenerateEntity(
         app_config=WorkflowUIBasedAppConfig(
             app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
@@ -234,6 +238,7 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: Wo
         variable_loader=MagicMock(),
         workflow=workflow,
         system_user_id="system-user",
+        runtime=workflow_runtime,
     )
 
     mock_workflow_entry = MagicMock()
@@ -242,18 +247,24 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: Wo
     mock_workflow_entry.run.return_value = iter([])
 
     with (
-        patch("core.app.apps.workflow.app_runner.RedisChannel"),
-        patch("core.app.apps.workflow.app_runner.redis_client"),
-        patch("core.app.apps.workflow.app_runner.WorkflowEntry", return_value=mock_workflow_entry),
-        patch("core.app.apps.workflow.app_runner.build_system_variables", return_value={}),
-        patch("core.app.apps.workflow.app_runner.build_bootstrap_variables", return_value=[]),
-        patch("core.app.apps.workflow.app_runner.add_variables_to_pool"),
-        patch("core.app.apps.workflow.app_runner.get_default_root_node_id", return_value="root-node"),
+        patch("services.workflow.execution.adapters.workflow.app_runner.RedisChannel"),
+        patch("services.workflow.execution.adapters.workflow.app_runner.redis_client"),
         patch(
-            "core.app.apps.workflow.app_runner.get_compatible_start_aliases", return_value=("legacy-start",)
+            "services.workflow.execution.adapters.workflow.app_runner.WorkflowEntry", return_value=mock_workflow_entry
+        ),
+        patch("services.workflow.execution.adapters.workflow.app_runner.build_system_variables", return_value={}),
+        patch("services.workflow.execution.adapters.workflow.app_runner.build_bootstrap_variables", return_value=[]),
+        patch("services.workflow.execution.adapters.workflow.app_runner.add_variables_to_pool"),
+        patch(
+            "services.workflow.execution.adapters.workflow.app_runner.get_default_root_node_id",
+            return_value="root-node",
+        ),
+        patch(
+            "services.workflow.execution.adapters.workflow.app_runner.get_compatible_start_aliases",
+            return_value=("legacy-start",),
         ) as aliases,
-        patch("core.app.apps.workflow.app_runner.add_node_inputs_to_pool") as add_inputs,
-        patch.object(runner, "_init_graph", return_value=MagicMock()) as init_graph,
+        patch("services.workflow.execution.adapters.workflow.app_runner.add_node_inputs_to_pool") as add_inputs,
+        patch.object(runner._graphs, "build", return_value=MagicMock()) as init_graph,
     ):
         runner.prepare()
 

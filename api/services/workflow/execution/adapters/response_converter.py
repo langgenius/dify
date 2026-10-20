@@ -238,6 +238,7 @@ class WorkflowResponseConverter:
         run_id = self._ensure_workflow_run_id(workflow_run_id)
         started_at = naive_utc_now()
         self._workflow_started_at = started_at
+        self._application_generate_entity.workflow_execution_timing.start()
         if reason == WorkflowStartReason.RESUMPTION:
             self._node_snapshots.update(
                 (NodeExecutionId(snapshot.execution_id), snapshot) for snapshot in node_execution_snapshots
@@ -273,7 +274,7 @@ class WorkflowResponseConverter:
             )
 
         finished_at = naive_utc_now()
-        elapsed_time = (finished_at - started_at).total_seconds()
+        elapsed_time = self._application_generate_entity.workflow_execution_timing.finish()
 
         outputs_mapping = graph_runtime_state.outputs or {}
         encoded_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(outputs_mapping)
@@ -326,8 +327,7 @@ class WorkflowResponseConverter:
             raise ValueError(
                 "workflow_pause_to_stream_response called before workflow_start_to_stream_response",
             )
-        paused_at = naive_utc_now()
-        elapsed_time = (paused_at - started_at).total_seconds()
+        elapsed_time = self._application_generate_entity.workflow_execution_timing.finish()
         encoded_outputs = self._encode_outputs(event.outputs) or {}
         if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
             encoded_outputs = {}

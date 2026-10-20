@@ -1,50 +1,28 @@
 """Unit tests for the message cycle manager optimization."""
 
 import logging
-from collections.abc import Iterator
-from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask, current_app
 from sqlalchemy import Engine, event, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueRetrieverResourcesEvent
 from core.app.entities.task_entities import MessageStreamResponse, StreamEvent, TaskStateMetadata, WorkflowTaskState
-from core.app.task_pipeline import message_cycle_manager as message_cycle_manager_module
-from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.rag.entities import RetrievalSourceMetadata
 from graphon.file import FileTransferMethod, FileType
-from models import model as model_module
 from models.account import Account
-from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
-from models.model import App, Conversation, MessageAnnotation, MessageFile
-from tests.unit_tests.model_factories import make_app, make_conversation
-
-
-@dataclass(frozen=True)
-class _SQLiteDb:
-    engine: Engine
-    session: Session
+from models.model import App, Conversation, Message, MessageAnnotation, MessageFile
+from services.app.generation.adapters.message_cycle import MessageCycleManager
+from tests.unit_tests.model_factories import make_app, make_conversation, make_message
 
 
 @pytest.fixture
-def cycle_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
-    """Bind request-owned and cycle-manager-owned sessions to isolated SQLite."""
-    TypeBase.metadata.create_all(
-        sqlite_engine,
-        tables=[App.__table__, Conversation.__table__, MessageFile.__table__],
-    )
-    owned_session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    with owned_session_factory() as request_session:
-        sqlite_db = _SQLiteDb(engine=sqlite_engine, session=request_session)
-        monkeypatch.setattr(message_cycle_manager_module, "db", sqlite_db)
-        monkeypatch.setattr(model_module, "db", sqlite_db)
-        monkeypatch.setattr(message_cycle_manager_module.session_factory, "create_session", owned_session_factory)
-        yield request_session
+def cycle_db(sqlite_session: Session) -> Session:
+    return sqlite_session
 
 
 def _app(*, app_id: str = "app-id", tenant_id: str = "tenant-1") -> App:
@@ -63,6 +41,7 @@ def _conversation(*, conversation_id: str = "conv-1", app_id: str = "app-id") ->
 
 
 def _message_file(
+    session: Session,
     *,
     file_id: str = "file-1",
     message_id: str = "test-message-id",
@@ -70,6 +49,23 @@ def _message_file(
     url: str | None = "http://example.com/image.png",
     file_type: FileType = FileType.IMAGE,
 ) -> MessageFile:
+    if session.get(App, "app-id") is None:
+        session.add(_app())
+    if session.get(Message, message_id) is None:
+        session.add(
+            make_message(
+                message_id=message_id,
+                app_id="app-id",
+                inputs={},
+                query="",
+                message={},
+                answer="",
+                message_unit_price=0,
+                answer_unit_price=0,
+                currency="USD",
+                from_source=ConversationFromSource.API,
+            )
+        )
     message_file = MessageFile(
         message_id=message_id,
         type=file_type,
@@ -91,13 +87,17 @@ class TestMessageCycleManagerOptimization:
         """Create a mock application generate entity."""
         entity = Mock()
         entity.task_id = "test-task-id"
+        entity.app_config.tenant_id = "tenant-1"
+        entity.app_config.app_id = "app-id"
         return entity
 
     @pytest.fixture
-    def message_cycle_manager(self, mock_application_generate_entity):
+    def message_cycle_manager(self, app_records, mock_application_generate_entity):
         """Create a message cycle manager instance."""
         task_state = Mock()
-        return MessageCycleManager(application_generate_entity=mock_application_generate_entity, task_state=task_state)
+        return MessageCycleManager(
+            records=app_records, application_generate_entity=mock_application_generate_entity, task_state=task_state
+        )
 
     def test_get_message_event_type_with_assistant_file(self, message_cycle_manager, cycle_db: Session):
         """Test get_message_event_type returns MESSAGE_FILE when message has assistant-generated files.
@@ -105,7 +105,11 @@ class TestMessageCycleManagerOptimization:
         This ensures that AI-generated images (belongs_to='assistant') trigger the MESSAGE_FILE event,
         allowing the frontend to properly display generated image files with url field.
         """
-        cycle_db.add(_message_file())
+        cycle_db.add(
+            _message_file(
+                cycle_db,
+            )
+        )
         cycle_db.commit()
 
         with current_app.app_context():
@@ -122,7 +126,7 @@ class TestMessageCycleManagerOptimization:
         resulting in broken images in the chat UI. The query filters for belongs_to='assistant',
         so when only user files exist, the database query returns None, resulting in MESSAGE event type.
         """
-        cycle_db.add(_message_file(belongs_to=MessageFileBelongsTo.USER))
+        cycle_db.add(_message_file(cycle_db, belongs_to=MessageFileBelongsTo.USER))
         cycle_db.commit()
 
         with current_app.app_context():
@@ -161,7 +165,11 @@ class TestMessageCycleManagerOptimization:
 
     def test_message_to_stream_response_with_precomputed_event_type(self, message_cycle_manager, cycle_db: Session):
         """MessageCycleManager.message_to_stream_response expects a valid event_type; callers should precompute it."""
-        cycle_db.add(_message_file())
+        cycle_db.add(
+            _message_file(
+                cycle_db,
+            )
+        )
         cycle_db.commit()
 
         with current_app.app_context():
@@ -251,7 +259,7 @@ class TestMessageCycleManagerOptimization:
         class DummyCompletion:
             pass
 
-        with patch("core.app.task_pipeline.message_cycle_manager.CompletionAppGenerateEntity", DummyCompletion):
+        with patch("services.app.generation.adapters.message_cycle.CompletionAppGenerateEntity", DummyCompletion):
             message_cycle_manager._application_generate_entity = DummyCompletion()
             result = message_cycle_manager.generate_conversation_name(conversation_id="c1", query="hi")
 
@@ -277,10 +285,10 @@ class TestMessageCycleManagerOptimization:
 
         with (
             patch(
-                "core.app.task_pipeline.message_cycle_manager.current_app",
+                "services.app.generation.adapters.message_cycle.current_app",
                 new=SimpleNamespace(_get_current_object=lambda: flask_app),
             ),
-            patch("core.app.task_pipeline.message_cycle_manager.Timer", DummyTimer),
+            patch("services.app.generation.adapters.message_cycle.Timer", DummyTimer),
         ):
             thread = message_cycle_manager.generate_conversation_name(
                 conversation_id="conv-1", query="hello", message_id="message-1"
@@ -302,7 +310,7 @@ class TestMessageCycleManagerOptimization:
         message_cycle_manager._application_generate_entity.is_new_conversation = True
         message_cycle_manager._application_generate_entity.extras = {"auto_generate_conversation_name": False}
 
-        with patch("core.app.task_pipeline.message_cycle_manager.Timer") as mock_timer:
+        with patch("services.app.generation.adapters.message_cycle.Timer") as mock_timer:
             result = message_cycle_manager.generate_conversation_name(conversation_id="conv-2", query="hello")
 
         assert result is None
@@ -341,8 +349,8 @@ class TestMessageCycleManagerOptimization:
         cycle_db.commit()
 
         with (
-            patch("core.app.task_pipeline.message_cycle_manager.redis_client") as mock_redis,
-            patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as mock_llm_generator,
+            patch("services.app.generation.adapters.message_cycle.redis_client") as mock_redis,
+            patch("services.app.generation.adapters.message_cycle.LLMGenerator") as mock_llm_generator,
         ):
             mock_redis.get.return_value = b"cached-title"
 
@@ -365,8 +373,8 @@ class TestMessageCycleManagerOptimization:
         cycle_db.commit()
 
         with (
-            patch("core.app.task_pipeline.message_cycle_manager.redis_client") as mock_redis,
-            patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as mock_llm_generator,
+            patch("services.app.generation.adapters.message_cycle.redis_client") as mock_redis,
+            patch("services.app.generation.adapters.message_cycle.LLMGenerator") as mock_llm_generator,
         ):
             mock_redis.get.return_value = None
             mock_llm_generator.generate_conversation_name.return_value = "generated-title"
@@ -401,12 +409,12 @@ class TestMessageCycleManagerOptimization:
         long_query = "q" * 60
 
         with (
-            patch("core.app.task_pipeline.message_cycle_manager.redis_client") as mock_redis,
-            patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as mock_llm_generator,
+            patch("services.app.generation.adapters.message_cycle.redis_client") as mock_redis,
+            patch("services.app.generation.adapters.message_cycle.LLMGenerator") as mock_llm_generator,
         ):
             mock_redis.get.return_value = None
             mock_llm_generator.generate_conversation_name.side_effect = RuntimeError("generation failed")
-            with caplog.at_level(logging.ERROR, logger="core.app.task_pipeline.message_cycle_manager"):
+            with caplog.at_level(logging.ERROR, logger="services.app.generation.adapters.message_cycle"):
                 message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", long_query)
 
         assert cycle_db.in_transaction() is False
@@ -429,6 +437,7 @@ class TestMessageCycleManagerOptimization:
             account_id="acct-1",
         )
         annotation.id = "ann-1"
+        sqlite_session.add(_app())
         sqlite_session.add(annotation)
         if author_name is not None:
             account = Account(name=author_name, email="author@example.com")
@@ -444,7 +453,7 @@ class TestMessageCycleManagerOptimization:
         event.listen(sqlite_engine, "before_cursor_execute", capture_sql)
         try:
             result = message_cycle_manager.handle_annotation_reply(
-                QueueAnnotationReplyEvent(message_annotation_id="ann-1"), sqlite_session
+                QueueAnnotationReplyEvent(message_annotation_id="ann-1")
             )
         finally:
             event.remove(sqlite_engine, "before_cursor_execute", capture_sql)
@@ -463,7 +472,7 @@ class TestMessageCycleManagerOptimization:
         """Return None and keep metadata unchanged when annotation is not found."""
         message_cycle_manager._task_state = WorkflowTaskState()
         result = message_cycle_manager.handle_annotation_reply(
-            QueueAnnotationReplyEvent(message_annotation_id="missing"), sqlite_session
+            QueueAnnotationReplyEvent(message_annotation_id="missing")
         )
 
         assert result is None
@@ -502,6 +511,7 @@ class TestMessageCycleManagerOptimization:
         message_cycle_manager._application_generate_entity.task_id = "task-1"
         cycle_db.add(
             _message_file(
+                cycle_db,
                 file_id="file-1",
                 message_id="msg-1",
                 belongs_to=None,
@@ -510,7 +520,7 @@ class TestMessageCycleManagerOptimization:
         )
         cycle_db.commit()
 
-        with patch("core.app.task_pipeline.message_cycle_manager.sign_tool_file") as mock_sign:
+        with patch("services.app.generation.adapters.message_cycle.sign_tool_file") as mock_sign:
             mock_sign.return_value = "signed-url"
 
             response = message_cycle_manager.message_file_to_stream_response(SimpleNamespace(message_file_id="file-1"))
@@ -549,6 +559,7 @@ class TestMessageCycleManagerOptimization:
         message_cycle_manager._application_generate_entity.task_id = "task-http"
         cycle_db.add(
             _message_file(
+                cycle_db,
                 file_id="file-http",
                 message_id="msg-http",
                 belongs_to=MessageFileBelongsTo.ASSISTANT,
@@ -570,6 +581,7 @@ class TestMessageCycleManagerOptimization:
         message_cycle_manager._application_generate_entity.task_id = "task-bin"
         cycle_db.add(
             _message_file(
+                cycle_db,
                 file_id="file-bin",
                 message_id="msg-bin",
                 belongs_to=MessageFileBelongsTo.ASSISTANT,
@@ -579,7 +591,7 @@ class TestMessageCycleManagerOptimization:
         )
         cycle_db.commit()
 
-        with patch("core.app.task_pipeline.message_cycle_manager.sign_tool_file") as mock_sign:
+        with patch("services.app.generation.adapters.message_cycle.sign_tool_file") as mock_sign:
             mock_sign.return_value = "signed-bin-url"
 
             response = message_cycle_manager.message_file_to_stream_response(
@@ -606,3 +618,59 @@ class TestMessageCycleManagerOptimization:
 
         assert response.answer == "replaced"
         assert response.reason == "moderation"
+
+
+def test_conversation_name_model_call_holds_no_database_connection(
+    app,
+    app_records,
+    sqlite_session,
+    sqlite_engine,
+    monkeypatch,
+):
+    from core.app.app_config.entities import WorkflowUIBasedAppConfig
+    from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
+    from models.model import AppMode
+    from services.app.generation.adapters import message_cycle
+
+    sqlite_session.add_all([_app(), _conversation()])
+    sqlite_session.commit()
+    entity = AdvancedChatAppGenerateEntity(
+        task_id="task",
+        app_config=WorkflowUIBasedAppConfig(
+            tenant_id="tenant-1",
+            app_id="app-id",
+            app_mode=AppMode.ADVANCED_CHAT,
+            workflow_id="workflow",
+        ),
+        inputs={},
+        query="Hello",
+        files=[],
+        user_id="user",
+        stream=False,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+    manager = MessageCycleManager(
+        records=app_records, application_generate_entity=entity, task_state=WorkflowTaskState()
+    )
+    checked_out = set()
+
+    def checkout(_dbapi, record, _proxy):
+        checked_out.add(id(record))
+
+    def checkin(_dbapi, record):
+        checked_out.discard(id(record))
+
+    def generate_name(*_args, **_kwargs):
+        assert checked_out == set()
+        return "Generated name"
+
+    monkeypatch.setattr(message_cycle.LLMGenerator, "generate_conversation_name", generate_name)
+    event.listen(sqlite_engine, "checkout", checkout)
+    event.listen(sqlite_engine, "checkin", checkin)
+    try:
+        manager._generate_conversation_name_worker(app, "conv-1", "Hello")
+        assert checked_out == set()
+    finally:
+        event.remove(sqlite_engine, "checkout", checkout)
+        event.remove(sqlite_engine, "checkin", checkin)
+    assert sqlite_session.get(Conversation, "conv-1").name == "Generated name"

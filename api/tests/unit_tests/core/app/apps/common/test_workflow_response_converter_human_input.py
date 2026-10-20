@@ -1,7 +1,6 @@
 from datetime import UTC, datetime
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent, QueueHumanInputFormTimeoutEvent
 from core.workflow.system_variables import build_system_variables
@@ -9,9 +8,10 @@ from graphon.entities import WorkflowStartReason
 from graphon.variables.segments import StringSegment
 from models.account import Account
 from models.model import AppMode
+from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 
 
-def _build_converter() -> WorkflowResponseConverter:
+def _build_converter(*, workflow_contexts, tool_providers) -> WorkflowResponseConverter:
     system_variables = build_system_variables(
         files=[],
         user_id="user-1",
@@ -35,14 +35,18 @@ def _build_converter() -> WorkflowResponseConverter:
     account = Account(name="tester", email="tester@example.com")
     account.id = "acc-1"
     return WorkflowResponseConverter(
+        contexts=workflow_contexts,
         application_generate_entity=app_entity,
         user=account,
         system_variables=system_variables,
+        tool_providers=tool_providers,
     )
 
 
-def test_human_input_form_filled_stream_response_contains_rendered_content() -> None:
-    converter = _build_converter()
+def test_human_input_form_filled_stream_response_contains_rendered_content(
+    *, workflow_contexts, tool_providers
+) -> None:
+    converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     converter.workflow_start_to_stream_response(
         task_id="task-1",
         workflow_run_id="run-1",
@@ -70,8 +74,10 @@ def test_human_input_form_filled_stream_response_contains_rendered_content() -> 
     assert resp.data.action_id == "Approve"
 
 
-def test_human_input_form_filled_stream_response_serializes_submitted_data() -> None:
-    converter = _build_converter()
+def test_human_input_form_filled_stream_response_serializes_submitted_data(
+    *, workflow_contexts, tool_providers
+) -> None:
+    converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     converter.workflow_start_to_stream_response(
         task_id="task-1",
         workflow_run_id="run-1",
@@ -101,8 +107,10 @@ def test_human_input_form_filled_stream_response_serializes_submitted_data() -> 
     }
 
 
-def test_human_input_form_timeout_stream_response_contains_timeout_metadata() -> None:
-    converter = _build_converter()
+def test_human_input_form_timeout_stream_response_contains_timeout_metadata(
+    *, workflow_contexts, tool_providers
+) -> None:
+    converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     converter.workflow_start_to_stream_response(
         task_id="task-1",
         workflow_run_id="run-1",

@@ -3,7 +3,6 @@ from pytest_mock import MockerFixture
 
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     QueueErrorEvent,
@@ -15,6 +14,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from graphon.model_runtime.entities.llm_entities import LLMResult
+from services.workflow.execution.adapters.pipeline.pipeline_queue_manager import PipelineQueueManager
 
 
 def test_publish_sets_stop_listen_and_raises_on_stopped(mocker: MockerFixture):

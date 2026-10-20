@@ -1,21 +1,21 @@
 import json
-from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import event
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
-import core.app.apps.advanced_chat.app_runner as module
+import services.workflow.execution.adapters.chatflow.app_runner as module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent
 from core.moderation.base import ModerationError
-from models.model import App, AppMode, Conversation, IconType, Message, MessageAnnotation
+from models.annotation_reply import AnnotationReply
+from models.model import App, AppMode, Conversation, IconType, Message
 from models.workflow import Workflow, WorkflowType
+from repositories.workflow.definition_repository import workflow_snapshot
+from services.workflow.execution.adapters.chatflow.app_runner import AdvancedChatAppRunner
+from services.workflow.execution.ports import WorkflowRuntime
 
 MINIMAL_GRAPH = {
     "nodes": [
@@ -32,7 +32,7 @@ MINIMAL_GRAPH = {
 
 
 @pytest.fixture
-def build_runner(sqlite_session: Session):
+def build_runner(sqlite_session: Session, *, workflow_runtime: WorkflowRuntime):
     """Construct a minimal AdvancedChatAppRunner with heavy dependencies mocked."""
     app_id = str(uuid4())
     workflow_id = str(uuid4())
@@ -41,7 +41,9 @@ def build_runner(sqlite_session: Session):
     # Mocks for constructor args
     mock_queue_manager = MagicMock()
 
-    conversation = Conversation(id=str(uuid4()), app_id=app_id)
+    conversation = Conversation(
+        id=str(uuid4()), app_id=app_id, mode=AppMode.ADVANCED_CHAT, name="Test", inputs={}, from_source="api"
+    )
     message = Message(id=str(uuid4()), app_id=app_id, conversation_id=conversation.id)
     workflow = Workflow(
         id=workflow_id,
@@ -69,7 +71,7 @@ def build_runner(sqlite_session: Session):
         enable_site=False,
         enable_api=False,
     )
-    sqlite_session.add(app)
+    sqlite_session.add_all([app, conversation])
     sqlite_session.commit()
 
     gen = AdvancedChatAppGenerateEntity(
@@ -91,9 +93,10 @@ def build_runner(sqlite_session: Session):
         message=message,
         dialogue_count=1,
         variable_loader=MagicMock(),
-        workflow=workflow,
+        workflow=workflow_snapshot(workflow),
         system_user_id=str(uuid4()),
         app=app,
+        runtime=workflow_runtime,
     )
 
     return runner
@@ -102,7 +105,7 @@ def build_runner(sqlite_session: Session):
 def _patch_common_run_deps(runner: AdvancedChatAppRunner):
     """Context manager that patches common heavy deps used by run()."""
     return patch.multiple(
-        "core.app.apps.advanced_chat.app_runner",
+        "services.workflow.execution.adapters.chatflow.app_runner",
         RedisChannel=MagicMock(),
         redis_client=MagicMock(),
         WorkflowEntry=MagicMock(**{"return_value.run.return_value": iter([])}),
@@ -151,7 +154,7 @@ def test_run_applies_overridden_inputs_and_query_from_moderation(build_runner):
             return_value=(True, overridden_inputs, overridden_query),
         ) as mock_moderate,
         patch.object(runner, "handle_annotation_reply", return_value=False) as mock_anno,
-        patch.object(runner, "_init_graph", return_value=MagicMock()) as mock_init_graph,
+        patch.object(runner._graphs, "build", return_value=MagicMock()) as mock_init_graph,
     ):
         runner.prepare()
 
@@ -182,7 +185,7 @@ def test_run_returns_early_when_direct_output_via_handle_input_moderation(build_
             "handle_input_moderation",
             return_value=(True, runner.application_generate_entity.inputs, runner.application_generate_entity.query),
         ) as mock_handle,
-        patch.object(runner, "_init_graph") as mock_init_graph,
+        patch.object(runner._graphs, "build") as mock_init_graph,
         patch.object(runner, "handle_annotation_reply") as mock_anno,
     ):
         runner.prepare()
@@ -193,63 +196,45 @@ def test_run_returns_early_when_direct_output_via_handle_input_moderation(build_
         mock_init_graph.assert_not_called()
 
 
-def test_run_publishes_annotation_after_commit(build_runner, sqlite_engine: Engine):
+def test_prepare_publishes_annotation_after_repository_returns(build_runner):
     runner = build_runner
     events: list[str] = []
 
-    def record_commit(session: Session) -> None:
-        if session.get_bind() is sqlite_engine:
-            events.append("commit")
-
-    event.listen(Session, "after_commit", record_commit)
-    annotation_reply = MessageAnnotation(
-        app_id=runner._app.id,
-        question="question",
-        content="annotated answer",
-        account_id=str(uuid4()),
-    )
+    def query_annotation(**_kwargs):
+        events.append("commit")
+        return AnnotationReply(id="annotation-id", content="annotated answer")
 
     def publish(event):
         if isinstance(event, QueueAnnotationReplyEvent):
             events.append("publish")
 
     with (
-        _patch_common_run_deps(runner),
-        patch.object(
-            runner,
-            "handle_input_moderation",
-            return_value=(False, runner.application_generate_entity.inputs, runner.application_generate_entity.query),
-        ),
-        patch.object(runner, "handle_annotation_reply", return_value=annotation_reply),
-        patch.object(runner, "_publish_event", side_effect=publish),
+        patch.object(runner, "moderation_for_inputs", return_value=(False, {}, "raw-query")),
+        patch.object(runner._runtime.annotation_replies, "query", side_effect=query_annotation),
+        patch.object(runner._events, "_publish_event", side_effect=publish),
         patch.object(runner, "_complete_with_stream_output"),
     ):
-        runner.prepare()
-    event.remove(Session, "after_commit", record_commit)
+        assert runner.prepare() is None
 
     assert events == ["commit", "publish"]
 
 
-def test_run_closes_scoped_session_before_workflow_run(build_runner, sqlite_session_factory: sessionmaker[Session]):
+def test_prepare_completes_repository_calls_before_workflow_run(build_runner):
     runner = build_runner
-    events = []
-
-    @contextmanager
-    def observed_session():
-        with sqlite_session_factory() as session:
-            yield session
-        events.append("close")
-
+    events: list[str] = []
     workflow_entry = MagicMock()
 
-    def run_workflow(**kwargs):
+    def initialize_conversation_variables():
+        events.append("close")
+        return []
+
+    def run_workflow(**_kwargs):
         events.append("run")
         return iter([])
 
     workflow_entry.run.side_effect = run_workflow
 
     with (
-        patch.object(module, "create_session", observed_session),
         patch.object(module, "RedisChannel"),
         patch.object(module, "redis_client"),
         patch.object(module, "WorkflowEntry", return_value=workflow_entry),
@@ -258,9 +243,9 @@ def test_run_closes_scoped_session_before_workflow_run(build_runner, sqlite_sess
             "handle_input_moderation",
             return_value=(False, runner.application_generate_entity.inputs, runner.application_generate_entity.query),
         ),
-        patch.object(runner, "handle_annotation_reply", return_value=False),
-        patch.object(runner, "_initialize_conversation_variables", return_value=[]),
-        patch.object(runner, "_init_graph", return_value=MagicMock()),
+        patch.object(runner, "handle_annotation_reply", return_value=None),
+        patch.object(runner, "_initialize_conversation_variables", side_effect=initialize_conversation_variables),
+        patch.object(runner._graphs, "build", return_value=MagicMock()),
     ):
         prepared = runner.prepare()
         assert prepared is not None

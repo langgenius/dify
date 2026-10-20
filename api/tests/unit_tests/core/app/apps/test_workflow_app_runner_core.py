@@ -5,16 +5,17 @@ from copy import deepcopy
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import override
+from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
 
 from core.app.apps.execution_coordinator import AppExecutionState
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
-from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
+    QueueHumanInputFormFilledEvent,
     QueueIterationCompletedEvent,
     QueueIterationStartEvent,
     QueueLoopCompletedEvent,
@@ -34,7 +35,6 @@ from core.app.entities.queue_entities import (
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import default_system_variables
-from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
 from graphon.engine.layer import Layer
 from graphon.engine_events import (
     GraphRunAbortedEvent,
@@ -43,6 +43,7 @@ from graphon.engine_events import (
     GraphRunSucceededEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
+    NodeRunHumanInputFormFilledEvent,
     NodeRunIterationStartedEvent,
     NodeRunIterationSucceededEvent,
     NodeRunLoopFailedEvent,
@@ -59,8 +60,12 @@ from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from graphon.graph import Graph
 from graphon.node_events import NodeRunResult
 from graphon.runtime import RuntimeState, VariablePool
+from graphon.variables.factory import build_segment
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow
+from services.workflow.execution.adapters.events import WorkflowEventPublisher, enqueue_human_input_notifications
+from services.workflow.execution.adapters.graph import WorkflowGraphBuilder
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
 from services.workflow_run_index import WorkflowRunIndex
 from tests.unit_tests.model_factories import make_workflow
 
@@ -74,9 +79,9 @@ def _workflow(graph: dict[str, object] | None = None) -> Workflow:
     )
 
 
-def _workflow_entry(runner: WorkflowBasedAppRunner, state: RuntimeState | None = None) -> WorkflowEntry:
+def _workflow_entry(_runner: object | None = None, state: RuntimeState | None = None) -> WorkflowEntry:
     state = state or RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0)
-    graph = runner._init_graph(
+    graph = WorkflowGraphBuilder(app_id="app").build(
         graph_config={
             "nodes": [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}],
             "edges": [],
@@ -86,7 +91,13 @@ def _workflow_entry(runner: WorkflowBasedAppRunner, state: RuntimeState | None =
         invoke_from=InvokeFrom.DEBUGGER,
         call_depth=0,
     )
-    return WorkflowEntry(graph_config=graph.graph_config, graph=graph, call_depth=0, graph_runtime_state=state)
+    return WorkflowEntry(
+        graph_config=graph.graph_config,
+        graph=graph,
+        call_depth=0,
+        graph_runtime_state=state,
+        human_form_reader=MagicMock(),
+    )
 
 
 def _nested_container_graph(ownership: str) -> dict:
@@ -155,7 +166,7 @@ def _nested_container_graph(ownership: str) -> dict:
     }
 
 
-class TestWorkflowBasedAppRunner:
+class TestWorkflowExecutionAdapters:
     @pytest.mark.parametrize(
         ("event_class", "node_type"),
         [
@@ -178,8 +189,8 @@ class TestWorkflowBasedAppRunner:
         queue = WorkflowAppQueueManager(
             task_id="metadata-contract", user_id="account", invoke_from=InvokeFrom.DEBUGGER, app_mode="workflow"
         )
-        runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
-        entry = _workflow_entry(runner)
+        publisher = WorkflowEventPublisher(queue_manager=queue, notify_pause=enqueue_human_input_notifications)
+        entry = _workflow_entry()
         event = event_class(
             id="container-execution",
             node_id="container",
@@ -197,7 +208,7 @@ class TestWorkflowBasedAppRunner:
         )
         original_event = event.model_dump()
 
-        runner.handle_event(entry, event)
+        publisher.publish(entry, event)
         queue.stop_listen(execution_state=AppExecutionState.TERMINAL)
         messages = list(queue.listen())
 
@@ -216,14 +227,14 @@ class TestWorkflowBasedAppRunner:
         assert event.model_dump() == original_event
 
     def test_resolve_user_from(self):
-        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        runner = WorkflowGraphBuilder(app_id="app")
 
-        assert runner._resolve_user_from(InvokeFrom.EXPLORE) == UserFrom.ACCOUNT
-        assert runner._resolve_user_from(InvokeFrom.DEBUGGER) == UserFrom.ACCOUNT
-        assert runner._resolve_user_from(InvokeFrom.WEB_APP) == UserFrom.END_USER
+        assert runner.resolve_user_from(InvokeFrom.EXPLORE) == UserFrom.ACCOUNT
+        assert runner.resolve_user_from(InvokeFrom.DEBUGGER) == UserFrom.ACCOUNT
+        assert runner.resolve_user_from(InvokeFrom.WEB_APP) == UserFrom.END_USER
 
     def test_init_graph_validates_graph_structure(self):
-        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        runner = WorkflowGraphBuilder(app_id="app")
 
         runtime_state = RuntimeState(
             workflow_id="test-workflow",
@@ -232,7 +243,7 @@ class TestWorkflowBasedAppRunner:
         )
 
         with pytest.raises(ValidationError, match="nodes"):
-            runner._init_graph(
+            runner.build(
                 graph_config={},
                 graph_runtime_state=runtime_state,
                 user_from=UserFrom.ACCOUNT,
@@ -241,7 +252,7 @@ class TestWorkflowBasedAppRunner:
             )
 
         with pytest.raises(ValidationError, match="nodes"):
-            runner._init_graph(
+            runner.build(
                 graph_config={"nodes": {}, "edges": []},
                 graph_runtime_state=runtime_state,
                 user_from=UserFrom.ACCOUNT,
@@ -250,7 +261,7 @@ class TestWorkflowBasedAppRunner:
             )
 
         with pytest.raises(ValidationError, match="edges"):
-            runner._init_graph(
+            runner.build(
                 graph_config={"nodes": [], "edges": {}},
                 graph_runtime_state=runtime_state,
                 user_from=UserFrom.ACCOUNT,
@@ -259,7 +270,7 @@ class TestWorkflowBasedAppRunner:
             )
 
     def test_init_graph_includes_trace_session_id_in_run_context(self, monkeypatch: pytest.MonkeyPatch):
-        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        runner = WorkflowGraphBuilder(app_id="app")
         runtime_state = RuntimeState(
             workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
@@ -275,12 +286,14 @@ class TestWorkflowBasedAppRunner:
             return SimpleNamespace()
 
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.DifyNodeFactory.from_graph_init_context",
+            "services.workflow.execution.adapters.graph.DifyNodeFactory.from_graph_init_context",
             fake_from_graph_init_context,
         )
-        monkeypatch.setattr("core.app.apps.workflow_app_runner.Graph.init", lambda **_kwargs: SimpleNamespace())
+        monkeypatch.setattr(
+            "services.workflow.execution.adapters.graph.Graph.init", lambda **_kwargs: SimpleNamespace()
+        )
 
-        runner._init_graph(
+        runner.build(
             graph_config={"nodes": [], "edges": []},
             graph_runtime_state=runtime_state,
             user_from=UserFrom.ACCOUNT,
@@ -296,7 +309,7 @@ class TestWorkflowBasedAppRunner:
 
     @pytest.mark.parametrize("ownership", ["canonical", "parent", "legacy"])
     def test_init_graph_preserves_container_execution_scopes(self, ownership: str) -> None:
-        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        runner = WorkflowGraphBuilder(app_id="app")
         runtime_state = RuntimeState(
             workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
@@ -304,7 +317,7 @@ class TestWorkflowBasedAppRunner:
         )
         graph_config = _nested_container_graph(ownership)
         original_config = deepcopy(graph_config)
-        graph = runner._init_graph(
+        graph = runner.build(
             graph_config=graph_config,
             graph_runtime_state=runtime_state,
             user_from=UserFrom.ACCOUNT,
@@ -338,17 +351,17 @@ class TestWorkflowBasedAppRunner:
         assert graph_config == original_config
 
     def test_prepare_single_node_execution_requires_run(self):
-        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        runner = WorkflowGraphBuilder(app_id="app")
 
         workflow = _workflow()
 
         with pytest.raises(ValueError, match="Neither single_iteration_run nor single_loop_run"):
-            runner._prepare_single_node_execution(workflow, None, None, user_id="00000000-0000-0000-0000-000000000001")
+            runner.build_single_node(workflow, None, None, user_id="00000000-0000-0000-0000-000000000001")
 
     @pytest.mark.parametrize("ownership", ["canonical", "parent", "legacy"])
     @pytest.mark.parametrize("node_id", ["outer", "inner", "deep"])
     def test_single_container_debugging_preserves_descendants(self, ownership: str, node_id: str):
-        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        runner = WorkflowGraphBuilder(app_id="app")
         graph_runtime_state = RuntimeState(
             workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
@@ -382,7 +395,7 @@ class TestWorkflowBasedAppRunner:
     def test_get_graph_and_variable_pool_for_single_node_run_does_not_mutate_inputs(
         self, monkeypatch: pytest.MonkeyPatch
     ):
-        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        runner = WorkflowGraphBuilder(app_id="app")
         graph_runtime_state = RuntimeState(
             workflow_id="workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
@@ -414,16 +427,16 @@ class TestWorkflowBasedAppRunner:
             def extract_variable_selector_to_variable_mapping(graph_config, config):
                 return {}
 
-        from core.app.apps import workflow_app_runner
+        from services.workflow.execution.adapters import graph as workflow_app_runner
 
-        monkeypatch.setattr("core.app.apps.workflow_app_runner.Graph.init", fake_graph_init)
+        monkeypatch.setattr("services.workflow.execution.adapters.graph.Graph.init", fake_graph_init)
         monkeypatch.setattr(workflow_app_runner, "resolve_workflow_node_class", lambda **_kwargs: _NodeCls)
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.load_into_variable_pool",
+            "services.workflow.execution.adapters.graph.load_into_variable_pool",
             lambda **kwargs: kwargs["user_inputs"].update({"from_loader": "local-only"}),
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool",
+            "services.workflow.execution.adapters.graph.WorkflowEntry.mapping_user_inputs_to_variable_pool",
             lambda **kwargs: kwargs["user_inputs"].update({"from_mapping": "local-only"}),
         )
 
@@ -447,7 +460,7 @@ class TestWorkflowBasedAppRunner:
     def test_get_graph_and_variable_pool_for_single_node_run_includes_trace_session_id(
         self, monkeypatch: pytest.MonkeyPatch
     ):
-        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        runner = WorkflowGraphBuilder(app_id="app")
         graph_runtime_state = RuntimeState(
             workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
@@ -471,17 +484,17 @@ class TestWorkflowBasedAppRunner:
             def extract_variable_selector_to_variable_mapping(graph_config, config):
                 return {}
 
-        from core.app.apps import workflow_app_runner
+        from services.workflow.execution.adapters import graph as workflow_app_runner
 
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.DifyNodeFactory.from_graph_init_context",
+            "services.workflow.execution.adapters.graph.DifyNodeFactory.from_graph_init_context",
             fake_from_graph_init_context,
         )
-        monkeypatch.setattr("core.app.apps.workflow_app_runner.Graph.init", lambda **kwargs: SimpleNamespace())
+        monkeypatch.setattr("services.workflow.execution.adapters.graph.Graph.init", lambda **kwargs: SimpleNamespace())
         monkeypatch.setattr(workflow_app_runner, "resolve_workflow_node_class", lambda **_kwargs: _NodeCls)
-        monkeypatch.setattr("core.app.apps.workflow_app_runner.load_into_variable_pool", lambda **kwargs: None)
+        monkeypatch.setattr("services.workflow.execution.adapters.graph.load_into_variable_pool", lambda **kwargs: None)
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool",
+            "services.workflow.execution.adapters.graph.WorkflowEntry.mapping_user_inputs_to_variable_pool",
             lambda **kwargs: None,
         )
 
@@ -514,11 +527,7 @@ class TestWorkflowBasedAppRunner:
                 else []
             )
         )
-        runner = WorkflowBasedAppRunner(
-            queue_manager=SimpleNamespace(),
-            variable_loader=variable_loader,
-            app_id="app",
-        )
+        runner = WorkflowGraphBuilder(variable_loader=variable_loader, app_id="app")
         graph_runtime_state = RuntimeState(
             workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
@@ -555,19 +564,19 @@ class TestWorkflowBasedAppRunner:
             return SimpleNamespace()
 
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.Graph.init",
+            "services.workflow.execution.adapters.graph.Graph.init",
             _graph_init,
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.resolve_workflow_node_class",
+            "services.workflow.execution.adapters.graph.resolve_workflow_node_class",
             lambda **_kwargs: _LoopNodeCls,
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.load_into_variable_pool",
+            "services.workflow.execution.adapters.graph.load_into_variable_pool",
             lambda **kwargs: None,
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool",
+            "services.workflow.execution.adapters.graph.WorkflowEntry.mapping_user_inputs_to_variable_pool",
             lambda **kwargs: None,
         )
 
@@ -589,7 +598,9 @@ class TestWorkflowBasedAppRunner:
             def publish(self, event, publish_from):
                 published.append((event, publish_from))
 
-        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
+        runner = WorkflowEventPublisher(
+            queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications
+        )
         graph_runtime_state = RuntimeState(
             workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
@@ -604,7 +615,7 @@ class TestWorkflowBasedAppRunner:
                 emails.append({"kwargs": kwargs, "queue": queue})
 
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.dispatch_human_input_email_task",
+            "services.workflow.execution.adapters.events.dispatch_human_input_email_task",
             _Dispatch(),
         )
         enriched_reason = HumanInputRequired(
@@ -620,9 +631,9 @@ class TestWorkflowBasedAppRunner:
             node_title="Node",
         )
 
-        runner.handle_event(workflow_entry, GraphRunStartedEvent())
-        runner.handle_event(workflow_entry, GraphRunSucceededEvent(outputs={"ok": True}))
-        runner.handle_event(
+        runner.publish(workflow_entry, GraphRunStartedEvent())
+        runner.publish(workflow_entry, GraphRunSucceededEvent(outputs={"ok": True}))
+        runner.publish(
             workflow_entry, GraphRunPausedEvent(reasons=[reason], outputs={}), pause_reasons=[enriched_reason]
         )
 
@@ -640,10 +651,12 @@ class TestWorkflowBasedAppRunner:
                 del publish_from
                 published.append(event)
 
-        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
+        runner = WorkflowEventPublisher(
+            queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications
+        )
         workflow_entry = _workflow_entry(runner)
 
-        runner.handle_event(workflow_entry, GraphRunAbortedEvent(reason="User requested stop", outputs={}))
+        runner.publish(workflow_entry, GraphRunAbortedEvent(reason="User requested stop", outputs={}))
 
         event = published[-1]
         assert isinstance(event, QueueStopEvent)
@@ -656,7 +669,9 @@ class TestWorkflowBasedAppRunner:
             def publish(self, event, publish_from):
                 published.append(event)
 
-        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
+        runner = WorkflowEventPublisher(
+            queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications
+        )
         graph_runtime_state = RuntimeState(
             workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
@@ -664,7 +679,7 @@ class TestWorkflowBasedAppRunner:
         )
         workflow_entry = _workflow_entry(runner, graph_runtime_state)
 
-        runner.handle_event(
+        runner.publish(
             workflow_entry,
             NodeRunStartedEvent(
                 id="exec",
@@ -674,7 +689,7 @@ class TestWorkflowBasedAppRunner:
                 start_at=datetime.now(UTC),
             ),
         )
-        runner.handle_event(
+        runner.publish(
             workflow_entry,
             NodeRunStreamChunkEvent(
                 id="exec",
@@ -685,7 +700,7 @@ class TestWorkflowBasedAppRunner:
                 is_final=False,
             ),
         )
-        runner.handle_event(
+        runner.publish(
             workflow_entry,
             NodeRunReasoningChunkEvent(
                 id="exec",
@@ -696,7 +711,7 @@ class TestWorkflowBasedAppRunner:
                 is_final=False,
             ),
         )
-        runner.handle_event(
+        runner.publish(
             workflow_entry,
             NodeRunAgentLogEvent(
                 id="exec",
@@ -712,7 +727,7 @@ class TestWorkflowBasedAppRunner:
                 metadata={},
             ),
         )
-        runner.handle_event(
+        runner.publish(
             workflow_entry,
             NodeRunIterationSucceededEvent(
                 id="exec",
@@ -726,7 +741,7 @@ class TestWorkflowBasedAppRunner:
                 steps=1,
             ),
         )
-        runner.handle_event(
+        runner.publish(
             workflow_entry,
             NodeRunLoopFailedEvent(
                 id="exec",
@@ -747,6 +762,37 @@ class TestWorkflowBasedAppRunner:
         assert any(isinstance(event, QueueAgentLogEvent) for event in published)
         assert any(isinstance(event, QueueIterationCompletedEvent) for event in published)
         assert any(isinstance(event, QueueLoopCompletedEvent) for event in published)
+
+    def test_handle_human_input_form_filled_event_preserves_submitted_data(self):
+        published: list[object] = []
+
+        class _QueueManager:
+            def publish(self, event, publish_from):
+                published.append(event)
+
+        publisher = WorkflowEventPublisher(
+            queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications
+        )
+        workflow_entry = _workflow_entry()
+        submitted_data = {"decision": build_segment("approve")}
+
+        publisher.publish(
+            workflow_entry,
+            NodeRunHumanInputFormFilledEvent(
+                id="exec",
+                node_id="node",
+                node_type=BuiltinNodeTypes.HUMAN_INPUT,
+                node_title="Human Input",
+                rendered_content="content",
+                action_id="approve",
+                action_text="Approve",
+                submitted_data=submitted_data,
+            ),
+        )
+
+        queue_event = published[-1]
+        assert isinstance(queue_event, QueueHumanInputFormFilledEvent)
+        assert queue_event.submitted_data == submitted_data
 
     @pytest.mark.parametrize("ownership", ["canonical", "parent", "legacy"])
     def test_nested_engine_events_retain_both_container_ancestors(self, ownership: str):
@@ -774,23 +820,33 @@ class TestWorkflowBasedAppRunner:
                     persisted_starts[event.node_id] = dict(node_repo.saved[-1].metadata)
 
         state.variable_pool.add(["start", "items"], ["item"])
-        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
-        graph = runner._init_graph(
+        builder = WorkflowGraphBuilder(app_id="app")
+        publisher = WorkflowEventPublisher(
+            queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications
+        )
+        graph = builder.build(
             graph_config=graph_config,
             graph_runtime_state=state,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
             call_depth=0,
         )
-        entry = WorkflowEntry(graph_config=graph.graph_config, graph=graph, call_depth=0, graph_runtime_state=state)
+        human_form_reader = MagicMock()
+        entry = WorkflowEntry(
+            graph_config=graph.graph_config,
+            graph=graph,
+            call_depth=0,
+            graph_runtime_state=state,
+            human_form_reader=human_form_reader,
+        )
         engine = entry.graph_engine
         index = WorkflowRunIndex(())
         layer.set_node_run_indices(index.indices)
         engine.add_layer(index)
         engine.add_layer(layer)
         engine.add_layer(_StartMetadataLayer())
-        for event in iter_dify_graph_engine_events(engine):
-            runner.handle_event(entry, event)
+        for event in iter_dify_graph_engine_events(engine, human_form_reader=human_form_reader):
+            publisher.publish(entry, event)
 
         expected = {
             "outer": (None, None),
@@ -821,10 +877,12 @@ class TestWorkflowBasedAppRunner:
             def publish(self, event, publish_from):
                 published.append(event)
 
-        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
+        runner = WorkflowEventPublisher(
+            queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications
+        )
         workflow_entry = _workflow_entry(runner)
 
-        runner.handle_event(
+        runner.publish(
             workflow_entry,
             NodeRunSucceededEvent(
                 id="exec",
@@ -853,10 +911,12 @@ class TestWorkflowBasedAppRunner:
             def publish(self, event, publish_from):
                 published.append(event)
 
-        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
+        runner = WorkflowEventPublisher(
+            queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications
+        )
         workflow_entry = _workflow_entry(runner)
 
-        runner.handle_event(
+        runner.publish(
             workflow_entry,
             NodeRunSucceededEvent(
                 id="exec",
@@ -932,7 +992,9 @@ class TestWorkflowBasedAppRunner:
             def publish(self, event, publish_from):
                 published.append(event)
 
-        runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
+        runner = WorkflowEventPublisher(
+            queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications
+        )
         graph_runtime_state = RuntimeState(
             workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
@@ -951,7 +1013,7 @@ class TestWorkflowBasedAppRunner:
             },
         )
 
-        runner.handle_event(workflow_entry, event_factory(result, started_at, finished_at))
+        runner.publish(workflow_entry, event_factory(result, started_at, finished_at))
 
         queue_event = published[-1]
         assert isinstance(queue_event, queue_event_cls)

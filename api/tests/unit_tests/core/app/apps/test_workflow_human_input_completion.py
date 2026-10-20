@@ -1,22 +1,25 @@
 import json
 from collections.abc import Generator, Mapping
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from time import perf_counter
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import MagicMock
 from urllib.parse import parse_qs, urlparse
 
 import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.base_app_queue_manager import PublishFrom
-from core.app.apps.common import workflow_response_converter
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
-from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+)
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueHumanInputFormFilledEvent,
@@ -25,14 +28,8 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.db.session_factory import session_factory
-from core.repositories.human_input_repository import HumanInputFormRepositoryImpl, HumanInputFormSubmissionRepository
-from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.node_runtime import DifyFileReferenceFactory
-from core.workflow.nodes.human_input.callback import DifyHITLCallback
-from core.workflow.workflow_entry import WorkflowEntry
 from enums.human_input import HumanInputFormKind, HumanInputFormStatus
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from extensions.storage.storage_type import StorageType
 from graphon.engine.ready_queue import StartTask
 from graphon.engine_events import EngineEvent, GraphRunFailedEvent
@@ -45,6 +42,7 @@ from graphon.nodes.human_input.entities import HumanInputNodeData as GraphonHuma
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.runtime.execution import ROOT_FRAME_ID
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models import Account, UploadFile
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.execution_extra_content import HumanInputContent
@@ -57,14 +55,23 @@ from models.human_input_entities import (
     ParagraphInputConfig,
     UserActionConfig,
 )
-from models.model import AppMode
+from models.model import AppMode, ConversationFromSource
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
+from repositories.workflow.definition_repository import workflow_snapshot
+from services.app.generation.ports import MessageIdentity
+from services.tools.provider_queries import ToolProviders
+from services.workflow.execution.adapters.human_input import DifyHITLCallback
+from services.workflow.execution.adapters.node_runtime import DifyFileReferenceFactory
+from services.workflow.execution.adapters.workflow.app_queue_manager import WorkflowAppQueueManager
+from services.workflow.execution.adapters.workflow.app_runner import WorkflowAppRunner
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
+from services.workflow.execution.contracts import PreparedWorkflowRun
+from services.workflow.execution.ports import ExecutionContexts
 from services.workflow_run_agg import WorkflowRunAgg
-from tests.unit_tests.core.app.apps.advanced_chat.test_generate_task_pipeline import (
-    _build_generate_entity,
-    _build_pipeline,
-)
+from tests.unit_tests.core.app.apps.advanced_chat.test_generate_task_pipeline import _build_pipeline
 from tests.unit_tests.core.app.apps.common.test_workflow_response_converter_human_input import _build_converter
+from tests.unit_tests.model_factories import make_app, make_conversation, make_message, make_workflow
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context
 
 
@@ -104,13 +111,67 @@ def _save_form(session: Session, *, status: HumanInputFormStatus) -> HumanInputF
     return form
 
 
+def _generate_entity() -> WorkflowAppGenerateEntity:
+    return WorkflowAppGenerateEntity(
+        task_id="task",
+        app_config=WorkflowUIBasedAppConfig(
+            tenant_id="tenant",
+            app_id="app",
+            app_mode=AppMode.WORKFLOW,
+            workflow_id="workflow",
+        ),
+        inputs={},
+        files=[],
+        user_id="user",
+        stream=True,
+        invoke_from=InvokeFrom.DEBUGGER,
+        workflow_execution_id="run-1",
+    )
+
+
+def _advanced_chat_generate_entity() -> AdvancedChatAppGenerateEntity:
+    return AdvancedChatAppGenerateEntity(
+        task_id="task-1",
+        app_config=WorkflowUIBasedAppConfig(
+            tenant_id="tenant",
+            app_id="app",
+            app_mode=AppMode.ADVANCED_CHAT,
+            workflow_id="workflow",
+        ),
+        inputs={},
+        query="query",
+        files=[],
+        user_id="user",
+        stream=True,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+
+def _build_runner(queue: WorkflowAppQueueManager, runtime: WorkflowExecutionDependencies) -> WorkflowAppRunner:
+    workflow = make_workflow(
+        workflow_id="workflow",
+        tenant_id="tenant",
+        app_id="app",
+        graph={"nodes": [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}], "edges": []},
+        created_by="user",
+    )
+    return WorkflowAppRunner(
+        runtime=runtime,
+        application_generate_entity=_generate_entity(),
+        queue_manager=queue,
+        variable_loader=DUMMY_VARIABLE_LOADER,
+        workflow=workflow_snapshot(workflow),
+        system_user_id="user",
+    )
+
+
 def _make_paused_workflow(
-    runner: WorkflowBasedAppRunner, forms: list[HumanInputForm], *, human_input_form: HumanInputForm | None = None
+    runner: WorkflowAppRunner, forms: list[HumanInputForm], *, human_input_form: HumanInputForm | None = None
 ) -> WorkflowEntry:
     state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=perf_counter())
     state.variable_pool.add(("sys", "workflow_run_id"), "run-1")
     state.variable_pool.add(("sys", "app_id"), "app")
-    graph = runner._init_graph(
+    graph = runner._graphs.build(
         graph_config={
             "nodes": [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}],
             "edges": [],
@@ -121,6 +182,7 @@ def _make_paused_workflow(
         user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
         call_depth=0,
+        workflow_id="workflow",
     )
     if human_input_form is not None:
         node_data = HumanInputNodeData(
@@ -130,8 +192,12 @@ def _make_paused_workflow(
             user_actions=[UserActionConfig(id="approve", title="Approve")],
         )
         callback = DifyHITLCallback(
-            form_repository=HumanInputFormRepositoryImpl(
-                tenant_id="tenant", app_id="app", workflow_execution_id="run-1"
+            form_repository=runner._runtime.human_forms(
+                tenant_id="tenant",
+                app_id="app",
+                workflow_execution_id="run-1",
+                invoke_source=InvokeFrom.DEBUGGER.value,
+                submission_actor_id="user",
             ),
             node_data=node_data,
             execution_id_getter=lambda: human_input_form.id,
@@ -164,38 +230,22 @@ def _make_paused_workflow(
         graph_config=graph.graph_config or {},
         call_depth=0,
         graph_runtime_state=state,
+        human_form_reader=runner.human_form_reader,
     )
 
 
-def _resume_events(runner: WorkflowBasedAppRunner, entry: WorkflowEntry) -> Generator[EngineEvent]:
+def _resume_events(runner: WorkflowAppRunner, entry: WorkflowEntry) -> Generator[EngineEvent]:
     """Resume through orchestration with actual repositories and the real Engine."""
-    entity = WorkflowAppGenerateEntity(
-        task_id="task",
-        app_config=WorkflowUIBasedAppConfig(
-            tenant_id="tenant",
-            app_id="app",
-            app_mode=AppMode.WORKFLOW,
-            workflow_id="workflow",
-        ),
-        inputs={},
-        files=[],
-        user_id="user",
-        stream=True,
-        invoke_from=InvokeFrom.DEBUGGER,
-        workflow_execution_id="run-1",
-    )
+    entity = runner.application_generate_entity
     user = Account(name="Tester", email="tester@example.com")
     user.id = "user"
-    factory = session_factory.get_session_maker()
-    runs = SQLAlchemyWorkflowExecutionRepository(
-        factory,
+    runs = runner._runtime.execution_writer(
         tenant_id="tenant",
         app_id="app",
         user=user,
         triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
     )
-    nodes = SQLAlchemyWorkflowNodeExecutionRepository(
-        factory,
+    nodes = runner._runtime.node_writer(
         tenant_id="tenant",
         app_id="app",
         user=user,
@@ -216,6 +266,7 @@ def _resume_events(runner: WorkflowBasedAppRunner, entry: WorkflowEntry) -> Gene
 def test_resume_publishes_only_the_completed_form_among_repeated_node_invocations(
     sqlite_session: Session,
     workflow_queue: tuple[WorkflowAppQueueManager, MagicMock],
+    workflow_runtime: WorkflowExecutionDependencies,
     status: HumanInputFormStatus,
     runs_human_input_node: bool,
 ) -> None:
@@ -224,7 +275,7 @@ def test_resume_publishes_only_the_completed_form_among_repeated_node_invocation
     expired = _save_form(sqlite_session, status=HumanInputFormStatus.EXPIRED)
     _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
     queue, publish_spy = workflow_queue
-    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+    runner = _build_runner(queue, workflow_runtime)
     entry = _make_paused_workflow(
         runner, [selected, waiting, selected, expired], human_input_form=selected if runs_human_input_node else None
     )
@@ -260,13 +311,16 @@ def test_resume_publishes_only_the_completed_form_among_repeated_node_invocation
 
 @pytest.mark.parametrize("owner_field", ["tenant_id", "app_id", "workflow_run_id"])
 def test_resume_rejects_form_outside_the_trusted_execution_owner(
-    sqlite_session: Session, workflow_queue: tuple[WorkflowAppQueueManager, MagicMock], owner_field: str
+    sqlite_session: Session,
+    workflow_queue: tuple[WorkflowAppQueueManager, MagicMock],
+    workflow_runtime: WorkflowExecutionDependencies,
+    owner_field: str,
 ) -> None:
     form = _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
     setattr(form, owner_field, "another-owner")
     sqlite_session.commit()
     queue, publish_spy = workflow_queue
-    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+    runner = _build_runner(queue, workflow_runtime)
     entry = _make_paused_workflow(runner, [form])
 
     events = list(_resume_events(runner, entry))
@@ -279,15 +333,11 @@ def test_resume_rejects_form_outside_the_trusted_execution_owner(
 def test_resume_refreshes_expired_file_and_file_list_urls_before_form_completion(
     sqlite_session: Session,
     workflow_queue: tuple[WorkflowAppQueueManager, MagicMock],
+    workflow_runtime: WorkflowExecutionDependencies,
+    workflow_contexts: ExecutionContexts,
+    tool_providers: ToolProviders,
     monkeypatch: pytest.MonkeyPatch,
-    mocker: MockerFixture,
 ) -> None:
-    mocker.patch.object(
-        type(workflow_response_converter.db),
-        "engine",
-        new_callable=PropertyMock,
-        return_value=sqlite_session.get_bind(),
-    )
     submitted_at = 1_700_000_000
     monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: submitted_at)
     factory = DifyFileReferenceFactory(build_test_run_context())
@@ -339,7 +389,7 @@ def test_resume_refreshes_expired_file_and_file_list_urls_before_form_completion
     )
     assert not any(url_is_valid(file) for file in saved_files)
     queue, publish_spy = workflow_queue
-    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+    runner = _build_runner(queue, workflow_runtime)
     entry = _make_paused_workflow(runner, [form])
     for event in _resume_events(runner, entry):
         runner.handle_event(entry, event)
@@ -348,7 +398,7 @@ def test_resume_refreshes_expired_file_and_file_list_urls_before_form_completion
         call.args[0] for call in publish_spy.call_args_list if isinstance(call.args[0], QueueHumanInputFormFilledEvent)
     ]
     assert len(completions) == 1
-    converter = _build_converter()
+    converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     converter.workflow_start_to_stream_response(
         task_id="task", workflow_run_id="run-1", workflow_id="workflow", reason=WorkflowStartReason.RESUMPTION
     )
@@ -366,13 +416,15 @@ def test_resume_refreshes_expired_file_and_file_list_urls_before_form_completion
 @pytest.mark.parametrize("late_status", [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.TIMEOUT])
 def test_form_completed_during_resume_is_published_once_before_the_terminal_event(
     sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
     workflow_queue: tuple[WorkflowAppQueueManager, MagicMock],
+    workflow_runtime: WorkflowExecutionDependencies,
     late_status: HumanInputFormStatus,
 ) -> None:
     first = _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
     second = _save_form(sqlite_session, status=HumanInputFormStatus.WAITING)
     queue, publish_spy = workflow_queue
-    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+    runner = _build_runner(queue, workflow_runtime)
     entry = _make_paused_workflow(runner, [first, second])
 
     def complete_second_form_during_execution(event: AppQueueEvent, publish_from: PublishFrom) -> None:
@@ -381,7 +433,7 @@ def test_form_completed_during_resume_is_published_once_before_the_terminal_even
         # while this real Engine attempt is already processing node events.
         if not isinstance(event, QueueNodeStartedEvent):
             return
-        repository = HumanInputFormSubmissionRepository()
+        repository = HumanInputFormSubmissionRepository(sessions=sqlite_session_factory)
         if late_status == HumanInputFormStatus.SUBMITTED:
             repository.mark_submitted(
                 form_id=second.id,
@@ -411,13 +463,15 @@ def test_form_completed_during_resume_is_published_once_before_the_terminal_even
 
 
 def test_waiting_form_expiring_during_resume_publishes_timeout_before_success(
-    sqlite_session: Session, workflow_queue: tuple[WorkflowAppQueueManager, MagicMock]
+    sqlite_session: Session,
+    workflow_queue: tuple[WorkflowAppQueueManager, MagicMock],
+    workflow_runtime: WorkflowExecutionDependencies,
 ) -> None:
     form = _save_form(sqlite_session, status=HumanInputFormStatus.WAITING)
     form.expiration_time = datetime.now(UTC) - timedelta(seconds=1)
     sqlite_session.commit()
     queue, publish_spy = workflow_queue
-    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+    runner = _build_runner(queue, workflow_runtime)
     entry = _make_paused_workflow(runner, [form], human_input_form=form)
 
     for event in _resume_events(runner, entry):
@@ -433,15 +487,53 @@ def test_waiting_form_expiring_during_resume_publishes_timeout_before_success(
     assert form.status == HumanInputFormStatus.TIMEOUT
 
 
-def test_chat_history_keeps_repeated_forms_by_form_id(sqlite_session: Session) -> None:
+def test_chat_history_keeps_repeated_forms_by_form_id(
+    sqlite_session: Session,
+    workflow_runtime: WorkflowExecutionDependencies,
+    workflow_contexts: ExecutionContexts,
+    tool_providers: ToolProviders,
+) -> None:
+    sqlite_session.add_all(
+        [
+            make_app(app_id="app", tenant_id="tenant", mode=AppMode.ADVANCED_CHAT),
+            make_conversation(
+                conversation_id="conversation-1",
+                app_id="app",
+                mode=AppMode.ADVANCED_CHAT,
+                inputs={},
+                from_source=ConversationFromSource.CONSOLE,
+            ),
+            make_message(
+                message_id="message-1",
+                app_id="app",
+                conversation_id="conversation-1",
+                inputs={},
+                query="hello",
+                answer="",
+                answer_tokens=0,
+                message={},
+                message_unit_price=Decimal(0),
+                answer_unit_price=Decimal(0),
+                currency="USD",
+                from_source=ConversationFromSource.CONSOLE,
+            ),
+        ]
+    )
+    sqlite_session.commit()
+    first = _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
+    second = _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
     pipeline = _build_pipeline()
     pipeline._workflow_tenant_id = "tenant"
-    pipeline._application_generate_entity = _build_generate_entity()
-    pipeline._workflow_response_converter = _build_converter()
+    pipeline._chat_records = workflow_runtime.chat_records
+    pipeline._message_identity = MessageIdentity("tenant", "app", "conversation-1", "message-1")
+    pipeline._application_generate_entity = _advanced_chat_generate_entity()
+    pipeline._workflow_response_converter = _build_converter(
+        workflow_contexts=workflow_contexts, tool_providers=tool_providers
+    )
     pipeline._workflow_response_converter.workflow_start_to_stream_response(
         task_id="task-1", workflow_run_id="run-1", workflow_id="workflow-1", reason=WorkflowStartReason.INITIAL
     )
-    for form_id in ("first-form", "second-form", "first-form"):
+    for form_id in (first.id, second.id, first.id):
         event = QueueHumanInputFormFilledEvent(
             form_id=form_id,
             node_id="same-human-node",
@@ -455,7 +547,7 @@ def test_chat_history_keeps_repeated_forms_by_form_id(sqlite_session: Session) -
 
     contents = sqlite_session.scalars(select(HumanInputContent)).all()
     assert {(content.form_id, content.message_id) for content in contents} == {
-        ("first-form", "message-1"),
-        ("second-form", "message-1"),
+        (first.id, "message-1"),
+        (second.id, "message-1"),
     }
     assert len(contents) == 2

@@ -3,11 +3,12 @@ from types import SimpleNamespace
 
 from pytest_mock import MockerFixture
 
-import core.app.apps.pipeline.pipeline_config_manager as module
-from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
+import services.workflow.execution.adapters.pipeline.pipeline_config_manager as module
 from models.dataset import Pipeline
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowType
+from repositories.workflow.definition_repository import workflow_snapshot
+from services.workflow.execution.adapters.pipeline.pipeline_config_manager import PipelineConfigManager
 
 
 def test_get_pipeline_config(mocker: MockerFixture):
@@ -34,7 +35,9 @@ def test_get_pipeline_config(mocker: MockerFixture):
     )
     mocker.patch.object(module, "PipelineConfig", side_effect=lambda **kwargs: SimpleNamespace(**kwargs))
 
-    result = PipelineConfigManager.get_pipeline_config(pipeline=pipeline, workflow=workflow, start_node_id="start")
+    result = PipelineConfigManager.get_pipeline_config(
+        pipeline=pipeline, workflow=workflow_snapshot(workflow), start_node_id="start"
+    )
 
     assert result.tenant_id == "tenant"
     assert result.app_id == "pipe1"
