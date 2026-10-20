@@ -5,7 +5,7 @@ export default {
     schema: [],
     messages: {
       fileWideDisable:
-        'File-wide disables are forbidden. Use a matching enable, or baseline existing errors with `vp run -w lint:oxlint <path> --suppress-all`. For intentional file exclusions, configure lint.config.ts with a reason.',
+        'File-wide disables are forbidden. Use a matching enable, or baseline existing errors with `vp run -w lint:oxlint <path> --suppress-all`. For intentional file exclusions, configure packages/tooling/lint.config.ts with a reason.',
     },
   },
   create(context) {
