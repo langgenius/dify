@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Suspense, useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { EditorResourceScope } from '../editor-resource/provider'
 import { CommentThread } from './thread'
 
@@ -20,7 +21,7 @@ vi.mock('../store', () => ({
 }))
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({
-    queryKey: ['profile'],
+    queryKey: consoleQueryKey('account.profile.get'),
     queryFn: async () => ({ profile: { id: 'author', name: 'Alice', avatar_url: null } }),
   }),
 }))

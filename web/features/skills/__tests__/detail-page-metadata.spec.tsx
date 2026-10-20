@@ -152,9 +152,8 @@ describe('SkillDetailPage metadata', () => {
   it('keeps selected tags visible and prevents reopening while the metadata request is pending', async () => {
     const user = userEvent.setup()
     let resolveMutation!: (detail: SkillDetailResponse) => void
-    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+
     mocks.skillDetailQueryOptions.mockImplementation(() => ({
-      queryKey: ['skill-detail'],
       queryFn: async () => mocks.skillDetail,
     }))
     mocks.skillMetadataMutationFn.mockImplementation(
@@ -207,9 +206,8 @@ describe('SkillDetailPage metadata', () => {
   it('restores persisted tags when saving the visible selection fails', async () => {
     const user = userEvent.setup()
     let rejectMutation!: (error: Error) => void
-    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+
     mocks.skillDetailQueryOptions.mockImplementation(() => ({
-      queryKey: ['skill-detail'],
       queryFn: async () => mocks.skillDetail,
     }))
     mocks.skillDetail = createSkillDetail({ tags: ['Search'] })
@@ -275,9 +273,8 @@ describe('SkillDetailPage metadata', () => {
   it('hides a removed tag only after the metadata request finishes', async () => {
     const user = userEvent.setup()
     let resolveMutation!: (detail: SkillDetailResponse) => void
-    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+
     mocks.skillDetailQueryOptions.mockImplementation(() => ({
-      queryKey: ['skill-detail'],
       queryFn: async () => mocks.skillDetail,
     }))
     mocks.skillDetail = createSkillDetail({
@@ -457,8 +454,7 @@ describe('SkillDetailPage metadata', () => {
     const detailPromise = new Promise<SkillDetailResponse>((resolve) => {
       resolveDetail = resolve
     })
-    mocks.skillDetailQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-detail', options],
+    mocks.skillDetailQueryOptions.mockImplementation(() => ({
       queryFn: () => detailPromise,
     }))
     const { onUrlUpdate, queryClient } = renderSkillDetailPage({
@@ -521,8 +517,7 @@ describe('SkillDetailPage metadata', () => {
     const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({ reference_count: 1 })
     preserveDraftFilesOnSave()
-    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references', options],
+    mocks.skillReferencesQueryOptions.mockImplementation(() => ({
       queryFn: async () => ({ data: [createAgentReference()] }),
     }))
     mocks.deleteSkillMutationFn.mockResolvedValue({})
@@ -568,8 +563,7 @@ describe('SkillDetailPage metadata', () => {
     let referenceRequestCount = 0
     let shouldHangReferenceRequest = false
     mocks.skillDetail = createSkillDetail({ reference_count: 0 })
-    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references-pending', options],
+    mocks.skillReferencesQueryOptions.mockImplementation(() => ({
       queryFn: () => {
         referenceRequestCount += 1
         if (!shouldHangReferenceRequest) return Promise.resolve({ data: [] })
@@ -611,8 +605,7 @@ describe('SkillDetailPage metadata', () => {
   })
 
   it('does not expose mutable More actions while viewing a published version', async () => {
-    mocks.skillVersionsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-versions', options],
+    mocks.skillVersionsQueryOptions.mockImplementation(() => ({
       queryFn: async () => ({ data: [createSkillVersion()] }),
     }))
     renderSkillDetailPage()

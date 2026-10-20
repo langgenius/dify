@@ -1,12 +1,24 @@
+import type { OperationKeyOptions, OperationType } from '@orpc/tanstack-query'
+import { generateOperationKey } from '@orpc/tanstack-query'
+
+// Keep the path prefix aligned with createConsoleQuery in service/console/query-policies.ts.
+export const consoleOperationKey = <TType extends OperationType, TInput = unknown>(
+  path: string,
+  options: OperationKeyOptions<TType, TInput> = {},
+) => generateOperationKey(['console', ...path.split('.')], options)
+
+// Seed helpers also run with partial console mocks, so they cannot rely on consoleQuery.
+export const consoleQueryKey = (path: string, input?: unknown) =>
+  consoleOperationKey(path, { type: 'query', input })
+
 /**
  * Stands in for one console operation inside a fully mocked `@/service/console`
- * module, producing the same key shape the real utilities use.
+ * module, producing keys with oRPC's own generator.
  */
 export const consoleOperationStub = (path: string) => {
-  const queryKey = (options?: { input?: unknown }) =>
-    [['console', ...path.split('.')], { type: 'query', input: options?.input }] as const
+  const queryKey = (options?: { input?: unknown }) => consoleQueryKey(path, options?.input)
   return {
-    key: () => [['console', ...path.split('.')]] as const,
+    key: () => consoleOperationKey(path),
     queryKey,
     queryOptions: (options: { input?: unknown } = {}) => ({
       ...options,
@@ -14,7 +26,7 @@ export const consoleOperationStub = (path: string) => {
     }),
     mutationOptions: (options: object = {}) => ({
       ...options,
-      mutationKey: [['console', ...path.split('.')], { type: 'mutation' }],
+      mutationKey: consoleOperationKey(path, { type: 'mutation' }),
     }),
   }
 }
