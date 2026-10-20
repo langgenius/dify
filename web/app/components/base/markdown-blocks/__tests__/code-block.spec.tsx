@@ -1,6 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as echarts from 'echarts'
 import { Theme } from '@/types/app'
 import { CodeBlock } from '../code-block'
 
@@ -15,6 +14,8 @@ type UseThemeReturn = {
 const mockUseTheme = vi.fn<() => UseThemeReturn>(() => ({ theme: Theme.light }))
 const mockEcharts = vi.hoisted(() => {
   const state = {
+    option: undefined as unknown,
+    theme: undefined as string | undefined,
     finishedHandler: undefined as undefined | ((event?: unknown) => void),
     echartsInstance: {
       resize: vi.fn<(opts?: { width?: string; height?: string }) => void>(),
@@ -92,12 +93,18 @@ vi.mock('echarts-for-react', async () => {
       {
         onChartReady,
         onEvents,
+        option,
+        theme,
       }: {
+        option: unknown
+        theme?: string
         onChartReady?: (instance: typeof mockEcharts.echartsInstance) => void
         onEvents?: { finished?: (event?: unknown) => void }
       },
       ref: React.ForwardedRef<{ getEchartsInstance: () => typeof mockEcharts.echartsInstance }>,
     ) => {
+      mockEcharts.option = option
+      mockEcharts.theme = theme
       React.useImperativeHandle(ref, () => ({
         getEchartsInstance: () => mockEcharts.echartsInstance,
       }))
@@ -121,10 +128,10 @@ vi.mock('echarts-for-react', async () => {
   }
 })
 
-vi.mock('@/app/components/base/mermaid', () => ({
+vi.mock('../mermaid-diagram', () => ({
   __esModule: true,
-  default: ({ PrimitiveCode }: { PrimitiveCode: string }) => (
-    <div data-testid="mock-mermaid">{PrimitiveCode}</div>
+  MermaidDiagram: ({ source }: { source: string }) => (
+    <div data-testid="mock-mermaid">{source}</div>
   ),
 }))
 
@@ -133,14 +140,6 @@ const findEchartsHost = async () => {
     expect(document.querySelector('.echarts-for-react'))!.toBeInTheDocument()
   })
   return document.querySelector('.echarts-for-react') as HTMLDivElement
-}
-
-const findEchartsInstance = async () => {
-  const host = await findEchartsHost()
-  await waitFor(() => {
-    expect(echarts.getInstanceByDom(host)).toBeTruthy()
-  })
-  return echarts.getInstanceByDom(host)!
 }
 
 describe('CodeBlock', () => {
@@ -232,23 +231,11 @@ describe('CodeBlock', () => {
       expect(screen.getByText('Ruby'))!.toBeInTheDocument()
     })
 
-    // it('should render mermaid controls when language is mermaid', async () => {
-    //   render(<CodeBlock className="language-mermaid">graph TB; A--&gt;B;</CodeBlock>)
-
-    //   expect(await screen.findByTestId('classic')).toBeInTheDocument()
-    //   expect(screen.getByText('Mermaid')).toBeInTheDocument()
-    // })
     it('should render mermaid block when language is mermaid', async () => {
       render(<CodeBlock className="language-mermaid">{'graph TD; A-->B;'}</CodeBlock>)
 
       expect(screen.getByText('Mermaid'))!.toBeInTheDocument()
       expect(await screen.findByTestId('mock-mermaid'))!.toHaveTextContent('graph TD; A-->B;')
-    })
-
-    it('should render abc section header when language is abc', () => {
-      render(<CodeBlock className="language-abc">X:1\nT:test</CodeBlock>)
-
-      expect(screen.getByText('ABC'))!.toBeInTheDocument()
     })
 
     it('should hide svg renderer when toggle is clicked for svg language', async () => {
@@ -307,22 +294,23 @@ describe('CodeBlock', () => {
       const option = { title: [{ text: 'Hello' }] }
       render(<CodeBlock className="language-echarts">{JSON.stringify(option)}</CodeBlock>)
 
-      expect(await findEchartsHost())!.toBeInTheDocument()
+      expect(await findEchartsHost()).toBeInTheDocument()
+      expect(mockEcharts.option).toEqual(option)
       expect(screen.queryByText(/Chart loading.../i)).not.toBeInTheDocument()
     })
 
     it('should use error option when echarts content is invalid but structurally complete', async () => {
       render(<CodeBlock className="language-echarts">{'{a:1}'}</CodeBlock>)
 
-      expect(await findEchartsHost())!.toBeInTheDocument()
-      expect(screen.queryByText(/Chart loading.../i)).not.toBeInTheDocument()
+      await findEchartsHost()
+      expect(mockEcharts.option).toEqual({ title: { text: 'ECharts error - Wrong option.' } })
     })
 
     it('should use error option when echarts content is invalid non-structured text', async () => {
       render(<CodeBlock className="language-echarts">{'not a json {'}</CodeBlock>)
 
-      expect(await findEchartsHost())!.toBeInTheDocument()
-      expect(screen.queryByText(/Chart loading.../i)).not.toBeInTheDocument()
+      await findEchartsHost()
+      expect(mockEcharts.option).toEqual({ title: { text: 'ECharts error - Wrong option.' } })
     })
 
     it('should keep loading when option is valid JSON but not an object', async () => {
@@ -343,49 +331,29 @@ describe('CodeBlock', () => {
       expect(await screen.findByText(/Chart loading.../i))!.toBeInTheDocument()
     })
 
-    it('should keep chart instance stable when window resize is triggered', async () => {
-      render(<CodeBlock className="language-echarts">{'{}'}</CodeBlock>)
-
+    it('debounces resize after the lazy chart becomes ready and cancels pending work on unmount', async () => {
+      const { unmount } = render(
+        <CodeBlock className="language-echarts">{'{"series":[]}'}</CodeBlock>,
+      )
       await findEchartsHost()
-
+      // Start deterministic time after the lazy import has completed.
+      vi.useFakeTimers()
+      mockEcharts.echartsInstance.resize.mockClear()
       act(() => {
         window.dispatchEvent(new Event('resize'))
+        window.dispatchEvent(new Event('resize'))
+        vi.advanceTimersByTime(199)
       })
-
-      expect(await findEchartsHost())!.toBeInTheDocument()
-    })
-
-    it('should keep rendering when echarts content updates repeatedly', async () => {
-      const { rerender } = render(<CodeBlock className="language-echarts">{'{"a":1}'}</CodeBlock>)
-      await findEchartsHost()
-
-      rerender(<CodeBlock className="language-echarts">{'{"a":2}'}</CodeBlock>)
-      rerender(<CodeBlock className="language-echarts">{'{"a":3}'}</CodeBlock>)
-      rerender(<CodeBlock className="language-echarts">{'{"a":4}'}</CodeBlock>)
-      rerender(<CodeBlock className="language-echarts">{'{"a":5}'}</CodeBlock>)
-
-      expect(await findEchartsHost())!.toBeInTheDocument()
-    })
-
-    it('should stop processing extra finished events when chart finished callback fires repeatedly', async () => {
-      render(<CodeBlock className="language-echarts">{'{"series":[]}'}</CodeBlock>)
-      const chart = await findEchartsInstance()
-      const chartWithTrigger = chart as {
-        trigger?: (eventName: string, event?: unknown) => void
-      }
-
+      expect(mockEcharts.echartsInstance.resize).not.toHaveBeenCalled()
+      act(() => vi.advanceTimersByTime(1))
+      expect(mockEcharts.echartsInstance.resize).toHaveBeenCalledOnce()
+      act(() => window.dispatchEvent(new Event('resize')))
+      unmount()
       act(() => {
-        for (let i = 0; i < 8; i++) {
-          chartWithTrigger.trigger?.('finished', {})
-          chart.resize()
-        }
+        window.dispatchEvent(new Event('resize'))
+        vi.advanceTimersByTime(500)
       })
-
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 500))
-      })
-
-      expect(await findEchartsHost())!.toBeInTheDocument()
+      expect(mockEcharts.echartsInstance.resize).toHaveBeenCalledOnce()
     })
 
     it('should switch from loading to chart when streaming content becomes valid JSON', async () => {
@@ -397,76 +365,11 @@ describe('CodeBlock', () => {
       expect(await findEchartsHost())!.toBeInTheDocument()
     })
 
-    it('should parse array JSON after previously incomplete streaming content', async () => {
-      const parseSpy = vi.spyOn(JSON, 'parse')
-      parseSpy.mockImplementationOnce(() => ({ series: [] }) as unknown as object)
-      const { rerender } = render(<CodeBlock className="language-echarts">[1, 2</CodeBlock>)
-      expect(screen.getByText(/Chart loading.../i))!.toBeInTheDocument()
-
-      rerender(<CodeBlock className="language-echarts">[1, 2]</CodeBlock>)
-
-      expect(await findEchartsHost())!.toBeInTheDocument()
-      parseSpy.mockRestore()
-    })
-
-    it('should parse non-structured streaming content when JSON.parse fallback succeeds', async () => {
-      const parseSpy = vi.spyOn(JSON, 'parse')
-      parseSpy.mockImplementationOnce(() => ({ recovered: true }) as unknown as object)
-
-      render(<CodeBlock className="language-echarts">abcde</CodeBlock>)
-
-      expect(await findEchartsHost())!.toBeInTheDocument()
-      parseSpy.mockRestore()
-    })
-
     it('should render dark themed echarts path when app theme is dark', async () => {
       mockUseTheme.mockReturnValue({ theme: Theme.dark })
       render(<CodeBlock className="language-echarts">{'{"series":[]}'}</CodeBlock>)
 
       expect(await findEchartsHost())!.toBeInTheDocument()
-    })
-
-    it('should render dark mode error option when app theme is dark and echarts content is invalid', async () => {
-      mockUseTheme.mockReturnValue({ theme: Theme.dark })
-      render(<CodeBlock className="language-echarts">{'{a:1}'}</CodeBlock>)
-
-      expect(await findEchartsHost())!.toBeInTheDocument()
-    })
-
-    it('should wire resize listener when echarts view re-enters with a ready chart instance', async () => {
-      const { rerender, unmount } = render(
-        <CodeBlock className="language-echarts">{'{"a":1}'}</CodeBlock>,
-      )
-      await findEchartsHost()
-
-      rerender(<CodeBlock className="language-javascript">const x = 1;</CodeBlock>)
-      rerender(<CodeBlock className="language-echarts">{'{"a":2}'}</CodeBlock>)
-
-      act(() => {
-        window.dispatchEvent(new Event('resize'))
-      })
-
-      expect(await findEchartsHost())!.toBeInTheDocument()
-      unmount()
-    })
-
-    it('should cleanup echarts resize listener without pending timer on unmount', async () => {
-      const { unmount } = render(<CodeBlock className="language-echarts">{'{"a":1}'}</CodeBlock>)
-      await findEchartsHost()
-
-      unmount()
-    })
-
-    it('should cleanup echarts resize listener when no debounce timer is pending', async () => {
-      const { rerender, unmount } = render(
-        <CodeBlock className="language-echarts">{'{"a":1}'}</CodeBlock>,
-      )
-      await findEchartsHost()
-
-      rerender(<CodeBlock className="language-javascript">const x = 1;</CodeBlock>)
-      rerender(<CodeBlock className="language-echarts">{'{"a":2}'}</CodeBlock>)
-
-      unmount()
     })
   })
 })

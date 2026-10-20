@@ -104,7 +104,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   ] = useBoolean(!isMobile)
 
   const {
-    mutateAsync: hitTestingMutation,
+    mutate: hitTestingMutation,
     isPending: isHitTestingPending,
     isError: isHitTestingError,
   } = useMutation({
@@ -116,7 +116,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
       }),
   })
   const {
-    mutateAsync: externalKnowledgeBaseHitTestingMutation,
+    mutate: externalKnowledgeBaseHitTestingMutation,
     isPending: isExternalKnowledgeBaseHitTestingPending,
     isError: isExternalKnowledgeBaseHitTestingError,
   } = useMutation({

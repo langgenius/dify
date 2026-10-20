@@ -23,7 +23,10 @@ import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { highlightCode } from './shiki-highlight'
 
-const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
+const MermaidDiagram = dynamic(
+  () => import('./mermaid-diagram').then((module) => module.MermaidDiagram),
+  { ssr: false },
+)
 // React.lazy preserves the chart adapter's ref and loads each runtime only when rendered.
 const ReactEcharts = lazy(() => import('echarts-for-react'))
 const MarkdownMusic = lazy(() => import('./music'))
@@ -247,7 +250,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
 
   // Handle container resize for echarts
   useEffect(() => {
-    if (language !== 'echarts' || !chartInstanceRef.current) return
+    if (language !== 'echarts') return
 
     const handleResize = () => {
       if (chartInstanceRef.current)
@@ -331,7 +334,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
           trimmedContent.split('{').length !== trimmedContent.split('}').length)) ||
       (trimmedContent.startsWith('[') &&
         (!trimmedContent.endsWith(']') ||
-          trimmedContent.split('[').length !== trimmedContent.split('}').length)) ||
+          trimmedContent.split('[').length !== trimmedContent.split(']').length)) ||
       trimmedContent.split('"').length % 2 !== 1 ||
       (trimmedContent.includes('{"') && !trimmedContent.includes('"}'))
 
@@ -364,7 +367,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
     const content = String(children).replace(/\n$/, '')
     switch (language) {
       case 'mermaid':
-        return <Flowchart PrimitiveCode={content} theme={theme as 'light' | 'dark'} />
+        return <MermaidDiagram source={content} />
       case 'echarts': {
         // Loading state: show loading indicator
         if (chartState === 'loading') {
@@ -534,8 +537,6 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
     language,
     isSVG,
     finalChartOption,
-    props,
-    theme,
     match,
     chartState,
     isDarkMode,

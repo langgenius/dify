@@ -100,37 +100,40 @@ class TestValidateVariablesAndSetDefaults:
     def test_validate_user_input_form_not_list_raises(self):
         config = {"user_input_form": "invalid"}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="user_input_form must be a list of objects"):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
     def test_validate_invalid_key_raises(self):
         config = {"user_input_form": [{"invalid": {}}]}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match="Keys in user_input_form list can only be",
+        ):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
     def test_validate_missing_label_raises(self):
         config = {"user_input_form": [{VariableEntityType.TEXT_INPUT: {"variable": "name"}}]}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="label is required in user_input_form"):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
     def test_validate_label_not_string_raises(self):
         config = {"user_input_form": [{VariableEntityType.TEXT_INPUT: {"variable": "name", "label": 123}}]}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="label in user_input_form must be of string type"):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
     def test_validate_missing_variable_raises(self):
         config = {"user_input_form": [{VariableEntityType.TEXT_INPUT: {"label": "Name"}}]}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="variable is required in user_input_form"):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
     def test_validate_variable_not_string_raises(self):
         config = {"user_input_form": [{VariableEntityType.TEXT_INPUT: {"label": "Name", "variable": 123}}]}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="variable in user_input_form must be of string type"):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
     @pytest.mark.parametrize(
@@ -149,7 +152,13 @@ class TestValidateVariablesAndSetDefaults:
             ]
         }
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=(
+                "(?:variable in user_input_form must be a string, and cannot start "
+                "with a number|variable in user_input_form must be of string type)"
+            ),
+        ):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
     def test_validate_required_default_and_type(self):
@@ -181,7 +190,7 @@ class TestValidateVariablesAndSetDefaults:
             ]
         }
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="required in user_input_form must be of boolean type"):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
     def test_validate_select_options_default_not_in_options_raises(self):
@@ -198,7 +207,7 @@ class TestValidateVariablesAndSetDefaults:
             ]
         }
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="default value in user_input_form must be in the options list"):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
     def test_validate_select_options_not_list_raises(self):
@@ -214,7 +223,7 @@ class TestValidateVariablesAndSetDefaults:
             ]
         }
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="options in user_input_form must be a list of strings"):
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
 
@@ -230,7 +239,7 @@ class TestValidateExternalDataToolsAndSetDefaults:
     def test_validate_external_data_tools_not_list_raises(self):
         config = {"external_data_tools": "invalid"}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="external_data_tools must be of list type"):
             BasicVariablesConfigManager.validate_external_data_tools_and_set_defaults("tenant", config)
 
     def test_validate_disabled_tool_skipped(self, mocker: MockerFixture):
@@ -248,7 +257,7 @@ class TestValidateExternalDataToolsAndSetDefaults:
     def test_validate_enabled_tool_missing_type_raises(self):
         config = {"external_data_tools": [{"enabled": True, "config": {}}]}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="external_data_tools\\[\\]\\.type is required"):
             BasicVariablesConfigManager.validate_external_data_tools_and_set_defaults("tenant", config)
 
     def test_validate_enabled_tool_calls_factory(self, mocker: MockerFixture):

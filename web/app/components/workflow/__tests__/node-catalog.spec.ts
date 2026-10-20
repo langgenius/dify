@@ -2,7 +2,6 @@ import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow
 import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-const mockUseIsChatMode = vi.fn()
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => true))
 const mockIsAgentV2InChatflowEnabled = vi.hoisted(() => vi.fn(() => false))
 
@@ -23,13 +22,11 @@ describe('useWorkflowNodeCatalog', () => {
   })
 
   it('should include chat-specific nodes and make the start node undeletable in chat mode', () => {
-    mockUseIsChatMode.mockReturnValue(true)
-
     const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
       resource: {
         kind: 'app',
         appId: 'app-1',
-        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+        mode: 'advanced-chat',
       },
     })
 
@@ -46,13 +43,11 @@ describe('useWorkflowNodeCatalog', () => {
   })
 
   it('should expose only legacy Agent in chat mode by default even when Agent v2 is enabled', () => {
-    mockUseIsChatMode.mockReturnValue(true)
-
     const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
       resource: {
         kind: 'app',
         appId: 'app-1',
-        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+        mode: 'advanced-chat',
       },
     })
     const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
@@ -64,14 +59,13 @@ describe('useWorkflowNodeCatalog', () => {
   })
 
   it('should expose Agent v2 in chat mode when the Chatflow gate is enabled', () => {
-    mockUseIsChatMode.mockReturnValue(true)
     mockIsAgentV2InChatflowEnabled.mockReturnValue(true)
 
     const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
       resource: {
         kind: 'app',
         appId: 'app-1',
-        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+        mode: 'advanced-chat',
       },
     })
     const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
@@ -83,7 +77,6 @@ describe('useWorkflowNodeCatalog', () => {
   })
 
   it('should expose only legacy Agent in chat mode when Agent v2 is disabled', () => {
-    mockUseIsChatMode.mockReturnValue(true)
     mockIsAgentV2Enabled.mockReturnValue(false)
     mockIsAgentV2InChatflowEnabled.mockReturnValue(true)
 
@@ -91,7 +84,7 @@ describe('useWorkflowNodeCatalog', () => {
       resource: {
         kind: 'app',
         appId: 'app-1',
-        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+        mode: 'advanced-chat',
       },
     })
     const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
@@ -103,13 +96,11 @@ describe('useWorkflowNodeCatalog', () => {
   })
 
   it('should include workflow-specific trigger and end nodes outside chat mode', () => {
-    mockUseIsChatMode.mockReturnValue(false)
-
     const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
       resource: {
         kind: 'app',
         appId: 'app-1',
-        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+        mode: 'workflow',
       },
     })
 
@@ -127,13 +118,11 @@ describe('useWorkflowNodeCatalog', () => {
   })
 
   it('should use explicit docs pages and skip nodes without generated docs pages', () => {
-    mockUseIsChatMode.mockReturnValue(false)
-
     const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
       resource: {
         kind: 'app',
         appId: 'app-1',
-        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+        mode: 'workflow',
       },
     })
 
@@ -151,13 +140,11 @@ describe('useWorkflowNodeCatalog', () => {
   })
 
   it('should hide legacy Agent from the node picker but retain its validator when Agent v2 is enabled', () => {
-    mockUseIsChatMode.mockReturnValue(false)
-
     const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
       resource: {
         kind: 'app',
         appId: 'app-1',
-        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+        mode: 'workflow',
       },
     })
     const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
@@ -172,14 +159,13 @@ describe('useWorkflowNodeCatalog', () => {
   })
 
   it('should expose only legacy Agent while retaining Agent v2 metadata when Agent v2 is disabled', () => {
-    mockUseIsChatMode.mockReturnValue(false)
     mockIsAgentV2Enabled.mockReturnValue(false)
 
     const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
       resource: {
         kind: 'app',
         appId: 'app-1',
-        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+        mode: 'workflow',
       },
     })
     const nodeTypes = result.current.nodes.map((node) => node.metaData.type)

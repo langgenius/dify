@@ -21,6 +21,7 @@ from core.workflow.nodes.human_input.entities import (
     FormDefinition,
     FormInputConfig,
     HumanInputSubmissionValidationError,
+    ParagraphInputConfig,
     SelectInputConfig,
     UserActionConfig,
 )
@@ -29,14 +30,16 @@ from core.workflow.nodes.human_input.entities import (
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from factories.file_factory import build_from_mapping, build_from_mappings
+from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FileUploadConfig
-from graphon.runtime import GraphRuntimeState
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime import RuntimeState
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.exception import BaseHTTPException
 from models.human_input import RecipientType
 from models.model import App, AppMode
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.human_input_errors import FormAlreadyHandledError
 from tasks.app_generate.workflow_execute_task import resume_app_execution
 
 _file_access_controller = DatabaseFileAccessController()
@@ -186,11 +189,28 @@ class HumanInputService:
         return form
 
     def resolve_form_inputs(self, form: Form) -> Sequence[FormInputConfig]:
-        variable_pool = self._load_variable_pool_for_form(form)
-        return resolve_variable_select_input_options(
-            form.get_definition().inputs,
-            variable_pool=variable_pool,
-        )
+        definition = form.get_definition()
+        inputs = list(definition.inputs)
+        if any(
+            isinstance(form_input, SelectInputConfig) and form_input.option_source.type == ValueSourceType.VARIABLE
+            for form_input in inputs
+        ):
+            inputs = resolve_variable_select_input_options(
+                inputs,
+                variable_pool=self._load_variable_pool_for_form(form),
+            )
+        return [
+            form_input.model_copy(
+                update={
+                    "option_source": form_input.option_source.model_copy(
+                        update={"type": ValueSourceType.CONSTANT, "selector": ()}
+                    )
+                }
+            )
+            if isinstance(form_input, SelectInputConfig) and form_input.option_source.type == ValueSourceType.VARIABLE
+            else form_input
+            for form_input in inputs
+        ]
 
     def submit_form_by_token(
         self,
@@ -212,14 +232,19 @@ class HumanInputService:
             form_data=form_data,
         )
 
-        result = self._form_repository.mark_submitted(
-            form_id=form.id,
-            recipient_id=form.recipient_id,
-            selected_action_id=selected_action_id,
-            form_data=normalized_form_data,
-            submission_user_id=submission_user_id,
-            submission_end_user_id=submission_end_user_id,
-        )
+        try:
+            result = self._form_repository.mark_submitted(
+                form_id=form.id,
+                recipient_id=form.recipient_id,
+                selected_action_id=selected_action_id,
+                form_data=normalized_form_data,
+                submission_user_id=submission_user_id,
+                submission_end_user_id=submission_end_user_id,
+            )
+        except FormAlreadyHandledError as exc:
+            if exc.status == HumanInputFormStatus.SUBMITTED:
+                raise FormSubmittedError(form.id) from exc
+            raise FormExpiredError(form.id) from exc
 
         if result.form_kind != HumanInputFormKind.RUNTIME:
             return
@@ -249,6 +274,7 @@ class HumanInputService:
         form_data: Mapping[str, Any],
     ) -> dict[str, JsonValue]:
         definition = form.get_definition()
+        definition = definition.model_copy(update={"inputs": self.resolve_form_inputs(form)})
         try:
             return self.validate_and_normalize_submission(
                 tenant_id=form.tenant_id,
@@ -265,6 +291,8 @@ class HumanInputService:
 
         if workflow_run is None:
             raise AssertionError(f"WorkflowRun not found, id={workflow_run_id}")
+        if workflow_run.status == WorkflowExecutionStatus.STOPPED:
+            return
         with self._session_factory(expire_on_commit=False) as session:
             app_query = select(App).where(App.id == workflow_run.app_id)
             app = session.execute(app_query).scalar_one_or_none()
@@ -298,7 +326,7 @@ class HumanInputService:
             return None
 
         resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
-        runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+        runtime_state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
 
         return runtime_state.variable_pool
 
@@ -370,6 +398,12 @@ class HumanInputService:
         form_input: FormInputConfig,
         value: Any,
     ) -> JsonValue:
+        if isinstance(form_input, ParagraphInputConfig):
+            if not isinstance(value, str):
+                raise HumanInputSubmissionValidationError(
+                    f"Invalid value for paragraph input '{form_input.output_variable_name}': expected string"
+                )
+            return value
         if isinstance(form_input, SelectInputConfig):
             return cls._normalize_select_value(form_input=form_input, value=value)
         if isinstance(form_input, FileInputConfig):

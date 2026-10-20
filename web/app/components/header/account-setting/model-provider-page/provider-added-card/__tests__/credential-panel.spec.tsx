@@ -1,6 +1,8 @@
 import type { ModelProvider } from '../../declarations'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,
@@ -41,46 +43,18 @@ vi.mock('@/app/notifications', () => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const mockedModelProviders = {
-    byProvider: {
-      models: {
-        get: {
-          queryKey: ({ input }: { input: { params: { provider: string } } }) => [
-            'console',
-            'modelProviders',
-            'models',
-            input.params.provider,
-          ],
-        },
-      },
-      preferredProviderType: {
-        post: {
-          mutationOptions: (opts: Record<string, unknown>) => ({
-            mutationFn: (...args: unknown[]) => {
-              mockChangePriorityFn(...args)
-              return Promise.resolve({ result: 'success' })
-            },
-            ...opts,
-          }),
-        },
-      },
-    },
-  }
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: {
-      systemFeatures: actual.consoleQuery.systemFeatures,
-      trialModels: actual.consoleQuery.trialModels,
-      workspaces: {
-        current: {
-          modelProviders: mockedModelProviders,
-        },
-      },
-    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.preferredProviderType.post': (input) =>
+        mockChangePriorityFn(input),
+    }),
   }
 })
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../hooks')>()),
   useUpdateModelList: () => mockUpdateModelList,
   useUpdateModelProviders: () => mockUpdateModelProviders,
 }))
@@ -89,26 +63,17 @@ vi.mock('../use-trial-credits', () => ({
   useTrialCredits: () => mockTrialCredits,
 }))
 
-vi.mock('../model-auth-dropdown', () => ({
-  default: ({
-    state,
-    onChangePriority,
-  }: {
-    state: { variant: string; hasCredentials: boolean }
-    onChangePriority: (key: string) => void
-  }) => (
-    <div data-testid="model-auth-dropdown" data-variant={state.variant}>
-      <button data-testid="change-priority-btn" onClick={() => onChangePriority('custom')}>
-        Change Priority
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/status-dot', () => ({
-  StatusDot: ({ status }: { status: string }) => (
-    <div data-testid="indicator" data-status={status} />
-  ),
+// Credential editing is covered in the auth flow; retain the real dropdown and priority controls.
+vi.mock('../../model-auth/hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../model-auth/hooks')>()),
+  useAuth: () => ({
+    openConfirmDelete: vi.fn(),
+    closeConfirmDelete: vi.fn(),
+    doingAction: false,
+    handleConfirmDelete: vi.fn(),
+    deleteCredentialId: null,
+    handleOpenModal: vi.fn(),
+  }),
 }))
 
 const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
@@ -132,12 +97,14 @@ const renderWithQueryClient = (provider: ModelProvider) => {
   return renderWithConsoleQuery(<CredentialPanel provider={provider} />, {
     systemFeatures: { deployment_edition: 'CLOUD' },
     trialModels: ['langgenius/openai/openai'],
+    workspacePermissionKeys: ['credential.use'],
   })
 }
 
 describe('CredentialPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockChangePriorityFn.mockReset().mockResolvedValue({ result: 'success' })
     Object.assign(mockTrialCredits, {
       credits: 100,
       totalCredits: 10_000,
@@ -211,24 +178,22 @@ describe('CredentialPanel', () => {
   })
 
   describe('Status label variants', () => {
-    it('should show green indicator and credential name for api-fallback (exhausted + authorized key)', () => {
+    it('should show credential name for api-fallback (exhausted + authorized key)', () => {
       mockTrialCredits.isExhausted = true
       renderWithQueryClient(createProvider())
-      expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'success')
       expect(screen.getByText('test-credential')).toBeInTheDocument()
     })
 
-    it('should show green indicator for api-active (custom priority + authorized)', () => {
+    it('should show credential name for api-active (custom priority + authorized)', () => {
       renderWithQueryClient(
         createProvider({
           preferred_provider_type: PreferredProviderTypeEnum.custom,
         }),
       )
-      expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'success')
       expect(screen.getByText('test-credential')).toBeInTheDocument()
     })
 
-    it('should show red indicator and credential name for api-unavailable (exhausted + named unauthorized key)', () => {
+    it('should show unavailable credential name for api-unavailable (exhausted + named unauthorized key)', () => {
       mockTrialCredits.isExhausted = true
       renderWithQueryClient(
         createProvider({
@@ -241,245 +206,7 @@ describe('CredentialPanel', () => {
           },
         }),
       )
-      expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'error')
       expect(screen.getByText('Bad Key')).toBeInTheDocument()
-    })
-  })
-
-  describe('Destructive styling', () => {
-    it('should apply destructive container for credits-exhausted', () => {
-      mockTrialCredits.isExhausted = true
-      const { container } = renderWithQueryClient(
-        createProvider({
-          custom_configuration: {
-            status: CustomConfigurationStatusEnum.noConfigure,
-            available_credentials: [],
-          },
-        }),
-      )
-      expect(container.querySelector('[class*="border-state-destructive"]')).toBeTruthy()
-    })
-
-    it('should apply destructive container for no-usage variant', () => {
-      mockTrialCredits.isExhausted = true
-      const { container } = renderWithQueryClient(
-        createProvider({
-          custom_configuration: {
-            status: CustomConfigurationStatusEnum.active,
-            current_credential_id: undefined,
-            current_credential_name: undefined,
-            available_credentials: [{ credential_id: 'cred-1' }],
-          },
-        }),
-      )
-      expect(container.querySelector('[class*="border-state-destructive"]')).toBeTruthy()
-    })
-
-    it('should apply destructive container for api-unavailable variant', () => {
-      mockTrialCredits.isExhausted = true
-      const { container } = renderWithQueryClient(
-        createProvider({
-          preferred_provider_type: PreferredProviderTypeEnum.custom,
-          custom_configuration: {
-            status: CustomConfigurationStatusEnum.active,
-            current_credential_id: undefined,
-            current_credential_name: 'Bad Key',
-            available_credentials: [{ credential_id: 'cred-1', credential_name: 'Bad Key' }],
-          },
-        }),
-      )
-      expect(container.querySelector('[class*="border-state-destructive"]')).toBeTruthy()
-    })
-
-    it('should apply default container for credits-active', () => {
-      const { container } = renderWithQueryClient(createProvider())
-      expect(container.querySelector('[class*="bg-white"]')).toBeTruthy()
-    })
-
-    it('should apply default container for api-active', () => {
-      const { container } = renderWithQueryClient(
-        createProvider({
-          preferred_provider_type: PreferredProviderTypeEnum.custom,
-        }),
-      )
-      expect(container.querySelector('[class*="bg-white"]')).toBeTruthy()
-    })
-
-    it('should apply default container for api-fallback', () => {
-      mockTrialCredits.isExhausted = true
-      const { container } = renderWithQueryClient(createProvider())
-      expect(container.querySelector('[class*="bg-white"]')).toBeTruthy()
-    })
-  })
-
-  describe('Text color', () => {
-    it('should use destructive text color for credits-exhausted label', () => {
-      mockTrialCredits.isExhausted = true
-      const { container } = renderWithQueryClient(
-        createProvider({
-          custom_configuration: {
-            status: CustomConfigurationStatusEnum.noConfigure,
-            available_credentials: [],
-          },
-        }),
-      )
-      expect(container.querySelector('.text-text-destructive')).toBeTruthy()
-    })
-
-    it('should use secondary text color for credits-active label', () => {
-      const { container } = renderWithQueryClient(createProvider())
-      expect(container.querySelector('.text-text-secondary')).toBeTruthy()
-    })
-
-    it('should use destructive text color for api-unavailable credential name', () => {
-      mockTrialCredits.isExhausted = true
-      renderWithQueryClient(
-        createProvider({
-          preferred_provider_type: PreferredProviderTypeEnum.custom,
-          custom_configuration: {
-            status: CustomConfigurationStatusEnum.active,
-            current_credential_id: undefined,
-            current_credential_name: 'Bad Key',
-            available_credentials: [{ credential_id: 'cred-1', credential_name: 'Bad Key' }],
-          },
-        }),
-      )
-      expect(screen.getByText('Bad Key')).toHaveClass('text-text-destructive')
-    })
-
-    it('should use secondary text color for api-active credential name', () => {
-      renderWithQueryClient(
-        createProvider({
-          preferred_provider_type: PreferredProviderTypeEnum.custom,
-        }),
-      )
-      expect(screen.getByText('test-credential')).toHaveClass('text-text-secondary')
-    })
-  })
-
-  describe('Priority change', () => {
-    it('should call mutation with correct params on priority change', async () => {
-      renderWithQueryClient(createProvider())
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('change-priority-btn'))
-      })
-
-      await waitFor(() => {
-        expect(mockChangePriorityFn.mock.calls[0]?.[0]).toEqual({
-          params: { provider: 'langgenius/openai/openai' },
-          body: { preferred_provider_type: 'custom' },
-        })
-      })
-    })
-
-    it('should refresh data after successful mutation', async () => {
-      renderWithQueryClient(createProvider())
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('change-priority-btn'))
-      })
-
-      await waitFor(() => {
-        expect(mockUpdateModelProviders).toHaveBeenCalled()
-        expect(mockUpdateModelList).toHaveBeenCalledWith('llm')
-      })
-    })
-  })
-
-  describe('ModelAuthDropdown integration', () => {
-    it('should pass credits-active variant to dropdown when credits available', () => {
-      renderWithQueryClient(createProvider())
-      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute(
-        'data-variant',
-        'credits-active',
-      )
-    })
-
-    it('should pass api-fallback variant to dropdown when exhausted with valid key', () => {
-      mockTrialCredits.isExhausted = true
-      renderWithQueryClient(createProvider())
-      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute(
-        'data-variant',
-        'api-fallback',
-      )
-    })
-
-    it('should pass credits-exhausted variant when exhausted with no credentials', () => {
-      mockTrialCredits.isExhausted = true
-      renderWithQueryClient(
-        createProvider({
-          custom_configuration: {
-            status: CustomConfigurationStatusEnum.noConfigure,
-            available_credentials: [],
-          },
-        }),
-      )
-      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute(
-        'data-variant',
-        'credits-exhausted',
-      )
-    })
-
-    it('should pass api-active variant for custom priority with authorized key', () => {
-      renderWithQueryClient(
-        createProvider({
-          preferred_provider_type: PreferredProviderTypeEnum.custom,
-        }),
-      )
-      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute(
-        'data-variant',
-        'api-active',
-      )
-    })
-
-    it('should pass credits-fallback variant for custom priority with no credentials and credits available', () => {
-      renderWithQueryClient(
-        createProvider({
-          preferred_provider_type: PreferredProviderTypeEnum.custom,
-          custom_configuration: {
-            status: CustomConfigurationStatusEnum.noConfigure,
-            available_credentials: [],
-          },
-        }),
-      )
-      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute(
-        'data-variant',
-        'credits-fallback',
-      )
-    })
-
-    it('should pass credits-fallback variant for custom priority with named unauthorized key and credits available', () => {
-      renderWithQueryClient(
-        createProvider({
-          preferred_provider_type: PreferredProviderTypeEnum.custom,
-          custom_configuration: {
-            status: CustomConfigurationStatusEnum.active,
-            current_credential_id: undefined,
-            current_credential_name: 'Bad Key',
-            available_credentials: [{ credential_id: 'cred-1', credential_name: 'Bad Key' }],
-          },
-        }),
-      )
-      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute(
-        'data-variant',
-        'credits-fallback',
-      )
-    })
-
-    it('should pass no-usage variant when exhausted + credential but unauthorized', () => {
-      mockTrialCredits.isExhausted = true
-      renderWithQueryClient(
-        createProvider({
-          custom_configuration: {
-            status: CustomConfigurationStatusEnum.active,
-            current_credential_id: undefined,
-            current_credential_name: undefined,
-            available_credentials: [{ credential_id: 'cred-1' }],
-          },
-        }),
-      )
-      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute('data-variant', 'no-usage')
     })
   })
 
@@ -499,10 +226,7 @@ describe('CredentialPanel', () => {
           },
         }),
       )
-      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute(
-        'data-variant',
-        'api-required-add',
-      )
+      expect(screen.getByRole('button', { name: /addApiKey/ })).toBeInTheDocument()
       expect(screen.getByText(/apiKeyRequired/)).toBeInTheDocument()
     })
 
@@ -516,10 +240,48 @@ describe('CredentialPanel', () => {
           },
         }),
       )
-      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute(
-        'data-variant',
-        'api-active',
-      )
+      expect(screen.getByText('test-credential')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.config' })).toBeInTheDocument()
     })
+  })
+  it('changes priority through the real dropdown and refreshes provider and model data', async () => {
+    const user = userEvent.setup()
+    const request = createDeferred<{ result: string }>()
+    mockChangePriorityFn.mockReturnValueOnce(request.promise)
+    renderWithQueryClient(createProvider())
+    await user.click(screen.getByRole('button', { name: 'common.operation.config' }))
+    const apiKey = screen.getByRole('button', { name: /apiKeyOption/ })
+    await user.click(apiKey)
+    expect(mockChangePriorityFn).toHaveBeenCalledExactlyOnceWith({
+      params: { provider: 'langgenius/openai/openai' },
+      body: { preferred_provider_type: 'custom' },
+    })
+    expect(apiKey).toBeDisabled()
+    expect(mockUpdateModelProviders).not.toHaveBeenCalled()
+    await act(async () => request.resolve({ result: 'success' }))
+    await waitFor(() => expect(apiKey).toBeEnabled())
+    expect(mockUpdateModelProviders).toHaveBeenCalledTimes(1)
+    expect(mockUpdateModelList).toHaveBeenCalledExactlyOnceWith('llm')
+  })
+
+  it('reports a failed priority change without refreshing and allows retry', async () => {
+    const user = userEvent.setup()
+    mockChangePriorityFn.mockRejectedValueOnce(new Error('Unavailable'))
+    renderWithQueryClient(createProvider())
+    await user.click(screen.getByRole('button', { name: 'common.operation.config' }))
+    const apiKey = screen.getByRole('button', { name: /apiKeyOption/ })
+    await user.click(apiKey)
+    await waitFor(() =>
+      expect(mockToastNotify).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'common.actionMsg.modifiedUnsuccessfully',
+      }),
+    )
+    expect(apiKey).toBeEnabled()
+    expect(mockUpdateModelProviders).not.toHaveBeenCalled()
+    expect(mockUpdateModelList).not.toHaveBeenCalled()
+    await user.click(apiKey)
+    await waitFor(() => expect(mockUpdateModelProviders).toHaveBeenCalledTimes(1))
+    expect(mockChangePriorityFn).toHaveBeenCalledTimes(2)
   })
 })

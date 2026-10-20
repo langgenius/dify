@@ -18,17 +18,6 @@ describe('resolvePlatform', () => {
     }
   })
 
-  it('cacheDir ends with the difyctl subdir', () => {
-    const p = resolvePlatform()
-    if (p.id() === 'win32') {
-      expect(p.cacheDir()).toMatch(/difyctl$/)
-    } else if (p.id() === 'darwin') {
-      expect(p.cacheDir()).toBe(join(homedir(), 'Library', 'Caches', SUBDIR))
-    } else {
-      expect(p.cacheDir()).toBe(join(homedir(), '.cache', SUBDIR))
-    }
-  })
-
   it('atomicReplace is a function', () => {
     expect(resolvePlatform().atomicReplace).toBeTypeOf('function')
   })

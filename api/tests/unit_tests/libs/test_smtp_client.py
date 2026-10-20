@@ -1,5 +1,4 @@
 import smtplib
-from typing import Any
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -7,12 +6,12 @@ import pytest
 from libs.smtp import SMTPClient
 
 
-def _mail() -> dict[str, Any]:
+def _mail() -> dict[str, str]:
     return {"to": "user@example.com", "subject": "Hi", "html": "<b>Hi</b>"}
 
 
 @patch("libs.smtp.smtplib.SMTP", autospec=True)
-def test_smtp_plain_success(mock_smtp_cls: MagicMock):
+def test_smtp_plain_success(mock_smtp_cls: MagicMock) -> None:
     mock_smtp = mock_smtp_cls.return_value
     client = SMTPClient(server="smtp.example.com", port=25, username="", password="", _from="noreply@example.com")
     client.send(_mail())
@@ -23,7 +22,7 @@ def test_smtp_plain_success(mock_smtp_cls: MagicMock):
 
 
 @patch("libs.smtp.smtplib.SMTP", autospec=True)
-def test_smtp_tls_opportunistic_success(mock_smtp_cls: MagicMock):
+def test_smtp_tls_opportunistic_success(mock_smtp_cls: MagicMock) -> None:
     mock_smtp = mock_smtp_cls.return_value
     client = SMTPClient(
         server="smtp.example.com",
@@ -45,7 +44,7 @@ def test_smtp_tls_opportunistic_success(mock_smtp_cls: MagicMock):
 
 
 @patch("libs.smtp.smtplib.SMTP_SSL", autospec=True)
-def test_smtp_tls_ssl_branch_and_timeout(mock_smtp_ssl_cls: MagicMock):
+def test_smtp_tls_ssl_branch_and_timeout(mock_smtp_ssl_cls: MagicMock) -> None:
     # Cover SMTP_SSL branch and TimeoutError handling
     mock_smtp = MagicMock()
     mock_smtp.sendmail.side_effect = TimeoutError("timeout")
@@ -66,7 +65,7 @@ def test_smtp_tls_ssl_branch_and_timeout(mock_smtp_ssl_cls: MagicMock):
 
 
 @patch("libs.smtp.smtplib.SMTP", autospec=True)
-def test_smtp_generic_exception_propagates(mock_smtp_cls: MagicMock):
+def test_smtp_generic_exception_propagates(mock_smtp_cls: MagicMock) -> None:
     mock_smtp = MagicMock()
     mock_smtp.sendmail.side_effect = RuntimeError("oops")
     mock_smtp_cls.return_value = mock_smtp
@@ -78,7 +77,7 @@ def test_smtp_generic_exception_propagates(mock_smtp_cls: MagicMock):
 
 
 @patch("libs.smtp.smtplib.SMTP", autospec=True)
-def test_smtp_smtplib_exception_in_login(mock_smtp_cls: MagicMock):
+def test_smtp_smtplib_exception_in_login(mock_smtp_cls: MagicMock) -> None:
     # Ensure we hit the specific SMTPException except branch
     import smtplib
 
@@ -114,7 +113,7 @@ def test_smtp_cleanup_preserves_send_result(
     send_error_type: type[Exception] | None,
     close_fails: bool,
     caplog: pytest.LogCaptureFixture,
-):
+) -> None:
     send_error: Exception | None = None
     if send_error_type is smtplib.SMTPDataError:
         send_error = smtplib.SMTPDataError(451, b"temporary send failure")

@@ -317,7 +317,7 @@ const MCPDetailContent: FC<Props> = ({
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={handleUpdateTools}>
+            <AlertDialogConfirmButton tone="default" onClick={handleUpdateTools}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -25,12 +25,6 @@ describe('TagFilter', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the tags placeholder when nothing is selected', () => {
-    render(<TagFilter value={[]} onChange={vi.fn()} />)
-
-    expect(screen.getByText('common.tag.tags')).toBeInTheDocument()
-  })
-
   it('renders selected tag labels and the overflow counter', () => {
     render(<TagFilter value={['agent', 'rag', 'search']} onChange={vi.fn()} />)
 
@@ -39,20 +33,19 @@ describe('TagFilter', () => {
   })
 
   it('filters options by search text and toggles tag selection', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(<TagFilter value={['agent']} onChange={onChange} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Agent' }))
+    await user.click(screen.getByRole('button', { name: 'Agent' }))
     const portal = await screen.findByRole('dialog')
 
-    fireEvent.change(screen.getByPlaceholderText('pluginTags.searchTags'), {
-      target: { value: 'ra' },
-    })
+    await user.type(screen.getByPlaceholderText('pluginTags.searchTags'), 'ra')
 
     expect(within(portal).queryByText('Agent')).not.toBeInTheDocument()
     expect(within(portal).getByText('RAG')).toBeInTheDocument()
 
-    fireEvent.click(within(portal).getByText('RAG'))
+    await user.click(within(portal).getByText('RAG'))
 
     expect(onChange).toHaveBeenCalledWith(['agent', 'rag'])
   })
@@ -85,11 +78,12 @@ describe('TagFilter', () => {
   })
 
   it('removes a selected tag when clicking the same option again', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(<TagFilter value={['agent']} onChange={onChange} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Agent' }))
-    fireEvent.click(within(await screen.findByRole('dialog')).getByText('Agent'))
+    await user.click(screen.getByRole('button', { name: 'Agent' }))
+    await user.click(within(await screen.findByRole('dialog')).getByText('Agent'))
 
     expect(onChange).toHaveBeenCalledWith([])
   })

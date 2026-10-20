@@ -233,7 +233,7 @@ class TestStorageKeyLoader:
         loader = StorageKeyLoader(
             db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
         )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Upload file not found for id:"):
             loader.load_storage_keys([file])
 
     def test_load_storage_keys_nonexistent_tool_file_records(self, db_session_with_containers: Session):
@@ -244,7 +244,7 @@ class TestStorageKeyLoader:
         loader = StorageKeyLoader(
             db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
         )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Tool file not found for id:"):
             loader.load_storage_keys([file])
 
     def test_load_storage_keys_invalid_uuid(self, db_session_with_containers: Session):
@@ -259,7 +259,7 @@ class TestStorageKeyLoader:
         loader = StorageKeyLoader(
             db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
         )
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="badly formed hexadecimal UUID string"):
             loader.load_storage_keys([file])
 
     def test_load_storage_keys_batch_efficiency(self, db_session_with_containers: Session):
@@ -385,5 +385,5 @@ class TestStorageKeyLoader:
                 tenant_id,
                 access_controller=DatabaseFileAccessController(),
             )
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="Upload file not found for id:"):
                 other_loader.load_storage_keys([file])

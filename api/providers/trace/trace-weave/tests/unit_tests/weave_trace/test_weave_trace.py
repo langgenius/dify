@@ -265,7 +265,7 @@ class TestInit:
         """Test __init__ initializes weave without entity prefix when entity is None."""
         mock_w, weave_client = mock_weave
         config = _make_weave_config(entity=None)
-        instance = WeaveDataTrace(config)
+        WeaveDataTrace(config)
 
         mock_w.init.assert_called_once_with(project_name="my-project")
 
@@ -318,7 +318,6 @@ class TestGetProjectUrl:
         monkeypatch.setattr(trace_instance, "project_name", None)
         # Force an error by making string formatting fail
         # Simulate exception via property
-        original_entity = trace_instance.entity
         trace_instance.entity = None
         trace_instance.project_name = None
         url = trace_instance.get_project_url()

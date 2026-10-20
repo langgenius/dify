@@ -1,38 +1,37 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
 import ExternalDataToolModal from '../external-data-tool-modal'
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'codeBasedExtension.get': () => ({
-      data: {
-        data: [
-          {
-            name: 'code-tool',
-            label: {
-              'en-US': 'Code Provider',
-              'zh-Hans': '代码提供方',
-            },
-            form_schema: [
-              {
-                variable: 'api_key',
-                default: 'default-key',
-                required: true,
-                type: 'text',
-                placeholder: '',
-                options: [],
-                label: {
-                  'en-US': 'API Key',
-                  'zh-Hans': '接口密钥',
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'codeBasedExtension.get': () =>
+        Promise.resolve({
+          module: 'external_data_tool',
+          data: [
+            {
+              name: 'code-tool',
+              label: { 'en-US': 'Code Provider', 'zh-Hans': '代码提供方' },
+              form_schema: [
+                {
+                  variable: 'api_key',
+                  default: 'default-key',
+                  required: true,
+                  type: 'text-input',
+                  placeholder: '',
+                  options: [],
+                  label: { 'en-US': 'API Key', 'zh-Hans': '接口密钥' },
                 },
-              },
-            ],
-          },
-        ],
-      },
+              ],
+            },
+          ],
+        }),
     }),
-  })
+  }
 })
 
 const mockToastError = vi.fn()
@@ -51,18 +50,6 @@ vi.mock('@/context/i18n', () => ({
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => mockLocale,
-}))
-
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
-    <button onClick={onClick}>open-emoji-picker</button>
-  ),
-}))
-
-vi.mock('@/app/components/base/features/new-feature-panel/moderation/form-generation', () => ({
-  default: ({ onChange }: { onChange: (value: Record<string, string>) => void }) => (
-    <button onClick={() => onChange({ api_key: 'secret-key' })}>fill-form</button>
-  ),
 }))
 
 vi.mock('@/app/components/header/account-setting/api-based-extension-page/selector', () => ({
@@ -85,24 +72,21 @@ describe('ExternalDataToolModal', () => {
     mockLocale = 'en-US'
   })
 
-  it('should require an API extension before saving api-based tools', () => {
+  it('should require an API extension before saving api-based tools', async () => {
+    const user = userEvent.setup()
     render(<ExternalDataToolModal data={{}} onCancel={mockOnCancel} onSave={mockOnSave} />)
 
-    fireEvent.change(
+    await user.type(
       screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/),
-      {
-        target: { value: 'Search' },
-      },
+      'Search',
     )
-    fireEvent.change(
+    await user.type(
       screen.getByPlaceholderText(
         /(?:^|\.)feature\.tools\.modal\.variableName\.placeholder(?=$|:)/,
       ),
-      {
-        target: { value: 'search_api' },
-      },
+      'search_api',
     )
-    fireEvent.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
+    await user.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
 
     expect(mockToastError).toHaveBeenCalledWith(
       expect.stringMatching(/(?:^|\.)errorMessage\.valueOfVarRequired(?=$|:)/),
@@ -111,6 +95,7 @@ describe('ExternalDataToolModal', () => {
   })
 
   it('should save api-based tools after selecting extension and emoji', async () => {
+    const user = userEvent.setup()
     mockOnValidateBeforeSave.mockReturnValue(true)
 
     render(
@@ -122,31 +107,26 @@ describe('ExternalDataToolModal', () => {
       />,
     )
 
-    fireEvent.change(
+    await user.type(
       screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/),
-      {
-        target: { value: 'Search' },
-      },
+      'Search',
     )
-    fireEvent.change(
+    await user.type(
       screen.getByPlaceholderText(
         /(?:^|\.)feature\.tools\.modal\.variableName\.placeholder(?=$|:)/,
       ),
-      {
-        target: { value: 'search_api' },
-      },
+      'search_api',
     )
-    fireEvent.click(screen.getByText('pick-extension'))
-    fireEvent.click(screen.getByText('open-emoji-picker'))
+    await user.click(screen.getByText('pick-extension'))
+    await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
     const emojiButton = await screen.findByRole('gridcell', { name: 'Grinning face' })
-    expect(emojiButton).toBeTruthy()
-    fireEvent.click(emojiButton!)
-    fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
-    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
-    fireEvent.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
+    await user.click(emojiButton!)
+    await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+    await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+    await user.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
 
     await waitFor(() => {
       expect(mockOnValidateBeforeSave).toHaveBeenCalledWith(
@@ -187,6 +167,7 @@ describe('ExternalDataToolModal', () => {
   })
 
   it('should save code-based tools with schema values and support cancel', async () => {
+    const user = userEvent.setup()
     render(
       <ExternalDataToolModal
         data={{
@@ -201,22 +182,20 @@ describe('ExternalDataToolModal', () => {
       />,
     )
 
-    fireEvent.change(
+    await user.type(
       screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/),
-      {
-        target: { value: 'Code Search' },
-      },
+      'Code Search',
     )
-    fireEvent.change(
+    await user.type(
       screen.getByPlaceholderText(
         /(?:^|\.)feature\.tools\.modal\.variableName\.placeholder(?=$|:)/,
       ),
-      {
-        target: { value: 'code_search' },
-      },
+      'code_search',
     )
-    fireEvent.click(screen.getByText('fill-form'))
-    fireEvent.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
+    const apiKey = await screen.findByRole('textbox', { name: 'API Key' })
+    await user.clear(apiKey)
+    await user.type(apiKey, 'secret-key')
+    await user.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
 
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalledWith(
@@ -232,7 +211,7 @@ describe('ExternalDataToolModal', () => {
       )
     })
 
-    fireEvent.click(screen.getByText(/(?:^|\.)operation\.cancel(?=$|:)/))
+    await user.click(screen.getByText(/(?:^|\.)operation\.cancel(?=$|:)/))
     expect(mockOnCancel).toHaveBeenCalled()
   })
 })

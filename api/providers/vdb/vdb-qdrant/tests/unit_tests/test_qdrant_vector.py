@@ -6,7 +6,7 @@ import types
 from collections import UserDict
 from pathlib import Path
 from types import SimpleNamespace
-from typing import override
+from typing import Protocol, cast, override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,6 +17,13 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document
 from models.dataset import Dataset, DatasetCollectionBinding
 from models.enums import CollectionBindingType
+
+
+class ScrollMock(Protocol):
+    side_effect: object
+    call_count: int
+
+    def assert_not_called(self) -> None: ...
 
 
 def _build_fake_qdrant_modules():
@@ -279,7 +286,7 @@ def test_search_and_helper_methods(qdrant_module):
             None,
         ),
     ]
-    vector._client.scroll.side_effect = scroll_results
+    cast(ScrollMock, vector._client.scroll).side_effect = scroll_results
     docs = vector.search_by_full_text("hello world", top_k=2, document_ids_filter=["d-1"])
     assert len(docs) == 2
     assert vector.search_by_full_text("   ", top_k=2) == []
@@ -295,6 +302,72 @@ def test_search_and_helper_methods(qdrant_module):
         "metadata",
     )
     assert doc.page_content == "doc"
+
+
+def test_qdrant_full_text_search_does_not_starve_later_keywords(qdrant_module: types.ModuleType) -> None:
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+    common_first = qdrant_module.rest.PointStruct(
+        id="p1", payload={"page_content": "common", "metadata": {"doc_id": "1"}}, vector=[0.1]
+    )
+    common_second = qdrant_module.rest.PointStruct(
+        id="p2", payload={"page_content": "common", "metadata": {"doc_id": "2"}}, vector=[0.2]
+    )
+    rare_match = qdrant_module.rest.PointStruct(
+        id="p3", payload={"page_content": "rare", "metadata": {"doc_id": "3"}}, vector=[0.3]
+    )
+    scroll = cast(ScrollMock, vector._client.scroll)
+    scroll.side_effect = [([common_first, common_second], None), ([rare_match], None)]
+
+    docs = vector.search_by_full_text("common rare", top_k=2)
+
+    assert [doc.metadata["doc_id"] for doc in docs] == ["1", "3"]
+    assert scroll.call_count == 2
+
+
+def test_qdrant_full_text_search_deduplicates_overlapping_keyword_matches(qdrant_module: types.ModuleType) -> None:
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+    first_match = qdrant_module.rest.PointStruct(
+        id="p1", payload={"page_content": "common rare", "metadata": {"doc_id": "1"}}, vector=[0.1]
+    )
+    second_match = qdrant_module.rest.PointStruct(
+        id="p2", payload={"page_content": "common", "metadata": {"doc_id": "2"}}, vector=[0.2]
+    )
+    later_match = qdrant_module.rest.PointStruct(
+        id="p3", payload={"page_content": "rare", "metadata": {"doc_id": "3"}}, vector=[0.3]
+    )
+    cast(ScrollMock, vector._client.scroll).side_effect = [
+        ([first_match, second_match], None),
+        ([first_match, later_match], None),
+    ]
+
+    docs = vector.search_by_full_text("common rare", top_k=3)
+
+    assert [doc.metadata["doc_id"] for doc in docs] == ["1", "3", "2"]
+
+
+def test_qdrant_full_text_search_stops_after_exhausting_duplicate_matches(qdrant_module: types.ModuleType) -> None:
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+    first_match = qdrant_module.rest.PointStruct(
+        id="p1", payload={"page_content": "common rare", "metadata": {"doc_id": "1"}}, vector=[0.1]
+    )
+    second_match = qdrant_module.rest.PointStruct(
+        id="p2", payload={"page_content": "common", "metadata": {"doc_id": "2"}}, vector=[0.2]
+    )
+    scroll = cast(ScrollMock, vector._client.scroll)
+    scroll.side_effect = [([first_match, second_match], None), ([first_match], None)]
+
+    docs = vector.search_by_full_text("common rare", top_k=4)
+
+    assert [doc.metadata["doc_id"] for doc in docs] == ["1", "2"]
+    assert scroll.call_count == 2
+
+
+@pytest.mark.parametrize("top_k", [0, -1])
+def test_qdrant_full_text_search_skips_nonpositive_top_k(qdrant_module: types.ModuleType, top_k: int) -> None:
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+
+    assert vector.search_by_full_text("hello world", top_k=top_k) == []
+    cast(ScrollMock, vector._client.scroll).assert_not_called()
 
 
 @pytest.mark.parametrize("sqlite3_session", [(DatasetCollectionBinding,)], indirect=True)

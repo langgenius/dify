@@ -480,7 +480,7 @@ class TestWebConversationService:
         """
         Test that pagination_by_last_id raises ValueError when user is None.
         """
-        fake = Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Test with None user

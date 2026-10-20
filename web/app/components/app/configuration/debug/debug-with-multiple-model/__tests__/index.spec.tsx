@@ -1,857 +1,372 @@
-import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
-import type { CSSProperties } from 'react'
-import type { ModelAndParameter } from '../../types'
-import type { DebugWithMultipleModelContextType } from '../context'
-import type { InputForm } from '@/app/components/base/chat/chat/type'
-import type { FeatureStoreState } from '@/app/components/base/features/store'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { Inputs, ModelConfig } from '@/models/debug'
-import type { PromptVariable } from '@/types/app'
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { Features } from '@/app/components/base/features/types'
+import type { consoleClient } from '@/service/console'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import {
-  DEFAULT_AGENT_SETTING,
-  DEFAULT_CHAT_PROMPT_CONFIG,
-  DEFAULT_COMPLETION_PROMPT_CONFIG,
-} from '@/config'
-import { ModelModeType, Resolution, TransferMethod } from '@/types/app'
-import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../../types'
+  appConfigurationToastManager,
+  toast as configurationToast,
+} from '@/app/components/app/configuration/toast'
+import { FeaturesProvider } from '@/app/components/base/features/context'
+import { createFeaturesStore } from '@/app/components/base/features/store'
+import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
+import ConfigContext from '@/context/debug-configuration'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createDebugConfigurationFixture,
+  createModelConfigFixture,
+} from '@/test/fixtures/debug-configuration'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { ModelModeType, TransferMethod } from '@/types/app'
+import { APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../../types'
 import DebugWithMultipleModel from '../index'
 
-type PromptVariableWithMeta = Omit<PromptVariable, 'type' | 'required'> & {
-  type: PromptVariable['type'] | 'api'
-  required?: boolean
-  hide?: boolean
-}
+const api = vi.hoisted(() => ({
+  stream: vi.fn<typeof import('@/service/base').ssePost>(),
+  upload: vi.fn<typeof import('@/service/base').upload>(),
+  messages: vi.fn<typeof consoleClient.apps.byAppId.chatMessages.get>(),
+  suggestions:
+    vi.fn<typeof consoleClient.apps.byAppId.chatMessages.byMessageId.suggestedQuestions.get>(),
+}))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  ssePost: api.stream,
+  upload: api.upload,
+}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.chatMessages.get': (input) => api.messages(input),
+      'apps.byAppId.chatMessages.byMessageId.suggestedQuestions.get': (input) =>
+        api.suggestions(input),
+    }),
+  }
+})
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+  usePathname: () => '/app/app-1/configuration',
+}))
 
-const mockUseDebugConfigurationContext = vi.fn()
-const mockUseFeaturesSelector = vi.fn()
-const mockUseEventEmitterContext = vi.fn()
-const mockEventEmitter = { emit: vi.fn() }
-let capturedChatInputProps: MockChatInputAreaProps | null = null
-let modelIdCounter = 0
-let featureState: FeatureStoreState
-
-type MockChatInputAreaProps = {
-  readonly?: boolean
-  onSend?: (message: string, files?: FileEntity[]) => void
-  onFeatureBarClick?: (state: boolean) => void
-  showFeatureBar?: boolean
-  showFileUpload?: boolean
-  featureBarReadonly?: boolean
-  disabled?: boolean
-  inputs?: Record<string, any>
-  inputsForm?: InputForm[]
-  speechToTextConfig?: unknown
-  visionConfig?: unknown
-}
-
-const mockFiles: FileEntity[] = [
-  {
-    id: 'file-1',
-    name: 'file.txt',
-    size: 10,
-    type: 'text/plain',
-    progress: 100,
-    transferMethod: TransferMethod.remote_url,
-    supportFileType: 'text',
-  },
+const models = [
+  { id: 'first', model: 'gpt-4', provider: 'openai', parameters: { temperature: 0.2 } },
+  { id: 'second', model: 'gpt-3.5-turbo', provider: 'openai', parameters: { temperature: 0.8 } },
 ]
-
-vi.mock('@/context/debug-configuration', () => ({
-  useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
-}))
-
-vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: (selector: (state: FeatureStoreState) => unknown) =>
-    mockUseFeaturesSelector(selector),
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => mockUseEventEmitterContext(),
-}))
-
-vi.mock('../debug-item', () => ({
-  default: ({
-    modelAndParameter,
-    className,
-    style,
-  }: {
-    modelAndParameter: ModelAndParameter
-    className?: string
-    style?: CSSProperties
-  }) => (
-    <div
-      data-testid="debug-item"
-      data-model-id={modelAndParameter.id}
-      className={className}
-      style={style}
+const onOpenFeatures = vi.fn()
+const onOpenLog = vi.fn()
+function Restart() {
+  const { eventEmitter } = useEventEmitterContextContext()
+  return (
+    <button
+      type="button"
+      onClick={() => eventEmitter?.emit({ type: APP_CHAT_WITH_MULTIPLE_MODEL_RESTART })}
     >
-      DebugItem-
-      {modelAndParameter.id}
-    </div>
-  ),
-}))
+      Restart comparison
+    </button>
+  )
+}
+function setup({
+  context = {},
+  features = {},
+  checkCanSend,
+}: {
+  context?: Parameters<typeof createDebugConfigurationFixture>[0]
+  features?: Features
+  checkCanSend?: () => boolean
+} = {}) {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [
+        createCatalogModelFixture({ model_properties: { mode: 'chat' }, features: ['vision'] }),
+        createCatalogModelFixture({
+          model: 'gpt-3.5-turbo',
+          label: { en_US: 'GPT-3.5 Turbo' },
+          model_properties: { mode: 'chat' },
+        }),
+      ],
+    }),
+  ])
+  queryClient.setQueryDefaults(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.key(),
+    { initialData: { data: [] } },
+  )
+  const config = createDebugConfigurationFixture({
+    appId: 'app-1',
+    canTestAndRun: true,
+    onOpenFeatures,
+    inputs: { audience: 'engineers' },
+    modelConfig: createModelConfigFixture({
+      provider: 'openai',
+      model_id: 'gpt-4',
+      mode: ModelModeType.chat,
+      configs: {
+        prompt_template: 'Explain to {{audience}}',
+        prompt_variables: [{ key: 'audience', name: 'Audience', type: 'string', required: true }],
+      },
+    }),
+    ...context,
+  })
+  renderWithConsoleQuery(
+    <NuqsTestingAdapter>
+      {/* oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its own Provider. */}
+      <ConfigContext.Provider value={config}>
+        <FeaturesProvider features={{ ...createFeaturesStore().getState().features, ...features }}>
+          <EventEmitterContextProvider>
+            <Restart />
+            <DebugWithMultipleModel
+              multipleModelConfigs={models}
+              onMultipleModelConfigsChange={vi.fn()}
+              onDebugWithMultipleModelChange={vi.fn()}
+              onOpenLog={onOpenLog}
+              checkCanSend={checkCanSend}
+            />
+            <AppToastHost />
+            <AppToastHost manager={appConfigurationToastManager} />
+          </EventEmitterContextProvider>
+        </FeaturesProvider>
+      </ConfigContext.Provider>
+    </NuqsTestingAdapter>,
+    { queryClient },
+  )
+  return userEvent.setup()
+}
+async function send(user: ReturnType<typeof userEvent.setup>, message = 'Explain RAG') {
+  await user.type(screen.getByRole('textbox'), message)
+  await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
+}
+async function deliverAnswers() {
+  const requests = api.stream.mock.calls.slice()
+  await act(async () => {
+    for (const [index, request] of requests.entries()) {
+      request[2]?.onData?.(`Answer from model ${index + 1}`, true, {
+        messageId: `answer-${index + 1}`,
+        conversationId: `conversation-${index + 1}`,
+        taskId: `task-${index + 1}`,
+      })
+      await request[2]?.onCompleted?.()
+    }
+  })
+}
+beforeEach(() => {
+  for (const mock of Object.values(api)) mock.mockReset()
+  onOpenFeatures.mockClear()
+  onOpenLog.mockClear()
+  api.stream.mockResolvedValue(undefined)
+  api.upload.mockResolvedValue({ id: 'uploaded-file-1' })
+  api.messages.mockResolvedValue({ data: [], has_more: false, limit: 10 })
+  api.suggestions.mockResolvedValue({ data: [] })
+})
+afterEach(() => {
+  toast.dismiss()
+  configurationToast.dismiss()
+})
 
-vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
-  default: (props: MockChatInputAreaProps) => {
-    capturedChatInputProps = props
-    return (
-      <div data-testid="chat-input-area">
-        <button
-          type="button"
-          disabled={props.disabled}
-          onClick={() => props.onSend?.('test message', mockFiles)}
-        >
-          send
-        </button>
-        {props.showFeatureBar && (
-          <button
-            type="button"
-            disabled={props.featureBarReadonly}
-            onClick={() => props.onFeatureBarClick?.(true)}
-          >
-            feature
-          </button>
-        )}
-      </div>
-    )
-  },
-}))
+it('sends one question to both configured models and keeps their streamed answers and conversations separate', async () => {
+  const user = setup()
+  await send(user)
+  expect(api.stream).toHaveBeenCalledTimes(2)
+  models.forEach((model, index) => {
+    expect(api.stream.mock.calls[index]?.[0]).toBe('apps/app-1/chat-messages')
+    expect(api.stream.mock.calls[index]?.[1].body).toMatchObject({
+      query: 'Explain RAG',
+      inputs: { audience: 'engineers' },
+      parent_message_id: null,
+      model_config: {
+        model: { provider: model.provider, name: model.model, completion_params: model.parameters },
+      },
+    })
+  })
+  await deliverAnswers()
+  expect(await screen.findByText('Answer from model 1')).toBeVisible()
+  expect(screen.getByText('Answer from model 2')).toBeVisible()
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.log' })[1]!)
+  expect(onOpenLog).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ id: 'answer-2', content: 'Answer from model 2' }),
+  )
+  await send(user, 'Give an example')
+  expect(api.stream).toHaveBeenCalledTimes(4)
+  for (const index of [0, 1]) {
+    expect(api.stream.mock.calls[index + 2]?.[1].body).toMatchObject({
+      query: 'Give an example',
+      parent_message_id: `answer-${index + 1}`,
+      conversation_id: `conversation-${index + 1}`,
+    })
+  }
+})
 
-const createFeatureState = (): FeatureStoreState => ({
-  features: {
-    speech2text: { enabled: true },
-    file: {
-      image: {
+it('restarts both conversations through the comparison restart event', async () => {
+  const user = setup()
+  await send(user)
+  await deliverAnswers()
+  await user.click(screen.getByRole('button', { name: 'Restart comparison' }))
+  expect(screen.queryByText('Answer from model 1')).not.toBeInTheDocument()
+  expect(screen.queryByText('Answer from model 2')).not.toBeInTheDocument()
+  await send(user, 'Start again')
+  expect(api.stream).toHaveBeenCalledTimes(4)
+  for (const request of api.stream.mock.calls.slice(2)) {
+    expect(request[1].body).toMatchObject({ query: 'Start again', parent_message_id: null })
+    expect(request[1].body).toHaveProperty('conversation_id', '')
+  }
+})
+
+it('allows comparison runs with readonly configuration while disabling feature editing', async () => {
+  const user = setup({ context: { readonly: true } })
+  expect(screen.getByRole('button', { name: 'appDebug.feature.bar.empty' })).toBeDisabled()
+  await send(user)
+  expect(api.stream).toHaveBeenCalledTimes(2)
+  expect(onOpenFeatures).not.toHaveBeenCalled()
+})
+
+it('blocks the composer without run permission while allowing feature configuration', async () => {
+  const user = setup({ context: { canTestAndRun: false } })
+  expect(screen.getByRole('textbox')).toBeDisabled()
+  const sendButton = screen.getByRole('button', { name: 'common.operation.send' })
+  expect(sendButton).toBeDisabled()
+  await user.click(sendButton)
+  expect(api.stream).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'appDebug.feature.bar.empty' }))
+  expect(onOpenFeatures).toHaveBeenCalledExactlyOnceWith(true)
+})
+
+it('does not send to either model when parent validation rejects the request', async () => {
+  const checkCanSend = vi.fn(() => false)
+  const user = setup({ checkCanSend })
+  await send(user)
+  expect(checkCanSend).toHaveBeenCalledTimes(1)
+  expect(api.stream).not.toHaveBeenCalled()
+  expect(screen.queryByText('Explain RAG')).not.toBeInTheDocument()
+})
+
+it('reports the required variable name and retains the draft instead of sending', async () => {
+  const user = setup({ context: { inputs: {} } })
+  await send(user)
+  expect(
+    await screen.findByText('appDebug.errorMessage.valueOfVarRequired:{"key":"Audience"}'),
+  ).toBeVisible()
+  expect(screen.getByRole('textbox')).toHaveValue('Explain RAG')
+  expect(api.stream).not.toHaveBeenCalled()
+})
+
+it('accepts zero for a required number and does not require hidden optional or API-only variables', async () => {
+  const user = setup({
+    context: {
+      inputs: { count: 0 },
+      modelConfig: createModelConfigFixture({
+        configs: {
+          prompt_template: 'Use {{count}}',
+          prompt_variables: [
+            { key: 'count', name: 'Count', type: 'number', required: true },
+            { key: 'optional', name: 'Optional', type: 'string', hide: true, required: false },
+            { key: 'external', name: 'External', type: 'api', required: true },
+          ],
+        },
+      }),
+    },
+  })
+  await send(user)
+  expect(api.stream).toHaveBeenCalledTimes(2)
+  for (const request of api.stream.mock.calls)
+    expect(request[1].body).toHaveProperty('inputs', { count: 0 })
+})
+
+it('uploads once and includes the attachment only for the model supporting vision', async () => {
+  const user = setup({
+    features: {
+      file: {
         enabled: true,
-        detail: Resolution.high,
-        number_limits: 2,
-        transfer_methods: [TransferMethod.remote_url],
+        allowed_file_types: ['image'],
+        allowed_file_upload_methods: [TransferMethod.local_file],
+        allowed_file_extensions: [],
+        number_limits: 3,
+        fileUploadConfig: createFileUploadConfigFixture(),
       },
     },
-  },
-  setFeatures: vi.fn(),
-  showFeaturesModal: false,
-  setShowFeaturesModal: vi.fn(),
-})
-
-const createModelConfig = (promptVariables: PromptVariableWithMeta[] = []): ModelConfig => ({
-  provider: 'OPENAI',
-  model_id: 'gpt-4',
-  mode: ModelModeType.chat,
-  configs: {
-    prompt_template: '',
-    prompt_variables: promptVariables as PromptVariable[],
-  },
-  chat_prompt_config: DEFAULT_CHAT_PROMPT_CONFIG,
-  completion_prompt_config: DEFAULT_COMPLETION_PROMPT_CONFIG,
-  opening_statement: '',
-  more_like_this: null,
-  suggested_questions: [],
-  suggested_questions_after_answer: null,
-  speech_to_text: null,
-  text_to_speech: null,
-  file_upload: null,
-  retriever_resource: null,
-  sensitive_word_avoidance: null,
-  annotation_reply: null,
-  external_data_tools: [],
-  dataSets: [],
-  agentConfig: DEFAULT_AGENT_SETTING,
-})
-
-type DebugConfiguration = {
-  onOpenFeatures: () => void
-  mode: AppMode
-  inputs: Inputs
-  modelConfig: ModelConfig
-  readonly: boolean
-  canTestAndRun: boolean
-}
-
-const createDebugConfiguration = (
-  overrides: Partial<DebugConfiguration> = {},
-): DebugConfiguration => ({
-  onOpenFeatures: vi.fn(),
-  mode: 'chat' as const,
-  inputs: {},
-  modelConfig: createModelConfig(),
-  readonly: false,
-  canTestAndRun: true,
-  ...overrides,
-})
-
-const createModelAndParameter = (
-  overrides: Partial<ModelAndParameter> = {},
-): ModelAndParameter => ({
-  id: `model-${++modelIdCounter}`,
-  model: 'gpt-3.5-turbo',
-  provider: 'openai',
-  parameters: {},
-  ...overrides,
-})
-
-const createProps = (
-  overrides: Partial<DebugWithMultipleModelContextType> = {},
-): DebugWithMultipleModelContextType => ({
-  multipleModelConfigs: [createModelAndParameter()],
-  onOpenLog: vi.fn(),
-  onMultipleModelConfigsChange: vi.fn(),
-  onDebugWithMultipleModelChange: vi.fn(),
-  ...overrides,
-})
-
-const renderComponent = (props?: Partial<DebugWithMultipleModelContextType>) => {
-  const mergedProps = createProps(props)
-  return render(<DebugWithMultipleModel {...mergedProps} />)
-}
-
-describe('DebugWithMultipleModel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    capturedChatInputProps = null
-    modelIdCounter = 0
-    featureState = createFeatureState()
-    mockUseFeaturesSelector.mockImplementation((selector) => selector(featureState))
-    mockUseEventEmitterContext.mockReturnValue({ eventEmitter: mockEventEmitter })
-    mockUseDebugConfigurationContext.mockReturnValue(createDebugConfiguration())
   })
+  const file = new File(['image'], 'diagram.png', { type: 'image/png' })
+  fireEvent.drop(screen.getByRole('textbox'), { dataTransfer: { files: [file] } })
+  await waitFor(() => expect(api.upload).toHaveBeenCalledTimes(1))
+  expect(api.upload.mock.lastCall![0].data.get('file')).toEqual(file)
+  await send(user, 'Describe this diagram')
+  expect(api.stream).toHaveBeenCalledTimes(2)
+  expect(api.stream.mock.calls[0]?.[1].body).toHaveProperty('files', [
+    {
+      type: 'image',
+      transfer_method: TransferMethod.local_file,
+      url: '',
+      upload_file_id: 'uploaded-file-1',
+    },
+  ])
+  expect(api.stream.mock.calls[1]?.[1].body).toHaveProperty('files', [])
+})
 
-  describe('edge cases and error handling', () => {
-    it('should handle empty multipleModelConfigs array', () => {
-      renderComponent({ multipleModelConfigs: [] })
-      expect(screen.queryByTestId('debug-item')).not.toBeInTheDocument()
-      expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
-    })
+it('sends agent-chat questions through the shared comparison composer', async () => {
+  const user = setup({ context: { mode: 'agent-chat', isAgent: true } })
+  await send(user)
+  expect(api.stream).toHaveBeenCalledTimes(2)
+  await deliverAnswers()
+  expect(await screen.findByText('Answer from model 1')).toBeVisible()
+  expect(screen.getByText('Answer from model 2')).toBeVisible()
+})
 
-    it('should handle model config with missing required fields', () => {
-      const incompleteConfig = { id: 'incomplete' } as ModelAndParameter
-      renderComponent({ multipleModelConfigs: [incompleteConfig] })
-      expect(screen.getByTestId('debug-item'))!.toBeInTheDocument()
-    })
+it('shows the selected completion models without a shared chat composer', () => {
+  setup({ context: { mode: 'completion' } })
+  expect(screen.getByRole('button', { name: /^GPT-4/ })).toBeVisible()
+  expect(screen.getByRole('button', { name: /^GPT-3.5 Turbo/ })).toBeVisible()
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'common.operation.send' })).not.toBeInTheDocument()
+})
 
-    it('should handle more than 4 model configs', () => {
-      const manyConfigs = Array.from({ length: 6 }, () => createModelAndParameter())
-      renderComponent({ multipleModelConfigs: manyConfigs })
-
-      const items = screen.getAllByTestId('debug-item')
-      expect(items).toHaveLength(6)
-
-      // Items beyond 4 should not have specialized positioning
-      items.slice(4).forEach((item) => {
-        expect(item.style.transform).toBe('translateX(0) translateY(0)')
-      })
-    })
-
-    it('should handle modelConfig with undefined prompt_variables', () => {
-      // Note: The current component doesn't handle undefined/null prompt_variables gracefully
-      // This test documents the current behavior
-      const modelConfig = createModelConfig()
-      modelConfig.configs.prompt_variables = undefined as any
-
-      mockUseDebugConfigurationContext.mockReturnValue(
-        createDebugConfiguration({
-          modelConfig,
-        }),
-      )
-
-      expect(() => renderComponent()).toThrow(
-        "Cannot read properties of undefined (reading 'filter')",
-      )
-    })
-
-    it('should handle modelConfig with null prompt_variables', () => {
-      // Note: The current component doesn't handle undefined/null prompt_variables gracefully
-      // This test documents the current behavior
-      const modelConfig = createModelConfig()
-      modelConfig.configs.prompt_variables = null as any
-
-      mockUseDebugConfigurationContext.mockReturnValue(
-        createDebugConfiguration({
-          modelConfig,
-        }),
-      )
-
-      expect(() => renderComponent()).toThrow("Cannot read properties of null (reading 'filter')")
-    })
-
-    it('should handle prompt_variables with missing required fields', () => {
-      const incompleteVariables: PromptVariableWithMeta[] = [
-        { key: '', name: 'Empty Key', type: 'string' }, // Empty key
-        { key: 'valid-key', name: undefined as any, type: 'number' }, // Undefined name
-        { key: 'no-type', name: 'No Type', type: undefined as any }, // Undefined type
-      ]
-
-      const debugConfiguration = createDebugConfiguration({
-        modelConfig: createModelConfig(incompleteVariables),
-      })
-      mockUseDebugConfigurationContext.mockReturnValue(debugConfiguration)
-
-      renderComponent()
-
-      // Should still render but handle gracefully
-      // Should still render but handle gracefully
-      expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
-      expect(capturedChatInputProps?.inputsForm).toHaveLength(3)
-    })
-  })
-
-  describe('props and callbacks', () => {
-    it('should call onMultipleModelConfigsChange when provided', () => {
-      const onMultipleModelConfigsChange = vi.fn()
-      renderComponent({ onMultipleModelConfigsChange })
-
-      // Context provider should pass through the callback
-      expect(onMultipleModelConfigsChange).not.toHaveBeenCalled()
-    })
-
-    it('should call onDebugWithMultipleModelChange when provided', () => {
-      const onDebugWithMultipleModelChange = vi.fn()
-      renderComponent({ onDebugWithMultipleModelChange })
-
-      // Context provider should pass through the callback
-      expect(onDebugWithMultipleModelChange).not.toHaveBeenCalled()
-    })
-
-    it('should not memoize when props change', () => {
-      const props1 = createProps({
-        multipleModelConfigs: [createModelAndParameter({ id: 'model-1' })],
-      })
-      const { rerender } = renderComponent(props1)
-
-      const props2 = createProps({
-        multipleModelConfigs: [createModelAndParameter({ id: 'model-2' })],
-      })
-      rerender(<DebugWithMultipleModel {...props2} />)
-
-      const items = screen.getAllByTestId('debug-item')
-      expect(items[0])!.toHaveAttribute('data-model-id', 'model-2')
-    })
-  })
-
-  describe('accessibility', () => {
-    it('should have accessible chat input elements', () => {
-      renderComponent()
-
-      const chatInput = screen.getByTestId('chat-input-area')
-      expect(chatInput)!.toBeInTheDocument()
-
-      // Check for button accessibility
-      const sendButton = screen.getByRole('button', { name: /send/i })
-      expect(sendButton)!.toBeInTheDocument()
-
-      const featureButton = screen.getByRole('button', { name: /feature/i })
-      expect(featureButton)!.toBeInTheDocument()
-    })
-
-    it('should apply ARIA attributes correctly', () => {
-      const multipleModelConfigs = [createModelAndParameter()]
-      renderComponent({ multipleModelConfigs })
-
-      // Debug items should be identifiable
-      const debugItem = screen.getByTestId('debug-item')
-      expect(debugItem)!.toBeInTheDocument()
-      expect(debugItem)!.toHaveAttribute('data-model-id')
-    })
-  })
-
-  describe('prompt variables transformation', () => {
-    it('should filter out API type variables', () => {
-      const promptVariables: PromptVariableWithMeta[] = [
-        { key: 'normal', name: 'Normal', type: 'string' },
-        { key: 'api-var', name: 'API Var', type: 'api' },
-        { key: 'number', name: 'Number', type: 'number' },
-      ]
-      const debugConfiguration = createDebugConfiguration({
-        modelConfig: createModelConfig(promptVariables),
-      })
-      mockUseDebugConfigurationContext.mockReturnValue(debugConfiguration)
-
-      renderComponent()
-
-      expect(capturedChatInputProps?.inputsForm).toHaveLength(2)
-      expect(capturedChatInputProps?.inputsForm).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ label: 'Normal', variable: 'normal' }),
-          expect.objectContaining({ label: 'Number', variable: 'number' }),
-        ]),
-      )
-      expect(capturedChatInputProps?.inputsForm).not.toEqual(
-        expect.arrayContaining([expect.objectContaining({ label: 'API Var' })]),
-      )
-    })
-
-    it('should handle missing hide and required properties', () => {
-      const promptVariables: Partial<PromptVariableWithMeta>[] = [
-        { key: 'no-hide', name: 'No Hide', type: 'string', required: true },
-        { key: 'no-required', name: 'No Required', type: 'number', hide: true },
-      ]
-      const debugConfiguration = createDebugConfiguration({
-        modelConfig: createModelConfig(promptVariables as PromptVariableWithMeta[]),
-      })
-      mockUseDebugConfigurationContext.mockReturnValue(debugConfiguration)
-
-      renderComponent()
-
-      expect(capturedChatInputProps?.inputsForm).toEqual([
-        expect.objectContaining({
-          label: 'No Hide',
-          variable: 'no-hide',
-          hide: false, // Should default to false
-          required: true,
-        }),
-        expect.objectContaining({
-          label: 'No Required',
-          variable: 'no-required',
-          hide: true,
-          required: false, // Should default to false
-        }),
-      ])
-    })
-
-    it('should preserve original hide and required values', () => {
-      const promptVariables: PromptVariableWithMeta[] = [
-        {
-          key: 'hidden-optional',
-          name: 'Hidden Optional',
-          type: 'string',
-          hide: true,
-          required: false,
+it.each([true, false])(
+  'applies the opening feature to both model conversations (%s)',
+  async (enabled) => {
+    const user = setup({
+      features: {
+        opening: {
+          enabled,
+          opening_statement: 'Welcome to the comparison',
+          suggested_questions: ['Compare retrieval methods'],
         },
-        {
-          key: 'visible-required',
-          name: 'Visible Required',
-          type: 'number',
-          hide: false,
-          required: true,
-        },
-      ]
-      const debugConfiguration = createDebugConfiguration({
-        modelConfig: createModelConfig(promptVariables),
-      })
-      mockUseDebugConfigurationContext.mockReturnValue(debugConfiguration)
-
-      renderComponent()
-
-      expect(capturedChatInputProps?.inputsForm).toEqual([
-        expect.objectContaining({
-          label: 'Hidden Optional',
-          variable: 'hidden-optional',
-          hide: true,
-          required: false,
-        }),
-        expect.objectContaining({
-          label: 'Visible Required',
-          variable: 'visible-required',
-          hide: false,
-          required: true,
-        }),
-      ])
-    })
-  })
-
-  describe('chat input rendering', () => {
-    it('should render chat input in chat mode with transformed prompt variables and feature handler', () => {
-      // Arrange
-      const promptVariables: PromptVariableWithMeta[] = [
-        { key: 'city', name: 'City', type: 'string', required: true },
-        { key: 'audience', name: 'Audience', type: 'number' },
-        { key: 'hidden', name: 'Hidden', type: 'select', hide: true },
-        { key: 'api-only', name: 'API Only', type: 'api' },
-      ]
-      const debugConfiguration = createDebugConfiguration({
-        inputs: { audience: 'engineers' },
-        modelConfig: createModelConfig(promptVariables),
-      })
-      mockUseDebugConfigurationContext.mockReturnValue(debugConfiguration)
-
-      // Act
-      renderComponent()
-      fireEvent.click(screen.getByRole('button', { name: /feature/i }))
-
-      // Assert
-      // Assert
-      expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
-      expect(capturedChatInputProps?.inputs).toEqual({ audience: 'engineers' })
-      expect(capturedChatInputProps?.inputsForm).toEqual([
-        expect.objectContaining({ label: 'City', variable: 'city', hide: false, required: true }),
-        expect.objectContaining({
-          label: 'Audience',
-          variable: 'audience',
-          hide: false,
-          required: false,
-        }),
-        expect.objectContaining({
-          label: 'Hidden',
-          variable: 'hidden',
-          hide: true,
-          required: false,
-        }),
-      ])
-      expect(capturedChatInputProps?.showFeatureBar).toBe(true)
-      expect(capturedChatInputProps?.showFileUpload).toBe(false)
-      expect(capturedChatInputProps?.speechToTextConfig).toEqual(featureState.features.speech2text)
-      expect(capturedChatInputProps?.visionConfig).toEqual(featureState.features.file)
-      expect(debugConfiguration.onOpenFeatures).toHaveBeenCalledTimes(1)
-    })
-
-    it('should allow sending but disable feature configuration when configuration is readonly and test/run is allowed', () => {
-      mockUseDebugConfigurationContext.mockReturnValue(
-        createDebugConfiguration({
-          readonly: true,
-          canTestAndRun: true,
-        }),
-      )
-
-      renderComponent()
-      fireEvent.click(screen.getByRole('button', { name: /send/i }))
-
-      expect(capturedChatInputProps?.readonly).toBe(false)
-      expect(capturedChatInputProps?.disabled).toBe(false)
-      expect(capturedChatInputProps?.showFeatureBar).toBe(true)
-      expect(capturedChatInputProps?.featureBarReadonly).toBe(true)
-      expect(screen.getByRole('button', { name: /feature/i })).toBeDisabled()
-      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: APP_CHAT_WITH_MULTIPLE_MODEL,
-        }),
-      )
-    })
-
-    it('should block sending when test/run permission is missing', () => {
-      mockUseDebugConfigurationContext.mockReturnValue(
-        createDebugConfiguration({
-          canTestAndRun: false,
-        }),
-      )
-
-      renderComponent()
-      fireEvent.click(screen.getByRole('button', { name: /send/i }))
-
-      expect(capturedChatInputProps?.readonly).toBe(true)
-      expect(capturedChatInputProps?.disabled).toBe(true)
-      expect(mockEventEmitter.emit).not.toHaveBeenCalled()
-    })
-
-    it('should render chat input in agent chat mode', () => {
-      // Arrange
-      mockUseDebugConfigurationContext.mockReturnValue(
-        createDebugConfiguration({
-          mode: 'agent-chat' as const,
-        }),
-      )
-
-      // Act
-      renderComponent()
-
-      // Assert
-      // Assert
-      expect(screen.getByTestId('chat-input-area'))!.toBeInTheDocument()
-    })
-
-    it('should hide chat input when not in chat mode', () => {
-      // Arrange
-      mockUseDebugConfigurationContext.mockReturnValue(
-        createDebugConfiguration({
-          mode: 'completion' as const,
-        }),
-      )
-      const multipleModelConfigs = [createModelAndParameter()]
-
-      // Act
-      renderComponent({ multipleModelConfigs })
-
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      expect(screen.queryByTestId('chat-input-area')).not.toBeInTheDocument()
-      expect(screen.getAllByTestId('debug-item')).toHaveLength(1)
-    })
-  })
-
-  describe('sending flow', () => {
-    it('should emit chat event when allowed to send', () => {
-      // Arrange
-      const checkCanSend = vi.fn(() => true)
-      const multipleModelConfigs = [createModelAndParameter(), createModelAndParameter()]
-      renderComponent({ multipleModelConfigs, checkCanSend })
-
-      // Act
-      fireEvent.click(screen.getByRole('button', { name: /send/i }))
-
-      // Assert
-      expect(checkCanSend).toHaveBeenCalled()
-      expect(mockEventEmitter.emit).toHaveBeenCalledWith({
-        type: APP_CHAT_WITH_MULTIPLE_MODEL,
-        payload: {
-          message: 'test message',
-          files: mockFiles,
-        },
-      })
-    })
-
-    it('should emit when no checkCanSend is provided', () => {
-      renderComponent()
-
-      fireEvent.click(screen.getByRole('button', { name: /send/i }))
-
-      expect(mockEventEmitter.emit).toHaveBeenCalledWith({
-        type: APP_CHAT_WITH_MULTIPLE_MODEL,
-        payload: {
-          message: 'test message',
-          files: mockFiles,
-        },
-      })
-    })
-
-    it('should block sending when checkCanSend returns false', () => {
-      // Arrange
-      const checkCanSend = vi.fn(() => false)
-      renderComponent({ checkCanSend })
-
-      // Act
-      fireEvent.click(screen.getByRole('button', { name: /send/i }))
-
-      // Assert
-      expect(checkCanSend).toHaveBeenCalled()
-      expect(mockEventEmitter.emit).not.toHaveBeenCalled()
-    })
-
-    it('should tolerate missing event emitter without throwing', () => {
-      mockUseEventEmitterContext.mockReturnValue({ eventEmitter: null })
-      renderComponent()
-
-      expect(() => fireEvent.click(screen.getByRole('button', { name: /send/i }))).not.toThrow()
-      expect(mockEventEmitter.emit).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('performance optimization', () => {
-    it('should memoize callback functions correctly', () => {
-      const props = createProps({ multipleModelConfigs: [createModelAndParameter()] })
-      const { rerender } = renderComponent(props)
-
-      // First render
-      const firstItems = screen.getAllByTestId('debug-item')
-      expect(firstItems).toHaveLength(1)
-
-      // Rerender with exactly same props - should not cause re-renders
-      rerender(<DebugWithMultipleModel {...props} />)
-
-      const secondItems = screen.getAllByTestId('debug-item')
-      expect(secondItems).toHaveLength(1)
-
-      // Check that the element still renders the same content
-      // Check that the element still renders the same content
-      expect(firstItems[0])!.toHaveTextContent(secondItems[0]!.textContent || '')
-    })
-
-    it('should recalculate size and position when number of models changes', () => {
-      const { rerender } = renderComponent({ multipleModelConfigs: [createModelAndParameter()] })
-
-      // Single model - no special sizing
-      const singleItem = screen.getByTestId('debug-item')
-      expect(singleItem.style.width).toBe('')
-
-      // Change to 2 models
-      rerender(
-        <DebugWithMultipleModel
-          {...createProps({
-            multipleModelConfigs: [createModelAndParameter(), createModelAndParameter()],
-          })}
-        />,
-      )
-
-      const twoItems = screen.getAllByTestId('debug-item')
-      expect(twoItems[0]!.style.width).toBe('calc(50% - 4px - 24px)')
-      expect(twoItems[1]!.style.width).toBe('calc(50% - 4px - 24px)')
-    })
-  })
-
-  describe('layout sizing and positioning', () => {
-    const expectItemLayout = (
-      element: HTMLElement,
-      expectation: {
-        width?: string
-        height?: string
-        transform: string
-        classes?: string[]
       },
-    ) => {
-      if (expectation.width !== undefined) expect(element.style.width).toBe(expectation.width)
-      else expect(element.style.width).toBe('')
-
-      if (expectation.height !== undefined) expect(element.style.height).toBe(expectation.height)
-      else expect(element.style.height).toBe('')
-
-      expect(element.style.transform).toBe(expectation.transform)
-      expectation.classes?.forEach((cls) => expect(element)!.toHaveClass(cls))
+    })
+    expect(screen.queryAllByText('Welcome to the comparison')).toHaveLength(enabled ? 2 : 0)
+    await send(user)
+    expect(api.stream).toHaveBeenCalledTimes(2)
+    for (const request of api.stream.mock.calls) {
+      expect(request[1].body).toMatchObject({
+        model_config: {
+          opening_statement: enabled ? 'Welcome to the comparison' : '',
+          suggested_questions: enabled ? ['Compare retrieval methods'] : [],
+        },
+      })
     }
+  },
+)
 
-    it('should arrange items in two-column layout for two models', () => {
-      // Arrange
-      const multipleModelConfigs = [createModelAndParameter(), createModelAndParameter()]
-
-      // Act
-      renderComponent({ multipleModelConfigs })
-      const items = screen.getAllByTestId('debug-item')
-
-      // Assert
-      expect(items).toHaveLength(2)
-      expectItemLayout(items[0]!, {
-        width: 'calc(50% - 4px - 24px)',
-        height: '100%',
-        transform: 'translateX(0) translateY(0)',
-        classes: ['mr-2'],
-      })
-      expectItemLayout(items[1]!, {
-        width: 'calc(50% - 4px - 24px)',
-        height: '100%',
-        transform: 'translateX(calc(100% + 8px)) translateY(0)',
-        classes: [],
-      })
+it('shows a model transport error while another model continues answering', async () => {
+  const user = setup()
+  await send(user)
+  await act(async () => {
+    api.stream.mock.calls[0]?.[2]?.onNotifyError?.('Model is unavailable')
+    api.stream.mock.calls[1]?.[2]?.onData?.('The other model answered', true, {
+      messageId: 'answer-2',
+      conversationId: 'conversation-2',
+      taskId: 'task-2',
     })
-
-    it('should arrange items in thirds for three models', () => {
-      // Arrange
-      const multipleModelConfigs = [
-        createModelAndParameter(),
-        createModelAndParameter(),
-        createModelAndParameter(),
-      ]
-
-      // Act
-      renderComponent({ multipleModelConfigs })
-      const items = screen.getAllByTestId('debug-item')
-
-      // Assert
-      expect(items).toHaveLength(3)
-      expectItemLayout(items[0]!, {
-        width: 'calc(33.3% - 5.33px - 16px)',
-        height: '100%',
-        transform: 'translateX(0) translateY(0)',
-        classes: ['mr-2'],
-      })
-      expectItemLayout(items[1]!, {
-        width: 'calc(33.3% - 5.33px - 16px)',
-        height: '100%',
-        transform: 'translateX(calc(100% + 8px)) translateY(0)',
-        classes: ['mr-2'],
-      })
-      expectItemLayout(items[2]!, {
-        width: 'calc(33.3% - 5.33px - 16px)',
-        height: '100%',
-        transform: 'translateX(calc(200% + 16px)) translateY(0)',
-        classes: [],
-      })
-    })
-
-    it('should position items on a grid for four models', () => {
-      // Arrange
-      const multipleModelConfigs = [
-        createModelAndParameter(),
-        createModelAndParameter(),
-        createModelAndParameter(),
-        createModelAndParameter(),
-      ]
-
-      // Act
-      renderComponent({ multipleModelConfigs })
-      const items = screen.getAllByTestId('debug-item')
-
-      // Assert
-      expect(items).toHaveLength(4)
-      expectItemLayout(items[0]!, {
-        width: 'calc(50% - 4px - 24px)',
-        height: 'calc(50% - 4px)',
-        transform: 'translateX(0) translateY(0)',
-        classes: ['mr-2', 'mb-2'],
-      })
-      expectItemLayout(items[1]!, {
-        width: 'calc(50% - 4px - 24px)',
-        height: 'calc(50% - 4px)',
-        transform: 'translateX(calc(100% + 8px)) translateY(0)',
-        classes: ['mb-2'],
-      })
-      expectItemLayout(items[2]!, {
-        width: 'calc(50% - 4px - 24px)',
-        height: 'calc(50% - 4px)',
-        transform: 'translateX(0) translateY(calc(100% + 8px))',
-        classes: ['mr-2'],
-      })
-      expectItemLayout(items[3]!, {
-        width: 'calc(50% - 4px - 24px)',
-        height: 'calc(50% - 4px)',
-        transform: 'translateX(calc(100% + 8px)) translateY(calc(100% + 8px))',
-        classes: [],
-      })
-    })
-
-    it('should fall back to single column layout when only one model is provided', () => {
-      // Arrange
-      const multipleModelConfigs = [createModelAndParameter()]
-
-      // Act
-      renderComponent({ multipleModelConfigs })
-      const item = screen.getByTestId('debug-item')
-
-      // Assert
-      expectItemLayout(item, {
-        transform: 'translateX(0) translateY(0)',
-        classes: [],
-      })
-    })
-
-    it('should set scroll area height for chat modes', () => {
-      const { container } = renderComponent()
-      const scrollArea = container.querySelector(
-        '.relative.mb-3.grow.overflow-auto.px-6',
-      ) as HTMLElement
-      expect(scrollArea)!.toBeInTheDocument()
-      expect(scrollArea.style.height).toBe('calc(100% - 60px)')
-    })
-
-    it('should set full height when chat input is hidden', () => {
-      mockUseDebugConfigurationContext.mockReturnValue(
-        createDebugConfiguration({
-          mode: 'completion' as const,
-        }),
-      )
-
-      const { container } = renderComponent()
-      const scrollArea = container.querySelector(
-        '.relative.mb-3.grow.overflow-auto.px-6',
-      ) as HTMLElement
-      expect(scrollArea.style.height).toBe('100%')
-    })
+    await api.stream.mock.calls[1]?.[2]?.onCompleted?.()
   })
+  expect(await screen.findByText('Model is unavailable')).toBeVisible()
+  expect(screen.getByText('The other model answered')).toBeVisible()
 })

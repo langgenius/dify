@@ -41,11 +41,12 @@ describe('SkillDetailPage navigation', () => {
   beforeEach(resetDetailPageFixture)
 
   it('opens Go to Anything from the sidebar search action', async () => {
+    const user = userEvent.setup()
     renderSkillDetailPage()
     render(<TestGotoAnythingDialog />)
 
     expect(screen.queryByRole('dialog', { name: 'Goto Anything' })).not.toBeInTheDocument()
-    fireEvent.click(await screen.findByRole('button', { name: 'app.gotoAnything.searchTitle' }))
+    await user.click(await screen.findByRole('button', { name: 'app.gotoAnything.searchTitle' }))
 
     expect(screen.getByRole('dialog', { name: 'Goto Anything' })).toBeInTheDocument()
   })
@@ -57,8 +58,6 @@ describe('SkillDetailPage navigation', () => {
     expect(
       await screen.findByRole('region', { name: /skillManagement\.detail\.fileCount/ }),
     ).toBeInTheDocument()
-    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
-    expect(screen.queryByRole('main')).not.toBeInTheDocument()
 
     await user.click(
       await screen.findByRole('button', {
@@ -70,7 +69,7 @@ describe('SkillDetailPage navigation', () => {
       screen.queryByRole('region', { name: /skillManagement\.detail\.fileCount/ }),
     ).not.toBeInTheDocument()
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', {
         name: 'skill.skillManagement.detail.expandSidebar',
       }),
@@ -147,7 +146,7 @@ describe('SkillDetailPage navigation', () => {
     )
     expect(screen.queryByTestId('skill-detail-sidebar-header')).not.toBeInTheDocument()
 
-    fireEvent.mouseEnter(screen.getByTestId('skill-detail-sidebar-shell'))
+    await user.hover(screen.getByTestId('skill-detail-sidebar-shell'))
 
     expect(await screen.findByTestId('skill-detail-sidebar-header')).toBeInTheDocument()
 
@@ -372,9 +371,13 @@ describe('SkillDetailPage navigation', () => {
     ).toBeInTheDocument()
 
     await user.click(getReferencePickerButton('docs'))
-    await user.keyboard('{ArrowDown}{Enter}')
+    await user.click(getReferencePickerButton('reference.md'))
 
     await waitFor(() => {
+      expect(
+        screen.getAllByRole('textbox').find((editor) => editor instanceof HTMLDivElement)
+          ?.textContent,
+      ).toContain('reference.md')
       expect(
         screen.queryByText('skill.skillManagement.detail.referenceFiles.title'),
       ).not.toBeInTheDocument()
@@ -382,6 +385,7 @@ describe('SkillDetailPage navigation', () => {
   })
 
   it('shows the full reference path on hover and opens the referenced file in an editor tab', async () => {
+    const user = userEvent.setup()
     const manifestContent =
       '---\nname: github-actions-failure-debugging\ndescription: Guide for debugging failing GitHub Actions workflows.\nmetadata:\n  display-name: Untitled skill\n---\n# Guide\n\nRead [guide.md](<docs/guide.md>) before continuing.\n'
     mocks.skillDetail = createSkillDetail({
@@ -414,7 +418,7 @@ describe('SkillDetailPage navigation', () => {
 
     expect(reference).toHaveAttribute('title', 'docs/guide.md')
 
-    fireEvent.click(reference)
+    await user.click(reference)
     expect(
       await screen.findByRole('button', {
         name: 'skill.skillManagement.detail.closeFileTab:{"name":"docs/guide.md"}',

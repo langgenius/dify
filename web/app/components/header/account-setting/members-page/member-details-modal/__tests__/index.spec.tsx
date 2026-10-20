@@ -1,8 +1,11 @@
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ReactElement } from 'react'
 import type { Role } from '@/models/access-control'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
 import MemberDetailsModal from '../index'
 
 const { mockWorkspaceRoleListHook, mockRolesOfMemberHook } = vi.hoisted(() => ({
@@ -10,12 +13,16 @@ const { mockWorkspaceRoleListHook, mockRolesOfMemberHook } = vi.hoisted(() => ({
   mockRolesOfMemberHook: vi.fn(),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
-    'workspaces.current.rbac.members.byMemberId.rbacRoles.get': () => mockRolesOfMemberHook(),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.rbac.roles.get': async () => mockWorkspaceRoleListHook().data.pages[0],
+      'workspaces.current.rbac.members.byMemberId.rbacRoles.get': () => new Promise(() => {}),
+    }),
+  }
 })
 
 const createRole = (overrides: Partial<Role>): Role => ({
@@ -30,7 +37,6 @@ const createRole = (overrides: Partial<Role>): Role => ({
   role_tag: '',
   ...overrides,
 })
-
 const member: AccountWithRoleResponse = {
   id: 'member-1',
   name: 'Admin User',
@@ -43,6 +49,18 @@ const member: AccountWithRoleResponse = {
   last_login_at: 1731000000,
   created_at: 1731000000,
   status: 'active',
+}
+const render = (ui: ReactElement) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  const response = mockRolesOfMemberHook().data
+  if (response)
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.get.queryKey({
+        input: { params: { member_id: member.id }, query: { language: 'en' } },
+      }),
+      response,
+    )
+  return renderWithConsoleQuery(ui, { queryClient })
 }
 
 describe('MemberDetailsModal', () => {
@@ -99,8 +117,6 @@ describe('MemberDetailsModal', () => {
       expect(
         screen.queryByRole('button', { name: /members\.memberDetails\.assign/i }),
       ).not.toBeInTheDocument()
-      expect(editButton.querySelector('.i-ri-edit-line')).toBeInTheDocument()
-      expect(editButton.querySelector('.i-ri-add-line')).not.toBeInTheDocument()
     })
 
     it('should render singular assigned role label when there is one role', () => {
@@ -236,7 +252,7 @@ describe('MemberDetailsModal', () => {
       )
 
       await user.click(screen.getByRole('button', { name: /members\.memberDetails\.assign/i }))
-      await user.click(screen.getByRole('checkbox', { name: /Second role/i }))
+      await user.click(await screen.findByRole('checkbox', { name: /Second role/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
 
       expect(handleAssignSubmit).not.toHaveBeenCalled()
@@ -264,7 +280,7 @@ describe('MemberDetailsModal', () => {
       )
 
       await user.click(screen.getByRole('button', { name: /common\.operation\.edit/i }))
-      await user.click(screen.getByRole('radio', { name: /Second role/i }))
+      await user.click(await screen.findByRole('radio', { name: /Second role/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 

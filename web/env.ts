@@ -194,6 +194,10 @@ export const env = createEnv({
      * The timeout for the text generation in millisecond
      */
     TEXT_GENERATION_TIMEOUT_MS: coercedNumber.default(60000),
+    /** Ingress proof for the optional pre-render WebApp gate; never expose to the browser. */
+    WEBAPP_ACCESS_PREFLIGHT_PROXY_SECRET: z.string().optional(),
+    /** Fixed internal Gateway access-mode URL. Unset preserves self-hosted routing. */
+    WEBAPP_ACCESS_PREFLIGHT_URL: z.url().optional(),
     /**
      * The timeout for the cmd+k workflow generation in millisecond
      */
