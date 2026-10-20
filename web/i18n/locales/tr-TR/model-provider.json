@@ -53,7 +53,7 @@
   "modelProvider.card.usageLabel": "Kullanım",
   "modelProvider.card.usagePriority": "Kullanım Önceliği",
   "modelProvider.card.usagePriorityTip": "Modelleri çalıştırırken önce hangi kaynağın kullanılacağını belirleyin.",
-  "modelProvider.clearDefaultModel.description": "Bu varsayılan modelin temizlenmesi, ona bağlı iş akışlarının başarısız olmasına neden olabilir.",
+  "modelProvider.clearDefaultModel.description": "Bu değişiklik kaydettiğinizde geçerli olur. Bu varsayılan modelin temizlenmesi, ona bağlı iş akışlarının başarısız olmasına neden olabilir.",
   "modelProvider.clearDefaultModel.title": "{{modelType}} değeri temizlensin mi?",
   "modelProvider.configureTip": "Api-key'i ayarlayın veya kullanmak için model ekleyin",
   "modelProvider.confirmDelete": "silme onayı?",

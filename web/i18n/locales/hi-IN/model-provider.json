@@ -53,7 +53,7 @@
   "modelProvider.card.usageLabel": "उपयोग",
   "modelProvider.card.usagePriority": "उपयोग प्राथमिकता",
   "modelProvider.card.usagePriorityTip": "मॉडल चलाते समय पहले किस संसाधन का उपयोग करना है, यह सेट करें।",
-  "modelProvider.clearDefaultModel.description": "इस डिफ़ॉल्ट मॉडल को हटाने से इस पर निर्भर वर्कफ़्लो के संचालन में समस्या हो सकती है।",
+  "modelProvider.clearDefaultModel.description": "यह बदलाव सहेजने के बाद लागू होगा। इस डिफ़ॉल्ट मॉडल को हटाने से इस पर निर्भर वर्कफ़्लो के संचालन में समस्या हो सकती है।",
   "modelProvider.clearDefaultModel.title": "{{modelType}} का मान हटाएँ?",
   "modelProvider.configureTip": "एपीआई-कुंजी सेट करें या उपयोग के लिए मॉडल जोड़ें",
   "modelProvider.confirmDelete": "हटाने की पुष्टि करें?",

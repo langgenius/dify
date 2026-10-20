@@ -53,7 +53,7 @@
   "modelProvider.card.usageLabel": "Gebruik",
   "modelProvider.card.usagePriority": "Gebruiksprioriteit",
   "modelProvider.card.usagePriorityTip": "Stel in welke resource als eerste wordt gebruikt bij het uitvoeren van modellen.",
-  "modelProvider.clearDefaultModel.description": "Het leegmaken van dit standaardmodel kan ervoor zorgen dat workflows die ervan afhankelijk zijn, mislukken.",
+  "modelProvider.clearDefaultModel.description": "Deze wijziging wordt van kracht zodra u opslaat. Het leegmaken van dit standaardmodel kan ervoor zorgen dat workflows die ervan afhankelijk zijn, mislukken.",
   "modelProvider.clearDefaultModel.title": "{{modelType}} leegmaken?",
   "modelProvider.configureTip": "Set up api-key or add model to use",
   "modelProvider.confirmDelete": "Confirm deletion?",

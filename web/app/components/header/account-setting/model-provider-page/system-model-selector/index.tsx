@@ -1,6 +1,15 @@
-import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { Dispatch, FC, SetStateAction } from 'react'
+import type { FC } from 'react'
 import type { DefaultModel } from '../declarations'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -26,7 +35,6 @@ import { hasPermission } from '@/utils/permission'
 import { ModelTypeEnum } from '../declarations'
 import { useInvalidateDefaultModel, useUpdateModelList } from '../hooks'
 import { ModelSelector } from '../model-selector'
-import ClearDefaultModelDialog from './clear-default-model-dialog'
 
 type SystemModelSelectorProps = {
   className?: string
@@ -74,15 +82,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   hideProviderSettingsFooter,
   onOpenMarketplace,
 }) => {
-  const [clearConfirmation, setClearConfirmation] = useState<ClearConfirmation>()
   const { t } = useTranslation(['common', 'modelProvider'])
-  const { data: textGenerationModelList = [], isPending: isTextGenerationModelListLoading } =
-    useQuery(
-      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-        input: { params: { model_type: ModelTypeEnum.textGeneration } },
-        select: (response) => response.data,
-      }),
-    )
   const updateModelList = useUpdateModelList()
   const invalidateDefaultModel = useInvalidateDefaultModel()
   const [activeDialog, setActiveDialog] = useQueryState('dialog', systemModelDialogQueryParser)
@@ -108,7 +108,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   const handleOpenChange = (nextOpen: boolean) => {
     if (saveMutation.isPending) return
     saveMutation.reset()
-    if (!nextOpen) setClearConfirmation(undefined)
     setManuallyOpen(nextOpen)
     if (!nextOpen && activeDialog === 'system-models') void setActiveDialog(null)
   }
@@ -156,11 +155,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       </DialogTrigger>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className={cn(
-          'max-h-[calc(100dvh-2rem)] max-w-120',
-          // oxlint-disable-next-line shadcn/no-restyle -- Hide the settings through the nested confirmation's exit while keeping its backdrop mounted.
-          clearConfirmation && 'invisible',
-        )}
+        className="max-h-[calc(100dvh-2rem)] max-w-120"
       >
         <DialogHeader>
           <DialogTitle>
@@ -175,14 +170,10 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           />
         </DialogHeader>
         <SystemModelSession
-          textGenerationModelList={textGenerationModelList}
-          isTextGenerationModelListLoading={isTextGenerationModelListLoading}
           isSaving={saveMutation.isPending}
           saveError={saveError}
           onSave={handleSave}
           onClose={() => handleOpenChange(false)}
-          clearConfirmation={clearConfirmation}
-          setClearConfirmation={setClearConfirmation}
           hideProviderSettingsFooter={hideProviderSettingsFooter}
           onOpenMarketplace={onOpenMarketplace}
         />
@@ -195,34 +186,34 @@ type SystemModelSessionProps = Pick<
   SystemModelSelectorProps,
   'hideProviderSettingsFooter' | 'onOpenMarketplace'
 > & {
-  textGenerationModelList: ProviderWithModelsResponse[]
-  isTextGenerationModelListLoading: boolean
   isSaving: boolean
   saveError?: string
   onSave: (defaultModels: DefaultModelDraft, changedModelTypes: ModelTypeEnum[]) => void
   onClose: () => void
-  clearConfirmation: ClearConfirmation | undefined
-  setClearConfirmation: Dispatch<SetStateAction<ClearConfirmation | undefined>>
 }
 
 function SystemModelSession({
-  textGenerationModelList,
-  isTextGenerationModelListLoading,
   isSaving,
   saveError,
   onSave,
   onClose,
-  clearConfirmation,
-  setClearConfirmation,
   hideProviderSettingsFooter,
   onOpenMarketplace,
 }: SystemModelSessionProps) {
+  const [clearConfirmation, setClearConfirmation] = useState<ClearConfirmation>()
   const { t } = useTranslation(['common', 'modelProvider'])
   const modelLabelId = useId()
   const saveButtonRef = useRef<HTMLButtonElement>(null)
   const clearConfirmedRef = useRef(false)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageSystemDefaultModel = hasPermission(workspacePermissionKeys, 'plugin.model_config')
+  const { data: textGenerationModelList = [], isPending: isTextGenerationModelListLoading } =
+    useQuery(
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+        input: { params: { model_type: ModelTypeEnum.textGeneration } },
+        select: (response) => response.data,
+      }),
+    )
   const defaultModelQueries = useQueries({
     queries: systemModelTypes.map((modelType) =>
       consoleQuery.workspaces.current.defaultModel.get.queryOptions({
@@ -298,7 +289,7 @@ function SystemModelSession({
       setChangedModelTypes([...changedModelTypes, modelType])
   }
 
-  const getResetProps = (modelType: ModelTypeEnum, labelKey: SystemModelLabelKey) => ({
+  const getClearProps = (modelType: ModelTypeEnum, labelKey: SystemModelLabelKey) => ({
     onClear: canManageSystemDefaultModel
       ? () => {
           if (
@@ -313,7 +304,7 @@ function SystemModelSession({
           handleChangeDefaultModel(modelType, undefined)
         }
       : undefined,
-    clearLabel: `${t(($) => $['operation.reset'], { ns: 'common' })} ${t(($) => $[labelKey], { ns: 'modelProvider' })}`,
+    clearLabel: `${t(($) => $['operation.clear'], { ns: 'common' })} ${t(($) => $[labelKey], { ns: 'modelProvider' })}`,
   })
   const closeClearConfirmation = () => {
     setClearConfirmation((current) => current && { ...current, open: false })
@@ -399,7 +390,7 @@ function SystemModelSession({
               <div>
                 <ModelSelector
                   disabled={isSaving}
-                  {...getResetProps(
+                  {...getClearProps(
                     ModelTypeEnum.textGeneration,
                     'modelProvider.systemReasoningModel.key',
                   )}
@@ -423,7 +414,7 @@ function SystemModelSession({
               <div>
                 <ModelSelector
                   disabled={isSaving}
-                  {...getResetProps(
+                  {...getClearProps(
                     ModelTypeEnum.textEmbedding,
                     'modelProvider.embeddingModel.key',
                   )}
@@ -444,7 +435,7 @@ function SystemModelSession({
               <div>
                 <ModelSelector
                   disabled={isSaving}
-                  {...getResetProps(ModelTypeEnum.rerank, 'modelProvider.rerankModel.key')}
+                  {...getClearProps(ModelTypeEnum.rerank, 'modelProvider.rerankModel.key')}
                   value={defaultModels?.[ModelTypeEnum.rerank]}
                   models={rerankModelList}
                   hideProviderSettingsFooter={hideProviderSettingsFooter}
@@ -463,7 +454,7 @@ function SystemModelSession({
               <div>
                 <ModelSelector
                   disabled={isSaving}
-                  {...getResetProps(
+                  {...getClearProps(
                     ModelTypeEnum.speech2text,
                     'modelProvider.speechToTextModel.key',
                   )}
@@ -484,7 +475,7 @@ function SystemModelSession({
               <div>
                 <ModelSelector
                   disabled={isSaving}
-                  {...getResetProps(ModelTypeEnum.tts, 'modelProvider.ttsModel.key')}
+                  {...getClearProps(ModelTypeEnum.tts, 'modelProvider.ttsModel.key')}
                   value={defaultModels?.[ModelTypeEnum.tts]}
                   models={ttsModelList}
                   hideProviderSettingsFooter={hideProviderSettingsFooter}
@@ -518,17 +509,44 @@ function SystemModelSession({
           {t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
       </DialogFooter>
-      <ClearDefaultModelDialog
+      <AlertDialog
         open={clearConfirmation?.open ?? false}
-        modelName={modelToClearLabel}
-        disabled={!canManageSystemDefaultModel}
-        finalFocus={() => (clearConfirmedRef.current ? saveButtonRef.current : true)}
-        onConfirm={handleConfirmClear}
-        onClose={closeClearConfirmation}
-        onCloseComplete={() => {
-          setClearConfirmation((current) => (current?.open ? current : undefined))
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) closeClearConfirmation()
         }}
-      />
+        onOpenChangeComplete={(nextOpen) => {
+          if (!nextOpen) setClearConfirmation((current) => (current?.open ? current : undefined))
+        }}
+      >
+        <AlertDialogContent
+          finalFocus={() => (clearConfirmedRef.current ? saveButtonRef.current : true)}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['modelProvider.clearDefaultModel.title'], {
+                ns: 'modelProvider',
+                modelType: modelToClearLabel,
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(($) => $['modelProvider.clearDefaultModel.description'], {
+                ns: 'modelProvider',
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              disabled={!canManageSystemDefaultModel}
+              onClick={handleConfirmClear}
+            >
+              {t(($) => $['operation.clear'], { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   )
 }

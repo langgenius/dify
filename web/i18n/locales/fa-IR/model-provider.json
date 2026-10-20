@@ -53,7 +53,7 @@
   "modelProvider.card.usageLabel": "مصرف",
   "modelProvider.card.usagePriority": "اولویت مصرف",
   "modelProvider.card.usagePriorityTip": "تعیین کنید که هنگام اجرای مدل‌ها کدام منبع اول استفاده شود.",
-  "modelProvider.clearDefaultModel.description": "پاک کردن این مدل پیش‌فرض ممکن است باعث اختلال در اجرای گردش‌های کاری وابسته به آن شود.",
+  "modelProvider.clearDefaultModel.description": "این تغییر پس از ذخیره اعمال می‌شود. پاک کردن این مدل پیش‌فرض ممکن است باعث اختلال در اجرای گردش‌های کاری وابسته به آن شود.",
   "modelProvider.clearDefaultModel.title": "مقدار {{modelType}} پاک شود؟",
   "modelProvider.configureTip": "api-key را راه اندازی کنید یا مدل را برای استفاده اضافه کنید",
   "modelProvider.confirmDelete": "تأیید حذف؟",

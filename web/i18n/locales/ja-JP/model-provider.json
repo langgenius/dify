@@ -53,7 +53,7 @@
   "modelProvider.card.usageLabel": "使用量",
   "modelProvider.card.usagePriority": "使用優先順位",
   "modelProvider.card.usagePriorityTip": "モデル実行時に優先して使用するリソースを設定します。",
-  "modelProvider.clearDefaultModel.description": "このデフォルトモデルの設定をクリアすると、このモデルに依存するワークフローが正常に動作しなくなる可能性があります。",
+  "modelProvider.clearDefaultModel.description": "この変更は保存後に反映されます。このデフォルトモデルの設定をクリアすると、このモデルに依存するワークフローが正常に動作しなくなる可能性があります。",
   "modelProvider.clearDefaultModel.title": "{{modelType}} の設定をクリアしますか？",
   "modelProvider.configureTip": "API キーを設定するか、使用するモデルを追加してください",
   "modelProvider.confirmDelete": "削除を確認",

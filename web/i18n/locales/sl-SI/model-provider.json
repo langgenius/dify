@@ -53,7 +53,7 @@
   "modelProvider.card.usageLabel": "Poraba",
   "modelProvider.card.usagePriority": "Prednost porabe",
   "modelProvider.card.usagePriorityTip": "Nastavite, kateri vir se bo najprej uporabil pri zaganjanju modelov.",
-  "modelProvider.clearDefaultModel.description": "Če počistite ta privzeti model, lahko delovni tokovi, ki so odvisni od njega, prenehajo pravilno delovati.",
+  "modelProvider.clearDefaultModel.description": "Ta sprememba začne veljati ob shranjevanju. Če počistite ta privzeti model, lahko delovni tokovi, ki so odvisni od njega, prenehajo pravilno delovati.",
   "modelProvider.clearDefaultModel.title": "Počistiti {{modelType}}?",
   "modelProvider.configureTip": "Nastavitev tipke API ali dodajanje modela za uporabo",
   "modelProvider.confirmDelete": "Potrdite izbris?",

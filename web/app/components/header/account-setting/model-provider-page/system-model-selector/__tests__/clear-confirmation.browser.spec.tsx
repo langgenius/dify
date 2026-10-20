@@ -38,7 +38,6 @@ vi.mock('react-i18next', async () => {
       'modelProvider.clearDefaultModel.title': 'Clear {{modelType}}?',
       'operation.cancel': 'Cancel',
       'operation.clear': 'Clear',
-      'operation.reset': 'Reset',
       'operation.save': 'Save',
     }),
   }
@@ -47,8 +46,8 @@ vi.mock('react-i18next', async () => {
 beforeEach(() => vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false))
 afterEach(() => vi.unstubAllGlobals())
 
-it('replaces the settings surface with its confirmation while preserving the backdrop, draft and return focus', async () => {
-  // Real CSS and animation frames expose overlapping surfaces or a flashing backdrop that unit tests cannot see.
+it('keeps the settings behind its nested confirmation and restores focus without losing the draft', async () => {
+  // Real browser focus verifies returning to a surviving clear button or Save after that button disappears.
   const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
     workspacePermissionKeys: ['plugin.model_config'],
   })
@@ -78,74 +77,30 @@ it('replaces the settings surface with its confirmation while preserving the bac
   await expect.element(settings.getByRole('button', { name: /^Edited model/ })).toBeVisible()
 
   const settingsPopup = settings.element()
-  const backdrop = document.elementFromPoint(4, 4)
-  if (!(backdrop instanceof HTMLElement)) throw new Error('Expected the visible dialog backdrop')
-  await expect.element(backdrop).toHaveAttribute('role', 'presentation')
-  await expect.poll(() => getComputedStyle(backdrop).opacity).toBe('1')
-  let confirmationPopup: Element | undefined
-  let closing = false
-  const frames: {
-    backdropConnected: boolean
-    backdropVisible: boolean
-    backdropOpacity: number
-    closingConfirmationVisible: boolean
-    settingsVisible: boolean
-  }[] = []
-  let frameId = 0
-  const sampleFrame = () => {
-    const backdropStyle = getComputedStyle(backdrop)
-    const confirmationOpacity = confirmationPopup?.isConnected
-      ? Number(getComputedStyle(confirmationPopup).opacity)
-      : 0
-    frames.push({
-      backdropConnected: backdrop.isConnected,
-      backdropVisible: backdrop.checkVisibility({ visibilityProperty: true }),
-      backdropOpacity: Number(backdropStyle.opacity),
-      closingConfirmationVisible: closing && confirmationOpacity > 0 && confirmationOpacity < 1,
-      settingsVisible: settingsPopup.checkVisibility({ visibilityProperty: true }),
-    })
-    frameId = requestAnimationFrame(sampleFrame)
-  }
-  sampleFrame()
-
   try {
-    await settings.getByRole('button', { name: 'Reset System Reasoning Model' }).click()
+    await settings.getByRole('button', { name: 'Clear System Reasoning Model' }).click()
     const confirmation = screen.getByRole('alertdialog', { name: 'Clear System Reasoning Model?' })
     await expect.element(confirmation).toBeVisible()
-    await expect.element(settingsPopup).not.toBeVisible()
-    confirmationPopup = confirmation.element()
-    await expect.poll(() => getComputedStyle(confirmationPopup!).opacity).toBe('1')
-    closing = true
+    await expect.element(settingsPopup).toBeVisible()
     await confirmation.getByRole('button', { name: 'Cancel' }).click()
     await expect.element(confirmation).not.toBeInTheDocument()
-    closing = false
     await expect.element(settings).toBeVisible()
     await expect.element(settings.getByRole('button', { name: /^Edited model/ })).toBeVisible()
-    expect(document.elementFromPoint(4, 4)).toBe(backdrop)
+    await expect
+      .element(settings.getByRole('button', { name: 'Clear System Reasoning Model' }))
+      .toHaveFocus()
 
-    await settings.getByRole('button', { name: 'Reset System Reasoning Model' }).click()
+    await settings.getByRole('button', { name: 'Clear System Reasoning Model' }).click()
     await expect.element(confirmation).toBeVisible()
-    await expect.element(settingsPopup).not.toBeVisible()
-    confirmationPopup = confirmation.element()
-    await expect.poll(() => getComputedStyle(confirmationPopup!).opacity).toBe('1')
-    closing = true
+    await expect.element(settingsPopup).toBeVisible()
     await confirmation.getByRole('button', { name: 'Clear' }).click()
     await expect.element(confirmation).not.toBeInTheDocument()
-    closing = false
     await expect.element(settings).toBeVisible()
     await expect.element(settings.getByRole('button', { name: 'Save' })).toHaveFocus()
     await expect
-      .element(settings.getByRole('button', { name: 'Reset System Reasoning Model' }))
+      .element(settings.getByRole('button', { name: 'Clear System Reasoning Model' }))
       .not.toBeInTheDocument()
-    expect(document.elementFromPoint(4, 4)).toBe(backdrop)
-
-    expect(frames.every((frame) => frame.backdropConnected && frame.backdropVisible)).toBe(true)
-    expect(frames.every((frame) => frame.backdropOpacity === 1)).toBe(true)
-    const closingFrames = frames.filter((frame) => frame.closingConfirmationVisible)
-    expect(closingFrames.length).toBeGreaterThan(0)
-    expect(closingFrames.every((frame) => !frame.settingsVisible)).toBe(true)
   } finally {
-    cancelAnimationFrame(frameId)
     queryClient.clear()
   }
 })

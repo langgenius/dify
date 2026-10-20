@@ -53,7 +53,7 @@
   "modelProvider.card.usageLabel": "Utilizzo",
   "modelProvider.card.usagePriority": "Priorità di utilizzo",
   "modelProvider.card.usagePriorityTip": "Imposta quale risorsa utilizzare per prima durante l'esecuzione dei modelli.",
-  "modelProvider.clearDefaultModel.description": "Cancellare questo modello predefinito potrebbe causare il fallimento dei flussi di lavoro che dipendono da esso.",
+  "modelProvider.clearDefaultModel.description": "Questa modifica ha effetto al salvataggio. Cancellare questo modello predefinito potrebbe causare il fallimento dei flussi di lavoro che dipendono da esso.",
   "modelProvider.clearDefaultModel.title": "Cancellare {{modelType}}?",
   "modelProvider.configureTip": "Configura la chiave API o aggiungi il modello da utilizzare",
   "modelProvider.confirmDelete": "confermare l'eliminazione?",
