@@ -1,7 +1,10 @@
 'use client'
 
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { Resource } from 'i18next'
 import type { Locale } from '@/i18n'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
@@ -13,6 +16,7 @@ import ThemeSelector from '@/app/components/base/theme-selector'
 import { loadI18nResource } from '@/i18n/load-resource'
 import { getInitOptions } from '@/i18n/settings'
 import { usePathname, useSearchParams } from '@/next/navigation'
+import { getAvatarInitial } from '@/utils/avatar'
 import { basePath } from '@/utils/var'
 import { getBrowserLocale } from './locale'
 import LocaleMenu from './locale-menu'
@@ -20,6 +24,7 @@ import { getClientIp } from './state'
 
 type AppNotAccessibleProps = {
   clientIp?: string
+  account?: Pick<GetAccountProfileResponse, 'name' | 'avatar_url'>
   /** A dialog supplies its own landmarks and close control. */
   embedded?: boolean
   /** The document gate supplies browser-language resources before streaming. */
@@ -27,7 +32,7 @@ type AppNotAccessibleProps = {
   initialResources?: Resource
 }
 
-function PageContent({ clientIp, embedded }: AppNotAccessibleProps) {
+function PageContent({ clientIp, embedded, account }: AppNotAccessibleProps) {
   const { t, i18n } = useTranslation(['share', 'login'])
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -68,29 +73,45 @@ function PageContent({ clientIp, embedded }: AppNotAccessibleProps) {
             />
             <ThemeSelector />
             <span aria-hidden className="h-3.5 w-px shrink-0 bg-divider-regular" />
-            <a
-              href={signInHref}
-              className="inline-flex shrink-0 items-center rounded-full p-0.5 text-components-button-secondary-text hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            >
-              <span
-                aria-hidden
-                className="relative size-6 shrink-0 overflow-hidden rounded-full border-[0.5px] border-divider-regular bg-util-colors-gray-gray-300"
+            {/* Error documents skip app bootstrap; native links restore the normal root layout. */}
+            {account ? (
+              <a
+                href={`${basePath}/account`}
+                className="inline-flex min-w-0 items-center gap-3 rounded-full py-1 pr-4 pl-1 text-components-main-nav-text hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               >
-                <img
-                  src={`${basePath}/illustrations/sign-in-avatar-person.svg`}
-                  width={18}
-                  height={29.1429}
-                  alt=""
-                  className="absolute top-[21.43%] left-[12.5%] w-3/4 max-w-none"
-                />
-              </span>
-              <span className="px-2 system-sm-medium whitespace-nowrap">
-                {t(($) => $.signBtn, { ns: 'login' })}
-              </span>
-            </a>
+                <Avatar className="size-7 system-sm-semibold" aria-hidden>
+                  <AvatarImage src={account.avatar_url ?? undefined} alt="" />
+                  <AvatarFallback className="font-semibold">
+                    {getAvatarInitial(account.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="min-w-0 system-md-medium wrap-anywhere">{account.name}</span>
+              </a>
+            ) : (
+              <a
+                href={signInHref}
+                className="inline-flex shrink-0 items-center rounded-full p-0.5 text-components-button-secondary-text hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              >
+                <span
+                  aria-hidden
+                  className="relative size-6 shrink-0 overflow-hidden rounded-full border-[0.5px] border-divider-regular bg-util-colors-gray-gray-300"
+                >
+                  <img
+                    src={`${basePath}/illustrations/sign-in-avatar-person.svg`}
+                    width={18}
+                    height={29.1429}
+                    alt=""
+                    className="absolute top-[21.43%] left-[12.5%] w-3/4 max-w-none"
+                  />
+                </span>
+                <span className="px-2 system-sm-medium whitespace-nowrap">
+                  {t(($) => $.signBtn, { ns: 'login' })}
+                </span>
+              </a>
+            )}
           </div>
         </header>
-        <Content className="flex flex-1 items-center justify-center px-6 pt-12 pb-12 md:pb-30">
+        <Content className="flex flex-1 items-center justify-center px-6 py-12 md:pt-0 md:pb-30">
           <div className="flex w-full max-w-120 flex-col items-start">
             <img
               src={`${basePath}/illustrations/app-not-accessible.png`}
@@ -102,11 +123,11 @@ function PageContent({ clientIp, embedded }: AppNotAccessibleProps) {
             <h1 className="text-base leading-[1.2] font-semibold wrap-break-word text-text-primary">
               {t(($) => $['appNotAccessible.title'])}
             </h1>
-            <p className="mt-2 system-sm-regular text-text-primary">
+            <p className="mt-2 system-md-regular text-text-primary">
               {t(($) => $['appNotAccessible.description'])}
             </p>
             {ip && (
-              <p className="mt-8 max-w-full system-sm-regular text-text-primary">
+              <p className="mt-8 max-w-full system-md-regular text-text-primary">
                 <Trans
                   t={t}
                   ns="share"
@@ -116,12 +137,23 @@ function PageContent({ clientIp, embedded }: AppNotAccessibleProps) {
                     ip: (
                       <code
                         dir="ltr"
-                        className="rounded bg-background-default-burn px-1 font-mono code-sm-semibold tracking-[0.065px] break-all"
+                        className="rounded bg-background-default-burn px-1 font-mono text-sm leading-5 font-semibold tracking-[0.07px] break-all"
                       />
                     ),
                   }}
                 />
               </p>
+            )}
+            {account && (
+              <a
+                href={`${basePath}/my-apps`}
+                className={cn(
+                  buttonVariants({ variant: 'secondary' }),
+                  'mt-6 h-auto min-h-9 max-w-full py-2 whitespace-normal',
+                )}
+              >
+                {t(($) => $['appNotAccessible.backToMyApps'])}
+              </a>
             )}
           </div>
         </Content>

@@ -12,7 +12,7 @@ import jaShare from '@/i18n/locales/ja-JP/share.json'
 import zhLogin from '@/i18n/locales/zh-Hans/login.json'
 import zhShare from '@/i18n/locales/zh-Hans/share.json'
 import { getBrowserLocale } from '../locale'
-import AppNotAccessible from '../page'
+import AppNotAccessible from '../view'
 
 vi.unmock('react-i18next')
 vi.mock('@/next/navigation', () => ({

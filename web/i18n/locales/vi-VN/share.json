@@ -1,7 +1,8 @@
 {
+  "appNotAccessible.backToMyApps": "Quay lại Ứng dụng của tôi",
   "appNotAccessible.description": "Hãy liên hệ với quản trị viên ứng dụng nếu bạn cần trợ giúp.",
   "appNotAccessible.documentTitle": "Không thể truy cập ứng dụng · Dify",
-  "appNotAccessible.ipAddress": "Địa chỉ IP của bạn là <ip>{{ip}}</ip>.",
+  "appNotAccessible.ipAddress": "Địa chỉ IP của bạn: <ip>{{ip}}</ip>",
   "appNotAccessible.title": "Ứng dụng này không tồn tại hoặc không thể truy cập từ mạng của bạn.",
   "auth.signIn": "Đăng nhập",
   "chat.chatFormTip": "Cài đặt trò chuyện không thể được thay đổi sau khi cuộc trò chuyện đã bắt đầu.",

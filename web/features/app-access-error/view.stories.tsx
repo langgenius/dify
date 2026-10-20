@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { ThemeProvider } from 'next-themes'
-import AppNotAccessible from './page'
+import AppNotAccessible from './view'
 
 const meta = {
   title: 'App/App Not Accessible',
@@ -24,6 +24,17 @@ type Story = StoryObj<typeof meta>
 export const WithoutIP: Story = {}
 export const IPv4: Story = { args: { clientIp: '203.0.113.42' } }
 export const IPv6: Story = { args: { clientIp: '2001:db8:1234:5678:90ab:cdef:1234:5678' } }
+
+export const WebappSignedOut: Story = {
+  args: { clientIp: '203.0.113.42' },
+}
+
+export const WebappSignedIn: Story = {
+  args: {
+    ...WebappSignedOut.args,
+    account: { name: 'Evan Z', avatar_url: null },
+  },
+}
 
 export const NarrowIframe: Story = {
   render: () => (

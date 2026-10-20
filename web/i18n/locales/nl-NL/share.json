@@ -1,7 +1,8 @@
 {
+  "appNotAccessible.backToMyApps": "Terug naar Mijn apps",
   "appNotAccessible.description": "Neem contact op met de appbeheerder als u hulp nodig hebt.",
   "appNotAccessible.documentTitle": "App niet toegankelijk · Dify",
-  "appNotAccessible.ipAddress": "Uw IP-adres is <ip>{{ip}}</ip>.",
+  "appNotAccessible.ipAddress": "Uw IP-adres: <ip>{{ip}}</ip>",
   "appNotAccessible.title": "Deze app bestaat niet of is niet toegankelijk vanuit uw netwerk.",
   "auth.signIn": "Inloggen",
   "chat.chatFormTip": "Chat settings cannot be modified after the chat has started.",

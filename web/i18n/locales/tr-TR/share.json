@@ -1,7 +1,8 @@
 {
+  "appNotAccessible.backToMyApps": "Uygulamalarıma dön",
   "appNotAccessible.description": "Yardıma ihtiyacınız varsa uygulama yöneticisiyle iletişime geçin.",
   "appNotAccessible.documentTitle": "Uygulamaya erişilemiyor · Dify",
-  "appNotAccessible.ipAddress": "IP adresiniz <ip>{{ip}}</ip>.",
+  "appNotAccessible.ipAddress": "IP adresiniz: <ip>{{ip}}</ip>",
   "appNotAccessible.title": "Bu uygulama mevcut değil veya ağınızdan erişilemiyor.",
   "auth.signIn": "Giriş yap",
   "chat.chatFormTip": "Sohbet başladıktan sonra sohbet ayarları değiştirilemez.",

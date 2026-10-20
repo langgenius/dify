@@ -1,7 +1,8 @@
 {
+  "appNotAccessible.backToMyApps": "Zurück zu Meine Apps",
   "appNotAccessible.description": "Wenden Sie sich an den App-Administrator, wenn Sie Hilfe benötigen.",
   "appNotAccessible.documentTitle": "App nicht zugänglich · Dify",
-  "appNotAccessible.ipAddress": "Ihre IP-Adresse ist <ip>{{ip}}</ip>.",
+  "appNotAccessible.ipAddress": "Ihre IP-Adresse: <ip>{{ip}}</ip>",
   "appNotAccessible.title": "Diese App existiert nicht oder ist von Ihrem Netzwerk aus nicht zugänglich.",
   "auth.signIn": "Anmelden",
   "chat.chatFormTip": "Chat-Einstellungen können nach Beginn des Chats nicht mehr geändert werden.",
