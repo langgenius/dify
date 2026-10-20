@@ -1700,6 +1700,10 @@ jobs:
               import pytest
 
               EXPECTED = {'tests.test_containers_integration_tests.core.workflow.test_builder_native_console_api': {'test_native_console_unauthenticated_is_rejected': 1, 'test_native_console_invalid_csrf_is_rejected': 1, 'test_decision_cannot_replace_effect_parameters': 1, 'test_protected_checkpoint_roundtrip_disclosure_and_same_key_receipt': 1, 'test_same_key_different_decision_conflicts_without_dispatch': 1, 'test_stale_scope_and_version_cannot_approve': 2, 'test_current_resource_rotation_cannot_approve': 1, 'test_frozen_two_call_proposal_cannot_authorize_third_call': 1, 'test_cross_session_request_is_not_visible': 1, 'test_old_checkpoint_without_full_intent_fails_closed': 2, 'test_current_test_run_permission_is_required': 1, 'test_actual_child_permission_revocation_blocks_root_public_receipt': 1, 'test_generation_changes_after_protected_read_cannot_write_grant': 1, 'test_auth_start_persists_compiled_context_and_replays_without_second_admission': 1, 'test_cancel_without_cleanup_ack_reports_cancelling': 1, 'test_cleanup_ack_cannot_erase_unknown_dispatched_effect': 1, 'test_resume_reuses_same_durable_dispatch': 1, 'test_approval_cannot_replace_configuration_or_native_form': 2, 'test_expired_frozen_proposal_cannot_approve': 1, 'test_final_child_authority_refresh_precedes_decision_write': 2, 'test_concurrent_decisions_return_canonical_saved_receipt': 2}}
+              EXPECTED['tests.test_containers_integration_tests.core.workflow.test_builder_native_console_api'].update({
+                  'test_public_decision_refresh_and_readiness_never_dispatch': 1,
+                  'test_expired_saved_decision_stays_frozen_but_cannot_resume': 1,
+              })
               REPORT = "builder-native-console.xml"
               code = pytest.main(['api/tests/test_containers_integration_tests/core/workflow/test_builder_native_console_api.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-console.xml', '-p', 'no:benchmark', '--no-cov', '--timeout=360', '--timeout-method=thread'])
               problems = []
@@ -1911,6 +1915,26 @@ jobs:
               'test_prepare_callback_accepts_real_delayed_metadata_without_replay': 1,
               'test_prepare_callback_connection_failure_is_single_attempt': 1,
           })
+          # Confirmed Agent ownership: exact counts from real pytest collection.
+          for module, functions in {
+              'tests.local.dify_agent.server.test_app': {
+                  'test_confirmed_stub_uses_strict_owner_alongside_legacy_ordinary_services': 1,
+              },
+              'tests.local.dify_agent.agent_stub.server.test_runtime_admission': {
+                  'test_confirmed_stub_token_preserves_claimed_envelope_and_config_get_forwards_it': 1,
+                  'test_confirmed_stub_durable_reader_requires_exact_active_identity': 1,
+              },
+              'tests.integration.dify_agent.storage.test_active_stub_identity': {
+                  'test_confirmed_active_stub_atomic_selection': 5,
+              },
+              'tests.local.dify_agent.runtime.test_confirmed_continuation_owner': {
+                  'test_confirmed_shell_claim_precedes_io_and_lost_claim_does_not_invoke': 3,
+                  'test_confirmed_preparation_wait_restore_uses_ledger_without_duplicate_io': 2,
+                  'test_confirmed_scheduler_advances_restored_shell_owner_generation_and_rejects_foreign_identity': 1,
+                  'test_confirmed_wrap_run_stage_consumes_restored_decision_once': 10,
+              },
+          }.items():
+              EXPECTED.setdefault(module, {}).update(functions)
           REPORT = "builder-native-agent.xml"
           code = pytest.main(['tests/local/dify_agent/client/test_run_recovery.py', 'tests/local/dify_agent/protocol/test_run_recovery.py', 'tests/local/dify_agent/runtime/test_confirmed_continuation_owner.py', 'tests/local/dify_agent/runtime/test_native_lost_ack.py', 'tests/local/dify_agent/runtime/test_run_recovery.py', 'tests/local/dify_agent/server/test_identity_profile.py', 'tests/local/dify_agent/server/test_run_recovery.py', 'tests/local/dify_agent/storage/test_run_recovery.py', 'tests/local/dify_agent/agent_stub/server/test_runtime_admission.py', 'tests/integration/dify_agent/storage/test_active_stub_identity.py', 'tests/local/dify_agent/adapters/native_testing/test_producers.py', 'tests/local/dify_agent/adapters/native_testing/test_transport.py', 'tests/local/dify_agent/layers/dify_plugin/test_layers.py', 'tests/local/dify_agent/layers/knowledge/test_layer.py', 'tests/local/dify_agent/runtime/test_run_transport.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/server/test_runtime_transport.py', 'tests/local/dify_agent/protocol/test_initial_preparation.py', 'tests/local/dify_agent/server/test_initial_identity.py', 'tests/local/dify_agent/protocol/test_native_testing.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/storage/test_native_continuation_store.py', 'tests/local/dify_agent/runtime/test_native_effects.py', 'tests/local/dify_agent/protocol/test_native_checkpoint_readback.py', 'tests/local/dify_agent/server/test_native_checkpoint_readback.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-agent.xml'])
           problems = []
@@ -1970,6 +1994,9 @@ jobs:
                                                       'test_server_settings_use_generic_outbound_http_args_for_shared_clients': 1,
                                                       'test_strict_embedded_stub_borrows_lifespan_reader_and_client': 1}}.items():
               EXPECTED.setdefault(module, {}).update(functions)
+          EXPECTED['tests.local.dify_agent.server.test_app'].update({
+              'test_confirmed_stub_uses_strict_owner_alongside_legacy_ordinary_services': 1,
+          })
           REPORT = "builder-agent-regressions.xml"
           code = pytest.main(['tests/local/dify_agent/protocol/test_protocol_schemas.py', 'tests/local/dify_agent/protocol/test_working_environment.py', 'tests/local/dify_agent/runtime/test_runner.py', 'tests/local/dify_agent/runtime/test_run_scheduler.py', 'tests/local/dify_agent/storage/test_redis_run_store.py', 'tests/local/dify_agent/server/test_runs_routes.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/client/test_client.py', 'tests/local/dify_agent/test_client_safe_exports.py', 'tests/local/dify_agent/server/test_auth.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-agent-regressions.xml'])
           problems = []
@@ -2030,6 +2057,18 @@ jobs:
                                                       'test_optional_metering_never_starts_a_collector_or_blocks_runtime_startup': 2,
                                                       'test_server_settings_use_generic_outbound_http_args_for_shared_clients': 1,
                                                       'test_strict_embedded_stub_borrows_lifespan_reader_and_client': 1}}.items():
+              EXPECTED.setdefault(module, {}).update(functions)
+          for module, functions in {
+              'tests.local.dify_agent.runtime_backend.test_native_test_scope': {
+                  'test_confirmed_runtime_borrows_ordinary_binding_only_after_owner_validation': 1,
+              },
+              'tests.local.dify_agent.layers.shell.test_layer': {
+                  'test_confirmed_shell_exit_keeps_jobs_without_unapproved_cleanup': 1,
+              },
+              'tests.local.dify_agent.server.test_app': {
+                  'test_confirmed_stub_uses_strict_owner_alongside_legacy_ordinary_services': 1,
+              },
+          }.items():
               EXPECTED.setdefault(module, {}).update(functions)
           REPORT = "builder-agent-workspace-regressions.xml"
           code = pytest.main(['tests/local/dify_agent/runtime_backend', 'tests/local/dify_agent/layers', 'tests/local/dify_agent/server/test_binding_files.py', 'tests/local/dify_agent/server/test_execution_bindings.py', 'tests/local/dify_agent/server/test_home_snapshots.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/runtime/test_runner.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/client/test_client.py', 'tests/local/dify_agent/runtime/test_modules.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-agent-workspace-regressions.xml'])
@@ -2316,6 +2355,12 @@ jobs:
               },
           }.items():
               new_expected.setdefault(module, {}).update(functions)
+          new_expected.setdefault(
+              'tests.unit_tests.extensions.otel.decorators.handlers.test_workflow_app_runner_handler', {}
+          ).update({
+              'test_service_driver_emits_workflow_span': 1,
+              'test_marked_native_driver_does_not_emit_workflow_span': 1,
+          })
           new_actual = {module: Counter() for module in new_expected}
           expected = {path.removeprefix("api/").removesuffix(".py").replace("/", ".") for path in files}
           expected = physical_owner_baseline_expected | set(new_expected)

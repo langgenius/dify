@@ -13,9 +13,9 @@ from dify_agent.protocol import (
 )
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
+from graphon.engine_events.node import NodeRunPauseRequestedEvent
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import ErrorStrategy, WorkflowNodeExecutionStatus
-from graphon.graph_events import NodeRunPauseRequestedEvent
 from graphon.node_events import StreamCompletedEvent
 from graphon.variables.segments import StringSegment
 from runtime_contracts.builder.native.agent_contracts import AgentCreateInserted, AgentParentNodeRef
@@ -45,10 +45,10 @@ def _confirmed(monkeypatch, *, existing=False, unknown=False, custom_outputs=Non
         declared_outputs=custom_outputs,
         error_strategy=ErrorStrategy.DEFAULT_VALUE,
     )
-    run_context = node.graph_init_params.run_context[DIFY_RUN_CONTEXT_KEY]
+    run_context = node.require_run_context_value(DIFY_RUN_CONTEXT_KEY)
     run_context.builder_agent_execution = context
     # A Workflow context has no owning chat conversation.
-    pool = node.graph_runtime_state.variable_pool
+    pool = node.runtime_state.variable_pool
     old_get = pool.get
     pool.get = lambda selector: (
         StringSegment(value=context.native_run_id)
@@ -298,7 +298,7 @@ def test_node_factory_injects_confirmed_owners_only_for_server_marker(monkeypatc
 
     node, _, _, _, _, _, _ = _confirmed(monkeypatch)
     factory = object.__new__(DifyNodeFactory)
-    factory._dify_context = node.graph_init_params.run_context[DIFY_RUN_CONTEXT_KEY]
+    factory._dify_context = node.require_run_context_value(DIFY_RUN_CONTEXT_KEY)
     owners = (object(), object(), object())
     build = MagicMock(return_value=owners)
     monkeypatch.setattr(wiring, "build_confirmed_agent_node_owners", build, raising=False)
