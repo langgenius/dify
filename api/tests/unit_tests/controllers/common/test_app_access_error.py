@@ -1,13 +1,13 @@
 import json
 from collections.abc import Callable, Iterator
 from typing import Literal
-from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
 from flask import Blueprint, Flask, Response
 from flask.typing import ResponseReturnValue
 from flask_restx import Resource
+from pytest_mock import MockerFixture
 from werkzeug.exceptions import NotFound
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -331,11 +331,12 @@ def test_success_and_non_404_errors_are_unchanged(prefix: str, status: int) -> N
 @pytest.mark.allow_error_contract_violations
 @pytest.mark.parametrize("path", ["/api/site", f"/console/api/apps/{APP_ID}"])
 @pytest.mark.parametrize("status", [200, 201, 204, 301, 302, 303, 304, 307, 308, 401, 500, 503])
-def test_non_candidate_statuses_do_not_parse_json(monkeypatch: pytest.MonkeyPatch, path: str, status: int) -> None:
+def test_non_candidate_statuses_do_not_parse_json(mocker: MockerFixture, path: str, status: int) -> None:
     body = b'{"code":"app_not_found","message":"unchanged","data":[1,2,3]}'
     original = Response(body, status=status, mimetype="application/json")
-    parse = MagicMock(side_effect=AssertionError("Non-candidate response must not be parsed"))
-    monkeypatch.setattr(original, "get_json", parse)
+    parse = mocker.patch.object(
+        original, "get_json", side_effect=AssertionError("Non-candidate response must not be parsed")
+    )
     app = _create_app(lambda: original)
 
     with app.test_request_context(path):
@@ -366,12 +367,11 @@ def test_non_candidate_statuses_do_not_parse_json(monkeypatch: pytest.MonkeyPatc
 )
 @pytest.mark.allow_error_contract_violations
 def test_route_and_surface_ineligible_errors_do_not_parse_json(
-    monkeypatch: pytest.MonkeyPatch, path: str, method: str, status: int
+    mocker: MockerFixture, path: str, method: str, status: int
 ) -> None:
     body = b'{"code":"app_not_found","message":"unchanged"}'
     original = Response(body, status=status, mimetype="application/json")
-    parse = MagicMock(side_effect=AssertionError("Ineligible error must not be parsed"))
-    monkeypatch.setattr(original, "get_json", parse)
+    parse = mocker.patch.object(original, "get_json", side_effect=AssertionError("Ineligible error must not be parsed"))
     app = _create_app(lambda: original)
 
     with app.test_request_context(path, method=method):
@@ -388,7 +388,7 @@ def test_route_and_surface_ineligible_errors_do_not_parse_json(
 @pytest.mark.parametrize("direct_passthrough", [False, True])
 @pytest.mark.allow_error_contract_violations
 def test_candidate_and_success_streams_never_parse_or_consume_response(
-    monkeypatch: pytest.MonkeyPatch, status: int, direct_passthrough: bool
+    mocker: MockerFixture, status: int, direct_passthrough: bool
 ) -> None:
     consumed: list[bool] = []
 
@@ -397,8 +397,7 @@ def test_candidate_and_success_streams_never_parse_or_consume_response(
         yield '{"code":"app_not_found"}'
 
     original = Response(stream(), status, mimetype="application/json", direct_passthrough=direct_passthrough)
-    parse = MagicMock(side_effect=AssertionError("Stream must not be parsed"))
-    monkeypatch.setattr(original, "get_json", parse)
+    parse = mocker.patch.object(original, "get_json", side_effect=AssertionError("Stream must not be parsed"))
     app = _create_app(lambda: original)
     with app.test_request_context("/api/site"):
         response = app.full_dispatch_request()

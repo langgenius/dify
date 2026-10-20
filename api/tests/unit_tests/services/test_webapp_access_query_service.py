@@ -103,6 +103,18 @@ def test_disabled_auth_returns_public_before_resolving_app() -> None:
 
 
 @pytest.mark.parametrize("enabled", [True, False])
+def test_management_reads_configured_policy_without_publication_admission(enabled: bool) -> None:
+    fixture = _service(access=AccessQueryStub(available=False), enabled=enabled)
+
+    result = fixture.service.get_configured_access_mode(app_id="draft-app")
+
+    assert result is (WebAppAccessMode.PRIVATE if enabled else WebAppAccessMode.PUBLIC)
+    assert fixture.access.calls == []
+    assert fixture.access.availability_calls == []
+    assert fixture.policy.access_mode_calls == (["draft-app"] if enabled else [])
+
+
+@pytest.mark.parametrize("enabled", [True, False])
 @pytest.mark.parametrize("reference", ["code", "id"])
 def test_public_identity_resolution_does_not_load_authentication_settings(enabled: bool, reference: str) -> None:
     fixture = _service(access=AccessQueryStub(app_id="resolved-id"), enabled=enabled)

@@ -764,15 +764,17 @@ def test_current_ip_read_needs_no_policy_and_preserves_read_admission(role: str,
     harness.entitlement.is_paid_plan.assert_not_called()
 
 
+def _unexpected_client_ip_read() -> str:
+    pytest.fail("Client IP must not be read before role and policy admission")
+
+
 @pytest.mark.parametrize("role", ["normal", "dataset_operator", "unknown", None])
 def test_current_ip_read_rejects_disallowed_persisted_roles_before_reading_ip(role: str | None) -> None:
     harness = _harness(role=role)
-    supplier = MagicMock(return_value="203.0.113.7")
 
     with pytest.raises(NetworkAccessGroupAccessDeniedError):
-        harness.service.get_current_ip(_context(), client_ip_supplier=supplier)
+        harness.service.get_current_ip(_context(), client_ip_supplier=_unexpected_client_ip_read)
 
-    supplier.assert_not_called()
     assert harness.control_plane.method_calls == []
     assert harness.apps.method_calls == []
     harness.entitlement.is_paid_plan.assert_not_called()
@@ -781,24 +783,19 @@ def test_current_ip_read_rejects_disallowed_persisted_roles_before_reading_ip(ro
 @pytest.mark.parametrize("role", ["normal", "dataset_operator", None])
 def test_current_ip_check_rejects_role_before_policy_or_ip_lookup(role: str | None) -> None:
     harness = _harness(role=role)
-    supplier = MagicMock(return_value="203.0.113.7")
 
     with pytest.raises(NetworkAccessGroupAccessDeniedError):
-        harness.service.check_current_ip(_context(), group_id=GROUP_ID, client_ip_supplier=supplier)
+        harness.service.check_current_ip(_context(), group_id=GROUP_ID, client_ip_supplier=_unexpected_client_ip_read)
 
     harness.control_plane.get_group.assert_not_called()
-    supplier.assert_not_called()
 
 
 def test_current_ip_check_does_not_read_ip_when_tenant_scoped_policy_lookup_fails() -> None:
     harness = _harness(role="admin")
     harness.control_plane.get_group.side_effect = NetworkAccessGroupUpstreamError(404)
-    supplier = MagicMock(return_value="203.0.113.7")
 
     with pytest.raises(NetworkAccessGroupUpstreamError):
-        harness.service.check_current_ip(_context(), group_id=GROUP_ID, client_ip_supplier=supplier)
-
-    supplier.assert_not_called()
+        harness.service.check_current_ip(_context(), group_id=GROUP_ID, client_ip_supplier=_unexpected_client_ip_read)
 
 
 @pytest.mark.parametrize(

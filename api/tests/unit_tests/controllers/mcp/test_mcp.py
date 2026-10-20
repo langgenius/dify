@@ -237,12 +237,14 @@ class TestMCPAppApi:
         assert response.status_code == 404
         assert response.get_json()["error"]["message"] == "Server Not Found"
 
-    def test_invalid_payload(self):
+    def test_invalid_payload(self, mocker):
         fake_payload({"invalid": "data"})
 
         api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(
-            return_value=(_server(module.AppMCPServerStatus.ACTIVE), _app(module.AppMode.WORKFLOW))
+        mocker.patch.object(
+            api,
+            "_get_mcp_server_and_app",
+            return_value=(_server(module.AppMCPServerStatus.ACTIVE), _app(module.AppMode.WORKFLOW)),
         )
         post_fn = unwrap(api.post)
 
@@ -270,7 +272,7 @@ class TestMCPAppApi:
         assert response.status_code == 202
         assert response.data == b""
 
-    def test_server_not_found(self):
+    def test_server_not_found(self, mocker):
         """Test when MCP server doesn't exist"""
         fake_payload(
             {
@@ -286,7 +288,7 @@ class TestMCPAppApi:
         )
 
         api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(side_effect=module.MCPServerNotFoundError())
+        mocker.patch.object(api, "_get_mcp_server_and_app", side_effect=module.MCPServerNotFoundError())
 
         post_fn = unwrap(api.post)
 
@@ -294,7 +296,7 @@ class TestMCPAppApi:
         assert response.status_code == 404
         assert response.get_json()["error"]["message"] == "Server Not Found"
 
-    def test_app_not_found(self):
+    def test_app_not_found(self, mocker):
         """Test when app associated with server doesn't exist"""
         fake_payload(
             {
@@ -310,7 +312,7 @@ class TestMCPAppApi:
         )
 
         api = module.MCPAppApi()
-        api._get_mcp_server_and_app = MagicMock(side_effect=module.MCPServerNotFoundError())
+        mocker.patch.object(api, "_get_mcp_server_and_app", side_effect=module.MCPServerNotFoundError())
 
         post_fn = unwrap(api.post)
 

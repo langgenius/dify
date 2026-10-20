@@ -80,6 +80,14 @@ class WebAppAccessQueryService:
         if not self._webapp_auth_enabled and not app_id and not app_code:
             return WebAppAccessMode.PUBLIC
         app_id = self.resolve_app_id(app_id=app_id, app_code=app_code)
+        return self.get_configured_access_mode(app_id=app_id)
+
+    def get_configured_access_mode(self, *, app_id: str) -> WebAppAccessMode:
+        """Read policy for an App already authorized by a management context.
+
+        Management must be able to configure unpublished or disabled sites.
+        Public callers must use get_access_mode to retain publication admission.
+        """
         if not self._webapp_auth_enabled:
             return WebAppAccessMode.PUBLIC
         return self._policy.get_access_mode(app_id)

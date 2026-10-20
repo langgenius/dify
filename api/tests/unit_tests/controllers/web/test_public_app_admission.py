@@ -1,19 +1,23 @@
 """Public bootstrap admission with real SQL repositories and the canonical hook."""
 
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
 from flask import Flask
+from flask.testing import FlaskClient
+from pytest_mock import MockerFixture
 from sqlalchemy import func, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.web import app as app_controller
 from controllers.web import bp, login, passport, site, wraps
-from enums import DeploymentEdition, WebAppAccessMode
+from enums import DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
+from libs.passport import PassportService
 from models.account import Tenant
 from models.enums import EndUserType
 from models.model import App, AppMode, CustomizeTokenStrategy, EndUser, Message, Site
@@ -21,25 +25,41 @@ from models.workflow import Workflow, WorkflowRun, WorkflowType
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
-from services import web_authentication_adapters
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.entities.feature_entities import FeatureModel
+from services.file_service import FileService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_authentication_adapters import PassportWebAppSessionGateway
-from services.web_authentication_service import WebAuthenticationService
+from services.web_passport_gateways import PassportTokenGateway
 from services.web_passport_service import WebPassportService
-from services.webapp_access_query_service import WebAppAccessQueryService
 from tests.unit_tests.config_override import apply_config_overrides
+
+
+@dataclass
+class AdmissionHarness:
+    app: App
+    old_user: EndUser
+    client: FlaskClient
+    services: ApplicationServices
+    issue: MagicMock
+    auth_calls: tuple[MagicMock, ...]
+    mode_lookup: MagicMock
+    login_verify: MagicMock
+    session_verify: MagicMock
+    metadata_calls: tuple[MagicMock, ...]
+    access_repo: WebAppAccessQueryRepository
 
 
 def _harness(
     session: Session,
     factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    base_services: ApplicationServices,
     *,
     published: bool,
     missing: bool = False,
-) -> SimpleNamespace:
+) -> AdmissionHarness:
     app = App(
         id=str(uuid4()),
         tenant_id=str(uuid4()),
@@ -93,33 +113,34 @@ def _harness(
 
     access_repo = WebAppAccessQueryRepository(session_factory=factory)
     passport_repo = WebPassportRepository(session_factory=factory, generate_session_id=lambda: "new-session")
-    auth, tokens, policy = MagicMock(), MagicMock(), MagicMock()
-    policy.get_access_mode.return_value = WebAppAccessMode.PUBLIC
-    auth.is_webapp_auth_enabled.return_value = False
-    tokens.issue.return_value = "new-passport"
-    tokens.verify.return_value = {"app_id": app.id, "app_code": "fixture-code", "end_user_id": old_user.id}
-    access = WebAppAccessQueryService(
-        access=access_repo,
-        webapp_auth_enabled=False,
-        policy=policy,
-        get_access_modes=MagicMock(),
-        get_user_permissions=MagicMock(),
+    access = base_services.webapp_access
+    monkeypatch.setattr(access, "_access", access_repo)
+    monkeypatch.setattr(access, "_webapp_auth_enabled", False)
+    mode_lookup = mocker.spy(access._policy, "get_access_mode")
+    auth = base_services.web_passport._auth
+    auth_calls = (
+        mocker.spy(auth, "is_webapp_auth_enabled"),
+        mocker.spy(auth, "get_app_auth_type"),
     )
-    app_sessions = MagicMock(wraps=PassportWebAppSessionGateway(sessions=access_repo, app_access=access))
-    login_tokens = MagicMock()
+    tokens = PassportTokenGateway(passport=PassportService())
+    issue = mocker.patch.object(PassportService, "issue", return_value="new-passport")
+    mocker.patch.object(
+        PassportService,
+        "verify",
+        return_value={"app_id": app.id, "app_code": "fixture-code", "end_user_id": old_user.id},
+    )
+    app_sessions = PassportWebAppSessionGateway(sessions=access_repo, app_access=access)
+    session_verify = mocker.spy(app_sessions, "verify")
+    authentication = base_services.web_authentication
+    monkeypatch.setattr(authentication, "_app_access", access)
+    monkeypatch.setattr(authentication, "_app_sessions", app_sessions)
+    monkeypatch.setattr(authentication, "_private_app_access_enabled", False)
+    login_verify = mocker.spy(authentication._tokens, "verify_access_token")
     definitions = AppDefinitionQueryRepository(session_factory=factory)
-    services = SimpleNamespace(
+    services = replace(
+        base_services,
         webapp_access=access,
-        web_authentication=WebAuthenticationService(
-            accounts=MagicMock(),
-            passwords=MagicMock(),
-            tokens=login_tokens,
-            security=MagicMock(),
-            app_access=access,
-            app_sessions=app_sessions,
-            audit=MagicMock(),
-            private_app_access_enabled=False,
-        ),
+        web_authentication=authentication,
         web_passport=WebPassportService(
             passports=passport_repo,
             auth=auth,
@@ -127,21 +148,28 @@ def _harness(
             now=lambda: datetime.now(UTC),
             access_token_expire_minutes=60,
         ),
-        app_definitions=MagicMock(wraps=AppDefinitionQueryService(definitions=definitions, builtin_icon_url_prefix="")),
-        web_app_runtime=MagicMock(
-            wraps=WebAppRuntimeQueryService(
-                runtime=definitions,
-                file_service=MagicMock(),
-                workspace_features=lambda _: FeatureModel(),
-                files_url="https://files.example",
-                deployment_edition=DeploymentEdition.CLOUD,
-            )
+        app_definitions=AppDefinitionQueryService(definitions=definitions, builtin_icon_url_prefix=""),
+        web_app_runtime=WebAppRuntimeQueryService(
+            runtime=definitions,
+            file_service=FileService(session_factory=factory),
+            workspace_features=lambda _: FeatureModel(),
+            files_url="https://files.example",
+            deployment_edition=DeploymentEdition.CLOUD,
         ),
     )
+    metadata_calls = tuple(
+        mocker.spy(services.app_definitions, method)
+        for method in (
+            "get_mode",
+            "get_parameters",
+            "get_public_parameters",
+            "get_tool_icons",
+            "get_summary",
+            "get_site_configuration",
+        )
+    ) + (mocker.spy(services.web_app_runtime, "get_bootstrap"),)
     for module in (app_controller, login, passport, site, wraps):
         monkeypatch.setattr(module, "application_services", lambda: services)
-    monkeypatch.setattr(wraps, "PassportService", lambda: tokens)
-    monkeypatch.setattr(web_authentication_adapters, "PassportService", lambda: tokens)
     monkeypatch.setattr(wraps, "extract_webapp_passport", lambda *_: "old-passport")
     monkeypatch.setattr(login, "extract_webapp_passport", lambda *_: "old-passport")
     monkeypatch.setattr(wraps.SystemFeatureService, "is_webapp_auth_enabled", lambda: False)
@@ -153,18 +181,18 @@ def _harness(
     flask = Flask(__name__)
     flask.config.update(TESTING=True, RESTX_ERROR_404_HELP=False)
     flask.register_blueprint(bp)
-    return SimpleNamespace(
+    return AdmissionHarness(
         app=app,
         old_user=old_user,
         client=flask.test_client(),
         services=services,
-        tokens=tokens,
-        auth=auth,
-        mode_lookup=policy.get_access_mode,
-        login_tokens=login_tokens,
-        app_sessions=app_sessions,
+        issue=issue,
+        auth_calls=auth_calls,
+        mode_lookup=mode_lookup,
+        login_verify=login_verify,
+        session_verify=session_verify,
+        metadata_calls=metadata_calls,
         access_repo=access_repo,
-        passport_repo=passport_repo,
     )
 
 
@@ -184,10 +212,20 @@ def test_all_bootstrap_routes_share_404_before_user_or_metadata_side_effects(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    account_application_services: ApplicationServices,
     route: str,
     missing: bool,
 ) -> None:
-    h = _harness(sqlite_session, sqlite_session_factory, monkeypatch, published=False, missing=missing)
+    h = _harness(
+        sqlite_session,
+        sqlite_session_factory,
+        monkeypatch,
+        mocker,
+        account_application_services,
+        published=False,
+        missing=missing,
+    )
     response = h.client.get(
         "/api" + route,
         headers={"X-App-Code": "fixture-code"},
@@ -199,13 +237,12 @@ def test_all_bootstrap_routes_share_404_before_user_or_metadata_side_effects(
     )
     assert response.headers["Content-Type"] == "application/json"
     assert response.headers["Cache-Control"] == "no-store"
-    assert h.services.app_definitions.method_calls == []
-    assert h.services.web_app_runtime.method_calls == []
-    assert h.auth.method_calls == []
+    assert all(call.call_count == 0 for call in h.metadata_calls)
+    assert all(call.call_count == 0 for call in h.auth_calls)
     h.mode_lookup.assert_not_called()
-    h.tokens.issue.assert_not_called()
-    assert h.login_tokens.method_calls == []
-    h.app_sessions.verify.assert_not_called()
+    h.issue.assert_not_called()
+    h.login_verify.assert_not_called()
+    h.session_verify.assert_not_called()
     assert sqlite_session.scalar(select(func.count()).select_from(EndUser)) == (0 if missing else 1)
     assert sqlite_session.scalar(select(func.count()).select_from(WorkflowRun)) == 0
     assert sqlite_session.scalar(select(func.count()).select_from(Message)) == 0
@@ -213,24 +250,31 @@ def test_all_bootstrap_routes_share_404_before_user_or_metadata_side_effects(
 
 @pytest.mark.parametrize("route", ROUTES)
 def test_published_bootstrap_remains_successful_with_normal_passport_behavior(
-    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, route: str
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    route: str,
+    mocker: MockerFixture,
+    account_application_services: ApplicationServices,
 ) -> None:
-    h = _harness(sqlite_session, sqlite_session_factory, monkeypatch, published=True)
+    h = _harness(
+        sqlite_session, sqlite_session_factory, monkeypatch, mocker, account_application_services, published=True
+    )
     response = h.client.get("/api" + route, headers={"X-App-Code": "fixture-code"})
     assert response.status_code == 200
     if route.startswith("/passport"):
         assert response.get_json() == {"access_token": "new-passport"}
-        h.tokens.issue.assert_called_once()
+        h.issue.assert_called_once()
         assert sqlite_session.scalar(select(func.count()).select_from(EndUser)) == 2
     else:
-        h.tokens.issue.assert_not_called()
+        h.issue.assert_not_called()
         assert sqlite_session.scalar(select(func.count()).select_from(EndUser)) == 1
         if route.startswith("/webapp"):
             assert response.get_json() == {"accessMode": "public"}
         elif route.startswith("/login"):
             assert response.get_json() == {"logged_in": True, "app_logged_in": True}
-            h.app_sessions.verify.assert_called_once_with(token="old-passport", app_code="fixture-code", user_id=None)
-            assert h.login_tokens.method_calls == []
+            h.session_verify.assert_called_once_with(token="old-passport", app_code="fixture-code", user_id=None)
+            h.login_verify.assert_not_called()
         elif route == "/site":
             assert response.get_json()["site"]["title"] == "Must not leak"
         elif route == "/meta":
@@ -241,9 +285,16 @@ def test_published_bootstrap_remains_successful_with_normal_passport_behavior(
 
 @pytest.mark.parametrize("route", ["/site", "/meta", "/parameters"])
 def test_old_passport_cannot_read_metadata_after_published_version_is_removed(
-    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, route: str
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    route: str,
+    mocker: MockerFixture,
+    account_application_services: ApplicationServices,
 ) -> None:
-    h = _harness(sqlite_session, sqlite_session_factory, monkeypatch, published=True)
+    h = _harness(
+        sqlite_session, sqlite_session_factory, monkeypatch, mocker, account_application_services, published=True
+    )
     assert h.access_repo.is_app_available(h.app.id)
     h.app.workflow_id = None
     sqlite_session.commit()
@@ -253,8 +304,7 @@ def test_old_passport_cannot_read_metadata_after_published_version_is_removed(
     assert response.status_code == 404
     assert response.get_json()["code"] == "app_not_found"
     assert response.get_json()["client_ip"] == "203.0.113.42"
-    assert h.services.app_definitions.method_calls == []
-    assert h.services.web_app_runtime.method_calls == []
+    assert all(call.call_count == 0 for call in h.metadata_calls)
 
 
 @pytest.mark.parametrize("changed_owner", ["site-app", "end-user-app", "end-user-tenant"])
@@ -262,9 +312,13 @@ def test_old_passport_cannot_cross_persisted_app_or_tenant_owner_chain(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    account_application_services: ApplicationServices,
     changed_owner: str,
 ) -> None:
-    h = _harness(sqlite_session, sqlite_session_factory, monkeypatch, published=True)
+    h = _harness(
+        sqlite_session, sqlite_session_factory, monkeypatch, mocker, account_application_services, published=True
+    )
     if changed_owner == "site-app":
         persisted_site = sqlite_session.scalar(select(Site).where(Site.app_id == h.app.id))
         assert persisted_site is not None
@@ -277,28 +331,28 @@ def test_old_passport_cannot_cross_persisted_app_or_tenant_owner_chain(
     response = h.client.get("/api/site", headers={"X-App-Code": "fixture-code"})
     assert response.status_code == 404
     assert response.get_json()["code"] == "app_not_found"
-    assert h.services.web_app_runtime.method_calls == []
+    assert all(call.call_count == 0 for call in h.metadata_calls)
 
 
 @pytest.mark.parametrize("route", ROUTES)
 def test_real_database_failure_is_not_reclassified_as_unpublished(
-    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, route: str
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    route: str,
+    mocker: MockerFixture,
+    account_application_services: ApplicationServices,
 ) -> None:
-    h = _harness(sqlite_session, sqlite_session_factory, monkeypatch, published=False)
-    failing_session = MagicMock()
+    h = _harness(
+        sqlite_session, sqlite_session_factory, monkeypatch, mocker, account_application_services, published=False
+    )
     failure = OperationalError("select", {}, RuntimeError("database unavailable"))
-    failing_session.__enter__.return_value.scalar.side_effect = failure
-    failing_session.__enter__.return_value.execute.side_effect = failure
-    failing_factory = MagicMock(return_value=failing_session)
-    h.access_repo._session_factory = failing_factory
-    h.passport_repo._session_factory = failing_factory
-    from repositories import web_passport_repository
-
-    monkeypatch.setattr(web_passport_repository.global_session_factory, "create_session", failing_factory)
+    mocker.patch.object(Session, "scalar", side_effect=failure)
+    mocker.patch.object(Session, "execute", side_effect=failure)
     response = h.client.get("/api" + route, headers={"X-App-Code": "fixture-code"})
     assert response.status_code == (503 if route.startswith(("/webapp", "/login")) else 500)
     assert response.get_json()["code"] != "app_not_found"
     assert "client_ip" not in response.get_json()
-    h.tokens.issue.assert_not_called()
-    assert h.login_tokens.method_calls == []
-    h.app_sessions.verify.assert_not_called()
+    h.issue.assert_not_called()
+    h.login_verify.assert_not_called()
+    h.session_verify.assert_not_called()

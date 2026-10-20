@@ -3,12 +3,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Blueprint, Flask
+from pytest_mock import MockerFixture
 from werkzeug.exceptions import Forbidden, ServiceUnavailable
 
 from controllers.common.app_access_error import register_app_access_error_metadata
 from controllers.web import site as site_module
 from controllers.web.error import WebAppNotFoundError
+from extensions.ext_application_services import ApplicationServices
 from libs.external_api import ExternalApi
+from models.model import App, EndUser
 from services.app_definition_query_service import AppSiteConfiguration
 from services.web_app_runtime_query_service import (
     WebAppBootstrap,
@@ -100,7 +103,11 @@ def test_app_site_api_maps_unavailable_runtime_to_app_not_found() -> None:
     ],
 )
 def test_site_final_response_only_reclassifies_terminal_runtime_failure(
-    failure: Exception, status: int, monkeypatch: pytest.MonkeyPatch
+    failure: Exception,
+    status: int,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    account_application_services: ApplicationServices,
 ) -> None:
     from controllers.web import wraps
 
@@ -111,15 +118,14 @@ def test_site_final_response_only_reclassifies_terminal_runtime_failure(
     api = ExternalApi(bp)
     api.add_resource(site_module.AppSiteApi, "/site")
     app.register_blueprint(bp)
-    runtime = MagicMock()
-    runtime.get_bootstrap.side_effect = failure
-    monkeypatch.setattr(site_module, "application_services", lambda: SimpleNamespace(web_app_runtime=runtime))
+    mocker.patch.object(account_application_services.web_app_runtime, "get_bootstrap", side_effect=failure)
+    monkeypatch.setattr(site_module, "application_services", lambda: account_application_services)
     monkeypatch.setattr(
         wraps,
         "decode_jwt_token",
         lambda: (
-            SimpleNamespace(id="fixture-app"),
-            SimpleNamespace(id="fixture-user", tenant_id="fixture-tenant", type="browser"),
+            App(id="fixture-app"),
+            EndUser(id="fixture-user", tenant_id="fixture-tenant", type="browser"),
         ),
     )
     apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")

@@ -3,14 +3,15 @@ from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, datetime
 from inspect import unwrap
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import UUID
 
 import httpx
 import pytest
 from flask import Flask, Response
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadGateway, BadRequest, Conflict, Forbidden, HTTPException, NotFound, ServiceUnavailable
 from werkzeug.test import TestResponse
 
@@ -33,9 +34,13 @@ from controllers.console.workspace.network_access_group import (
 from controllers.console.wraps import validate_request
 from core.network_access.client_ip import NetworkAccessClientIPUnavailableError
 from enums import DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
+from extensions.ext_login import DifyLoginManager
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus
+from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.entities.network_access_group_entities import (
     NetworkAccessAppConfig,
     NetworkAccessAppStatus,
@@ -45,7 +50,7 @@ from services.entities.network_access_group_entities import (
     NetworkAccessGroup,
     NetworkAccessGroupList,
 )
-from services.network_access_group_gateway import NetworkAccessGroupGateway
+from services.network_access_group_gateway import BillingNetworkAccessGroupEntitlementGateway, NetworkAccessGroupGateway
 from services.network_access_group_service import (
     NetworkAccessGroupAccessDeniedError,
     NetworkAccessGroupAppNotFoundError,
@@ -77,10 +82,10 @@ def _request_context() -> RequestContext:
 
 
 @contextmanager
-def _application_services(service: MagicMock | NetworkAccessGroupService) -> Generator[None]:
+def _application_services(services: ApplicationServices) -> Generator[None]:
     with patch(
         "controllers.console.workspace.network_access_group.application_services",
-        return_value=SimpleNamespace(network_access_groups=service),
+        return_value=services,
     ):
         yield
 
@@ -123,23 +128,31 @@ def _binding_payload(
     )
 
 
-def test_list_forwards_request_context_and_serializes_response() -> None:
-    service = MagicMock()
-    service.list_groups.return_value = NetworkAccessGroupList(TENANT_ID, True, (_group_payload(),))
+def test_list_forwards_request_context_and_serializes_response(
+    account_application_services: ApplicationServices,
+    mocker: MockerFixture,
+) -> None:
+    service = account_application_services.network_access_groups
+    mock_list_groups = mocker.patch.object(
+        service, "list_groups", return_value=NetworkAccessGroupList(TENANT_ID, True, (_group_payload(),))
+    )
     api = CurrentWorkspaceNetworkAccessGroupsApi()
 
-    with _application_services(service):
+    with _application_services(account_application_services):
         result = unwrap(api.get)(api, request_context=_request_context())
 
-    service.list_groups.assert_called_once_with(_request_context())
+    mock_list_groups.assert_called_once_with(_request_context())
     assert result["tenant_id"] == TENANT_ID
     assert result["groups"][0]["version"] == 2
     assert result["groups"][0]["updated_at"] == "2026-08-21T00:00:00Z"
 
 
-def test_create_forwards_payload_and_returns_201() -> None:
-    service = MagicMock()
-    service.create_group.return_value = _group_payload()
+def test_create_forwards_payload_and_returns_201(
+    account_application_services: ApplicationServices,
+    mocker: MockerFixture,
+) -> None:
+    service = account_application_services.network_access_groups
+    mock_create_group = mocker.patch.object(service, "create_group", return_value=_group_payload())
     request_payload = NetworkAccessGroupCreatePayload(
         name="Office network",
         description="Reusable office egress addresses",
@@ -147,14 +160,14 @@ def test_create_forwards_payload_and_returns_201() -> None:
     )
     api = CurrentWorkspaceNetworkAccessGroupsApi()
 
-    with _application_services(service):
+    with _application_services(account_application_services):
         body, status = unwrap(api.post)(
             api,
             req_data=request_payload,
             request_context=_request_context(),
         )
 
-    service.create_group.assert_called_once_with(
+    mock_create_group.assert_called_once_with(
         _request_context(),
         name="Office network",
         description="Reusable office egress addresses",
@@ -164,11 +177,14 @@ def test_create_forwards_payload_and_returns_201() -> None:
     assert body["group"]["id"] == GROUP_ID
 
 
-def test_group_detail_update_and_delete_forward_path_and_query_values() -> None:
-    service = MagicMock()
-    service.get_group.return_value = _group_payload()
-    service.update_group.return_value = _group_payload()
-    service.delete_group.return_value = True
+def test_group_detail_update_and_delete_forward_path_and_query_values(
+    account_application_services: ApplicationServices,
+    mocker: MockerFixture,
+) -> None:
+    service = account_application_services.network_access_groups
+    mock_get_group = mocker.patch.object(service, "get_group", return_value=_group_payload())
+    mock_update_group = mocker.patch.object(service, "update_group", return_value=_group_payload())
+    mock_delete_group = mocker.patch.object(service, "delete_group", return_value=True)
     update_payload = NetworkAccessGroupUpdatePayload(
         name="Office network",
         description="Updated",
@@ -177,7 +193,7 @@ def test_group_detail_update_and_delete_forward_path_and_query_values() -> None:
     )
     api = CurrentWorkspaceNetworkAccessGroupApi()
 
-    with _application_services(service):
+    with _application_services(account_application_services):
         get_result = unwrap(api.get)(api, request_context=_request_context(), group_id=UUID(GROUP_ID))
         update_result = unwrap(api.put)(
             api,
@@ -192,8 +208,8 @@ def test_group_detail_update_and_delete_forward_path_and_query_values() -> None:
             group_id=UUID(GROUP_ID),
         )
 
-    service.get_group.assert_called_once_with(_request_context(), group_id=GROUP_ID)
-    service.update_group.assert_called_once_with(
+    mock_get_group.assert_called_once_with(_request_context(), group_id=GROUP_ID)
+    mock_update_group.assert_called_once_with(
         _request_context(),
         group_id=GROUP_ID,
         name="Office network",
@@ -201,26 +217,37 @@ def test_group_detail_update_and_delete_forward_path_and_query_values() -> None:
         allowed_cidrs=["203.0.113.0/24"],
         expected_version=1,
     )
-    service.delete_group.assert_called_once_with(_request_context(), group_id=GROUP_ID, expected_version=2)
+    mock_delete_group.assert_called_once_with(_request_context(), group_id=GROUP_ID, expected_version=2)
     assert get_result["group"]["id"] == GROUP_ID
     assert update_result["group"]["version"] == 2
     assert delete_result == {"deleted": True}
 
 
-def test_app_get_and_put_forward_app_id_without_orm_models() -> None:
-    service = MagicMock()
-    service.get_app_binding.return_value = NetworkAccessAppConfig(
-        TENANT_ID,
-        APP_ID,
-        True,
-        False,
-        None,
-        ("webapp", "service_api", "mcp"),
+def test_app_get_and_put_forward_app_id_without_orm_models(
+    account_application_services: ApplicationServices,
+    mocker: MockerFixture,
+) -> None:
+    service = account_application_services.network_access_groups
+    mock_get_app_binding = mocker.patch.object(
+        service,
+        "get_app_binding",
+        return_value=NetworkAccessAppConfig(
+            TENANT_ID,
+            APP_ID,
+            True,
+            False,
+            None,
+            ("webapp", "service_api", "mcp"),
+        ),
     )
-    service.update_app_binding.return_value = NetworkAccessBindingUpdate(
-        _binding_payload(),
-        True,
-        ("webapp", "service_api", "mcp"),
+    mock_update_app_binding = mocker.patch.object(
+        service,
+        "update_app_binding",
+        return_value=NetworkAccessBindingUpdate(
+            _binding_payload(),
+            True,
+            ("webapp", "service_api", "mcp"),
+        ),
     )
     request_payload = AppNetworkAccessGroupUpdatePayload(
         enabled=True,
@@ -230,7 +257,7 @@ def test_app_get_and_put_forward_app_id_without_orm_models() -> None:
     )
     api = AppNetworkAccessGroupApi()
 
-    with _application_services(service):
+    with _application_services(account_application_services):
         get_result = unwrap(api.get)(api, request_context=_request_context(), app_id=UUID(APP_ID))
         put_result = unwrap(api.put)(
             api,
@@ -239,8 +266,8 @@ def test_app_get_and_put_forward_app_id_without_orm_models() -> None:
             app_id=UUID(APP_ID),
         )
 
-    service.get_app_binding.assert_called_once_with(_request_context(), app_id=APP_ID)
-    service.update_app_binding.assert_called_once_with(
+    mock_get_app_binding.assert_called_once_with(_request_context(), app_id=APP_ID)
+    mock_update_app_binding.assert_called_once_with(
         _request_context(),
         app_id=APP_ID,
         enabled=True,
@@ -254,12 +281,17 @@ def test_app_get_and_put_forward_app_id_without_orm_models() -> None:
     assert put_result["effective_enabled"] is True
 
 
-def test_app_status_serializes_only_entry_state() -> None:
-    service = MagicMock()
-    service.get_app_status.return_value = NetworkAccessAppStatus(True, True, True, 2, 4)
+def test_app_status_serializes_only_entry_state(
+    account_application_services: ApplicationServices,
+    mocker: MockerFixture,
+) -> None:
+    service = account_application_services.network_access_groups
+    mock_get_app_status = mocker.patch.object(
+        service, "get_app_status", return_value=NetworkAccessAppStatus(True, True, True, 2, 4)
+    )
     api = AppNetworkAccessGroupStatusApi()
 
-    with _application_services(service):
+    with _application_services(account_application_services):
         result = unwrap(api.get)(api, request_context=_request_context(), app_id=UUID(APP_ID))
 
     assert result == {
@@ -269,7 +301,7 @@ def test_app_status_serializes_only_entry_state() -> None:
         "covered_count": 2,
         "available_count": 4,
     }
-    service.get_app_status.assert_called_once_with(_request_context(), app_id=APP_ID)
+    mock_get_app_status.assert_called_once_with(_request_context(), app_id=APP_ID)
 
 
 @pytest.mark.parametrize("role", ["normal", "owner", "admin", "editor"])
@@ -285,9 +317,14 @@ def test_app_status_serializes_only_entry_state() -> None:
     ],
 )
 def test_app_status_uses_minimal_upstream_route_and_filters_scopes_for_current_mode(
-    role: str, app_mode: str, covered_count: int, available_count: int
+    account_application_services: ApplicationServices,
+    role: str,
+    app_mode: str,
+    covered_count: int,
+    available_count: int,
 ) -> None:
     response, requests = _typed_status_http_response(
+        account_application_services,
         {
             "entitled": True,
             "configured": True,
@@ -333,25 +370,32 @@ def test_app_status_uses_minimal_upstream_route_and_filters_scopes_for_current_m
     ],
 )
 def test_app_status_preserves_saved_state_and_applies_local_entitlement(
-    wire: Mapping[str, object], paid: bool, expected: dict[str, object]
+    account_application_services: ApplicationServices,
+    wire: Mapping[str, object],
+    paid: bool,
+    expected: dict[str, object],
 ) -> None:
-    response, _requests = _typed_status_http_response(wire, paid=paid)
+    response, _requests = _typed_status_http_response(account_application_services, wire, paid=paid)
 
     assert response.status_code == 200
     assert response.get_json() == {**expected, "available_count": 4}
 
 
 @pytest.mark.parametrize("role", ["dataset_operator", "unknown", None])
-def test_app_status_rejects_disallowed_roles_before_upstream_read(role: str | None) -> None:
-    response, requests = _typed_status_http_response({}, role=role)
+def test_app_status_rejects_disallowed_roles_before_upstream_read(
+    account_application_services: ApplicationServices, role: str | None
+) -> None:
+    response, requests = _typed_status_http_response(account_application_services, {}, role=role)
 
     assert response.status_code == 403
     assert requests == []
 
 
 @pytest.mark.parametrize("upstream_status", [403, 404])
-def test_app_status_does_not_fall_back_to_full_binding_after_upstream_error(upstream_status: int) -> None:
-    response, requests = _typed_status_http_response({}, upstream_status=upstream_status)
+def test_app_status_does_not_fall_back_to_full_binding_after_upstream_error(
+    account_application_services: ApplicationServices, upstream_status: int
+) -> None:
+    response, requests = _typed_status_http_response(account_application_services, {}, upstream_status=upstream_status)
 
     assert response.status_code == upstream_status
     assert len(requests) == 1
@@ -360,8 +404,10 @@ def test_app_status_does_not_fall_back_to_full_binding_after_upstream_error(upst
 
 @pytest.mark.parametrize("field", ["entitled", "configured", "enabled"])
 @pytest.mark.parametrize("value", ["false", "true", 0, 1, None])
-def test_app_status_rejects_non_boolean_flags(field: str, value: object) -> None:
-    response, _requests = _typed_status_http_response({field: value})
+def test_app_status_rejects_non_boolean_flags(
+    account_application_services: ApplicationServices, field: str, value: object
+) -> None:
+    response, _requests = _typed_status_http_response(account_application_services, {field: value})
 
     assert response.status_code == 502
 
@@ -374,8 +420,10 @@ def test_app_status_rejects_non_boolean_flags(field: str, value: object) -> None
         {"access_points": ["webapp"], "accessPoints": ["mcp"]},
     ],
 )
-def test_app_status_rejects_malformed_or_conflicting_scopes(wire: Mapping[str, object]) -> None:
-    response, _requests = _typed_status_http_response(wire)
+def test_app_status_rejects_malformed_or_conflicting_scopes(
+    account_application_services: ApplicationServices, wire: Mapping[str, object]
+) -> None:
+    response, _requests = _typed_status_http_response(account_application_services, wire)
 
     assert response.status_code == 502
 
@@ -412,11 +460,13 @@ def test_conflict_error_mapping_preserves_safe_actionable_reason(reason: str, ex
 
 
 @pytest.mark.parametrize("mutation", ["create", "update"])
-def test_duplicate_policy_name_mutations_preserve_conflict_and_public_message(mutation: str) -> None:
-    service = MagicMock()
+def test_duplicate_policy_name_mutations_preserve_conflict_and_public_message(
+    account_application_services: ApplicationServices, mocker: MockerFixture, mutation: str
+) -> None:
+    service = account_application_services.network_access_groups
     upstream_error = NetworkAccessGroupUpstreamError(409, "NETWORK_ACCESS_GROUP_NAME_CONFLICT")
-    service.create_group.side_effect = upstream_error
-    service.update_group.side_effect = upstream_error
+    mock_create_group = mocker.patch.object(service, "create_group", side_effect=upstream_error)
+    mock_update_group = mocker.patch.object(service, "update_group", side_effect=upstream_error)
 
     def invoke_mutation() -> None:
         if mutation == "create":
@@ -437,15 +487,15 @@ def test_duplicate_policy_name_mutations_preserve_conflict_and_public_message(mu
                 group_id=UUID(GROUP_ID),
             )
 
-    with _application_services(service), pytest.raises(Conflict) as exc_info:
+    with _application_services(account_application_services), pytest.raises(Conflict) as exc_info:
         invoke_mutation()
 
     assert exc_info.value.code == 409
     assert exc_info.value.description == "An IP policy with this name already exists."
     assert exc_info.value.__cause__ is upstream_error
     assert upstream_error.reason == "NETWORK_ACCESS_GROUP_NAME_CONFLICT"
-    assert service.create_group.call_count == (1 if mutation == "create" else 0)
-    assert service.update_group.call_count == (1 if mutation == "update" else 0)
+    assert mock_create_group.call_count == (1 if mutation == "create" else 0)
+    assert mock_update_group.call_count == (1 if mutation == "update" else 0)
 
 
 def test_internal_secret_error_is_not_reported_as_tenant_input_failure() -> None:
@@ -489,14 +539,16 @@ def test_application_error_mapping(
 )
 @pytest.mark.parametrize("paid", [False, True], ids=["unpaid", "paid"])
 def test_mutation_paid_plan_admission_precedes_payload_validation(
-    mutation: Callable[..., object], paid: bool, config_overrides: Callable[..., None]
+    account_application_services: ApplicationServices,
+    mutation: Callable[..., object],
+    paid: bool,
+    config_overrides: Callable[..., None],
 ) -> None:
     app = Flask(__name__)
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, LOGIN_DISABLED=False)
     account = Account(name="Policy editor", email="editor@example.com", status=AccountStatus.ACTIVE)
     account.id = ACCOUNT_ID
     identity = AccountWithTenant(account, TENANT_ID)
-    service = MagicMock()
     method = mutation.__name__.upper()
 
     def mutation_route() -> Response:
@@ -506,7 +558,10 @@ def test_mutation_paid_plan_admission_precedes_payload_validation(
     app.add_url_rule("/mutation", view_func=mutation_route, methods=[method])
 
     with (
-        _application_services(service),
+        patch(
+            "controllers.console.workspace.network_access_group.application_services",
+            return_value=account_application_services,
+        ) as service_provider,
         patch("libs.login._resolve_current_user", return_value=account),
         patch("libs.login.check_csrf_token") as csrf_check,
         patch("controllers.console.wraps.current_account_with_tenant", return_value=identity),
@@ -524,7 +579,7 @@ def test_mutation_paid_plan_admission_precedes_payload_validation(
     assert response.status_code == (422 if paid else 403)
     is_paid_plan.assert_called_once_with(TENANT_ID)
     csrf_check.assert_called_once()
-    assert service.method_calls == []
+    service_provider.assert_not_called()
     if paid:
         validate_payload.assert_called_once()
     else:
@@ -532,26 +587,36 @@ def test_mutation_paid_plan_admission_precedes_payload_validation(
         validate_payload.assert_not_called()
 
 
-def test_controller_maps_service_error_before_serialization() -> None:
-    service = MagicMock()
-    service.list_groups.side_effect = NetworkAccessGroupAccessDeniedError
+def test_controller_maps_service_error_before_serialization(
+    account_application_services: ApplicationServices,
+    mocker: MockerFixture,
+) -> None:
+    service = account_application_services.network_access_groups
+    mocker.patch.object(service, "list_groups", side_effect=NetworkAccessGroupAccessDeniedError)
 
-    with _application_services(service), pytest.raises(Forbidden, match="workspace role"):
+    with _application_services(account_application_services), pytest.raises(Forbidden, match="workspace role"):
         unwrap(CurrentWorkspaceNetworkAccessGroupsApi().get)(
             CurrentWorkspaceNetworkAccessGroupsApi(),
             request_context=_request_context(),
         )
 
 
-def test_invalid_service_response_is_bad_gateway() -> None:
-    service = MagicMock()
-    service.list_groups.return_value = {
-        "tenant_id": TENANT_ID,
-        "entitled": True,
-        "groups": [{"allowed_cidrs": list[str]()}],
-    }
+def test_invalid_service_response_is_bad_gateway(
+    account_application_services: ApplicationServices,
+    mocker: MockerFixture,
+) -> None:
+    service = account_application_services.network_access_groups
+    mocker.patch.object(
+        service,
+        "list_groups",
+        return_value={
+            "tenant_id": TENANT_ID,
+            "entitled": True,
+            "groups": [{"allowed_cidrs": list[str]()}],
+        },
+    )
 
-    with _application_services(service), pytest.raises(BadGateway):
+    with _application_services(account_application_services), pytest.raises(BadGateway):
         unwrap(CurrentWorkspaceNetworkAccessGroupsApi().get)(
             CurrentWorkspaceNetworkAccessGroupsApi(),
             request_context=_request_context(),
@@ -605,10 +670,12 @@ def test_app_config_accepts_policy_id_alias_and_disabled_draft() -> None:
 
 
 def test_current_ip_check_uses_trusted_resolver_after_service_admission_and_disables_caching(
+    account_application_services: ApplicationServices,
+    mocker: MockerFixture,
     config_overrides: Callable[..., None],
 ) -> None:
     app = Flask(__name__)
-    service = MagicMock()
+    service = account_application_services.network_access_groups
     config_overrides(NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
 
     def check_current_ip(
@@ -620,7 +687,7 @@ def test_current_ip_check_uses_trusted_resolver_after_service_admission_and_disa
         assert group_id == GROUP_ID
         return NetworkAccessCurrentIPCheck(client_ip_supplier(), True, 4)
 
-    service.check_current_ip.side_effect = check_current_ip
+    mocker.patch.object(service, "check_current_ip", side_effect=check_current_ip)
     api = CurrentWorkspaceNetworkAccessGroupCurrentIPCheckApi()
 
     with (
@@ -628,7 +695,7 @@ def test_current_ip_check_uses_trusted_resolver_after_service_admission_and_disa
             headers={"X-Forwarded-For": "203.0.113.7"},
             environ_base={"REMOTE_ADDR": "172.18.0.3"},
         ),
-        _application_services(service),
+        _application_services(account_application_services),
         patch(
             "controllers.console.workspace.network_access_group.resolve_network_access_client_ip",
             return_value="203.0.113.7",
@@ -642,18 +709,24 @@ def test_current_ip_check_uses_trusted_resolver_after_service_admission_and_disa
     assert resolve_client_ip.call_args.args[1] == "172.18.0.0/16"
 
 
-def test_current_ip_check_maps_unavailable_client_ip_to_503(config_overrides: Callable[..., None]) -> None:
+def test_current_ip_check_maps_unavailable_client_ip_to_503(
+    account_application_services: ApplicationServices, mocker: MockerFixture, config_overrides: Callable[..., None]
+) -> None:
     app = Flask(__name__)
-    service = MagicMock()
+    service = account_application_services.network_access_groups
     config_overrides(NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
-    service.check_current_ip.side_effect = lambda _context, *, group_id, client_ip_supplier: (
-        client_ip_supplier() if group_id == GROUP_ID else None
+    mocker.patch.object(
+        service,
+        "check_current_ip",
+        side_effect=lambda _context, *, group_id, client_ip_supplier: (
+            client_ip_supplier() if group_id == GROUP_ID else None
+        ),
     )
     api = CurrentWorkspaceNetworkAccessGroupCurrentIPCheckApi()
 
     with (
         app.test_request_context(environ_base={"REMOTE_ADDR": "172.18.0.3"}),
-        _application_services(service),
+        _application_services(account_application_services),
         patch(
             "controllers.console.workspace.network_access_group.resolve_network_access_client_ip",
             side_effect=NetworkAccessClientIPUnavailableError,
@@ -664,19 +737,25 @@ def test_current_ip_check_maps_unavailable_client_ip_to_503(config_overrides: Ca
 
 
 def test_current_ip_check_fails_closed_when_trusted_proxy_config_is_empty(
+    account_application_services: ApplicationServices,
+    mocker: MockerFixture,
     config_overrides: Callable[..., None],
 ) -> None:
     app = Flask(__name__)
-    service = MagicMock()
+    service = account_application_services.network_access_groups
     config_overrides(NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="")
-    service.check_current_ip.side_effect = lambda _context, *, group_id, client_ip_supplier: (
-        client_ip_supplier() if group_id == GROUP_ID else None
+    mocker.patch.object(
+        service,
+        "check_current_ip",
+        side_effect=lambda _context, *, group_id, client_ip_supplier: (
+            client_ip_supplier() if group_id == GROUP_ID else None
+        ),
     )
     api = CurrentWorkspaceNetworkAccessGroupCurrentIPCheckApi()
 
     with (
         app.test_request_context(environ_base={"REMOTE_ADDR": "172.18.0.3"}),
-        _application_services(service),
+        _application_services(account_application_services),
         patch(
             "controllers.console.workspace.network_access_group.resolve_network_access_client_ip"
         ) as resolve_client_ip,
@@ -687,12 +766,15 @@ def test_current_ip_check_fails_closed_when_trusted_proxy_config_is_empty(
     resolve_client_ip.assert_not_called()
 
 
-def test_group_response_rejects_enforcing_count_greater_than_used_by_count() -> None:
-    service = MagicMock()
+def test_group_response_rejects_enforcing_count_greater_than_used_by_count(
+    account_application_services: ApplicationServices,
+    mocker: MockerFixture,
+) -> None:
+    service = account_application_services.network_access_groups
     group = replace(_group_payload(app_ids=[APP_ID]), enforcing_count=2)
-    service.list_groups.return_value = NetworkAccessGroupList(TENANT_ID, True, (group,))
+    mocker.patch.object(service, "list_groups", return_value=NetworkAccessGroupList(TENANT_ID, True, (group,)))
 
-    with _application_services(service), pytest.raises(BadGateway, match="Invalid response"):
+    with _application_services(account_application_services), pytest.raises(BadGateway, match="Invalid response"):
         unwrap(CurrentWorkspaceNetworkAccessGroupsApi().get)(
             CurrentWorkspaceNetworkAccessGroupsApi(),
             request_context=_request_context(),
@@ -711,15 +793,20 @@ def test_group_response_rejects_enforcing_count_greater_than_used_by_count() -> 
     ids=["ipv4", "ipv6", "mapped-ipv6", "untrusted-peer-spoof", "trusted-proxy-appended-peer"],
 )
 def test_current_ip_read_uses_trusted_resolver_and_ignores_client_supplied_ip(
+    account_application_services: ApplicationServices,
+    mocker: MockerFixture,
     config_overrides: Callable[..., None],
     peer: str,
     forwarded: str,
     expected: str,
 ) -> None:
     app = Flask(__name__)
-    service = MagicMock()
+    service = account_application_services.network_access_groups
+    mock_get_group = mocker.patch.object(service, "get_group")
     config_overrides(NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
-    service.get_current_ip.side_effect = lambda _context, *, client_ip_supplier: client_ip_supplier()
+    mock_get_current_ip = mocker.patch.object(
+        service, "get_current_ip", side_effect=lambda _context, *, client_ip_supplier: client_ip_supplier()
+    )
     api = CurrentWorkspaceNetworkAccessGroupCurrentIPApi()
 
     with (
@@ -734,16 +821,16 @@ def test_current_ip_read_uses_trusted_resolver_and_ignores_client_supplied_ip(
             json={"client_ip": "192.0.2.1"},
             environ_base={"REMOTE_ADDR": peer},
         ),
-        _application_services(service),
+        _application_services(account_application_services),
     ):
         result = unwrap(api.get)(api, request_context=_request_context())
         response = app.process_response(app.make_response(result))
 
     assert result == {"client_ip": expected}
     assert response.headers["Cache-Control"] == "no-store"
-    assert service.get_current_ip.call_args.args == (_request_context(),)
-    assert set(service.get_current_ip.call_args.kwargs) == {"client_ip_supplier"}
-    service.get_group.assert_not_called()
+    assert mock_get_current_ip.call_args.args == (_request_context(),)
+    assert set(mock_get_current_ip.call_args.kwargs) == {"client_ip_supplier"}
+    mock_get_group.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -758,12 +845,18 @@ def test_current_ip_read_uses_trusted_resolver_and_ignores_client_supplied_ip(
     ids=["missing-proxy-config", "invalid-proxy-config", "missing-xff", "invalid-xff", "all-trusted-hops"],
 )
 def test_current_ip_read_fails_closed_with_no_store_on_503(
-    config_overrides: Callable[..., None], trusted_proxies: str, forwarded: str | None
+    account_application_services: ApplicationServices,
+    mocker: MockerFixture,
+    config_overrides: Callable[..., None],
+    trusted_proxies: str,
+    forwarded: str | None,
 ) -> None:
     app = Flask(__name__)
-    service = MagicMock()
+    service = account_application_services.network_access_groups
     config_overrides(NETWORK_ACCESS_TRUSTED_PROXY_CIDRS=trusted_proxies)
-    service.get_current_ip.side_effect = lambda _context, *, client_ip_supplier: client_ip_supplier()
+    mocker.patch.object(
+        service, "get_current_ip", side_effect=lambda _context, *, client_ip_supplier: client_ip_supplier()
+    )
     api = CurrentWorkspaceNetworkAccessGroupCurrentIPApi()
 
     with (
@@ -771,7 +864,7 @@ def test_current_ip_read_fails_closed_with_no_store_on_503(
             headers={"X-Forwarded-For": forwarded} if forwarded is not None else {},
             environ_base={"REMOTE_ADDR": "172.18.0.3"},
         ),
-        _application_services(service),
+        _application_services(account_application_services),
     ):
         with pytest.raises(ServiceUnavailable, match="Current client IP is unavailable") as exc_info:
             unwrap(api.get)(api, request_context=_request_context())
@@ -781,15 +874,18 @@ def test_current_ip_read_fails_closed_with_no_store_on_503(
     assert response.headers["Cache-Control"] == "no-store"
 
 
-def test_current_ip_read_maps_role_denial_without_resolving_ip() -> None:
+def test_current_ip_read_maps_role_denial_without_resolving_ip(
+    account_application_services: ApplicationServices,
+    mocker: MockerFixture,
+) -> None:
     app = Flask(__name__)
-    service = MagicMock()
-    service.get_current_ip.side_effect = NetworkAccessGroupAccessDeniedError
+    service = account_application_services.network_access_groups
+    mocker.patch.object(service, "get_current_ip", side_effect=NetworkAccessGroupAccessDeniedError)
     api = CurrentWorkspaceNetworkAccessGroupCurrentIPApi()
 
     with (
         app.test_request_context(),
-        _application_services(service),
+        _application_services(account_application_services),
         patch(
             "controllers.console.workspace.network_access_group.resolve_network_access_client_ip"
         ) as resolve_client_ip,
@@ -804,16 +900,22 @@ def test_current_ip_read_maps_role_denial_without_resolving_ip() -> None:
 
 
 @pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE])
-def test_current_ip_read_is_cloud_only(config_overrides: Callable[..., None], edition: DeploymentEdition) -> None:
+def test_current_ip_read_is_cloud_only(
+    account_application_services: ApplicationServices,
+    mocker: MockerFixture,
+    config_overrides: Callable[..., None],
+    edition: DeploymentEdition,
+) -> None:
     app = Flask(__name__)
-    service = MagicMock()
+    service = account_application_services.network_access_groups
+    mock_get_current_ip = mocker.patch.object(service, "get_current_ip")
     config_overrides(DEPLOYMENT_EDITION=edition, LOGIN_DISABLED=False)
     account = Account(name="Policy editor", email="editor@example.com", status=AccountStatus.ACTIVE)
     account.id = ACCOUNT_ID
 
     with (
         app.test_request_context(),
-        _application_services(service),
+        _application_services(account_application_services),
         patch("controllers.console.wraps._is_setup_completed", return_value=True),
         patch("libs.login._resolve_current_user", return_value=account),
         patch("libs.login.check_csrf_token") as csrf_check,
@@ -825,19 +927,22 @@ def test_current_ip_read_is_cloud_only(config_overrides: Callable[..., None], ed
         CurrentWorkspaceNetworkAccessGroupCurrentIPApi().get()
 
     csrf_check.assert_called_once()
-    service.get_current_ip.assert_not_called()
+    mock_get_current_ip.assert_not_called()
 
 
-def test_current_ip_read_requires_authenticated_account(config_overrides: Callable[..., None]) -> None:
+def test_current_ip_read_requires_authenticated_account(
+    account_application_services: ApplicationServices, mocker: MockerFixture, config_overrides: Callable[..., None]
+) -> None:
     app = Flask(__name__)
-    service = MagicMock()
+    service = account_application_services.network_access_groups
+    mock_get_current_ip = mocker.patch.object(service, "get_current_ip")
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, LOGIN_DISABLED=False)
-    login_manager = MagicMock()
-    login_manager.unauthorized.return_value = Response(status=401)
+    login_manager = DifyLoginManager()
+    login_manager.unauthorized_handler(lambda: Response(status=401))
 
     with (
         app.test_request_context(),
-        _application_services(service),
+        _application_services(account_application_services),
         patch("libs.login._resolve_current_user", return_value=None),
         patch("libs.login._get_login_manager", return_value=login_manager),
     ):
@@ -845,7 +950,7 @@ def test_current_ip_read_requires_authenticated_account(config_overrides: Callab
 
     assert isinstance(response, Response)
     assert response.status_code == 401
-    service.get_current_ip.assert_not_called()
+    mock_get_current_ip.assert_not_called()
 
 
 def test_current_ip_read_response_schema_exposes_only_client_ip() -> None:
@@ -859,7 +964,7 @@ def test_current_ip_read_response_schema_exposes_only_client_ip() -> None:
 @pytest.mark.parametrize("group_field", ["group_id", "groupId", "policy_id", "policyId"])
 @pytest.mark.parametrize("stale_only", [False, True])
 def test_typed_gateway_service_controller_pipeline_preserves_binding_configuration(
-    group_field: str, stale_only: bool
+    account_application_services: ApplicationServices, group_field: str, stale_only: bool
 ) -> None:
     wire = {
         "tenantId": TENANT_ID,
@@ -878,7 +983,7 @@ def test_typed_gateway_service_controller_pipeline_preserves_binding_configurati
             "updatedAt": "2026-08-21T00:00:00Z",
         },
     }
-    response = _typed_binding_http_response(wire)
+    response = _typed_binding_http_response(account_application_services, wire)
     assert response.status_code == 200
     body = response.get_json()
     assert body["binding"]["enabled"] is True
@@ -889,25 +994,27 @@ def test_typed_gateway_service_controller_pipeline_preserves_binding_configurati
     assert wire["binding"]["accessPoints"] == (["future_scope"] if stale_only else ["webapp"])
 
 
-def test_malformed_upstream_response_maps_to_http_502_before_business_truthiness() -> None:
+def test_malformed_upstream_response_maps_to_http_502_before_business_truthiness(
+    account_application_services: ApplicationServices,
+) -> None:
     response = _typed_binding_http_response(
+        account_application_services,
         {
             "tenantId": TENANT_ID,
             "appId": APP_ID,
             "entitled": "false",
             "effectiveEnabled": False,
-        }
+        },
     )
     assert response.status_code == 502
 
 
-def _typed_binding_http_response(wire: Mapping[str, object]) -> TestResponse:
+def _typed_binding_http_response(services: ApplicationServices, wire: Mapping[str, object]) -> TestResponse:
     app = Flask(__name__)
     app.testing = True
-    apps, memberships, entitlement = MagicMock(), MagicMock(), MagicMock()
-    apps.get_manageable_app.return_value = NetworkAccessGroupAppRecord(APP_ID, "workflow", "Test", None, None, None)
-    memberships.get_account_role.return_value = "owner"
-    entitlement.is_paid_plan.return_value = True
+    apps = SQLAlchemyNetworkAccessGroupAppRepository(session_factory=sessionmaker())
+    memberships = WorkspaceRepository(session_factory=sessionmaker())
+    entitlement = BillingNetworkAccessGroupEntitlementGateway()
     with httpx.Client(transport=httpx.MockTransport(lambda _request: httpx.Response(200, json=wire))) as client:
         gateway = NetworkAccessGroupGateway(
             base_url="https://test.invalid",
@@ -924,11 +1031,21 @@ def _typed_binding_http_response(wire: Mapping[str, object]) -> TestResponse:
         def binding() -> dict[str, object]:
             return unwrap(api.get)(api, request_context=_request_context(), app_id=UUID(APP_ID))
 
-        with _application_services(service):
+        with (
+            _application_services(replace(services, network_access_groups=service)),
+            patch.object(
+                apps,
+                "get_manageable_app",
+                return_value=NetworkAccessGroupAppRecord(APP_ID, "workflow", "Test", None, None, None),
+            ),
+            patch.object(memberships, "get_account_role", return_value="owner"),
+            patch.object(entitlement, "is_paid_plan", return_value=True),
+        ):
             return app.test_client().get("/binding")
 
 
 def _typed_status_http_response(
+    services: ApplicationServices,
     wire: Mapping[str, object],
     *,
     role: str | None = "normal",
@@ -938,10 +1055,9 @@ def _typed_status_http_response(
 ) -> tuple[TestResponse, list[httpx.Request]]:
     app = Flask(__name__)
     app.testing = True
-    apps, memberships, entitlement = MagicMock(), MagicMock(), MagicMock()
-    apps.get_manageable_app.return_value = NetworkAccessGroupAppRecord(APP_ID, app_mode, "Test", None, None, None)
-    memberships.get_account_role.return_value = role
-    entitlement.is_paid_plan.return_value = paid
+    apps = SQLAlchemyNetworkAccessGroupAppRepository(session_factory=sessionmaker())
+    memberships = WorkspaceRepository(session_factory=sessionmaker())
+    entitlement = BillingNetworkAccessGroupEntitlementGateway()
     requests: list[httpx.Request] = []
 
     def respond(request: httpx.Request) -> httpx.Response:
@@ -966,5 +1082,14 @@ def _typed_status_http_response(
         def status() -> dict[str, object]:
             return unwrap(api.get)(api, request_context=_request_context(), app_id=UUID(APP_ID))
 
-        with _application_services(service):
+        with (
+            _application_services(replace(services, network_access_groups=service)),
+            patch.object(
+                apps,
+                "get_manageable_app",
+                return_value=NetworkAccessGroupAppRecord(APP_ID, app_mode, "Test", None, None, None),
+            ),
+            patch.object(memberships, "get_account_role", return_value=role),
+            patch.object(entitlement, "is_paid_plan", return_value=paid),
+        ):
             return app.test_client().get("/status"), requests

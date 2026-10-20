@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import event, text
@@ -239,10 +239,9 @@ def test_list_apps_batch_loads_agent_routes_and_excludes_hidden_workflow_backing
     assert len(agent_selects) == 1
 
 
-def test_list_apps_maps_database_failures_to_query_error() -> None:
-    session_factory = MagicMock()
-    session = session_factory.return_value.__enter__.return_value
-    session.scalars.side_effect = SQLAlchemyError("database unavailable")
-
-    with pytest.raises(NetworkAccessGroupAppQueryError):
-        _repository(session_factory).list_apps(workspace_id=_WORKSPACE_ID, app_ids=[_APP_ID])
+def test_list_apps_maps_database_failures_to_query_error(sqlite_session_factory: sessionmaker[Session]) -> None:
+    with (
+        patch.object(Session, "scalars", side_effect=SQLAlchemyError("database unavailable")),
+        pytest.raises(NetworkAccessGroupAppQueryError),
+    ):
+        _repository(sqlite_session_factory).list_apps(workspace_id=_WORKSPACE_ID, app_ids=[_APP_ID])

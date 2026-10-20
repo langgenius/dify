@@ -148,7 +148,7 @@ export function getClientIp(data: unknown): string | undefined {
   return ipAddressSchema.safeParse(value).success ? value : undefined
 }
 
-export function isAppAccessErrorResponse(status: number, data: unknown, appIdentity = false) {
+function isAppAccessErrorResponse(status: number, data: unknown, appIdentity = false) {
   return (
     isIpAccessDeniedResponse(status, data) ||
     (status === 404 &&
@@ -204,7 +204,7 @@ export function captureAppAccessRequest(url: string, isPublicAPI = false, method
   }
 }
 
-export function throwIfAppAccessBlocked(scope: AppAccessScope | null) {
+function throwIfAppAccessBlocked(scope: AppAccessScope | null) {
   if (!hasAppAccessError(scope)) return
   const error = new DOMException('The app is no longer accessible.', 'AbortError')
   handledErrors.add(error)

@@ -3,11 +3,11 @@
 from dataclasses import dataclass
 from inspect import unwrap
 from typing import override
-from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask, Response
 from flask_restx import Api
+from pytest_mock import MockerFixture
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -26,20 +26,18 @@ from controllers.web.login import (
     LoginStatusQuery,
     LogoutApi,
 )
+from extensions.ext_application_services import ApplicationServices
 from machinery.context import RequestContext
 from models.enums import CustomizeTokenStrategy
 from models.model import App, AppModelConfig, EndUser, Site
-from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from services.entities.authentication_entities import WebLoginStatus
 from services.web_authentication_service import (
     WebAccountBannedError,
     WebAuthenticationFailedError,
-    WebAuthenticationService,
     WebInvalidCodeError,
 )
 from services.webapp_access_query_service import (
     WebAppAccessAppNotFoundError,
-    WebAppAccessQueryService,
     WebAppAccessUnavailableError,
 )
 from tests.unit_tests.config_override import apply_config_overrides
@@ -186,6 +184,8 @@ def test_unavailable_identity_is_canonical_404_before_authentication(
     app: Flask,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    account_application_services: ApplicationServices,
 ) -> None:
     """Keep the IP-access contract across the new Web authentication service boundary."""
     from controllers.web import bp
@@ -224,26 +224,11 @@ def test_unavailable_identity_is_canonical_404_before_authentication(
         elif condition == "app-status-disabled":
             session.execute(text("UPDATE apps SET status='disabled' WHERE id=:app_id"), {"app_id": app_id})
 
-    policy = MagicMock()
-    tokens = MagicMock()
-    app_sessions = MagicMock()
-    access = WebAppAccessQueryService(
-        access=WebAppAccessQueryRepository(session_factory=sqlite_session_factory),
-        policy=policy,
-        webapp_auth_enabled=False,
-        get_access_modes=MagicMock(),
-        get_user_permissions=MagicMock(),
-    )
-    service = WebAuthenticationService(
-        accounts=MagicMock(),
-        passwords=MagicMock(),
-        tokens=tokens,
-        security=MagicMock(),
-        app_access=access,
-        app_sessions=app_sessions,
-        audit=MagicMock(),
-        private_app_access_enabled=False,
-    )
+    access = account_application_services.webapp_access
+    service = account_application_services.web_authentication
+    mode_lookup = mocker.spy(access._policy, "get_access_mode")
+    token_verify = mocker.spy(service._tokens, "verify_access_token")
+    session_verify = mocker.spy(service._app_sessions, "verify")
     bind_service(monkeypatch, service)
     monkeypatch.setattr(console_wraps, "_is_setup_completed", lambda: True)
     apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
@@ -258,9 +243,9 @@ def test_unavailable_identity_is_canonical_404_before_authentication(
     )
     assert response.headers["Content-Type"] == "application/json"
     assert response.headers["Cache-Control"] == "no-store"
-    policy.get_access_mode.assert_not_called()
-    tokens.verify_access_token.assert_not_called()
-    app_sessions.verify.assert_not_called()
+    mode_lookup.assert_not_called()
+    token_verify.assert_not_called()
+    session_verify.assert_not_called()
     with sqlite_session_factory() as session:
         assert session.scalar(select(func.count()).select_from(EndUser)) == 0
 

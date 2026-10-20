@@ -1,7 +1,4 @@
-import type {
-  AppNetworkAccessGroupResponse,
-  AppNetworkAccessGroupStatusResponse,
-} from '@dify/contracts/api/console/apps/types.gen'
+import type { AppNetworkAccessGroupResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   NetworkAccessGroupListResponse,
   NetworkAccessGroupResponse,
@@ -63,28 +60,6 @@ export function seedAppNetworkAccessGroup(
   }
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.networkAccessGroup.get.queryOptions({
-      input: { params: { app_id: appId } },
-    }).queryKey,
-    data,
-  )
-  return data
-}
-
-export function seedAppNetworkAccessGroupStatus(
-  queryClient: QueryClient,
-  appId: string,
-  overrides: Partial<AppNetworkAccessGroupStatusResponse> = {},
-): AppNetworkAccessGroupStatusResponse {
-  const data: AppNetworkAccessGroupStatusResponse = {
-    entitled: true,
-    configured: false,
-    enabled: false,
-    covered_count: 0,
-    available_count: 3,
-    ...overrides,
-  }
-  queryClient.setQueryData(
-    consoleQuery.apps.byAppId.networkAccessGroup.status.get.queryOptions({
       input: { params: { app_id: appId } },
     }).queryKey,
     data,

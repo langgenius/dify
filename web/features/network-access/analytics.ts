@@ -62,7 +62,7 @@ export type AccessControlSaveProperties = AccessControlAnalyticsContext & {
   is_current_ip_included: boolean
 }
 
-export type IpPolicySaveProperties = IpPolicyFormContext & {
+type IpPolicySaveProperties = IpPolicyFormContext & {
   mode: 'create' | 'edit'
   entry_count: number
   validation_error_types: IpPolicyValidationError[]
