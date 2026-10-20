@@ -1,7 +1,6 @@
 """Pipeline tool lifecycle through the real Engine and SQLAlchemy repositories."""
 
 import json
-from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import Engine, select
@@ -193,7 +192,11 @@ def test_pipeline_retires_nested_agent_workspace_when_run_ends(
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.runtime_request_builder.resolve_model_context_window", lambda **_kwargs: None
     )
-    collect_task = Mock()
+    collections: list[dict[str, object]] = []
+
+    def collect_task(**kwargs: object) -> None:
+        collections.append(kwargs)
+
     monkeypatch.setattr("tasks.collect_agent_resources_task.collect_agent_resources.delay", collect_task)
 
     WorkflowRunAgg.run(runner, None, runs, nodes)
@@ -212,9 +215,15 @@ def test_pipeline_retires_nested_agent_workspace_when_run_ends(
         assert (workspace.app_id, workspace.owner_id, workspace.status) == ("source-app", run.id, "retired")
         assert binding.status == "retired"
         workspace_id, binding_id = workspace.id, binding.id
-    collect_task.assert_called_once_with(
-        tenant_id="tenant", workspace_ids=[workspace_id], binding_ids=[], home_snapshot_ids=[], purge_agent_ids=[]
-    )
+    assert collections == [
+        {
+            "tenant_id": "tenant",
+            "workspace_ids": [workspace_id],
+            "binding_ids": [],
+            "home_snapshot_ids": [],
+            "purge_agent_ids": [],
+        }
+    ]
     AgentWorkspaceService.collect_retired_workspace(tenant_id="tenant", workspace_id=workspace_id)
     backend_client.destroy_execution_binding_sync.assert_called_once()
     with Session(sqlite_engine) as session:
