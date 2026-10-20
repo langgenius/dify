@@ -13,13 +13,12 @@ from controllers.console.workspace.agent_providers import (
 )
 from core.agent.plugin_entities import AgentStrategyParameter
 from core.plugin.entities.plugin_daemon import PluginAgentProviderEntity
-from core.plugin.impl.exc import PluginNotFoundError
-from models.account import Account
-from tests.unit_tests.model_factories import make_account
+from machinery.context import RequestContext
+from services.agent_provider_service import AgentProviderUnavailableError
 
 
-def _account() -> Account:
-    return make_account(account_id="user1", name="Agent Provider Tester", email="agent-provider@example.com")
+def _context() -> RequestContext:
+    return RequestContext("request", None, "user1", "tenant1")
 
 
 def _provider() -> PluginAgentProviderEntity:
@@ -63,38 +62,37 @@ class TestAgentProviderListApi:
         api = AgentProviderListApi()
         method = unwrap(api.get)
 
-        user = _account()
-        tenant_id = "tenant1"
+        context = _context()
         provider = _provider()
 
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.agent_providers.AgentService.list_agent_providers",
-                return_value=[provider],
-            ) as list_providers,
+                "controllers.console.workspace.agent_providers.application_services",
+            ) as services,
         ):
-            result = method(api, tenant_id, user)
+            list_providers = services.return_value.agent_providers.list_providers
+            list_providers.return_value = [provider]
+            result = method(api, context)
 
         assert result == [provider.model_dump(mode="json")]
         assert result[0]["declaration"]["identity"]["name"] == "langgenius/agent/agent"
-        list_providers.assert_called_once_with(user.id, tenant_id)
+        list_providers.assert_called_once_with(context)
 
     def test_get_empty_list(self, app: Flask) -> None:
         api = AgentProviderListApi()
         method = unwrap(api.get)
 
-        user = _account()
-        tenant_id = "tenant1"
+        context = _context()
 
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.agent_providers.AgentService.list_agent_providers",
-                return_value=[],
-            ),
+                "controllers.console.workspace.agent_providers.application_services",
+            ) as services,
         ):
-            result = method(api, tenant_id, user)
+            services.return_value.agent_providers.list_providers.return_value = list[PluginAgentProviderEntity]()
+            result = method(api, context)
 
         assert result == []
 
@@ -104,19 +102,19 @@ class TestAgentProviderApi:
         api = AgentProviderApi()
         method = unwrap(api.get)
 
-        user = _account()
-        tenant_id = "tenant1"
+        context = _context()
         provider_name = "langgenius/agent/agent"
         provider = _provider()
 
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.agent_providers.AgentService.get_agent_provider",
-                return_value=provider,
-            ) as get_provider,
+                "controllers.console.workspace.agent_providers.application_services",
+            ) as services,
         ):
-            result = method(api, tenant_id, user, provider_name)
+            get_provider = services.return_value.agent_providers.get_provider
+            get_provider.return_value = provider
+            result = method(api, context, provider_name)
 
         assert result == provider.model_dump(mode="json")
         assert result["meta"]["version"] is None
@@ -128,25 +126,26 @@ class TestAgentProviderApi:
         assert strategy["parameters"][0]["type"] == "array[tools]"
         assert strategy["parameters"][1]["default"] == 0
         assert strategy["parameters"][2]["default"] is False
-        get_provider.assert_called_once_with(user.id, tenant_id, provider_name)
+        get_provider.assert_called_once_with(context, provider_name)
 
     def test_get_provider_not_found(self, app: Flask) -> None:
         api = AgentProviderApi()
         method = unwrap(api.get)
 
-        user = _account()
-        tenant_id = "tenant1"
+        context = _context()
         provider_name = "langgenius/missing/agent"
 
         with (
             app.test_request_context("/"),
             patch(
-                "services.agent_service.PluginAgentClient.fetch_agent_strategy_provider",
-                side_effect=PluginNotFoundError("Agent provider is not installed"),
-            ),
+                "controllers.console.workspace.agent_providers.application_services",
+            ) as services,
         ):
+            services.return_value.agent_providers.get_provider.side_effect = AgentProviderUnavailableError(
+                "Agent provider is not installed"
+            )
             with pytest.raises(ValueError, match="Agent provider is not installed"):
-                method(api, tenant_id, user, provider_name)
+                method(api, context, provider_name)
 
 
 class TestAgentProviderResponseContract:

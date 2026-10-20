@@ -99,6 +99,8 @@ from services.account.login_adapters import RedisConsoleAuthSecurityGateway
 from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
+from services.agent_provider_gateway import PluginAgentProviderGateway
+from services.agent_provider_service import AgentProviderService
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
@@ -256,6 +258,7 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    agent_providers: AgentProviderService
     rbac: RBACServices
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
@@ -523,6 +526,7 @@ def build_application_services(
         invitation_tokens=invitation_tokens,
     )
     return ApplicationServices(
+        agent_providers=AgentProviderService(providers=PluginAgentProviderGateway()),
         rbac=rbac,
         accounts=account_services,
         apps=apps,
