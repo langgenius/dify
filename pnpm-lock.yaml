@@ -1817,6 +1817,9 @@ importers:
       agentation:
         specifier: 'catalog:'
         version: 3.1.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      axe-core:
+        specifier: 4.13.0
+        version: 4.13.0
       code-inspector-plugin:
         specifier: 'catalog:'
         version: 1.6.6(supports-color@11.0.0)
@@ -17075,6 +17078,7 @@ time:
   agentation@3.1.2: '2026-09-22T02:41:05.110Z'
   ahooks@3.10.0: '2026-09-06T01:59:54.024Z'
   ajv@8.20.0: '2026-04-24T15:22:16.529Z'
+  axe-core@4.13.0: '2026-08-05T16:53:07.262Z'
   bowser@2.14.1: '2026-02-08T22:04:35.837Z'
   c12@4.0.0-rc.2: '2026-09-22T23:44:24.160Z'
   chokidar@5.0.0: '2025-11-25T23:28:06.854Z'

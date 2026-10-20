@@ -178,6 +178,7 @@
     "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "agentation": "catalog:",
+    "axe-core": "catalog:",
     "code-inspector-plugin": "catalog:",
     "happy-dom": "catalog:",
     "i18next-resources-for-ts": "catalog:",

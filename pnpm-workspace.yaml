@@ -153,6 +153,7 @@ catalog:
   agentation: 3.1.2
   ahooks: 3.10.0
   ajv: 8.20.0
+  axe-core: 4.13.0
   bowser: 2.14.1
   c12: 4.0.0-rc.2
   chokidar: 5.0.0
