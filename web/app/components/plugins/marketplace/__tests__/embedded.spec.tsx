@@ -6,7 +6,8 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 const mockFetchPluginBanners = vi.fn()
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'zh-Hans',
 }))
 

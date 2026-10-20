@@ -1,0 +1,22 @@
+{
+  "dateFormats.compact": "MM/DD/YYYY HH:mm",
+  "dateFormats.withSeconds": "DD.MM.YYYY hh:mm:ss A",
+  "operation.cancel": "Prekliči",
+  "operation.now": "Zdaj",
+  "operation.ok": "V redu",
+  "operation.pickDate": "Izberi datum",
+  "picker.chooseMonthAndYear": "Izberite mesec in leto",
+  "picker.endDate": "Končni datum",
+  "picker.hour": "Ura",
+  "picker.minute": "Minuta",
+  "picker.month": "Mesec",
+  "picker.nextMonth": "Naslednji mesec",
+  "picker.period": "AM/PM",
+  "picker.previousMonth": "Prejšnji mesec",
+  "picker.required": "Izberite vrednost.",
+  "picker.requiredLabel": "Obvezno",
+  "picker.startDate": "Začetni datum",
+  "picker.unavailable": "Ta datum ali čas ni na voljo.",
+  "picker.year": "Leto",
+  "title.pickTime": "Izberi čas"
+}

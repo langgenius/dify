@@ -7,13 +7,13 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Suspense } from 'react'
 import { renderToReadableStream } from 'react-dom/server.node'
+import { consoleQuery } from '@/service/console'
 import WebAppsSection from '../web-apps-section'
 
 vi.mock('@tanstack/react-virtual')
 
 const service = vi.hoisted(() => ({
   list: vi.fn<() => Promise<InstalledAppListResponse>>(),
-  remove: vi.fn<() => Promise<void>>(),
   pin: vi.fn<() => Promise<void>>(),
 }))
 
@@ -22,25 +22,17 @@ vi.mock('@/context/permission-state', async () => {
   const { atom } = await import('jotai')
   return { workspacePermissionKeysAtom: atom(['app_library.access']) }
 })
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    installedApps: {
-      get: {
-        infiniteOptions: (options: {
-          input: (cursor?: string) => { query: { name?: string } }
-        }) => ({
-          ...options,
-          queryKey: ['installed-apps', options.input().query.name ?? ''],
-          queryFn: () => service.list(),
-        }),
-      },
-      byInstalledAppId: {
-        delete: { mutationOptions: () => ({ mutationFn: service.remove }) },
-        patch: { mutationOptions: () => ({ mutationFn: service.pin }) },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'installedApps.get': service.list,
+      'installedApps.byInstalledAppId.patch': service.pin,
+    }),
+  }
+})
 
 function createApp(index: number): InstalledAppResponse {
   return {
@@ -48,7 +40,6 @@ function createApp(index: number): InstalledAppResponse {
     app_owner_tenant_id: 'tenant-1',
     editable: true,
     last_used_at: null,
-    uninstallable: false,
     is_pinned: index === 0,
     app: {
       id: `app-${index}`,
@@ -84,7 +75,6 @@ async function renderSection(count = 2) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  service.remove.mockResolvedValue(undefined)
   service.pin.mockResolvedValue(undefined)
 })
 
@@ -107,37 +97,36 @@ it('leaves only the web apps fallback on the server without running its client p
   expect(onBrowserBailout).toHaveBeenCalledOnce()
 })
 
-it('restores the menu trigger on cancel and blocks Escape during deletion', async () => {
-  const { user } = await renderSection()
-  const trigger = screen.getByRole('button', {
-    name: 'common.operation.moreActionsFor:{"name":"App 0"}',
-  })
-  await user.click(trigger)
-  await user.click(await screen.findByRole('menuitem', { name: 'explore.sidebar.action.delete' }))
-  await user.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
-  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-  expect(trigger).toHaveFocus()
-
-  let finish!: () => void
-  service.remove.mockImplementation(
-    () =>
-      new Promise((resolve) => {
-        finish = resolve
+it.each([
+  { index: 0, action: 'unpin', nextPinned: false },
+  { index: 1, action: 'pin', nextPinned: true },
+])(
+  'offers $action without a delete action for installed web apps',
+  async ({ index, action, nextPinned }) => {
+    const { user } = await renderSection()
+    await user.click(
+      screen.getByRole('button', {
+        name: `common.operation.moreActionsFor:{"name":"App ${index}"}`,
       }),
-  )
-  await user.click(trigger)
-  await user.click(await screen.findByRole('menuitem', { name: 'explore.sidebar.action.delete' }))
-  await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
-  try {
-    await user.keyboard('{Escape}')
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
-  } finally {
-    await act(async () => {
-      finish()
+    )
+    const pinAction = await screen.findByRole('menuitem', {
+      name: `explore.sidebar.action.${action}`,
     })
-  }
-  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-})
+    expect(
+      screen.queryByRole('menuitem', { name: 'explore.sidebar.action.delete' }),
+    ).not.toBeInTheDocument()
+
+    await user.click(pinAction)
+
+    await waitFor(() =>
+      expect(service.pin).toHaveBeenCalledWith({
+        params: { installed_app_id: `installed-${index}` },
+        body: { is_pinned: nextPinned },
+      }),
+    )
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  },
+)
 
 it('keeps the search input focused when a refresh removes all apps', async () => {
   const { queryClient, user } = await renderSection(1)
@@ -146,27 +135,12 @@ it('keeps the search input focused when a refresh removes all apps', async () =>
   expect(search).toHaveFocus()
   service.list.mockResolvedValue({ installed_apps: [], has_more: false, next_cursor: null })
   await act(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['installed-apps'] })
+    await queryClient.invalidateQueries({ queryKey: consoleQuery.installedApps.get.key() })
   })
   await waitFor(() =>
-    expect(screen.getByRole('status')).toHaveTextContent('common.mainNav.webApps.noResults'),
+    expect(screen.getByRole('status')).toHaveTextContent('navigation.mainNav.webApps.noResults'),
   )
   expect(search).toHaveFocus()
-})
-
-it('returns focus to the section control after deleting the final app', async () => {
-  const { queryClient, user } = await renderSection(1)
-  service.remove.mockImplementation(async () => {
-    service.list.mockResolvedValue({ installed_apps: [], has_more: false, next_cursor: null })
-    await queryClient.invalidateQueries({ queryKey: ['installed-apps'] })
-  })
-  await user.click(
-    screen.getByRole('button', { name: 'common.operation.moreActionsFor:{"name":"App 0"}' }),
-  )
-  await user.click(await screen.findByRole('menuitem', { name: 'explore.sidebar.action.delete' }))
-  await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
-  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-  expect(screen.getByRole('button', { name: 'explore.sidebar.webApps' })).toHaveFocus()
 })
 
 it('keeps focus when clearing empty search results after the unfiltered cache expires', async () => {
@@ -176,9 +150,9 @@ it('keeps focus when clearing empty search results after the unfiltered cache ex
   service.list.mockResolvedValue({ installed_apps: [], has_more: false, next_cursor: null })
   await user.type(screen.getByRole('searchbox'), 'missing app')
   await waitFor(() =>
-    expect(screen.getByRole('status')).toHaveTextContent('common.mainNav.webApps.noResults'),
+    expect(screen.getByRole('status')).toHaveTextContent('navigation.mainNav.webApps.noResults'),
   )
-  queryClient.removeQueries({ queryKey: ['installed-apps', ''] })
+  queryClient.removeQueries({ queryKey: consoleQuery.installedApps.get.key(), type: 'inactive' })
   let finish!: (value: InstalledAppListResponse) => void
   service.list.mockImplementation(
     () =>

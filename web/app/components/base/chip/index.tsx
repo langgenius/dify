@@ -22,6 +22,9 @@ export type Item<T extends ItemValue = ItemValue> = {
 } & Record<string, unknown>
 
 type Props<T extends ItemValue> = {
+  id?: string
+  disabled?: boolean
+  'aria-labelledby'?: string
   className?: string
   panelClassName?: string
   showLeftIcon?: boolean
@@ -34,6 +37,9 @@ type Props<T extends ItemValue> = {
 }
 
 function Chip<T extends ItemValue>({
+  id,
+  disabled = false,
+  'aria-labelledby': ariaLabelledBy,
   className,
   panelClassName,
   showLeftIcon = true,
@@ -44,7 +50,7 @@ function Chip<T extends ItemValue>({
   onSelect,
   onClear,
 }: Props<T>) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const selectedItem = items.find((item) => Object.is(item.value, value))
   const triggerContent = selectedItem?.triggerName || selectedItem?.name || ''
   const hasValue = selectedItem !== undefined && value !== ''
@@ -54,6 +60,7 @@ function Chip<T extends ItemValue>({
 
   return (
     <Select<T>
+      disabled={disabled}
       value={selectedItem?.value ?? null}
       itemToStringLabel={(itemValue: T) =>
         items.find((item) => Object.is(item.value, itemValue))?.name ?? ''
@@ -67,7 +74,13 @@ function Chip<T extends ItemValue>({
     >
       <div className="relative w-fit max-w-full">
         <SelectTrigger
-          aria-label={triggerContent || t(($) => $['placeholder.select'], { ns: 'common' })}
+          id={id}
+          aria-labelledby={ariaLabelledBy}
+          aria-label={
+            ariaLabelledBy
+              ? undefined
+              : triggerContent || t(($) => $['placeholder.select'], { ns: 'common' })
+          }
           className={cn(
             'h-auto min-h-8 w-fit max-w-full cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt [&>*:last-child]:hidden',
             hasValue &&
@@ -110,8 +123,9 @@ function Chip<T extends ItemValue>({
         {hasValue && (
           <button
             type="button"
+            disabled={disabled}
             aria-label={clearLabel}
-            className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+            className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
             onClick={onClear}
           >
             <span

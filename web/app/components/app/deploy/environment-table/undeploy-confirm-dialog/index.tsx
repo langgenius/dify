@@ -2,11 +2,12 @@
 
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
@@ -28,8 +29,8 @@ export function UndeployConfirmDialog({
   onConfirm,
   onOpenChange,
 }: UndeployConfirmDialogProps) {
-  const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <AlertDialog
@@ -38,28 +39,26 @@ export function UndeployConfirmDialog({
         if (!isPending) onOpenChange(nextOpen)
       }}
     >
-      <AlertDialogContent className="w-120">
-        <div className="flex flex-col items-start gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             {t(($) => $['studio.undeployConfirmTitle'], {
               envName: environmentName,
               versionName,
             })}
           </AlertDialogTitle>
-          <AlertDialogDescription render={<div />} className="flex flex-col gap-2">
-            <p className="system-md-regular text-text-secondary">
-              {t(($) => $['studio.undeployConfirmDesc'])}
-            </p>
+          <AlertDialogDescription>
+            {t(($) => $['studio.undeployConfirmDesc'])}
           </AlertDialogDescription>
-        </div>
-        <AlertDialogActions>
-          <AlertDialogCancelButton variant="secondary" className="min-w-20" disabled={isPending}>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancelButton disabled={isPending}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton className="min-w-20" loading={isPending} onClick={onConfirm}>
+          <AlertDialogConfirmButton loading={isPending} onClick={onConfirm}>
             {t(($) => $['deployTab.confirmUndeploy'])}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

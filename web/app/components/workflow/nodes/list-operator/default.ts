@@ -36,7 +36,7 @@ const nodeDefault: NodeDefault<ListFilterNodeType> = {
       size: 10,
     },
   },
-  checkValid(payload: ListFilterNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: ListFilterNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
     const { variable, var_type, filter_by, item_var_type } = payload
 

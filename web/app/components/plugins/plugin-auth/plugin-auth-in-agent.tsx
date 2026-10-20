@@ -1,4 +1,5 @@
 import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
+import type { ComponentPropsWithRef } from 'react'
 import type { Credential, PluginPayload } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -20,7 +21,7 @@ const PluginAuthInAgent = ({
   credentialId,
   onAuthorizationItemClick,
 }: PluginAuthInAgentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [isOpen, setIsOpen] = useState(false)
   const {
     isAuthorized,
@@ -50,7 +51,7 @@ const PluginAuthInAgent = ({
   )
 
   const renderTrigger = useCallback(
-    (isOpen?: boolean) => {
+    (isOpen: boolean, triggerProps: ComponentPropsWithRef<'button'>) => {
       let label = ''
       let removed = false
       let unavailable = false
@@ -67,7 +68,9 @@ const PluginAuthInAgent = ({
       }
       return (
         <Button
+          {...triggerProps}
           className={cn(
+            triggerProps.className,
             'w-full',
             isOpen && 'bg-components-button-secondary-bg-hover',
             removed && 'text-text-destructive',

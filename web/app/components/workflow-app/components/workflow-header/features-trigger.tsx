@@ -8,14 +8,17 @@ import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import { AppPublisher } from '@/app/components/app/app-publisher'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
+import {
+  isChatflowAtom,
+  workflowAppIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
 // useWorkflowRunValidation,
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import {
@@ -23,16 +26,15 @@ import {
   useChecklistBeforePublish,
 } from '@/app/components/workflow/hooks/use-checklist'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
-import { useIsChatMode, useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
-import { fetchAppDetail } from '@/service/apps'
 import { consoleQuery } from '@/service/console'
-import { useInvalidateAppTriggers } from '@/service/use-tools'
 import {
   useInvalidateAppWorkflow,
   usePublishWorkflow,
@@ -40,14 +42,12 @@ import {
 } from '@/service/use-workflow'
 
 const FeaturesTrigger = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { theme } = useTheme()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   const workflowStore = useWorkflowStore()
   const queryClient = useQueryClient()
-  const appDetail = useAppStore((s) => s.appDetail)
-  const setAppDetail = useAppStore((s) => s.setAppDetail)
-  const appID = appDetail?.id
+  const { appId: appID } = useAtomValue(workflowAppIdentityAtom)
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const canReleaseAndVersion = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
   const { data: deploymentEdition } = useSuspenseQuery({
@@ -134,10 +134,7 @@ const FeaturesTrigger = () => {
     return edges.some((edge) => startNodeIds.includes(edge.source))
   }, [edges, startNodeIds])
   // Track trigger presence so the publisher can adjust UI (e.g. hide missing start section).
-  const hasTriggerNode = useMemo(
-    () => nodes.some((node) => isTriggerNode(node.data.type as BlockEnum)),
-    [nodes],
-  )
+  const hasTriggerNode = useMemo(() => nodes.some((node) => isTriggerNode(node.data.type)), [nodes])
   const startNodeLimitExceeded = useMemo(() => {
     const entryCount = nodes.reduce((count, node) => {
       const nodeType = node.data.type as BlockEnum
@@ -152,24 +149,12 @@ const FeaturesTrigger = () => {
   }, [nodes])
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
-  const invalidateAppTriggers = useInvalidateAppTriggers()
 
   const handleShowFeatures = useCallback(() => {
     const { showFeaturesPanel, isRestoring, setShowFeaturesPanel } = workflowStore.getState()
     if (getNodesReadOnly() && !isRestoring) return
     setShowFeaturesPanel(!showFeaturesPanel)
   }, [workflowStore, getNodesReadOnly])
-
-  const updateAppDetail = useCallback(async () => {
-    try {
-      if (!appID) return
-
-      const res = await fetchAppDetail({ url: '/apps', id: appID })
-      setAppDetail({ ...res })
-    } catch (error) {
-      console.error(error)
-    }
-  }, [appID, setAppDetail])
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()
@@ -199,12 +184,21 @@ const FeaturesTrigger = () => {
           releaseNotes: publishParams?.releaseNotes || '',
         })
         if (res) {
-          if (options?.showSuccessToast !== false) {
+          // One toast per publish: a warning from the server replaces the success message.
+          if (res.warning) toast.warning(res.warning)
+          else if (options?.showSuccessToast !== false)
             toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-          }
-          updatePublishedWorkflow(appID!)
-          updateAppDetail()
-          invalidateAppTriggers(appID!)
+          updatePublishedWorkflow(appID)
+          void queryClient.invalidateQueries({
+            queryKey: consoleQuery.apps.byAppId.get.queryKey({
+              input: { params: { app_id: appID } },
+            }),
+          })
+          void queryClient.invalidateQueries({
+            queryKey: consoleQuery.apps.byAppId.triggers.get.queryKey({
+              input: { params: { app_id: appID } },
+            }),
+          })
           if (rosterAgentIds.length > 0) {
             void queryClient.invalidateQueries({
               queryKey: consoleQuery.agent.get.key(),
@@ -239,8 +233,6 @@ const FeaturesTrigger = () => {
       appID,
       t,
       updatePublishedWorkflow,
-      updateAppDetail,
-      invalidateAppTriggers,
       rosterAgentIds,
       queryClient,
       workflowStore,
@@ -263,7 +255,7 @@ const FeaturesTrigger = () => {
   return (
     <>
       {/* Feature button is only visible in chatflow mode (advanced-chat) */}
-      {isChatMode && (
+      {isChatflow && (
         <Button
           className={cn(
             'rounded-lg text-components-button-secondary-text inset-ring-1 inset-ring-transparent',
@@ -276,6 +268,7 @@ const FeaturesTrigger = () => {
         </Button>
       )}
       <AppPublisher
+        appId={appID}
         {...{
           publishedAt,
           draftUpdatedAt,

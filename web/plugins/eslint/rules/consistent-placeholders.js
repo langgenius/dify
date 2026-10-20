@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path, { normalize, sep } from 'node:path'
+import { getTranslationSourceKey } from '../../../scripts/check-i18n-plurals.ts'
 import { cleanJsonText } from '../utils.js'
 
 function extractPlaceholders(str) {
@@ -83,6 +84,8 @@ export default {
     const state = {
       enabled: false,
       englishJson: null,
+      englishKeys: new Set(),
+      language: 'en-US',
     }
 
     function isTopLevelProperty(node) {
@@ -107,14 +110,16 @@ export default {
         const jsonFile = parts.at(-1)
         const lang = parts.at(-2)
 
-        if (lang === 'en-US') return
+        if (!lang || lang === 'en-US') return
 
         state.enabled = true
+        state.language = lang
 
         try {
           const englishFilePath = path.join(path.dirname(filename), '..', 'en-US', jsonFile ?? '')
           const englishText = fs.readFileSync(englishFilePath, 'utf8')
           state.englishJson = JSON.parse(cleanJsonText(englishText))
+          state.englishKeys = new Set(Object.keys(state.englishJson))
         } catch (error) {
           state.enabled = false
           context.report({
@@ -131,11 +136,12 @@ export default {
         const key = node.key.value ?? node.key.name
         if (!key) return
 
-        if (!Object.prototype.hasOwnProperty.call(state.englishJson, key)) return
+        const sourceKey = getTranslationSourceKey(state.englishKeys, key, state.language)
+        if (!sourceKey) return
 
         const currentNode = node.value ?? node
         const currentValue = getJsonLiteralValue(currentNode)
-        const englishValue = state.englishJson[key]
+        const englishValue = state.englishJson[sourceKey]
 
         if (typeof currentValue !== 'string' || typeof englishValue !== 'string') return
 

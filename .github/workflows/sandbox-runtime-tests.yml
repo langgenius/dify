@@ -48,7 +48,7 @@ jobs:
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
-          python-version: '3.12'
+          python-version: '3.13'
           cache-dependency-glob: dify-agent/uv.lock
 
       - name: Install agent rollout test dependencies
@@ -155,7 +155,7 @@ jobs:
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
-          python-version: '3.12'
+          python-version: '3.13'
           cache-dependency-glob: dify-agent/uv.lock
 
       - name: Install agent rollout test dependencies

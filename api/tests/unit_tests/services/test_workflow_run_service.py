@@ -55,17 +55,6 @@ def _workflow_run(
     )
 
 
-def test_init_keeps_injected_dependencies(
-    service_dependencies: tuple[MagicMock, MagicMock],
-) -> None:
-    node_executions, workflow_runs = service_dependencies
-
-    service = _service(service_dependencies)
-
-    assert service._workflow_runs is workflow_runs
-    assert service._node_executions is node_executions
-
-
 class TestWorkflowRunServiceQueries:
     def test_get_paginate_workflow_runs_should_forward_filters_and_parse_limit(
         self,

@@ -19,13 +19,6 @@ let deploymentEdition: GetSystemFeaturesResponse['deployment_edition'] = 'COMMUN
 let canReplaceLogo = true
 let plan: CloudPlan = 'professional'
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-  }
-})
-
 function renderWithData(ui: ReactElement) {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(consoleQuery.workspaces.customConfig.get.queryKey(), {
@@ -49,23 +42,6 @@ function renderWithData(ui: ReactElement) {
   })
 }
 
-const { mockToast } = vi.hoisted(() => {
-  const mockToast = Object.assign(vi.fn(), {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
-  return { mockToast }
-})
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: mockToast,
-}))
-
 function render(...args: Parameters<typeof renderWithData>) {
   args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
   return renderWithData(...args)
@@ -82,15 +58,6 @@ describe('CustomPage', () => {
 
   // Integration coverage for the page and its child custom brand section.
   describe('Rendering', () => {
-    it('should render the custom brand configuration by default', () => {
-      render(<CustomPage />)
-
-      expect(screen.getByText('custom.webapp.removeBrand')).toBeInTheDocument()
-      expect(screen.getByText('Chatflow App')).toBeInTheDocument()
-      expect(screen.queryByText('custom.upgradeTip.title')).not.toBeInTheDocument()
-      expect(screen.queryByText('custom.customize.contactUs')).not.toBeInTheDocument()
-    })
-
     it('should show the upgrade banner and open pricing modal for sandbox billing', async () => {
       deploymentEdition = 'CLOUD'
       const user = userEvent.setup()
@@ -109,32 +76,25 @@ describe('CustomPage', () => {
       )
     })
 
-    it('should show the contact link for professional workspaces', () => {
-      deploymentEdition = 'CLOUD'
-      canReplaceLogo = true
+    it.each(['professional', 'team'] as const)(
+      'shows the contact link for %s workspaces',
+      (workspacePlan) => {
+        plan = workspacePlan
+        deploymentEdition = 'CLOUD'
+        canReplaceLogo = true
 
-      render(<CustomPage />)
+        render(<CustomPage />)
 
-      const contactLink = screen.getByText('custom.customize.contactUs').closest('a')
-      expect(screen.queryByText('custom.upgradeTip.title')).not.toBeInTheDocument()
-      expect(contactLink).toHaveAttribute('href', contactSalesUrl)
-      expect(contactLink).toHaveAttribute('target', '_blank')
-      expect(contactLink).toHaveAttribute('rel', 'noopener noreferrer')
-    })
+        const contactLink = screen.getByRole('link', { name: 'custom.customize.contactUs' })
+        expect(screen.queryByText('custom.upgradeTip.title')).not.toBeInTheDocument()
+        expect(contactLink).toHaveAttribute('href', contactSalesUrl)
+        expect(contactLink).toHaveAttribute('target', '_blank')
+        expect(contactLink).toHaveAttribute('rel', 'noopener noreferrer')
+      },
+    )
 
-    it('should show the contact link for team workspaces', () => {
-      plan = 'team'
-      deploymentEdition = 'CLOUD'
-      canReplaceLogo = true
-
-      render(<CustomPage />)
-
-      expect(screen.getByText('custom.customize.contactUs')).toBeInTheDocument()
-      expect(screen.queryByText('custom.upgradeTip.title')).not.toBeInTheDocument()
-    })
-
-    it('should hide both billing sections for Community deployments', () => {
-      canReplaceLogo = false
+    it.each([true, false])('hides billing for Community when logo replacement is %s', (enabled) => {
+      canReplaceLogo = enabled
 
       render(<CustomPage />)
 

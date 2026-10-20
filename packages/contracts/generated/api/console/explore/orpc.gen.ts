@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zRecommendedAppNotFoundError } from './zod.gen.ts'
 import {
   zGetExploreAppsByAppIdPath,
   zGetExploreAppsByAppIdResponse,
@@ -11,7 +12,7 @@ import {
   zGetExploreAppsResponse,
   zGetExploreBannersQuery,
   zGetExploreBannersResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const get = oc
   .route({
@@ -21,7 +22,7 @@ export const get = oc
     path: '/explore/apps/learn-dify',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetExploreAppsLearnDifyQuery.optional() }))
+  .input(z.object({ query: zGetExploreAppsLearnDifyQuery.optional() }).optional())
   .output(zGetExploreAppsLearnDifyResponse)
 
 export const learnDify = {
@@ -38,6 +39,7 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetExploreAppsByAppIdPath }))
   .output(zGetExploreAppsByAppIdResponse)
+  .errors({ recommended_app_not_found: { status: 404, data: zRecommendedAppNotFoundError } })
 
 export const byAppId = {
   get: get2,
@@ -51,7 +53,7 @@ export const get3 = oc
     path: '/explore/apps',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetExploreAppsQuery.optional() }))
+  .input(z.object({ query: zGetExploreAppsQuery.optional() }).optional())
   .output(zGetExploreAppsResponse)
 
 export const apps = {
@@ -72,7 +74,7 @@ export const get4 = oc
     summary: 'Get banner list',
     tags: ['default'],
   })
-  .input(z.object({ query: zGetExploreBannersQuery.optional() }))
+  .input(z.object({ query: zGetExploreBannersQuery.optional() }).optional())
   .output(zGetExploreBannersResponse)
 
 export const banners = {

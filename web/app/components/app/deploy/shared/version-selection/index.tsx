@@ -20,8 +20,8 @@ export function VersionSelection({
   request: DeploymentDialogRequest
   onSelect: (version: DeploymentVersion) => void
 }) {
-  const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
   const title = versionSelectionTitle(
     request,
     t(($) => $['versions.deployTo'], { name: request.environment }),
@@ -43,8 +43,8 @@ export function VersionSelection({
         }
       />
       <header className="shrink-0 px-6 pt-6 pr-14 pb-3">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">{title}</DialogTitle>
-        <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+        <DialogTitle>{title}</DialogTitle>
+        <DialogDescription className="mt-1">
           {t(($) => $['studio.chooseVersionToDeploy'])}
         </DialogDescription>
       </header>
@@ -70,8 +70,8 @@ export function EmbeddedVersionSelection({
   onBack: () => void
   onSelect: (version: DeploymentVersion) => void
 }) {
-  const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
   const title = versionSelectionTitle(
     request,
     t(($) => $['versions.deployTo'], { name: request.environment }),

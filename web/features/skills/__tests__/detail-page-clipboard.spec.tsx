@@ -1,6 +1,13 @@
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
 import {
   createDataTransfer,
   createSkillDetail,
@@ -61,6 +68,26 @@ function createSelectionSkillDetail() {
 describe('SkillDetailPage clipboard', () => {
   beforeEach(resetDetailPageFixture)
 
+  it('leaves shortcuts in another page menu to that menu', async () => {
+    const user = userEvent.setup()
+    renderSkillDetailPage()
+    await waitFor(() => expect(getFileTreeItem('SKILL.md')).toBeInTheDocument())
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger>Other actions</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem>Other copy</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Other actions' }))
+    const menuItem = await screen.findByRole('menuitem', { name: 'Other copy' })
+    fireEvent.keyDown(menuItem, { key: 'c', code: 'KeyC', ...primaryModifier })
+    fireEvent.keyDown(menuItem, { key: 'x', code: 'KeyX', ...primaryModifier })
+    expect(mocks.copyToClipboard).not.toHaveBeenCalled()
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+  })
+
   it('copies the context-menu file with the displayed keyboard shortcut', async () => {
     renderSkillDetailPage()
 
@@ -77,19 +104,82 @@ describe('SkillDetailPage clipboard', () => {
     const copyMenuItem = screen.getByRole('menuitem', {
       name: /skillManagement\.detail\.copyFile/,
     })
-    copyMenuItem.addEventListener('keydown', (event) => event.stopPropagation())
     fireEvent.keyDown(copyMenuItem, {
       code: 'KeyC',
       key: 'c',
       ...primaryModifier,
     })
 
-    expect(mocks.toastSuccess).toHaveBeenCalledWith(
-      'skill.skillManagement.detail.copyContentSuccess',
+    expect(mocks.copyToClipboard).toHaveBeenCalledExactlyOnceWith(
+      createSkillDetail().files![0]!.content,
     )
   })
 
+  it('copies the dropdown file instead of the previously selected file', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSelectionSkillDetail()
+    renderSkillDetailPage()
+    await waitFor(() => expect(getFileTreeButton('SKILL.md')).toBeInTheDocument())
+    await user.click(getFileTreeButton('SKILL.md'))
+    await openFileTreeActions(user, 'README.md')
+    const copyMenuItem = await screen.findByRole('menuitem', {
+      name: /skillManagement\.detail\.copyFile/,
+    })
+    fireEvent.keyDown(copyMenuItem, {
+      key: 'c',
+      code: 'KeyC',
+      ...primaryModifier,
+      isComposing: true,
+    })
+    expect(mocks.copyToClipboard).not.toHaveBeenCalled()
+    fireEvent.keyDown(copyMenuItem, { key: 'c', code: 'KeyC', ...primaryModifier })
+    expect(
+      fireEvent.keyDown(copyMenuItem, {
+        key: 'c',
+        code: 'KeyC',
+        ...primaryModifier,
+        repeat: true,
+      }),
+    ).toBe(false)
+
+    expect(mocks.copyToClipboard).toHaveBeenCalledExactlyOnceWith('# README')
+  })
+
+  it.each([false, true])(
+    'cuts the dropdown file while preserving an existing multi-selection: %s',
+    async (multiSelection) => {
+      const user = userEvent.setup()
+      mocks.skillDetail = createSelectionSkillDetail()
+      renderSkillDetailPage()
+      await waitFor(() => expect(getFileTreeButton('SKILL.md')).toBeInTheDocument())
+      await user.click(getFileTreeButton('SKILL.md'))
+      if (multiSelection) fireEvent.click(getFileTreeButton('README.md'), primaryModifier)
+      await openFileTreeActions(user, 'README.md')
+      const cutMenuItem = await screen.findByRole('menuitem', {
+        name: /skillManagement\.detail\.cutFile/,
+      })
+      fireEvent.keyDown(cutMenuItem, { key: 'x', code: 'KeyX', ...primaryModifier })
+      await user.keyboard('{Escape}')
+      await user.click(getFileTreeButton('references'))
+      fireEvent.paste(getFileTreeButton('references'))
+
+      const paths = multiSelection ? ['SKILL.md', 'README.md'] : ['README.md']
+      await waitFor(() => expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(paths.length))
+      expect(mocks.saveDraftFileMutationFn.mock.calls.map(([request]) => request.body)).toEqual(
+        paths.map((path) =>
+          expect.objectContaining({
+            operation: 'rename',
+            path,
+            target_path: `references/${path}`,
+          }),
+        ),
+      )
+    },
+  )
+
   it('cuts the context-menu file with the displayed keyboard shortcut', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSelectionSkillDetail()
     renderSkillDetailPage()
 
     await waitFor(() => {
@@ -105,17 +195,30 @@ describe('SkillDetailPage clipboard', () => {
     const cutMenuItem = screen.getByRole('menuitem', {
       name: /skill\.skillManagement\.detail\.cutFile/,
     })
-    cutMenuItem.addEventListener('keydown', (event) => event.stopPropagation())
     fireEvent.keyDown(cutMenuItem, {
       code: 'KeyX',
       key: 'x',
       ...primaryModifier,
     })
 
-    expect(mocks.toastSuccess).toHaveBeenCalledWith('skill.skillManagement.detail.cutFileSuccess')
+    await user.keyboard('{Escape}')
+    await user.click(getFileTreeButton('references'))
+    fireEvent.paste(getFileTreeButton('references'))
+    await waitFor(() =>
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            operation: 'rename',
+            path: 'SKILL.md',
+            target_path: 'references/SKILL.md',
+          }),
+        }),
+        expect.anything(),
+      ),
+    )
   })
 
-  it('copies a file with the keyboard shortcut and pastes it into the selected folder', async () => {
+  it('copies a file through clipboard events and pastes it into the selected folder', async () => {
     const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({
       files: [
@@ -143,6 +246,7 @@ describe('SkillDetailPage clipboard', () => {
           body: expect.objectContaining({
             operation: 'upsert_text',
             path: 'scripts/SKILL.md',
+            content: createSkillDetail().files![0]!.content,
           }),
         }),
         expect.anything(),
@@ -271,18 +375,14 @@ describe('SkillDetailPage clipboard', () => {
         },
       ],
     })
-    const conflict = new Error('skill has been modified by another user') as Error & {
-      code: string
+    const conflict = createHttpError(new Response(null, { status: 409 }), {
+      code: 'skill_conflict',
+      message: 'skill has been modified by another user',
       details: {
-        current_updated_at: number
-        expected_updated_at: number
-      }
-    }
-    conflict.code = 'skill_conflict'
-    conflict.details = {
-      current_updated_at: latestDetail.updated_at,
-      expected_updated_at: 1784638487,
-    }
+        current_updated_at: latestDetail.updated_at,
+        expected_updated_at: 1784638487,
+      },
+    })
     mocks.saveDraftFileMutationFn
       .mockRejectedValueOnce(conflict)
       .mockImplementationOnce(async () => {
@@ -315,6 +415,9 @@ describe('SkillDetailPage clipboard', () => {
           path: 'SKILL copy.md',
         }),
       }),
+    )
+    expect(mocks.saveDraftFileMutationFn.mock.calls[0]?.[0].body.expected_updated_at).toBe(
+      1784638487,
     )
     expect(mocks.toastError).not.toHaveBeenCalledWith('skill has been modified by another user')
   })
@@ -358,10 +461,10 @@ describe('SkillDetailPage clipboard', () => {
       updated_at: 1784638491,
       files: [...sourceFiles, copiedAlpha, copiedBeta],
     })
-    const conflict = new Error('skill has been modified by another user') as Error & {
-      code: string
-    }
-    conflict.code = 'skill_conflict'
+    const conflict = createHttpError(new Response(null, { status: 409 }), {
+      code: 'skill_conflict',
+      message: 'skill has been modified by another user',
+    })
 
     mocks.skillDetail = createSkillDetail({ files: sourceFiles })
     mocks.saveDraftFileMutationFn
@@ -492,13 +595,13 @@ describe('SkillDetailPage clipboard', () => {
     const exampleFile = getFileTreeItem('scripts/example.ts')
     const targetFolder = getFileTreeItem('references')
     fireEvent.click(getFileTreeButton('SKILL.md'))
-    fireEvent.click(getFileTreeButton('scripts/example.ts'), { metaKey: true })
+    fireEvent.click(getFileTreeButton('scripts/example.ts'), primaryModifier)
 
     const { dataTransfer } = createDataTransfer()
     fireEvent.dragStart(exampleFile, { dataTransfer })
 
     fireEvent.dragOver(targetFolder.closest('li')!, { dataTransfer })
-    expect(screen.getByText(/^Move to/)).toHaveTextContent(/^Move to references$/)
+    expect(screen.getByText(/^Move to/).textContent).toMatch(/^Move to references$/)
     fireEvent.drop(targetFolder.closest('li')!, { dataTransfer })
 
     await waitFor(() => {
@@ -630,14 +733,14 @@ describe('SkillDetailPage clipboard', () => {
 
     const folder = await waitFor(() => getFileTreeItem('scripts'))
     await user.dblClick(getFileTreeButton('scripts'))
-    expect(document.querySelector('[title="scripts/example.ts"]')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'example.ts' })).not.toBeInTheDocument()
 
     vi.useFakeTimers()
     try {
       const { dataTransfer } = createDataTransfer([new File(['x'], 'x.txt')])
       fireEvent.dragOver(folder.closest('li')!, { dataTransfer })
       act(() => vi.advanceTimersByTime(1999))
-      expect(document.querySelector('[title="scripts/example.ts"]')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'example.ts' })).not.toBeInTheDocument()
       act(() => vi.advanceTimersByTime(1))
       expect(getFileTreeItem('scripts/example.ts')).toBeInTheDocument()
     } finally {
@@ -647,6 +750,10 @@ describe('SkillDetailPage clipboard', () => {
 
   it('deletes a file through the file tree action menu', async () => {
     const user = userEvent.setup()
+    mocks.saveDraftFileMutationFn.mockImplementationOnce(async () => {
+      mocks.skillDetail = createSkillDetail({ files: [], updated_at: 1784638490 })
+      return mocks.skillDetail
+    })
     renderSkillDetailPage()
 
     await waitFor(() => {
@@ -670,5 +777,9 @@ describe('SkillDetailPage clipboard', () => {
         expect.anything(),
       )
     })
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryAllByRole('button', { name: 'SKILL.md' })).toHaveLength(0),
+    )
   })
 })

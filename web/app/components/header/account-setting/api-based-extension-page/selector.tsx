@@ -23,7 +23,7 @@ type ApiBasedExtensionSelectorProps = {
 }
 
 export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtensionSelectorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)

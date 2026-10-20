@@ -2,6 +2,7 @@
 
 import type { SelectorKey } from 'i18next'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -23,7 +24,7 @@ const PermissionRoleChip = ({
   onRemove,
   className,
 }: PermissionRoleChipProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permissionKeys', 'workspaceMembers'])
   const permissions = permissionKeys
   const canRemoveRole = !isOwner && !!onRemove
   // Permission keys come from the catalog API, so this is a reviewed open-key boundary with a server-provided fallback.
@@ -38,7 +39,6 @@ const PermissionRoleChip = ({
   const chipRootClassName = cn(
     'inline-flex h-6 max-w-full min-w-0 items-center gap-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-background-body px-1.5 py-0.5 system-xs-medium text-text-primary shadow-xs transition-colors',
     'hover:bg-background-section-burn has-data-popup-open:bg-background-section-burn',
-    'has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
     className,
   )
 
@@ -53,21 +53,21 @@ const PermissionRoleChip = ({
         render={
           <button
             type="button"
-            className="min-w-0 truncate rounded-sm border-none bg-transparent p-0 text-start leading-4 outline-hidden"
+            className="min-w-0 truncate rounded-sm border-none bg-transparent p-0 text-start leading-4"
           >
             {label}
           </button>
         }
       />
       {canRemoveRole && (
-        <button
-          type="button"
+        <IconButton
+          size="xs"
           aria-label={removeLabel}
-          className="flex size-3.5 shrink-0 items-center justify-center rounded-full border-none bg-transparent p-0 text-text-tertiary outline-hidden hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:bg-state-base-hover-alt focus-visible:text-text-secondary"
+          className="shrink-0 rounded-full"
           onClick={() => onRemove?.(roleId)}
         >
           <span aria-hidden className="i-ri-close-line size-3" />
-        </button>
+        </IconButton>
       )}
     </span>
   )
@@ -81,7 +81,7 @@ const PermissionRoleChip = ({
         {hasPermissionLabels ? (
           <Trans
             i18nKey={($) => $['members.memberDetails.rolePermissionSummary']}
-            ns="common"
+            ns="workspaceMembers"
             values={{
               role: label,
               permissions: permissionLabels,
@@ -92,7 +92,7 @@ const PermissionRoleChip = ({
           />
         ) : (
           t(($) => $['members.memberDetails.roleNoPermissionSummary'], {
-            ns: 'common',
+            ns: 'workspaceMembers',
             defaultValue: 'Current role has no permissions.',
           })
         )}

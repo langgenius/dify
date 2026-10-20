@@ -1,7 +1,7 @@
-import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
+import type { AccessControlTemplateLanguage } from '@/i18n/language'
 import type {
-  RemoveAppAccessPolicyMemberBindingsRequest,
-  UpdateAppUserAccessSettingsRequest,
+  RemoveResourceAccessPolicyMemberBindingsRequest,
+  UpdateResourceUserAccessSettingsRequest,
 } from '@/models/access-control'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -81,7 +81,7 @@ export const useUpdateAppUserAccessSettings = (appId: string) => {
 
   return useMutation({
     mutationKey: [NAME_SPACE, 'update-app-user-access-settings', appId],
-    mutationFn: (payload: UpdateAppUserAccessSettingsRequest) =>
+    mutationFn: (payload: UpdateResourceUserAccessSettingsRequest) =>
       appRbacClient.users.byTargetAccountId.accessPolicies.put({
         params: {
           app_id: appId,
@@ -112,7 +112,7 @@ export const useRemoveAppAccessPolicyMemberBindings = (appId: string) => {
 
   return useMutation({
     mutationKey: [NAME_SPACE, 'remove-app-access-policy-member-bindings', appId],
-    mutationFn: (removals: RemoveAppAccessPolicyMemberBindingsRequest[]) =>
+    mutationFn: (removals: RemoveResourceAccessPolicyMemberBindingsRequest[]) =>
       Promise.all(
         removals.map((removal) =>
           appRbacClient.accessPolicies.byPolicyId.memberBindings.delete({

@@ -1,4 +1,5 @@
-import * as React from 'react'
+import type * as React from 'react'
+import type { RenderResult } from 'vitest-browser-react'
 import { render } from 'vitest-browser-react'
 import {
   ContextMenu,
@@ -12,20 +13,31 @@ import {
   ContextMenuTrigger,
 } from '../index'
 
-const renderWithSafeViewport = (ui: React.ReactNode) =>
-  render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
+// Leaves room above and below the trigger so the requested side is not flipped by a collision.
+const renderWithRoomAround = (ui: React.ReactNode) =>
+  render(<div style={{ padding: '240px 16px' }}>{ui}</div>)
+
+// A context menu is anchored to the pointer, so it is opened with a real right-click: a controlled
+// `open` has no pointer position and leaves the menu anchored to nothing.
+const openContextMenu = async (screen: RenderResult) => {
+  await screen
+    .getByLabelText('context trigger')
+    .click({ button: 'right', position: { x: 8, y: 8 } })
+  await expect.element(screen.getByRole('menu').first()).toBeVisible()
+}
 
 describe('context-menu wrapper', () => {
   describe('ContextMenuContent', () => {
     it('should position content at bottom-start with default placement when props are omitted', async () => {
-      const screen = await renderWithSafeViewport(
-        <ContextMenu open>
+      const screen = await renderWithRoomAround(
+        <ContextMenu>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
           <ContextMenuContent>
             <ContextMenuItem>Content action</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>,
       )
+      await openContextMenu(screen)
 
       await expect.element(screen.getByRole('menu')).toHaveAttribute('data-side', 'bottom')
       await expect.element(screen.getByRole('menu')).toHaveAttribute('data-align', 'start')
@@ -35,14 +47,15 @@ describe('context-menu wrapper', () => {
     })
 
     it('should apply custom top placement and keep point-anchor alignment stable when custom positioning props are provided', async () => {
-      const screen = await renderWithSafeViewport(
-        <ContextMenu open>
+      const screen = await renderWithRoomAround(
+        <ContextMenu>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
           <ContextMenuContent placement="top-end" sideOffset={12} alignOffset={-3}>
             <ContextMenuItem>Custom content</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>,
       )
+      await openContextMenu(screen)
 
       await expect.element(screen.getByRole('menu')).toHaveAttribute('data-side', 'top')
       await expect.element(screen.getByRole('menu')).toHaveAttribute('data-align', 'start')
@@ -55,25 +68,27 @@ describe('context-menu wrapper', () => {
       const handlePopupClick = vi.fn()
 
       const screen = await render(
-        <ContextMenu open>
+        <ContextMenu>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
           <ContextMenuContent id="context-content-popup" onClick={handlePopupClick}>
             <ContextMenuItem>Passthrough content</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>,
       )
+      await openContextMenu(screen)
+
+      await expect.element(screen.getByRole('menu')).toHaveAttribute('id', 'context-content-popup')
 
       await screen.getByRole('menu').click()
 
-      await expect.element(screen.getByRole('menu')).toHaveAttribute('id', 'context-content-popup')
       expect(handlePopupClick).toHaveBeenCalledTimes(1)
     })
   })
 
   describe('ContextMenuSubContent', () => {
-    it('should position sub-content at right-start with default placement when props are omitted', async () => {
-      const screen = await renderWithSafeViewport(
-        <ContextMenu open>
+    it('should place sub-content inline-end-start when placement is omitted', async () => {
+      const screen = await renderWithRoomAround(
+        <ContextMenu>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
           <ContextMenuContent>
             <ContextMenuSub open>
@@ -85,13 +100,21 @@ describe('context-menu wrapper', () => {
           </ContextMenuContent>
         </ContextMenu>,
       )
+      await openContextMenu(screen)
 
+      const submenu = screen.getByRole('menu', { name: 'More actions' })
+      const submenuTrigger = screen.getByRole('menuitem', { name: 'More actions' })
+
+      await expect.element(submenu).toHaveAttribute('data-side', 'inline-end')
+      await expect.element(submenu).toHaveAttribute('data-align', 'start')
+      // Left-to-right, so the submenu sits to the right of its trigger.
       await expect
-        .element(screen.getByRole('menu', { name: 'More actions' }))
-        .toHaveAttribute('data-side', 'right')
-      await expect
-        .element(screen.getByRole('menu', { name: 'More actions' }))
-        .toHaveAttribute('data-align', 'start')
+        .poll(
+          () =>
+            submenu.element().getBoundingClientRect().left >=
+            submenuTrigger.element().getBoundingClientRect().right - 1,
+        )
+        .toBe(true)
       await expect.element(screen.getByRole('menuitem', { name: 'Sub action' })).toBeInTheDocument()
     })
   })
@@ -103,7 +126,7 @@ describe('context-menu wrapper', () => {
         const handleClick = vi.fn()
 
         const screen = await render(
-          <ContextMenu open>
+          <ContextMenu>
             <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
             <ContextMenuContent>
               <ContextMenuItem
@@ -117,14 +140,17 @@ describe('context-menu wrapper', () => {
             </ContextMenuContent>
           </ContextMenu>,
         )
+        await openContextMenu(screen)
 
-        await screen.getByRole('menuitem', { name: 'menu action' }).click()
         await expect
           .element(screen.getByRole('menuitem', { name: 'menu action' }))
           .toHaveAttribute('id', `context-item-${variant}`)
         await expect
           .element(screen.getByRole('menuitem', { name: 'menu action' }))
           .toHaveAttribute('data-variant', variant)
+
+        await screen.getByRole('menuitem', { name: 'menu action' }).click()
+
         expect(handleClick).toHaveBeenCalledTimes(1)
       },
     )
@@ -135,7 +161,7 @@ describe('context-menu wrapper', () => {
         const handleClick = vi.fn()
 
         const screen = await render(
-          <ContextMenu open>
+          <ContextMenu>
             <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
             <ContextMenuContent>
               <ContextMenuSub open>
@@ -151,14 +177,17 @@ describe('context-menu wrapper', () => {
             </ContextMenuContent>
           </ContextMenu>,
         )
+        await openContextMenu(screen)
 
-        await screen.getByRole('menuitem', { name: 'submenu action' }).click()
         await expect
           .element(screen.getByRole('menuitem', { name: 'submenu action' }))
           .toHaveAttribute('id', `context-sub-${variant}`)
         await expect
           .element(screen.getByRole('menuitem', { name: 'submenu action' }))
           .toHaveAttribute('data-variant', variant)
+
+        await screen.getByRole('menuitem', { name: 'submenu action' }).click()
+
         expect(handleClick).toHaveBeenCalledTimes(1)
       },
     )
@@ -167,7 +196,7 @@ describe('context-menu wrapper', () => {
       'should remain interactive and set data-variant on link item when variant is %s',
       async (variant) => {
         const screen = await render(
-          <ContextMenu open>
+          <ContextMenu>
             <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
             <ContextMenuContent>
               <ContextMenuLinkItem
@@ -183,6 +212,7 @@ describe('context-menu wrapper', () => {
             </ContextMenuContent>
           </ContextMenu>,
         )
+        await openContextMenu(screen)
 
         const link = screen.getByRole('menuitem', { name: 'context docs link' }).element()
         expect(link.tagName.toLowerCase()).toBe('a')
@@ -195,7 +225,7 @@ describe('context-menu wrapper', () => {
   describe('ContextMenuLinkItem close behavior', () => {
     it('should keep link semantics and not leak closeOnClick prop when closeOnClick is false', async () => {
       const screen = await render(
-        <ContextMenu open>
+        <ContextMenu>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
           <ContextMenuContent>
             <ContextMenuLinkItem
@@ -208,6 +238,7 @@ describe('context-menu wrapper', () => {
           </ContextMenuContent>
         </ContextMenu>,
       )
+      await openContextMenu(screen)
 
       const link = screen.getByRole('menuitem', { name: 'docs link' }).element()
       expect(link.tagName.toLowerCase()).toBe('a')
@@ -227,27 +258,18 @@ describe('context-menu wrapper', () => {
         </ContextMenu>,
       )
 
-      screen
-        .getByLabelText('context trigger area')
-        .element()
-        .dispatchEvent(
-          new MouseEvent('contextmenu', {
-            bubbles: true,
-            cancelable: true,
-            button: 2,
-          }),
-        )
+      await screen.getByLabelText('context trigger area').click({ button: 'right' })
 
       await expect
         .element(screen.getByRole('menuitem', { name: 'Open on right click' }))
-        .toBeInTheDocument()
+        .toBeVisible()
     })
   })
 
   describe('ContextMenuSeparator', () => {
     it('should render separator and keep surrounding rows when separator is between items', async () => {
       const screen = await render(
-        <ContextMenu open>
+        <ContextMenu>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
           <ContextMenuContent>
             <ContextMenuItem>First action</ContextMenuItem>
@@ -256,6 +278,7 @@ describe('context-menu wrapper', () => {
           </ContextMenuContent>
         </ContextMenu>,
       )
+      await openContextMenu(screen)
 
       await expect
         .element(screen.getByRole('menuitem', { name: 'First action' }))
@@ -266,4 +289,25 @@ describe('context-menu wrapper', () => {
       expect(screen.getByRole('separator').elements()).toHaveLength(1)
     })
   })
+})
+
+it('resolves submenu popup classes with the popup state', async () => {
+  const screen = await render(
+    <ContextMenu>
+      <ContextMenuTrigger>Open audit menu</ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuSub open>
+          <ContextMenuSubTrigger>More audit actions</ContextMenuSubTrigger>
+          <ContextMenuSubContent className={(state) => (state.open ? 'opacity-50' : 'opacity-100')}>
+            <ContextMenuItem>Audit action</ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+      </ContextMenuContent>
+    </ContextMenu>,
+  )
+
+  await screen.getByText('Open audit menu').click({ button: 'right' })
+  await expect
+    .element(screen.getByRole('menu', { name: 'More audit actions' }))
+    .toHaveStyle({ opacity: '0.5' })
 })

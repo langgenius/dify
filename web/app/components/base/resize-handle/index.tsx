@@ -29,7 +29,7 @@ export default function ResizeHandle({
   className,
   ...props
 }: ResizeHandleProps) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const horizontal = side === 'left' || side === 'right'
 
   return (

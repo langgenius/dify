@@ -2,11 +2,12 @@ import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/d
 import type { CreateExternalAPIReq } from '../declarations'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -45,7 +46,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
   const endpoint =
     api.settings && typeof api.settings.endpoint === 'string' ? api.settings.endpoint : ''
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
 
   const handleEditClick = async () => {
     if (!canManageExternalKnowledgeApi) return
@@ -55,8 +56,8 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
       const formValue: CreateExternalAPIReq = {
         name: response.name,
         settings: {
-          endpoint: response.settings.endpoint,
-          api_key: response.settings.api_key,
+          endpoint: response.settings?.endpoint ?? '',
+          api_key: response.settings?.api_key ?? '',
         },
       }
 
@@ -68,15 +69,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
           try {
             await updateExternalAPI({
               apiTemplateId: api.id,
-              body: {
-                ...response,
-                name: updatedData.name,
-                settings: {
-                  ...response.settings,
-                  endpoint: updatedData.settings.endpoint,
-                  api_key: updatedData.settings.api_key,
-                },
-              },
+              body: { name: updatedData.name, settings: updatedData.settings },
             })
             await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
           } catch (error) {
@@ -106,13 +99,9 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
     if (!canManageExternalKnowledgeApi) return
 
     try {
-      const response = await deleteExternalAPI({ apiTemplateId: api.id })
-      if (response && response.result === 'success') {
-        setShowConfirm(false)
-        await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
-      } else {
-        console.error('Failed to delete external API')
-      }
+      await deleteExternalAPI({ apiTemplateId: api.id })
+      setShowConfirm(false)
+      await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
     } catch (error) {
       console.error('Error deleting external knowledge API:', error)
     }
@@ -121,7 +110,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
   return (
     <>
       <div
-        className={`shadows-shadow-xs flex items-start self-stretch rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2 pl-3 ${isHovered ? 'border-state-destructive-border bg-state-destructive-hover' : ''}`}
+        className={`flex items-start self-stretch rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2 pl-3 ${isHovered ? 'border-state-destructive-border bg-state-destructive-hover' : ''}`}
       >
         <div className="flex grow flex-col items-start justify-center gap-1.5 py-1">
           <div className="flex items-center gap-1 self-stretch text-text-secondary">
@@ -158,26 +147,26 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
       </div>
       <AlertDialog open={showConfirm} onOpenChange={(open) => !open && setShowConfirm(false)}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {`${t(($) => $['deleteExternalAPIConfirmWarningContent.title.front'], { ns: 'dataset' })} ${api.name}${t(($) => $['deleteExternalAPIConfirmWarningContent.title.end'], { ns: 'dataset' })}`}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {usageCount > 0
                 ? `${t(($) => $['deleteExternalAPIConfirmWarningContent.content.front'], { ns: 'dataset' })} ${usageCount} ${t(($) => $['deleteExternalAPIConfirmWarningContent.content.end'], { ns: 'dataset' })}`
                 : t(($) => $['deleteExternalAPIConfirmWarningContent.noConnectionContent'], {
                     ns: 'dataset',
                   })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={handleConfirmDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

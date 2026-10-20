@@ -1,11 +1,11 @@
 import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine, RiErrorWarningFill } from '@remixicon/react'
+import dynamic from 'next/dynamic'
 import { useMemo } from 'react'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
 import { getFileType } from '@/app/components/datasets/common/image-uploader/utils'
 import useTheme from '@/hooks/use-theme'
-import dynamic from '@/next/dynamic'
 import { Theme } from '@/types/app'
 import { formatFileSize } from '@/utils/format'
 import { PROGRESS_ERROR } from '../constants'
@@ -14,7 +14,7 @@ const SimplePieChart = dynamic(() => import('@/app/components/base/simple-pie-ch
   ssr: false,
 })
 
-export type FileListItemProps = {
+type FileListItemProps = {
   fileItem: FileItem
   onPreview: (file: File) => void
   onRemove: (fileID: string) => void

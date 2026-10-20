@@ -5,9 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from agenton.compositor import CompositorSessionSnapshot
-from agenton.compositor.schemas import LayerSessionSnapshot
-from agenton.layers.base import LifecycleState
+from dify_agent.protocol.snapshot import SessionSnapshot
 from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -28,7 +26,6 @@ from models.agent import (
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
-from services.agent_app_sandbox_service import WorkflowAgentSandboxService
 
 
 def _scope() -> WorkflowAgentSessionScope:
@@ -198,15 +195,7 @@ def test_conversation_scope_reuses_existing_binding_on_later_turn(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
-    prior_snapshot = CompositorSessionSnapshot(
-        layers=[
-            LayerSessionSnapshot(
-                name="history",
-                lifecycle_state=LifecycleState.SUSPENDED,
-                runtime_state={"turn": 1},
-            )
-        ]
-    )
+    prior_snapshot = SessionSnapshot(layers={"history": {"turn": 1}})
     workspace = AgentWorkspace(
         id="workspace-conversation",
         tenant_id="tenant-1",
@@ -342,20 +331,6 @@ def test_load_or_create_persists_binding_on_node_execution(
     assert persisted_binding is not None
     assert persisted_binding.base_home_snapshot_id == home_snapshot_id
 
-    resolved = WorkflowAgentSandboxService._resolve_binding(
-        tenant_id="tenant-1",
-        app_id="app-1",
-        workflow_run_id="run-1",
-        node_id="node-1",
-        node_execution_id="execution-1",
-        session=sqlite_session,
-    )
-
-    assert resolved.backend_binding_ref == "backend-binding-1"
-    assert resolved.agent_id == "agent-1"
-    assert resolved.agent_config_version_id == "config-1"
-    assert resolved.agent_config_version_kind == "snapshot"
-
 
 def test_load_existing_pointer_rejects_missing_workflow_identity(sqlite_session: Session) -> None:
     execution = _execution_row(binding_id="binding-1", process_data={"existing": "value"})
@@ -452,7 +427,7 @@ def test_save_snapshot_targets_binding(sqlite_session: Session) -> None:
     binding = _binding_row()
     sqlite_session.add_all([_workspace_row(), binding])
     sqlite_session.commit()
-    snapshot = CompositorSessionSnapshot(layers=[])
+    snapshot = SessionSnapshot(layers={})
 
     WorkflowAgentWorkspaceStore().save_active_snapshot(
         scope=_scope(),

@@ -14,7 +14,7 @@ type Props = Readonly<{
 }>
 
 const BoolInput: FC<Props> = ({ value, onChange, name, required, readonly }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const handleChange = useCallback(
     (checked: boolean) => {
       onChange(checked)
@@ -22,7 +22,7 @@ const BoolInput: FC<Props> = ({ value, onChange, name, required, readonly }) => 
     [onChange],
   )
   return (
-    <label className="flex h-6 items-center gap-2">
+    <label className="flex h-6 cursor-pointer items-center gap-2 has-data-disabled:cursor-not-allowed">
       <Checkbox
         className="size-4!"
         checked={!!value}

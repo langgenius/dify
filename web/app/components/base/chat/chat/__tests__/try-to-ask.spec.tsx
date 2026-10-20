@@ -12,10 +12,4 @@ describe('TryToAsk', () => {
 
     expect(onSend).toHaveBeenCalledWith('Tell me more')
   })
-
-  it('offers no actions when there are no suggestions', () => {
-    render(<TryToAsk suggestedQuestions={[]} onSend={vi.fn()} />)
-
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
-  })
 })

@@ -1,9 +1,12 @@
-import type { Locale } from '@/i18n-config/language'
+import type { Locale } from '@/i18n/locale'
 import { render, screen } from '@testing-library/react'
 import { PricingFooter } from '../footer'
 
 let locale: Locale = 'en-US'
-vi.mock('@/context/i18n', () => ({ useLocale: () => locale }))
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => locale,
+}))
 
 it.each<[Locale, string]>([
   ['en-US', ''],

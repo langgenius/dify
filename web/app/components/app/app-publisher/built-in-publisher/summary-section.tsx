@@ -1,11 +1,11 @@
 import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, ReactNode, RefObject } from 'react'
 import type { ModelAndParameter } from '../../configuration/debug/types'
 import type { AppPublisherProps } from '../types'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
-import { formatForDisplay } from '@tanstack/react-hotkeys'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
@@ -34,6 +34,8 @@ type PublisherSummarySectionProps = Pick<
   handleRestore: () => Promise<void>
   environmentTabs?: ReactNode
   isChatApp: boolean
+  isPublishing: boolean
+  keyboardTarget: RefObject<HTMLDivElement | null>
   isWorkflowApp?: boolean
   onEditVersion?: () => void
   published: boolean
@@ -49,6 +51,8 @@ export function PublisherSummarySection({
   handlePublish,
   handleRestore,
   isChatApp,
+  isPublishing,
+  keyboardTarget,
   isWorkflowApp = false,
   multipleModelConfigs = [],
   onEditVersion,
@@ -59,7 +63,7 @@ export function PublisherSummarySection({
   upgradeHighlightStyle,
   versionInfo,
 }: PublisherSummarySectionProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowHistory'])
   const hasPublishedVersion = Boolean(publishedAt)
   const publishedTimestamp =
     publishedAt || (versionInfo?.created_at ? versionInfo.created_at * 1000 : undefined)
@@ -72,6 +76,18 @@ export function PublisherSummarySection({
     : hasPublishedVersion
       ? t(($) => $['common.publishUpdate'], { ns: 'workflow' })
       : t(($) => $['common.publish'], { ns: 'workflow' })
+
+  function requestPublish(params?: ModelAndParameter | PublishWorkflowParams) {
+    if (publishButtonDisabled || isPublishing) return
+    return handlePublish(params)
+  }
+
+  useHotkey(APP_PUBLISH_HOTKEY, () => void requestPublish(), {
+    target: keyboardTarget,
+    enabled: !publishButtonDisabled && !isPublishing && !debugWithMultipleModel,
+    ignoreInputs: false,
+    requireReset: true,
+  })
 
   return (
     <div className="flex flex-col gap-3 p-4">
@@ -88,7 +104,7 @@ export function PublisherSummarySection({
               <span className="truncate system-sm-semibold text-text-secondary">
                 {getWorkflowVersionName(
                   versionInfo,
-                  t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+                  t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
                 )}
               </span>
               <span aria-hidden className="system-xs-regular text-text-tertiary">
@@ -98,7 +114,9 @@ export function PublisherSummarySection({
                 <button
                   type="button"
                   className="flex size-4 shrink-0 items-center justify-center rounded text-text-tertiary outline-hidden hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                  aria-label={t(($) => $['versionHistory.editVersionInfo'], { ns: 'workflow' })}
+                  aria-label={t(($) => $['versionHistory.editVersionInfo'], {
+                    ns: 'workflowHistory',
+                  })}
                   disabled={!versionInfo || !onEditVersion}
                   onClick={onEditVersion}
                 >
@@ -113,7 +131,7 @@ export function PublisherSummarySection({
                 >
                   <span aria-hidden className="i-ri-edit-line size-3.5 shrink-0" />
                   <span className="truncate system-xs-medium">
-                    {t(($) => $['versionHistory.nameIt'], { ns: 'workflow' })}
+                    {t(($) => $['versionHistory.nameIt'], { ns: 'workflowHistory' })}
                   </span>
                 </button>
               )}
@@ -174,17 +192,18 @@ export function PublisherSummarySection({
       <div className="flex w-full flex-col">
         {debugWithMultipleModel ? (
           <PublishWithMultipleModel
-            disabled={publishButtonDisabled}
+            disabled={publishButtonDisabled || isPublishing}
             multipleModelConfigs={multipleModelConfigs}
-            onSelect={(item) => handlePublish(item)}
+            onSelect={(item) => requestPublish(item)}
           />
         ) : (
           <>
             <Button
               variant="primary"
               className="w-full"
-              onClick={() => handlePublish()}
+              onClick={() => void requestPublish()}
               disabled={publishButtonDisabled}
+              loading={isPublishing}
             >
               {publishDisabled ? (
                 publishButtonLabel
@@ -192,9 +211,9 @@ export function PublisherSummarySection({
                 <span className="flex items-center gap-1">
                   <span>{publishButtonLabel}</span>
                   <KbdGroup aria-hidden>
-                    {APP_PUBLISH_HOTKEY.split('+').map((key) => (
+                    {formatForDisplay(APP_PUBLISH_HOTKEY, { parts: true }).map((key) => (
                       <Kbd key={key} color="white" disabled={publishButtonDisabled}>
-                        {formatForDisplay(key)}
+                        {key}
                       </Kbd>
                     ))}
                   </KbdGroup>

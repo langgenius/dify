@@ -34,7 +34,7 @@ type Props = Readonly<{
 }>
 
 const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const items = useMemo<TimePeriodOption[]>(() => {
     return ranges.map((range) => ({
       ...range,
@@ -84,7 +84,7 @@ const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
         </SelectValue>
       </SelectTrigger>
       <SelectPortal>
-        <SelectPositioner className="-translate-x-6">
+        <SelectPositioner>
           <SelectPopup className="w-50">
             <SelectList className="p-1">
               {items.map((item) => (
@@ -93,7 +93,7 @@ const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
                   value={item.value}
                   className="relative h-8 py-0 pr-2 pl-7 system-md-regular"
                 >
-                  <SelectItemText className="px-0">{item.name}</SelectItemText>
+                  <SelectItemText>{item.name}</SelectItemText>
                   <SelectItemIndicator className="absolute top-2 left-2 ml-0" />
                 </SelectItem>
               ))}

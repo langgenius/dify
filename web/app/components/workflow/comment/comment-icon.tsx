@@ -1,7 +1,7 @@
 'use client'
 
+import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
-import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useId, useMemo, useRef, useState } from 'react'
@@ -13,7 +13,7 @@ import { getKeyboardMovement } from '../utils/keyboard-movement'
 import CommentPreview from './comment-preview'
 
 type CommentIconProps = {
-  comment: WorkflowCommentList
+  comment: WorkflowCommentBasic
   onClick: () => void
   isActive?: boolean
   onPositionUpdate?: (position: { x: number; y: number }) => void
@@ -21,7 +21,7 @@ type CommentIconProps = {
 
 export const CommentIcon: FC<CommentIconProps> = memo(
   ({ comment, onClick, isActive = false, onPositionUpdate }) => {
-    const { t } = useTranslation('workflow')
+    const { t } = useTranslation(['workflow'])
     const descriptionId = useId()
     const { flowToScreenPosition, screenToFlowPosition } = useReactFlow()
     const viewport = useViewport()
@@ -244,7 +244,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
             name: comment.created_by_account?.name ?? '',
           })}
           aria-describedby={isAuthor && onPositionUpdate ? descriptionId : undefined}
-          className="absolute z-10 h-auto w-auto border-0 bg-transparent p-0"
+          className="nokey absolute z-10 h-auto w-auto border-0 bg-transparent p-0"
           style={{
             left: canvasPosition.x,
             top: canvasPosition.y,

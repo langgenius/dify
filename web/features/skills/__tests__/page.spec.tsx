@@ -1,139 +1,75 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type {
   SkillReferenceResponse,
-  SkillResponse,
   SkillTagResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ReactNode } from 'react'
-import { toast } from '@langgenius/dify-ui/toast'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import type { ComponentProps } from 'react'
+import { zSkillResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { createEvent, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
+import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { captureDownloads } from '@/test/download'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import SkillsPage from '../page'
 
-type SkillsInfiniteOptions = {
-  getNextPageParam: (lastPage: { has_more: boolean; page: number }) => number | undefined
-  initialPageParam: number
-  input: (pageParam: unknown) => {
-    query: Record<string, unknown>
-  }
-}
+type SkillResponse = ReturnType<typeof zSkillResponse.parse>
 
 const mocks = vi.hoisted(() => ({
-  createSkillMutationFn: vi.fn(),
-  deleteSkillMutationFn: vi.fn(),
-  downloadBlob: vi.fn(),
-  duplicateSkillMutationFn: vi.fn(),
-  exportSkillArchiveBlob: vi.fn(),
-  importSkillMutationFn: vi.fn(),
+  createSkillMutationFn:
+    vi.fn<typeof import('@/service/console').consoleClient.workspaces.current.skills.post>(),
+  bindTag: vi.fn<typeof import('@/service/console').consoleClient.tagBindings.post>(),
+  deleteSkillMutationFn:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.skills.bySkillId.delete
+    >(),
+  duplicateSkillMutationFn:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.skills.bySkillId.duplicate.post
+    >(),
+  exportSkillArchiveBlob: vi.fn<typeof import('../client').fetchSkillArchiveBlob>(),
+  importSkillMutationFn:
+    vi.fn<typeof import('@/service/console').consoleClient.workspaces.current.skills.import.post>(),
   push: vi.fn(),
   genericTags: [] as Tag[],
-  genericTagsQueryOptions: vi.fn((_options: unknown) => ({})),
+  list: vi.fn<typeof import('@/service/console').consoleClient.workspaces.current.skills.get>(),
+  references:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.skills.bySkillId.references.get
+    >(),
   queryState: {
     keyword: '',
     tag: [] as string[],
   },
   skills: [] as SkillResponse[],
   skillPages: [] as SkillResponse[][],
-  skillsKey: vi.fn((_options: unknown): unknown[] => ['skills']),
-  skillsQueryOptions: vi.fn((_options: SkillsInfiniteOptions) => ({})),
   skillReferences: [] as SkillReferenceResponse[],
-  skillReferencesQueryOptions: vi.fn((_options: unknown) => ({})),
   tags: [] as SkillTagResponse[],
-  tagsKey: vi.fn((_options: unknown): unknown[] => ['skill-tags']),
-  tagsQueryOptions: vi.fn((_options: unknown) => ({})),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: {
-    error: vi.fn(),
-    success: vi.fn(),
-  },
-}))
-
-vi.mock('ahooks', () => ({
-  useDebounce: (value: unknown) => value,
-}))
-
-vi.mock('nuqs', async () => {
-  const React = await import('react')
-  const listeners = new Map<'keyword' | 'tag', Set<() => void>>()
-  const createParser = () => ({
-    withDefault: () => ({
-      withOptions: () => ({}),
-    }),
+vi.mock('react-i18next', async () => {
+  const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
+  const { createInstance } = await vi.importActual<typeof import('i18next')>('i18next')
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  const { default: skillTranslations } = await import('@/i18n/locales/en-US/skill.json')
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    fallbackLng: false,
+    keySeparator: false,
+    resources: { 'en-US': { skill: skillTranslations } },
   })
 
   return {
-    debounce: () => undefined,
-    parseAsArrayOf: () => ({
-      withDefault: () => ({}),
-    }),
-    parseAsString: createParser(),
-    useQueryState: (name: 'keyword' | 'tag') => {
-      const [value, setValue] = React.useState(mocks.queryState[name])
-      React.useEffect(() => {
-        const nameListeners = listeners.get(name) ?? new Set<() => void>()
-        listeners.set(name, nameListeners)
-        const listener = () => setValue(mocks.queryState[name])
-        nameListeners.add(listener)
-
-        return () => {
-          nameListeners.delete(listener)
-        }
-      }, [name])
-      const setQueryValue = (nextValue: string | string[]) => {
-        mocks.queryState[name] = nextValue as never
-        setValue(nextValue as never)
-        listeners.get(name)?.forEach((listener) => listener())
-        return Promise.resolve(new URLSearchParams())
-      }
-
-      return [value, setQueryValue] as const
-    },
+    ...actual,
+    ...createReactI18nextMock(),
+    // Keep components embedded in translations, including the real Browse button.
+    Trans: (props: ComponentProps<typeof actual.Trans>) => <actual.Trans {...props} i18n={i18n} />,
   }
 })
-
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
-
-vi.mock('@/hooks/use-format-time-from-now', () => ({
-  useFormatTimeFromNow: () => ({
-    formatTimeFromNow: () => '2 hours ago',
-  }),
-}))
-
-vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({
-    formatTime: () => '2026-07-22 10:00',
-  }),
-}))
-
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ icon }: { icon?: string }) => <span>{icon}</span>,
-}))
-
-vi.mock('@/features/tag-management/components/skill-card-tags', () => ({
-  SkillCardTags: ({ tags }: { tags: string[] }) => (
-    <button type="button" aria-label={tags.join(', ')}>
-      {tags.join(', ')}
-    </button>
-  ),
-}))
-
-vi.mock('../skill-list-tag-management-modal', () => ({
-  SkillListTagManagementModal: () => null,
-}))
-
-vi.mock('@/next/link', () => ({
-  default: ({ children, href, ...props }: { children: ReactNode; href: string }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
-}))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -141,70 +77,35 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/utils/download', () => ({
-  downloadBlob: mocks.downloadBlob,
-}))
-
 vi.mock('../client', () => ({
   fetchSkillArchiveBlob: mocks.exportSkillArchiveBlob,
   uploadSkillFile: vi.fn(),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    tags: {
-      get: {
-        queryOptions: mocks.genericTagsQueryOptions,
-      },
-    },
-    workspaces: {
-      current: {
-        skills: {
-          get: {
-            key: mocks.skillsKey,
-            infiniteOptions: mocks.skillsQueryOptions,
-          },
-          post: {
-            mutationOptions: () => ({ mutationFn: mocks.createSkillMutationFn }),
-          },
-          import: {
-            post: {
-              mutationOptions: () => ({ mutationFn: mocks.importSkillMutationFn }),
-            },
-          },
-          tags: {
-            get: {
-              key: mocks.tagsKey,
-              queryOptions: mocks.tagsQueryOptions,
-            },
-          },
-          bySkillId: {
-            delete: {
-              mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
-            },
-            references: {
-              get: {
-                queryOptions: mocks.skillReferencesQueryOptions,
-              },
-            },
-            duplicate: {
-              post: {
-                mutationOptions: () => ({ mutationFn: mocks.duplicateSkillMutationFn }),
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
-
-vi.mock('../permissions', () => ({
-  useSkillPermissions: () => ({ canDelete: true, canEdit: true, canPublish: true }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'tagBindings.post': mocks.bindTag,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'tags.get': async () => mocks.genericTags,
+      'workspaces.current.skills.get': mocks.list,
+      'workspaces.current.skills.tags.get': async () => ({ data: mocks.tags }),
+      'workspaces.current.skills.post': mocks.createSkillMutationFn,
+      'workspaces.current.skills.import.post': mocks.importSkillMutationFn,
+      'workspaces.current.skills.bySkillId.delete': mocks.deleteSkillMutationFn,
+      'workspaces.current.skills.bySkillId.references.get': mocks.references,
+      'workspaces.current.skills.bySkillId.duplicate.post': mocks.duplicateSkillMutationFn,
+    }),
+  }
+})
 
 function createSkill(overrides: Partial<SkillResponse> = {}): SkillResponse {
-  return {
+  return zSkillResponse.parse({
     id: 'skill-1',
     name: 'refund-approval',
     display_name: 'Refund approval',
@@ -218,7 +119,7 @@ function createSkill(overrides: Partial<SkillResponse> = {}): SkillResponse {
     created_at: 1784631405,
     updated_at: 1784638487,
     ...overrides,
-  }
+  })
 }
 
 function createAgentReference(
@@ -237,23 +138,45 @@ function createAgentReference(
   }
 }
 
-function createTestQueryClient() {
-  return new QueryClient({
-    defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
+const createTestQueryClient = createConsoleQueryClient
+const listQuery = () =>
+  consoleQuery.workspaces.current.skills.get.infiniteOptions({
+    input: (pageParam) => ({ query: { page: Number(pageParam), limit: 20 } }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => (lastPage.has_more ? (lastPage.page ?? 1) + 1 : undefined),
+  })
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithConsoleQuery, () => ({
+  onUrlUpdate,
+  searchParams: { keyword: mocks.queryState.keyword, tag: mocks.queryState.tag.join(';') },
+}))
+
+function renderSkillsPage(
+  queryClient = createTestQueryClient(),
+  workspacePermissionKeys = ['skill.view', 'skill.edit', 'skill.publish', 'skill.delete'],
+) {
+  queryClient.setQueryDefaults(
+    consoleQuery.workspaces.current.skills.bySkillId.references.get.key(),
+    { staleTime: 0 },
+  )
+  return render(<SkillsPage />, { queryClient, workspacePermissionKeys })
+}
+
+async function openImportDialog(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole('button', { name: 'skill.skillManagement.import' }))
+
+  return screen.findByRole('dialog', {
+    name: 'skill.skillManagement.importDialog.title',
   })
 }
 
-function renderSkillsPage(queryClient = createTestQueryClient()) {
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <SkillsPage />
-    </QueryClientProvider>,
-  )
-}
+afterEach(() => vi.restoreAllMocks())
 
 describe('SkillsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.bindTag.mockReset().mockResolvedValue({ result: 'success' })
     mocks.queryState.keyword = ''
     mocks.queryState.tag = []
     mocks.skills = [createSkill()]
@@ -267,55 +190,33 @@ describe('SkillsPage', () => {
       { count: 2, tag: 'support' },
       { count: 1, tag: 'sales' },
     ]
-    mocks.skillsKey.mockImplementation((options) => ['skills', options])
-    mocks.tagsKey.mockImplementation((options) => ['skill-tags', options])
-    mocks.skillsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skills', options],
-      queryFn: async ({ pageParam }: { pageParam: unknown }) => {
-        const page = Number(pageParam)
-        return {
-          data: mocks.skillPages[page - 1] ?? [],
-          has_more: page < mocks.skillPages.length,
-          page,
-          total: mocks.skillPages.flat().length,
-        }
-      },
-      getNextPageParam: options.getNextPageParam,
-      initialPageParam: options.initialPageParam,
-    }))
-    mocks.tagsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-tags', options],
-      queryFn: async () => ({
-        data: mocks.tags,
-      }),
-    }))
-    mocks.genericTagsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['tags', options],
-      queryFn: async () => mocks.genericTags,
-    }))
-    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references', options],
-      queryFn: async () => ({
-        data: mocks.skillReferences,
-      }),
-    }))
-    mocks.createSkillMutationFn.mockResolvedValue(createSkill({ id: 'created-skill' }))
-    mocks.importSkillMutationFn.mockResolvedValue(createSkill({ id: 'imported-skill' }))
-    mocks.duplicateSkillMutationFn.mockResolvedValue(createSkill({ id: 'duplicated-skill' }))
-    mocks.exportSkillArchiveBlob.mockResolvedValue(new Blob(['skill archive']))
-    mocks.deleteSkillMutationFn.mockResolvedValue({
+    mocks.list.mockReset().mockImplementation(async ({ query } = {}) => {
+      const page = query?.page ?? 1
+      return {
+        data: mocks.skillPages[page - 1] ?? [],
+        has_more: page < mocks.skillPages.length,
+        limit: 20,
+        page,
+        total: mocks.skillPages.flat().length,
+      }
+    })
+    mocks.references.mockReset().mockImplementation(async () => ({ data: mocks.skillReferences }))
+    vi.spyOn(toast, 'error')
+    vi.spyOn(toast, 'success')
+    mocks.createSkillMutationFn.mockReset().mockResolvedValue(createSkill({ id: 'created-skill' }))
+    mocks.importSkillMutationFn.mockReset().mockResolvedValue(createSkill({ id: 'imported-skill' }))
+    mocks.duplicateSkillMutationFn
+      .mockReset()
+      .mockResolvedValue(createSkill({ id: 'duplicated-skill' }))
+    mocks.exportSkillArchiveBlob.mockReset().mockResolvedValue(new Blob(['skill archive']))
+    mocks.deleteSkillMutationFn.mockReset().mockResolvedValue({
       deleted: true,
       id: 'skill-1',
     })
   })
 
   it('exposes loading as a status without presenting skeletons as skill items', () => {
-    mocks.skillsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skills-pending', options],
-      queryFn: () => new Promise(() => {}),
-      getNextPageParam: options.getNextPageParam,
-      initialPageParam: options.initialPageParam,
-    }))
+    mocks.list.mockImplementation(() => new Promise(() => {}))
 
     renderSkillsPage()
 
@@ -329,12 +230,7 @@ describe('SkillsPage', () => {
   })
 
   it('exposes a failed skill request as an alert without a stale list', async () => {
-    mocks.skillsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skills-error', options],
-      queryFn: () => Promise.reject(new Error('skills request failed')),
-      getNextPageParam: options.getNextPageParam,
-      initialPageParam: options.initialPageParam,
-    }))
+    mocks.list.mockImplementation(() => Promise.reject(new Error('skills request failed')))
 
     renderSkillsPage()
 
@@ -352,20 +248,22 @@ describe('SkillsPage', () => {
 
   it('replaces a cached empty state with a retryable error when refetch fails', async () => {
     const user = userEvent.setup()
-    const queryKey = ['skills-cached-empty-refetch-error']
+    const queryKey = listQuery().queryKey
     let requestCount = 0
-    mocks.skillsQueryOptions.mockImplementation((options) => ({
-      queryKey,
-      queryFn: () => {
-        requestCount += 1
-        return Promise.reject(new Error('skills refetch failed'))
-      },
-      getNextPageParam: options.getNextPageParam,
-      initialPageParam: options.initialPageParam,
-    }))
+    mocks.list.mockImplementation(() => {
+      requestCount += 1
+      if (requestCount === 1) return Promise.reject(new Error('skills refetch failed'))
+      return Promise.resolve({
+        data: [createSkill()],
+        has_more: false,
+        limit: 20,
+        page: 1,
+        total: 1,
+      })
+    })
     const queryClient = createTestQueryClient()
     queryClient.setQueryData(queryKey, {
-      pages: [{ data: [], has_more: false, page: 1, total: 0 }],
+      pages: [{ data: [], has_more: false, limit: 20, page: 1, total: 0 }],
       pageParams: [1],
     })
 
@@ -388,6 +286,10 @@ describe('SkillsPage', () => {
     await waitFor(() => {
       expect(requestCount).toBe(2)
     })
+    expect(
+      await within(skillRegion).findByRole('link', { name: /Refund approval/ }),
+    ).toBeInTheDocument()
+    expect(within(skillRegion).queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('renders skills with tags, reference count, and detail links', async () => {
@@ -403,32 +305,10 @@ describe('SkillsPage', () => {
     expect(screen.getByText('refund-approval')).toBeInTheDocument()
     expect(screen.getByText('Handle refund requests.')).toBeInTheDocument()
     expect(screen.getByText('support')).toBeInTheDocument()
-    expect(
-      screen.getByText('skill.skillManagement.referenceCount_other:{"count":2}'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('skill.skillManagement.publishedAt:{"time":"2 hours ago"}'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('skill.skillManagement.referenceCount:{"count":2}')).toBeInTheDocument()
   })
 
-  it('tabs from the card More action to its tag trigger', async () => {
-    const user = userEvent.setup()
-    renderSkillsPage()
-
-    const skillLink = await screen.findByRole('link', { name: /Refund approval/ })
-    const moreButton = screen.getByRole('button', {
-      name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
-    })
-    const tagTrigger = screen.getByRole('button', { name: 'support' })
-
-    skillLink.focus()
-    await user.tab()
-    expect(moreButton).toHaveFocus()
-    await user.tab()
-    expect(tagTrigger).toHaveFocus()
-  })
-
-  it('renders draft update time as relative time', async () => {
+  it('identifies unpublished skills as drafts', async () => {
     mocks.skills = [createSkill({ latest_published_version_id: null, latest_published_at: null })]
     mocks.skillPages = [mocks.skills]
 
@@ -438,9 +318,6 @@ describe('SkillsPage', () => {
     expect(skillLink).toHaveAccessibleDescription(
       'skill.skillManagement.draft Handle refund requests.',
     )
-    expect(
-      screen.getByText('skill.skillManagement.editedAt:{"time":"2 hours ago"}'),
-    ).toBeInTheDocument()
   })
 
   it('shows guidance instead of a persisted editor placeholder when description is empty', async () => {
@@ -458,8 +335,7 @@ describe('SkillsPage', () => {
     renderSkillsPage()
 
     await waitFor(() => {
-      const queryOptions = mocks.skillsQueryOptions.mock.lastCall?.[0]
-      expect(queryOptions?.input(1)).toEqual({
+      expect(mocks.list.mock.lastCall?.[0]).toEqual({
         query: {
           keyword: 'refund',
           limit: 20,
@@ -470,27 +346,16 @@ describe('SkillsPage', () => {
     })
   })
 
-  it('uses the localized Skills search hint as the search placeholder', async () => {
-    renderSkillsPage()
-
-    expect(
-      await screen.findByRole('searchbox', {
-        name: 'skill.skillManagement.searchLabel',
-      }),
-    ).toHaveAttribute('placeholder', 'skill.skillManagement.searchPlaceholder')
-  })
-
   it('clears stale tag names from the URL-backed filter state', async () => {
     mocks.queryState.tag = ['renamed-tag']
 
     renderSkillsPage()
 
     await waitFor(() => {
-      expect(mocks.queryState.tag).toEqual([])
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.has('tag')).toBe(false)
     })
     await waitFor(() => {
-      const queryOptions = mocks.skillsQueryOptions.mock.lastCall?.[0]
-      expect(queryOptions?.input(1)).toEqual({
+      expect(mocks.list.mock.lastCall?.[0]).toEqual({
         query: {
           limit: 20,
           page: 1,
@@ -513,27 +378,29 @@ describe('SkillsPage', () => {
       display_name: 'Skill 21',
     })
     let resolveNextPage:
-      | ((page: { data: SkillResponse[]; has_more: boolean; page: number; total: number }) => void)
+      | ((page: {
+          data: SkillResponse[]
+          has_more: boolean
+          limit: number
+          page: number
+          total: number
+        }) => void)
       | undefined
-    mocks.skillsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skills-deferred-next-page', options],
-      queryFn: async ({ pageParam }: { pageParam: unknown }) => {
-        if (Number(pageParam) === 1) {
-          return {
-            data: firstPageSkills,
-            has_more: true,
-            page: 1,
-            total: 21,
-          }
+    mocks.list.mockImplementation(async ({ query } = {}) => {
+      if (Number(query?.page ?? 1) === 1) {
+        return {
+          data: firstPageSkills,
+          has_more: true,
+          limit: 20,
+          page: 1,
+          total: 21,
         }
+      }
 
-        return new Promise((resolve) => {
-          resolveNextPage = resolve
-        })
-      },
-      getNextPageParam: options.getNextPageParam,
-      initialPageParam: options.initialPageParam,
-    }))
+      return new Promise((resolve) => {
+        resolveNextPage = resolve
+      })
+    })
 
     renderSkillsPage()
 
@@ -543,29 +410,29 @@ describe('SkillsPage', () => {
     await screen.findByRole('heading', { name: 'Skill 1' })
     expect(within(skillList).getAllByRole('listitem')).toHaveLength(20)
 
-    const scrollViewport = skillList.parentElement?.parentElement
-    expect(scrollViewport).not.toBeNull()
-    Object.defineProperties(scrollViewport!, {
+    const scrollViewport = screen.getByRole('region', { name: 'skill.skillManagement.title' })
+    Object.defineProperties(scrollViewport, {
       clientHeight: { configurable: true, value: 600 },
       scrollHeight: { configurable: true, value: 1200 },
       scrollTop: { configurable: true, value: 560 },
     })
-    fireEvent.scroll(scrollViewport!)
+    fireEvent.scroll(scrollViewport)
 
     const paginationLoading = await within(skillList).findByRole('status')
     expect(paginationLoading).toHaveTextContent('common.loading')
     expect(paginationLoading).toBeVisible()
     expect(within(skillList).getAllByRole('listitem')).toHaveLength(20)
 
-    resolveNextPage?.({
+    resolveNextPage!({
       data: [nextPageSkill],
       has_more: false,
+      limit: 20,
       page: 2,
       total: 21,
     })
     expect(await screen.findByRole('heading', { name: 'Skill 21' })).toBeInTheDocument()
     expect(within(skillList).getAllByRole('listitem')).toHaveLength(21)
-    expect(mocks.skillsQueryOptions.mock.lastCall?.[0].input(2)).toEqual({
+    expect(mocks.list.mock.lastCall?.[0]).toEqual({
       query: {
         limit: 20,
         page: 2,
@@ -574,7 +441,7 @@ describe('SkillsPage', () => {
   })
 
   it('waits for a cached first page to refetch before auto-loading the next page', async () => {
-    const queryKey = ['skills-cached-refetch']
+    const queryKey = listQuery().queryKey
     const staleFirstPage = Array.from({ length: 20 }, (_, index) =>
       createSkill({
         id: `stale-skill-${index + 1}`,
@@ -589,35 +456,38 @@ describe('SkillsPage', () => {
       }),
     )
     let resolveFirstPageRefetch:
-      | ((page: { data: SkillResponse[]; has_more: boolean; page: number; total: number }) => void)
+      | ((page: {
+          data: SkillResponse[]
+          has_more: boolean
+          limit: number
+          page: number
+          total: number
+        }) => void)
       | undefined
     let nextPageRequestCount = 0
-    mocks.skillsQueryOptions.mockImplementation((options) => ({
-      queryKey,
-      queryFn: ({ pageParam }: { pageParam: unknown }) => {
-        if (Number(pageParam) === 1) {
-          return new Promise((resolve) => {
-            resolveFirstPageRefetch = resolve
-          })
-        }
-
-        nextPageRequestCount += 1
-        return Promise.resolve({
-          data: [createSkill({ id: 'skill-21', name: 'skill-21', display_name: 'Fresh Skill 21' })],
-          has_more: false,
-          page: 2,
-          total: 21,
+    mocks.list.mockImplementation(({ query } = {}) => {
+      if (Number(query?.page ?? 1) === 1) {
+        return new Promise((resolve) => {
+          resolveFirstPageRefetch = resolve
         })
-      },
-      getNextPageParam: options.getNextPageParam,
-      initialPageParam: options.initialPageParam,
-    }))
+      }
+
+      nextPageRequestCount += 1
+      return Promise.resolve({
+        data: [createSkill({ id: 'skill-21', name: 'skill-21', display_name: 'Fresh Skill 21' })],
+        has_more: false,
+        limit: 20,
+        page: 2,
+        total: 21,
+      })
+    })
     const queryClient = createTestQueryClient()
     queryClient.setQueryData(queryKey, {
       pages: [
         {
           data: staleFirstPage,
           has_more: true,
+          limit: 20,
           page: 1,
           total: 21,
         },
@@ -627,25 +497,22 @@ describe('SkillsPage', () => {
 
     renderSkillsPage(queryClient)
 
-    const skillRegion = screen.getByRole('region', {
-      name: 'skill.skillManagement.listLabel',
-    })
     expect(await screen.findByRole('heading', { name: 'Stale Skill 1' })).toBeInTheDocument()
-    const scrollViewport = skillRegion.parentElement?.parentElement
-    expect(scrollViewport).not.toBeNull()
-    Object.defineProperties(scrollViewport!, {
+    const scrollViewport = screen.getByRole('region', { name: 'skill.skillManagement.title' })
+    Object.defineProperties(scrollViewport, {
       clientHeight: { configurable: true, value: 600 },
       scrollHeight: { configurable: true, value: 1200 },
       scrollTop: { configurable: true, value: 560 },
     })
-    fireEvent.scroll(scrollViewport!)
+    fireEvent.scroll(scrollViewport)
 
     expect(nextPageRequestCount).toBe(0)
     expect(screen.getByRole('heading', { name: 'Stale Skill 1' })).toBeInTheDocument()
 
-    resolveFirstPageRefetch?.({
+    resolveFirstPageRefetch!({
       data: freshFirstPage,
       has_more: true,
+      limit: 20,
       page: 1,
       total: 21,
     })
@@ -665,30 +532,32 @@ describe('SkillsPage', () => {
     )
     let nextPageRequestCount = 0
     let resolveRetry:
-      | ((page: { data: SkillResponse[]; has_more: boolean; page: number; total: number }) => void)
+      | ((page: {
+          data: SkillResponse[]
+          has_more: boolean
+          limit: number
+          page: number
+          total: number
+        }) => void)
       | undefined
-    mocks.skillsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skills-next-page-error', options],
-      queryFn: async ({ pageParam }: { pageParam: unknown }) => {
-        if (Number(pageParam) === 1) {
-          return {
-            data: firstPageSkills,
-            has_more: true,
-            page: 1,
-            total: 21,
-          }
+    mocks.list.mockImplementation(async ({ query } = {}) => {
+      if (Number(query?.page ?? 1) === 1) {
+        return {
+          data: firstPageSkills,
+          has_more: true,
+          limit: 20,
+          page: 1,
+          total: 21,
         }
+      }
 
-        nextPageRequestCount += 1
-        if (nextPageRequestCount === 1) throw new Error('next skill page failed')
+      nextPageRequestCount += 1
+      if (nextPageRequestCount === 1) throw new Error('next skill page failed')
 
-        return new Promise((resolve) => {
-          resolveRetry = resolve
-        })
-      },
-      getNextPageParam: options.getNextPageParam,
-      initialPageParam: options.initialPageParam,
-    }))
+      return new Promise((resolve) => {
+        resolveRetry = resolve
+      })
+    })
 
     renderSkillsPage()
 
@@ -696,14 +565,13 @@ describe('SkillsPage', () => {
       name: 'skill.skillManagement.listLabel',
     })
     await screen.findByRole('heading', { name: 'Skill 1' })
-    const scrollViewport = skillRegion.parentElement?.parentElement
-    expect(scrollViewport).not.toBeNull()
-    Object.defineProperties(scrollViewport!, {
+    const scrollViewport = screen.getByRole('region', { name: 'skill.skillManagement.title' })
+    Object.defineProperties(scrollViewport, {
       clientHeight: { configurable: true, value: 600 },
       scrollHeight: { configurable: true, value: 600 },
       scrollTop: { configurable: true, value: 0 },
     })
-    fireEvent.scroll(scrollViewport!)
+    fireEvent.scroll(scrollViewport)
 
     const paginationError = await within(skillRegion).findByRole('alert')
     expect(within(skillRegion).getAllByRole('listitem')).toHaveLength(20)
@@ -722,9 +590,10 @@ describe('SkillsPage', () => {
     expect(within(skillRegion).queryByRole('status')).not.toBeInTheDocument()
     expect(within(skillRegion).getAllByRole('listitem')).toHaveLength(20)
 
-    resolveRetry?.({
+    resolveRetry!({
       data: [createSkill({ id: 'skill-21', name: 'skill-21', display_name: 'Recovered Skill 21' })],
       has_more: false,
+      limit: 20,
       page: 2,
       total: 21,
     })
@@ -734,32 +603,24 @@ describe('SkillsPage', () => {
 
   it('creates a placeholder skill and navigates to its detail page', async () => {
     const user = userEvent.setup()
-    const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
-    renderSkillsPage()
+    const queryClient = createTestQueryClient()
+    renderSkillsPage(queryClient)
 
     await user.click(await screen.findByRole('button', { name: 'skill.skillManagement.create' }))
 
     await waitFor(() => {
-      expect(mocks.createSkillMutationFn).toHaveBeenCalledWith(
-        {
-          body: {},
-        },
-        expect.anything(),
-      )
+      expect(mocks.createSkillMutationFn).toHaveBeenCalledWith({
+        body: {},
+      })
     })
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.createSuccess')
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'query' }] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'infinite' }] })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['skill-tags', { type: 'query' }],
-    })
-    expect(mocks.push).toHaveBeenCalledWith('/skills/created-skill')
-    invalidateQueries.mockRestore()
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/skills/created-skill'))
   })
 
   it('explains when the workspace skill limit blocks draft creation', async () => {
     const user = userEvent.setup()
-    mocks.createSkillMutationFn.mockRejectedValueOnce({ code: 'skill_limit_exceeded' })
+    mocks.createSkillMutationFn.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), { code: 'skill_limit_exceeded' }),
+    )
     renderSkillsPage()
 
     await user.click(await screen.findByRole('button', { name: 'skill.skillManagement.create' }))
@@ -769,97 +630,357 @@ describe('SkillsPage', () => {
     })
   })
 
-  it('imports a package file and navigates to the imported skill', async () => {
-    const user = userEvent.setup()
-    const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
-    const { container } = renderSkillsPage()
+  it.each(['toolbar', 'empty state'])(
+    'shows package requirements from the %s import entry',
+    async (entry) => {
+      const user = userEvent.setup()
+      if (entry === 'empty state') mocks.skillPages = [[]]
+      renderSkillsPage()
 
-    const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')
-    expect(fileInput).not.toBeNull()
-    const file = new File(['skill'], 'refund.skill', { type: 'application/zip' })
+      await user.click(
+        await screen.findByRole('button', {
+          name:
+            entry === 'toolbar'
+              ? 'skill.skillManagement.import'
+              : /skill\.skillManagement\.emptyAction\.importTitle/,
+        }),
+      )
 
-    await user.upload(fileInput!, file)
+      const dialog = await screen.findByRole('dialog', {
+        name: 'skill.skillManagement.importDialog.title',
+      })
+      expect(dialog).toHaveAccessibleDescription('skill.skillManagement.importDialog.description')
+      expect(
+        within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }),
+      ).toBeDisabled()
+      expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+    },
+  )
 
-    await waitFor(() => {
-      expect(mocks.importSkillMutationFn).toHaveBeenCalledWith(
-        {
+  it.each(['refund.skill', 'refund.zip'])(
+    'stages %s until confirmation, then navigates to the imported skill',
+    async (fileName) => {
+      const user = userEvent.setup()
+      const queryClient = createTestQueryClient()
+      renderSkillsPage(queryClient)
+
+      const dialog = await openImportDialog(user)
+      const file = new File(['skill'], fileName, { type: 'application/zip' })
+
+      await user.upload(
+        within(dialog).getByLabelText('skill.skillManagement.importDialog.browse'),
+        file,
+      )
+      expect(within(dialog).getByText(fileName)).toBeInTheDocument()
+      expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+      await user.click(within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }))
+
+      await waitFor(() => {
+        expect(mocks.importSkillMutationFn).toHaveBeenCalledWith({
           body: {
             file,
           },
-        },
-        expect.anything(),
+        })
+      })
+      await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/skills/imported-skill'))
+    },
+  )
+
+  it('opens the file picker from Browse and waits for confirmation before importing', async () => {
+    const user = userEvent.setup()
+    renderSkillsPage()
+    const dialog = await openImportDialog(user)
+    const fileInput = within(dialog).getByLabelText('skill.skillManagement.importDialog.browse')
+    const openFilePicker = vi.spyOn(fileInput, 'click')
+
+    try {
+      await user.click(within(dialog).getByRole('button', { name: 'Browse' }))
+      expect(openFilePicker).toHaveBeenCalledOnce()
+    } finally {
+      openFilePicker.mockRestore()
+    }
+
+    const file = new File(['skill'], 'refund.zip', { type: 'application/zip' })
+    await user.upload(fileInput, file)
+    expect(within(dialog).getByText(file.name)).toBeInTheDocument()
+    expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+
+    await user.click(within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }))
+    await waitFor(() =>
+      expect(mocks.importSkillMutationFn).toHaveBeenCalledWith({ body: { file } }),
+    )
+  })
+
+  it('accepts a file drag after leaving and re-entering the drop zone, then waits for confirmation', async () => {
+    const user = userEvent.setup()
+    renderSkillsPage()
+    const dialog = await openImportDialog(user)
+    const dropZone = within(dialog).getByRole('group', {
+      name: 'skill.skillManagement.importDialog.title',
+    })
+    const description = within(dropZone).getByText('skill.skillManagement.importDialog.description')
+    const file = new File(['skill'], 'refund.zip', { type: 'application/zip' })
+    const dataTransfer = { files: [file], types: ['Files'] }
+
+    expect(fireEvent.dragEnter(dropZone, { dataTransfer })).toBe(false)
+    expect(fireEvent.dragEnter(description, { dataTransfer })).toBe(false)
+    fireEvent.dragLeave(description, { dataTransfer })
+    fireEvent.dragLeave(dropZone, { dataTransfer })
+    expect(within(dialog).queryByText(file.name)).not.toBeInTheDocument()
+
+    expect(fireEvent.dragEnter(dropZone, { dataTransfer })).toBe(false)
+    const dragOver = createEvent.dragOver(dropZone, { dataTransfer })
+    expect(fireEvent(dropZone, dragOver)).toBe(false)
+    expect(dragOver).toHaveProperty('dataTransfer.dropEffect', 'copy')
+    expect(fireEvent.drop(dropZone, { dataTransfer })).toBe(false)
+    expect(within(dialog).getByText(file.name)).toBeInTheDocument()
+    expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+
+    await user.click(within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }))
+    await waitFor(() =>
+      expect(mocks.importSkillMutationFn).toHaveBeenCalledWith({ body: { file } }),
+    )
+  })
+
+  it.each(['text/plain', 'text/uri-list'])(
+    'does not intercept %s drags or clear the selected package',
+    async (type) => {
+      const user = userEvent.setup()
+      renderSkillsPage()
+      const dialog = await openImportDialog(user)
+      const file = new File(['skill'], 'refund.skill', { type: 'application/zip' })
+      await user.upload(
+        within(dialog).getByLabelText('skill.skillManagement.importDialog.browse'),
+        file,
       )
+      const dropZone = within(dialog).getByRole('group', {
+        name: 'skill.skillManagement.importDialog.title',
+      })
+      const dataTransfer = { files: [], types: [type] }
+
+      expect(fireEvent.dragEnter(dropZone, { dataTransfer })).toBe(true)
+      expect(fireEvent.dragOver(dropZone, { dataTransfer })).toBe(true)
+      fireEvent.dragLeave(dropZone, { dataTransfer })
+      expect(fireEvent.drop(dropZone, { dataTransfer })).toBe(true)
+      expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+      expect(within(dialog).getByText(file.name)).toBeInTheDocument()
+      expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+
+      await user.click(within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }))
+      await waitFor(() =>
+        expect(mocks.importSkillMutationFn).toHaveBeenCalledWith({ body: { file } }),
+      )
+    },
+  )
+
+  it.each(['common.operation.cancel', 'common.operation.close'])(
+    'clears the staged package when dismissed with %s and reopened',
+    async (closeAction) => {
+      const user = userEvent.setup()
+      renderSkillsPage()
+      const dialog = await openImportDialog(user)
+      await user.upload(
+        within(dialog).getByLabelText('skill.skillManagement.importDialog.browse'),
+        new File(['skill'], 'refund.skill', { type: 'application/zip' }),
+      )
+
+      await user.click(within(dialog).getByRole('button', { name: closeAction }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      const reopenedDialog = await openImportDialog(user)
+
+      expect(within(reopenedDialog).queryByText('refund.skill')).not.toBeInTheDocument()
+      expect(
+        within(reopenedDialog).getByRole('button', { name: 'skill.skillManagement.import' }),
+      ).toBeDisabled()
+      expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+    },
+  )
+
+  it('removes a staged package and allows selecting that same file again', async () => {
+    const user = userEvent.setup()
+    renderSkillsPage()
+    const dialog = await openImportDialog(user)
+    const file = new File(['skill'], 'refund.skill', { type: 'application/zip' })
+    const fileInput = within(dialog).getByLabelText('skill.skillManagement.importDialog.browse')
+    await user.upload(fileInput, file)
+
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.remove' }))
+    expect(within(dialog).queryByText('refund.skill')).not.toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }),
+    ).toBeDisabled()
+    await user.upload(fileInput, file)
+
+    expect(within(dialog).getByText('refund.skill')).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }),
+    ).toBeEnabled()
+    expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['an unsupported extension', ['refund.txt']],
+    ['multiple packages', ['refund.skill', 'support.zip']],
+  ])('rejects dropping %s and allows correction before importing', async (_label, fileNames) => {
+    const user = userEvent.setup()
+    renderSkillsPage()
+    const dialog = await openImportDialog(user)
+    const dropZone = within(dialog).getByRole('group', {
+      name: 'skill.skillManagement.importDialog.title',
     })
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.importSuccess')
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'query' }] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'infinite' }] })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['skill-tags', { type: 'query' }],
+
+    fireEvent.drop(dropZone, {
+      dataTransfer: {
+        files: fileNames.map((fileName) => new File(['skill'], fileName)),
+        types: ['Files'],
+      },
     })
-    expect(mocks.push).toHaveBeenCalledWith('/skills/imported-skill')
-    invalidateQueries.mockRestore()
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(
+      'skill.skillManagement.importDialog.invalidFile',
+    )
+    expect(
+      within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }),
+    ).toBeDisabled()
+    expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+
+    const file = new File(['skill'], 'refund.zip', { type: 'application/zip' })
+    fireEvent.drop(dropZone, { dataTransfer: { files: [file], types: ['Files'] } })
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+    expect(within(dialog).getByText('refund.zip')).toBeInTheDocument()
+    expect(mocks.importSkillMutationFn).not.toHaveBeenCalled()
+    await user.click(within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }))
+
+    await waitFor(() =>
+      expect(mocks.importSkillMutationFn).toHaveBeenCalledWith({ body: { file } }),
+    )
+  })
+
+  it('keeps the package stable and prevents repeat submission or dismissal while importing', async () => {
+    const user = userEvent.setup()
+    let completeImport: ((skill: SkillResponse) => void) | undefined
+    mocks.importSkillMutationFn.mockImplementationOnce(
+      () =>
+        new Promise<SkillResponse>((resolve) => {
+          completeImport = resolve
+        }),
+    )
+    renderSkillsPage()
+    const dialog = await openImportDialog(user)
+    const fileInput = within(dialog).getByLabelText('skill.skillManagement.importDialog.browse')
+    const file = new File(['skill'], 'refund.skill', { type: 'application/zip' })
+    await user.upload(fileInput, file)
+    const importButton = within(dialog).getByRole('button', {
+      name: 'skill.skillManagement.import',
+    })
+    await user.click(importButton)
+
+    await waitFor(() => expect(importButton).toHaveAttribute('aria-disabled', 'true'))
+    expect(fileInput).toBeDisabled()
+    const cancelButton = within(dialog).getByRole('button', { name: 'common.operation.cancel' })
+    const closeButton = within(dialog).getByRole('button', { name: 'common.operation.close' })
+    expect(cancelButton).toBeDisabled()
+    expect(closeButton).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'common.operation.remove' })).toBeDisabled()
+    await user.click(importButton)
+    await user.click(cancelButton)
+    await user.click(closeButton)
+    await user.keyboard('{Escape}')
+    const dropZone = within(dialog).getByRole('group', {
+      name: 'skill.skillManagement.importDialog.title',
+    })
+    const dataTransfer = {
+      files: [new File(['other'], 'replacement.zip')],
+      types: ['Files'],
+    }
+    expect(fireEvent.dragEnter(dropZone, { dataTransfer })).toBe(false)
+    const dragOver = createEvent.dragOver(dropZone, { dataTransfer })
+    expect(fireEvent(dropZone, dragOver)).toBe(false)
+    expect(dragOver).toHaveProperty('dataTransfer.dropEffect', 'none')
+    fireEvent.dragLeave(dropZone, { dataTransfer })
+    fireEvent.drop(dropZone, { dataTransfer })
+
+    expect(dialog).toBeInTheDocument()
+    expect(within(dialog).getByText('refund.skill')).toBeInTheDocument()
+    expect(within(dialog).queryByText('replacement.zip')).not.toBeInTheDocument()
+    expect(mocks.importSkillMutationFn).toHaveBeenCalledTimes(1)
+    completeImport!(createSkill({ id: 'imported-skill' }))
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/skills/imported-skill'))
   })
 
   it.each([
     {
-      error: {
-        data: {
-          body: {
-            code: 'skill_name_conflict',
-            details: { name: 'refund-approval' },
-          },
-        },
-      },
+      error: createHttpError(new Response(null, { status: 409 }), {
+        code: 'skill_name_conflict',
+        details: { name: 'refund-approval' },
+      }),
       message: 'skill.skillManagement.errors.nameConflict:{"name":"refund-approval"}',
     },
     {
-      error: { code: 'skill_limit_exceeded' },
+      error: createHttpError(new Response(null, { status: 400 }), { code: 'skill_limit_exceeded' }),
       message: 'skill.skillManagement.errors.workspaceLimit',
     },
     {
-      error: { code: 'missing_skill_md' },
+      error: createHttpError(new Response(null, { status: 400 }), { code: 'missing_skill_md' }),
       message: 'skill.skillManagement.errors.missingSkillMd',
     },
     {
-      error: { message: 'Skill package must contain SKILL.md' },
+      error: new Error('Skill package must contain SKILL.md'),
       message: 'skill.skillManagement.errors.missingSkillMd',
     },
     {
-      error: { message: 'Skill name "refund-approval" already exists' },
+      error: new Error('Skill name "refund-approval" already exists'),
       message: 'skill.skillManagement.errors.nameConflict:{"name":"refund-approval"}',
     },
   ])('explains import errors for $error.code', async ({ error, message }) => {
     const user = userEvent.setup()
     mocks.importSkillMutationFn.mockRejectedValueOnce(error)
-    const { container } = renderSkillsPage()
-    const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')
+    renderSkillsPage()
+    const dialog = await openImportDialog(user)
     const file = new File(['skill'], 'refund.skill', { type: 'application/zip' })
 
-    await user.upload(fileInput!, file)
+    await user.upload(
+      within(dialog).getByLabelText('skill.skillManagement.importDialog.browse'),
+      file,
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }))
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(message)
     })
   })
 
-  it('explains an import error returned as a Response body', async () => {
+  it('keeps the package available for retry after explaining an error returned as a Response body', async () => {
     const user = userEvent.setup()
     mocks.importSkillMutationFn.mockRejectedValueOnce(
-      new Response(JSON.stringify({ message: 'Skill package must contain SKILL.md' }), {
-        status: 400,
-      }),
+      await httpErrorFromResponse(
+        new Response(JSON.stringify({ message: 'Skill package must contain SKILL.md' }), {
+          status: 400,
+        }),
+      ),
     )
-    const { container } = renderSkillsPage()
-    const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')
+    renderSkillsPage()
+    const dialog = await openImportDialog(user)
+    const file = new File(['skill'], 'refund.skill', { type: 'application/zip' })
 
-    await user.upload(fileInput!, new File(['skill'], 'refund.skill', { type: 'application/zip' }))
+    await user.upload(
+      within(dialog).getByLabelText('skill.skillManagement.importDialog.browse'),
+      file,
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }))
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('skill.skillManagement.errors.missingSkillMd')
     })
+    expect(within(dialog).getByText('refund.skill')).toBeInTheDocument()
+    expect(mocks.push).not.toHaveBeenCalled()
+    await user.click(within(dialog).getByRole('button', { name: 'skill.skillManagement.import' }))
+
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/skills/imported-skill'))
+    expect(mocks.importSkillMutationFn).toHaveBeenCalledTimes(2)
+    expect(mocks.importSkillMutationFn).toHaveBeenLastCalledWith({ body: { file } })
   })
 
-  it('duplicates a skill from the card action menu', async () => {
+  it('opens the returned duplicate for inline rename from the card action menu', async () => {
     const user = userEvent.setup()
     renderSkillsPage()
 
@@ -871,20 +992,18 @@ describe('SkillsPage', () => {
     await user.click(await screen.findByText('common.operation.duplicate'))
 
     await waitFor(() => {
-      expect(mocks.duplicateSkillMutationFn).toHaveBeenCalledWith(
-        {
-          params: {
-            skill_id: 'skill-1',
-          },
+      expect(mocks.duplicateSkillMutationFn).toHaveBeenCalledWith({
+        params: {
+          skill_id: 'skill-1',
         },
-        expect.anything(),
-      )
+      })
     })
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.duplicateSuccess')
+    expect(mocks.push).toHaveBeenCalledWith('/skills/duplicated-skill?rename=true')
   })
 
-  it('exports a published skill from the card action menu', async () => {
+  it('stays on the skill list when duplication fails', async () => {
     const user = userEvent.setup()
+    mocks.duplicateSkillMutationFn.mockRejectedValue(new Error('Duplicate failed'))
     renderSkillsPage()
 
     await user.click(
@@ -892,34 +1011,40 @@ describe('SkillsPage', () => {
         name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
       }),
     )
-    await user.click(await screen.findByText('common.operation.export'))
+    await user.click(await screen.findByText('common.operation.duplicate'))
 
     await waitFor(() => {
-      expect(mocks.exportSkillArchiveBlob).toHaveBeenCalledWith('skill-1')
+      expect(toast.error).toHaveBeenCalledWith('skill.skillManagement.duplicateFailed')
     })
-    expect(mocks.downloadBlob).toHaveBeenCalledWith({
-      data: expect.any(Blob),
-      fileName: 'refund-approval.zip',
-    })
+    expect(mocks.push).not.toHaveBeenCalled()
   })
 
-  it('does not show export for an unpublished skill', async () => {
-    const user = userEvent.setup()
-    mocks.skills = [createSkill({ latest_published_version_id: null })]
-    mocks.skillPages = [mocks.skills]
-    renderSkillsPage()
-
-    await user.click(
-      await screen.findByRole('button', {
-        name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
-      }),
-    )
-
-    expect(screen.queryByText('common.operation.export')).not.toBeInTheDocument()
-  })
+  it.each(['version-1', null])(
+    'downloads the skill archive whether published or draft: %s',
+    async (latest_published_version_id) => {
+      const user = userEvent.setup()
+      const downloads = captureDownloads()
+      mocks.skillPages = [[createSkill({ latest_published_version_id })]]
+      renderSkillsPage()
+      await user.click(
+        await screen.findByRole('button', {
+          name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
+        }),
+      )
+      await user.click(screen.getByRole('menuitem', { name: 'common.operation.export' }))
+      await waitFor(() => expect(downloads).toHaveLength(1))
+      expect(mocks.exportSkillArchiveBlob).toHaveBeenCalledExactlyOnceWith('skill-1')
+      expect(downloads[0]?.filename).toBe('refund-approval.zip')
+      expect(await downloads[0]?.blob.text()).toBe('skill archive')
+    },
+  )
 
   it('confirms deletion with the skill name and refreshes list data', async () => {
     const user = userEvent.setup()
+    mocks.deleteSkillMutationFn.mockImplementation(async () => {
+      mocks.skillPages = [[]]
+      return { deleted: true, id: 'skill-1' }
+    })
     renderSkillsPage()
 
     await user.click(
@@ -932,7 +1057,7 @@ describe('SkillsPage', () => {
 
     expect(
       within(dialog).getByText(
-        'skill.skillManagement.deleteDialog.referencedDescription_other:{"count":2}',
+        'skill.skillManagement.deleteDialog.referencedDescription:{"count":2}',
       ),
     ).toBeInTheDocument()
     expect(await within(dialog).findByText('Support Agent')).toBeInTheDocument()
@@ -940,8 +1065,8 @@ describe('SkillsPage', () => {
       'target',
       '_blank',
     )
-    expect(within(dialog).getByTestId('skill-delete-reference-list')).toBeInTheDocument()
 
+    expect(within(dialog).getByRole('button', { name: 'common.operation.delete' })).toBeDisabled()
     await user.type(
       within(dialog).getByPlaceholderText(
         'skill.skillManagement.deleteDialog.confirmInputPlaceholder',
@@ -951,19 +1076,19 @@ describe('SkillsPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
 
     await waitFor(() => {
-      expect(mocks.deleteSkillMutationFn).toHaveBeenCalledWith(
-        {
-          body: {
-            confirmation_name: 'Refund approval',
-          },
-          params: {
-            skill_id: 'skill-1',
-          },
+      expect(mocks.deleteSkillMutationFn).toHaveBeenCalledWith({
+        body: {
+          confirmation_name: 'Refund approval',
         },
-        expect.anything(),
-      )
+        params: {
+          skill_id: 'skill-1',
+        },
+      })
     })
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.deleteSuccess')
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: /Refund approval/ })).not.toBeInTheDocument(),
+    )
   })
 
   it('loads references in the delete confirmation when the list reference count is stale', async () => {
@@ -990,18 +1115,10 @@ describe('SkillsPage', () => {
     expect(await within(dialog).findByText('Support Agent From References API')).toBeInTheDocument()
     expect(
       within(dialog).getByText(
-        'skill.skillManagement.deleteDialog.referencedDescription_one:{"count":1}',
+        'skill.skillManagement.deleteDialog.referencedDescription:{"count":1}',
       ),
     ).toBeInTheDocument()
-    expect(mocks.skillReferencesQueryOptions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        input: {
-          params: {
-            skill_id: 'skill-1',
-          },
-        },
-      }),
-    )
+    expect(mocks.references).toHaveBeenCalledWith({ params: { skill_id: 'skill-1' } })
   })
 
   it('keeps deletion disabled while cached references refresh', async () => {
@@ -1010,15 +1127,12 @@ describe('SkillsPage', () => {
     let shouldHangReferenceRequest = false
     mocks.skills = [createSkill({ reference_count: 0 })]
     mocks.skillPages = [mocks.skills]
-    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references-pending', options],
-      queryFn: () => {
-        referenceRequestCount += 1
-        if (!shouldHangReferenceRequest) return Promise.resolve({ data: [] })
+    mocks.references.mockImplementation(() => {
+      referenceRequestCount += 1
+      if (!shouldHangReferenceRequest) return Promise.resolve({ data: [] })
 
-        return new Promise(() => {})
-      },
-    }))
+      return new Promise(() => {})
+    })
     renderSkillsPage()
 
     const moreButton = await screen.findByRole('button', {
@@ -1073,10 +1187,6 @@ describe('SkillsPage', () => {
 
     expect(await within(dialog).findByText('Support Agent 5')).toBeInTheDocument()
     expect(within(dialog).queryByText('Support Agent 6')).not.toBeInTheDocument()
-    expect(within(dialog).getByTestId('skill-delete-reference-list')).not.toHaveAttribute(
-      'data-scrollable',
-      'true',
-    )
 
     await user.click(
       within(dialog).getByRole('button', {
@@ -1086,14 +1196,6 @@ describe('SkillsPage', () => {
 
     expect(within(dialog).getByText('Support Agent 6')).toBeInTheDocument()
     expect(within(dialog).getByText('Support Agent 7')).toBeInTheDocument()
-    expect(within(dialog).getByTestId('skill-delete-reference-list')).toHaveAttribute(
-      'data-scrollable',
-      'true',
-    )
-    expect(within(dialog).getByTestId('skill-delete-reference-list')).toHaveClass(
-      'max-h-[240px]',
-      'overflow-y-auto',
-    )
   })
 
   it('shows the empty-search state without create or import actions', async () => {
@@ -1109,12 +1211,63 @@ describe('SkillsPage', () => {
     const emptySearchTitle = await within(skillRegion).findByText(
       'skill.skillManagement.emptySearch',
     )
-    expect(emptySearchTitle.closest('[role="status"]')).toBeInTheDocument()
+    expect(within(skillRegion).getByRole('status')).toContainElement(emptySearchTitle)
     expect(
       screen.queryByText('skill.skillManagement.emptyAction.createTitle'),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByText('skill.skillManagement.emptyAction.importTitle'),
     ).not.toBeInTheDocument()
+  })
+
+  it.each([
+    { keys: ['skill.view'], edit: false, remove: false },
+    { keys: ['skill.view', 'skill.edit'], edit: true, remove: false },
+    { keys: ['skill.view', 'skill.delete'], edit: false, remove: true },
+  ])(
+    'exposes skill actions according to workspace permissions: $keys',
+    async ({ keys, edit, remove }) => {
+      const user = userEvent.setup()
+      renderSkillsPage(createTestQueryClient(), keys)
+      await screen.findByRole('link', { name: /Refund approval/ })
+      expect(Boolean(screen.queryByRole('button', { name: 'skill.skillManagement.create' }))).toBe(
+        edit,
+      )
+      expect(Boolean(screen.queryByRole('button', { name: 'skill.skillManagement.import' }))).toBe(
+        edit,
+      )
+      await user.click(
+        screen.getByRole('button', {
+          name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
+        }),
+      )
+      expect(Boolean(screen.queryByRole('menuitem', { name: 'common.operation.duplicate' }))).toBe(
+        edit,
+      )
+      expect(Boolean(screen.queryByRole('menuitem', { name: 'common.operation.delete' }))).toBe(
+        remove,
+      )
+      expect(screen.getByRole('menuitem', { name: 'common.operation.export' })).toBeEnabled()
+    },
+  )
+
+  it('saves a tag binding from the real card and refreshes its tags on reopening', async () => {
+    const user = userEvent.setup()
+    mocks.bindTag.mockImplementation(async () => {
+      mocks.skillPages = [[createSkill({ tags: ['support', 'sales'] })]]
+      return { result: 'success' }
+    })
+    renderSkillsPage()
+    const card = await screen.findByRole('listitem', { name: 'Refund approval' })
+    await user.click(within(card).getByRole('combobox', { name: 'support' }))
+    await user.click(screen.getByRole('option', { name: 'sales' }))
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(mocks.bindTag).toHaveBeenCalledWith({
+        body: { type: 'skill', target_id: 'skill-1', tag_ids: ['tag-sales'] },
+      }),
+    )
+    await user.click(await within(card).findByRole('combobox', { name: 'support, sales' }))
+    expect(screen.getByRole('option', { name: 'sales' })).toHaveAttribute('aria-selected', 'true')
   })
 })

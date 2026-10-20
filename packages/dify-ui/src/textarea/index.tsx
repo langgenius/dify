@@ -1,41 +1,28 @@
 'use client'
 
-import type { Field as BaseFieldNS } from '@base-ui/react/field'
 import type { VariantProps } from 'class-variance-authority'
+import type * as React from 'react'
 import { Field as BaseField } from '@base-ui/react/field'
 import { cva } from 'class-variance-authority'
-import * as React from 'react'
 import { cn } from '../cn'
-import { textControlFocusClassName } from '../form-control-shared'
+import { textControlClassName } from '../internal/form-control'
+import { resolveClassName } from '../internal/resolve-class-name'
 
-const textareaVariants = cva(
-  [
-    'min-h-20 w-full appearance-none overflow-auto border border-transparent bg-components-input-bg-normal text-components-input-text-filled caret-primary-600 outline-hidden transition-[background-color,border-color]',
-    'placeholder:text-components-input-text-placeholder',
-    'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    textControlFocusClassName,
-    'data-invalid:border-components-input-border-destructive data-invalid:bg-components-input-bg-destructive',
-    'read-only:cursor-default read-only:shadow-none read-only:hover:border-transparent read-only:hover:bg-components-input-bg-normal read-only:focus:border-transparent read-only:focus:bg-components-input-bg-normal read-only:focus:shadow-none read-only:focus-visible:ring-2 read-only:focus-visible:ring-state-accent-solid',
-    'disabled:cursor-not-allowed disabled:border-transparent disabled:bg-components-input-bg-disabled disabled:text-components-input-text-filled-disabled',
-    'disabled:hover:border-transparent disabled:hover:bg-components-input-bg-disabled',
-    'motion-reduce:transition-none',
-  ],
-  {
-    variants: {
-      size: {
-        small: 'rounded-md px-2 py-1 system-xs-regular',
-        medium: 'rounded-lg px-3 py-2 system-sm-regular',
-        large: 'rounded-[10px] px-4 py-2 system-md-regular',
-      },
-    },
-    defaultVariants: {
-      size: 'medium',
+const textareaVariants = cva([textControlClassName, 'min-h-20 overflow-auto'], {
+  variants: {
+    size: {
+      small: 'rounded-md px-2 py-1 system-xs-regular',
+      medium: 'rounded-lg px-3 py-2 system-sm-regular',
+      large: 'rounded-[10px] px-4 py-2 system-md-regular',
     },
   },
-)
+  defaultVariants: {
+    size: 'medium',
+  },
+})
 
 type TextareaValue = string | number
-type TextareaChangeEventDetails = BaseFieldNS.Control.ChangeEventDetails
+type TextareaChangeEventDetails = BaseField.Control.ChangeEventDetails
 type TextareaOnValueChange = (value: string, eventDetails: TextareaChangeEventDetails) => void
 
 type ControlledTextareaProps = {
@@ -50,7 +37,7 @@ type UncontrolledTextareaProps = {
   onValueChange?: TextareaOnValueChange
 }
 
-type TextareaNativeProps = React.ComponentPropsWithRef<'textarea'>
+type TextareaNativeProps = React.ComponentProps<'textarea'>
 type TextareaOnlyProps = Pick<TextareaNativeProps, 'cols' | 'rows' | 'wrap'>
 type TextareaElementProps = Omit<
   TextareaNativeProps,
@@ -61,6 +48,7 @@ type TextareaElementProps = Omit<
   | 'onChange'
   | 'rows'
   | 'size'
+  | 'style'
   | 'value'
   | 'wrap'
 >
@@ -68,16 +56,16 @@ type TextareaElementProps = Omit<
 type TextareaControlProps = ControlledTextareaProps | UncontrolledTextareaProps
 type TextareaVariantProps = VariantProps<typeof textareaVariants>
 type FieldControlTextareaProps = Omit<
-  BaseFieldNS.Control.Props,
+  BaseField.Control.Props,
   'className' | 'defaultValue' | 'onValueChange' | 'render' | 'value'
 >
 
 type TextareaProps = TextareaElementProps &
+  Pick<BaseField.Control.Props, 'className' | 'style'> &
   TextareaOnlyProps &
   TextareaControlProps &
   TextareaVariantProps & {
     children?: never
-    className?: string
   }
 
 function Textarea({
@@ -98,7 +86,7 @@ function Textarea({
   return (
     <BaseField.Control
       {...fieldControlProps}
-      className={cn(textareaVariants({ size }), className)}
+      className={(state) => cn(textareaVariants({ size }), resolveClassName(className, state))}
       defaultValue={defaultValue}
       onValueChange={onValueChange}
       ref={ref}

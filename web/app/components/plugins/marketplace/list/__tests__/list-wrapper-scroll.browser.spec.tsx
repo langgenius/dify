@@ -25,10 +25,6 @@ vi.mock('#i18n', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div>loading</div>,
-}))
-
 vi.mock('../../sort-dropdown', () => ({
   default: () => <div>sort</div>,
 }))
@@ -86,14 +82,17 @@ describe('Marketplace result scroll anchoring', () => {
   it('does not move the page when the first search result header appears', async () => {
     await page.viewport(1280, 720)
     const screen = await render(<SearchResultsHarness />)
-    const scrollContainer = screen.getByTestId('marketplace-scroll-container').element()
+    const container = screen.getByTestId('marketplace-scroll-container')
+    await expect.element(container).toBeVisible()
+    const scrollContainer = container.element()
 
     scrollContainer.scrollTop = 260
     await new Promise(requestAnimationFrame)
     const scrollTopBefore = scrollContainer.scrollTop
 
     await screen.getByRole('button', { name: 'Type search' }).click()
-    await expect.element(screen.getByText('1 plugins found')).toBeVisible()
+    await expect.element(screen.getByRole('status')).toHaveTextContent('1 plugins found')
+    await expect.element(screen.getByTestId('catalog-results')).toBeVisible()
     await new Promise(requestAnimationFrame)
 
     expect(scrollContainer.scrollTop).toBe(scrollTopBefore)

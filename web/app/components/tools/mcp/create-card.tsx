@@ -1,14 +1,19 @@
 'use client'
+import type { ComponentProps } from 'react'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
+import { useMutation } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import { useDocLink } from '@/context/i18n'
-import { useCreateMCP } from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import CreateEntryCard from '../provider/create-entry-card'
+import { selectToolProvider } from '../utils/query-select'
 import MCPModal from './modal'
+
+type MCPModalConfirmPayload = Parameters<ComponentProps<typeof MCPModal>['onConfirm']>[0]
 
 type Props = Readonly<{
   handleCreate: (provider: ToolWithProvider) => Promise<void> | void
@@ -16,14 +21,16 @@ type Props = Readonly<{
 
 function useMCPCreateAction({ handleCreate }: Props) {
   const canManageMCP = useCanManageMCP()
-  const { mutateAsync: createMCP } = useCreateMCP()
+  const { mutateAsync: createMCP } = useMutation(
+    consoleQuery.workspaces.current.toolProvider.mcp.post.mutationOptions(),
+  )
   const [showModal, setShowModal] = useState(false)
 
-  const create = async (info: Parameters<typeof createMCP>[0]) => {
+  const create = async (info: MCPModalConfirmPayload) => {
     if (!canManageMCP) return
 
-    const provider = await createMCP(info)
-    await handleCreate(provider)
+    const provider = await createMCP({ body: info })
+    await handleCreate(selectToolProvider(provider))
   }
 
   return {
@@ -35,7 +42,7 @@ function useMCPCreateAction({ handleCreate }: Props) {
 }
 
 export function NewMCPButton({ handleCreate }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const addMCPServerLabel = t(($) => $['mcp.create.cardTitle'], { ns: 'tools' })
   const { canManageMCP, create, setShowModal, showModal } = useMCPCreateAction({ handleCreate })
 
@@ -61,7 +68,7 @@ export function NewMCPButton({ handleCreate }: Props) {
 }
 
 const NewMCPCard = ({ handleCreate }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const docLink = useDocLink()
   const { canManageMCP, create, setShowModal, showModal } = useMCPCreateAction({ handleCreate })
 

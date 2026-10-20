@@ -1,10 +1,11 @@
 import type { CodeNodeType, OutputVar } from '../../code/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
 import { useDebounceFn } from 'ahooks'
+import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import { getDefaultValue } from '@/app/components/workflow/nodes/_base/components/error-handle/utils'
+import { mergeDefaultValue } from '@/app/components/workflow/nodes/_base/components/error-handle/utils'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
 import { useWorkflow } from '../../../hooks/use-workflow'
@@ -42,6 +43,12 @@ function useOutputVarList<T>({
   )
   const handleVarsChange = useCallback(
     (newVars: OutputVar, changedIndex?: number, newKey?: string) => {
+      // a renamed output keeps its configured fallback under the new name
+      const renamedKey =
+        changedIndex !== undefined && newKey
+          ? { from: outputKeyOrders[changedIndex]!, to: newKey }
+          : undefined
+
       const newInputs = produce(inputs, (draft: any) => {
         draft[varKey] = newVars
 
@@ -50,7 +57,11 @@ function useOutputVarList<T>({
           (inputs as CodeNodeType).error_strategy === ErrorHandleTypeEnum.defaultValue &&
           varKey === 'outputs'
         )
-          draft.default_value = getDefaultValue(draft as any)
+          draft.default_value = mergeDefaultValue(
+            draft as any,
+            (inputs as CodeNodeType).default_value,
+            renamedKey,
+          )
       })
       setInputs(newInputs)
 
@@ -67,12 +78,13 @@ function useOutputVarList<T>({
           oldNameRecord.current[id] = outputKeyOrders[changedIndex!]!
         renameInspectNameWithDebounce(id, newKey)
       } else if (changedIndex === undefined) {
-        const varId = nodesWithInspectVars
-          .find((node) => node.nodeId === id)
-          ?.vars.find((varItem) => {
-            return varItem.name === Object.keys(newVars)[0]
-          })?.id
-        if (varId) deleteInspectVar(id, varId)
+        const previousVars = (inputs as Record<string, OutputVar>)[varKey]
+        const inspectVars = nodesWithInspectVars.find((node) => node.nodeId === id)?.vars ?? []
+        for (const [name, output] of Object.entries(newVars)) {
+          if (isEqual(previousVars?.[name], output)) continue
+          const inspectVar = inspectVars.find((variable) => variable.name === name)
+          if (inspectVar) deleteInspectVar(id, inspectVar.id)
+        }
       }
     },
     [
@@ -110,7 +122,10 @@ function useOutputVarList<T>({
         (inputs as CodeNodeType).error_strategy === ErrorHandleTypeEnum.defaultValue &&
         varKey === 'outputs'
       )
-        draft.default_value = getDefaultValue(draft as any)
+        draft.default_value = mergeDefaultValue(
+          draft as any,
+          (inputs as CodeNodeType).default_value,
+        )
     })
     setInputs(newInputs)
     onOutputKeyOrdersChange([...outputKeyOrders, newKey])
@@ -118,25 +133,11 @@ function useOutputVarList<T>({
 
   const [isShowRemoveVarConfirm, setIsShowRemoveVarConfirm] = useState(false)
   const [removedVar, setRemovedVar] = useState<ValueSelector>([])
-  const removeVarInNode = useCallback(() => {
-    const varId = nodesWithInspectVars
-      .find((node) => node.nodeId === id)
-      ?.vars.find((varItem) => {
-        return varItem.name === removedVar[1]
-      })?.id
-    if (varId) deleteInspectVar(id, varId)
-    removeUsedVarInNodes(removedVar)
-    setIsShowRemoveVarConfirm(false)
-  }, [deleteInspectVar, id, nodesWithInspectVars, removeUsedVarInNodes, removedVar])
-  const handleRemoveVariable = useCallback(
+  const [removedIndex, setRemovedIndex] = useState(-1)
+
+  const removeOutputVariable = useCallback(
     (index: number) => {
       const key = outputKeyOrders[index]!
-
-      if (isVarUsedInNodes([id, key])) {
-        setIsShowRemoveVarConfirm(true)
-        setRemovedVar([id, key])
-        return
-      }
 
       const newOutputKeyOrders = outputKeyOrders.filter((_, i) => i !== index)
       const newInputs = produce(inputs, (draft: any) => {
@@ -148,10 +149,14 @@ function useOutputVarList<T>({
           (inputs as CodeNodeType).error_strategy === ErrorHandleTypeEnum.defaultValue &&
           varKey === 'outputs'
         )
-          draft.default_value = getDefaultValue(draft as any)
+          draft.default_value = mergeDefaultValue(
+            draft as any,
+            (inputs as CodeNodeType).default_value,
+          )
       })
       setInputs(newInputs)
       onOutputKeyOrdersChange(newOutputKeyOrders)
+
       if (!newOutputKeyOrders.includes(key!)) {
         const varId = nodesWithInspectVars
           .find((node) => node.nodeId === id)
@@ -163,7 +168,6 @@ function useOutputVarList<T>({
     },
     [
       outputKeyOrders,
-      isVarUsedInNodes,
       id,
       inputs,
       setInputs,
@@ -172,6 +176,30 @@ function useOutputVarList<T>({
       deleteInspectVar,
       varKey,
     ],
+  )
+
+  const removeVarInNode = useCallback(() => {
+    // The confirmation only covers variables that other nodes still reference,
+    // the row itself has to be removed from this node as well.
+    removeOutputVariable(removedIndex)
+    removeUsedVarInNodes(removedVar)
+    setIsShowRemoveVarConfirm(false)
+  }, [removeOutputVariable, removedIndex, removeUsedVarInNodes, removedVar])
+
+  const handleRemoveVariable = useCallback(
+    (index: number) => {
+      const key = outputKeyOrders[index]!
+
+      if (isVarUsedInNodes([id, key])) {
+        setRemovedIndex(index)
+        setIsShowRemoveVarConfirm(true)
+        setRemovedVar([id, key])
+        return
+      }
+
+      removeOutputVariable(index)
+    },
+    [outputKeyOrders, isVarUsedInNodes, id, removeOutputVariable],
   )
 
   return {

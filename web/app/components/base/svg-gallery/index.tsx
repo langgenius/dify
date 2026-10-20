@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 
 const SVGRenderer = ({ content }: { content: string }) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const svgRef = useRef<HTMLDivElement>(null)
   const [imagePreview, setImagePreview] = useState('')
 
@@ -39,7 +39,7 @@ const SVGRenderer = ({ content }: { content: string }) => {
       const rootElement = draw.svg(DOMPurify.sanitize(content))
 
       rootElement.click(() => {
-        setImagePreview(svgToDataURL(svgElement as Element))
+        setImagePreview(svgToDataURL(svgElement))
       })
     } catch {
       /* v8 ignore next 2 -- if unmounted while handling parser/render errors, ref becomes null; guard avoids writing to a detached node. @preserve */

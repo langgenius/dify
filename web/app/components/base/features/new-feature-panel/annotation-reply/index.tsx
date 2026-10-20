@@ -11,8 +11,8 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
 import useAnnotationConfig from '@/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
-import { MessageFast } from '@/app/components/base/icons/src/vender/features'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import { toast } from '@/app/notifications'
 import { ANNOTATION_DEFAULT } from '@/config'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
@@ -23,7 +23,7 @@ type Props = Readonly<{
 }>
 
 const AnnotationReply = ({ disabled, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'modelProvider'])
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = matched?.length && matched[1] ? matched[1] : ''
@@ -67,9 +67,12 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
   const handleSwitch = useCallback(
     (enabled: boolean) => {
       if (enabled) setIsShowAnnotationConfigInit(true)
-      else handleDisableAnnotation(annotationReply?.embedding_model as any)
+      else
+        void handleDisableAnnotation(annotationReply?.embedding_model as any).catch(() => {
+          toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+        })
     },
-    [annotationReply?.embedding_model, handleDisableAnnotation, setIsShowAnnotationConfigInit],
+    [annotationReply?.embedding_model, handleDisableAnnotation, setIsShowAnnotationConfigInit, t],
   )
 
   const [isHovering, setIsHovering] = useState(false)
@@ -79,7 +82,10 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
       <FeatureCard
         icon={
           <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
-            <MessageFast className="size-4 text-text-primary-on-surface" />
+            <span
+              aria-hidden
+              className="i-custom-vender-features-message-fast size-4 text-text-primary-on-surface"
+            />
           </div>
         }
         title={t(($) => $['feature.annotation.title'], { ns: 'appDebug' })}
@@ -110,7 +116,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
                   <div className="h-6.75 w-px rotate-12 bg-divider-subtle"></div>
                   <div className="">
                     <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                      {t(($) => $['modelProvider.embeddingModel.key'], { ns: 'common' })}
+                      {t(($) => $['modelProvider.embeddingModel.key'], { ns: 'modelProvider' })}
                     </div>
                     <div className="system-xs-regular text-text-secondary">
                       {annotationReply.embedding_model?.embedding_model_name}
@@ -141,20 +147,22 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
           )}
         </>
       </FeatureCard>
-      <ConfigParamModal
-        appId={appId}
-        isInit
-        isShow={isShowAnnotationConfigInit}
-        onHide={() => {
-          setIsShowAnnotationConfigInit(false)
-          // showChooseFeatureTrue()
-        }}
-        onSave={async (embeddingModel, score) => {
-          await handleEnableAnnotation(embeddingModel, score)
-          setIsShowAnnotationConfigInit(false)
-        }}
-        annotationConfig={annotationReply as any}
-      />
+      {isShowAnnotationConfigInit && (
+        <ConfigParamModal
+          appId={appId}
+          isInit
+          isShow={isShowAnnotationConfigInit}
+          onHide={() => {
+            setIsShowAnnotationConfigInit(false)
+            // showChooseFeatureTrue()
+          }}
+          onSave={async (embeddingModel, score) => {
+            await handleEnableAnnotation(embeddingModel, score)
+            setIsShowAnnotationConfigInit(false)
+          }}
+          annotationConfig={annotationReply as any}
+        />
+      )}
       {isShowAnnotationFullModal && (
         <AnnotationFullModal
           show={isShowAnnotationFullModal}

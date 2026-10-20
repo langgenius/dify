@@ -12,7 +12,7 @@ type Props = Readonly<{
 }>
 
 const ExpandBtn: FC<Props> = ({ isExpand, onExpandChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const handleToggle = useCallback(() => {
     onExpandChange(!isExpand)
   }, [isExpand, onExpandChange])

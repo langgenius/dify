@@ -6,7 +6,6 @@ import type {
 import type { ModelSelectorValue } from '@/app/components/header/account-setting/model-provider-page/model-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,6 +15,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelSettingsTrigger } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/model-settings-trigger'
 import { SplitModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import LLMParamsPanel from './llm-params-panel'
@@ -50,7 +50,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   isInWorkflow,
   scope = ModelTypeEnum.textGeneration,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'modelProvider'])
   const [open, setOpen] = useState(false)
   const scopeArray = scope.split('&')
   const scopeFeatures = useMemo((): ModelFeatureEnum[] => {
@@ -171,7 +171,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         const keys = Object.keys(removedDetails || {})
         if (keys.length) {
           toast.warning(
-            `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'common' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
+            `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
           )
         }
       } catch {

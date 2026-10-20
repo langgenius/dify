@@ -1,10 +1,9 @@
 import type { TFunction } from 'i18next'
 import type { EnvironmentVariable, NodeDefault, PromptItem } from '../../types'
 import type { LLMNodeType } from './types'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 // import { RETRIEVAL_OUTPUT_STRUCT } from '../../constants'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
 import { BlockEnum, EditionType, PromptRole } from '../../types'
 import {
   getLLMModelIssue,
@@ -45,7 +44,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
     model: {
       provider: '',
       name: '',
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       completion_params: {
         temperature: 0.7,
       },
@@ -70,14 +69,14 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
   },
   checkValid(
     payload: LLMNodeType,
-    t: TFunction<'workflow'>,
+    t: TFunction<['workflow']>,
     moreDataForCheckValid?: {
-      flowType?: FlowType
+      resourceKind?: EditorResource['kind']
       environmentVariables?: EnvironmentVariable[]
     },
   ) {
     let errorMessages = ''
-    const isSnippetFlow = moreDataForCheckValid?.flowType === FlowType.snippet
+    const isSnippetFlow = moreDataForCheckValid?.resourceKind === 'snippet'
     const hasValidModelSelector =
       payload.model_selector === undefined ||
       !isEnvironmentModelSource(payload.model_selector) ||
@@ -100,7 +99,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
       })
 
     if (!errorMessages && !payload.memory) {
-      const isChatModel = model?.mode === AppModeEnum.CHAT
+      const isChatModel = model?.mode === 'chat'
       const isPromptEmpty = isChatModel
         ? !(payload.prompt_template as PromptItem[]).some((t) => {
             if (t.edition_type === EditionType.jinja2) return t.jinja2_text !== ''
@@ -118,7 +117,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
     }
 
     if (!errorMessages && !!payload.memory) {
-      const isChatModel = model?.mode === AppModeEnum.CHAT
+      const isChatModel = model?.mode === 'chat'
       // payload.memory.query_prompt_template not pass is default: {{#sys.query#}}
       if (
         !isSnippetFlow &&
@@ -130,7 +129,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
     }
 
     if (!errorMessages) {
-      const isChatModel = model?.mode === AppModeEnum.CHAT
+      const isChatModel = model?.mode === 'chat'
       const isShowVars = (() => {
         if (isChatModel)
           return (payload.prompt_template as PromptItem[]).some(

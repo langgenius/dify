@@ -48,13 +48,23 @@ docker build -f dify-agent-runtime/docker/Dockerfile \
   dify-agent-runtime/
 ```
 
-### Running docker container
+### Running a Local docker container
+
+Set `SHELLCTL_AUTH_TOKEN` to a nonblank secret and configure the Agent Backend's
+`DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` with the same value.
 
 ```
 docker run -d --name dify-agent-runtime \
   -p 15004:5004 \
-  dify-agent-runtime:latest
+  -e SHELLCTL_AUTH_TOKEN \
+  dify-agent-runtime:latest \
+  shellctl serve --listen 0.0.0.0:5004 --require-auth-token
 ```
+
+`--require-auth-token` rejects a missing, empty, or whitespace-only final token
+before service initialization. A nonempty `--token` overrides
+`SHELLCTL_AUTH_TOKEN`; valid values are preserved unchanged. The flag defaults
+to off in the shared image, so E2B and Enterprise may omit a shellctl token.
 
 ## Help text generation
 
@@ -87,7 +97,10 @@ The runner sets `TMPDIR`, `TMP`, and `TEMP` directly to the job's `cwd`. It does
 
 See [here](./internal/envvar/envvar.go)
 
-Requires Linux ≥ 5.13. On unsupported kernels, a warning is printed to stderr.
+Requires Linux ≥ 5.13 with Landlock enabled. When path isolation is enabled,
+any Landlock setup error aborts the job with exit code `125` before the user
+script executes. Deployments may explicitly set
+`SHELLCTL_ENABLE_PATH_ISOLATION=false` to disable this restriction.
 
 ## API Routes
 

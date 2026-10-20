@@ -12,10 +12,10 @@ import { draft07Validator, forbidBooleanProperties } from '@/utils/validators'
 import { extractPluginId } from '../../utils/plugin'
 import { ArrayType, Type } from './types'
 
-export enum LLMModelIssueCode {
-  providerRequired = 'provider-required',
-  providerPluginUnavailable = 'provider-plugin-unavailable',
-}
+export const LLMModelIssueCode = {
+  providerRequired: 'provider-required',
+  providerPluginUnavailable: 'provider-plugin-unavailable',
+} as const
 
 export const isEnvironmentModelSource = (modelSelector: ValueSelector | undefined) =>
   modelSelector != null && (modelSelector.length === 0 || modelSelector[0] === 'env')
@@ -86,7 +86,7 @@ export const getFieldType = (field: Field) => {
 }
 
 export const getHasChildren = (schema: Field) => {
-  const complexTypes = [Type.object, Type.array]
+  const complexTypes: Type[] = [Type.object, Type.array]
   if (!complexTypes.includes(schema.type)) return false
   if (schema.type === Type.object)
     return schema.properties && Object.keys(schema.properties).length > 0
@@ -99,7 +99,7 @@ export const getHasChildren = (schema: Field) => {
     )
 }
 
-const getTypeOf = (target: any) => {
+const getTypeOf = (target: unknown) => {
   if (target === null) return 'null'
   if (typeof target !== 'object') {
     return typeof target
@@ -108,7 +108,7 @@ const getTypeOf = (target: any) => {
   }
 }
 
-const inferType = (value: any): Type => {
+const inferType = (value: unknown): Type => {
   const type = getTypeOf(value)
   if (type === 'array') return Type.array
   // type boolean will be treated as string

@@ -1,7 +1,7 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { SearchParams } from 'nuqs'
 import type { MarketplaceViewProps } from './view'
-import { getLocaleOnServer } from '@/i18n-config/server'
+import { getLocaleOnServer } from '@/i18n/server'
 import { fetchPluginBanners } from './home/banners'
 import { HydrateQueryClient } from './hydration-server'
 import { prefetchMarketplaceDehydratedState } from './prefetch-marketplace-dehydrated-state'

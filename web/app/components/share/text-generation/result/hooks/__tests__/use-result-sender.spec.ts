@@ -1,167 +1,43 @@
+import type { TextGenerationTranslate } from '../../../types'
 import type { ResultInputValue } from '../../result-request'
-import type { ResultRunStateController } from '../use-result-run-state'
 import type { PromptConfig } from '@/models/debug'
-import type { AppSourceType } from '@/service/share'
+// oxlint-disable-next-line no-restricted-imports -- This fixture uses the existing SSE transport callback contract without issuing HTTP requests.
+import type { IOtherOptions } from '@/service/base'
 import type { VisionSettings } from '@/types/app'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { AppSourceType as AppSourceTypeEnum } from '@/service/share'
+import { AppSourceType } from '@/service/share'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { Resolution, TransferMethod } from '@/types/app'
+import { useResultRunState } from '../use-result-run-state'
 import { useResultSender } from '../use-result-sender'
 
-const {
-  buildResultRequestDataMock,
-  createWorkflowStreamHandlersMock,
-  mockTrackEvent,
-  mockWebAppState,
-  sendCompletionMessageMock,
-  sendWorkflowMessageMock,
-  sleepMock,
-  validateResultRequestMock,
-} = vi.hoisted(() => ({
-  buildResultRequestDataMock: vi.fn(),
-  createWorkflowStreamHandlersMock: vi.fn(),
-  mockTrackEvent: vi.fn(),
-  mockWebAppState: {
-    appInfo: {
-      mode: 'completion',
-    },
-  },
-  sendCompletionMessageMock: vi.fn(),
-  sendWorkflowMessageMock: vi.fn(),
-  sleepMock: vi.fn(),
-  validateResultRequestMock: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/amplitude/web-app-event', () => ({
-  trackWebAppEvent: mockTrackEvent,
-}))
-
-vi.mock('@/context/web-app-context', () => ({
-  useWebAppStore: (selector: (state: typeof mockWebAppState) => unknown) =>
-    selector(mockWebAppState),
-}))
-
-vi.mock('@/service/share', async () => {
-  const actual = await vi.importActual<typeof import('@/service/share')>('@/service/share')
-  return {
-    ...actual,
-    sendCompletionMessage: (...args: Parameters<typeof actual.sendCompletionMessage>) =>
-      sendCompletionMessageMock(...args),
-    sendWorkflowMessage: (...args: Parameters<typeof actual.sendWorkflowMessage>) =>
-      sendWorkflowMessageMock(...args),
-  }
-})
-
-vi.mock('@/utils', async () => {
-  const actual = await vi.importActual<typeof import('@/utils')>('@/utils')
-  return {
-    ...actual,
-    sleep: (...args: Parameters<typeof actual.sleep>) => sleepMock(...args),
-  }
-})
-
-vi.mock('../../result-request', () => ({
-  buildResultRequestData: (...args: unknown[]) => buildResultRequestDataMock(...args),
-  validateResultRequest: (...args: unknown[]) => validateResultRequestMock(...args),
-}))
-
-vi.mock('../../workflow-stream-handlers', () => ({
-  createWorkflowStreamHandlers: (...args: unknown[]) => createWorkflowStreamHandlersMock(...args),
-}))
-
-type RunStateHarness = {
-  state: {
-    completionRes: string
-    currentTaskId: string | null
-    messageId: string | null
-    workflowProcessData: ResultRunStateController['workflowProcessData']
-  }
-  runState: ResultRunStateController
-}
-
 type CompletionHandlers = {
-  getAbortController: (abortController: AbortController) => void
+  onData: NonNullable<IOtherOptions['onData']>
   onCompleted: () => void
-  onData: (
-    chunk: string,
-    isFirstMessage: boolean,
-    info: { messageId: string; taskId?: string },
-  ) => void
   onError: () => void
-  onMessageReplace: (messageReplace: { answer: string }) => void
+  onMessageReplace: (message: { answer: string }) => void
 }
 
-const createRunStateHarness = (): RunStateHarness => {
-  const state: RunStateHarness['state'] = {
-    completionRes: '',
-    currentTaskId: null,
-    messageId: null,
-    workflowProcessData: undefined,
-  }
-
-  const runState: ResultRunStateController = {
-    abortControllerRef: { current: null },
-    clearMoreLikeThis: vi.fn(),
-    completionRes: '',
-    controlClearMoreLikeThis: 0,
-    currentTaskId: null,
-    feedback: { rating: null },
-    getCompletionRes: vi.fn(() => state.completionRes),
-    getWorkflowProcessData: vi.fn(() => state.workflowProcessData),
-    handleFeedback: vi.fn(),
-    handleStop: vi.fn(),
-    isResponding: false,
-    isStopping: false,
-    messageId: null,
-    prepareForNewRun: vi.fn(() => {
-      state.completionRes = ''
-      state.currentTaskId = null
-      state.messageId = null
-      state.workflowProcessData = undefined
-      runState.completionRes = ''
-      runState.currentTaskId = null
-      runState.messageId = null
-      runState.workflowProcessData = undefined
-    }),
-    resetRunState: vi.fn(() => {
-      state.currentTaskId = null
-      runState.currentTaskId = null
-      runState.isStopping = false
-    }),
-    setCompletionRes: vi.fn((value: string) => {
-      state.completionRes = value
-      runState.completionRes = value
-    }),
-    setCurrentTaskId: vi.fn((value) => {
-      state.currentTaskId = typeof value === 'function' ? value(state.currentTaskId) : value
-      runState.currentTaskId = state.currentTaskId
-    }),
-    setIsStopping: vi.fn((value) => {
-      runState.isStopping = typeof value === 'function' ? value(runState.isStopping) : value
-    }),
-    setMessageId: vi.fn((value) => {
-      state.messageId = typeof value === 'function' ? value(state.messageId) : value
-      runState.messageId = state.messageId
-    }),
-    setRespondingFalse: vi.fn(() => {
-      runState.isResponding = false
-    }),
-    setRespondingTrue: vi.fn(() => {
-      runState.isResponding = true
-    }),
-    setWorkflowProcessData: vi.fn((value) => {
-      state.workflowProcessData = value
-      runState.workflowProcessData = value
-    }),
-    workflowProcessData: undefined,
-  }
-
-  return {
-    state,
-    runState,
-  }
-}
+const mocks = vi.hoisted(() => ({
+  completion: vi.fn(),
+  workflow: vi.fn(),
+  sleep: vi.fn(),
+  track: vi.fn(),
+}))
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  sendCompletionMessage: mocks.completion,
+  sendWorkflowMessage: mocks.workflow,
+}))
+vi.mock('@/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils')>()),
+  sleep: mocks.sleep,
+}))
+vi.mock('@/app/components/base/amplitude/web-app-event', () => ({ trackWebAppEvent: mocks.track }))
+vi.mock('@/context/web-app-context', () => ({
+  useWebAppStore: (selector: (state: { appInfo: { mode: string } }) => unknown) =>
+    selector({ appInfo: { mode: 'completion' } }),
+}))
 
 const promptConfig: PromptConfig = {
   prompt_template: 'template',
@@ -175,406 +51,197 @@ const visionConfig: VisionSettings = {
   transfer_methods: [TransferMethod.local_file],
 }
 
-type RenderSenderOptions = {
-  appSourceType?: AppSourceType
-  controlRetry?: number
-  controlSend?: number
-  inputs?: Record<string, ResultInputValue>
-  isPC?: boolean
-  isWorkflow?: boolean
-  runState?: ResultRunStateController
-  taskId?: number
-}
-
-const renderSender = ({
-  appSourceType = AppSourceTypeEnum.webApp,
-  controlRetry = 0,
-  controlSend = 0,
-  inputs = { name: 'Alice' },
-  isPC = true,
-  isWorkflow = false,
-  runState,
-  taskId,
-}: RenderSenderOptions = {}) => {
+function renderSender(
+  options: {
+    inputs?: Record<string, ResultInputValue>
+    isWorkflow?: boolean
+    appSourceType?: AppSourceType
+  } = {},
+) {
   const notify = vi.fn()
   const onCompleted = vi.fn()
   const onRunStart = vi.fn()
   const onShowRes = vi.fn()
-
+  const t = withSelectorKey((key: string) => key) as TextGenerationTranslate
+  const appSourceType = options.appSourceType ?? AppSourceType.webApp
+  const isWorkflow = options.isWorkflow ?? false
   const hook = renderHook(
-    (props: { controlRetry: number; controlSend: number }) =>
-      useResultSender({
+    ({ controlSend, controlRetry }) => {
+      const state = useResultRunState({ appId: 'app-1', appSourceType, isWorkflow, notify })
+      const sender = useResultSender({
         appId: 'app-1',
         appSourceType,
-        completionFiles: [],
-        controlRetry: props.controlRetry,
-        controlSend: props.controlSend,
-        inputs,
-        isCallBatchAPI: false,
-        isPC,
         isWorkflow,
         notify,
         onCompleted,
         onRunStart,
         onShowRes,
-        promptConfig,
-        runState: runState || createRunStateHarness().runState,
-        t: withSelectorKey((key: string) => key),
-        taskId,
-        visionConfig,
-      }),
-    {
-      initialProps: {
-        controlRetry,
         controlSend,
-      },
+        controlRetry,
+        taskId: 7,
+        isCallBatchAPI: false,
+        isPC: false,
+        completionFiles: [],
+        inputs: options.inputs ?? { name: 'Alice' },
+        promptConfig,
+        visionConfig,
+        runState: state,
+        t,
+      })
+      return { ...sender, state }
+    },
+    { initialProps: { controlSend: 0, controlRetry: 0 } },
+  )
+  return { ...hook, notify, onCompleted, onRunStart, onShowRes }
+}
+
+beforeEach(() => {
+  mocks.completion.mockResolvedValue(undefined)
+  mocks.workflow.mockResolvedValue(undefined)
+  mocks.sleep.mockImplementation(() => new Promise<void>(() => {}))
+})
+
+describe('result sending', () => {
+  it('rejects missing required inputs before sending or tracking a run', async () => {
+    const { result, notify } = renderSender({ inputs: {} })
+    await act(async () => {
+      expect(await result.current.handleSend()).toBe(false)
+    })
+    expect(notify).toHaveBeenCalledWith({
+      type: 'error',
+      message: 'errorMessage.valueOfVarRequired',
+    })
+    expect(mocks.completion).not.toHaveBeenCalled()
+    expect(mocks.track).not.toHaveBeenCalled()
+  })
+
+  it('sends current input once, blocks duplicate runs and applies stream replacement', async () => {
+    const { result, rerender, notify, onCompleted, onRunStart, onShowRes } = renderSender()
+    rerender({ controlSend: 1, controlRetry: 0 })
+    expect(mocks.completion).toHaveBeenCalledExactlyOnceWith(
+      { inputs: { name: 'Alice' } },
+      expect.any(Object),
+      AppSourceType.webApp,
+      'app-1',
+    )
+    expect(result.current.state.isResponding).toBe(true)
+    expect(onRunStart).toHaveBeenCalledOnce()
+    expect(onShowRes).toHaveBeenCalledOnce()
+    expect(mocks.track).toHaveBeenCalledWith('webapp_run', { app_mode: 'completion' })
+    await act(async () => {
+      expect(await result.current.handleSend()).toBe(false)
+    })
+    expect(mocks.completion).toHaveBeenCalledTimes(1)
+    expect(notify).toHaveBeenCalledWith({ type: 'info', message: 'errorMessage.waitForResponse' })
+
+    const callbacks = mocks.completion.mock.calls[0]![1] as CompletionHandlers
+    act(() => {
+      callbacks.onData!('Hello', false, { messageId: 'message-1', taskId: 'task-1' })
+      callbacks.onData!(' world', false, { messageId: 'message-1', taskId: 'task-1' })
+    })
+    expect(result.current.state.completionRes).toBe('Hello world')
+    expect(result.current.state.currentTaskId).toBe('task-1')
+    act(() => {
+      callbacks.onMessageReplace!({ answer: 'Replaced' })
+    })
+    act(() => {
+      callbacks.onCompleted!()
+    })
+    expect(result.current.state.completionRes).toBe('Replaced')
+    expect(result.current.state.messageId).toBe('message-1')
+    expect(result.current.state.currentTaskId).toBeNull()
+    expect(result.current.state.isResponding).toBe(false)
+    expect(onCompleted).toHaveBeenCalledExactlyOnceWith('Replaced', 7, true)
+  })
+
+  it.each([new Error('workflow failed'), 'workflow failed'])(
+    'reports workflow request failures and permits retry (%s)',
+    async (failure) => {
+      mocks.workflow.mockRejectedValueOnce(failure)
+      const { result, rerender, notify } = renderSender({
+        isWorkflow: true,
+        appSourceType: AppSourceType.installedApp,
+      })
+      rerender({ controlSend: 0, controlRetry: 1 })
+      await waitFor(() =>
+        expect(notify).toHaveBeenCalledWith({ type: 'error', message: 'workflow failed' }),
+      )
+      expect(result.current.state.isResponding).toBe(false)
+      expect(mocks.workflow).toHaveBeenCalledWith(
+        { inputs: { name: 'Alice' } },
+        expect.any(Object),
+        AppSourceType.installedApp,
+        'app-1',
+      )
+      expect(mocks.track).not.toHaveBeenCalled()
+      rerender({ controlSend: 0, controlRetry: 2 })
+      expect(mocks.workflow).toHaveBeenCalledTimes(2)
+      expect(result.current.state.isResponding).toBe(true)
     },
   )
 
-  return {
-    ...hook,
-    notify,
-    onCompleted,
-    onRunStart,
-    onShowRes,
-  }
-}
-
-describe('useResultSender', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockWebAppState.appInfo.mode = 'completion'
-    validateResultRequestMock.mockReturnValue({ canSend: true })
-    buildResultRequestDataMock.mockReturnValue({ inputs: { name: 'Alice' } })
-    createWorkflowStreamHandlersMock.mockReturnValue({ onWorkflowFinished: vi.fn() })
-    sendCompletionMessageMock.mockResolvedValue(undefined)
-    sendWorkflowMessageMock.mockResolvedValue(undefined)
-    sleepMock.mockImplementation(() => new Promise<void>(() => {}))
-  })
-
-  it('should reject sends while a response is already in progress', async () => {
-    const { runState } = createRunStateHarness()
-    runState.isResponding = true
-    const { result, notify } = renderSender({ runState })
-
-    await act(async () => {
-      expect(await result.current.handleSend()).toBe(false)
-    })
-
-    expect(notify).toHaveBeenCalledWith({
-      type: 'info',
-      message: 'errorMessage.waitForResponse',
-    })
-    expect(validateResultRequestMock).not.toHaveBeenCalled()
-    expect(sendCompletionMessageMock).not.toHaveBeenCalled()
-  })
-
-  it('should surface validation failures without building request payloads', async () => {
-    const { runState } = createRunStateHarness()
-    validateResultRequestMock.mockReturnValue({
-      canSend: false,
-      notification: {
-        type: 'error',
-        message: 'invalid',
-      },
-    })
-
-    const { result, notify } = renderSender({ runState })
-
-    await act(async () => {
-      expect(await result.current.handleSend()).toBe(false)
-    })
-
-    expect(notify).toHaveBeenCalledWith({
-      type: 'error',
-      message: 'invalid',
-    })
-    expect(buildResultRequestDataMock).not.toHaveBeenCalled()
-    expect(sendCompletionMessageMock).not.toHaveBeenCalled()
-    expect(mockTrackEvent).not.toHaveBeenCalled()
-  })
-
-  it('should send completion requests when controlSend changes and process callbacks', async () => {
-    const harness = createRunStateHarness()
-    let completionHandlers: CompletionHandlers | undefined
-
-    sendCompletionMessageMock.mockImplementation(async (_data, handlers) => {
-      completionHandlers = handlers as CompletionHandlers
-    })
-
-    const { rerender, onCompleted, onRunStart, onShowRes } = renderSender({
-      controlSend: 0,
-      isPC: false,
-      runState: harness.runState,
-      taskId: 7,
-    })
-
-    rerender({
-      controlRetry: 0,
-      controlSend: 1,
-    })
-
-    expect(validateResultRequestMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        inputs: { name: 'Alice' },
-        isCallBatchAPI: false,
-      }),
-    )
-    expect(buildResultRequestDataMock).toHaveBeenCalled()
-    expect(harness.runState.prepareForNewRun).toHaveBeenCalledTimes(1)
-    expect(harness.runState.setRespondingTrue).toHaveBeenCalledTimes(1)
-    expect(harness.runState.clearMoreLikeThis).toHaveBeenCalledTimes(1)
-    expect(onShowRes).toHaveBeenCalledTimes(1)
-    expect(onRunStart).toHaveBeenCalledTimes(1)
-    expect(mockTrackEvent).toHaveBeenCalledWith('webapp_run', {
-      app_mode: 'completion',
-    })
-    expect(sendCompletionMessageMock).toHaveBeenCalledWith(
-      { inputs: { name: 'Alice' } },
-      expect.objectContaining({
-        onCompleted: expect.any(Function),
-        onData: expect.any(Function),
-      }),
-      AppSourceTypeEnum.webApp,
-      'app-1',
-    )
-
-    const abortController = {} as AbortController
-    expect(completionHandlers).toBeDefined()
-    completionHandlers!.getAbortController(abortController)
-    expect(harness.runState.abortControllerRef.current).toBe(abortController)
-
-    await act(async () => {
-      completionHandlers!.onData('Hello', false, {
-        messageId: 'message-1',
-        taskId: 'task-1',
-      })
-    })
-
-    expect(harness.runState.setCurrentTaskId).toHaveBeenCalled()
-    expect(harness.runState.currentTaskId).toBe('task-1')
-
-    await act(async () => {
-      completionHandlers!.onMessageReplace({ answer: 'Replaced' })
-      completionHandlers!.onCompleted()
-    })
-
-    expect(harness.runState.setCompletionRes).toHaveBeenLastCalledWith('Replaced')
-    expect(harness.runState.setRespondingFalse).toHaveBeenCalled()
-    expect(harness.runState.resetRunState).toHaveBeenCalled()
-    expect(harness.runState.setMessageId).toHaveBeenCalledWith('message-1')
-    expect(onCompleted).toHaveBeenCalledWith('Replaced', 7, true)
-  })
-
-  it('should trigger workflow sends on retry and report workflow request failures', async () => {
-    const harness = createRunStateHarness()
-    mockWebAppState.appInfo.mode = 'workflow'
-    sendWorkflowMessageMock.mockRejectedValue(new Error('workflow failed'))
-
-    const { rerender, notify } = renderSender({
-      controlRetry: 0,
-      isWorkflow: true,
-      runState: harness.runState,
-    })
-
-    rerender({
-      controlRetry: 2,
-      controlSend: 0,
-    })
-
-    await waitFor(() => {
-      expect(createWorkflowStreamHandlersMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          getCompletionRes: harness.runState.getCompletionRes,
-          isPublicAPI: true,
-          resetRunState: harness.runState.resetRunState,
-          setWorkflowProcessData: harness.runState.setWorkflowProcessData,
-        }),
+  it.each(['onCompleted', 'onError'] as const)(
+    'completes a timed-out request only once even when %s arrives late',
+    async (callback) => {
+      let timeout!: () => void
+      mocks.sleep.mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            timeout = resolve
+          }),
       )
-      expect(sendWorkflowMessageMock).toHaveBeenCalledWith(
-        { inputs: { name: 'Alice' } },
-        expect.any(Object),
-        AppSourceTypeEnum.webApp,
-        'app-1',
+      const { result, notify, onCompleted } = renderSender()
+      await act(async () => {
+        await result.current.handleSend()
+      })
+      await act(async () => {
+        timeout()
+      })
+      expect(result.current.state.isResponding).toBe(false)
+      expect(onCompleted).toHaveBeenCalledExactlyOnceWith('', 7, false)
+      const callbacks = mocks.completion.mock.calls[0]![1] as CompletionHandlers
+      act(() => {
+        callbacks[callback]!()
+      })
+      expect(notify).toHaveBeenCalledWith({
+        type: 'warning',
+        message: 'warningMessage.timeoutExceeded',
+      })
+      expect(onCompleted).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  it.each(['onCompleted', 'onError'] as const)(
+    'does not time out a stream that ended through %s',
+    async (callback) => {
+      let timeout!: () => void
+      mocks.sleep.mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            timeout = resolve
+          }),
       )
-    })
-
-    await waitFor(() => {
-      expect(harness.runState.setRespondingFalse).toHaveBeenCalled()
-      expect(harness.runState.resetRunState).toHaveBeenCalled()
-      expect(notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow failed',
+      const { result, onCompleted } = renderSender()
+      await act(async () => {
+        await result.current.handleSend()
       })
-    })
-    expect(harness.runState.clearMoreLikeThis).not.toHaveBeenCalled()
-    expect(mockTrackEvent).toHaveBeenCalledWith('webapp_run', {
-      app_mode: 'workflow',
-    })
-  })
-
-  it('should configure workflow handlers for installed apps as non-public', async () => {
-    const harness = createRunStateHarness()
-
-    const { result } = renderSender({
-      appSourceType: AppSourceTypeEnum.installedApp,
-      isWorkflow: true,
-      runState: harness.runState,
-    })
-
-    await act(async () => {
-      expect(await result.current.handleSend()).toBe(true)
-    })
-
-    expect(createWorkflowStreamHandlersMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        isPublicAPI: false,
-      }),
-    )
-    expect(sendWorkflowMessageMock).toHaveBeenCalledWith(
-      { inputs: { name: 'Alice' } },
-      expect.any(Object),
-      AppSourceTypeEnum.installedApp,
-      'app-1',
-    )
-    expect(mockTrackEvent).not.toHaveBeenCalled()
-  })
-
-  it('should stringify non-Error workflow failures', async () => {
-    const harness = createRunStateHarness()
-    sendWorkflowMessageMock.mockRejectedValue('workflow failed')
-
-    const { result, notify } = renderSender({
-      isWorkflow: true,
-      runState: harness.runState,
-    })
-
-    await act(async () => {
-      await result.current.handleSend()
-    })
-
-    await waitFor(() => {
-      expect(notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'workflow failed',
+      const callbacks = mocks.completion.mock.calls[0]![1] as CompletionHandlers
+      act(() => {
+        callbacks.onData!('Partial answer', false, { messageId: 'message-1', taskId: '   ' })
       })
-    })
-  })
-
-  it('should timeout unfinished completion requests', async () => {
-    const harness = createRunStateHarness()
-    sleepMock.mockResolvedValue(undefined)
-
-    const { result, onCompleted } = renderSender({
-      runState: harness.runState,
-      taskId: 9,
-    })
-
-    await act(async () => {
-      expect(await result.current.handleSend()).toBe(true)
-    })
-
-    await waitFor(() => {
-      expect(harness.runState.setRespondingFalse).toHaveBeenCalled()
-      expect(harness.runState.resetRunState).toHaveBeenCalled()
-      expect(onCompleted).toHaveBeenCalledWith('', 9, false)
-    })
-  })
-
-  it('should ignore empty task ids and surface timeout warnings from stream callbacks', async () => {
-    const harness = createRunStateHarness()
-    let completionHandlers: CompletionHandlers | undefined
-
-    sleepMock.mockResolvedValue(undefined)
-    sendCompletionMessageMock.mockImplementation(async (_data, handlers) => {
-      completionHandlers = handlers as CompletionHandlers
-    })
-
-    const { result, notify, onCompleted } = renderSender({
-      runState: harness.runState,
-      taskId: 11,
-    })
-
-    await act(async () => {
-      await result.current.handleSend()
-    })
-
-    await act(async () => {
-      completionHandlers!.onData('Hello', false, {
-        messageId: 'message-2',
-        taskId: '   ',
+      expect(result.current.state.currentTaskId).toBeNull()
+      act(() => {
+        callbacks[callback]!()
       })
-      completionHandlers!.onCompleted()
-      completionHandlers!.onError()
-    })
-
-    expect(harness.runState.currentTaskId).toBeNull()
-    expect(notify).toHaveBeenNthCalledWith(1, {
-      type: 'warning',
-      message: 'warningMessage.timeoutExceeded',
-    })
-    expect(notify).toHaveBeenNthCalledWith(2, {
-      type: 'warning',
-      message: 'warningMessage.timeoutExceeded',
-    })
-    expect(onCompleted).toHaveBeenCalledWith('', 11, false)
-  })
-
-  it('should avoid timeout fallback after a completion response has already ended', async () => {
-    const harness = createRunStateHarness()
-    let resolveSleep!: () => void
-    let completionHandlers: CompletionHandlers | undefined
-
-    sleepMock.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveSleep = resolve
-        }),
-    )
-    sendCompletionMessageMock.mockImplementation(async (_data, handlers) => {
-      completionHandlers = handlers as CompletionHandlers
-    })
-
-    const { result, onCompleted } = renderSender({
-      runState: harness.runState,
-      taskId: 12,
-    })
-
-    await act(async () => {
-      await result.current.handleSend()
-    })
-
-    await act(async () => {
-      harness.runState.setCompletionRes('Done')
-      completionHandlers!.onCompleted()
-      resolveSleep()
-      await Promise.resolve()
-    })
-
-    expect(onCompleted).toHaveBeenCalledWith('Done', 12, true)
-    expect(onCompleted).toHaveBeenCalledTimes(1)
-  })
-
-  it('should handle non-timeout stream errors as failed completions', async () => {
-    const harness = createRunStateHarness()
-    let completionHandlers: CompletionHandlers | undefined
-
-    sendCompletionMessageMock.mockImplementation(async (_data, handlers) => {
-      completionHandlers = handlers as CompletionHandlers
-    })
-
-    const { result, onCompleted } = renderSender({
-      runState: harness.runState,
-      taskId: 13,
-    })
-
-    await act(async () => {
-      await result.current.handleSend()
-      completionHandlers!.onError()
-    })
-
-    expect(harness.runState.setRespondingFalse).toHaveBeenCalled()
-    expect(harness.runState.resetRunState).toHaveBeenCalled()
-    expect(onCompleted).toHaveBeenCalledWith('', 13, false)
-  })
+      await act(async () => {
+        timeout()
+      })
+      expect(onCompleted).toHaveBeenCalledExactlyOnceWith(
+        'Partial answer',
+        7,
+        callback === 'onCompleted',
+      )
+      expect(result.current.state.isResponding).toBe(false)
+    },
+  )
 })

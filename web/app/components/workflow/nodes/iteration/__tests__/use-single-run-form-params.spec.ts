@@ -1,17 +1,12 @@
 import type { InputVar, Node } from '../../../types'
 import type { IterationNodeType } from '../types'
-import type { NodeTracing } from '@/types/workflow'
 import { act, renderHook } from '@testing-library/react'
+import { useState } from 'react'
 import { BlockEnum, ErrorHandleMode, InputVarType, VarType } from '@/app/components/workflow/types'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
 const mockUseIsNodeInIteration = vi.hoisted(() => vi.fn())
 const mockUseWorkflow = vi.hoisted(() => vi.fn())
-const mockFormatTracing = vi.hoisted(() => vi.fn())
-const mockGetNodeUsedVars = vi.hoisted(() => vi.fn())
-const mockGetNodeUsedVarPassToServerKey = vi.hoisted(() => vi.fn())
-const mockGetNodeInfoById = vi.hoisted(() => vi.fn())
-const mockIsSystemVar = vi.hoisted(() => vi.fn())
 
 vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
@@ -23,18 +18,6 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/workflow/run/utils/format-log', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockFormatTracing(...args),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', () => ({
-  getNodeUsedVars: (...args: unknown[]) => mockGetNodeUsedVars(...args),
-  getNodeUsedVarPassToServerKey: (...args: unknown[]) => mockGetNodeUsedVarPassToServerKey(...args),
-  getNodeInfoById: (...args: unknown[]) => mockGetNodeInfoById(...args),
-  isSystemVar: (...args: unknown[]) => mockIsSystemVar(...args),
-}))
-
 const createInputVar = (variable: string): InputVar => ({
   type: InputVarType.textInput,
   label: variable,
@@ -42,7 +25,7 @@ const createInputVar = (variable: string): InputVar => ({
   required: false,
 })
 
-const createNode = (id: string, title: string, type = BlockEnum.Tool): Node =>
+const createNode = (id: string, title: string, type: BlockEnum = BlockEnum.Tool): Node =>
   ({
     id,
     position: { x: 0, y: 0 },
@@ -50,6 +33,14 @@ const createNode = (id: string, title: string, type = BlockEnum.Tool): Node =>
       title,
       type,
       desc: '',
+      tool_parameters:
+        id === 'tool-a'
+          ? {
+              answer: { type: 'variable', value: ['start-node', 'answer'] },
+              inner: { type: 'variable', value: ['inner-node', 'secret'] },
+              self: { type: 'variable', value: ['iteration-node', 'item'] },
+            }
+          : {},
     },
   }) as Node
 
@@ -84,21 +75,6 @@ describe('iteration/use-single-run-form-params', () => {
       ],
       getBeforeNodesInSameBranch: () => [createNode('start-node', 'Start Node', BlockEnum.Start)],
     })
-    mockGetNodeUsedVars.mockImplementation((node: Node) => {
-      if (node.id === 'tool-a')
-        return [
-          ['start-node', 'answer'],
-          ['inner-node', 'secret'],
-          ['iteration-node', 'item'],
-        ]
-      return []
-    })
-    mockGetNodeUsedVarPassToServerKey.mockReturnValue('passed_key')
-    mockGetNodeInfoById.mockImplementation((nodes: Node[], id: string) =>
-      nodes.find((node) => node.id === id),
-    )
-    mockIsSystemVar.mockReturnValue(false)
-    mockFormatTracing.mockReturnValue([{ id: 'formatted-node' }])
   })
 
   it('should build single-run forms from external vars and keep iterator state in a dedicated form', () => {
@@ -137,43 +113,45 @@ describe('iteration/use-single-run-form-params', () => {
     })
     expect(result.current.allVarObject).toEqual({
       'start-node.answer@@@tool-a@@@0': {
-        inSingleRunPassedKey: 'passed_key',
+        inSingleRunPassedKey: '#start-node.answer#',
       },
     })
-    expect(result.current.nodeInfo).toEqual({ id: 'formatted-node' })
+    expect(result.current.nodeInfo).toBeUndefined()
   })
 
-  it('should forward form updates and expose iterator dependencies', () => {
-    const setRunInputData = vi.fn()
-
-    const { result } = renderHook(() =>
-      useSingleRunFormParams({
+  it('preserves edited external values when the iterator form changes', () => {
+    const { result } = renderHook(() => {
+      const [runInputData, setRunInputData] = useState<Record<string, unknown>>({
+        query: 'old',
+        'iteration-node.input_selector': ['source-node', 'records'],
+      })
+      return useSingleRunFormParams({
         id: 'iteration-node',
-        payload: createPayload({
-          iterator_selector: ['source-node', 'records'],
-        }),
-        runInputData: {
-          query: 'old',
-          'iteration-node.input_selector': ['source-node', 'records'],
-        },
-        runInputDataRef: { current: {} },
+        payload: createPayload({ iterator_selector: ['source-node', 'records'] }),
+        runInputData,
+        runInputDataRef: { current: runInputData },
         getInputVars: vi.fn(),
         setRunInputData,
-        toVarInputs: vi.fn(() => []),
-        iterationRunResult: [] as NodeTracing[],
-      }),
-    )
-
-    act(() => {
-      result.current.forms[0]!.onChange({ query: 'new' })
-      result.current.forms[1]!.onChange({
-        'iteration-node.input_selector': ['source-node', 'next'],
+        toVarInputs: () => [],
+        iterationRunResult: [],
       })
     })
-
-    expect(setRunInputData).toHaveBeenNthCalledWith(1, { query: 'new' })
-    expect(setRunInputData).toHaveBeenNthCalledWith(2, {
-      query: 'old',
+    act(() =>
+      result.current.forms[0]!.onChange({
+        ...result.current.forms[0]!.values,
+        query: 'new',
+      }),
+    )
+    act(() =>
+      result.current.forms[1]!.onChange({
+        'iteration-node.input_selector': ['source-node', 'next'],
+      }),
+    )
+    expect(result.current.forms[0]!.values).toEqual({
+      query: 'new',
+      'iteration-node.input_selector': ['source-node', 'next'],
+    })
+    expect(result.current.forms[1]!.values).toEqual({
       'iteration-node.input_selector': ['source-node', 'next'],
     })
     expect(result.current.getDependentVars()).toEqual([['source-node', 'records']])

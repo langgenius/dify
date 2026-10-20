@@ -28,10 +28,7 @@ from controllers.web.human_input_file_upload import (
     InvalidUploadTokenForbiddenError,
     InvalidUploadTokenUnauthorizedError,
 )
-from extensions.storage.storage_type import StorageType
 from models import Account
-from models.account import AccountStatus
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from services.errors.file import (
     BlockedFileExtensionError as BlockedFileExtensionServiceError,
@@ -42,6 +39,7 @@ from services.human_input_file_upload_service import (
     HumanInputUploadContext,
     InvalidUploadTokenError,
 )
+from services.human_input_service import FormExpiredError, FormSubmittedError
 from services.remote_file_service import (
     RemoteFileAccessDeniedError as RemoteFileAccessDeniedServiceError,
 )
@@ -53,6 +51,8 @@ from services.remote_file_service import RemoteFileNotFoundError as RemoteFileNo
 from services.remote_file_service import RemoteFileUnavailableError as RemoteFileUnavailableServiceError
 from services.remote_file_service import RemoteFileUploadResult
 from services.remote_file_service import RemoteFileUrlBlockedError as RemoteFileUrlBlockedServiceError
+from tests.unit_tests.controllers.error_body import raised_error
+from tests.unit_tests.model_factories import make_account, make_upload_file
 
 
 @pytest.fixture
@@ -63,9 +63,7 @@ def app() -> Flask:
 
 
 def _account() -> Account:
-    account = Account(name="Form Owner", email="owner@example.com", status=AccountStatus.ACTIVE)
-    account.id = "owner-1"
-    return account
+    return make_account(account_id="owner-1", name="Form Owner", email="owner@example.com")
 
 
 def _upload_context() -> HumanInputUploadContext:
@@ -80,22 +78,14 @@ def _upload_context() -> HumanInputUploadContext:
 
 
 def _upload_file() -> UploadFile:
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
+    return make_upload_file(
+        file_id="file-1",
         key="upload/sample.txt",
         name="sample.txt",
         size=7,
-        extension="txt",
-        mime_type="text/plain",
-        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="end-user-1",
-        created_at=datetime(2024, 1, 1),
-        used=False,
         source_url="signed-source-url",
     )
-    upload_file.id = "file-1"
-    return upload_file
 
 
 def _remote_upload_file() -> RemoteFileUploadResult:
@@ -111,7 +101,22 @@ def _remote_upload_file() -> RemoteFileUploadResult:
     )
 
 
-def _patch_upload_service(monkeypatch: pytest.MonkeyPatch, service: MagicMock) -> None:
+class _FormStateRejectingUploads:
+    """An upload service whose token check fails with one form-state error; counts the uploads that follow."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+        self.uploads = 0
+
+    def validate_upload_token(self, _upload_token: str) -> HumanInputUploadContext:
+        raise self.error
+
+    def upload_local_file(self, **_: object) -> UploadFile:
+        self.uploads += 1
+        raise AssertionError("upload must not run after the token check failed")
+
+
+def _patch_upload_service(monkeypatch: pytest.MonkeyPatch, service: object) -> None:
     monkeypatch.setattr(
         upload_module,
         "application_services",
@@ -170,6 +175,34 @@ def test_local_upload_delegates_to_human_input_upload_service(monkeypatch: pytes
         content=b"content",
         mimetype="text/plain",
     )
+
+
+@pytest.mark.parametrize(
+    ("error", "code"),
+    [
+        (FormSubmittedError("form-1"), "human_input_form_submitted"),
+        (FormExpiredError("form-1"), "human_input_form_expired"),
+    ],
+)
+def test_upload_reports_the_form_state_before_touching_files(
+    monkeypatch: pytest.MonkeyPatch, app: Flask, error: Exception, code: str
+) -> None:
+    # The token service re-checks the form on every upload; a submitted or expired form answers 412.
+    service = _FormStateRejectingUploads(error)
+    _patch_upload_service(monkeypatch, service)
+
+    with app.test_request_context(
+        "/api/human-input-forms/files",
+        method="POST",
+        headers={"Authorization": "bearer hitl_upload_token-1"},
+        data={"file": (BytesIO(b"content"), "sample.txt")},
+        content_type="multipart/form-data",
+    ):
+        body, status = raised_error(HumanInputFileUploadApi().post)
+
+    assert status == 412
+    assert body["code"] == code
+    assert service.uploads == 0
 
 
 def test_local_upload_missing_file_raises_after_valid_token(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:

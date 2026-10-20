@@ -1,6 +1,7 @@
+import logging
 import ssl
 from datetime import timedelta
-from typing import Any
+from typing import Any, NotRequired
 
 import pytz  # type: ignore[import-untyped]
 from celery import Celery, Task
@@ -13,6 +14,8 @@ from dify_app import DifyApp
 from enums import DeploymentEdition
 from extensions.redis_names import normalize_redis_key_prefix
 from extensions.workflow_warm_shutdown import setup_workflow_warm_shutdown_handler
+
+logger = logging.getLogger(__name__)
 
 
 class _CelerySentinelKwargsDict(TypedDict):
@@ -36,6 +39,7 @@ class CelerySSLOptionsDict(TypedDict):
 class CeleryBeatScheduleEntry(TypedDict):
     task: str
     schedule: crontab | timedelta
+    options: NotRequired[dict[str, Any]]
 
 
 def _enqueue_initial_community_telemetry_heartbeat(sender: Any, **_: Any) -> None:
@@ -166,22 +170,38 @@ def init_app(app: DifyApp) -> Celery:
     setup_workflow_warm_shutdown_handler()
 
     imports = [
+        "schedule.collect_agent_sandbox_usage",  # optional background provider accounting
         "tasks.async_workflow_tasks",  # trigger workers
         "tasks.collect_agent_resources_task",  # retired Agent resource collection
         "tasks.trigger_processing_tasks",  # async trigger processing
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
+        "tasks.rag_pipeline.rag_pipeline_run_task",  # regular RAG pipeline execution
+        "tasks.rag_pipeline.priority_rag_pipeline_run_task",  # priority RAG pipeline execution
         "tasks.initialize_created_app_rbac_access_task",  # app access initialization
         "tasks.install_default_plugins_task",  # tenant default plugin installation
-        "tasks.new_agent_beta_task",  # New Agent Beta eligibility checks
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
-        "tasks.app_generate.resume_agent_app_task",  # ENG-635: Agent v2 chat ask_human resume
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
+        "tasks.workflow_run_archive_deletion_tasks",  # permanent monthly archive deletion
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    if dify_config.AGENT_SANDBOX_METERING_ENABLED:
+        try:
+            interval = int(dify_config.AGENT_SANDBOX_METERING_INTERVAL_SECONDS)
+            if interval < 1:
+                raise ValueError("collection interval must be positive")
+            collection_schedule = timedelta(seconds=interval)
+        except (ValueError, OverflowError):
+            logger.warning("Skipping sandbox usage schedule: interval must be a valid positive number of seconds")
+        else:
+            beat_schedule["collect_agent_sandbox_usage"] = {
+                "task": "schedule.collect_agent_sandbox_usage.collect_agent_sandbox_usage",
+                "schedule": collection_schedule,
+                "options": {"expires": interval},
+            }
     if dify_config.ENABLE_CONVERSATION_CLEANUP_TASK:
         imports.append("tasks.delete_conversation_task")
         beat_schedule["conversation_cleanup_sweeper"] = {
@@ -237,8 +257,7 @@ def init_app(app: DifyApp) -> Celery:
             "schedule": timedelta(minutes=dify_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL),
         }
     if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
-        imports.append("schedule.check_upgradable_plugin_task")
-        imports.append("tasks.process_tenant_plugin_autoupgrade_check_task")
+        imports.extend(("schedule.check_upgradable_plugin_task", "tasks.process_tenant_plugin_autoupgrade_check_task"))
         beat_schedule["check_upgradable_plugin_task"] = {
             "task": "schedule.check_upgradable_plugin_task.check_upgradable_plugin_task",
             "schedule": crontab(minute="*/15"),

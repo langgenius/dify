@@ -7,7 +7,7 @@ import {
   zGetNotificationResponse,
   zPostNotificationDismissBody,
   zPostNotificationDismissResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Mark a notification as dismissed for the current user.
@@ -41,7 +41,7 @@ export const get = oc
     path: '/notification',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetNotificationQuery.optional() }))
+  .input(z.object({ query: zGetNotificationQuery.optional() }).optional())
   .output(zGetNotificationResponse)
 
 export const notification = {

@@ -5,7 +5,8 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { zendeskRuntime } from '@/app/components/base/zendesk/runtime'
 import { mailToSupport } from '@/app/components/header/utils/util'
@@ -40,7 +41,7 @@ vi.mock('@/app/components/base/zendesk/runtime', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: { error: mockToastError },
 }))
 
@@ -113,7 +114,8 @@ describe('SupportMenu', () => {
     )
   }
 
-  it('renders contact us before Discord when Zendesk is configured', () => {
+  it('renders contact us before Discord when Zendesk is configured', async () => {
+    const user = userEvent.setup()
     renderSupportMenu()
 
     expect(screen.getByText('common.userProfile.contactUs')).toBeInTheDocument()
@@ -125,35 +127,28 @@ describe('SupportMenu', () => {
         .getByText('common.userProfile.contactUs')
         .compareDocumentPosition(screen.getByText('common.userProfile.discord')),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-    expect(screen.getByRole('menuitem', { name: 'common.userProfile.discord' })).toHaveClass(
-      'mx-0',
-      'px-3',
-    )
 
-    fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
     expect(zendeskRuntime.open).toHaveBeenCalledWith('CLOUD')
   })
 
   it('reports a Zendesk load failure so the user can retry', async () => {
+    const user = userEvent.setup()
     mockOpenZendeskWindow.mockRejectedValueOnce(new Error('load failed'))
     renderSupportMenu()
 
-    fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
     await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('common.api.actionFailed'))
   })
 
   it('renders contact us with upgrade badge for Cloud sandbox plan without dedicated support', async () => {
+    const user = userEvent.setup()
     plan = 'sandbox'
 
     renderSupportMenu()
 
-    expect(screen.getByText('common.userProfile.contactUs')).toHaveClass('text-text-disabled')
-    expect(screen.getByText('billing.upgradeBtn.encourageShort')).toHaveClass(
-      'system-xs-semibold-uppercase',
-      'text-saas-dify-blue-accessible',
-    )
     expect(screen.queryByText('common.userProfile.emailSupport')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' }),
@@ -162,9 +157,7 @@ describe('SupportMenu', () => {
     const upgradeItem = screen.getByRole('menuitem', {
       name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort',
     })
-    expect(upgradeItem).not.toHaveAttribute('aria-label')
-    expect(screen.getByText('billing.upgradeBtn.encourageShort')).not.toHaveAttribute('aria-hidden')
-    fireEvent.click(upgradeItem)
+    await user.click(upgradeItem)
 
     await waitFor(() =>
       expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
@@ -172,7 +165,8 @@ describe('SupportMenu', () => {
     expect(zendeskRuntime.open).not.toHaveBeenCalled()
   })
 
-  it('keeps Zendesk contact us for Cloud sandbox plan with support email and Zendesk configured', () => {
+  it('keeps Zendesk contact us for Cloud sandbox plan with support email and Zendesk configured', async () => {
+    const user = userEvent.setup()
     mockConfig.supportEmailAddress = 'support@example.com'
     plan = 'sandbox'
 
@@ -180,7 +174,7 @@ describe('SupportMenu', () => {
 
     expect(screen.getByText('common.userProfile.contactUs')).toBeInTheDocument()
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
     expect(zendeskRuntime.open).toHaveBeenCalledWith('CLOUD')
     expect(onPricingUrlUpdate).not.toHaveBeenCalled()

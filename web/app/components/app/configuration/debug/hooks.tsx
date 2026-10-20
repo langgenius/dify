@@ -110,7 +110,6 @@ export const useConfigFromDebugContext = () => {
       number_limits: visionConfig.number_limits,
     },
     annotation_reply: annotationConfig,
-    system_parameters: modelConfig.system_parameters,
 
     supportAnnotation: true,
     appId,

@@ -5,24 +5,31 @@ to attribute the created app; workspace/membership validation is done by the
 Go admin-api caller.
 """
 
+from http import HTTPStatus
 from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, ValidationError, field_validator
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field, RootModel, ValidationError, field_validator
 
-from controllers.common.schema import query_params_from_model, register_schema_model
-from controllers.console.wraps import model_validate, setup_required
+from controllers.common.fields import SimpleMessageResponse
+from controllers.common.schema import (
+    query_params_from_model,
+    register_response_schema_model,
+    register_response_schema_models,
+    register_schema_model,
+)
+from controllers.console.wraps import setup_required, validate_request
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
-from extensions.ext_database import db
-from models import Account, App
-from models.account import AccountStatus
-from services.app_dsl_service import AppDslService
-from services.entities.dsl_entities import ImportMode, ImportStatus
-from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from core.logging.context import get_request_id, get_trace_id
+from extensions.ext_application_services import application_services
+from fields.app_fields import AppExportResponse
+from fields.base import ResponseModel
+from libs.helper import dump_response
+from services.entities.app_entities import AppExportOptions
+from services.entities.dsl_entities import AppImportParams, Import, ImportMode, ImportStatus
+from services.errors.app import AppDiscoveryNotFoundError, IsDraftWorkflowError, WorkflowNotFoundError
 
 
 class InnerAppDSLImportPayload(BaseModel):
@@ -44,7 +51,20 @@ class EnterpriseAppDSLExportQuery(BaseModel):
         return bool(value)
 
 
+class EnterpriseAppDSLWorkflowErrorResponse(ResponseModel):
+    code: str
+    message: str
+    status: int
+
+
+class EnterpriseAppDSLExportNotFoundResponse(RootModel[SimpleMessageResponse | EnterpriseAppDSLWorkflowErrorResponse]):
+    """Export 404: either an app-level message or a workflow-version error."""
+
+
 register_schema_model(inner_api_ns, InnerAppDSLImportPayload)
+register_response_schema_models(inner_api_ns, Import, AppExportResponse, EnterpriseAppDSLWorkflowErrorResponse)
+register_response_schema_model(inner_api_ns, SimpleMessageResponse)
+register_response_schema_model(inner_api_ns, EnterpriseAppDSLExportNotFoundResponse)
 
 
 @inner_api_ns.route("/enterprise/workspaces/<string:workspace_id>/dsl/import")
@@ -53,42 +73,45 @@ class EnterpriseAppDSLImport(Resource):
     @enterprise_inner_api_only
     @inner_api_ns.doc("enterprise_app_dsl_import")
     @inner_api_ns.expect(inner_api_ns.models[InnerAppDSLImportPayload.__name__])
-    @inner_api_ns.doc(
-        responses={
-            200: "Import completed",
-            202: "Import pending (DSL version mismatch requires confirmation)",
-            400: "Import failed (business error)",
-            404: "Creator account not found or inactive",
-        }
+    @inner_api_ns.response(HTTPStatus.OK, "Import completed", inner_api_ns.models[Import.__name__])
+    @inner_api_ns.response(
+        HTTPStatus.ACCEPTED,
+        "Import pending (DSL version mismatch requires confirmation)",
+        inner_api_ns.models[Import.__name__],
     )
-    @model_validate(InnerAppDSLImportPayload)
-    def post(self, args: InnerAppDSLImportPayload, workspace_id: str):
+    @inner_api_ns.response(
+        HTTPStatus.BAD_REQUEST, "Import failed (business error)", inner_api_ns.models[Import.__name__]
+    )
+    @inner_api_ns.response(
+        HTTPStatus.NOT_FOUND,
+        "Creator account not found or inactive",
+        inner_api_ns.models[SimpleMessageResponse.__name__],
+    )
+    def post(self, workspace_id: str):
         """Import a DSL into a workspace on behalf of a specified creator."""
-
-        account = _get_active_account(args.creator_email)
-        if account is None:
-            return {"message": f"account '{args.creator_email}' not found or inactive"}, 404
-
-        with Session(db.engine, expire_on_commit=False) as session:
-            account.set_tenant_id_with_session(workspace_id, session=session)
-            dsl_service = AppDslService(session)
-            result = dsl_service.import_app(
-                account=account,
-                import_mode=ImportMode.YAML_CONTENT,
+        args = validate_request(InnerAppDSLImportPayload)
+        result = application_services().apps.imports.import_as_creator(
+            workspace_id=workspace_id,
+            creator_email=args.creator_email,
+            params=AppImportParams(
+                mode=ImportMode.YAML_CONTENT,
                 yaml_content=args.yaml_content,
                 name=args.name,
                 description=args.description,
-            )
-            if result.status == ImportStatus.FAILED:
-                session.rollback()
-            else:
-                session.commit()
+            ),
+            request_id=get_request_id(),
+            trace_id=get_trace_id(),
+        )
+        if result is None:
+            return dump_response(
+                SimpleMessageResponse, {"message": f"account '{args.creator_email}' not found or inactive"}
+            ), HTTPStatus.NOT_FOUND
 
         if result.status == ImportStatus.FAILED:
-            return result.model_dump(mode="json"), 400
+            return dump_response(Import, result), HTTPStatus.BAD_REQUEST
         if result.status == ImportStatus.PENDING:
-            return result.model_dump(mode="json"), 202
-        return result.model_dump(mode="json"), 200
+            return dump_response(Import, result), HTTPStatus.ACCEPTED
+        return dump_response(Import, result), HTTPStatus.OK
 
 
 @inner_api_ns.route("/enterprise/apps/<string:app_id>/dsl")
@@ -98,57 +121,53 @@ class EnterpriseAppDSLExport(Resource):
     @inner_api_ns.doc(
         "enterprise_app_dsl_export",
         params=query_params_from_model(EnterpriseAppDSLExportQuery),
-        responses={
-            200: "Export successful",
-            400: "Invalid workflow ID or unpublished workflow version",
-            404: "App or workflow version not found",
-        },
+    )
+    @inner_api_ns.response(200, "Export successful", inner_api_ns.models[AppExportResponse.__name__])
+    @inner_api_ns.response(
+        400,
+        "Invalid workflow ID or unpublished workflow version",
+        inner_api_ns.models[EnterpriseAppDSLWorkflowErrorResponse.__name__],
+    )
+    @inner_api_ns.response(
+        404,
+        "App or workflow version not found",
+        inner_api_ns.models[EnterpriseAppDSLExportNotFoundResponse.__name__],
     )
     def get(self, app_id: str):
         """Export an app's DSL as YAML."""
         try:
             query = EnterpriseAppDSLExportQuery.model_validate(request.args.to_dict(flat=True))
         except ValidationError:
-            return {
-                "code": "invalid_workflow_id",
-                "message": "workflow_id must be a valid UUID",
-                "status": 400,
-            }, 400
+            return dump_response(
+                EnterpriseAppDSLWorkflowErrorResponse,
+                {
+                    "code": "invalid_workflow_id",
+                    "message": "workflow_id must be a valid UUID",
+                    "status": HTTPStatus.BAD_REQUEST,
+                },
+            ), HTTPStatus.BAD_REQUEST
 
         workflow_id = str(query.workflow_id) if query.workflow_id else None
 
-        app_model = db.session.get(App, app_id)
-        if not app_model:
-            return {"message": "app not found"}, 404
-
-        if not workflow_id:
-            data = AppDslService.export_dsl(
-                app_model=app_model,
-                session=db.session(),
-                include_secret=query.include_secret,
+        try:
+            data = application_services().apps.exports.export_for_inner(
+                app_id, AppExportOptions(include_secret=query.include_secret, workflow_id=workflow_id)
             )
-        else:
-            try:
-                data = AppDslService.export_dsl(
-                    app_model=app_model,
-                    session=db.session(),
-                    include_secret=query.include_secret,
-                    workflow_id=workflow_id,
-                )
-            except WorkflowNotFoundError as exc:
-                return {"code": "workflow_version_not_found", "message": str(exc), "status": 404}, 404
-            except IsDraftWorkflowError as exc:
-                return {"code": "workflow_version_not_published", "message": str(exc), "status": 400}, 400
+        except AppDiscoveryNotFoundError:
+            return dump_response(SimpleMessageResponse, {"message": "app not found"}), HTTPStatus.NOT_FOUND
+        except WorkflowNotFoundError as exc:
+            if not workflow_id:
+                raise
+            return dump_response(
+                EnterpriseAppDSLWorkflowErrorResponse,
+                {"code": "workflow_version_not_found", "message": str(exc), "status": HTTPStatus.NOT_FOUND},
+            ), HTTPStatus.NOT_FOUND
+        except IsDraftWorkflowError as exc:
+            if not workflow_id:
+                raise
+            return dump_response(
+                EnterpriseAppDSLWorkflowErrorResponse,
+                {"code": "workflow_version_not_published", "message": str(exc), "status": HTTPStatus.BAD_REQUEST},
+            ), HTTPStatus.BAD_REQUEST
 
-        return {"data": data}, 200
-
-
-def _get_active_account(email: str) -> Account | None:
-    """Look up an active account by email.
-
-    Workspace membership is already validated by the Go admin-api caller.
-    """
-    account = db.session.scalar(select(Account).where(Account.email == email).limit(1))
-    if account is None or account.status != AccountStatus.ACTIVE:
-        return None
-    return account
+        return dump_response(AppExportResponse, {"data": data}), HTTPStatus.OK

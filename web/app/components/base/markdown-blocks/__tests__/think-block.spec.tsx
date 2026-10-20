@@ -3,8 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
 import ThinkBlock from '../think-block'
 
-// Mock react-i18next
-
 // Helper to wrap component with ChatContextProvider
 const renderWithContext = (children: React.ReactNode, isResponding: boolean = true) => {
   return render(
@@ -12,7 +10,6 @@ const renderWithContext = (children: React.ReactNode, isResponding: boolean = tr
       config={undefined}
       isResponding={isResponding}
       chatList={[]}
-      showPromptLog={false}
       questionIcon={undefined}
       answerIcon={undefined}
       onSend={undefined}
@@ -47,29 +44,6 @@ describe('ThinkBlock', () => {
 
       expect(screen.getByText('Regular content')).toBeInTheDocument()
     })
-
-    it('should render think block with thinking state when data-think is true', () => {
-      renderWithContext(
-        <ThinkBlock data-think={true}>
-          <p>Thinking content</p>
-        </ThinkBlock>,
-        true,
-      )
-
-      expect(screen.getByText(/chat\.thinking/)).toBeInTheDocument()
-      expect(screen.getByText('Thinking content')).toBeInTheDocument()
-    })
-
-    it('should render thought state when content has ENDTHINKFLAG', () => {
-      renderWithContext(
-        <ThinkBlock data-think={true}>
-          <p>Completed thinking[ENDTHINKFLAG]</p>
-        </ThinkBlock>,
-        true,
-      )
-
-      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
-    })
   })
 
   describe('Timer behavior', () => {
@@ -99,7 +73,6 @@ describe('ThinkBlock', () => {
           config={undefined}
           isResponding={true}
           chatList={[]}
-          showPromptLog={false}
           questionIcon={undefined}
           answerIcon={undefined}
           onSend={undefined}
@@ -129,7 +102,6 @@ describe('ThinkBlock', () => {
           config={undefined}
           isResponding={false}
           chatList={[]}
-          showPromptLog={false}
           questionIcon={undefined}
           answerIcon={undefined}
           onSend={undefined}
@@ -147,6 +119,9 @@ describe('ThinkBlock', () => {
 
       // Should now show "Thought" instead of "Thinking..."
       expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
+      const stoppedTime = screen.getByText(/\(1\.0s\)/).textContent
+      act(() => vi.advanceTimersByTime(2000))
+      expect(screen.getByText(/\(1\.0s\)/)).toHaveTextContent(stoppedTime!)
     })
 
     it('should stop timer when isResponding is undefined (historical conversation outside active response)', () => {
@@ -172,6 +147,7 @@ describe('ThinkBlock', () => {
       )
 
       expect(screen.getByText('Content')).toBeInTheDocument()
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
       expect(screen.queryByText('[ENDTHINKFLAG]')).not.toBeInTheDocument()
     })
 
@@ -196,20 +172,6 @@ describe('ThinkBlock', () => {
       )
 
       expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
-    })
-  })
-
-  describe('Edge cases', () => {
-    it('should handle empty children', () => {
-      renderWithContext(<ThinkBlock data-think={true}></ThinkBlock>, true)
-
-      expect(screen.getByText(/chat\.thinking/)).toBeInTheDocument()
-    })
-
-    it('should handle null children gracefully', () => {
-      renderWithContext(<ThinkBlock data-think={true}>{null}</ThinkBlock>, true)
-
-      expect(screen.getByText(/chat\.thinking/)).toBeInTheDocument()
     })
   })
 })

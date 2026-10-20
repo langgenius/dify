@@ -42,7 +42,7 @@ DEFAULT_LOCAL_HOME_SNAPSHOT_ROOT = "/home/dify/.snapshots"
 
 
 class RuntimeBackendSettings(BaseSettings):
-    """Server-private credentials and endpoints for one coherent backend profile."""
+    """Server-private backend credentials and endpoints; Local requires a nonblank auth token."""
 
     runtime_backend: Literal["local", "enterprise", "e2b", "openshell"] = "local"
 
@@ -113,6 +113,8 @@ class RuntimeBackendSettings(BaseSettings):
                 if not self.local_sandbox_endpoint or not self.local_sandbox_endpoint.strip():
                     raise ValueError("local_sandbox_endpoint is required for the local runtime backend")
                 _validate_http_url(self.local_sandbox_endpoint, field_name="local_sandbox_endpoint")
+                if not self.local_sandbox_auth_token or not self.local_sandbox_auth_token.strip():
+                    raise ValueError("local_sandbox_auth_token is required for the local runtime backend")
                 rust_endpoint = self.local_sandbox_rust_endpoint
                 if rust_endpoint is not None and rust_endpoint.strip():
                     _validate_http_url(rust_endpoint, field_name="local_sandbox_rust_endpoint")

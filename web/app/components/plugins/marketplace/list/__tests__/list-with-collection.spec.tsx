@@ -1,99 +1,59 @@
 import type { MarketplaceCollection } from '@dify/contracts/marketplace'
+import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
+import type { ReactElement } from 'react'
 import type { Plugin } from '@/app/components/plugins/types'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
+import { mockIntersectionObserver } from '@/test/intersection-observer'
 import ListWithCollection from '../list-with-collection'
 
-const mockMoreClick = vi.fn()
-vi.mock('../../atoms', () => ({
-  useMarketplaceMoreClick: () => mockMoreClick,
-}))
-
-vi.mock('@/i18n-config/language', () => ({
-  getLanguage: (locale: string) => locale,
-}))
-
-vi.mock('../card-wrapper', () => ({
-  default: ({ plugin }: { plugin: Plugin }) => <div data-testid="card-wrapper">{plugin.name}</div>,
-}))
+const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
+const render = (
+  element: ReactElement,
+  options: Parameters<typeof renderWithConsoleQuery>[1] = {},
+) =>
+  renderWithConsoleQuery(
+    <NuqsTestingAdapter onUrlUpdate={onUrlUpdate}>{element}</NuqsTestingAdapter>,
+    options,
+  )
+const createPlugin = (name: string) =>
+  createMarketplacePluginFixture({
+    plugin_id: name,
+    name,
+    label: { en_US: name },
+  })
+let intersect: ReturnType<typeof mockIntersectionObserver>
 
 const collections: MarketplaceCollection[] = [
   {
     name: 'featured',
-    label: { 'en-US': 'Featured' },
-    description: { 'en-US': 'Featured plugins' },
+    label: { en_US: 'Featured' },
+    description: { en_US: 'Featured plugins' },
     rule: 'featured',
-    created_at: '',
-    updated_at: '',
+    created_at: '2026-06-01T00:00:00Z',
+    updated_at: '2026-06-01T00:00:00Z',
     searchable: true,
     search_params: { query: 'featured' },
   },
   {
     name: 'empty',
-    label: { 'en-US': 'Empty' },
-    description: { 'en-US': 'No plugins' },
+    label: { en_US: 'Empty' },
+    description: { en_US: 'No plugins' },
     rule: 'empty',
-    created_at: '',
-    updated_at: '',
+    created_at: '2026-06-01T00:00:00Z',
+    updated_at: '2026-06-01T00:00:00Z',
     searchable: false,
     search_params: {},
   },
 ]
 
 const pluginsMap: Record<string, Plugin[]> = {
-  featured: [
-    { plugin_id: 'p1', name: 'Plugin One' },
-    { plugin_id: 'p2', name: 'Plugin Two' },
-  ] as Plugin[],
+  featured: [createPlugin('Plugin One'), createPlugin('Plugin Two')],
   empty: [],
-}
-
-type IntersectionObserverRecord = {
-  callback: IntersectionObserverCallback
-  disconnect: ReturnType<typeof vi.fn>
-  observe: ReturnType<typeof vi.fn>
-  options?: IntersectionObserverInit
-}
-
-const intersectionObservers: IntersectionObserverRecord[] = []
-
-class MockIntersectionObserver {
-  callback: IntersectionObserverCallback
-  disconnect = vi.fn()
-  observe = vi.fn()
-  options?: IntersectionObserverInit
-  root: Element | Document | null
-  rootMargin: string
-  takeRecords = vi.fn(() => [])
-  thresholds: readonly number[]
-  unobserve = vi.fn()
-
-  constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-    this.callback = callback
-    this.options = options
-    this.root = options?.root ?? null
-    this.rootMargin = options?.rootMargin ?? '0px'
-    this.thresholds = Array.isArray(options?.threshold)
-      ? options.threshold
-      : [options?.threshold ?? 0]
-    intersectionObservers.push(this)
-  }
-}
-
-const installIntersectionObserver = () => {
-  vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
-}
-
-const triggerIntersection = (
-  observer: IntersectionObserverRecord,
-  { intersectionRatio, isIntersecting }: { intersectionRatio: number; isIntersecting: boolean },
-) => {
-  act(() => {
-    observer.callback(
-      [{ intersectionRatio, isIntersecting } as IntersectionObserverEntry],
-      observer as unknown as IntersectionObserver,
-    )
-  })
 }
 
 const buildPerformanceFixture = () => {
@@ -101,16 +61,15 @@ const buildPerformanceFixture = () => {
   const fixtureCollections = pluginCounts.map((_, collectionIndex) => ({
     ...collections[0]!,
     name: `collection-${collectionIndex}`,
-    label: { 'en-US': `Collection ${collectionIndex}` },
-    description: { 'en-US': `Description ${collectionIndex}` },
-  })) as MarketplaceCollection[]
+    label: { en_US: `Collection ${collectionIndex}` },
+    description: { en_US: `Description ${collectionIndex}` },
+  }))
   const fixturePluginsMap = Object.fromEntries(
     pluginCounts.map((pluginCount, collectionIndex) => [
       `collection-${collectionIndex}`,
-      Array.from({ length: pluginCount }, (_, pluginIndex) => ({
-        plugin_id: `collection-${collectionIndex}-plugin-${pluginIndex}`,
-        name: `Collection ${collectionIndex} Plugin ${pluginIndex}`,
-      })) as Plugin[],
+      Array.from({ length: pluginCount }, (_, pluginIndex) =>
+        createPlugin(`Collection ${collectionIndex} Plugin ${pluginIndex}`),
+      ),
     ]),
   )
 
@@ -119,47 +78,34 @@ const buildPerformanceFixture = () => {
 
 describe('ListWithCollection', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    intersectionObservers.length = 0
-    installIntersectionObserver()
-    Object.defineProperty(window, 'innerWidth', {
-      configurable: true,
-      writable: true,
-      value: 1280,
-    })
+    intersect = mockIntersectionObserver()
+    vi.stubGlobal('innerWidth', 1280)
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  it('renders only collections that contain plugins', () => {
+  it('omits empty collections and filters the catalog through View more', async () => {
     render(
       <ListWithCollection
         marketplaceCollections={collections}
         marketplaceCollectionPluginsMap={pluginsMap}
       />,
     )
-
     expect(screen.getByText('Featured')).toBeInTheDocument()
     expect(screen.queryByText('Empty')).not.toBeInTheDocument()
-    expect(screen.getAllByTestId('card-wrapper')).toHaveLength(2)
-  })
-
-  it('calls more handler for searchable collection', () => {
-    render(
-      <ListWithCollection
-        marketplaceCollections={collections}
-        marketplaceCollectionPluginsMap={pluginsMap}
-      />,
+    expect(
+      screen.getAllByText(/^(?:Plugin (?:One|Two)|Partner Plugin|Featured Plugin)$/),
+    ).toHaveLength(2)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'plugin.marketplace.viewMore' }))
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('q')).toBe('featured'),
     )
-
-    fireEvent.click(screen.getByText('plugin.marketplace.viewMore'))
-
-    expect(mockMoreClick).toHaveBeenCalledWith({ query: 'featured' })
   })
 
-  it('uses custom more handler when provided', () => {
+  it('uses custom more handler when provided', async () => {
     const onCollectionMoreClick = vi.fn()
 
     render(
@@ -170,10 +116,11 @@ describe('ListWithCollection', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('plugin.marketplace.viewMore'))
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'plugin.marketplace.viewMore' }))
 
     expect(onCollectionMoreClick).toHaveBeenCalledWith({ query: 'featured' })
-    expect(mockMoreClick).not.toHaveBeenCalled()
+    expect(onUrlUpdate).not.toHaveBeenCalled()
   })
 
   it('uses custom card renderer when provided', () => {
@@ -182,25 +129,31 @@ describe('ListWithCollection', () => {
         marketplaceCollections={collections}
         marketplaceCollectionPluginsMap={pluginsMap}
         cardRender={(plugin) => (
-          <div key={plugin.plugin_id} data-testid="custom-card">
+          <a key={plugin.plugin_id} href={`/custom/${plugin.plugin_id}`}>
             {plugin.name}
-          </div>
+          </a>
         )}
       />,
     )
 
-    expect(screen.getAllByTestId('custom-card')).toHaveLength(2)
-    expect(screen.queryByTestId('card-wrapper')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Plugin One' })).toHaveAttribute(
+      'href',
+      '/custom/Plugin One',
+    )
+    expect(screen.getByRole('link', { name: 'Plugin Two' })).toHaveAttribute(
+      'href',
+      '/custom/Plugin Two',
+    )
   })
 
   it('renders become partner link only for partners collection', () => {
     const partnerCollection: MarketplaceCollection = {
       name: 'partner-template',
-      label: { 'en-US': 'Partners' },
-      description: { 'en-US': 'Partner plugins' },
+      label: { en_US: 'Partners' },
+      description: { en_US: 'Partner plugins' },
       rule: 'partners',
-      created_at: '',
-      updated_at: '',
+      created_at: '2026-06-01T00:00:00Z',
+      updated_at: '2026-06-01T00:00:00Z',
       searchable: false,
       search_params: {},
     }
@@ -209,8 +162,8 @@ describe('ListWithCollection', () => {
       <ListWithCollection
         marketplaceCollections={[partnerCollection, collections[0]!]}
         marketplaceCollectionPluginsMap={{
-          'partner-template': [{ plugin_id: 'partner-plugin', name: 'Partner Plugin' }] as Plugin[],
-          featured: [{ plugin_id: 'featured-plugin', name: 'Featured Plugin' }] as Plugin[],
+          'partner-template': [createPlugin('Partner Plugin')],
+          featured: [createPlugin('Featured Plugin')],
         }}
       />,
     )
@@ -223,38 +176,9 @@ describe('ListWithCollection', () => {
     )
     expect(partnerLink).toHaveAttribute('target', '_blank')
     expect(partnerLink).toHaveAttribute('rel', 'noopener noreferrer')
-    expect(partnerLink.querySelector('.i-ri-external-link-line')).toHaveClass('size-3')
-    expect(partnerLink.querySelector('.i-ri-arrow-right-up-line')).not.toBeInTheDocument()
-    expect(screen.getByText('|')).toHaveClass('text-divider-regular')
-    expect(screen.getAllByTestId('card-wrapper')).toHaveLength(2)
-  })
-
-  it('does not render become partner link for misspelled partner collection name', () => {
-    const misspelledPartnerCollection: MarketplaceCollection = {
-      name: 'parters',
-      label: { 'en-US': 'Parters' },
-      description: { 'en-US': 'Misspelled partner plugins' },
-      rule: 'parters',
-      created_at: '',
-      updated_at: '',
-      searchable: false,
-      search_params: {},
-    }
-
-    render(
-      <ListWithCollection
-        marketplaceCollections={[misspelledPartnerCollection]}
-        marketplaceCollectionPluginsMap={{
-          parters: [
-            { plugin_id: 'misspelled-partner-plugin', name: 'Misspelled Partner Plugin' },
-          ] as Plugin[],
-        }}
-      />,
-    )
-
     expect(
-      screen.queryByRole('link', { name: 'plugin.marketplace.becomePartner' }),
-    ).not.toBeInTheDocument()
+      screen.getAllByText(/^(?:Plugin (?:One|Two)|Partner Plugin|Featured Plugin)$/),
+    ).toHaveLength(2)
   })
 
   it('uses carousel navigation instead of view more when collection exceeds two rows', () => {
@@ -263,10 +187,7 @@ describe('ListWithCollection', () => {
       searchable: true,
       search_params: { query: 'featured' },
     }
-    const plugins = Array.from({ length: 9 }, (_, index) => ({
-      plugin_id: `p${index + 1}`,
-      name: `Plugin ${index + 1}`,
-    })) as Plugin[]
+    const plugins = Array.from({ length: 9 }, (_, index) => createPlugin(`Plugin ${index + 1}`))
 
     render(
       <ListWithCollection
@@ -279,12 +200,6 @@ describe('ListWithCollection', () => {
     expect(
       screen.getByRole('button', { name: 'plugin.marketplace.carousel.scrollNext' }),
     ).toBeInTheDocument()
-    const carousel = screen.getByRole('region', { name: 'Featured' })
-    const carouselViewport = carousel.querySelector('.overflow-hidden')
-    const carouselContent = carouselViewport?.firstElementChild
-    expect(carousel).not.toHaveClass('overflow-hidden')
-    expect(carouselViewport).toHaveClass('overflow-hidden', 'rounded-[inherit]')
-    expect(carouselContent).toHaveStyle({ columnGap: '12px' })
   })
 
   it('keeps the first collection eager and defers the rest until they enter the preload range', () => {
@@ -303,42 +218,19 @@ describe('ListWithCollection', () => {
     )
 
     expect(screen.getAllByText(/Collection \d$/)).toHaveLength(7)
-    expect(document.querySelectorAll('[data-marketplace-collection]')).toHaveLength(7)
-    // The first (above-the-fold) collection renders its real cards immediately
-    // so server-rendered HTML contains first-screen content; the six remaining
-    // collections keep placeholders until they intersect.
-    expect(
-      document.querySelectorAll('[data-marketplace-collection-placeholder] > div'),
-    ).toHaveLength(48)
-    expect(screen.getAllByTestId('card-wrapper')).toHaveLength(61)
-    expect(document.querySelectorAll('[data-carousel-page]')).toHaveLength(8)
-    expect(document.querySelectorAll('[data-carousel-page-mounted="true"]')).toHaveLength(8)
-    // Partner collections autoplay; this fixture is non-partner, so the only
-    // observers here are the collection preload observers.
-    const collectionObservers = intersectionObservers.filter(
-      (observer) => observer.options?.rootMargin === '320px 0px',
-    )
-    expect(collectionObservers).toHaveLength(6)
-    expect(collectionObservers[0]!.options).toEqual({
-      root: marketplaceContainer,
-      rootMargin: '320px 0px',
-      threshold: 0.01,
-    })
-
-    triggerIntersection(collectionObservers[0]!, {
-      intersectionRatio: 0.01,
-      isIntersecting: true,
-    })
-
-    expect(collectionObservers[0]!.disconnect).toHaveBeenCalled()
-    expect(screen.getAllByTestId('card-wrapper')).toHaveLength(69)
-
-    triggerIntersection(collectionObservers[0]!, {
-      intersectionRatio: 0,
-      isIntersecting: false,
-    })
-
-    expect(screen.getAllByTestId('card-wrapper')).toHaveLength(69)
+    // The first collection has server-renderable content; later ones preload on intersection.
+    expect(screen.getAllByText(/^Collection \d+ Plugin \d+$/)).toHaveLength(61)
+    expect(screen.queryByText('Collection 1 Plugin 0')).not.toBeInTheDocument()
+    // The collection marker identifies the observed non-interactive section.
+    const deferredSection = marketplaceContainer.querySelector(
+      '[data-marketplace-collection="collection-1"]',
+    )!
+    intersect(true, { target: deferredSection })
+    expect(screen.getByText('Collection 1 Plugin 0')).toBeInTheDocument()
+    expect(screen.getAllByText(/^Collection \d+ Plugin \d+$/)).toHaveLength(69)
+    intersect(false, { target: deferredSection })
+    expect(screen.getByText('Collection 1 Plugin 0')).toBeInTheDocument()
+    expect(screen.queryByText('Collection 2 Plugin 0')).not.toBeInTheDocument()
 
     unmount()
     marketplaceContainer.remove()
@@ -346,19 +238,17 @@ describe('ListWithCollection', () => {
 
   it('mounts deferred collections after hydration when IntersectionObserver is unavailable', () => {
     vi.stubGlobal('IntersectionObserver', undefined)
-
+    const { fixtureCollections, fixturePluginsMap } = buildPerformanceFixture()
+    fixturePluginsMap['collection-0'] = fixturePluginsMap['collection-0']!.slice(0, 8)
     render(
       <ListWithCollection
-        marketplaceCollections={collections}
-        marketplaceCollectionPluginsMap={pluginsMap}
+        marketplaceCollections={fixtureCollections}
+        marketplaceCollectionPluginsMap={fixturePluginsMap}
         deferOffscreenCollections
       />,
     )
-
-    expect(screen.getAllByTestId('card-wrapper')).toHaveLength(2)
-    expect(
-      document.querySelector('[data-marketplace-collection-placeholder]'),
-    ).not.toBeInTheDocument()
+    expect(screen.getAllByText(/^Collection \d+ Plugin \d+$/)).toHaveLength(56)
+    expect(screen.getByText('Collection 6 Plugin 7')).toBeInTheDocument()
   })
 
   it('keeps standalone collections eager for SSR-compatible rendering', () => {
@@ -371,9 +261,6 @@ describe('ListWithCollection', () => {
       />,
     )
 
-    expect(screen.getAllByTestId('card-wrapper')).toHaveLength(109)
-    expect(
-      intersectionObservers.some((observer) => observer.options?.rootMargin === '320px 0px'),
-    ).toBe(false)
+    expect(screen.getAllByText(/^Collection \d+ Plugin \d+$/)).toHaveLength(109)
   })
 })

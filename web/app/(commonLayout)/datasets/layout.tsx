@@ -2,7 +2,7 @@
 
 import { useAtomValue } from 'jotai'
 import { useEffect } from 'react'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
@@ -15,18 +15,13 @@ const isDatasetCreatePath = (pathname: string) => {
   return (
     pathname === '/datasets/create' ||
     pathname.startsWith('/datasets/create/') ||
-    pathname === '/datasets/new/create' ||
     pathname === '/datasets/create-from-pipeline' ||
     pathname.startsWith('/datasets/create-from-pipeline/')
   )
 }
 
 const isDatasetExternalConnectPath = (pathname: string) => {
-  return (
-    pathname === '/datasets/connect' ||
-    pathname.startsWith('/datasets/connect/') ||
-    /^\/datasets\/new\/[^/]+\/sources\/new\/?$/.test(pathname)
-  )
+  return pathname === '/datasets/connect' || pathname.startsWith('/datasets/connect/')
 }
 
 export default function DatasetsLayout({ children }: { children: React.ReactNode }) {
@@ -52,7 +47,7 @@ export default function DatasetsLayout({ children }: { children: React.ReactNode
     if (shouldRedirectToDatasets) router.replace('/datasets')
   }, [shouldRedirectToDatasets, router])
 
-  if (isLoadingAccess || !currentWorkspaceId) return <Loading type="app" />
+  if (isLoadingAccess || !currentWorkspaceId) return <LoadingPlaceholder className="h-full" />
 
   if (shouldRedirectToDatasets) {
     return null

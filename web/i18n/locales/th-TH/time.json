@@ -1,0 +1,22 @@
+{
+  "dateFormats.compact": "MM/DD/YYYY HH:mm",
+  "dateFormats.withSeconds": "MM/DD/YYYY hh:mm:ss A",
+  "operation.cancel": "ยกเลิก",
+  "operation.now": "ตอนนี้",
+  "operation.ok": "ตกลง",
+  "operation.pickDate": "เลือกวันที่",
+  "picker.chooseMonthAndYear": "เลือกเดือนและปี",
+  "picker.endDate": "วันที่สิ้นสุด",
+  "picker.hour": "ชั่วโมง",
+  "picker.minute": "นาที",
+  "picker.month": "เดือน",
+  "picker.nextMonth": "เดือนถัดไป",
+  "picker.period": "ก่อน/หลังเที่ยง",
+  "picker.previousMonth": "เดือนก่อนหน้า",
+  "picker.required": "โปรดเลือกค่า",
+  "picker.requiredLabel": "จำเป็น",
+  "picker.startDate": "วันที่เริ่มต้น",
+  "picker.unavailable": "ไม่สามารถเลือกวันที่หรือเวลานี้ได้",
+  "picker.year": "ปี",
+  "title.pickTime": "เลือกเวลา"
+}

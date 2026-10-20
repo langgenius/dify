@@ -1,9 +1,9 @@
-import type { Topic } from '../../types'
+import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { useEdgesInteractions } from '../../../../hooks/use-edges-interactions'
-import ClassList from '../class-list'
+import ClassList from '../../../_base/components/branch-list/class-list'
 
 vi.mock('react-sortablejs', () => ({
   __esModule: true,
@@ -18,7 +18,7 @@ vi.mock('../../../../hooks/use-edges-interactions', async (importOriginal) => {
   }
 })
 
-vi.mock('../class-item', () => ({
+vi.mock('../../../_base/components/branch-list/class-item', () => ({
   __esModule: true,
   default: ({
     payload,
@@ -66,18 +66,28 @@ describe('question-classifier/class-list', () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     const handleEdgeDeleteByDeleteBranch = vi.fn()
-    mockUseEdgesInteractions.mockReturnValueOnce({
+    mockUseEdgesInteractions.mockReturnValue({
       handleEdgeDeleteByDeleteBranch,
     } as unknown as ReturnType<typeof useEdgesInteractions>)
 
-    render(
-      <ClassList
-        nodeId="node-1"
-        list={[createTopic(), createTopic({ id: 'topic-2', name: 'Refunds' })]}
-        onChange={onChange}
-        filterVar={() => true}
-      />,
-    )
+    function EditableClasses() {
+      const [topics, setTopics] = useState([
+        createTopic(),
+        createTopic({ id: 'topic-2', name: 'Refunds' }),
+      ])
+      return (
+        <ClassList
+          nodeId="node-1"
+          list={topics}
+          filterVar={() => true}
+          onChange={(next) => {
+            setTopics(next)
+            onChange(next)
+          }}
+        />
+      )
+    }
+    render(<EditableClasses />)
 
     await user.click(screen.getAllByText('change-item')[0]!)
     expect(onChange).toHaveBeenCalledWith(
@@ -86,18 +96,20 @@ describe('question-classifier/class-list', () => {
 
     await user.click(screen.getAllByText('remove-item')[0]!)
     expect(handleEdgeDeleteByDeleteBranch).toHaveBeenCalledWith('node-1', 'topic-1')
+    expect(onChange).toHaveBeenLastCalledWith([createTopic({ id: 'topic-2', name: 'Refunds' })])
+    expect(screen.queryByText('1:Billing questions updated')).not.toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', { name: /workflow\.nodes\.questionClassifiers\.class/ }),
     )
     expect(
-      screen.queryByText('workflow.nodes.questionClassifiers.addClass'),
+      screen.queryByText('workflowModels.nodes.questionClassifiers.addClass'),
     ).not.toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', { name: /workflow\.nodes\.questionClassifiers\.class/ }),
     )
-    await user.click(screen.getByText('workflow.nodes.questionClassifiers.addClass'))
+    await user.click(screen.getByText('workflowModels.nodes.questionClassifiers.addClass'))
     expect(onChange).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ name: '' })]),
     )
@@ -136,7 +148,7 @@ describe('question-classifier/class-list', () => {
   })
 
   it('hides drag and add affordances when readonly', () => {
-    const { container } = render(
+    render(
       <ClassList
         nodeId="node-1"
         list={[createTopic(), createTopic({ id: 'topic-2', name: 'Refunds' })]}
@@ -147,8 +159,8 @@ describe('question-classifier/class-list', () => {
     )
 
     expect(
-      screen.queryByText('workflow.nodes.questionClassifiers.addClass'),
+      screen.queryByText('workflowModels.nodes.questionClassifiers.addClass'),
     ).not.toBeInTheDocument()
-    expect(container.querySelector('.handle')).toBeNull()
+    expect(screen.queryByRole('button', { pressed: false })).not.toBeInTheDocument()
   })
 })

@@ -224,6 +224,66 @@ return dump_response(WorkflowRunDetailResponse, workflow_run)
 Use manual `model_validate(...).model_dump(...)` only when the endpoint needs behavior that `dump_response(...)` does
 not provide, such as returning a non-dict payload, intentionally excluding fields, or composing a `(body, status)` tuple.
 
+## Error Responses
+
+Every 4xx/5xx response is documented with the surface's error body: `ErrorResponse` (`code`, `message`, `status`,
+optional `params`/`details`) on Console, Web and Service API, and `ErrorBody` on `/openapi/v1`. Every operation also
+documents a `default` error response with that open body. Responses that declare their own error schema keep it.
+
+Errors come in two kinds, told apart by how the client handles them, not by their shape:
+
+- **Generic** errors can answer any operation and the client handles them centrally: authentication, bootstrap state
+  (`not_setup`, `account_not_initialized`), forced logout, validation (`invalid_param`), rate limits, unexpected
+  failures. The `default` error covers them and no operation lists them. Werkzeug exceptions and exceptions with a
+  dedicated handler (`ValueError`, `NoPermissionError`, and others registered through
+  `ExternalApi.document_error_handler`) are generic by construction; business-shaped errors that the client still
+  handles centrally are declared once, where the surface is built, with `api.document_generic_errors(...)`
+  (see `controllers/console/__init__.py`). An operation that documents a generic error gets nothing for it.
+- **Business** errors name an outcome the caller branches on for that operation: `HTTPException` subclasses that
+  declare an `error_code`. They are listed per operation so clients can narrow on `code`.
+
+A handler lists the business errors its own call chain can answer with, using `@error_responses(SomeError, ...)` from
+`libs.external_api`. A
+view decorator documents its own errors on the wrapper it returns: `return document_errors(decorated, SomeError)`.
+Guards in a Resource's `method_decorators` are documented on the class with `document_errors(ResourceClass, ...)`.
+Listing a Werkzeug exception, a handled exception, or a `BaseHTTPException` subclass that keeps the placeholder
+`error_code` is an error. View decorators must keep `__apidoc__` from
+the view they wrap (`functools.wraps` does, unless `updated=()`; then add `"__apidoc__"` to `assigned`).
+
+Declarations are written and reviewed by hand; nothing infers them from the code. Declare what the operation's
+own call chain can answer with, not everything a shared translator knows how to map: a `_raise_*_error` helper that
+dispatches on `isinstance` may serve several operations, and only the branches the operation's service call can
+reach belong on it. An earlier revision of this contract shipped a static linter for this; it could neither see
+through `application_services()` nor tell which branch of a shared translator an operation reaches, so its output
+had to be corrected by hand anyway and it was dropped.
+
+One gate checks served responses. Every 4xx/5xx JSON response an `ExternalApi` serves in a controller unit test is
+checked against that API's generated document (`tests/unit_tests/controllers/error_contract.py`). The body must be
+the standard error body, unless the status declares its own model, and its `code` must be one the operation documents
+for that status or one of the surface's generic codes (`ExternalApi.implicit_error_codes`). A new business error
+without a declaration fails there on every path a test exercises, so give a new error path a test that serves it.
+
+Each documented code is one shared component, `{Code}Error` (`draft_workflow_not_sync` documents as
+`DraftWorkflowNotSyncError`): the error body with `code` and `status` fixed, plus the class's `details_model` (a
+Pydantic model) when it declares one. The response of its status references it; several codes on one status are an
+`anyOf`, and a status that also declares its own model keeps it beside them. Within a surface a code maps to one
+status, and classes that share a code must agree on its status and details; the document fails to build otherwise.
+Statuses that no handler or decorator documents keep the open error body.
+
+Signal errors by raising, not by returning `(body, status)`:
+
+- Raise a `BaseHTTPException` subclass so the body carries `code`, `message` and `status` and the code can be
+  documented. Do not call `flask_restx.abort` with a message or extra fields; it replaces the standard body.
+- Services and core raise domain exceptions; controllers translate them. An HTTP exception raised inside a service
+  reaches the wire with whatever code its class declares and no operation documents it; the existing ones are legacy.
+- Raise `libs.exception.RelayedHTTPError` for a code and status relayed from a downstream service at runtime. It emits
+  the standard body; the operation's open `default` error already documents it, since its codes are not known per
+  class, so listing it in `error_responses` adds nothing to the document.
+- An endpoint that must keep a legacy error body (for example `{"error": message}`) declares it with
+  `@ns.response(status, ..., Model)` so the contract describes what the client receives.
+- Renaming an `error_code` changes the wire contract: clients branch on it, and the Service API list is published.
+  Treat it as a breaking change.
+
 ## Legacy Flask-RESTX Patterns
 
 Avoid adding these patterns to new or migrated endpoints:
@@ -267,3 +327,17 @@ also provide the source patch used to produce it; replace that patch with a clea
 
 The manual import, annotation review, build, and validation commands live in `tools/api-pipeline/README.md` in
 `dify-docs`. Regenerate this repository's OpenAPI Markdown and TypeScript/Zod contracts whenever their inputs change.
+
+## Catalog metadata on /openapi/v1
+
+Every `@endpoint` on `/openapi/v1` declares `op` (dotted lowercase id), `kind`
+(`object|list|sse|text|file`) and a one-line `summary`; they live on the route's
+`EndpointSpec`. `controllers/openapi/_catalog.py` derives the rest (input schema, bind,
+tags) from the route and its Pydantic models. Files are declared in the body model with
+`UploadPart`; never add a separate files decorator or parse `request.files` in a handler.
+Run ops are per app mode (`console_app.<mode>.run`), each a self-contained route with the exact
+body that mode takes.
+Next steps for the caller go in a `hints` field (see `_hints.py`); `hints` is reserved.
+Frozen after release: kind names, bind values, the pagination envelope, and any field the
+CLI's fold table reads from an SSE event. Breaking input changes get a new op id; the old
+one stays and is marked `deprecated=True`.

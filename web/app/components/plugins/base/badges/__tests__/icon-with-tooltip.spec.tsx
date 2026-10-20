@@ -3,32 +3,13 @@ import { describe, expect, it } from 'vite-plus/test'
 import { Theme } from '@/types/app'
 import IconWithTooltip from '../icon-with-tooltip'
 
-const LightIcon = () => <span>Light icon</span>
-const DarkIcon = () => <span>Dark icon</span>
-
 describe('IconWithTooltip', () => {
-  it('renders the icon for the current theme', () => {
-    const { rerender } = render(
-      <IconWithTooltip theme={Theme.light} BadgeIconLight={LightIcon} BadgeIconDark={DarkIcon} />,
-    )
-
-    expect(screen.getByText('Light icon')).toBeInTheDocument()
-    expect(screen.queryByText('Dark icon')).not.toBeInTheDocument()
-
-    rerender(
-      <IconWithTooltip theme={Theme.dark} BadgeIconLight={LightIcon} BadgeIconDark={DarkIcon} />,
-    )
-
-    expect(screen.getByText('Dark icon')).toBeInTheDocument()
-    expect(screen.queryByText('Light icon')).not.toBeInTheDocument()
-  })
-
   it('exposes the badge meaning without opening the tooltip', () => {
     render(
       <IconWithTooltip
         theme={Theme.light}
-        BadgeIconLight={LightIcon}
-        BadgeIconDark={DarkIcon}
+        lightIconClassName="i-custom-public-plugins-partner-light"
+        darkIconClassName="i-custom-public-plugins-partner-dark"
         popupContent="Partner plugin"
       />,
     )

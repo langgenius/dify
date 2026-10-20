@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { expect, within } from 'storybook/test'
-import { toast, ToastHost } from '.'
+import { createToast, createToastManager, Toaster } from '.'
 import { Button } from '../button'
+
+const manager = createToastManager()
+const toast = createToast(manager)
 
 const longToastTitle =
   'operation error S3: PutObject, exceeded maximum number of attempts, 3, StatusCode: 0, RequestID: , HostID: , request send failed'
@@ -14,7 +17,7 @@ const buttonClassName =
 const cardClassName =
   'flex min-h-[220px] flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6 shadow-sm shadow-shadow-shadow-3'
 
-const ExampleCard = ({
+function ExampleCard({
   eyebrow,
   title,
   description,
@@ -24,7 +27,7 @@ const ExampleCard = ({
   title: string
   description: string
   children: React.ReactNode
-}) => {
+}) {
   return (
     <section className={cardClassName}>
       <div className="space-y-2">
@@ -37,7 +40,7 @@ const ExampleCard = ({
   )
 }
 
-const VariantExamples = () => {
+function VariantExamples() {
   const createVariantToast = (type: 'success' | 'error' | 'warning' | 'info') => {
     const copy = {
       success: {
@@ -93,7 +96,7 @@ const VariantExamples = () => {
   )
 }
 
-const StackExamples = () => {
+function StackExamples() {
   const createStack = () => {
     ;[
       {
@@ -155,7 +158,7 @@ const StackExamples = () => {
   )
 }
 
-const PromiseExamples = () => {
+function PromiseExamples() {
   const [pendingExample, setPendingExample] = React.useState<'success' | 'error' | null>(null)
 
   const exportDsl = async (outcome: 'success' | 'error') => {
@@ -216,7 +219,7 @@ const PromiseExamples = () => {
   )
 }
 
-const ActionExamples = () => {
+function ActionExamples() {
   const createActionToast = () => {
     let archivedToastId = ''
     archivedToastId = toast.warning('Project archived', {
@@ -262,7 +265,7 @@ const ActionExamples = () => {
   )
 }
 
-const DeduplicateExamples = () => {
+function DeduplicateExamples() {
   const saveCountRef = React.useRef(0)
 
   const saveDraft = () => {
@@ -289,7 +292,7 @@ const DeduplicateExamples = () => {
   )
 }
 
-const UpdateExamples = () => {
+function UpdateExamples() {
   const createUpdatableToast = () => {
     const toastId = toast.info('Import started', {
       description: 'Preparing assets and metadata for processing.',
@@ -326,10 +329,10 @@ const UpdateExamples = () => {
   )
 }
 
-const ToastDocsDemo = () => {
+function ToastDocsDemo() {
   return (
     <React.Fragment>
-      <ToastHost />
+      <Toaster toastManager={manager} />
       <div className="min-h-screen bg-background-default-subtle px-6 py-12">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
           <div className="space-y-3">

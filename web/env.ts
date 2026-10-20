@@ -71,6 +71,7 @@ const clientSchema = {
    */
   NEXT_PUBLIC_DEPLOY_ENV: z.enum(['DEVELOPMENT', 'PRODUCTION', 'TESTING']).optional(),
   NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON: coercedBoolean.default(false),
+  NEXT_PUBLIC_ENABLE_ACCESS_TOKEN: coercedBoolean.default(false),
   NEXT_PUBLIC_ENABLE_AGENT_V2: coercedBoolean.default(false),
   /**
    * Surface the Agent v2 node inside Chatflow (advanced-chat) apps.
@@ -101,7 +102,6 @@ const clientSchema = {
    * Maximum loop count in the workflow
    */
   NEXT_PUBLIC_LOOP_NODE_MAX_COUNT: coercedNumber.default(100),
-  NEXT_PUBLIC_MAINTENANCE_NOTICE: z.string().optional(),
   /**
    * Additional literal characters allowed in Markdown form field names.
    */
@@ -237,6 +237,9 @@ export const env = createEnv({
     NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON: isServer
       ? process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON
       : getRuntimeEnvFromBody('disableUploadImageAsIcon'),
+    NEXT_PUBLIC_ENABLE_ACCESS_TOKEN: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_ACCESS_TOKEN
+      : getRuntimeEnvFromBody('enableAccessToken'),
     NEXT_PUBLIC_ENABLE_AGENT_V2: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
       : getRuntimeEnvFromBody('enableAgentV2'),
@@ -267,9 +270,6 @@ export const env = createEnv({
     NEXT_PUBLIC_LOOP_NODE_MAX_COUNT: isServer
       ? process.env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT
       : getRuntimeEnvFromBody('loopNodeMaxCount'),
-    NEXT_PUBLIC_MAINTENANCE_NOTICE: isServer
-      ? process.env.NEXT_PUBLIC_MAINTENANCE_NOTICE
-      : getRuntimeEnvFromBody('maintenanceNotice'),
     NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS: isServer
       ? process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
       : getRuntimeEnvFromBody('markdownFormFieldNameExtraChars'),

@@ -31,7 +31,7 @@ export function SegmentAdd({
   showBatchModal,
   embedding,
 }: SegmentAddProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'datasetDocuments'])
   const [isPlanUpgradeModalOpen, setIsPlanUpgradeModalOpen] = useState(false)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(

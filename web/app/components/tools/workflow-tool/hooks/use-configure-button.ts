@@ -8,15 +8,13 @@ import type {
 } from '@/app/components/tools/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useEffect, useMemo, useRef } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { selectWorkflowToolDetail } from '@/app/components/tools/utils/query-select'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { createWorkflowToolProvider, saveWorkflowToolProvider } from '@/service/tools'
-import {
-  useInvalidateAllWorkflowTools,
-  useInvalidateWorkflowToolDetailByAppID,
-  useWorkflowToolDetailByAppID,
-} from '@/service/use-tools'
 
 // region Pure helpers
 
@@ -126,27 +124,36 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
     onRefreshData,
     onConfigured,
   } = options
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   // Data fetching via React Query
-  const { data: detail, isLoading } = useWorkflowToolDetailByAppID(
-    workflowAppId,
-    enabled && published,
+  const queryClient = useQueryClient()
+  const detailQueryKey = consoleQuery.workspaces.current.toolProvider.workflow.get.get.queryKey({
+    input: { query: { workflow_app_id: workflowAppId } },
+  })
+  const { data: detail, isLoading } = useQuery(
+    consoleQuery.workspaces.current.toolProvider.workflow.get.get.queryOptions({
+      input: { query: { workflow_app_id: workflowAppId } },
+      enabled: enabled && published && !!workflowAppId,
+      select: selectWorkflowToolDetail,
+    }),
   )
 
-  // Invalidation functions (store in ref for stable effect dependency)
-  const invalidateDetail = useInvalidateWorkflowToolDetailByAppID()
-  const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
-
-  const invalidateDetailRef = useRef(invalidateDetail)
-  useEffect(() => {
-    invalidateDetailRef.current = invalidateDetail
-  }, [invalidateDetail])
+  const invalidateDetail = () => queryClient.invalidateQueries({ queryKey: detailQueryKey })
+  const invalidateAllWorkflowTools = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.tools.workflow.get.queryKey(),
+    })
 
   // Refetch when detailNeedUpdate becomes true
   useEffect(() => {
-    if (enabled && detailNeedUpdate) invalidateDetailRef.current(workflowAppId)
-  }, [detailNeedUpdate, enabled, workflowAppId])
+    if (enabled && detailNeedUpdate)
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.toolProvider.workflow.get.get.queryKey({
+          input: { query: { workflow_app_id: workflowAppId } },
+        }),
+      })
+  }, [detailNeedUpdate, enabled, queryClient, workflowAppId])
 
   // Computed values
   const outdated = useMemo(() => isParametersOutdated(detail, inputs), [detail, inputs])
@@ -188,7 +195,7 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
       await createWorkflowToolProvider(data)
       invalidateAllWorkflowTools()
       onRefreshData?.()
-      invalidateDetail(workflowAppId)
+      invalidateDetail()
       toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       onConfigured?.()
     } catch (e) {
@@ -208,7 +215,7 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
       await saveWorkflowToolProvider(data)
       onRefreshData?.()
       invalidateAllWorkflowTools()
-      invalidateDetail(workflowAppId)
+      invalidateDetail()
       toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       onConfigured?.()
     } catch (e) {

@@ -28,8 +28,8 @@ export function CredentialField({
   value?: string
   onChange: (value: string) => void
 }) {
-  const { t } = useTranslation('deployments')
-  const { t: tPlugin } = useTranslation('plugin')
+  const { t } = useTranslation(['deployments'])
+  const { t: tPlugin } = useTranslation(['plugin'])
   const { getIconUrl } = useGetIcon()
   const { theme } = useTheme()
   const selectedOption = slot.candidates.find((candidate) => candidate.credential_id === value)
@@ -71,7 +71,7 @@ export function CredentialField({
           if (nextValue) onChange(nextValue)
         }}
       >
-        <SelectTrigger aria-label={name} className="px-2">
+        <SelectTrigger aria-label={name} className="pl-2">
           <span className="flex min-w-0 items-center gap-1.5">
             <StatusDot />
             <span className="truncate">
@@ -88,7 +88,7 @@ export function CredentialField({
               <div className="flex size-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-[5px]">
                 <span aria-hidden className="i-ri-key-2-line size-5 text-text-tertiary" />
               </div>
-              <div className="wrap-break-words flex w-full flex-col items-start gap-1">
+              <div className="flex w-full flex-col items-start gap-1">
                 <p className="w-full system-sm-medium text-text-secondary">
                   {t(($) => $['studio.noCredentialsYet'])}
                 </p>
@@ -109,7 +109,7 @@ export function CredentialField({
                   <span className="flex size-2 shrink-0 items-center justify-center">
                     <StatusDot size="small" />
                   </span>
-                  <SelectItemText className="me-0 px-0 system-md-regular">
+                  <SelectItemText className="me-0 system-md-regular">
                     {candidate.display_name || candidate.credential_id}
                   </SelectItemText>
                 </SelectItem>

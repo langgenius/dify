@@ -28,6 +28,22 @@ def _service() -> tuple[AppDefinitionQueryService, MagicMock]:
     )
 
 
+def test_get_mode_returns_repository_value() -> None:
+    service, definitions = _service()
+    definitions.get_mode.return_value = "completion"
+
+    assert service.get_mode("app-1") == "completion"
+    definitions.get_mode.assert_called_once_with("app-1")
+
+
+def test_get_mode_rejects_missing_app() -> None:
+    service, definitions = _service()
+    definitions.get_mode.return_value = None
+
+    with pytest.raises(AppDefinitionUnavailableError, match="App not found"):
+        service.get_mode("missing")
+
+
 def test_get_parameters_maps_published_config() -> None:
     service, definitions = _service()
     config = AppParameterConfig(

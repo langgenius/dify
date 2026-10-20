@@ -21,7 +21,7 @@ type LinkEditorComponentProps = {
   containerElement: HTMLDivElement | null
 }
 const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { handleSaveLink, handleUnlink, restoreEditorFocus } = useLink()
   const selectedLinkUrl = useStore((s) => s.selectedLinkUrl)
   const linkAnchorElement = useStore((s) => s.linkAnchorElement)
@@ -66,7 +66,7 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
 
   return (
     <>
-      {elements.reference && (
+      {linkAnchorElement && elements.reference && (
         <FloatingPortal root={containerElement}>
           <div
             {...getFloatingProps()}

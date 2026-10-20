@@ -3,11 +3,12 @@
 import type { AccessPolicy } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -18,10 +19,10 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 
 type AccessRuleRowMenuProps = {
@@ -31,8 +32,7 @@ type AccessRuleRowMenuProps = {
 }
 
 const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const { t } = useTranslation(['common', 'permission'])
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const { mutate: copyAccessRule } = useMutation(
@@ -52,7 +52,6 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
       {
         onSuccess: () => {
           toast.success(t(($) => $['accessRule.copied'], { ns: 'permission' }))
-          setOpen(false)
         },
       },
     )
@@ -60,7 +59,6 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
 
   const openDeleteConfirm = useCallback(() => {
     setShowDeleteConfirm(true)
-    setOpen(false)
   }, [])
 
   const handleDelete = useCallback(() => {
@@ -68,18 +66,17 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
       { params: { policy_id: rule.id } },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['accessRule.deleted'], { ns: 'permission' }))
           setShowDeleteConfirm(false)
         },
       },
     )
-  }, [deleteAccessRule, rule.id, t])
+  }, [deleteAccessRule, rule.id])
 
   const isBuiltIn = rule.is_builtin
 
   return (
     <>
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger
           render={
             <IconButton
@@ -129,22 +126,22 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
         onOpenChange={(open) => !open && setShowDeleteConfirm(false)}
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['accessRule.deleteTitle'], { ns: 'permission', name: rule.name })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['accessRule.deleteDescription'], { ns: 'permission' })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={isDeletingAccessRule} onClick={handleDelete}>
               {t(($) => $['operation.delete'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

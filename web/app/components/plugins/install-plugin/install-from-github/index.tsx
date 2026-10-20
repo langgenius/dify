@@ -3,16 +3,24 @@ import type { PluginCategoryEnum, PluginDeclaration, UpdateFromGitHubPayload } f
 import type { InstallState } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
+import { toast } from '@/app/notifications'
 import { InstallStepFromGitHub } from '../../types'
 import Installed from '../base/installed'
 import { fetchReleases } from '../hooks'
@@ -43,7 +51,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
   onSuccess,
 }) => {
   const repoUrlInputRef = useRef<HTMLInputElement>(null)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const { getIconUrl } = useGetIcon()
   const { refreshPluginList } = useRefreshPluginList()
 
@@ -112,7 +120,8 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
 
   const handleError = (e: any, isInstall: boolean) => {
     const message =
-      e?.response?.message || t(($) => $['installModal.installFailedDesc'], { ns: 'plugin' })
+      (e instanceof Error ? e.message : undefined) ||
+      t(($) => $['installModal.installFailedDesc'], { ns: 'plugin' })
     setErrorMsg(message)
     setState((prevState) => ({
       ...prevState,
@@ -171,6 +180,16 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
     })
   }
 
+  const completedSteps: InstallStepFromGitHub[] = [
+    InstallStepFromGitHub.uploadFailed,
+    InstallStepFromGitHub.installed,
+    InstallStepFromGitHub.installFailed,
+  ]
+  const failedSteps: InstallStepFromGitHub[] = [
+    InstallStepFromGitHub.uploadFailed,
+    InstallStepFromGitHub.installFailed,
+  ]
+
   return (
     <Dialog
       open
@@ -181,100 +200,65 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
       <DialogContent
         initialFocus={repoUrlInputRef}
         backdropProps={{ forceRender: true }}
-        className={cn(
-          'w-140 overflow-hidden! text-left align-middle',
-          cn(
-            modalClassName,
-            'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
-          ),
-        )}
+        className={cn('w-140', modalClassName, 'max-h-[calc(100dvh-48px)]')}
       >
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-
-        <div className="flex shrink-0 items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
-          <div className="flex grow flex-col items-start gap-1">
-            <DialogTitle className="self-stretch title-2xl-semi-bold text-text-primary">
-              {getTitle()}
-            </DialogTitle>
-            <div className="self-stretch system-xs-regular text-text-tertiary">
-              {![
-                InstallStepFromGitHub.uploadFailed,
-                InstallStepFromGitHub.installed,
-                InstallStepFromGitHub.installFailed,
-              ].includes(state.step) &&
-                t(($) => $['installFromGitHub.installNote'], { ns: 'plugin' })}
-            </div>
-          </div>
-        </div>
-        {[
-          InstallStepFromGitHub.uploadFailed,
-          InstallStepFromGitHub.installed,
-          InstallStepFromGitHub.installFailed,
-        ].includes(state.step) ? (
+        <DialogHeader>
+          <DialogTitle>{getTitle()}</DialogTitle>
+          {!completedSteps.includes(state.step) && (
+            <DialogDescription>
+              {t(($) => $['installFromGitHub.installNote'], { ns: 'plugin' })}
+            </DialogDescription>
+          )}
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        {completedSteps.includes(state.step) ? (
           <Installed
             payload={manifest}
-            isFailed={[
-              InstallStepFromGitHub.uploadFailed,
-              InstallStepFromGitHub.installFailed,
-            ].includes(state.step)}
+            isFailed={failedSteps.includes(state.step)}
             errMsg={errorMsg}
             installContextCategory={installContextCategory}
             onCancel={onClose}
           />
-        ) : (
-          <div
-            className={`flex min-h-0 flex-1 flex-col items-start justify-center self-stretch overflow-y-auto px-6 py-3 ${state.step === InstallStepFromGitHub.installed ? 'gap-2' : 'gap-4'}`}
-          >
-            {state.step === InstallStepFromGitHub.setUrl && (
-              <Form
-                onFormSubmit={handleUrlSubmit}
-                className="flex flex-col items-start gap-4 self-stretch"
+        ) : state.step === InstallStepFromGitHub.setUrl ? (
+          <Form className="contents" onFormSubmit={handleUrlSubmit}>
+            <DialogBody>
+              <Field name="repoUrl" className="gap-4">
+                <FieldLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
+                  <span className="system-sm-semibold">
+                    {t(($) => $['installFromGitHub.gitHubRepo'], { ns: 'plugin' })}
+                  </span>
+                </FieldLabel>
+                <Input
+                  ref={repoUrlInputRef}
+                  type="text"
+                  inputMode="url"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={state.repoUrl}
+                  onValueChange={(value) =>
+                    setState((prevState) => ({ ...prevState, repoUrl: value }))
+                  }
+                  className="flex grow items-center gap-0.5 self-stretch overflow-hidden rounded-lg border-components-input-border-active bg-components-input-bg-active p-2 text-ellipsis"
+                  placeholder="Please enter GitHub repo URL"
+                />
+              </Field>
+            </DialogBody>
+            <DialogFooter>
+              <Button variant="secondary" className="min-w-18" onClick={onClose}>
+                {t(($) => $['installModal.cancel'], { ns: 'plugin' })}
+              </Button>
+              <Button
+                variant="primary"
+                type="submit"
+                className="min-w-18"
+                disabled={!state.repoUrl.trim()}
               >
-                <Field name="repoUrl" className="gap-4 self-stretch">
-                  <FieldLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
-                    <span className="system-sm-semibold">
-                      {t(($) => $['installFromGitHub.gitHubRepo'], { ns: 'plugin' })}
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    ref={repoUrlInputRef}
-                    type="text"
-                    inputMode="url"
-                    autoComplete="off"
-                    spellCheck={false}
-                    value={state.repoUrl}
-                    onValueChange={(value) =>
-                      setState((prevState) => ({ ...prevState, repoUrl: value }))
-                    }
-                    className="flex grow items-center gap-0.5 self-stretch overflow-hidden rounded-lg border-components-input-border-active bg-components-input-bg-active p-2 text-ellipsis"
-                    placeholder="Please enter GitHub repo URL"
-                  />
-                </Field>
-                <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
-                  <Button variant="secondary" className="min-w-18" onClick={onClose}>
-                    {t(($) => $['installModal.cancel'], { ns: 'plugin' })}
-                  </Button>
-                  <Button
-                    variant="primary"
-                    type="submit"
-                    className="min-w-18"
-                    disabled={!state.repoUrl.trim()}
-                  >
-                    {t(($) => $['installModal.next'], { ns: 'plugin' })}
-                  </Button>
-                </div>
-              </Form>
-            )}
+                {t(($) => $['installModal.next'], { ns: 'plugin' })}
+              </Button>
+            </DialogFooter>
+          </Form>
+        ) : (
+          <DialogBody className="flex flex-col items-start gap-4">
             {state.step === InstallStepFromGitHub.selectPackage && (
               <SelectPackage
                 updatePayload={updatePayload!}
@@ -310,7 +294,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
                   onFailed={handleFailed}
                 />
               )}
-          </div>
+          </DialogBody>
         )}
       </DialogContent>
     </Dialog>

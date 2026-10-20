@@ -1,14 +1,15 @@
+import type { ChangeEvent } from 'react'
 import type {
   LoopVariable,
   LoopVariablesComponentShape,
 } from '@/app/components/workflow/nodes/loop/types'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ValueType, VarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import FormItem from './form-item'
 import InputModeSelect from './input-mode-selec'
@@ -18,8 +19,8 @@ type ItemProps = {
   item: LoopVariable
 } & LoopVariablesComponentShape
 const Item = ({ nodeId, item, handleRemoveLoopVariable, handleUpdateLoopVariable }: ItemProps) => {
-  const { t } = useTranslation()
-  const variableNameLabel = t(($) => $['nodes.loop.variableName'], { ns: 'workflow' })
+  const { t } = useTranslation(['appDebug', 'common', 'workflow', 'workflowLogic'])
+  const variableNameLabel = t(($) => $['nodes.loop.variableName'], { ns: 'workflowLogic' })
 
   const checkVariableName = (value: string) => {
     const { isValid, errorMessageKey } = checkKeys([value], false)
@@ -35,7 +36,7 @@ const Item = ({ nodeId, item, handleRemoveLoopVariable, handleUpdateLoopVariable
     return true
   }
   const handleUpdateItemLabel = useCallback(
-    (e: any) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       replaceSpaceWithUnderscoreInVarNameInput(e.target)
       if (!!e.target.value && !checkVariableName(e.target.value)) return
       handleUpdateLoopVariable(item.id, { label: e.target.value })
@@ -56,7 +57,7 @@ const Item = ({ nodeId, item, handleRemoveLoopVariable, handleUpdateLoopVariable
   }, [])
 
   const handleUpdateItemVarType = useCallback(
-    (value: any) => {
+    (value: VarType) => {
       handleUpdateLoopVariable(item.id, {
         var_type: value,
         value: getDefaultValue(value, item.value_type),
@@ -66,7 +67,7 @@ const Item = ({ nodeId, item, handleRemoveLoopVariable, handleUpdateLoopVariable
   )
 
   const handleUpdateItemValueType = useCallback(
-    (value: any) => {
+    (value: ValueType) => {
       handleUpdateLoopVariable(item.id, {
         value_type: value,
         value: getDefaultValue(item.var_type, value),
@@ -76,7 +77,7 @@ const Item = ({ nodeId, item, handleRemoveLoopVariable, handleUpdateLoopVariable
   )
 
   const handleUpdateItemValue = useCallback(
-    (value: any) => {
+    (value: unknown) => {
       handleUpdateLoopVariable(item.id, { value })
     },
     [item.id, handleUpdateLoopVariable],

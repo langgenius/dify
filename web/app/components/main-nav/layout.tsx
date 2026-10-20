@@ -2,15 +2,19 @@
 
 import type { ReactNode } from 'react'
 import type { MainNavProps } from './types'
+import type { DetailSidebarMode } from '@/app/components/detail-sidebar/cookie'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
-import { useEffect } from 'react'
+import { useHydrateAtoms } from 'jotai/utils'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { AppDetailPrefetch } from '@/app/components/app/app-detail-prefetch'
+import { getAppIdFromPathname } from '@/app/components/app/app-detail-route'
+import { detailSidebarModeAtom } from '@/app/components/detail-sidebar/state'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { usePathname } from '@/next/navigation'
 import { MainNav } from '.'
+import { ResponsiveMainNav } from './responsive-main-nav'
 import { shouldHideMainNavigation, shouldUseDetailSidebar } from './routes'
 import { MAIN_CONTENT_ID, SkipNav } from './skip-nav'
 
@@ -18,30 +22,24 @@ type MainNavLayoutProps = {
   children: ReactNode
   detailSidebar?: ReactNode
   initialPlatform?: MainNavProps['initialPlatform']
+  initialDetailSidebarMode: DetailSidebarMode
 }
 
-function AppDetailStoreCleanup() {
-  const pathname = usePathname()
-  const { hasAppDetail, setAppDetail } = useAppStore(
-    useShallow((state) => ({
-      hasAppDetail: !!state.appDetail,
-      setAppDetail: state.setAppDetail,
-    })),
-  )
-
-  useEffect(() => {
-    if (pathname.startsWith('/app/') || !hasAppDetail) return
-
-    setAppDetail()
-  }, [hasAppDetail, pathname, setAppDetail])
-
-  return null
-}
-
-const MainNavLayout = ({ children, detailSidebar, initialPlatform }: MainNavLayoutProps) => {
-  const { t } = useTranslation('common')
+const MainNavLayout = ({
+  children,
+  detailSidebar,
+  initialPlatform,
+  initialDetailSidebarMode,
+}: MainNavLayoutProps) => {
+  useHydrateAtoms([[detailSidebarModeAtom, initialDetailSidebarMode]])
+  const { t } = useTranslation(['common'])
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
+  const appId = getAppIdFromPathname(pathname)
+  const useResponsiveNavigation =
+    pathname === '/agents' ||
+    pathname === '/datasets/create' ||
+    pathname.startsWith('/integrations/')
   const hideMainNavigation = shouldHideMainNavigation(pathname)
   const useDetailSidebar = shouldUseDetailSidebar(pathname, {
     agentV2Enabled: isAgentV2Enabled(),
@@ -49,18 +47,28 @@ const MainNavLayout = ({ children, detailSidebar, initialPlatform }: MainNavLayo
   })
 
   return (
-    <div className="flex h-0 min-h-0 min-w-0 grow overflow-hidden bg-background-body">
+    <div
+      className={cn(
+        'flex h-0 min-h-0 min-w-0 grow overflow-hidden bg-background-body',
+        useResponsiveNavigation && 'flex-col md:flex-row',
+      )}
+    >
       <SkipNav>{t(($) => $['navigation.skipToMain'])}</SkipNav>
-      <AppDetailStoreCleanup />
+      {appId && <AppDetailPrefetch appId={appId} />}
       {hideMainNavigation ? null : useDetailSidebar ? (
         detailSidebar
+      ) : useResponsiveNavigation ? (
+        <ResponsiveMainNav initialPlatform={initialPlatform} />
       ) : (
         <MainNav initialPlatform={initialPlatform} />
       )}
       <main
         id={MAIN_CONTENT_ID}
         tabIndex={-1}
-        className="flex min-h-0 min-w-0 grow flex-col overflow-hidden outline-hidden focus:outline-hidden focus-visible:outline-hidden"
+        className={cn(
+          'flex min-h-0 min-w-0 grow flex-col overflow-hidden outline-hidden focus:outline-hidden focus-visible:outline-hidden',
+          pathname.startsWith('/integrations/') && 'max-md:overflow-y-auto',
+        )}
       >
         {children}
       </main>

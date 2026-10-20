@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { InputVar } from '@/app/components/workflow/types'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
@@ -14,7 +15,7 @@ import {
   validateConfigModalPayload,
 } from '../utils'
 
-const t = withSelectorKey((key: string) => key)
+const t = withSelectorKey((key: string) => key) as TFunction<['appDebug', 'workflow']>
 
 const createInputVar = (overrides: Partial<InputVar> = {}): InputVar => ({
   type: InputVarType.textInput,
@@ -28,10 +29,6 @@ const createInputVar = (overrides: Partial<InputVar> = {}): InputVar => ({
 
 describe('config-modal utils', () => {
   describe('payload helpers', () => {
-    beforeEach(() => {
-      vi.clearAllMocks()
-    })
-
     it('should clear the default value when options no longer include it', () => {
       const payload = createInputVar({
         type: InputVarType.select,
@@ -103,10 +100,6 @@ describe('config-modal utils', () => {
   })
 
   describe('derived values', () => {
-    beforeEach(() => {
-      vi.clearAllMocks()
-    })
-
     it('should expose upload and json options only when supported', () => {
       const options = buildSelectOptions({
         isBasicApp: false,
@@ -141,10 +134,6 @@ describe('config-modal utils', () => {
   })
 
   describe('validation', () => {
-    beforeEach(() => {
-      vi.clearAllMocks()
-    })
-
     it('should reject duplicate select options', () => {
       const result = validateConfigModalPayload({
         tempPayload: createInputVar({

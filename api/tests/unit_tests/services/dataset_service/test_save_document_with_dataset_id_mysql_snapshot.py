@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import inspect
 
-from services.dataset_service import DocumentService
+from services.knowledge.dataset_service import DocumentService
 
 
 def test_session_committed_before_upload_file_lookup() -> None:
@@ -37,13 +37,13 @@ def test_session_committed_before_upload_file_lookup() -> None:
     invariant the reproduction in the issue depends on, without needing
     a live MySQL database.
     """
-    source_lines = inspect.getsource(DocumentService.save_document_with_dataset_id).splitlines()
+    source_lines = inspect.getsource(DocumentService.save_prepared_documents).splitlines()
 
     upload_select_line = next(
         (i for i, line in enumerate(source_lines) if "select(UploadFile)" in line),
         None,
     )
-    assert upload_select_line is not None, "save_document_with_dataset_id must contain a select(UploadFile) call"
+    assert upload_select_line is not None, "save_prepared_documents must contain a select(UploadFile) call"
 
     # Find every ``session.commit()`` call, then keep the last one
     # whose line number is BEFORE the UploadFile SELECT. If the fix is
@@ -56,7 +56,7 @@ def test_session_committed_before_upload_file_lookup() -> None:
             last_commit_before_upload = i
 
     assert last_commit_before_upload >= 0, (
-        "save_document_with_dataset_id must call session.commit() at least once before the UploadFile SELECT"
+        "save_prepared_documents must call session.commit() at least once before the UploadFile SELECT"
     )
 
     # The fix is a focused call: one extra ``session.commit()`` between
@@ -66,5 +66,5 @@ def test_session_committed_before_upload_file_lookup() -> None:
     # doesn't accidentally delete the snapshot refresh without
     # understanding why it's there.
     assert "#41735" in "\n".join(source_lines), (
-        "The fix's invariant comment referencing issue #41735 must be present in save_document_with_dataset_id"
+        "The fix's invariant comment referencing issue #41735 must be present in save_prepared_documents"
     )

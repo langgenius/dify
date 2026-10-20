@@ -34,7 +34,7 @@ const EMPTY_PUBLICATION_COUNTS: AgentPublicationCountsResponse = {
 }
 
 export default function RosterPage() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentRoster'])
   const docLink = useDocLink()
   const [keyword] = useQueryState(rosterQueryParamNames.keyword, rosterKeywordQueryParser)
   const [rosterFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
@@ -79,7 +79,7 @@ export default function RosterPage() {
 
   const rosterItems = rosterPages?.pages.flatMap((page) => page.data) ?? []
   const publicationCounts = rosterPages?.pages[0]?.publication_counts ?? EMPTY_PUBLICATION_COUNTS
-  const pageTitle = t(($) => $['roster.title'])
+  const pageTitle = t(($) => $['roster.title'], { ns: 'agentRoster' })
   const pageTitleId = useId()
   const listState: AgentRosterListState = isLoadingError
     ? { status: 'error', onRetry: () => void refetch() }
@@ -106,9 +106,9 @@ export default function RosterPage() {
   useDocumentTitle(pageTitle)
 
   return (
-    <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
-      <div className="shrink-0 bg-background-body px-8 pt-4 pb-2">
-        <div className="flex h-6 min-w-0 items-center justify-between gap-4">
+    <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body max-md:overflow-y-auto">
+      <div className="shrink-0 bg-background-body px-2 pt-4 pb-2 sm:px-8">
+        <div className="flex h-6 min-w-0 items-center justify-between gap-2 sm:gap-4">
           <h1
             id={pageTitleId}
             className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary"
@@ -120,10 +120,13 @@ export default function RosterPage() {
             href={docLink('/use-dify/build/new-agent/overview')}
             target="_blank"
             rel="noreferrer"
-            className="hidden shrink-0 items-center gap-0.5 rounded-md system-xs-regular text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:inline-flex"
+            className="inline-flex size-6 shrink-0 items-center justify-center rounded-md system-xs-regular text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:size-auto sm:gap-0.5"
           >
-            {t(($) => $['roster.learnMore'])}
-            <span aria-hidden className="i-ri-external-link-line size-3" />
+            <span className="sr-only sm:not-sr-only">
+              {t(($) => $['roster.learnMore'], { ns: 'agentRoster' })}
+            </span>
+            <span aria-hidden className="i-ri-book-open-line size-4 sm:hidden" />
+            <span aria-hidden className="i-ri-external-link-line hidden size-3 sm:inline-block" />
           </a>
         </div>
         <div className="mt-3.5">
@@ -131,7 +134,7 @@ export default function RosterPage() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 max-md:min-h-64">
         <ScrollArea className="h-full min-h-0 min-w-0 overflow-hidden">
           <ScrollAreaViewport
             role="region"
@@ -140,10 +143,13 @@ export default function RosterPage() {
             style={{ overflowX: 'hidden' }}
           >
             <ScrollAreaContent
-              className="min-h-full w-full max-w-full px-8 pt-2 pb-8"
+              className="min-h-full w-full max-w-full px-2 pt-2 pb-8 sm:px-8"
               style={{ minWidth: 0 }}
             >
-              <AgentRosterList label={t(($) => $['roster.listLabel'])} state={listState} />
+              <AgentRosterList
+                label={t(($) => $['roster.listLabel'], { ns: 'agentRoster' })}
+                state={listState}
+              />
             </ScrollAreaContent>
           </ScrollAreaViewport>
           <ScrollAreaScrollbar>

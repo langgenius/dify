@@ -10,8 +10,9 @@ from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
 from core.workflow.nodes.trigger_schedule.entities import VisualConfig
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
 from services.trigger.schedule_service import ScheduleService
+from tests.unit_tests.model_factories import make_workflow
 
 
 class TestScheduleService(unittest.TestCase):
@@ -62,7 +63,14 @@ class TestScheduleService(unittest.TestCase):
         cron_expr = "invalid cron"
         timezone = "UTC"
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=(
+                "Cron expression must have exactly 5 fields or be a predefined "
+                "expression \\(@daily, @weekly, etc\\.\\)\\. Got 2 fields: 'invalid "
+                "cron'"
+            ),
+        ):
             calculate_next_run_at(cron_expr, timezone)
 
     def test_calculate_next_run_at_invalid_timezone(self):
@@ -507,18 +515,7 @@ class TestScheduleWithTimezone(unittest.TestCase):
 
 
 def _workflow(*, graph_dict: dict[str, Any]) -> Workflow:
-    return Workflow.new(
-        tenant_id="tenant-1",
-        app_id="app-1",
-        type=WorkflowType.WORKFLOW,
-        version="draft",
-        graph=json.dumps(graph_dict),
-        features="{}",
-        created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
-    )
+    return make_workflow(graph=graph_dict)
 
 
 def test_to_schedule_config_should_build_from_cron_mode() -> None:

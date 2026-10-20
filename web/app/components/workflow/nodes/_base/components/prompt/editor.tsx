@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC, ReactNode } from 'react'
 import type { ModelConfig, Node, NodeOutPutVar, Variable } from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -9,14 +10,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { RiDeleteBinLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Copy, CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
+import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
@@ -60,7 +60,7 @@ type Props = Readonly<{
   editionType?: EditionType
   onEditionTypeChange?: (editionType: EditionType) => void
   varList?: Variable[]
-  handleAddVariable?: (payload: any) => void
+  handleAddVariable?: (payload: Variable) => void
   containerBackgroundClassName?: string
   gradientBorder?: boolean
   titleTooltip?: ReactNode
@@ -110,7 +110,7 @@ const Editor: FC<Props> = ({
   editorContainerClassName,
   required,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { eventEmitter } = useEventEmitterContextContext()
   const controlPromptEditorRerenderKey = useStore((s) => s.controlPromptEditorRerenderKey)
 
@@ -131,11 +131,11 @@ const Editor: FC<Props> = ({
 
   const handleInsertVariable = () => {
     setFocus()
-    eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId } as any)
+    eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId })
   }
 
   const getVarType = useWorkflowVariableType()
-  const pipelineId = useStore((s) => s.pipelineId)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
 
   return (
@@ -184,7 +184,7 @@ const Editor: FC<Props> = ({
                     render={
                       <button
                         type="button"
-                        className="flex size-4 shrink-0 items-center justify-center rounded-sm p-px outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                        className="flex size-4 shrink-0 items-center justify-center rounded-sm p-px hover:bg-state-base-hover"
                       >
                         <span
                           aria-hidden
@@ -232,9 +232,12 @@ const Editor: FC<Props> = ({
                         render={
                           <button
                             type="button"
-                            className="flex h-4 w-7 items-center justify-center rounded-sm outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                            className="flex h-4 w-7 items-center justify-center rounded-sm hover:bg-state-base-hover"
                           >
-                            <Jinja className="h-3 w-6 text-text-quaternary" />
+                            <span
+                              aria-hidden
+                              className="i-custom-vender-workflow-jinja h-3 w-6 text-text-quaternary"
+                            />
                           </button>
                         }
                       />
@@ -269,7 +272,10 @@ const Editor: FC<Props> = ({
                           aria-label={t(($) => $['common.insertVarTip'], { ns: 'workflow' })}
                           onClick={handleInsertVariable}
                         >
-                          <Variable02 aria-hidden="true" className="size-4" />
+                          <span
+                            aria-hidden="true"
+                            className="i-custom-vender-solid-development-variable-02 size-4"
+                          />
                         </IconButton>
                       }
                     />
@@ -291,11 +297,14 @@ const Editor: FC<Props> = ({
                     aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
                     onClick={handleCopy}
                   >
-                    <Copy aria-hidden="true" className="size-4" />
+                    <span aria-hidden="true" className="i-custom-vender-line-files-copy size-4" />
                   </IconButton>
                 ) : (
                   <IconButton aria-label={t(($) => $['operation.copy'], { ns: 'common' })}>
-                    <CopyCheck aria-hidden="true" className="size-4" />
+                    <span
+                      aria-hidden="true"
+                      className="i-custom-vender-line-files-copy-check size-4"
+                    />
                   </IconButton>
                 )}
                 <ToggleExpandBtn isExpand={isExpand} onExpandChange={setIsExpand} />
@@ -342,7 +351,7 @@ const Editor: FC<Props> = ({
                   workflowVariableBlock={{
                     show: true,
                     variables: nodesOutputVars || [],
-                    getVarType: getVarType as any,
+                    getVarType,
                     workflowNodesMap: availableNodes.reduce((acc, node) => {
                       acc[node.id] = {
                         title: node.data.title,
@@ -362,7 +371,7 @@ const Editor: FC<Props> = ({
                       }
                       return acc
                     }, {} as any),
-                    showManageInputField: !!pipelineId,
+                    showManageInputField: resourceKind === 'knowledge-pipeline',
                     onManageInputField: () => setShowInputFieldPanel?.(true),
                   }}
                   onChange={onChange}

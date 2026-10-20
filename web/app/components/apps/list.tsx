@@ -1,10 +1,9 @@
 'use client'
 
 import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { AppListCreationDialog } from './app-list-creation-modals'
 import type { AppListUrlQuery } from './query-params'
-import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -17,7 +16,7 @@ import { useAtomValue } from 'jotai'
 import { useQueryStates } from 'nuqs'
 import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { CheckModal } from '@/hooks/use-pay'
+import { CheckResultToast } from '@/hooks/use-pay'
 import { hasPermission } from '@/utils/permission'
 import { AppListCatalog } from './app-list-catalog'
 import { AppListCreationModals } from './app-list-creation-modals'
@@ -32,18 +31,17 @@ type AppListSortBy = NonNullable<AppListQuery['sort_by']>
 type AppListCategory = AppListUrlQuery['category']
 
 type Props = Readonly<{
-  onCreateLearnDify?: (app: App) => void
-  onTryLearnDify?: (params: TryAppSelection) => void
+  onCreateLearnDify?: (app: RecommendedAppResponse) => void
+  onTryLearnDify?: (app: RecommendedAppResponse) => void
 }>
 
 export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
-  const { category, keywords } = urlQuery
+  const { category, keywords, sort_by: sortBy } = urlQuery
   const [creatorIDs, setCreatorIDs] = useState<string[]>([])
   const [tagIDs, setTagIDs] = useState<string[]>([])
-  const [sortBy, setSortBy] = useState<AppListSortBy>('last_modified')
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
   const dropZoneRef = useRef<HTMLDivElement>(null)
   const scrollViewportRef = useRef<HTMLDivElement>(null)
@@ -107,7 +105,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   }
   const changeSortBy = (nextSortBy: AppListSortBy) => {
     resetCatalogScroll()
-    setSortBy(nextSortBy)
+    void setUrlQuery({ sort_by: nextSortBy })
   }
 
   const openCreateBlankModal = useCallback(() => {
@@ -184,7 +182,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
           </ScrollArea>
         </div>
 
-        <CheckModal />
+        <CheckResultToast />
         <AppListTagManagementModal
           show={showTagManagementModal}
           onClose={() => setShowTagManagementModal(false)}

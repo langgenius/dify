@@ -1,5 +1,6 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
+import { DialogBody, DialogFooter } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
@@ -16,7 +17,7 @@ type DeleteAccountProps = {
 }
 
 export default function CheckEmail(props: DeleteAccountProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'accountSettings'])
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,
@@ -39,43 +40,47 @@ export default function CheckEmail(props: DeleteAccountProps) {
 
   return (
     <Form
+      className="contents"
       onFormSubmit={() => {
         void handleConfirm()
       }}
     >
-      <div className="py-1 body-md-medium text-text-destructive">
-        {t(($) => $['account.deleteTip'], { ns: 'common' })}
-      </div>
-      <div className="pt-1 pb-2 body-md-regular text-text-secondary">
-        {t(($) => $['account.deletePrivacyLinkTip'], { ns: 'common' })}
-        <Link href="https://dify.ai/privacy" className="text-text-accent">
-          {t(($) => $['account.deletePrivacyLink'], { ns: 'common' })}
-        </Link>
-      </div>
-      <Field name="email" className="mt-3">
-        <FieldLabel className="system-sm-semibold">
-          {t(($) => $['account.deleteLabel'], { ns: 'common' })}
-        </FieldLabel>
-        <Input
-          placeholder={t(($) => $['account.deletePlaceholder'], { ns: 'common' }) as string}
-          value={userInputEmail}
-          onValueChange={setUserInputEmail}
-        />
-      </Field>
-      <div className="mt-3 flex w-full flex-col gap-2">
+      <DialogBody>
+        <div className="py-1 body-md-medium text-text-destructive">
+          {t(($) => $['account.deleteTip'], { ns: 'accountSettings' })}
+        </div>
+        <div className="pt-1 pb-2 body-md-regular text-text-secondary">
+          {t(($) => $['account.deletePrivacyLinkTip'], { ns: 'accountSettings' })}
+          <Link href="https://dify.ai/privacy" className="text-text-accent">
+            {t(($) => $['account.deletePrivacyLink'], { ns: 'accountSettings' })}
+          </Link>
+        </div>
+        <Field name="email" className="mt-3">
+          <FieldLabel className="system-sm-semibold">
+            {t(($) => $['account.deleteLabel'], { ns: 'accountSettings' })}
+          </FieldLabel>
+          <Input
+            placeholder={
+              t(($) => $['account.deletePlaceholder'], { ns: 'accountSettings' }) as string
+            }
+            value={userInputEmail}
+            onValueChange={setUserInputEmail}
+          />
+        </Field>
+      </DialogBody>
+      <DialogFooter className="flex-col items-stretch">
         <Button
           type="submit"
-          className="w-full"
           disabled={userInputEmail !== userProfileEmail}
           loading={isSendingEmail}
           variant="primary"
         >
-          {t(($) => $['account.sendVerificationButton'], { ns: 'common' })}
+          {t(($) => $['account.sendVerificationButton'], { ns: 'accountSettings' })}
         </Button>
-        <Button type="button" className="w-full" onClick={props.onCancel}>
+        <Button type="button" onClick={props.onCancel}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
-      </div>
+      </DialogFooter>
     </Form>
   )
 }

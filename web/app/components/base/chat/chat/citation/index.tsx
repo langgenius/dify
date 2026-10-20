@@ -21,7 +21,7 @@ const Citation: FC<CitationProps> = ({
   showHitInfo,
   containerClassName = 'chat-answer-container',
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
   const elesRef = useRef<HTMLDivElement[]>([])
   const [limitNumberInOneLine, setLimitNumberInOneLine] = useState(0)
   const [showMore, setShowMore] = useState(false)
@@ -50,26 +50,38 @@ const Citation: FC<CitationProps> = ({
   )
 
   useEffect(() => {
-    const containerWidth = document.querySelector(`.${containerClassName}`)!.clientWidth - 40
-    let totalWidth = 0
-    let limit = 0
-    for (let i = 0; i < resources.length; i++) {
-      totalWidth += elesRef.current[i]!.clientWidth
-
-      if (totalWidth + i * 4 > containerWidth) {
-        totalWidth -= elesRef.current[i]!.clientWidth
-
-        if (totalWidth + 34 > containerWidth) limit = i - 1
-        else limit = i
-
-        break
-      } else {
-        limit = i + 1
-      }
+    const container = document.querySelector(`.${containerClassName}`)
+    if (!container) {
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Citation capacity depends on mounted element widths and must be measured again when the container resizes.
+      setLimitNumberInOneLine(resources.length)
+      return
     }
-    setLimitNumberInOneLine(limit)
-    // oxlint-disable-next-line react/exhaustive-deps
-  }, [])
+    const updateLimit = () => {
+      const containerWidth = Math.max(0, container.clientWidth - 40)
+      const widths = resources.map((_, index) => elesRef.current[index]?.clientWidth ?? 0)
+      const fullWidth =
+        widths.reduce((total, width) => total + width, 0) + Math.max(0, widths.length - 1) * 4
+      if (fullWidth <= containerWidth) {
+        // oxlint-disable-next-line eslint-react/set-state-in-effect -- Citation capacity depends on mounted element widths and must be measured again when the container resizes.
+        setLimitNumberInOneLine(resources.length)
+        return
+      }
+      let totalWidth = 0
+      let limit = 0
+      for (const width of widths) {
+        totalWidth += width + (limit > 0 ? 4 : 0)
+        // Reserve the overflow button and its gap alongside the visible citations.
+        if (totalWidth + 4 + 34 > containerWidth) break
+        limit += 1
+      }
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Citation capacity depends on mounted element widths and must be measured again when the container resizes.
+      setLimitNumberInOneLine(limit)
+    }
+    updateLimit()
+    const observer = new ResizeObserver(updateLimit)
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [containerClassName, resources])
 
   const resourcesLength = resources.length
   const citationTitle = t(($) => $['chat.citation.title'], { ns: 'common' })

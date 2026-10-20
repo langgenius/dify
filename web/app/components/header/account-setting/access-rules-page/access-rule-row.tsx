@@ -23,7 +23,7 @@ const AccessRuleRow = ({
   onView,
   onEdit,
 }: AccessRuleRowProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['permission'])
   const { policy } = rule
   const description =
     policy.description?.trim() || t(($) => $['accessRule.noDescription'], { ns: 'permission' })

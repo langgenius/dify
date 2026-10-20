@@ -1,5 +1,5 @@
 import type { ConversationVariable } from '@/app/components/workflow/types'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
@@ -64,6 +64,7 @@ describe('ConversationVariableModal', () => {
   })
 
   afterEach(() => {
+    vi.clearAllTimers()
     vi.useRealTimers()
   })
 
@@ -96,8 +97,8 @@ describe('ConversationVariableModal', () => {
     renderWorkflowComponent(
       <ConversationVariableModal conversationID="conversation-1" onHide={onHide} />,
       {
+        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
         initialStoreState: {
-          appId: 'app-1',
           conversationVariables: [
             createConversationVariable(),
             createConversationVariable({
@@ -132,31 +133,35 @@ describe('ConversationVariableModal', () => {
     expect(onHide).toHaveBeenCalledTimes(1)
   })
 
-  it('copies the current variable value and resets the copied state after the timeout', () => {
-    vi.useFakeTimers()
+  it('copies the current variable value and resets the copied state after the timeout', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
 
     renderWorkflowComponent(
       <ConversationVariableModal conversationID="conversation-1" onHide={vi.fn()} />,
       {
+        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
         initialStoreState: {
-          appId: 'app-1',
           conversationVariables: [createConversationVariable()],
         },
       },
     )
 
-    const copyTrigger = document.querySelector(
-      '.flex.items-center.p-1 svg.cursor-pointer',
-    ) as HTMLElement
+    const copyTrigger = screen.getByRole('button', { name: 'common.operation.copy' })
 
-    act(() => {
-      fireEvent.click(copyTrigger)
-    })
+    await user.click(copyTrigger)
 
     expect(mockCopy).toHaveBeenCalledWith('{"draft":true}')
+    expect(copyTrigger).toHaveFocus()
+    expect(copyTrigger).toHaveAttribute('aria-disabled', 'true')
+    await user.keyboard('{Enter}')
+    expect(mockCopy).toHaveBeenCalledTimes(1)
 
     act(() => {
       vi.advanceTimersByTime(2000)
     })
+    expect(copyTrigger).toHaveAttribute('aria-disabled', 'false')
+    await user.keyboard(' ')
+    expect(mockCopy).toHaveBeenCalledTimes(2)
   })
 })

@@ -1,16 +1,8 @@
-import type { DatasourceProviderType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ToolWithProvider } from '../types'
-import { pinyin } from 'pinyin-pro'
 import { CollectionType } from '../../tools/types'
+import { compareProviderLetters, getProviderLetter } from './utils'
 
-type ToolCategoryGroup = 'custom' | 'data-source' | 'mcp' | 'workflow'
-
-const datasourceProviderTypes: Record<DatasourceProviderType, true> = {
-  local_file: true,
-  online_document: true,
-  online_drive: true,
-  website_crawl: true,
-}
+type ToolCategoryGroup = 'custom' | 'mcp' | 'workflow'
 
 type AuthorToolGroup = {
   kind: 'author'
@@ -48,16 +40,14 @@ export function createToolListData(
     const firstChar = getFirstChar(tool)
     if (!firstChar) continue
 
-    const letter = normalizeLetter(firstChar)
+    const letter = getProviderLetter(firstChar)
     const bucket = getOrCreateBucket(buckets, letter)
     addToolToBucket(bucket, tool)
   }
 
-  const sortedBuckets = [...buckets.entries()].sort(([left], [right]) => {
-    if (left === '#') return 1
-    if (right === '#') return -1
-    return left.localeCompare(right)
-  })
+  const sortedBuckets = [...buckets.entries()].sort(([left], [right]) =>
+    compareProviderLetters(left, right),
+  )
   const letters = sortedBuckets.map(([letter]) => letter)
   const flatTools = sortedBuckets.flatMap(([letter, bucket]) =>
     bucket.groups.flatMap((group) => group.tools.map((tool) => ({ ...tool, letter }))),
@@ -65,15 +55,6 @@ export function createToolListData(
   const treeGroups = mergeGroupsByProvider([...buckets.values()])
 
   return { letters, flatTools, treeGroups }
-}
-
-function normalizeLetter(firstChar: string) {
-  const pinyinInitial = /[\u4E00-\u9FA5]/.test(firstChar)
-    ? pinyin(firstChar, { pattern: 'first', toneType: 'none' })[0]
-    : firstChar
-  const letter = (pinyinInitial || firstChar).toUpperCase()
-
-  return /[A-Z]/.test(letter) ? letter : '#'
 }
 
 function getOrCreateBucket(buckets: Map<string, LetterBucket>, letter: string) {
@@ -122,12 +103,7 @@ function addToolToAuthorGroup(bucket: LetterBucket, tool: ToolWithProvider) {
 function getToolCategoryGroup(type: ToolWithProvider['type']): ToolCategoryGroup | undefined {
   if (type === CollectionType.custom) return 'custom'
   if (type === CollectionType.workflow) return 'workflow'
-  if (isDatasourceProviderType(type)) return 'data-source'
   if (type === CollectionType.mcp) return 'mcp'
-}
-
-function isDatasourceProviderType(type: ToolWithProvider['type']): type is DatasourceProviderType {
-  return Object.hasOwn(datasourceProviderTypes, type)
 }
 
 function mergeGroupsByProvider(buckets: LetterBucket[]) {

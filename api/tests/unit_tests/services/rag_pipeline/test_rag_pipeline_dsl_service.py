@@ -8,7 +8,7 @@ service branch that owns the behavior under test.
 from __future__ import annotations
 
 import json
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from types import SimpleNamespace
 from typing import Any
@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes
-from models import Account, Tenant
+from models import Account
 from models.dataset import (
     Dataset,
     Pipeline,
@@ -39,6 +39,7 @@ from services.rag_pipeline.rag_pipeline_dsl_service import (
     RagPipelineDslService,
     RagPipelinePendingData,
 )
+from tests.unit_tests.model_factories import make_account, make_dataset, make_tenant, make_workflow
 
 
 @pytest.fixture
@@ -47,12 +48,12 @@ def service(sqlite_session: Session) -> RagPipelineDslService:
 
 
 def _account(*, tenant_id: str = "tenant-1", account_id: str = "account-1") -> Account:
-    tenant = Tenant(name="Tenant")
-    tenant.id = tenant_id
-    account = Account(name="Account", email="account@example.com")
-    account.id = account_id
-    account._current_tenant = tenant
-    return account
+    return make_account(
+        account_id=account_id,
+        name="Account",
+        email="account@example.com",
+        tenant=make_tenant(tenant_id=tenant_id, name="Tenant"),
+    )
 
 
 def _pipeline(
@@ -76,19 +77,12 @@ def _pipeline(
 
 
 def _workflow(session: Session, pipeline: Pipeline, *, graph: dict[str, Any] | None = None) -> Workflow:
-    workflow = Workflow(
-        id=f"workflow-{pipeline.id}",
+    workflow = make_workflow(
+        workflow_id=f"workflow-{pipeline.id}",
         tenant_id=pipeline.tenant_id,
         app_id=pipeline.id,
-        type=WorkflowType.RAG_PIPELINE,
-        kind=WorkflowKind.STANDARD,
-        version=Workflow.VERSION_DRAFT,
-        graph=json.dumps(graph or {"nodes": [], "edges": []}),
-        features="{}",
-        created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        workflow_type=WorkflowType.RAG_PIPELINE,
+        graph=graph,
     )
     pipeline.workflow_id = workflow.id
     session.add(workflow)
@@ -124,13 +118,13 @@ def _dataset(
     name: str = "Dataset",
     chunk_structure: str = "text_model",
 ) -> Dataset:
-    dataset = Dataset(
+    dataset = make_dataset(
+        dataset_id=None,
         tenant_id=pipeline.tenant_id,
         name=name,
         description="description",
         data_source_type=DataSourceType.UPLOAD_FILE,
         indexing_technique="high_quality",
-        created_by="account-1",
         maintainer="account-1",
         chunk_structure=chunk_structure,
         pipeline_id=pipeline.id,
@@ -333,6 +327,25 @@ def test_extract_workflow_dependencies_tolerates_unresolved_llm_environment_refe
 
     assert result == ["old-provider"]
     analyze_dependency.assert_called_once_with("old-provider")
+
+
+def test_extract_dependencies_from_workflow_graph_includes_trigger_and_agent(
+    service: RagPipelineDslService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        module.ToolNodeData,
+        "model_validate",
+        Mock(return_value=SimpleNamespace(provider_id="acme/tool/provider")),
+    )
+    graph = {
+        "nodes": [
+            {"data": {"type": BuiltinNodeTypes.TOOL, "plugin_id": "acme/tool"}},
+            {"data": {"type": "trigger-plugin", "plugin_id": "acme/trigger"}},
+            {"data": {"type": BuiltinNodeTypes.AGENT, "agent_strategy_provider_name": "acme/strategy/provider"}},
+        ]
+    }
+
+    assert service._extract_dependencies_from_workflow_graph(graph) == ["acme/tool", "acme/trigger", "acme/strategy"]
 
 
 def test_extract_dependencies_from_workflow_graph_covers_plugin_and_model_nodes(
@@ -656,6 +669,7 @@ def test_import_pending_version_stores_redis(monkeypatch: pytest.MonkeyPatch, se
         account=_account(), import_mode=ImportMode.YAML_CONTENT.value, yaml_content=_valid_dsl(version="1.0.0")
     )
     assert result.status == ImportStatus.PENDING
+    assert result.dataset_created is False
     assert setex.call_args.args[0] == f"app_import_info:{result.id}"
     pending = RagPipelinePendingData.model_validate_json(setex.call_args.args[2])
     assert pending.tenant_id == "tenant-1"
@@ -1035,3 +1049,83 @@ def test_create_dataset_name_is_tenant_scoped_and_ignores_template_rows(
                 permission="only_me",
             ),
         )
+
+
+@pytest.mark.parametrize("confirm", [False, True])
+@pytest.mark.parametrize("existing", ["none", "pipeline", "dataset"])
+def test_import_reports_actual_dataset_creation(
+    monkeypatch: pytest.MonkeyPatch,
+    service: RagPipelineDslService,
+    sqlite_session: Session,
+    confirm: bool,
+    existing: str,
+) -> None:
+    pipeline_id = None
+    if existing != "none":
+        pipeline = _pipeline(sqlite_session)
+        if existing == "dataset":
+            _dataset(sqlite_session, pipeline)
+        _workflow(sqlite_session, pipeline)
+        pipeline_id = pipeline.id
+    monkeypatch.setattr(module.KnowledgeConfiguration, "model_validate", Mock(return_value=_knowledge_configuration()))
+    if confirm:
+        pending = RagPipelinePendingData(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            import_mode=ImportMode.YAML_CONTENT.value,
+            yaml_content=_valid_dsl(),
+            pipeline_id=pipeline_id,
+        )
+        monkeypatch.setattr(module.redis_client, "get", Mock(return_value=pending.model_dump_json()))
+        monkeypatch.setattr(module.redis_client, "delete", Mock())
+        result = service.confirm_import(import_id="import-1", account=_account())
+    else:
+        result = service.import_rag_pipeline(
+            account=_account(),
+            import_mode=ImportMode.YAML_CONTENT.value,
+            yaml_content=_valid_dsl(),
+            pipeline_id=pipeline_id,
+        )
+    assert result.status == ImportStatus.COMPLETED
+    assert result.dataset_created is (existing != "dataset")
+    assert "dataset_created" not in result.model_dump()
+    assert "dataset_created" not in json.loads(result.model_dump_json())
+    assert sqlite_session.in_transaction()
+
+
+@pytest.mark.parametrize("confirm", [False, True])
+def test_failed_import_does_not_report_created_dataset(
+    monkeypatch: pytest.MonkeyPatch,
+    service: RagPipelineDslService,
+    sqlite_session: Session,
+    confirm: bool,
+) -> None:
+    monkeypatch.setattr(module.KnowledgeConfiguration, "model_validate", Mock(return_value=_knowledge_configuration()))
+    flush = sqlite_session.flush
+
+    def fail_after_dataset_flush(objects: Sequence[object] | None = None) -> None:
+        created_dataset = any(isinstance(obj, Dataset) for obj in sqlite_session.new)
+        flush(objects)
+        if created_dataset:
+            raise RuntimeError("dataset flush failed")
+
+    monkeypatch.setattr(sqlite_session, "flush", fail_after_dataset_flush)
+    if confirm:
+        pending = RagPipelinePendingData(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            import_mode=ImportMode.YAML_CONTENT.value,
+            yaml_content=_valid_dsl(),
+            pipeline_id=None,
+        )
+        monkeypatch.setattr(module.redis_client, "get", Mock(return_value=pending.model_dump_json()))
+        result = service.confirm_import(import_id="import-1", account=_account())
+    else:
+        result = service.import_rag_pipeline(
+            account=_account(),
+            import_mode=ImportMode.YAML_CONTENT.value,
+            yaml_content=_valid_dsl(),
+        )
+    assert result.status == ImportStatus.FAILED
+    assert result.error == "dataset flush failed"
+    assert result.dataset_created is False

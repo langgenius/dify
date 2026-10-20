@@ -1,13 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useAutoDisabledDocuments,
-  useDocumentEnable,
-  useInvalidDisabledDocument,
-} from '@/service/knowledge/use-document'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import StatusWithAction from './status-with-action'
 
 type Props = Readonly<{
@@ -15,16 +12,24 @@ type Props = Readonly<{
 }>
 
 const AutoDisabledDocument: FC<Props> = ({ datasetId }) => {
-  const { t } = useTranslation()
-  const { data, isLoading } = useAutoDisabledDocuments(datasetId)
-  const invalidDisabledDocument = useInvalidDisabledDocument()
+  const { t } = useTranslation(['common', 'dataset'])
+  const queryClient = useQueryClient()
+  const autoDisableLogsQuery = consoleQuery.datasets.byDatasetId.autoDisableLogs.get.queryOptions({
+    input: { params: { dataset_id: datasetId } },
+  })
+  const { data, isLoading } = useQuery(autoDisableLogsQuery)
   const documentIds = data?.document_ids
-  const { mutateAsync: enableDocument } = useDocumentEnable()
+  const { mutateAsync: changeDocumentStatus } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.status.byAction.batch.patch.mutationOptions(),
+  )
   if (!documentIds?.length || isLoading) return null
 
   const handleEnableDocuments = async () => {
-    await enableDocument({ datasetId, documentIds })
-    invalidDisabledDocument()
+    await changeDocumentStatus({
+      params: { dataset_id: datasetId, action: 'enable' },
+      query: { document_id: documentIds },
+    })
+    queryClient.invalidateQueries({ queryKey: autoDisableLogsQuery.queryKey })
     toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }
 

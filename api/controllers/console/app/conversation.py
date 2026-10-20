@@ -111,7 +111,6 @@ class CompletionConversationApi(Resource):
     @get_app_model(mode=AppMode.COMPLETION)
     @model_validate(CompletionConversationQuery)
     def get(self, req_data: CompletionConversationQuery, session: Session, current_user: Account, app_model: App):
-
         query = sa.select(Conversation).where(
             Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
         )
@@ -140,7 +139,7 @@ class CompletionConversationApi(Resource):
 
         if end_datetime_utc:
             end_datetime_utc = end_datetime_utc.replace(second=59)
-            query = query.where(Conversation.created_at < end_datetime_utc)
+            query = query.where(Conversation.created_at <= end_datetime_utc)
 
         # FIXME, the type ignore in this file
         if req_data.annotation_status == "annotated":
@@ -218,8 +217,8 @@ class CompletionConversationDetailApi(Resource):
 
         try:
             ConversationService.delete(app_model, conversation_id_str, current_user, session=session)
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
 
         return "", 204
 
@@ -241,7 +240,6 @@ class ChatConversationApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @model_validate(ChatConversationQuery)
     def get(self, req_data: ChatConversationQuery, session: Session, current_user: Account, app_model: App):
-
         subquery = (
             sa.select(Conversation.id.label("conversation_id"), EndUser.session_id.label("from_end_user_session_id"))
             .outerjoin(EndUser, Conversation.from_end_user_id == EndUser.id)
@@ -387,8 +385,8 @@ class ChatConversationDetailApi(Resource):
 
         try:
             ConversationService.delete(app_model, conversation_id_str, current_user, session=session)
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
 
         return "", 204
 
@@ -406,9 +404,11 @@ def _get_conversation(session: Session, current_user: Account, app_model, conver
         .where(Conversation.id == conversation_id, Conversation.read_at.is_(None))
         # Keep updated_at unchanged when only marking a conversation as read.
         .values(
-            read_at=naive_utc_now(),
-            read_account_id=current_user.id,
-            updated_at=Conversation.updated_at,
+            {
+                Conversation.read_at: naive_utc_now(),
+                Conversation.read_account_id: current_user.id,
+                Conversation.updated_at: Conversation.updated_at,
+            }
         )
     )
     session.flush()

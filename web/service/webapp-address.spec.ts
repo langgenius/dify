@@ -28,7 +28,7 @@ describe('WebAppAddress', () => {
     expect(parseWebAppAddress('/environment/not-a-mode/workflow-app')).toBeNull()
   })
 
-  it('accepts every webapp mode under the environment prefix', () => {
+  it('accepts chat addresses under the environment prefix', () => {
     expect(parseWebAppAddress('/environment/chat/chat-app')).toEqual({
       kind: 'environment',
       code: 'chat-app',

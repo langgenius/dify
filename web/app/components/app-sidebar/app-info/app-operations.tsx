@@ -27,14 +27,13 @@ type AppOperationsProps = {
 }
 
 const AppOperations = ({ appName, operationGroups }: AppOperationsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const visibleGroups = operationGroups.filter((group) => group.length > 0)
-
-  if (!visibleGroups.length) return null
 
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
+        disabled={!visibleGroups.length}
         render={
           <IconButton
             aria-label={t(($) => $['operation.moreActionsFor'], {

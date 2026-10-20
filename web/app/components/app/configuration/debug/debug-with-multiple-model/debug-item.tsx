@@ -17,7 +17,6 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import ChatItem from './chat-item'
 import { useDebugWithMultipleModelContext } from './context'
 import ModelParameterTrigger from './model-parameter-trigger'
@@ -29,7 +28,7 @@ type DebugItemProps = {
   style?: CSSProperties
 }
 const DebugItem: FC<DebugItemProps> = ({ modelAndParameter, className, style }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const { mode } = useDebugConfigurationContext()
   const { multipleModelConfigs, onMultipleModelConfigsChange, onDebugWithMultipleModelChange } =
     useDebugWithMultipleModelContext()
@@ -124,13 +123,13 @@ const DebugItem: FC<DebugItemProps> = ({ modelAndParameter, className, style }) 
         </DropdownMenu>
       </div>
       <div style={{ height: 'calc(100% - 40px)' }}>
-        {(mode === AppModeEnum.CHAT || mode === AppModeEnum.AGENT_CHAT) &&
+        {(mode === 'chat' || mode === 'agent-chat') &&
           currentProvider &&
           currentModel &&
           currentModel.status === ModelStatusEnum.active && (
             <ChatItem modelAndParameter={modelAndParameter} />
           )}
-        {mode === AppModeEnum.COMPLETION &&
+        {mode === 'completion' &&
           currentProvider &&
           currentModel &&
           currentModel.status === ModelStatusEnum.active && (

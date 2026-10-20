@@ -20,7 +20,7 @@ const isTheme = (value: string): value is Theme => {
 }
 
 export default function ThemeSelector() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { theme, setTheme } = useTheme()
   const currentTheme: Theme = theme && isTheme(theme) ? theme : 'system'
 

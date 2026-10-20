@@ -93,14 +93,6 @@ class AppStatus(StrEnum):
     NORMAL = "normal"
 
 
-class AppMCPServerStatus(StrEnum):
-    """AppMCPServer Status Enum"""
-
-    NORMAL = "normal"
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-
-
 class ConversationStatus(StrEnum):
     """Conversation Status Enum"""
 
@@ -214,6 +206,9 @@ class EndUserType(StrEnum):
     OPENAPI = "openapi"
     SERVICE_API = "service-api"
     TRIGGER = "trigger"
+
+
+DEFAULT_END_USER_SESSION_ID = "DEFAULT-USER"
 
 
 class DocumentDocType(StrEnum):

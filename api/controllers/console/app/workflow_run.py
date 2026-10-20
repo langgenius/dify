@@ -3,11 +3,13 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from controllers.common.errors import NotFoundError
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.flask_admission import console_account_admission
@@ -24,6 +26,8 @@ from fields.workflow_run_fields import (
     WorkflowRunNodeExecutionListResponse,
     WorkflowRunNodeExecutionResponse,
     WorkflowRunPaginationResponse,
+    workflow_run_pagination_response_source,
+    workflow_run_response_source,
 )
 from libs.custom_inputs import time_duration
 from libs.helper import dump_response, uuid_value
@@ -147,7 +151,8 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
     )
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @model_validate(WorkflowRunListQuery)
-    def get(self, req_data: WorkflowRunListQuery, request_context: RequestContext, app_model: App):
+    @with_session(write=False)
+    def get(self, session: Session, req_data: WorkflowRunListQuery, request_context: RequestContext, app_model: App):
         """
         Get advanced chat app workflow run list
         """
@@ -158,7 +163,10 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
             triggered_from=_triggered_from(req_data.triggered_from),
         )
 
-        return dump_response(AdvancedChatWorkflowRunPaginationResponse, result)
+        return dump_response(
+            AdvancedChatWorkflowRunPaginationResponse,
+            workflow_run_pagination_response_source(result, session=session),
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs/count")
@@ -208,7 +216,8 @@ class WorkflowRunListApi(Resource):
     )
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @model_validate(WorkflowRunListQuery)
-    def get(self, req_data: WorkflowRunListQuery, request_context: RequestContext, app_model: App):
+    @with_session(write=False)
+    def get(self, session: Session, req_data: WorkflowRunListQuery, request_context: RequestContext, app_model: App):
         """
         Get workflow run list
         """
@@ -219,7 +228,9 @@ class WorkflowRunListApi(Resource):
             triggered_from=_triggered_from(req_data.triggered_from),
         )
 
-        return dump_response(WorkflowRunPaginationResponse, result)
+        return dump_response(
+            WorkflowRunPaginationResponse, workflow_run_pagination_response_source(result, session=session)
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/count")
@@ -267,8 +278,9 @@ class WorkflowRunDetailApi(Resource):
     @console_account_admission(
         rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())],
     )
+    @with_session(write=False)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, request_context: RequestContext, app_model: App, run_id: UUID):
+    def get(self, session: Session, request_context: RequestContext, app_model: App, run_id: UUID):
         """
         Get workflow run detail
         """
@@ -280,7 +292,7 @@ class WorkflowRunDetailApi(Resource):
         if workflow_run is None:
             raise NotFoundError("Workflow run not found")
 
-        return dump_response(WorkflowRunDetailResponse, workflow_run)
+        return dump_response(WorkflowRunDetailResponse, workflow_run_response_source(workflow_run, session=session))
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/node-executions")

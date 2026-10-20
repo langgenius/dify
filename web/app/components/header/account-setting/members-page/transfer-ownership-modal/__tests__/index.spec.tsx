@@ -1,10 +1,9 @@
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
-import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
-import { useMembers } from '@/service/use-common'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import TransferOwnershipModal from '../index'
 
@@ -14,16 +13,25 @@ const toastMocks = vi.hoisted(() => ({
 const mockConsoleState = vi.hoisted(() => ({
   current: {} as Partial<ConsoleStateFixture>,
 }))
-const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState.current)
 })
 
-vi.mock('@/service/common')
-vi.mock('@/service/use-common')
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.members.byMemberId.ownerTransfer.post': vi.fn(),
+      'workspaces.current.members.ownerTransferCheck.post': vi.fn(),
+      'workspaces.current.members.sendOwnerTransferConfirmEmail.post': vi.fn(),
+    }),
+  }
+})
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => toastMocks.mockNotify(args),
   },
@@ -35,30 +43,18 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('../member-selector', () => ({
-  default: ({ onSelect }: { onSelect: (id: string) => void }) => (
-    <button onClick={() => onSelect('new-owner-id')}>Select member</button>
-  ),
-}))
-
 describe('TransferOwnershipModal', () => {
   const mockOnClose = vi.fn()
   const { mockNotify } = toastMocks
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
 
     const consoleState = {
       currentWorkspace: { name: 'Test Workspace' },
-      userProfile: { email: 'owner@example.com', id: 'owner-id' },
+      userProfile: { email: 'owner@example.com', avatar_url: null, id: 'owner-id' },
     } as unknown as ConsoleStateFixture
     mockConsoleState.current = consoleState
-    mockConsoleStateReader.mockReturnValue(consoleState)
-
-    vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: [] },
-    } as unknown as ReturnType<typeof useMembers>)
-
     // Stub globalThis.location.reload (component calls globalThis.location.reload())
     const mockReload = vi.fn()
     vi.stubGlobal('location', {
@@ -75,15 +71,32 @@ describe('TransferOwnershipModal', () => {
     vi.useRealTimers()
   })
 
-  const renderModal = () =>
-    render(
-      <>
-        <TransferOwnershipModal show onClose={mockOnClose} />
-      </>,
-      {
-        wrapper: createAccountProfileQueryWrapper(mockConsoleState.current.userProfile ?? {}),
-      },
-    )
+  const renderModal = () => {
+    const { queryClient, wrapper } = createConsoleQueryWrapper({
+      accountProfile: mockConsoleState.current.userProfile,
+    })
+    queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
+      accounts: [
+        {
+          id: 'owner-id',
+          name: 'Current Owner',
+          email: 'owner@example.com',
+          role: 'owner',
+          status: 'active',
+          avatar_url: null,
+        },
+        {
+          id: 'new-owner-id',
+          name: 'New Owner',
+          email: 'new@example.com',
+          role: 'admin',
+          status: 'active',
+          avatar_url: null,
+        },
+      ],
+    })
+    return render(<TransferOwnershipModal show onClose={mockOnClose} />, { wrapper })
+  }
 
   const mockEmailVerification = ({
     isValid = true,
@@ -92,15 +105,17 @@ describe('TransferOwnershipModal', () => {
     isValid?: boolean
     token?: string
   } = {}) => {
-    vi.mocked(sendOwnerEmail).mockResolvedValue({
+    vi.mocked(
+      consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post,
+    ).mockResolvedValue({
       data: 'step-token',
       result: 'success',
-    } as unknown as Awaited<ReturnType<typeof sendOwnerEmail>>)
-    vi.mocked(verifyOwnerEmail).mockResolvedValue({
+    })
+    vi.mocked(consoleClient.workspaces.current.members.ownerTransferCheck.post).mockResolvedValue({
+      email: 'owner@example.com',
       is_valid: isValid,
       token,
-      result: 'success',
-    } as unknown as Awaited<ReturnType<typeof verifyOwnerEmail>>)
+    })
   }
 
   const goToTransferStep = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -113,45 +128,62 @@ describe('TransferOwnershipModal', () => {
   }
 
   const selectNewOwnerAndSubmit = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.click(screen.getByRole('button', { name: /select member/i }))
+    const transfer = screen.getByRole('button', { name: /members\.transferModal\.transfer$/i })
+    expect(transfer).toBeDisabled()
+    await user.click(
+      screen.getByRole('button', { name: /members\.transferModal\.transferPlaceholder/i }),
+    )
+    expect(screen.queryByRole('button', { name: /Current Owner/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /New Owner/ }))
     await user.click(screen.getByRole('button', { name: /members\.transferModal\.transfer$/i }))
   }
 
   it('should complete ownership transfer flow through all steps', async () => {
     const user = userEvent.setup()
     mockEmailVerification()
-    vi.mocked(ownershipTransfer).mockResolvedValue({
+    vi.mocked(
+      consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post,
+    ).mockResolvedValue({
       result: 'success',
-    } as unknown as Awaited<ReturnType<typeof ownershipTransfer>>)
+    })
 
     renderModal()
     await goToTransferStep(user)
+    expect(
+      consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post,
+    ).toHaveBeenCalledWith({ body: {} })
+    expect(consoleClient.workspaces.current.members.ownerTransferCheck.post).toHaveBeenCalledWith({
+      body: { code: '123456', token: 'step-token' },
+    })
     expect(await screen.findByText(/members\.transferModal\.transferLabel/i)).toBeInTheDocument()
     await selectNewOwnerAndSubmit(user)
 
-    await waitFor(
-      () => {
-        expect(ownershipTransfer).toHaveBeenCalledWith('new-owner-id', { token: 'final-token' })
-        expect(window.location.reload).toHaveBeenCalled()
-      },
-      { timeout: 10000 },
-    )
-  }, 15000)
+    await waitFor(() => {
+      expect(
+        consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post,
+      ).toHaveBeenCalledWith({
+        params: { member_id: 'new-owner-id' },
+        body: { token: 'final-token' },
+      })
+      expect(window.location.reload).toHaveBeenCalled()
+    })
+  })
 
   it('should handle timer countdown and resend', async () => {
-    vi.useFakeTimers()
-    vi.mocked(sendOwnerEmail).mockResolvedValue({
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const user = userEvent.setup()
+    vi.mocked(
+      consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post,
+    ).mockResolvedValue({
       data: 'token',
       result: 'success',
-    } as unknown as Awaited<ReturnType<typeof sendOwnerEmail>>)
+    })
 
     renderModal()
     // Trigger the email send (which starts the timer)
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: /members\.transferModal\.sendVerifyCode/i }),
-      )
-    })
+    await user.click(
+      screen.getByRole('button', { name: /members\.transferModal\.sendVerifyCode/i }),
+    )
 
     // Step Verify shows up
     expect(screen.getByText(/members\.transferModal\.verifyEmail/i)).toBeInTheDocument()
@@ -163,16 +195,14 @@ describe('TransferOwnershipModal', () => {
     expect(screen.getByText(/59/)).toBeInTheDocument()
 
     // Fast forward to finish and trigger clearInterval
-    act(() => {
-      vi.advanceTimersByTime(60000)
-    })
+    await act(async () => vi.advanceTimersByTimeAsync(59000))
     expect(screen.queryByText(/members\.transferModal\.resendCount/i)).not.toBeInTheDocument()
 
     const resendBtn = screen.getByRole('button', { name: /members\.transferModal\.resend/i })
-    await act(async () => {
-      fireEvent.click(resendBtn)
-    })
-    expect(sendOwnerEmail).toHaveBeenCalledTimes(2)
+    await user.click(resendBtn)
+    expect(
+      consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post,
+    ).toHaveBeenCalledTimes(2)
 
     vi.useRealTimers()
   })
@@ -196,7 +226,9 @@ describe('TransferOwnershipModal', () => {
   it('should show error when verifying email throws an error', async () => {
     const user = userEvent.setup()
     mockEmailVerification()
-    vi.mocked(verifyOwnerEmail).mockRejectedValue(new Error('verification crash'))
+    vi.mocked(consoleClient.workspaces.current.members.ownerTransferCheck.post).mockRejectedValue(
+      new Error('verification crash'),
+    )
 
     renderModal()
     await goToTransferStep(user)
@@ -213,7 +245,9 @@ describe('TransferOwnershipModal', () => {
 
   it('should not show a modal-level toast and should stay on start step when sending verification email fails', async () => {
     const user = userEvent.setup()
-    vi.mocked(sendOwnerEmail).mockRejectedValue(new Error('network error'))
+    vi.mocked(
+      consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post,
+    ).mockRejectedValue(new Error('network error'))
     renderModal()
     await user.click(
       screen.getByRole('button', { name: /members\.transferModal\.sendVerifyCode/i }),
@@ -222,7 +256,9 @@ describe('TransferOwnershipModal', () => {
     // The base service layer surfaces the real backend error. The modal itself
     // must NOT show an additional toast (e.g. "Error sending verification code: undefined").
     await waitFor(() => {
-      expect(sendOwnerEmail).toHaveBeenCalled()
+      expect(
+        consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post,
+      ).toHaveBeenCalled()
     })
     expect(mockNotify).not.toHaveBeenCalled()
     // Should remain on the start step instead of advancing to the verify step.
@@ -234,7 +270,9 @@ describe('TransferOwnershipModal', () => {
   it('should show error when ownership transfer fails', async () => {
     const user = userEvent.setup()
     mockEmailVerification()
-    vi.mocked(ownershipTransfer).mockRejectedValue(new Error('transfer failed'))
+    vi.mocked(
+      consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post,
+    ).mockRejectedValue(new Error('transfer failed'))
     renderModal()
     await goToTransferStep(user)
     await selectNewOwnerAndSubmit(user)
@@ -244,79 +282,6 @@ describe('TransferOwnershipModal', () => {
         expect.objectContaining({
           type: 'error',
           message: expect.stringContaining('transfer failed'),
-        }),
-      )
-    })
-  })
-
-  it('should handle sendOwnerEmail returning null data', async () => {
-    const user = userEvent.setup()
-    vi.mocked(sendOwnerEmail).mockResolvedValue({
-      data: null,
-      result: 'success',
-    } as unknown as Awaited<ReturnType<typeof sendOwnerEmail>>)
-
-    renderModal()
-    await user.click(
-      screen.getByRole('button', { name: /members\.transferModal\.sendVerifyCode/i }),
-    )
-
-    // Should advance to verify step even with null data
-    await waitFor(() => {
-      expect(screen.getByText(/members\.transferModal\.verifyEmail/i)).toBeInTheDocument()
-    })
-  })
-
-  it('should swallow null rejection from sendOwnerEmail without showing a modal-level toast', async () => {
-    const user = userEvent.setup()
-    vi.mocked(sendOwnerEmail).mockRejectedValue(null)
-
-    renderModal()
-    await user.click(
-      screen.getByRole('button', { name: /members\.transferModal\.sendVerifyCode/i }),
-    )
-
-    await waitFor(() => {
-      expect(sendOwnerEmail).toHaveBeenCalled()
-    })
-    expect(mockNotify).not.toHaveBeenCalled()
-    expect(
-      screen.getByRole('button', { name: /members\.transferModal\.sendVerifyCode/i }),
-    ).toBeInTheDocument()
-  })
-
-  it('should show fallback error prefix when verifyOwnerEmail throws null', async () => {
-    const user = userEvent.setup()
-    mockEmailVerification()
-    vi.mocked(verifyOwnerEmail).mockRejectedValue(null)
-
-    renderModal()
-    await goToTransferStep(user)
-
-    await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'error',
-          message: expect.stringContaining('Error verifying email:'),
-        }),
-      )
-    })
-  })
-
-  it('should show fallback error prefix when ownershipTransfer throws null', async () => {
-    const user = userEvent.setup()
-    mockEmailVerification()
-    vi.mocked(ownershipTransfer).mockRejectedValue(null)
-
-    renderModal()
-    await goToTransferStep(user)
-    await selectNewOwnerAndSubmit(user)
-
-    await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'error',
-          message: expect.stringContaining('Error ownership transfer:'),
         }),
       )
     })

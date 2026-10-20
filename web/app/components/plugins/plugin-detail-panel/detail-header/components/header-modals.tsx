@@ -5,41 +5,41 @@ import type { PluginDetail } from '../../../types'
 import type { ModalStates, VersionTarget } from '../hooks'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
-import PluginInfo from '@/app/components/plugins/plugin-page/plugin-info'
-import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-market-place'
+import PluginInfoContent from '@/app/components/plugins/plugin-page/plugin-info'
+import MarketplaceUpdateDialog from '@/app/components/plugins/update-plugin/from-market-place'
 import { useGetLanguage } from '@/context/i18n'
-import { PluginCategoryEnum, PluginSource } from '../../../types'
+import { PluginSource } from '../../../types'
 
 const i18nPrefix = 'action'
 
 type HeaderModalsProps = {
   detail: PluginDetail
   modalStates: ModalStates
-  targetVersion: VersionTarget
-  isDowngrade: boolean
-  isAutoUpgradeEnabled: boolean
-  onUpdatedFromMarketplace: () => void
+  targetVersion: VersionTarget | undefined
+  onUpdatedFromMarketplace: () => void | Promise<void>
   onDelete: () => void
+  deleting: boolean
 }
 
 const HeaderModals: FC<HeaderModalsProps> = ({
   detail,
   modalStates,
   targetVersion,
-  isDowngrade,
-  isAutoUpgradeEnabled,
   onUpdatedFromMarketplace,
   onDelete,
+  deleting,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const locale = useGetLanguage()
 
   const { source, version, meta } = detail
@@ -53,65 +53,72 @@ const HeaderModals: FC<HeaderModalsProps> = ({
     hidePluginInfo,
     isShowDeleteConfirm,
     hideDeleteConfirm,
-    deleting,
   } = modalStates
 
   return (
     <>
-      {isShowPluginInfo && (
-        <PluginInfo
-          repository={isFromGitHub ? meta?.repo : ''}
-          release={version}
-          packageName={meta?.package || ''}
-          onHide={hidePluginInfo}
-        />
-      )}
+      <Dialog
+        open={isShowPluginInfo}
+        onOpenChange={(open) => {
+          if (!open) hidePluginInfo()
+        }}
+      >
+        <DialogContent className="w-120">
+          <PluginInfoContent
+            repository={isFromGitHub ? meta?.repo : ''}
+            release={version}
+            packageName={meta?.package || ''}
+          />
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={isShowDeleteConfirm}
-        onOpenChange={(open) => {
-          if (!open) hideDeleteConfirm()
+        onOpenChange={(open, details) => {
+          if (!open && deleting) details.cancel()
+          else if (!open) hideDeleteConfirm()
         }}
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $[`${i18nPrefix}.delete`], { ns: 'plugin' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $[`${i18nPrefix}.deleteContentLeft`], { ns: 'plugin' })}
               <span className="system-md-semibold text-text-secondary">{label[locale]}</span>
               {t(($) => $[`${i18nPrefix}.deleteContentRight`], { ns: 'plugin' })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={deleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={deleting} onClick={onDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {isShowUpdateModal && (
-        <UpdateFromMarketplace
-          pluginId={detail.plugin_id}
+      {targetVersion && (
+        <MarketplaceUpdateDialog
+          open={isShowUpdateModal}
+          pluginId={targetVersion.plugin.plugin_id}
           payload={{
-            category: detail.declaration?.category ?? PluginCategoryEnum.tool,
+            category: targetVersion.plugin.declaration.category,
             originalPackageInfo: {
-              id: detail.plugin_unique_identifier,
-              payload: detail.declaration ?? undefined,
+              id: targetVersion.plugin.plugin_unique_identifier,
+              payload: targetVersion.plugin.declaration,
             },
             targetPackageInfo: {
-              id: targetVersion.unique_identifier || '',
-              version: targetVersion.version || '',
+              id: targetVersion.unique_identifier,
+              version: targetVersion.version,
             },
           }}
-          onCancel={hideUpdateModal}
-          onSave={onUpdatedFromMarketplace}
-          isShowDowngradeWarningModal={isDowngrade && isAutoUpgradeEnabled}
+          onRefresh={onUpdatedFromMarketplace}
+          onClose={hideUpdateModal}
+          warnAboutAutoUpdate={!!targetVersion.warnAboutAutoUpdate}
         />
       )}
     </>

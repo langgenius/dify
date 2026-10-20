@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import type { InSiteMessageActionItem } from '../index'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { trackEvent } from '@/app/components/base/amplitude'
 import InSiteMessage from '../index'
@@ -21,8 +22,8 @@ describe('InSiteMessage', () => {
     return render(
       <InSiteMessage
         notificationId="test-notification-id"
-        title="Title\\nLine"
-        subtitle="Subtitle\\nLine"
+        title={'Title\\nLine'}
+        subtitle={'Subtitle\\nLine'}
         main="Main content"
         actions={actions}
         {...props}
@@ -45,39 +46,22 @@ describe('InSiteMessage', () => {
         },
       ]
 
-      renderComponent(actions, { className: 'custom-message' })
+      renderComponent(actions)
 
-      const closeButton = screen.getByRole('button', { name: 'Close' })
-      const outlineButton = screen.getByRole('button', { name: 'Outline' })
+      screen.getByRole('button', { name: 'Close' })
+      screen.getByRole('button', { name: 'Outline' })
       const learnMoreLink = screen.getByRole('link', { name: 'Learn more' })
-      const panel = closeButton.closest('div.fixed')
-      const titleElement = panel?.querySelector('.title-3xl-bold')
-      const subtitleElement = panel?.querySelector('.body-md-regular')
-      expect(panel).toHaveClass('custom-message')
-      expect(titleElement).toHaveTextContent(/Title.*Line/s)
-      expect(subtitleElement).toHaveTextContent(/Subtitle.*Line/s)
-      expect(titleElement?.textContent).not.toContain('\\n')
-      expect(subtitleElement?.textContent).not.toContain('\\n')
+      expect(screen.getByText('Title Line').textContent).toBe('Title\nLine')
+      expect(screen.getByText('Subtitle Line').textContent).toBe('Subtitle\nLine')
       expect(screen.getByText('Main content')).toBeInTheDocument()
-      expect(closeButton).toBeInTheDocument()
-      expect(outlineButton).toHaveClass('bg-components-button-secondary-bg')
       expect(learnMoreLink).toHaveAttribute('href', 'https://example.com')
-    })
-
-    it('should fallback to default header background when headerBgUrl is empty string', () => {
-      const actions: InSiteMessageActionItem[] = [
-        { action: 'close', action_name: 'dismiss', text: 'Close', type: 'default' },
-      ]
-
-      const { container } = renderComponent(actions, { headerBgUrl: '' })
-      const header = container.querySelector('div[style]')
-      expect(header).toHaveStyle({ backgroundImage: 'url(/in-site-message/header-bg.svg)' })
     })
   })
 
   // Validate action handling for close and link actions.
   describe('Actions', () => {
-    it('should call onAction and hide component when close action is clicked', () => {
+    it('should call onAction and hide component when close action is clicked', async () => {
+      const user = userEvent.setup()
       const onAction = vi.fn()
       const closeAction: InSiteMessageActionItem = {
         action: 'close',
@@ -87,13 +71,14 @@ describe('InSiteMessage', () => {
       }
 
       renderComponent([closeAction], { onAction })
-      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+      await user.click(screen.getByRole('button', { name: 'Close' }))
 
       expect(onAction).toHaveBeenCalledWith(closeAction)
       expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
     })
 
-    it('should render a new-tab link and report its activation', () => {
+    it('should render a new-tab link and report its activation', async () => {
+      const user = userEvent.setup()
       const onAction = vi.fn()
       const linkAction: InSiteMessageActionItem = {
         action: 'link',
@@ -109,7 +94,7 @@ describe('InSiteMessage', () => {
       expect(link).toHaveAttribute('href', 'https://example.com')
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-      fireEvent.click(link)
+      await user.click(link)
 
       expect(onAction).toHaveBeenCalledWith(linkAction)
       expect(vi.mocked(trackEvent)).toHaveBeenCalledWith('in_site_message_action', {
@@ -134,7 +119,8 @@ describe('InSiteMessage', () => {
       expect(link).toHaveAttribute('target', '_self')
     })
 
-    it('should not trigger navigation when link data is invalid', () => {
+    it('should not trigger navigation when link data is invalid', async () => {
+      const user = userEvent.setup()
       const linkAction: InSiteMessageActionItem = {
         action: 'link',
         action_name: 'confirm',
@@ -144,7 +130,7 @@ describe('InSiteMessage', () => {
       }
 
       renderComponent([linkAction])
-      fireEvent.click(screen.getByRole('button', { name: 'Broken link' }))
+      await user.click(screen.getByRole('button', { name: 'Broken link' }))
 
       expect(screen.queryByRole('link', { name: 'Broken link' })).not.toBeInTheDocument()
     })

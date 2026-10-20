@@ -2,13 +2,13 @@
 
 import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -30,7 +30,7 @@ type ContinueWorkItemProps = {
 }
 
 export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'explore'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -64,13 +64,7 @@ export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
   const cardContent = (
     <>
       <div className="relative shrink-0">
-        <AppIcon
-          size="large"
-          iconType={app.icon_type}
-          icon={app.icon ?? undefined}
-          background={app.icon_background}
-          imageUrl={app.icon_url}
-        />
+        <AppIcon size="large" icon={app} />
         <AppTypeIcon
           type={app.mode}
           wrapperClassName="absolute -right-0.5 -bottom-0.5 size-4 rounded-sm border-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3"

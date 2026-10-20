@@ -6,6 +6,7 @@ import Placeholder from '@/app/components/workflow/nodes/tool/components/mixed-v
 import { BlockEnum } from '@/app/components/workflow/types'
 
 type MailBodyInputProps = {
+  'aria-labelledby'?: string
   readOnly?: boolean
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
@@ -14,22 +15,24 @@ type MailBodyInputProps = {
 }
 
 const MailBodyInput = ({
+  'aria-labelledby': ariaLabelledBy,
   readOnly = false,
   nodesOutputVars,
   availableNodes = [],
   value = '',
   onChange,
 }: MailBodyInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <PromptEditor
+      aria-labelledby={ariaLabelledBy}
       wrapperClassName={cn(
         'w-full rounded-lg border border-transparent bg-components-input-bg-normal px-2 py-1',
         'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
         'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
       )}
-      className="caret:text-text-accent min-h-32"
+      className="min-h-32"
       editable={!readOnly}
       value={value}
       requestURLBlock={{

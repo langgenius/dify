@@ -1,10 +1,10 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { publishToCreatorsPlatform } from '@/service/apps'
+import { toast } from '@/app/notifications'
+import { consoleClient } from '@/service/console'
 
 export function useMarketplacePublish(appId?: string) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [isPublishing, setIsPublishing] = useState(false)
 
   async function publish() {
@@ -12,7 +12,9 @@ export function useMarketplacePublish(appId?: string) {
 
     setIsPublishing(true)
     try {
-      const response = await publishToCreatorsPlatform({ appID: appId })
+      const response = await consoleClient.apps.byAppId.publishToCreatorsPlatform.post({
+        params: { app_id: appId },
+      })
       if (response.redirect_url) window.open(response.redirect_url, '_blank')
     } catch {
       toast.error(t(($) => $['common.publishToMarketplaceFailed'], { ns: 'workflow' }))

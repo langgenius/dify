@@ -1,8 +1,8 @@
-import type { UserConfig } from '@hey-api/openapi-ts'
+import type { DefinePlugin, UserConfig } from '@hey-api/openapi-ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { $, defineConfig } from '@hey-api/openapi-ts'
+import { $, defineConfig, definePluginConfig } from '@hey-api/openapi-ts'
 import ts from 'typescript'
 
 type JsonObject = Record<string, unknown>
@@ -60,7 +60,16 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const apiOpenApiDir = path.resolve(currentDir, 'openapi')
 
 const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
-const strictZodSchemaNames = new Set(['AccountProfilePatchPayload', 'Parameters'])
+const strictZodSchemaNames = new Set([
+  'AccountProfilePatchPayload',
+  'Parameters',
+  'AppTextInputPayload',
+  'AppSelectInputPayload',
+  'AppParagraphInputPayload',
+  'AppNumberInputPayload',
+  'AppCheckboxInputPayload',
+  'AppExternalDataInputPayload',
+])
 const pydanticDecimalStringPattern = '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 const codegenSafeDecimalStringPattern = '^(?![-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 const fastOpenApiConsoleSpecFilename = 'fastopenapi-console-openapi.json'
@@ -261,7 +270,31 @@ const filterContractOperations = (document: SwaggerDocument) => {
   }
 }
 
-const includeEventStreamInJsonResponseSchemas = (document: SwaggerDocument) => {
+const includeMultipartRequestSchemas = (document: SwaggerDocument) => {
+  for (const pathItem of Object.values(document.paths ?? {})) {
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!operationMethods.has(method) || !isObject(operation) || !isObject(operation.requestBody))
+        continue
+      const content = operation.requestBody.content
+      if (!isObject(content)) continue
+      const json = content['application/json']
+      const multipart = content['multipart/form-data']
+      if (
+        !isObject(json) ||
+        !isObject(json.schema) ||
+        !isObject(multipart) ||
+        !isObject(multipart.schema)
+      )
+        continue
+
+      // hey-api selects JSON for mixed request media; retain the multipart shape
+      // so the generated client can serialize File values as FormData.
+      json.schema = { anyOf: [json.schema, multipart.schema] }
+    }
+  }
+}
+
+const includeNonJsonResponseSchemas = (document: SwaggerDocument) => {
   for (const pathItem of Object.values(document.paths ?? {})) {
     for (const [method, operation] of Object.entries(pathItem)) {
       if (!operationMethods.has(method) || !isObject(operation)) continue
@@ -272,21 +305,22 @@ const includeEventStreamInJsonResponseSchemas = (document: SwaggerDocument) => {
         if (!/^2\d\d$/.test(status) || !isObject(response) || !isObject(response.content)) continue
 
         const jsonMedia = response.content['application/json']
-        const eventStreamMedia = response.content['text/event-stream']
-        if (
-          !isObject(jsonMedia) ||
-          !isObject(jsonMedia.schema) ||
-          !isObject(eventStreamMedia) ||
-          !isObject(eventStreamMedia.schema)
-        ) {
-          continue
+        if (!isObject(jsonMedia) || !isObject(jsonMedia.schema)) continue
+
+        const alternatives: SwaggerSchema[] = []
+        for (const [mediaType, media] of Object.entries(response.content)) {
+          if (mediaType === 'application/json' || !isObject(media) || !isObject(media.schema))
+            continue
+          if (mediaType === 'text/event-stream' || media.schema.format === 'binary')
+            alternatives.push(media.schema)
         }
+        if (alternatives.length === 0) continue
 
         // hey-api selects the JSON schema when one status advertises multiple
-        // response media types. Preserve the SSE transport in the generated
+        // response media types. Preserve SSE and binary transports in the generated
         // TypeScript and Zod contracts by making that selected schema a union.
         jsonMedia.schema = {
-          anyOf: [jsonMedia.schema, eventStreamMedia.schema],
+          anyOf: [jsonMedia.schema, ...alternatives],
         }
       }
     }
@@ -369,7 +403,8 @@ const normalizeApiSwagger = (document: SwaggerDocument) => {
   normalizeOpaqueContractResponses(document)
   filterContractOperations(document)
   addOperationIds(document)
-  includeEventStreamInJsonResponseSchemas(document)
+  includeMultipartRequestSchemas(document)
+  includeNonJsonResponseSchemas(document)
   // OpenAPI defaults describe server behavior. Keep them in the exported specs,
   // but do not let Zod synthesize omitted transport fields during client-side
   // request or response validation. Non-null defaults remain useful for query
@@ -470,7 +505,7 @@ const consoleContractEntryContent = (segments: string[]) => {
   const contractEntries = contracts
     .map(
       (contract) =>
-        `  ${contract.name}: () => import('./${contract.importPath}/orpc.gen').then(({ ${contract.name} }) => ({ ${contract.name} })),`,
+        `  ${contract.name}: () => import('./${contract.importPath}/orpc.gen.ts').then(({ ${contract.name} }) => ({ ${contract.name} })),`,
     )
     .join('\n')
 
@@ -497,7 +532,7 @@ const consoleRouterContractContent = (segments: string[]) => {
   })
 
   const imports = contracts
-    .map((contract) => `import { ${contract.name} } from './${contract.importPath}/orpc.gen'`)
+    .map((contract) => `import { ${contract.name} } from './${contract.importPath}/orpc.gen.ts'`)
     .join('\n')
 
   const communityContractEntries = contracts.map((contract) => `  ${contract.name},`).join('\n')
@@ -505,7 +540,7 @@ const consoleRouterContractContent = (segments: string[]) => {
   return `// This file is auto-generated by packages/contracts/openapi-ts.api.config.ts
 
 ${imports}
-import { contract as enterpriseContract } from '../../enterprise/orpc.gen'
+import { contract as enterpriseContract } from '../../enterprise/orpc.gen.ts'
 
 const communityContract = {
 ${communityContractEntries}
@@ -524,11 +559,21 @@ const writeConsoleRouterContract = (segments: string[]) => {
   fs.writeFileSync(routerPath, consoleRouterContractContent(segments))
 }
 
+type NoOutputPlugin = DefinePlugin<{ name: 'dify-no-output' }>
+
+// openapi-ts falls back to its default plugins when `plugins` is empty, so the
+// entry job needs an explicit plugin that emits nothing beside its source callback.
+const noOutputPlugin = definePluginConfig<NoOutputPlugin['Types']>({
+  config: {},
+  handler: () => {},
+  name: 'dify-no-output',
+})
+
 const createConsoleContractEntryJob = (document: SwaggerDocument, segments: string[]): ApiJob => {
   return {
     document,
     outputPath: 'generated/api/console',
-    plugins: [],
+    plugins: [noOutputPlugin()],
     source: {
       callback: () => {
         writeConsoleContractEntry(segments)
@@ -577,7 +622,84 @@ const createApiJobs = (spec: ApiSpec): ApiJob[] => {
   ]
 }
 
-const apiJobs = apiSpecs.flatMap(createApiJobs)
+export const apiJobs = apiSpecs.flatMap(createApiJobs)
+
+export type OrpcErrorEntry = {
+  code: string
+  schemaName: string
+  status: number
+}
+
+/**
+ * The fixed `code` and `status` a per-code error component (`{Code}Error`, an `allOf` over the
+ * error body) declares, or `undefined` for the open error body and other schemas.
+ */
+const errorComponentIdentity = (
+  schema: SwaggerSchema | undefined,
+): { code: string; status: number } | undefined => {
+  const parts = Array.isArray(schema?.allOf) ? schema.allOf : []
+  for (const part of parts) {
+    if (!isObject(part) || !isObject(part.properties)) continue
+    const code = part.properties.code
+    const status = part.properties.status
+    if (
+      isObject(code) &&
+      typeof code.const === 'string' &&
+      isObject(status) &&
+      typeof status.const === 'number'
+    )
+      return { code: code.const, status: status.const }
+  }
+  return undefined
+}
+
+/**
+ * The oRPC `errorMap` each operation declares, keyed by generated operationId: one
+ * `{ status, data }` entry per error component its 4xx/5xx responses reference. The
+ * backend documents each code as one component with one status per surface, so a code
+ * that still reaches an operation under two statuses fails generation.
+ */
+export const orpcErrorMaps = (document: SwaggerDocument): Map<string, OrpcErrorEntry[]> => {
+  const schemas = getDocumentSchemas(document)
+  const errorMaps = new Map<string, OrpcErrorEntry[]>()
+  for (const [pathKey, pathItem] of Object.entries(document.paths ?? {})) {
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!operationMethods.has(method) || !isObject(operation)) continue
+      const { operationId, responses } = operation as SwaggerOperation
+      if (!operationId) continue
+
+      const entries = new Map<string, OrpcErrorEntry>()
+      for (const [status, response] of Object.entries(responses ?? {})) {
+        if (!/^[45]\d\d$/.test(status) || !isObject(response) || !isObject(response.content))
+          continue
+        const media = response.content['application/json']
+        const schema = isObject(media) ? media.schema : undefined
+        const options = Array.isArray(schema?.anyOf) ? schema.anyOf : [schema]
+        for (const option of options) {
+          const schemaName =
+            isObject(option) && typeof option.$ref === 'string'
+              ? schemaNameFromRef(option.$ref)
+              : undefined
+          if (!schemaName) continue
+          const identity = errorComponentIdentity(schemas[schemaName])
+          if (!identity) continue
+          const known = entries.get(identity.code)
+          if (known && known.status !== identity.status)
+            throw new Error(
+              `${method.toUpperCase()} ${pathKey} documents ${identity.code} under ${known.status} and ${identity.status}; oRPC keys errors by code`,
+            )
+          entries.set(identity.code, { code: identity.code, schemaName, status: identity.status })
+        }
+      }
+      if (entries.size > 0)
+        errorMaps.set(
+          operationId,
+          [...entries.values()].sort((left, right) => left.code.localeCompare(right.code)),
+        )
+    }
+  }
+  return errorMaps
+}
 
 const createApiConfig = (job: ApiJob): UserConfig => ({
   input: job.document,
@@ -585,6 +707,7 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
     file: false,
   },
   output: {
+    module: { extension: '.ts' },
     clean: false,
     entryFile: false,
     fileName: {
@@ -601,9 +724,31 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
     {
       name: 'zod',
       '~resolvers': {
+        union: (ctx) => {
+          // The generator's recursive lazy schemas infer `any`. Keep this JSON
+          // leaf typed through Zod so oRPC clients retain the request contract.
+          if (
+            ctx.path['~ref'].some(
+              (segment) =>
+                segment === 'AppConfigJsonValue' || segment === 'AppConfigJsonValueWritable',
+            )
+          )
+            return $(ctx.symbols.z).attr('json').call()
+
+          return ctx.nodes.base(ctx)
+        },
         object: (ctx) => {
           const objectSchema = ctx.nodes.base(ctx)
           const additionalProperties = ctx.schema.additionalProperties
+          // Shaped objects otherwise discard the backend's typed JSON extensions.
+          if (
+            additionalProperties &&
+            typeof additionalProperties !== 'boolean' &&
+            additionalProperties.$ref === '#/components/schemas/AppConfigJsonValue' &&
+            ctx.schema.properties
+          )
+            return objectSchema.attr('catchall').call($(ctx.symbols.z).attr('json').call())
+
           // openapi-ts normalizes `additionalProperties: false` to `never`, but
           // does not make shaped Zod objects strict.
           const isStrictSchema = ctx.path['~ref'].some(

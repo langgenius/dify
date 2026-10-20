@@ -1,22 +1,26 @@
 'use client'
 
+import type { DatasetListResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import type { useDatasetList } from '@/service/knowledge/use-dataset'
-import { useEffect, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { consoleQuery } from '@/service/console'
 import DatasetCard from './dataset-card'
 import DatasetCardSkeleton from './dataset-card-skeleton'
 
+type DatasetListQuery = UseInfiniteQueryResult<InfiniteData<DatasetListResponse, number>>
+
 type Props = Readonly<{
-  datasetList: ReturnType<typeof useDatasetList>['data'] | null
-  fetchNextPage: ReturnType<typeof useDatasetList>['fetchNextPage']
-  hasNextPage: ReturnType<typeof useDatasetList>['hasNextPage']
-  isFetching: ReturnType<typeof useDatasetList>['isFetching']
-  isFetchingNextPage: ReturnType<typeof useDatasetList>['isFetchingNextPage']
-  isLoading: ReturnType<typeof useDatasetList>['isLoading']
-  isPlaceholderData: ReturnType<typeof useDatasetList>['isPlaceholderData']
+  datasetList: DatasetListQuery['data'] | null
+  fetchNextPage: DatasetListQuery['fetchNextPage']
+  hasNextPage: DatasetListQuery['hasNextPage']
+  isFetching: DatasetListQuery['isFetching']
+  isFetchingNextPage: DatasetListQuery['isFetchingNextPage']
+  isLoading: DatasetListQuery['isLoading']
+  isPlaceholderData: DatasetListQuery['isPlaceholderData']
   emptyElement?: ReactNode
   onOpenTagManagement?: () => void
   stepByStepTourActionMenuHighlightPart?: string
@@ -38,8 +42,11 @@ const Datasets = ({
   stepByStepTourActionMenuOpen,
   stepByStepTourCardTarget,
 }: Props) => {
-  const { t } = useTranslation()
-  const invalidDatasetList = useInvalidDatasetList()
+  const { t } = useTranslation(['common'])
+  const queryClient = useQueryClient()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
   const anchorRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver>(null)
   const pages = datasetList?.pages ?? []
@@ -90,7 +97,7 @@ const Datasets = ({
           ))
         )}
         {!showDatasetSkeleton && !hasAnyDataset && emptyElement}
-        {isFetchingNextPage && <Loading />}
+        {isFetchingNextPage && <LoadingPlaceholder />}
         <div ref={anchorRef} className="h-0" />
       </div>
     </>

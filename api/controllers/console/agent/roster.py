@@ -18,7 +18,12 @@ from controllers.common.schema import (
 )
 from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.apikey import ApiKeyItem, ApiKeyList, BaseApiKeyListResource, BaseApiKeyResource
+from controllers.console.apikey import (
+    API_KEY_DELETE_ROLES,
+    API_KEY_EDIT_ROLES,
+    api_key_errors,
+    app_api_key_create_errors,
+)
 from controllers.console.app.app import (
     APP_LIST_QUERY_ARRAY_FIELDS,
     AppListQuery,
@@ -35,6 +40,8 @@ from controllers.console.app.app import (
 from controllers.console.app.app import (
     UpdateAppPayload as GenericUpdateAppPayload,
 )
+from controllers.console.error import ApiKeyLimitExceededHTTPError
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
@@ -48,6 +55,8 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
+from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from fields.agent_fields import (
     AgentConfigDraftSummaryResponse,
     AgentConfigSnapshotDetailResponse,
@@ -62,27 +71,43 @@ from fields.agent_fields import (
     AgentRosterListResponse,
     AgentStatisticSummaryEnvelopeResponse,
 )
+from fields.api_key_fields import ApiKeyItem, ApiKeyList
 from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
+from machinery.context import RequestContext
 from models import Account
 from models.agent import Agent, AgentStatus
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, IconType
 from services.agent.composer_service import AgentComposerService
-from services.agent.errors import AgentNotFoundError
+from services.agent.errors import (
+    AgentAccessNotReadyError,
+    AgentBuildSandboxNotFoundError,
+    AgentHomeSnapshotCreateFailedError,
+    AgentHomeSnapshotTooLargeError,
+    AgentModelNotConfiguredError,
+    AgentNameConflictError,
+    AgentNotFoundError,
+    AgentSoulLockedError,
+    AgentVersionNotFoundError,
+    InvalidComposerConfigError,
+    PlaintextSecretNotAllowedError,
+)
 from services.agent.observability_service import (
     AgentLogQueryParams,
     AgentObservabilityService,
     AgentStatisticsQueryParams,
 )
 from services.agent.roster_service import AgentRosterService
-from services.app_service import AgentAppPublicationCounts, AppListParams, AppService, CreateAppParams
-from services.enterprise import rbac_service as enterprise_rbac_service
+from services.app_service import AgentAppPublicationCounts, AppListParams, AppResponseView, AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
+from services.feature_service import FeatureService
+from services.rbac import contracts as rbac_contracts
 from services.system_feature_service import SystemFeatureService
 
 AgentPublicationStatus = Literal["published", "drafts"]
@@ -268,6 +293,7 @@ class AgentAppPartial(GenericAppPartial):
 
 class AgentAppDetailWithSite(GenericAppDetailWithSite):
     permission_keys: list[str]
+    bound_agent_id: str | None = None
     app_id: str | None = None
     backing_app_id: str | None = None
     hidden_app_backed: bool = False
@@ -290,6 +316,13 @@ class AgentPublishPayload(BaseModel):
 
 class AgentPublishResponse(ResponseModel):
     result: str
+    publication_kind: Literal["first", "update"] = Field(
+        description=(
+            "Classifies the publication by whether the Agent had a publish-visible active snapshot before publishing: "
+            "'first' if none existed, otherwise 'update'. This is not a historical first-publish indicator. "
+            "It does not depend on draft edits, Web App or API enablement, or the requesting user's access permissions."
+        )
+    )
     active_config_snapshot_id: str
     active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
     draft: AgentConfigDraftSummaryResponse | None = None
@@ -391,16 +424,15 @@ def _serialize_agent_app_detail(
     roster persona fields without widening the shared /apps detail schema.
     """
 
-    app_model = AppService().get_app(app_model, session=session)
+    access_mode = None
     if SystemFeatureService.is_webapp_auth_enabled():
         app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
-        app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
+        access_mode = app_setting.access_mode
 
     roster_service = _agent_roster_service(session)
     payload = GenericAppDetailWithSite.model_validate(
-        app_model,
+        AppResponseView(app_model, session=session, account=current_user, access_mode=access_mode),
         from_attributes=True,
-        context={"session": session},
     ).model_dump(mode="json")
     agent = (
         session.scalar(
@@ -434,11 +466,10 @@ def _serialize_agent_app_detail(
     payload["debug_conversation_message_count"] = message_count
     payload["role"] = agent.role or ""
     payload["access_ready"] = agent_has_workflow_callable_active_snapshot(session=session, agent=agent)
-    permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
+    permissions = application_services().rbac.members.permissions(
         app_model.tenant_id,
         current_user.id,
         agent_id=agent.id,
-        session=session,
     )
     payload["permission_keys"] = permissions.agent.permission_keys_by_resource_ids([agent.id]).get(agent.id, [])
     return AgentAppDetailWithSite.model_validate(payload).model_dump(mode="json", exclude={"bound_agent_id"})
@@ -451,7 +482,7 @@ def _serialize_agent_app_pagination(
     tenant_id: str,
     current_user: Account,
     publication_counts: AgentAppPublicationCounts,
-    agent_permissions: enterprise_rbac_service.ResourcePermissionSnapshot,
+    agent_permissions: rbac_contracts.ResourcePermissionSnapshot,
 ) -> dict:
     """Serialize Agent App lists with roster-shaped items.
 
@@ -493,9 +524,8 @@ def _serialize_agent_app_pagination(
             "limit": app_pagination.per_page,
             "total": app_pagination.total,
             "has_more": app_pagination.has_next,
-            "data": app_pagination.items,
+            "data": [AppResponseView(app, session=session) for app in app_pagination.items],
         },
-        context={"session": session},
     ).model_dump(mode="json")
     payload["publication_counts"] = {
         "published": publication_counts.published,
@@ -619,6 +649,7 @@ def _query_values(name: str, alias_name: str | None = None) -> list[str]:
 
 @console_ns.route("/agent")
 class AgentAppListApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc(params=query_params_from_model(AgentAppListQuery))
     @console_ns.response(200, "Agent app list", console_ns.models[AgentAppPagination.__name__])
     @setup_required
@@ -644,16 +675,14 @@ class AgentAppListApi(Resource):
             agent_is_published=agent_is_published,
         )
 
-        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
+        permissions = application_services().rbac.members.permissions(
             current_tenant_id,
             current_user.id,
-            session=session,
         )
         if dify_config.RBAC_ENABLED:
             access_filter = resolve_agent_access_filter(
                 current_tenant_id,
                 current_user.id,
-                session=session,
                 permissions=permissions,
             )
             access_filter.apply_to_app_params(params, tenant_id=current_tenant_id, session=session)
@@ -689,6 +718,7 @@ class AgentAppListApi(Resource):
             agent_permissions=permissions.agent,
         )
 
+    @error_responses(AgentNameConflictError, AgentNotFoundError)
     @console_ns.expect(console_ns.models[AgentAppCreatePayload.__name__])
     @console_ns.response(201, "Agent app created successfully", console_ns.models[AgentAppDetailWithSite.__name__])
     @console_ns.response(409, "Agent name already exists")
@@ -720,6 +750,7 @@ class AgentAppListApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>")
 class AgentAppApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.response(200, "Agent app detail", console_ns.models[AgentAppDetailWithSite.__name__])
     @setup_required
     @login_required
@@ -733,6 +764,7 @@ class AgentAppApi(Resource):
         app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         return _serialize_agent_app_detail(session, app_model, current_user=current_user, agent_id=str(agent_id))
 
+    @error_responses(AgentNameConflictError, AgentNotFoundError)
     @console_ns.expect(console_ns.models[AgentAppUpdatePayload.__name__])
     @console_ns.response(200, "Agent app updated successfully", console_ns.models[AgentAppDetailWithSite.__name__])
     @console_ns.response(403, "Insufficient permissions")
@@ -768,6 +800,7 @@ class AgentAppApi(Resource):
         updated = AppService().update_app(app_model, args_dict, session=session)
         return _serialize_agent_app_detail(session, updated, current_user=current_user)
 
+    @error_responses(AgentNotFoundError)
     @console_ns.response(204, "Agent app deleted successfully")
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -785,6 +818,7 @@ class AgentAppApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/debug-conversation/refresh")
 class AgentDebugConversationRefreshApi(Resource):
+    @error_responses(AgentBuildSandboxNotFoundError, AgentNotFoundError)
     @console_ns.response(
         200,
         "Agent debug conversation refreshed",
@@ -814,6 +848,13 @@ class AgentDebugConversationRefreshApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/publish")
 class AgentPublishApi(Resource):
+    @error_responses(
+        AgentModelNotConfiguredError,
+        AgentNotFoundError,
+        AgentVersionNotFoundError,
+        InvalidComposerConfigError,
+        PlaintextSecretNotAllowedError,
+    )
     @console_ns.expect(console_ns.models[AgentPublishPayload.__name__])
     @console_ns.response(200, "Agent draft published", console_ns.models[AgentPublishResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
@@ -845,6 +886,7 @@ class AgentPublishApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/build-draft/checkout")
 class AgentBuildDraftCheckoutApi(Resource):
+    @error_responses(AgentBuildSandboxNotFoundError, AgentNotFoundError, AgentVersionNotFoundError)
     @console_ns.expect(console_ns.models[AgentBuildDraftCheckoutPayload.__name__])
     @console_ns.response(200, "Agent build draft checked out", console_ns.models[AgentBuildDraftResponse.__name__])
     @setup_required
@@ -875,6 +917,7 @@ class AgentBuildDraftCheckoutApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/build-draft")
 class AgentBuildDraftApi(Resource):
+    @error_responses(AgentVersionNotFoundError)
     @console_ns.response(200, "Agent build draft", console_ns.models[AgentBuildDraftResponse.__name__])
     @console_ns.response(404, "Agent build draft not found")
     @setup_required
@@ -893,6 +936,7 @@ class AgentBuildDraftApi(Resource):
             account_id=current_user.id,
         )
 
+    @error_responses(AgentNotFoundError, AgentSoulLockedError, AgentVersionNotFoundError)
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(200, "Agent build draft saved", console_ns.models[AgentBuildDraftResponse.__name__])
     @setup_required
@@ -920,6 +964,7 @@ class AgentBuildDraftApi(Resource):
             payload=req_data,
         )
 
+    @error_responses(AgentBuildSandboxNotFoundError, AgentNotFoundError)
     @console_ns.response(200, "Agent build draft discarded", console_ns.models[AgentSimpleResultResponse.__name__])
     @setup_required
     @login_required
@@ -940,6 +985,15 @@ class AgentBuildDraftApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/build-draft/apply")
 class AgentBuildDraftApplyApi(Resource):
+    @error_responses(
+        AgentBuildSandboxNotFoundError,
+        AgentHomeSnapshotCreateFailedError,
+        AgentHomeSnapshotTooLargeError,
+        AgentNotFoundError,
+        AgentVersionNotFoundError,
+        InvalidComposerConfigError,
+        PlaintextSecretNotAllowedError,
+    )
     @console_ns.response(200, "Agent build draft applied", console_ns.models[AgentBuildDraftApplyResponse.__name__])
     @setup_required
     @login_required
@@ -960,6 +1014,7 @@ class AgentBuildDraftApplyApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/copy")
 class AgentAppCopyApi(Resource):
+    @error_responses(AgentNameConflictError, AgentNotFoundError, AgentVersionNotFoundError)
     @console_ns.expect(console_ns.models[AgentAppCopyPayload.__name__])
     @console_ns.response(201, "Agent app copied successfully", console_ns.models[AgentAppDetailWithSite.__name__])
     @console_ns.response(403, "Insufficient permissions")
@@ -998,6 +1053,7 @@ class AgentAppCopyApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/api-access")
 class AgentApiAccessApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.response(200, "Agent service API access", console_ns.models[AgentApiAccessResponse.__name__])
     @setup_required
     @login_required
@@ -1012,6 +1068,7 @@ class AgentApiAccessApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/api-enable")
 class AgentApiStatusApi(Resource):
+    @error_responses(AgentAccessNotReadyError, AgentNotFoundError)
     @console_ns.expect(console_ns.models[AgentApiStatusPayload.__name__])
     @console_ns.response(200, "Agent service API status updated", console_ns.models[AgentApiAccessResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
@@ -1030,56 +1087,45 @@ class AgentApiStatusApi(Resource):
 
 
 @console_ns.route("/agent/<uuid:agent_id>/api-keys")
-class AgentApiKeyListApi(BaseApiKeyListResource):
-    resource_type = ApiTokenType.APP
-    resource_model = App
-    resource_id_field = "app_id"
-    token_prefix = "app-"
-
+class AgentApiKeyListApi(Resource):
     @console_ns.response(200, "Agent service API keys", console_ns.models[ApiKeyList.__name__])
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentId()))
-    @with_current_tenant_id
-    @edit_permission_required
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID) -> dict[str, object]:
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        return dump_response(ApiKeyList, self._get_api_key_list(str(app_model.id), tenant_id, session=session))
+    @console_account_admission(
+        allowed_roles=API_KEY_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentId())],
+    )
+    def get(self, request_context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        with api_key_errors():
+            keys = application_services().app_api_keys.list_agent_keys(request_context, str(agent_id))
+        return dump_response(ApiKeyList, {"data": keys})
 
+    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.response(201, "Agent service API key created", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
-    @with_current_tenant_id
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentId()))
-    @with_session
-    def post(self, session: Session, tenant_id: str, agent_id: UUID) -> tuple[dict[str, object], int]:
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        return dump_response(
-            ApiKeyItem,
-            self._create_api_key(str(app_model.id), tenant_id, session=session),
-        ), 201
+    @console_account_admission(
+        allowed_roles=API_KEY_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentId())],
+    )
+    def post(self, request_context: RequestContext, agent_id: UUID) -> tuple[dict[str, object], int]:
+        with app_api_key_create_errors():
+            key = application_services().app_api_keys.create_agent_key(request_context, str(agent_id))
+        return dump_response(ApiKeyItem, key), 201
 
 
 @console_ns.route("/agent/<uuid:agent_id>/api-keys/<uuid:api_key_id>")
-class AgentApiKeyApi(BaseApiKeyResource):
-    resource_type = ApiTokenType.APP
-    resource_model = App
-    resource_id_field = "app_id"
-
+class AgentApiKeyApi(Resource):
     @console_ns.response(204, "Agent service API key deleted")
-    @with_current_user
-    @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentId()))
-    @with_session
+    @console_account_admission(
+        allowed_roles=API_KEY_DELETE_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentId())],
+    )
     def delete(
         self,
-        session: Session,
-        tenant_id: str,
-        current_user: Account,
+        request_context: RequestContext,
         agent_id: UUID,
         api_key_id: UUID,
     ) -> tuple[str, int]:
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        self._delete_api_key(str(app_model.id), str(api_key_id), tenant_id, current_user, session=session)
+        with api_key_errors():
+            application_services().app_api_keys.delete_agent_key(request_context, str(agent_id), str(api_key_id))
         return "", 204
 
 
@@ -1103,15 +1149,13 @@ class AgentInviteOptionsApi(Resource):
     ):
         accessible_agent_ids = None
         if dify_config.RBAC_ENABLED:
-            permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
+            permissions = application_services().rbac.members.permissions(
                 tenant_id,
                 current_user.id,
-                session=session,
             )
             access_filter = resolve_agent_access_filter(
                 tenant_id,
                 current_user.id,
-                session=session,
                 permissions=permissions,
             )
             if access_filter.accessible_agent_ids is not None:
@@ -1132,6 +1176,7 @@ class AgentInviteOptionsApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/logs")
 class AgentLogsApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc(params=query_params_from_model(AgentLogsQuery))
     @console_ns.response(200, "Agent logs", console_ns.models[AgentLogListResponse.__name__])
     @setup_required
@@ -1171,6 +1216,7 @@ class AgentLogsApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")
 class AgentLogMessagesApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc(params=query_params_from_model(AgentLogsQuery))
     @console_ns.response(200, "Agent log messages", console_ns.models[AgentLogMessageListResponse.__name__])
     @setup_required
@@ -1211,6 +1257,7 @@ class AgentLogMessagesApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/log-sources")
 class AgentLogSourcesApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.response(200, "Agent log sources", console_ns.models[AgentLogSourceListResponse.__name__])
     @setup_required
     @login_required
@@ -1227,6 +1274,7 @@ class AgentLogSourcesApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/statistics/summary")
 class AgentStatisticsSummaryApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc(params=query_params_from_model(AgentStatisticsQuery))
     @console_ns.response(
         200,
@@ -1265,6 +1313,7 @@ class AgentStatisticsSummaryApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/versions")
 class AgentRosterVersionsApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.response(200, "Agent versions", console_ns.models[AgentConfigSnapshotListResponse.__name__])
     @setup_required
     @login_required
@@ -1281,6 +1330,7 @@ class AgentRosterVersionsApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/versions/<uuid:version_id>")
 class AgentRosterVersionDetailApi(Resource):
+    @error_responses(AgentNotFoundError, AgentVersionNotFoundError)
     @console_ns.response(200, "Agent version detail", console_ns.models[AgentConfigSnapshotDetailResponse.__name__])
     @setup_required
     @login_required
@@ -1301,6 +1351,7 @@ class AgentRosterVersionDetailApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/versions/<uuid:version_id>/restore")
 class AgentRosterVersionRestoreApi(Resource):
+    @error_responses(AgentNotFoundError, AgentVersionNotFoundError)
     @console_ns.response(200, "Agent version restored", console_ns.models[AgentConfigSnapshotRestoreResponse.__name__])
     @setup_required
     @login_required
@@ -1311,6 +1362,12 @@ class AgentRosterVersionRestoreApi(Resource):
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, version_id: UUID):
+        if (
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+            and not FeatureService.get_workspace_plan(tenant_id).is_paid
+        ):
+            abort(403, description="This feature requires a paid plan.")
+
         return dump_response(
             AgentConfigSnapshotRestoreResponse,
             _agent_roster_service(session).restore_agent_version(

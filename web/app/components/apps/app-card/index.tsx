@@ -2,9 +2,7 @@
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { WorkflowOnlineUser } from '@/models/app'
-import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useId, useMemo } from 'react'
@@ -12,12 +10,12 @@ import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
 import Link from '@/next/link'
-import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import {
   getAppACLCapabilities,
@@ -49,7 +47,7 @@ export const AppCard = memo(
     stepByStepTourCardHighlightPart,
     stepByStepTourActionMenuHighlightPart,
   }: AppCardProps) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['app', 'common', 'time'])
     const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
     const { data: currentUserId } = useSuspenseQuery({
       ...userProfileQueryOptions(),
@@ -80,22 +78,22 @@ export const AppCard = memo(
 
       const timeText = formatTime({
         date: timestamp * 1000,
-        dateFormat: `${t(($) => $['segment.dateTimeFormat'], { ns: 'datasetDocuments' })}`,
+        dateFormat: `${t(($) => $['dateFormats.compact'], { ns: 'time' })}`,
       })
-      return `${t(($) => $['segment.editedAt'], { ns: 'datasetDocuments' })} ${timeText}`
+      return `${t(($) => $.editedAt, { ns: 'common' })} ${timeText}`
     }, [app.updated_at, app.created_at, t])
 
     const appModeLabel = useMemo(() => {
       switch (app.mode) {
-        case AppModeEnum.CHAT:
+        case 'chat':
           return t(($) => $['types.chatbot'], { ns: 'app' })
-        case AppModeEnum.ADVANCED_CHAT:
+        case 'advanced-chat':
           return t(($) => $['types.advanced'], { ns: 'app' })
-        case AppModeEnum.AGENT_CHAT:
+        case 'agent-chat':
           return t(($) => $['types.agent'], { ns: 'app' })
-        case AppModeEnum.COMPLETION:
+        case 'completion':
           return t(($) => $['types.completion'], { ns: 'app' })
-        case AppModeEnum.WORKFLOW:
+        case 'workflow':
           return t(($) => $['types.workflow'], { ns: 'app' })
         default:
           return app.mode
@@ -117,7 +115,7 @@ export const AppCard = memo(
     }, [app.id, onlineUsers])
     const appNameId = useId()
     const appDescriptionId = useId()
-    const appIconType = zIconType.safeParse(app.icon_type).data ?? null
+
     const appHref = getRedirectionPath(app, maintainerPermissionOptions)
     const appCardClassName = cn(
       'inline-flex h-full w-full touch-manipulation flex-col rounded-xl outline-hidden',
@@ -130,14 +128,7 @@ export const AppCard = memo(
       <>
         <div className="flex shrink-0 items-center gap-3 pt-4 pr-4 pb-2 pl-4">
           <div className="relative shrink-0">
-            <AppIcon
-              size="large"
-              iconType={appIconType}
-              icon={app.icon ?? undefined}
-              background={app.icon_background}
-              imageUrl={app.icon_url}
-              decorative
-            />
+            <AppIcon size="large" icon={app} />
             <AppTypeIcon
               type={app.mode}
               wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm"

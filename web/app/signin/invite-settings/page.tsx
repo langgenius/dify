@@ -1,5 +1,5 @@
 'use client'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -17,19 +17,19 @@ import {
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { useLocale } from '#i18n'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { LICENSE_LINK } from '@/constants/link'
-import { useLocale } from '@/context/i18n'
-import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { i18n, setLocaleOnClient } from '@/i18n-config'
-import { languages } from '@/i18n-config/language'
+import { i18n } from '@/i18n'
+import { setLocaleOnClient } from '@/i18n/client'
+import { languages } from '@/i18n/language'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { activateMember } from '@/service/common'
-import { consoleQuery } from '@/service/console'
-import { useInvitationCheck } from '@/service/use-common'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { isUnauthorizedError } from '@/service/http-error'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone, timezones } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
@@ -65,7 +65,7 @@ const getInitialLanguage = (locale: Locale): Locale => {
 }
 
 export default function InviteSettingsPage() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -77,7 +77,7 @@ export default function InviteSettingsPage() {
     error: profileError,
   } = useQuery({
     ...userProfileQueryOptions(),
-    throwOnError: (err) => !isLegacyBase401(err),
+    throwOnError: (err) => !isUnauthorizedError(err),
     refetchOnWindowFocus: false,
   })
   const locale = useLocale()
@@ -104,7 +104,13 @@ export default function InviteSettingsPage() {
       token,
     },
   }
-  const { data: checkRes, refetch: recheck } = useInvitationCheck(checkParams.params, !!token)
+  const { data: checkRes, refetch: recheck } = useQuery(
+    consoleQuery.activate.check.get.queryOptions({
+      input: { query: checkParams.params },
+      enabled: !!token,
+      retry: false,
+    }),
+  )
   const isInvitationForCurrentAccount = isInvitationForAccount(
     checkRes?.data?.email,
     userResp?.profile.email,
@@ -113,7 +119,7 @@ export default function InviteSettingsPage() {
     !isProfilePending &&
     Boolean(
       checkRes?.is_valid &&
-      (isLegacyBase401(profileError) || (userResp && !isInvitationForCurrentAccount)),
+      (isUnauthorizedError(profileError) || (userResp && !isInvitationForCurrentAccount)),
     )
   const requiresAccountSetup =
     checkRes?.data?.requires_setup ?? checkRes?.data?.account_status === 'pending'
@@ -154,10 +160,7 @@ export default function InviteSettingsPage() {
         : {
             token,
           }
-      const res = await activateMember({
-        url: '/activate',
-        body,
-      })
+      const res = await consoleClient.activate.post({ body })
       if (res.result === 'success') {
         // Tokens are now stored in cookies by the backend
         if (requiresAccountSetup) await setLocaleOnClient(language!, false)
@@ -182,7 +185,7 @@ export default function InviteSettingsPage() {
     router,
   ])
 
-  if (isProfilePending || shouldReturnToSignIn || !checkRes) return <Loading />
+  if (isProfilePending || shouldReturnToSignIn || !checkRes) return <LoadingPlaceholder />
   if (!checkRes.is_valid) {
     return (
       <div className="flex flex-col md:w-100">

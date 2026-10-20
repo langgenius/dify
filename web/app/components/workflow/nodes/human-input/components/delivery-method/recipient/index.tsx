@@ -2,14 +2,14 @@ import type { RecipientData, Recipient as RecipientItem } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { RiGroupLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { memo, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useMembers } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import EmailInput from './email-input'
 import MemberSelector from './member-selector'
 
@@ -21,14 +21,16 @@ type Props = Readonly<{
 }>
 
 const Recipient = ({ data, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowHumanInput'])
   const wholeWorkspaceId = useId()
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,
   })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const { data: members } = useMembers()
+  const { data: members } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
   const accounts = members?.accounts || []
 
   const handleMemberSelect = (id: string) => {
@@ -72,7 +74,7 @@ const Recipient = ({ data, onChange }: Props) => {
             <RiGroupLine className="size-4 text-text-secondary" />
             <div className="system-sm-medium text-text-secondary">
               {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.title`], {
-                ns: 'workflow',
+                ns: 'workflowHumanInput',
               })}
             </div>
           </div>
@@ -102,11 +104,11 @@ const Recipient = ({ data, onChange }: Props) => {
         </div>
         <label
           htmlFor={wholeWorkspaceId}
-          className={cn('grow system-sm-medium text-text-secondary')}
+          className={cn('grow cursor-pointer system-sm-medium text-text-secondary')}
         >
           {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.allMembers`], {
             workspaceName: currentWorkspace.name.replace(/'/g, '’'),
-            ns: 'workflow',
+            ns: 'workflowHumanInput',
           })}
         </label>
         <Switch

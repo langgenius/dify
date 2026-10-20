@@ -8,13 +8,25 @@ export type TenantListResponse = {
   workspaces: Array<TenantListItemResponse>
 }
 
-export type AgentProviderResponse = {
-  [key: string]: unknown
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
 }
 
-export type AgentProviderListResponse = Array<{
-  [key: string]: unknown
-}>
+export type AgentProviderResponse = {
+  declaration: AgentProviderEntityWithPlugin
+  meta: Meta
+  plugin_id: string
+  plugin_unique_identifier: string
+  provider: string
+}
+
+export type AgentProviderListResponse = Array<AgentProviderResponse>
 
 export type AgentSkillBindingsResponse = {
   agent_id: string
@@ -24,6 +36,11 @@ export type AgentSkillBindingsResponse = {
 
 export type AgentSkillBindingsPayload = {
   skill_ids?: Array<string>
+}
+
+export type InvalidRequestError = ErrorResponse & {
+  code: 'invalid_request'
+  status: 400
 }
 
 export type SnippetPaginationResponse = {
@@ -129,8 +146,8 @@ export type EndpointCreatePayload = {
   }
 }
 
-export type SuccessResponse = {
-  success: boolean
+export type EndpointMutationResponse = {
+  success: true
 }
 
 export type EndpointIdPayload = {
@@ -164,15 +181,7 @@ export type MemberInvitePayload = {
 
 export type MemberInviteResponse = {
   invitation_results: Array<
-    | ({
-        status: 'success'
-      } & MemberInviteSuccessResponse)
-    | ({
-        status: 'already_member'
-      } & MemberInviteAlreadyMemberResponse)
-    | ({
-        status: 'failed'
-      } & MemberInviteFailedResponse)
+    MemberInviteSuccessResponse | MemberInviteAlreadyMemberResponse | MemberInviteFailedResponse
   >
   result: 'success'
   tenant_id: string
@@ -181,6 +190,16 @@ export type MemberInviteResponse = {
 export type MemberInviteErrorResponse = {
   code: 'invalid_param' | 'invalid_role' | 'limit_exceeded'
   message: string
+  status: 400
+}
+
+export type InvalidRoleError = ErrorResponse & {
+  code: 'invalid_role'
+  status: 400
+}
+
+export type LimitExceededError = ErrorResponse & {
+  code: 'limit_exceeded'
   status: 400
 }
 
@@ -195,6 +214,31 @@ export type VerificationTokenResponse = {
   token: string
 }
 
+export type EmailCodeError = ErrorResponse & {
+  code: 'email_code_error'
+  status: 400
+}
+
+export type InvalidEmailError = ErrorResponse & {
+  code: 'invalid_email'
+  status: 400
+}
+
+export type InvalidOrExpiredTokenError = ErrorResponse & {
+  code: 'invalid_or_expired_token'
+  status: 400
+}
+
+export type NotOwnerError = ErrorResponse & {
+  code: 'not_owner'
+  status: 400
+}
+
+export type OwnerTransferLimitError = ErrorResponse & {
+  code: 'owner_transfer_limit'
+  status: 429
+}
+
 export type OwnerTransferEmailPayload = {
   language?: string | null
 }
@@ -204,17 +248,57 @@ export type SimpleResultDataResponse = {
   result: string
 }
 
+export type EmailSendIpLimitError = ErrorResponse & {
+  code: 'email_send_ip_limit'
+  status: 429
+}
+
+export type OwnerTransferRateLimitExceededError = ErrorResponse & {
+  code: 'owner_transfer_rate_limit_exceeded'
+  status: 429
+}
+
 export type MemberActionResponse = {
   result: string
   tenant_id: string
+}
+
+export type CannotOperateSelfError = ErrorResponse & {
+  code: 'cannot_operate_self'
+  status: 400
+}
+
+export type ForbiddenError = ErrorResponse & {
+  code: 'forbidden'
+  status: 403
+}
+
+export type MemberNotFoundError = ErrorResponse & {
+  code: 'member_not_found'
+  status: 404
 }
 
 export type OwnerTransferPayload = {
   token: string
 }
 
+export type CannotTransferOwnerToSelfError = ErrorResponse & {
+  code: 'cannot_transfer_owner_to_self'
+  status: 400
+}
+
+export type MemberNotInTenantError = ErrorResponse & {
+  code: 'member_not_in_tenant'
+  status: 400
+}
+
 export type MemberRoleUpdatePayload = {
   role: string
+}
+
+export type RoleAlreadyAssignedError = ErrorResponse & {
+  code: 'role_already_assigned'
+  status: 400
 }
 
 export type ModelProviderListResponse = {
@@ -376,6 +460,11 @@ export type WorkspacePermissionResponse = {
 
 export type BinaryFileResponse = Blob | File
 
+export type PluginError = ErrorResponse & {
+  code: 'plugin_error'
+  status: 400
+}
+
 export type ParserAutoUpgradeChange = {
   auto_upgrade: PluginAutoUpgradeSettingsPayload
   category: TenantPluginAutoUpgradeCategory
@@ -389,6 +478,10 @@ export type PluginAutoUpgradeChangeResponse = {
 export type ParserExcludePlugin = {
   category: TenantPluginAutoUpgradeCategory
   plugin_id: string
+}
+
+export type SuccessResponse = {
+  success: boolean
 }
 
 export type PluginAutoUpgradeFetchResponse = {
@@ -521,6 +614,11 @@ export type PluginCategoryListResponse = {
   plugins: Array<PluginCategoryInstalledPluginResponse>
 }
 
+export type AccessPolicyList = {
+  data?: Array<AccessPolicy>
+  pagination?: Pagination | null
+}
+
 export type AccessPolicyCreateRequest = {
   description?: string
   name: string
@@ -546,6 +644,11 @@ export type AccessPolicyUpdateRequest = {
   description?: string
   name: string
   permission_keys?: Array<string>
+}
+
+export type AccessPolicyBindingState = {
+  binding_id: string
+  is_locked?: boolean
 }
 
 export type DeleteMemberBindingsRequest = {
@@ -621,6 +724,33 @@ export type PermissionCatalogResponse = {
   groups?: Array<PermissionCatalogGroup>
 }
 
+export type RbacRoleList = {
+  data?: Array<RbacRole>
+  pagination?: Pagination | null
+}
+
+export type RoleUpsertRequest = {
+  description?: string
+  name: string
+  permission_keys?: Array<string>
+}
+
+export type RbacRole = {
+  category?: string
+  description?: string
+  id: string
+  is_builtin?: boolean
+  name: string
+  permission_keys?: Array<string>
+  role_tag?: string
+  tenant_id?: string | null
+  type: string
+}
+
+export type CopyRoleParam = {
+  copy_member?: boolean
+}
+
 export type MembersInRoleList = {
   data?: Array<MembersInRole>
   pagination?: Pagination | null
@@ -686,6 +816,16 @@ export type SkillFileUploadResponse = {
   mime_type: string
   name: string
   size: number
+}
+
+export type FilenameMissingError = ErrorResponse & {
+  code: 'filename_missing'
+  status: 400
+}
+
+export type NoFileUploadedError = ErrorResponse & {
+  code: 'no_file_uploaded'
+  status: 400
 }
 
 export type SkillTagListResponse = {
@@ -837,6 +977,11 @@ export type CurrentWorkspaceSummaryResponse = {
   name: string
   plan: CloudPlan | null
   role: TenantAccountRole
+}
+
+export type CurrentWorkspaceArchivedError = ErrorResponse & {
+  code: 'current_workspace_archived'
+  status: 409
 }
 
 export type ToolLabelListResponse = Array<ToolLabel>
@@ -1070,6 +1215,11 @@ export type WorkflowToolCreatePayload = {
   workflow_app_id: string
 }
 
+export type WorkflowToolHumanInputNotSupportedError = ErrorResponse & {
+  code: 'workflow_tool_human_input_not_supported'
+  status: 400
+}
+
 export type WorkflowToolDeletePayload = {
   workflow_tool_id: string
 }
@@ -1229,6 +1379,26 @@ export type WorkspaceLogoUploadResponse = {
   id: string
 }
 
+export type FilenameNotExistsError = ErrorResponse & {
+  code: 'filename_not_exists_error'
+  status: 400
+}
+
+export type TooManyFilesError = ErrorResponse & {
+  code: 'too_many_files'
+  status: 400
+}
+
+export type FileTooLargeError = ErrorResponse & {
+  code: 'file_too_large'
+  status: 413
+}
+
+export type UnsupportedFileTypeError = ErrorResponse & {
+  code: 'unsupported_file_type'
+  status: 415
+}
+
 export type WorkspaceInfoPayload = {
   name: string
 }
@@ -1242,6 +1412,11 @@ export type SwitchWorkspaceResponse = {
   result: string
 }
 
+export type AccountNotLinkTenantError = ErrorResponse & {
+  code: 'account_not_link_tenant'
+  status: 403
+}
+
 export type TenantListItemResponse = {
   created_at?: number | null
   current: boolean
@@ -1250,6 +1425,17 @@ export type TenantListItemResponse = {
   name?: string | null
   plan?: CloudPlan | null
   status?: string | null
+}
+
+export type AgentProviderEntityWithPlugin = {
+  identity: AgentStrategyProviderIdentity
+  plugin_id?: string | null
+  strategies?: Array<AgentStrategyEntity>
+}
+
+export type Meta = {
+  minimum_dify_version?: string | null
+  version?: string | null
 }
 
 export type AgentSkillBindingItemResponse = {
@@ -1332,7 +1518,7 @@ export type DslImportWarning = {
 export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
-  value: Github | Marketplace | Package
+  value: PluginDependencyGithub | PluginDependencyMarketplace | PluginDependencyPackage
 }
 
 export type AccountWithRoleResponse = {
@@ -1345,9 +1531,7 @@ export type AccountWithRoleResponse = {
   last_login_at?: number | null
   name: string
   role: string
-  roles?: Array<{
-    [key: string]: string
-  }>
+  roles?: Array<MemberRoleSummaryResponse>
   status: string
 }
 
@@ -1402,11 +1586,11 @@ export type ProviderResponse = {
   background?: string | null
   configurate_methods: Array<ConfigurateMethod>
   custom_configuration: CustomConfigurationResponse
-  description?: I18nObject | null
+  description?: ModelRuntimeI18nObject | null
   help?: ProviderHelpEntity | null
-  icon_small?: I18nObject | null
-  icon_small_dark?: I18nObject | null
-  label: I18nObject
+  icon_small?: ModelRuntimeI18nObject | null
+  icon_small_dark?: ModelRuntimeI18nObject | null
+  label: ModelRuntimeI18nObject
   model_credential_schema?: ModelCredentialSchema | null
   preferred_provider_type: ProviderType
   provider: string
@@ -1419,11 +1603,11 @@ export type ProviderResponse = {
 export type ModelProviderSummaryResponse = {
   configurate_methods: Array<ConfigurateMethod>
   custom_configuration: ModelProviderCustomConfigurationSummaryResponse
-  description?: I18nObject | null
-  icon_small?: I18nObject | null
-  icon_small_dark?: I18nObject | null
+  description?: ModelRuntimeI18nObject | null
+  icon_small?: ModelRuntimeI18nObject | null
+  icon_small_dark?: ModelRuntimeI18nObject | null
   is_configured: boolean
-  label: I18nObject
+  label: ModelRuntimeI18nObject
   plugin_id: string
   preferred_provider_type: ProviderType
   provider: string
@@ -1445,7 +1629,7 @@ export type ModelWithProviderEntityResponse = {
   features?: Array<ModelFeature> | null
   fetch_from: FetchFrom
   has_invalid_load_balancing_configs?: boolean
-  label: I18nObject
+  label: ModelRuntimeI18nObject
   load_balancing_enabled?: boolean
   model: string
   model_properties: {
@@ -1477,8 +1661,8 @@ export type ModelLoadBalancingResponse = {
 
 export type ParameterRule = {
   default?: unknown | null
-  help?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  help?: ModelRuntimeI18nObject | null
+  label: ModelRuntimeI18nObject
   max?: number | null
   min?: number | null
   name: string
@@ -1490,9 +1674,9 @@ export type ParameterRule = {
 }
 
 export type ProviderWithModelsResponse = {
-  icon_small?: I18nObject | null
-  icon_small_dark?: I18nObject | null
-  label: I18nObject
+  icon_small?: ModelRuntimeI18nObject | null
+  icon_small_dark?: ModelRuntimeI18nObject | null
+  label: ModelRuntimeI18nObject
   models: Array<ProviderModelWithStatusEntity>
   provider: string
   status: CustomConfigurationStatus
@@ -1529,11 +1713,11 @@ export type PluginDeclaration = {
   category: PluginCategory
   created_at: string
   datasource?: DatasourceProviderEntity | null
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   endpoint?: EndpointProviderDeclaration | null
   icon: string
   icon_dark?: string | null
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: I18nObject
   meta: Meta
   model?: ProviderEntity | null
   name: string
@@ -1618,7 +1802,10 @@ export type TenantPluginInstallPermission = 'admins' | 'everyone' | 'noone'
 
 export type PluginBundleDependency = {
   type: PluginBundleDependencyType
-  value: Github | Marketplace | Package
+  value:
+    | PluginBundleDependencyGithub
+    | PluginBundleDependencyMarketplace
+    | PluginBundleDependencyPackage
 }
 
 export type PluginVerification = {
@@ -1628,7 +1815,7 @@ export type PluginVerification = {
 export type PluginCategoryBuiltinToolProviderResponse = {
   allow_delete: boolean
   author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   icon:
     | string
     | {
@@ -1642,7 +1829,7 @@ export type PluginCategoryBuiltinToolProviderResponse = {
     | null
   id: string
   is_team_authorization: boolean
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: I18nObject
   labels: Array<string>
   name: string
   plugin_id: string | null
@@ -1676,6 +1863,13 @@ export type PluginCategoryInstalledPluginResponse = {
   version: string
 }
 
+export type Pagination = {
+  current_page?: number
+  per_page?: number
+  total_count?: number
+  total_pages?: number
+}
+
 export type RbacResourceType = 'agent' | 'app' | 'dataset'
 
 export type AccessPolicyMemberBinding = {
@@ -1704,25 +1898,6 @@ export type ResourceUserAccessPolicies = {
   access_policies?: Array<AccessPolicy>
   account: RbacRoleAccount
   roles?: Array<RbacRole>
-}
-
-export type Pagination = {
-  current_page?: number
-  per_page?: number
-  total_count?: number
-  total_pages?: number
-}
-
-export type RbacRole = {
-  category?: string
-  description?: string
-  id: string
-  is_builtin?: boolean
-  name: string
-  permission_keys?: Array<string>
-  role_tag?: string
-  tenant_id?: string | null
-  type: string
 }
 
 export type ResourcePermissionSnapshot = {
@@ -2035,29 +2210,55 @@ export type TenantInfoResponse = {
   trial_end_reason?: string | null
 }
 
+export type AgentStrategyProviderIdentity = {
+  author: string
+  description: I18nObject
+  icon: string
+  icon_dark?: string | null
+  label: I18nObject
+  name: string
+  tags?: Array<ToolLabelEnum> | null
+}
+
+export type AgentStrategyEntity = {
+  description: I18nObject
+  features?: Array<AgentFeature> | null
+  identity: AgentStrategyIdentity
+  meta_version?: string | null
+  output_schema?: {
+    [key: string]: unknown
+  } | null
+  parameters?: Array<AgentStrategyParameter>
+}
+
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
-export type Github = {
+export type PluginDependencyGithub = {
   github_plugin_unique_identifier: string
   package: string
   repo: string
   version: string
 }
 
-export type Marketplace = {
+export type PluginDependencyMarketplace = {
   marketplace_plugin_unique_identifier: string
   version?: string | null
 }
 
-export type Package = {
+export type PluginDependencyPackage = {
   plugin_unique_identifier: string
   version?: string | null
 }
 
+export type MemberRoleSummaryResponse = {
+  id: string
+  name: string
+}
+
 export type SimpleProviderEntityResponse = {
-  icon_small?: I18nObject | null
-  icon_small_dark?: I18nObject | null
-  label: I18nObject
+  icon_small?: ModelRuntimeI18nObject | null
+  icon_small_dark?: ModelRuntimeI18nObject | null
+  label: ModelRuntimeI18nObject
   models?: Array<AiModelEntityResponse>
   provider: string
   provider_name?: string
@@ -2081,9 +2282,14 @@ export type CustomConfigurationResponse = {
   status: CustomConfigurationStatus
 }
 
+export type ModelRuntimeI18nObject = {
+  en_US: string
+  zh_Hans?: string | null
+}
+
 export type ProviderHelpEntity = {
-  title: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
-  url: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  title: ModelRuntimeI18nObject
+  url: ModelRuntimeI18nObject
 }
 
 export type ModelCredentialSchema = {
@@ -2165,11 +2371,6 @@ export type ModelLoadBalancingConfigResponse = {
   ttl: number
 }
 
-export type GraphonModelRuntimeEntitiesCommonEntitiesI18nObject = {
-  en_US: string
-  zh_Hans?: string | null
-}
-
 export type ParameterType = 'boolean' | 'float' | 'int' | 'string' | 'text'
 
 export type ProviderModelWithStatusEntity = {
@@ -2177,7 +2378,7 @@ export type ProviderModelWithStatusEntity = {
   features?: Array<ModelFeature> | null
   fetch_from: FetchFrom
   has_invalid_load_balancing_configs?: boolean
-  label: I18nObject
+  label: ModelRuntimeI18nObject
   load_balancing_enabled?: boolean
   model: string
   model_properties: {
@@ -2213,31 +2414,19 @@ export type DatasourceProviderEntity = {
   provider_type: DatasourceProviderType
 }
 
-export type CoreToolsEntitiesCommonEntitiesI18nObject = {
-  en_US: string
-  ja_JP?: string | null
-  pt_BR?: string | null
-  zh_Hans?: string | null
-}
-
 export type EndpointProviderDeclaration = {
   endpoints?: Array<EndpointDeclaration> | null
   settings?: Array<ProviderConfig>
 }
 
-export type Meta = {
-  minimum_dify_version?: string | null
-  version?: string | null
-}
-
 export type ProviderEntity = {
   background?: string | null
   configurate_methods: Array<ConfigurateMethod>
-  description?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  description?: ModelRuntimeI18nObject | null
   help?: ProviderHelpEntity | null
-  icon_small?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
-  icon_small_dark?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  icon_small?: ModelRuntimeI18nObject | null
+  icon_small_dark?: ModelRuntimeI18nObject | null
+  label: ModelRuntimeI18nObject
   model_credential_schema?: ModelCredentialSchema | null
   models?: Array<AiModelEntity>
   position?: {
@@ -2298,13 +2487,13 @@ export type PluginDeclarationResponse = {
   datasource?: {
     [key: string]: unknown
   } | null
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   endpoint?: {
     [key: string]: unknown
   } | null
   icon: string
   icon_dark?: string | null
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: I18nObject
   meta: {
     [key: string]: unknown
   }
@@ -2330,12 +2519,30 @@ export type PluginDeclarationResponse = {
 
 export type PluginBundleDependencyType = 'github' | 'marketplace' | 'package'
 
+export type PluginBundleDependencyGithub = {
+  packages: string
+  release: string
+  repo: string
+  repo_address: string
+}
+
+export type PluginBundleDependencyMarketplace = {
+  organization: string
+  plugin: string
+  version: string
+}
+
+export type PluginBundleDependencyPackage = {
+  manifest: PluginDeclaration
+  unique_identifier: string
+}
+
 export type AuthorizedCategory = 'community' | 'langgenius' | 'partner'
 
 export type PluginCategoryBuiltinToolResponse = {
   author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
+  label: I18nObject
   labels: Array<string>
   name: string
   output_schema: {
@@ -2464,11 +2671,66 @@ export type OAuthSchema = {
   credentials_schema?: Array<ProviderConfig>
 }
 
+export type ToolLabelEnum =
+  | 'business'
+  | 'design'
+  | 'education'
+  | 'entertainment'
+  | 'finance'
+  | 'image'
+  | 'medical'
+  | 'news'
+  | 'other'
+  | 'productivity'
+  | 'rag'
+  | 'search'
+  | 'social'
+  | 'travel'
+  | 'utilities'
+  | 'videos'
+  | 'weather'
+
+export type AgentFeature = 'history-messages'
+
+export type AgentStrategyIdentity = {
+  author: string
+  icon?: string | null
+  label: I18nObject
+  name: string
+  provider: string
+}
+
+export type AgentStrategyParameter = {
+  auto_generate?: PluginParameterAutoGenerate | null
+  default?:
+    | number
+    | number
+    | string
+    | boolean
+    | Array<unknown>
+    | {
+        [key: string]: unknown
+      }
+    | null
+  help?: I18nObject | null
+  label: I18nObject
+  max?: number | number | null
+  min?: number | number | null
+  name: string
+  options?: Array<PluginParameterOption>
+  placeholder?: I18nObject | null
+  precision?: number | null
+  required?: boolean
+  scope?: string | null
+  template?: PluginParameterTemplate | null
+  type: AgentStrategyParameterType
+}
+
 export type AiModelEntityResponse = {
   deprecated?: boolean
   features?: Array<ModelFeature> | null
   fetch_from: FetchFrom
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  label: ModelRuntimeI18nObject
   model: string
   model_properties: {
     [key in ModelPropertyKey]?: unknown
@@ -2517,10 +2779,10 @@ export type CustomModelConfiguration = {
 
 export type CredentialFormSchema = {
   default?: string | null
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  label: ModelRuntimeI18nObject
   max_length?: number
   options?: Array<FormOption> | null
-  placeholder?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  placeholder?: ModelRuntimeI18nObject | null
   required?: boolean
   show_on?: Array<FormShowOnObject>
   type: FormType
@@ -2528,8 +2790,8 @@ export type CredentialFormSchema = {
 }
 
 export type FieldModelSchema = {
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
-  placeholder?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  label: ModelRuntimeI18nObject
+  placeholder?: ModelRuntimeI18nObject | null
 }
 
 export type ProviderQuotaType = 'free' | 'paid' | 'trial'
@@ -2543,21 +2805,11 @@ export type QuotaConfiguration = {
   restrict_models?: Array<RestrictModel>
 }
 
-export type AgentStrategyProviderIdentity = {
-  author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
-  icon: string
-  icon_dark?: string | null
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
-  name: string
-  tags?: Array<ToolLabelEnum> | null
-}
-
 export type DatasourceProviderIdentity = {
   author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   icon: string
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: I18nObject
   name: string
   tags?: Array<ToolLabelEnum> | null
 }
@@ -2578,7 +2830,7 @@ export type AiModelEntity = {
   deprecated?: boolean
   features?: Array<ModelFeature> | null
   fetch_from: FetchFrom
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  label: ModelRuntimeI18nObject
   model: string
   model_properties: {
     [key in ModelPropertyKey]?: unknown
@@ -2598,16 +2850,16 @@ export type Permission = {
 
 export type ToolProviderIdentity = {
   author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   icon: string
   icon_dark?: string | null
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: I18nObject
   name: string
   tags?: Array<ToolLabelEnum> | null
 }
 
 export type EventEntity = {
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   identity: EventIdentity
   output_schema?: {
     [key: string]: unknown
@@ -2617,10 +2869,10 @@ export type EventEntity = {
 
 export type TriggerProviderIdentity = {
   author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   icon?: string | null
   icon_dark?: string | null
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: I18nObject
   name: string
   tags?: Array<string>
 }
@@ -2628,11 +2880,11 @@ export type TriggerProviderIdentity = {
 export type ProviderEntityResponse = {
   background?: string | null
   configurate_methods: Array<ConfigurateMethod>
-  description?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  description?: ModelRuntimeI18nObject | null
   help?: ProviderHelpEntity | null
-  icon_small?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
-  icon_small_dark?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  icon_small?: ModelRuntimeI18nObject | null
+  icon_small_dark?: ModelRuntimeI18nObject | null
+  label: ModelRuntimeI18nObject
   model_credential_schema?: ModelCredentialSchema | null
   models?: Array<AiModelEntityResponse>
   position?: {
@@ -2685,6 +2937,20 @@ export type EventParameterType =
   | 'select'
   | 'string'
 
+export type AgentStrategyParameterType =
+  | 'any'
+  | 'app-selector'
+  | 'array[tools]'
+  | 'boolean'
+  | 'file'
+  | 'files'
+  | 'model-selector'
+  | 'number'
+  | 'secret-input'
+  | 'select'
+  | 'string'
+  | 'system-files'
+
 export type PriceConfigResponse = {
   currency: string
   input: string
@@ -2720,7 +2986,7 @@ export type EndpointProviderConfigScope =
   | 'workflow'
 
 export type FormOption = {
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  label: ModelRuntimeI18nObject
   show_on?: Array<FormShowOnObject>
   value: string
 }
@@ -2739,25 +3005,6 @@ export type RestrictModel = {
   model: string
   model_type: ModelType
 }
-
-export type ToolLabelEnum =
-  | 'business'
-  | 'design'
-  | 'education'
-  | 'entertainment'
-  | 'finance'
-  | 'image'
-  | 'medical'
-  | 'news'
-  | 'other'
-  | 'productivity'
-  | 'rag'
-  | 'search'
-  | 'social'
-  | 'travel'
-  | 'utilities'
-  | 'videos'
-  | 'weather'
 
 export type PriceConfig = {
   currency: string
@@ -2808,9 +3055,7 @@ export type AccountWithRoleResponseWritable = {
   last_login_at?: number | null
   name: string
   role: string
-  roles?: Array<{
-    [key: string]: string
-  }>
+  roles?: Array<MemberRoleSummaryResponse>
   status: string
 }
 
@@ -2820,6 +3065,12 @@ export type GetWorkspacesData = {
   query?: never
   url: '/workspaces'
 }
+
+export type GetWorkspacesErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesError = GetWorkspacesErrors[keyof GetWorkspacesErrors]
 
 export type GetWorkspacesResponses = {
   200: TenantListResponse
@@ -2836,6 +3087,13 @@ export type GetWorkspacesCurrentAgentProviderByProviderNameData = {
   url: '/workspaces/current/agent-provider/{provider_name}'
 }
 
+export type GetWorkspacesCurrentAgentProviderByProviderNameErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentAgentProviderByProviderNameError =
+  GetWorkspacesCurrentAgentProviderByProviderNameErrors[keyof GetWorkspacesCurrentAgentProviderByProviderNameErrors]
+
 export type GetWorkspacesCurrentAgentProviderByProviderNameResponses = {
   200: AgentProviderResponse
 }
@@ -2849,6 +3107,13 @@ export type GetWorkspacesCurrentAgentProvidersData = {
   query?: never
   url: '/workspaces/current/agent-providers'
 }
+
+export type GetWorkspacesCurrentAgentProvidersErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentAgentProvidersError =
+  GetWorkspacesCurrentAgentProvidersErrors[keyof GetWorkspacesCurrentAgentProvidersErrors]
 
 export type GetWorkspacesCurrentAgentProvidersResponses = {
   200: AgentProviderListResponse
@@ -2866,6 +3131,13 @@ export type GetWorkspacesCurrentAgentsByAgentIdSkillsData = {
   url: '/workspaces/current/agents/{agent_id}/skills'
 }
 
+export type GetWorkspacesCurrentAgentsByAgentIdSkillsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentAgentsByAgentIdSkillsError =
+  GetWorkspacesCurrentAgentsByAgentIdSkillsErrors[keyof GetWorkspacesCurrentAgentsByAgentIdSkillsErrors]
+
 export type GetWorkspacesCurrentAgentsByAgentIdSkillsResponses = {
   200: AgentSkillBindingsResponse
 }
@@ -2881,6 +3153,14 @@ export type PutWorkspacesCurrentAgentsByAgentIdSkillsData = {
   query?: never
   url: '/workspaces/current/agents/{agent_id}/skills'
 }
+
+export type PutWorkspacesCurrentAgentsByAgentIdSkillsErrors = {
+  400: InvalidRequestError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentAgentsByAgentIdSkillsError =
+  PutWorkspacesCurrentAgentsByAgentIdSkillsErrors[keyof PutWorkspacesCurrentAgentsByAgentIdSkillsErrors]
 
 export type PutWorkspacesCurrentAgentsByAgentIdSkillsResponses = {
   200: AgentSkillBindingsResponse
@@ -2903,6 +3183,13 @@ export type GetWorkspacesCurrentCustomizedSnippetsData = {
   url: '/workspaces/current/customized-snippets'
 }
 
+export type GetWorkspacesCurrentCustomizedSnippetsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentCustomizedSnippetsError =
+  GetWorkspacesCurrentCustomizedSnippetsErrors[keyof GetWorkspacesCurrentCustomizedSnippetsErrors]
+
 export type GetWorkspacesCurrentCustomizedSnippetsResponses = {
   200: SnippetPaginationResponse
 }
@@ -2918,8 +3205,12 @@ export type PostWorkspacesCurrentCustomizedSnippetsData = {
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsErrors = {
-  400: unknown
+  400: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostWorkspacesCurrentCustomizedSnippetsError =
+  PostWorkspacesCurrentCustomizedSnippetsErrors[keyof PostWorkspacesCurrentCustomizedSnippetsErrors]
 
 export type PostWorkspacesCurrentCustomizedSnippetsResponses = {
   201: SnippetResponse
@@ -2936,8 +3227,12 @@ export type PostWorkspacesCurrentCustomizedSnippetsImportsData = {
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsErrors = {
-  400: unknown
+  400: SnippetImportResponse | ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostWorkspacesCurrentCustomizedSnippetsImportsError =
+  PostWorkspacesCurrentCustomizedSnippetsImportsErrors[keyof PostWorkspacesCurrentCustomizedSnippetsImportsErrors]
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsResponses = {
   200: SnippetImportResponse
@@ -2957,8 +3252,12 @@ export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmData 
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmErrors = {
-  400: unknown
+  400: SnippetImportResponse | ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmError =
+  PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmErrors[keyof PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmErrors]
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponses = {
   200: SnippetImportResponse
@@ -2977,8 +3276,12 @@ export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
 }
 
 export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdError =
+  DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors[keyof DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors]
 
 export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
   204: void
@@ -2997,8 +3300,12 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdError =
+  GetWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors]
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
   200: SnippetResponse
@@ -3017,9 +3324,13 @@ export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
 }
 
 export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
-  400: unknown
-  404: unknown
+  400: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdError =
+  PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors[keyof PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors]
 
 export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
   200: SnippetResponse
@@ -3038,8 +3349,12 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesDa
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesError =
+  GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesErrors[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesErrors]
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponses = {
   200: SnippetDependencyCheckResponse
@@ -3061,8 +3376,12 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportData = {
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportError =
+  GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportErrors[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportErrors]
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponses = {
   200: TextFileResponse
@@ -3081,8 +3400,12 @@ export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementD
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementError =
+  PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementErrors[keyof PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementErrors]
 
 export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponses = {
   200: SnippetUseCountResponse
@@ -3097,6 +3420,13 @@ export type GetWorkspacesCurrentDatasetOperatorsData = {
   query?: never
   url: '/workspaces/current/dataset-operators'
 }
+
+export type GetWorkspacesCurrentDatasetOperatorsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentDatasetOperatorsError =
+  GetWorkspacesCurrentDatasetOperatorsErrors[keyof GetWorkspacesCurrentDatasetOperatorsErrors]
 
 export type GetWorkspacesCurrentDatasetOperatorsResponses = {
   200: AccountWithRoleListResponse
@@ -3114,6 +3444,13 @@ export type GetWorkspacesCurrentDefaultModelData = {
   url: '/workspaces/current/default-model'
 }
 
+export type GetWorkspacesCurrentDefaultModelErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentDefaultModelError =
+  GetWorkspacesCurrentDefaultModelErrors[keyof GetWorkspacesCurrentDefaultModelErrors]
+
 export type GetWorkspacesCurrentDefaultModelResponses = {
   200: DefaultModelDataResponse
 }
@@ -3127,6 +3464,13 @@ export type PostWorkspacesCurrentDefaultModelData = {
   query?: never
   url: '/workspaces/current/default-model'
 }
+
+export type PostWorkspacesCurrentDefaultModelErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentDefaultModelError =
+  PostWorkspacesCurrentDefaultModelErrors[keyof PostWorkspacesCurrentDefaultModelErrors]
 
 export type PostWorkspacesCurrentDefaultModelResponses = {
   200: SimpleResultResponse
@@ -3143,11 +3487,15 @@ export type PostWorkspacesCurrentEndpointsData = {
 }
 
 export type PostWorkspacesCurrentEndpointsErrors = {
-  403: unknown
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
+export type PostWorkspacesCurrentEndpointsError =
+  PostWorkspacesCurrentEndpointsErrors[keyof PostWorkspacesCurrentEndpointsErrors]
+
 export type PostWorkspacesCurrentEndpointsResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsResponse =
@@ -3161,11 +3509,15 @@ export type PostWorkspacesCurrentEndpointsCreateData = {
 }
 
 export type PostWorkspacesCurrentEndpointsCreateErrors = {
-  403: unknown
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
+export type PostWorkspacesCurrentEndpointsCreateError =
+  PostWorkspacesCurrentEndpointsCreateErrors[keyof PostWorkspacesCurrentEndpointsCreateErrors]
+
 export type PostWorkspacesCurrentEndpointsCreateResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsCreateResponse =
@@ -3179,11 +3531,15 @@ export type PostWorkspacesCurrentEndpointsDeleteData = {
 }
 
 export type PostWorkspacesCurrentEndpointsDeleteErrors = {
-  403: unknown
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
+export type PostWorkspacesCurrentEndpointsDeleteError =
+  PostWorkspacesCurrentEndpointsDeleteErrors[keyof PostWorkspacesCurrentEndpointsDeleteErrors]
+
 export type PostWorkspacesCurrentEndpointsDeleteResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsDeleteResponse =
@@ -3197,11 +3553,15 @@ export type PostWorkspacesCurrentEndpointsDisableData = {
 }
 
 export type PostWorkspacesCurrentEndpointsDisableErrors = {
-  403: unknown
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
+export type PostWorkspacesCurrentEndpointsDisableError =
+  PostWorkspacesCurrentEndpointsDisableErrors[keyof PostWorkspacesCurrentEndpointsDisableErrors]
+
 export type PostWorkspacesCurrentEndpointsDisableResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsDisableResponse =
@@ -3215,11 +3575,15 @@ export type PostWorkspacesCurrentEndpointsEnableData = {
 }
 
 export type PostWorkspacesCurrentEndpointsEnableErrors = {
-  403: unknown
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
+export type PostWorkspacesCurrentEndpointsEnableError =
+  PostWorkspacesCurrentEndpointsEnableErrors[keyof PostWorkspacesCurrentEndpointsEnableErrors]
+
 export type PostWorkspacesCurrentEndpointsEnableResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsEnableResponse =
@@ -3234,6 +3598,13 @@ export type GetWorkspacesCurrentEndpointsListData = {
   }
   url: '/workspaces/current/endpoints/list'
 }
+
+export type GetWorkspacesCurrentEndpointsListErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentEndpointsListError =
+  GetWorkspacesCurrentEndpointsListErrors[keyof GetWorkspacesCurrentEndpointsListErrors]
 
 export type GetWorkspacesCurrentEndpointsListResponses = {
   200: EndpointListResponse
@@ -3253,6 +3624,13 @@ export type GetWorkspacesCurrentEndpointsListPluginData = {
   url: '/workspaces/current/endpoints/list/plugin'
 }
 
+export type GetWorkspacesCurrentEndpointsListPluginErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentEndpointsListPluginError =
+  GetWorkspacesCurrentEndpointsListPluginErrors[keyof GetWorkspacesCurrentEndpointsListPluginErrors]
+
 export type GetWorkspacesCurrentEndpointsListPluginResponses = {
   200: EndpointListResponse
 }
@@ -3268,11 +3646,15 @@ export type PostWorkspacesCurrentEndpointsUpdateData = {
 }
 
 export type PostWorkspacesCurrentEndpointsUpdateErrors = {
-  403: unknown
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
+export type PostWorkspacesCurrentEndpointsUpdateError =
+  PostWorkspacesCurrentEndpointsUpdateErrors[keyof PostWorkspacesCurrentEndpointsUpdateErrors]
+
 export type PostWorkspacesCurrentEndpointsUpdateResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsUpdateResponse =
@@ -3288,11 +3670,15 @@ export type DeleteWorkspacesCurrentEndpointsByIdData = {
 }
 
 export type DeleteWorkspacesCurrentEndpointsByIdErrors = {
-  403: unknown
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
+export type DeleteWorkspacesCurrentEndpointsByIdError =
+  DeleteWorkspacesCurrentEndpointsByIdErrors[keyof DeleteWorkspacesCurrentEndpointsByIdErrors]
+
 export type DeleteWorkspacesCurrentEndpointsByIdResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type DeleteWorkspacesCurrentEndpointsByIdResponse =
@@ -3308,11 +3694,15 @@ export type PatchWorkspacesCurrentEndpointsByIdData = {
 }
 
 export type PatchWorkspacesCurrentEndpointsByIdErrors = {
-  403: unknown
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
+export type PatchWorkspacesCurrentEndpointsByIdError =
+  PatchWorkspacesCurrentEndpointsByIdErrors[keyof PatchWorkspacesCurrentEndpointsByIdErrors]
+
 export type PatchWorkspacesCurrentEndpointsByIdResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PatchWorkspacesCurrentEndpointsByIdResponse =
@@ -3321,9 +3711,18 @@ export type PatchWorkspacesCurrentEndpointsByIdResponse =
 export type GetWorkspacesCurrentMembersData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/members'
 }
+
+export type GetWorkspacesCurrentMembersErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentMembersError =
+  GetWorkspacesCurrentMembersErrors[keyof GetWorkspacesCurrentMembersErrors]
 
 export type GetWorkspacesCurrentMembersResponses = {
   200: AccountWithRoleListResponse
@@ -3340,7 +3739,8 @@ export type PostWorkspacesCurrentMembersInviteEmailData = {
 }
 
 export type PostWorkspacesCurrentMembersInviteEmailErrors = {
-  400: MemberInviteErrorResponse
+  400: MemberInviteErrorResponse | InvalidRoleError | LimitExceededError | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostWorkspacesCurrentMembersInviteEmailError =
@@ -3360,6 +3760,20 @@ export type PostWorkspacesCurrentMembersOwnerTransferCheckData = {
   url: '/workspaces/current/members/owner-transfer-check'
 }
 
+export type PostWorkspacesCurrentMembersOwnerTransferCheckErrors = {
+  400:
+    | EmailCodeError
+    | InvalidEmailError
+    | InvalidOrExpiredTokenError
+    | NotOwnerError
+    | ErrorResponse
+  429: OwnerTransferLimitError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentMembersOwnerTransferCheckError =
+  PostWorkspacesCurrentMembersOwnerTransferCheckErrors[keyof PostWorkspacesCurrentMembersOwnerTransferCheckErrors]
+
 export type PostWorkspacesCurrentMembersOwnerTransferCheckResponses = {
   200: VerificationTokenResponse
 }
@@ -3373,6 +3787,15 @@ export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailData = {
   query?: never
   url: '/workspaces/current/members/send-owner-transfer-confirm-email'
 }
+
+export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailErrors = {
+  400: NotOwnerError | ErrorResponse
+  429: EmailSendIpLimitError | OwnerTransferRateLimitExceededError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailError =
+  PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailErrors[keyof PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailErrors]
 
 export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailResponses = {
   200: SimpleResultDataResponse
@@ -3390,6 +3813,16 @@ export type DeleteWorkspacesCurrentMembersByMemberIdData = {
   url: '/workspaces/current/members/{member_id}'
 }
 
+export type DeleteWorkspacesCurrentMembersByMemberIdErrors = {
+  400: CannotOperateSelfError | ErrorResponse
+  403: ForbiddenError | ErrorResponse
+  404: MemberNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteWorkspacesCurrentMembersByMemberIdError =
+  DeleteWorkspacesCurrentMembersByMemberIdErrors[keyof DeleteWorkspacesCurrentMembersByMemberIdErrors]
+
 export type DeleteWorkspacesCurrentMembersByMemberIdResponses = {
   200: MemberActionResponse
 }
@@ -3405,6 +3838,20 @@ export type PostWorkspacesCurrentMembersByMemberIdOwnerTransferData = {
   query?: never
   url: '/workspaces/current/members/{member_id}/owner-transfer'
 }
+
+export type PostWorkspacesCurrentMembersByMemberIdOwnerTransferErrors = {
+  400:
+    | CannotTransferOwnerToSelfError
+    | InvalidEmailError
+    | InvalidOrExpiredTokenError
+    | MemberNotInTenantError
+    | NotOwnerError
+    | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentMembersByMemberIdOwnerTransferError =
+  PostWorkspacesCurrentMembersByMemberIdOwnerTransferErrors[keyof PostWorkspacesCurrentMembersByMemberIdOwnerTransferErrors]
 
 export type PostWorkspacesCurrentMembersByMemberIdOwnerTransferResponses = {
   200: SimpleResultResponse
@@ -3422,6 +3869,16 @@ export type PutWorkspacesCurrentMembersByMemberIdUpdateRoleData = {
   url: '/workspaces/current/members/{member_id}/update-role'
 }
 
+export type PutWorkspacesCurrentMembersByMemberIdUpdateRoleErrors = {
+  400: CannotOperateSelfError | InvalidRoleError | RoleAlreadyAssignedError | ErrorResponse
+  403: ForbiddenError | ErrorResponse
+  404: MemberNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentMembersByMemberIdUpdateRoleError =
+  PutWorkspacesCurrentMembersByMemberIdUpdateRoleErrors[keyof PutWorkspacesCurrentMembersByMemberIdUpdateRoleErrors]
+
 export type PutWorkspacesCurrentMembersByMemberIdUpdateRoleResponses = {
   200: SimpleResultResponse
 }
@@ -3438,6 +3895,13 @@ export type GetWorkspacesCurrentModelProvidersData = {
   url: '/workspaces/current/model-providers'
 }
 
+export type GetWorkspacesCurrentModelProvidersErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersError =
+  GetWorkspacesCurrentModelProvidersErrors[keyof GetWorkspacesCurrentModelProvidersErrors]
+
 export type GetWorkspacesCurrentModelProvidersResponses = {
   200: ModelProviderListResponse
 }
@@ -3452,6 +3916,13 @@ export type GetWorkspacesCurrentModelProvidersCreditsData = {
   url: '/workspaces/current/model-providers/credits'
 }
 
+export type GetWorkspacesCurrentModelProvidersCreditsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersCreditsError =
+  GetWorkspacesCurrentModelProvidersCreditsErrors[keyof GetWorkspacesCurrentModelProvidersCreditsErrors]
+
 export type GetWorkspacesCurrentModelProvidersCreditsResponses = {
   200: ModelProviderCreditsResponse
 }
@@ -3465,6 +3936,13 @@ export type GetWorkspacesCurrentModelProvidersSummaryData = {
   query?: never
   url: '/workspaces/current/model-providers/summary'
 }
+
+export type GetWorkspacesCurrentModelProvidersSummaryErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersSummaryError =
+  GetWorkspacesCurrentModelProvidersSummaryErrors[keyof GetWorkspacesCurrentModelProvidersSummaryErrors]
 
 export type GetWorkspacesCurrentModelProvidersSummaryResponses = {
   200: ModelProviderSummaryListResponse
@@ -3482,6 +3960,13 @@ export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlData = {
   url: '/workspaces/current/model-providers/{provider}/checkout-url'
 }
 
+export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlError =
+  GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlErrors[keyof GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlErrors]
+
 export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponses = {
   200: ModelProviderPaymentCheckoutUrlResponse
 }
@@ -3497,6 +3982,13 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsData = {
   query?: never
   url: '/workspaces/current/model-providers/{provider}/credentials'
 }
+
+export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsError =
+  DeleteWorkspacesCurrentModelProvidersByProviderCredentialsErrors[keyof DeleteWorkspacesCurrentModelProvidersByProviderCredentialsErrors]
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponses = {
   204: void
@@ -3516,6 +4008,13 @@ export type GetWorkspacesCurrentModelProvidersByProviderCredentialsData = {
   url: '/workspaces/current/model-providers/{provider}/credentials'
 }
 
+export type GetWorkspacesCurrentModelProvidersByProviderCredentialsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersByProviderCredentialsError =
+  GetWorkspacesCurrentModelProvidersByProviderCredentialsErrors[keyof GetWorkspacesCurrentModelProvidersByProviderCredentialsErrors]
+
 export type GetWorkspacesCurrentModelProvidersByProviderCredentialsResponses = {
   200: ProviderCredentialsResponse
 }
@@ -3531,6 +4030,13 @@ export type PostWorkspacesCurrentModelProvidersByProviderCredentialsData = {
   query?: never
   url: '/workspaces/current/model-providers/{provider}/credentials'
 }
+
+export type PostWorkspacesCurrentModelProvidersByProviderCredentialsErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentModelProvidersByProviderCredentialsError =
+  PostWorkspacesCurrentModelProvidersByProviderCredentialsErrors[keyof PostWorkspacesCurrentModelProvidersByProviderCredentialsErrors]
 
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsResponses = {
   201: SimpleResultResponse
@@ -3548,6 +4054,13 @@ export type PutWorkspacesCurrentModelProvidersByProviderCredentialsData = {
   url: '/workspaces/current/model-providers/{provider}/credentials'
 }
 
+export type PutWorkspacesCurrentModelProvidersByProviderCredentialsErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentModelProvidersByProviderCredentialsError =
+  PutWorkspacesCurrentModelProvidersByProviderCredentialsErrors[keyof PutWorkspacesCurrentModelProvidersByProviderCredentialsErrors]
+
 export type PutWorkspacesCurrentModelProvidersByProviderCredentialsResponses = {
   200: SimpleResultResponse
 }
@@ -3564,6 +4077,13 @@ export type PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchData =
   url: '/workspaces/current/model-providers/{provider}/credentials/switch'
 }
 
+export type PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchError =
+  PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchErrors[keyof PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchErrors]
+
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchResponses = {
   200: SimpleResultResponse
 }
@@ -3579,6 +4099,13 @@ export type PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateData
   query?: never
   url: '/workspaces/current/model-providers/{provider}/credentials/validate'
 }
+
+export type PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateError =
+  PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateErrors[keyof PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateErrors]
 
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponses = {
   200: ValidationResultResponse
@@ -3599,6 +4126,13 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderModelsData = {
   url: '/workspaces/current/model-providers/{provider}/models'
 }
 
+export type DeleteWorkspacesCurrentModelProvidersByProviderModelsErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteWorkspacesCurrentModelProvidersByProviderModelsError =
+  DeleteWorkspacesCurrentModelProvidersByProviderModelsErrors[keyof DeleteWorkspacesCurrentModelProvidersByProviderModelsErrors]
+
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsResponses = {
   204: void
 }
@@ -3615,6 +4149,13 @@ export type GetWorkspacesCurrentModelProvidersByProviderModelsData = {
   url: '/workspaces/current/model-providers/{provider}/models'
 }
 
+export type GetWorkspacesCurrentModelProvidersByProviderModelsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersByProviderModelsError =
+  GetWorkspacesCurrentModelProvidersByProviderModelsErrors[keyof GetWorkspacesCurrentModelProvidersByProviderModelsErrors]
+
 export type GetWorkspacesCurrentModelProvidersByProviderModelsResponses = {
   200: ProviderModelListResponse
 }
@@ -3630,6 +4171,13 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsData = {
   query?: never
   url: '/workspaces/current/model-providers/{provider}/models'
 }
+
+export type PostWorkspacesCurrentModelProvidersByProviderModelsErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentModelProvidersByProviderModelsError =
+  PostWorkspacesCurrentModelProvidersByProviderModelsErrors[keyof PostWorkspacesCurrentModelProvidersByProviderModelsErrors]
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsResponses = {
   200: SimpleResultResponse
@@ -3650,6 +4198,13 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsData
   }
   url: '/workspaces/current/model-providers/{provider}/models/credentials'
 }
+
+export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsError =
+  DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsErrors[keyof DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsErrors]
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponses = {
   204: void
@@ -3672,6 +4227,13 @@ export type GetWorkspacesCurrentModelProvidersByProviderModelsCredentialsData = 
   url: '/workspaces/current/model-providers/{provider}/models/credentials'
 }
 
+export type GetWorkspacesCurrentModelProvidersByProviderModelsCredentialsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersByProviderModelsCredentialsError =
+  GetWorkspacesCurrentModelProvidersByProviderModelsCredentialsErrors[keyof GetWorkspacesCurrentModelProvidersByProviderModelsCredentialsErrors]
+
 export type GetWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponses = {
   200: ModelCredentialResponse
 }
@@ -3687,6 +4249,13 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsData =
   query?: never
   url: '/workspaces/current/model-providers/{provider}/models/credentials'
 }
+
+export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsError =
+  PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsErrors[keyof PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsErrors]
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponses = {
   201: SimpleResultResponse
@@ -3704,6 +4273,13 @@ export type PutWorkspacesCurrentModelProvidersByProviderModelsCredentialsData = 
   url: '/workspaces/current/model-providers/{provider}/models/credentials'
 }
 
+export type PutWorkspacesCurrentModelProvidersByProviderModelsCredentialsErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentModelProvidersByProviderModelsCredentialsError =
+  PutWorkspacesCurrentModelProvidersByProviderModelsCredentialsErrors[keyof PutWorkspacesCurrentModelProvidersByProviderModelsCredentialsErrors]
+
 export type PutWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponses = {
   200: SimpleResultResponse
 }
@@ -3719,6 +4295,13 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitch
   query?: never
   url: '/workspaces/current/model-providers/{provider}/models/credentials/switch'
 }
+
+export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchError =
+  PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchErrors[keyof PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchErrors]
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchResponses = {
   200: SimpleResultResponse
@@ -3736,6 +4319,13 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValida
   url: '/workspaces/current/model-providers/{provider}/models/credentials/validate'
 }
 
+export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValidateErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValidateError =
+  PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValidateErrors[keyof PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValidateErrors]
+
 export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValidateResponses = {
   200: ValidationResultResponse
 }
@@ -3751,6 +4341,13 @@ export type PatchWorkspacesCurrentModelProvidersByProviderModelsDisableData = {
   query?: never
   url: '/workspaces/current/model-providers/{provider}/models/disable'
 }
+
+export type PatchWorkspacesCurrentModelProvidersByProviderModelsDisableErrors = {
+  default: ErrorResponse
+}
+
+export type PatchWorkspacesCurrentModelProvidersByProviderModelsDisableError =
+  PatchWorkspacesCurrentModelProvidersByProviderModelsDisableErrors[keyof PatchWorkspacesCurrentModelProvidersByProviderModelsDisableErrors]
 
 export type PatchWorkspacesCurrentModelProvidersByProviderModelsDisableResponses = {
   200: SimpleResultResponse
@@ -3768,6 +4365,13 @@ export type PatchWorkspacesCurrentModelProvidersByProviderModelsEnableData = {
   url: '/workspaces/current/model-providers/{provider}/models/enable'
 }
 
+export type PatchWorkspacesCurrentModelProvidersByProviderModelsEnableErrors = {
+  default: ErrorResponse
+}
+
+export type PatchWorkspacesCurrentModelProvidersByProviderModelsEnableError =
+  PatchWorkspacesCurrentModelProvidersByProviderModelsEnableErrors[keyof PatchWorkspacesCurrentModelProvidersByProviderModelsEnableErrors]
+
 export type PatchWorkspacesCurrentModelProvidersByProviderModelsEnableResponses = {
   200: SimpleResultResponse
 }
@@ -3784,6 +4388,14 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConf
     query?: never
     url: '/workspaces/current/model-providers/{provider}/models/load-balancing-configs/credentials-validate'
   }
+
+export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidateErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidateError =
+  PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidateErrors[keyof PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidateErrors]
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidateResponses =
   {
@@ -3804,6 +4416,14 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConf
     url: '/workspaces/current/model-providers/{provider}/models/load-balancing-configs/{config_id}/credentials-validate'
   }
 
+export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidateErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidateError =
+  PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidateErrors[keyof PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidateErrors]
+
 export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidateResponses =
   {
     200: LoadBalancingCredentialValidateResponse
@@ -3823,6 +4443,13 @@ export type GetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesData
   url: '/workspaces/current/model-providers/{provider}/models/parameter-rules'
 }
 
+export type GetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesError =
+  GetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesErrors[keyof GetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesErrors]
+
 export type GetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponses = {
   200: ModelParameterRuleListResponse
 }
@@ -3838,6 +4465,13 @@ export type PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeDa
   query?: never
   url: '/workspaces/current/model-providers/{provider}/preferred-provider-type'
 }
+
+export type PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeError =
+  PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeErrors[keyof PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeErrors]
 
 export type PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeResponses = {
   200: SimpleResultResponse
@@ -3855,6 +4489,13 @@ export type GetWorkspacesCurrentModelsModelTypesByModelTypeData = {
   url: '/workspaces/current/models/model-types/{model_type}'
 }
 
+export type GetWorkspacesCurrentModelsModelTypesByModelTypeErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentModelsModelTypesByModelTypeError =
+  GetWorkspacesCurrentModelsModelTypesByModelTypeErrors[keyof GetWorkspacesCurrentModelsModelTypesByModelTypeErrors]
+
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponses = {
   200: AvailableModelListResponse
 }
@@ -3868,6 +4509,13 @@ export type GetWorkspacesCurrentPermissionData = {
   query?: never
   url: '/workspaces/current/permission'
 }
+
+export type GetWorkspacesCurrentPermissionErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentPermissionError =
+  GetWorkspacesCurrentPermissionErrors[keyof GetWorkspacesCurrentPermissionErrors]
 
 export type GetWorkspacesCurrentPermissionResponses = {
   200: WorkspacePermissionResponse
@@ -3886,6 +4534,14 @@ export type GetWorkspacesCurrentPluginAssetData = {
   url: '/workspaces/current/plugin/asset'
 }
 
+export type GetWorkspacesCurrentPluginAssetErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentPluginAssetError =
+  GetWorkspacesCurrentPluginAssetErrors[keyof GetWorkspacesCurrentPluginAssetErrors]
+
 export type GetWorkspacesCurrentPluginAssetResponses = {
   200: BinaryFileResponse
 }
@@ -3900,6 +4556,13 @@ export type PostWorkspacesCurrentPluginAutoUpgradeChangeData = {
   url: '/workspaces/current/plugin/auto-upgrade/change'
 }
 
+export type PostWorkspacesCurrentPluginAutoUpgradeChangeErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginAutoUpgradeChangeError =
+  PostWorkspacesCurrentPluginAutoUpgradeChangeErrors[keyof PostWorkspacesCurrentPluginAutoUpgradeChangeErrors]
+
 export type PostWorkspacesCurrentPluginAutoUpgradeChangeResponses = {
   200: PluginAutoUpgradeChangeResponse
 }
@@ -3913,6 +4576,13 @@ export type PostWorkspacesCurrentPluginAutoUpgradeExcludeData = {
   query?: never
   url: '/workspaces/current/plugin/auto-upgrade/exclude'
 }
+
+export type PostWorkspacesCurrentPluginAutoUpgradeExcludeErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginAutoUpgradeExcludeError =
+  PostWorkspacesCurrentPluginAutoUpgradeExcludeErrors[keyof PostWorkspacesCurrentPluginAutoUpgradeExcludeErrors]
 
 export type PostWorkspacesCurrentPluginAutoUpgradeExcludeResponses = {
   200: SuccessResponse
@@ -3930,6 +4600,13 @@ export type GetWorkspacesCurrentPluginAutoUpgradeFetchData = {
   url: '/workspaces/current/plugin/auto-upgrade/fetch'
 }
 
+export type GetWorkspacesCurrentPluginAutoUpgradeFetchErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentPluginAutoUpgradeFetchError =
+  GetWorkspacesCurrentPluginAutoUpgradeFetchErrors[keyof GetWorkspacesCurrentPluginAutoUpgradeFetchErrors]
+
 export type GetWorkspacesCurrentPluginAutoUpgradeFetchResponses = {
   200: PluginAutoUpgradeFetchResponse
 }
@@ -3943,6 +4620,14 @@ export type GetWorkspacesCurrentPluginDebuggingKeyData = {
   query?: never
   url: '/workspaces/current/plugin/debugging-key'
 }
+
+export type GetWorkspacesCurrentPluginDebuggingKeyErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentPluginDebuggingKeyError =
+  GetWorkspacesCurrentPluginDebuggingKeyErrors[keyof GetWorkspacesCurrentPluginDebuggingKeyErrors]
 
 export type GetWorkspacesCurrentPluginDebuggingKeyResponses = {
   200: PluginDebuggingKeyResponse
@@ -3959,6 +4644,14 @@ export type GetWorkspacesCurrentPluginFetchManifestData = {
   }
   url: '/workspaces/current/plugin/fetch-manifest'
 }
+
+export type GetWorkspacesCurrentPluginFetchManifestErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentPluginFetchManifestError =
+  GetWorkspacesCurrentPluginFetchManifestErrors[keyof GetWorkspacesCurrentPluginFetchManifestErrors]
 
 export type GetWorkspacesCurrentPluginFetchManifestResponses = {
   200: PluginManifestResponse
@@ -3977,6 +4670,14 @@ export type GetWorkspacesCurrentPluginIconData = {
   url: '/workspaces/current/plugin/icon'
 }
 
+export type GetWorkspacesCurrentPluginIconErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentPluginIconError =
+  GetWorkspacesCurrentPluginIconErrors[keyof GetWorkspacesCurrentPluginIconErrors]
+
 export type GetWorkspacesCurrentPluginIconResponses = {
   200: BinaryFileResponse
 }
@@ -3990,6 +4691,14 @@ export type PostWorkspacesCurrentPluginInstallGithubData = {
   query?: never
   url: '/workspaces/current/plugin/install/github'
 }
+
+export type PostWorkspacesCurrentPluginInstallGithubErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginInstallGithubError =
+  PostWorkspacesCurrentPluginInstallGithubErrors[keyof PostWorkspacesCurrentPluginInstallGithubErrors]
 
 export type PostWorkspacesCurrentPluginInstallGithubResponses = {
   200: PluginInstallTaskStartResponse
@@ -4005,6 +4714,14 @@ export type PostWorkspacesCurrentPluginInstallMarketplaceData = {
   url: '/workspaces/current/plugin/install/marketplace'
 }
 
+export type PostWorkspacesCurrentPluginInstallMarketplaceErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginInstallMarketplaceError =
+  PostWorkspacesCurrentPluginInstallMarketplaceErrors[keyof PostWorkspacesCurrentPluginInstallMarketplaceErrors]
+
 export type PostWorkspacesCurrentPluginInstallMarketplaceResponses = {
   200: PluginInstallTaskStartResponse
 }
@@ -4018,6 +4735,14 @@ export type PostWorkspacesCurrentPluginInstallPkgData = {
   query?: never
   url: '/workspaces/current/plugin/install/pkg'
 }
+
+export type PostWorkspacesCurrentPluginInstallPkgErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginInstallPkgError =
+  PostWorkspacesCurrentPluginInstallPkgErrors[keyof PostWorkspacesCurrentPluginInstallPkgErrors]
 
 export type PostWorkspacesCurrentPluginInstallPkgResponses = {
   200: PluginInstallTaskStartResponse
@@ -4034,6 +4759,14 @@ export type GetWorkspacesCurrentPluginInstalledIdsData = {
   }
   url: '/workspaces/current/plugin/installed-ids'
 }
+
+export type GetWorkspacesCurrentPluginInstalledIdsErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentPluginInstalledIdsError =
+  GetWorkspacesCurrentPluginInstalledIdsErrors[keyof GetWorkspacesCurrentPluginInstalledIdsErrors]
 
 export type GetWorkspacesCurrentPluginInstalledIdsResponses = {
   200: PluginInstalledIdsResponse
@@ -4052,6 +4785,14 @@ export type GetWorkspacesCurrentPluginListData = {
   url: '/workspaces/current/plugin/list'
 }
 
+export type GetWorkspacesCurrentPluginListErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentPluginListError =
+  GetWorkspacesCurrentPluginListErrors[keyof GetWorkspacesCurrentPluginListErrors]
+
 export type GetWorkspacesCurrentPluginListResponses = {
   200: PluginListResponse
 }
@@ -4066,6 +4807,14 @@ export type PostWorkspacesCurrentPluginListInstallationsIdsData = {
   url: '/workspaces/current/plugin/list/installations/ids'
 }
 
+export type PostWorkspacesCurrentPluginListInstallationsIdsErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginListInstallationsIdsError =
+  PostWorkspacesCurrentPluginListInstallationsIdsErrors[keyof PostWorkspacesCurrentPluginListInstallationsIdsErrors]
+
 export type PostWorkspacesCurrentPluginListInstallationsIdsResponses = {
   200: PluginInstallationsResponse
 }
@@ -4079,6 +4828,14 @@ export type PostWorkspacesCurrentPluginListLatestVersionsData = {
   query?: never
   url: '/workspaces/current/plugin/list/latest-versions'
 }
+
+export type PostWorkspacesCurrentPluginListLatestVersionsErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginListLatestVersionsError =
+  PostWorkspacesCurrentPluginListLatestVersionsErrors[keyof PostWorkspacesCurrentPluginListLatestVersionsErrors]
 
 export type PostWorkspacesCurrentPluginListLatestVersionsResponses = {
   200: PluginVersionsResponse
@@ -4095,6 +4852,14 @@ export type GetWorkspacesCurrentPluginMarketplacePkgData = {
   }
   url: '/workspaces/current/plugin/marketplace/pkg'
 }
+
+export type GetWorkspacesCurrentPluginMarketplacePkgErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentPluginMarketplacePkgError =
+  GetWorkspacesCurrentPluginMarketplacePkgErrors[keyof GetWorkspacesCurrentPluginMarketplacePkgErrors]
 
 export type GetWorkspacesCurrentPluginMarketplacePkgResponses = {
   200: PluginManifestResponse
@@ -4117,6 +4882,14 @@ export type GetWorkspacesCurrentPluginParametersDynamicOptionsData = {
   url: '/workspaces/current/plugin/parameters/dynamic-options'
 }
 
+export type GetWorkspacesCurrentPluginParametersDynamicOptionsErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentPluginParametersDynamicOptionsError =
+  GetWorkspacesCurrentPluginParametersDynamicOptionsErrors[keyof GetWorkspacesCurrentPluginParametersDynamicOptionsErrors]
+
 export type GetWorkspacesCurrentPluginParametersDynamicOptionsResponses = {
   200: PluginDynamicOptionsResponse
 }
@@ -4130,6 +4903,14 @@ export type PostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsDa
   query?: never
   url: '/workspaces/current/plugin/parameters/dynamic-options-with-credentials'
 }
+
+export type PostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsError =
+  PostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsErrors[keyof PostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsErrors]
 
 export type PostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponses = {
   200: PluginDynamicOptionsResponse
@@ -4145,6 +4926,13 @@ export type PostWorkspacesCurrentPluginPermissionChangeData = {
   url: '/workspaces/current/plugin/permission/change'
 }
 
+export type PostWorkspacesCurrentPluginPermissionChangeErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginPermissionChangeError =
+  PostWorkspacesCurrentPluginPermissionChangeErrors[keyof PostWorkspacesCurrentPluginPermissionChangeErrors]
+
 export type PostWorkspacesCurrentPluginPermissionChangeResponses = {
   200: SuccessResponse
 }
@@ -4158,6 +4946,13 @@ export type GetWorkspacesCurrentPluginPermissionFetchData = {
   query?: never
   url: '/workspaces/current/plugin/permission/fetch'
 }
+
+export type GetWorkspacesCurrentPluginPermissionFetchErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentPluginPermissionFetchError =
+  GetWorkspacesCurrentPluginPermissionFetchErrors[keyof GetWorkspacesCurrentPluginPermissionFetchErrors]
 
 export type GetWorkspacesCurrentPluginPermissionFetchResponses = {
   200: PluginPermissionResponse
@@ -4176,6 +4971,13 @@ export type GetWorkspacesCurrentPluginReadmeData = {
   url: '/workspaces/current/plugin/readme'
 }
 
+export type GetWorkspacesCurrentPluginReadmeErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentPluginReadmeError =
+  GetWorkspacesCurrentPluginReadmeErrors[keyof GetWorkspacesCurrentPluginReadmeErrors]
+
 export type GetWorkspacesCurrentPluginReadmeResponses = {
   200: PluginReadmeResponse
 }
@@ -4193,6 +4995,14 @@ export type GetWorkspacesCurrentPluginTasksData = {
   url: '/workspaces/current/plugin/tasks'
 }
 
+export type GetWorkspacesCurrentPluginTasksErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentPluginTasksError =
+  GetWorkspacesCurrentPluginTasksErrors[keyof GetWorkspacesCurrentPluginTasksErrors]
+
 export type GetWorkspacesCurrentPluginTasksResponses = {
   200: PluginTasksResponse
 }
@@ -4206,6 +5016,14 @@ export type PostWorkspacesCurrentPluginTasksDeleteAllData = {
   query?: never
   url: '/workspaces/current/plugin/tasks/delete_all'
 }
+
+export type PostWorkspacesCurrentPluginTasksDeleteAllErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginTasksDeleteAllError =
+  PostWorkspacesCurrentPluginTasksDeleteAllErrors[keyof PostWorkspacesCurrentPluginTasksDeleteAllErrors]
 
 export type PostWorkspacesCurrentPluginTasksDeleteAllResponses = {
   200: SuccessResponse
@@ -4223,6 +5041,14 @@ export type GetWorkspacesCurrentPluginTasksByTaskIdData = {
   url: '/workspaces/current/plugin/tasks/{task_id}'
 }
 
+export type GetWorkspacesCurrentPluginTasksByTaskIdErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentPluginTasksByTaskIdError =
+  GetWorkspacesCurrentPluginTasksByTaskIdErrors[keyof GetWorkspacesCurrentPluginTasksByTaskIdErrors]
+
 export type GetWorkspacesCurrentPluginTasksByTaskIdResponses = {
   200: PluginTaskResponse
 }
@@ -4238,6 +5064,14 @@ export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteData = {
   query?: never
   url: '/workspaces/current/plugin/tasks/{task_id}/delete'
 }
+
+export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteError =
+  PostWorkspacesCurrentPluginTasksByTaskIdDeleteErrors[keyof PostWorkspacesCurrentPluginTasksByTaskIdDeleteErrors]
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteResponses = {
   200: SuccessResponse
@@ -4256,6 +5090,14 @@ export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierData = {
   url: '/workspaces/current/plugin/tasks/{task_id}/delete/{identifier}'
 }
 
+export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierError =
+  PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierErrors[keyof PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierErrors]
+
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierResponses = {
   200: SuccessResponse
 }
@@ -4269,6 +5111,14 @@ export type PostWorkspacesCurrentPluginUninstallData = {
   query?: never
   url: '/workspaces/current/plugin/uninstall'
 }
+
+export type PostWorkspacesCurrentPluginUninstallErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginUninstallError =
+  PostWorkspacesCurrentPluginUninstallErrors[keyof PostWorkspacesCurrentPluginUninstallErrors]
 
 export type PostWorkspacesCurrentPluginUninstallResponses = {
   200: SuccessResponse
@@ -4284,6 +5134,14 @@ export type PostWorkspacesCurrentPluginUpgradeGithubData = {
   url: '/workspaces/current/plugin/upgrade/github'
 }
 
+export type PostWorkspacesCurrentPluginUpgradeGithubErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginUpgradeGithubError =
+  PostWorkspacesCurrentPluginUpgradeGithubErrors[keyof PostWorkspacesCurrentPluginUpgradeGithubErrors]
+
 export type PostWorkspacesCurrentPluginUpgradeGithubResponses = {
   200: PluginInstallTaskStartResponse
 }
@@ -4297,6 +5155,14 @@ export type PostWorkspacesCurrentPluginUpgradeMarketplaceData = {
   query?: never
   url: '/workspaces/current/plugin/upgrade/marketplace'
 }
+
+export type PostWorkspacesCurrentPluginUpgradeMarketplaceErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginUpgradeMarketplaceError =
+  PostWorkspacesCurrentPluginUpgradeMarketplaceErrors[keyof PostWorkspacesCurrentPluginUpgradeMarketplaceErrors]
 
 export type PostWorkspacesCurrentPluginUpgradeMarketplaceResponses = {
   200: PluginInstallTaskStartResponse
@@ -4312,6 +5178,13 @@ export type PostWorkspacesCurrentPluginUploadBundleData = {
   url: '/workspaces/current/plugin/upload/bundle'
 }
 
+export type PostWorkspacesCurrentPluginUploadBundleErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginUploadBundleError =
+  PostWorkspacesCurrentPluginUploadBundleErrors[keyof PostWorkspacesCurrentPluginUploadBundleErrors]
+
 export type PostWorkspacesCurrentPluginUploadBundleResponses = {
   200: PluginBundleUploadResponse
 }
@@ -4325,6 +5198,14 @@ export type PostWorkspacesCurrentPluginUploadGithubData = {
   query?: never
   url: '/workspaces/current/plugin/upload/github'
 }
+
+export type PostWorkspacesCurrentPluginUploadGithubErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginUploadGithubError =
+  PostWorkspacesCurrentPluginUploadGithubErrors[keyof PostWorkspacesCurrentPluginUploadGithubErrors]
 
 export type PostWorkspacesCurrentPluginUploadGithubResponses = {
   200: PluginDecodeResponse
@@ -4341,6 +5222,14 @@ export type PostWorkspacesCurrentPluginUploadPkgData = {
   query?: never
   url: '/workspaces/current/plugin/upload/pkg'
 }
+
+export type PostWorkspacesCurrentPluginUploadPkgErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentPluginUploadPkgError =
+  PostWorkspacesCurrentPluginUploadPkgErrors[keyof PostWorkspacesCurrentPluginUploadPkgErrors]
 
 export type PostWorkspacesCurrentPluginUploadPkgResponses = {
   200: PluginDecodeResponse
@@ -4364,6 +5253,14 @@ export type GetWorkspacesCurrentPluginByCategoryListData = {
   url: '/workspaces/current/plugin/{category}/list'
 }
 
+export type GetWorkspacesCurrentPluginByCategoryListErrors = {
+  400: PluginError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentPluginByCategoryListError =
+  GetWorkspacesCurrentPluginByCategoryListErrors[keyof GetWorkspacesCurrentPluginByCategoryListErrors]
+
 export type GetWorkspacesCurrentPluginByCategoryListResponses = {
   200: PluginCategoryListResponse
 }
@@ -4378,10 +5275,15 @@ export type GetWorkspacesCurrentRbacAccessPoliciesData = {
   url: '/workspaces/current/rbac/access-policies'
 }
 
+export type GetWorkspacesCurrentRbacAccessPoliciesErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacAccessPoliciesError =
+  GetWorkspacesCurrentRbacAccessPoliciesErrors[keyof GetWorkspacesCurrentRbacAccessPoliciesErrors]
+
 export type GetWorkspacesCurrentRbacAccessPoliciesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AccessPolicyList
 }
 
 export type GetWorkspacesCurrentRbacAccessPoliciesResponse =
@@ -4393,6 +5295,13 @@ export type PostWorkspacesCurrentRbacAccessPoliciesData = {
   query?: never
   url: '/workspaces/current/rbac/access-policies'
 }
+
+export type PostWorkspacesCurrentRbacAccessPoliciesErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentRbacAccessPoliciesError =
+  PostWorkspacesCurrentRbacAccessPoliciesErrors[keyof PostWorkspacesCurrentRbacAccessPoliciesErrors]
 
 export type PostWorkspacesCurrentRbacAccessPoliciesResponses = {
   201: AccessPolicy
@@ -4410,10 +5319,15 @@ export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
   url: '/workspaces/current/rbac/access-policies/{policy_id}'
 }
 
+export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdError =
+  DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdErrors[keyof DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdErrors]
+
 export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse =
@@ -4428,10 +5342,15 @@ export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
   url: '/workspaces/current/rbac/access-policies/{policy_id}'
 }
 
+export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdError =
+  GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdErrors[keyof GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdErrors]
+
 export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AccessPolicy
 }
 
 export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse =
@@ -4445,6 +5364,13 @@ export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
   query?: never
   url: '/workspaces/current/rbac/access-policies/{policy_id}'
 }
+
+export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdError =
+  PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdErrors[keyof PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdErrors]
 
 export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
   200: AccessPolicy
@@ -4462,10 +5388,15 @@ export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyData = {
   url: '/workspaces/current/rbac/access-policies/{policy_id}/copy'
 }
 
+export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyError =
+  PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyErrors[keyof PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyErrors]
+
 export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: AccessPolicy
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse =
@@ -4480,10 +5411,15 @@ export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockData = {
   url: '/workspaces/current/rbac/access-policy-bindings/{binding_id}/lock'
 }
 
+export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockError =
+  PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockErrors[keyof PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockErrors]
+
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AccessPolicyBindingState
 }
 
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponse =
@@ -4498,10 +5434,15 @@ export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockData = 
   url: '/workspaces/current/rbac/access-policy-bindings/{binding_id}/unlock'
 }
 
+export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockError =
+  PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockErrors[keyof PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockErrors]
+
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AccessPolicyBindingState
 }
 
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponse =
@@ -4517,9 +5458,17 @@ export type DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMe
   url: '/workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/member-bindings'
 }
 
+export type DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsError =
+  DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsErrors[keyof DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsErrors]
+
 export type DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponses =
   {
-    200: MemberBindingsResponse
+    200: SimpleResultResponse
   }
 
 export type DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponse =
@@ -4534,6 +5483,13 @@ export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMembe
   query?: never
   url: '/workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/member-bindings'
 }
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsError =
+  GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsErrors[keyof GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsErrors]
 
 export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponses =
   {
@@ -4553,6 +5509,13 @@ export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleB
   url: '/workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/role-bindings'
 }
 
+export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleBindingsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleBindingsError =
+  GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleBindingsErrors[keyof GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleBindingsErrors]
+
 export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleBindingsResponses = {
   200: RoleBindingsResponse
 }
@@ -4570,6 +5533,13 @@ export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyData = {
   }
   url: '/workspaces/current/rbac/agents/{agent_id}/access-policy'
 }
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyError =
+  GetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyErrors[keyof GetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyErrors]
 
 export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyResponses = {
   200: AgentAccessMatrix
@@ -4592,6 +5562,13 @@ export type GetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesData = {
   url: '/workspaces/current/rbac/agents/{agent_id}/user-access-policies'
 }
 
+export type GetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesError =
+  GetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesErrors[keyof GetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesErrors]
+
 export type GetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesResponses = {
   200: ResourceUserAccessPoliciesResponse
 }
@@ -4609,6 +5586,13 @@ export type PutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessP
   url: '/workspaces/current/rbac/agents/{agent_id}/users/{target_account_id}/access-policies'
 }
 
+export type PutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessPoliciesErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessPoliciesError =
+  PutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessPoliciesErrors[keyof PutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessPoliciesErrors]
+
 export type PutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessPoliciesResponses = {
   200: ReplaceUserAccessPoliciesResponse
 }
@@ -4624,6 +5608,13 @@ export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistData = {
   query?: never
   url: '/workspaces/current/rbac/agents/{agent_id}/whitelist'
 }
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistError =
+  GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistErrors[keyof GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistErrors]
 
 export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistResponses = {
   200: ResourceWhitelist
@@ -4641,6 +5632,13 @@ export type PutWorkspacesCurrentRbacAgentsByAgentIdWhitelistData = {
   url: '/workspaces/current/rbac/agents/{agent_id}/whitelist'
 }
 
+export type PutWorkspacesCurrentRbacAgentsByAgentIdWhitelistErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentRbacAgentsByAgentIdWhitelistError =
+  PutWorkspacesCurrentRbacAgentsByAgentIdWhitelistErrors[keyof PutWorkspacesCurrentRbacAgentsByAgentIdWhitelistErrors]
+
 export type PutWorkspacesCurrentRbacAgentsByAgentIdWhitelistResponses = {
   200: ResourceWhitelist
 }
@@ -4656,6 +5654,13 @@ export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigData = {
   query?: never
   url: '/workspaces/current/rbac/agents/{agent_id}/whitelist_config'
 }
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigError =
+  GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigErrors[keyof GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigErrors]
 
 export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigResponses = {
   200: ResourceWhitelistConfig
@@ -4674,9 +5679,16 @@ export type DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMember
   url: '/workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings'
 }
 
+export type DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsError =
+  DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsErrors[keyof DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsErrors]
+
 export type DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponses =
   {
-    200: MemberBindingsResponse
+    200: SimpleResultResponse
   }
 
 export type DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse =
@@ -4691,6 +5703,13 @@ export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBin
   query?: never
   url: '/workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings'
 }
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsError =
+  GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsErrors[keyof GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsErrors]
 
 export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponses = {
   200: MemberBindingsResponse
@@ -4709,6 +5728,13 @@ export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindi
   url: '/workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/role-bindings'
 }
 
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsError =
+  GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsErrors[keyof GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsErrors]
+
 export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponses = {
   200: RoleBindingsResponse
 }
@@ -4726,6 +5752,13 @@ export type GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyData = {
   }
   url: '/workspaces/current/rbac/apps/{app_id}/access-policy'
 }
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyError =
+  GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyErrors[keyof GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyErrors]
 
 export type GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyResponses = {
   200: AppAccessMatrix
@@ -4748,6 +5781,13 @@ export type GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesData = {
   url: '/workspaces/current/rbac/apps/{app_id}/user-access-policies'
 }
 
+export type GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesError =
+  GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesErrors[keyof GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesErrors]
+
 export type GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponses = {
   200: ResourceUserAccessPoliciesResponse
 }
@@ -4765,6 +5805,13 @@ export type PutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPolic
   url: '/workspaces/current/rbac/apps/{app_id}/users/{target_account_id}/access-policies'
 }
 
+export type PutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesError =
+  PutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesErrors[keyof PutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesErrors]
+
 export type PutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesResponses = {
   200: ReplaceUserAccessPoliciesResponse
 }
@@ -4780,6 +5827,13 @@ export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistData = {
   query?: never
   url: '/workspaces/current/rbac/apps/{app_id}/whitelist'
 }
+
+export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistError =
+  GetWorkspacesCurrentRbacAppsByAppIdWhitelistErrors[keyof GetWorkspacesCurrentRbacAppsByAppIdWhitelistErrors]
 
 export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistResponses = {
   200: ResourceWhitelist
@@ -4797,6 +5851,13 @@ export type PutWorkspacesCurrentRbacAppsByAppIdWhitelistData = {
   url: '/workspaces/current/rbac/apps/{app_id}/whitelist'
 }
 
+export type PutWorkspacesCurrentRbacAppsByAppIdWhitelistErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentRbacAppsByAppIdWhitelistError =
+  PutWorkspacesCurrentRbacAppsByAppIdWhitelistErrors[keyof PutWorkspacesCurrentRbacAppsByAppIdWhitelistErrors]
+
 export type PutWorkspacesCurrentRbacAppsByAppIdWhitelistResponses = {
   200: ResourceWhitelist
 }
@@ -4812,6 +5873,13 @@ export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigData = {
   query?: never
   url: '/workspaces/current/rbac/apps/{app_id}/whitelist_config'
 }
+
+export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigError =
+  GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigErrors[keyof GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigErrors]
 
 export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigResponses = {
   200: ResourceWhitelistConfig
@@ -4831,9 +5899,17 @@ export type DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicy
     url: '/workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings'
   }
 
+export type DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsError =
+  DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsErrors[keyof DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsErrors]
+
 export type DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponses =
   {
-    200: MemberBindingsResponse
+    200: SimpleResultResponse
   }
 
 export type DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse =
@@ -4849,6 +5925,14 @@ export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdM
     query?: never
     url: '/workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings'
   }
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsError =
+  GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsErrors[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsErrors]
 
 export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponses =
   {
@@ -4868,6 +5952,14 @@ export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdR
   url: '/workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/role-bindings'
 }
 
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsError =
+  GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsErrors[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsErrors]
+
 export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponses =
   {
     200: RoleBindingsResponse
@@ -4886,6 +5978,13 @@ export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyData = {
   }
   url: '/workspaces/current/rbac/datasets/{dataset_id}/access-policy'
 }
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyError =
+  GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyErrors[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyErrors]
 
 export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyResponses = {
   200: DatasetAccessMatrix
@@ -4908,6 +6007,13 @@ export type GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesData = 
   url: '/workspaces/current/rbac/datasets/{dataset_id}/user-access-policies'
 }
 
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesError =
+  GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesErrors[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesErrors]
+
 export type GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesResponses = {
   200: ResourceUserAccessPoliciesResponse
 }
@@ -4924,6 +6030,14 @@ export type PutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAcc
   query?: never
   url: '/workspaces/current/rbac/datasets/{dataset_id}/users/{target_account_id}/access-policies'
 }
+
+export type PutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type PutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesError =
+  PutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesErrors[keyof PutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesErrors]
 
 export type PutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesResponses =
   {
@@ -4942,6 +6056,13 @@ export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistData = {
   url: '/workspaces/current/rbac/datasets/{dataset_id}/whitelist'
 }
 
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistError =
+  GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistErrors[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistErrors]
+
 export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponses = {
   200: ResourceWhitelist
 }
@@ -4957,6 +6078,13 @@ export type PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistData = {
   query?: never
   url: '/workspaces/current/rbac/datasets/{dataset_id}/whitelist'
 }
+
+export type PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistError =
+  PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistErrors[keyof PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistErrors]
 
 export type PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponses = {
   200: ResourceWhitelist
@@ -4974,6 +6102,13 @@ export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigData = {
   url: '/workspaces/current/rbac/datasets/{dataset_id}/whitelist_config'
 }
 
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigError =
+  GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigErrors[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigErrors]
+
 export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigResponses = {
   200: ResourceWhitelistConfig
 }
@@ -4986,9 +6121,18 @@ export type GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesData = {
   path: {
     member_id: string
   }
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/rbac/members/{member_id}/rbac-roles'
 }
+
+export type GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesError =
+  GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesErrors[keyof GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesErrors]
 
 export type GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponses = {
   200: MemberRolesResponse
@@ -5006,6 +6150,13 @@ export type PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesData = {
   url: '/workspaces/current/rbac/members/{member_id}/rbac-roles'
 }
 
+export type PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesError =
+  PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesErrors[keyof PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesErrors]
+
 export type PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponses = {
   200: MemberRolesResponse
 }
@@ -5019,6 +6170,13 @@ export type GetWorkspacesCurrentRbacMyPermissionsData = {
   query?: never
   url: '/workspaces/current/rbac/my-permissions'
 }
+
+export type GetWorkspacesCurrentRbacMyPermissionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacMyPermissionsError =
+  GetWorkspacesCurrentRbacMyPermissionsErrors[keyof GetWorkspacesCurrentRbacMyPermissionsErrors]
 
 export type GetWorkspacesCurrentRbacMyPermissionsResponses = {
   200: MyPermissionsResponse
@@ -5034,6 +6192,13 @@ export type GetWorkspacesCurrentRbacRolePermissionsCatalogData = {
   url: '/workspaces/current/rbac/role-permissions/catalog'
 }
 
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogError =
+  GetWorkspacesCurrentRbacRolePermissionsCatalogErrors[keyof GetWorkspacesCurrentRbacRolePermissionsCatalogErrors]
+
 export type GetWorkspacesCurrentRbacRolePermissionsCatalogResponses = {
   200: PermissionCatalogResponse
 }
@@ -5047,6 +6212,13 @@ export type GetWorkspacesCurrentRbacRolePermissionsCatalogAgentData = {
   query?: never
   url: '/workspaces/current/rbac/role-permissions/catalog/agent'
 }
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogAgentErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogAgentError =
+  GetWorkspacesCurrentRbacRolePermissionsCatalogAgentErrors[keyof GetWorkspacesCurrentRbacRolePermissionsCatalogAgentErrors]
 
 export type GetWorkspacesCurrentRbacRolePermissionsCatalogAgentResponses = {
   200: PermissionCatalogResponse
@@ -5062,6 +6234,13 @@ export type GetWorkspacesCurrentRbacRolePermissionsCatalogAppData = {
   url: '/workspaces/current/rbac/role-permissions/catalog/app'
 }
 
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogAppErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogAppError =
+  GetWorkspacesCurrentRbacRolePermissionsCatalogAppErrors[keyof GetWorkspacesCurrentRbacRolePermissionsCatalogAppErrors]
+
 export type GetWorkspacesCurrentRbacRolePermissionsCatalogAppResponses = {
   200: PermissionCatalogResponse
 }
@@ -5076,6 +6255,13 @@ export type GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetData = {
   url: '/workspaces/current/rbac/role-permissions/catalog/dataset'
 }
 
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetError =
+  GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetErrors[keyof GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetErrors]
+
 export type GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponses = {
   200: PermissionCatalogResponse
 }
@@ -5086,30 +6272,48 @@ export type GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse =
 export type GetWorkspacesCurrentRbacRolesData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    include_owner?: number
+    language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
+  }
   url: '/workspaces/current/rbac/roles'
 }
 
+export type GetWorkspacesCurrentRbacRolesErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacRolesError =
+  GetWorkspacesCurrentRbacRolesErrors[keyof GetWorkspacesCurrentRbacRolesErrors]
+
 export type GetWorkspacesCurrentRbacRolesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RbacRoleList
 }
 
 export type GetWorkspacesCurrentRbacRolesResponse =
   GetWorkspacesCurrentRbacRolesResponses[keyof GetWorkspacesCurrentRbacRolesResponses]
 
 export type PostWorkspacesCurrentRbacRolesData = {
-  body?: never
+  body: RoleUpsertRequest
   path?: never
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/rbac/roles'
 }
 
+export type PostWorkspacesCurrentRbacRolesErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentRbacRolesError =
+  PostWorkspacesCurrentRbacRolesErrors[keyof PostWorkspacesCurrentRbacRolesErrors]
+
 export type PostWorkspacesCurrentRbacRolesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: RbacRole
 }
 
 export type PostWorkspacesCurrentRbacRolesResponse =
@@ -5124,10 +6328,15 @@ export type DeleteWorkspacesCurrentRbacRolesByRoleIdData = {
   url: '/workspaces/current/rbac/roles/{role_id}'
 }
 
+export type DeleteWorkspacesCurrentRbacRolesByRoleIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteWorkspacesCurrentRbacRolesByRoleIdError =
+  DeleteWorkspacesCurrentRbacRolesByRoleIdErrors[keyof DeleteWorkspacesCurrentRbacRolesByRoleIdErrors]
+
 export type DeleteWorkspacesCurrentRbacRolesByRoleIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type DeleteWorkspacesCurrentRbacRolesByRoleIdResponse =
@@ -5138,50 +6347,71 @@ export type GetWorkspacesCurrentRbacRolesByRoleIdData = {
   path: {
     role_id: string
   }
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/rbac/roles/{role_id}'
 }
 
+export type GetWorkspacesCurrentRbacRolesByRoleIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdError =
+  GetWorkspacesCurrentRbacRolesByRoleIdErrors[keyof GetWorkspacesCurrentRbacRolesByRoleIdErrors]
+
 export type GetWorkspacesCurrentRbacRolesByRoleIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RbacRole
 }
 
 export type GetWorkspacesCurrentRbacRolesByRoleIdResponse =
   GetWorkspacesCurrentRbacRolesByRoleIdResponses[keyof GetWorkspacesCurrentRbacRolesByRoleIdResponses]
 
 export type PutWorkspacesCurrentRbacRolesByRoleIdData = {
-  body?: never
+  body: RoleUpsertRequest
   path: {
     role_id: string
   }
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/rbac/roles/{role_id}'
 }
 
+export type PutWorkspacesCurrentRbacRolesByRoleIdErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentRbacRolesByRoleIdError =
+  PutWorkspacesCurrentRbacRolesByRoleIdErrors[keyof PutWorkspacesCurrentRbacRolesByRoleIdErrors]
+
 export type PutWorkspacesCurrentRbacRolesByRoleIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RbacRole
 }
 
 export type PutWorkspacesCurrentRbacRolesByRoleIdResponse =
   PutWorkspacesCurrentRbacRolesByRoleIdResponses[keyof PutWorkspacesCurrentRbacRolesByRoleIdResponses]
 
 export type PostWorkspacesCurrentRbacRolesByRoleIdCopyData = {
-  body?: never
+  body: CopyRoleParam
   path: {
     role_id: string
   }
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/rbac/roles/{role_id}/copy'
 }
 
+export type PostWorkspacesCurrentRbacRolesByRoleIdCopyErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentRbacRolesByRoleIdCopyError =
+  PostWorkspacesCurrentRbacRolesByRoleIdCopyErrors[keyof PostWorkspacesCurrentRbacRolesByRoleIdCopyErrors]
+
 export type PostWorkspacesCurrentRbacRolesByRoleIdCopyResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: RbacRole
 }
 
 export type PostWorkspacesCurrentRbacRolesByRoleIdCopyResponse =
@@ -5192,9 +6422,21 @@ export type GetWorkspacesCurrentRbacRolesByRoleIdMembersData = {
   path: {
     role_id: string
   }
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
+  }
   url: '/workspaces/current/rbac/roles/{role_id}/members'
 }
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdMembersErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdMembersError =
+  GetWorkspacesCurrentRbacRolesByRoleIdMembersErrors[keyof GetWorkspacesCurrentRbacRolesByRoleIdMembersErrors]
 
 export type GetWorkspacesCurrentRbacRolesByRoleIdMembersResponses = {
   200: MembersInRoleList
@@ -5212,6 +6454,13 @@ export type PutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindi
   url: '/workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/bindings'
 }
 
+export type PutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsError =
+  PutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsErrors[keyof PutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsErrors]
+
 export type PutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsResponses = {
   200: AccessMatrixItem
 }
@@ -5227,6 +6476,13 @@ export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMembe
   query?: never
   url: '/workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/member-bindings'
 }
+
+export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsError =
+  GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsErrors[keyof GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsErrors]
 
 export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsResponses =
   {
@@ -5245,6 +6501,13 @@ export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleB
   url: '/workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/role-bindings'
 }
 
+export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsError =
+  GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsErrors[keyof GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsErrors]
+
 export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsResponses = {
   200: RoleBindingsResponse
 }
@@ -5258,6 +6521,13 @@ export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyData = {
   query?: never
   url: '/workspaces/current/rbac/workspace/agents/access-policy'
 }
+
+export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyError =
+  GetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyErrors[keyof GetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyErrors]
 
 export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyResponses = {
   200: WorkspaceAccessMatrix
@@ -5275,6 +6545,13 @@ export type PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBinding
   url: '/workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/bindings'
 }
 
+export type PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsError =
+  PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsErrors[keyof PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsErrors]
+
 export type PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponses = {
   200: AccessMatrixItem
 }
@@ -5290,6 +6567,13 @@ export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberB
   query?: never
   url: '/workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/member-bindings'
 }
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsError =
+  GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsErrors[keyof GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsErrors]
 
 export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponses = {
   200: MemberBindingsResponse
@@ -5307,6 +6591,13 @@ export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBin
   url: '/workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/role-bindings'
 }
 
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsError =
+  GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsErrors[keyof GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsErrors]
+
 export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponses = {
   200: RoleBindingsResponse
 }
@@ -5320,6 +6611,13 @@ export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyData = {
   query?: never
   url: '/workspaces/current/rbac/workspace/apps/access-policy'
 }
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyError =
+  GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyErrors[keyof GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyErrors]
 
 export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponses = {
   200: WorkspaceAccessMatrix
@@ -5337,6 +6635,13 @@ export type PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBin
   url: '/workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/bindings'
 }
 
+export type PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsError =
+  PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsErrors[keyof PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsErrors]
+
 export type PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponses = {
   200: AccessMatrixItem
 }
@@ -5352,6 +6657,14 @@ export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMem
   query?: never
   url: '/workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/member-bindings'
 }
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsError =
+  GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsErrors[keyof GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsErrors]
 
 export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponses =
   {
@@ -5370,6 +6683,13 @@ export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRol
   url: '/workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/role-bindings'
 }
 
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsError =
+  GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsErrors[keyof GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsErrors]
+
 export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponses =
   {
     200: RoleBindingsResponse
@@ -5384,6 +6704,13 @@ export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyData = {
   query?: never
   url: '/workspaces/current/rbac/workspace/datasets/access-policy'
 }
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyError =
+  GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyErrors[keyof GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyErrors]
 
 export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses = {
   200: WorkspaceAccessMatrix
@@ -5404,6 +6731,13 @@ export type GetWorkspacesCurrentSkillsData = {
   url: '/workspaces/current/skills'
 }
 
+export type GetWorkspacesCurrentSkillsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentSkillsError =
+  GetWorkspacesCurrentSkillsErrors[keyof GetWorkspacesCurrentSkillsErrors]
+
 export type GetWorkspacesCurrentSkillsResponses = {
   200: SkillListResponse
 }
@@ -5417,6 +6751,14 @@ export type PostWorkspacesCurrentSkillsData = {
   query?: never
   url: '/workspaces/current/skills'
 }
+
+export type PostWorkspacesCurrentSkillsErrors = {
+  400: InvalidRequestError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentSkillsError =
+  PostWorkspacesCurrentSkillsErrors[keyof PostWorkspacesCurrentSkillsErrors]
 
 export type PostWorkspacesCurrentSkillsResponses = {
   201: SkillDetailResponse
@@ -5434,6 +6776,14 @@ export type PostWorkspacesCurrentSkillsFilesUploadData = {
   url: '/workspaces/current/skills/files/upload'
 }
 
+export type PostWorkspacesCurrentSkillsFilesUploadErrors = {
+  400: FilenameMissingError | NoFileUploadedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentSkillsFilesUploadError =
+  PostWorkspacesCurrentSkillsFilesUploadErrors[keyof PostWorkspacesCurrentSkillsFilesUploadErrors]
+
 export type PostWorkspacesCurrentSkillsFilesUploadResponses = {
   201: SkillFileUploadResponse
 }
@@ -5448,6 +6798,14 @@ export type PostWorkspacesCurrentSkillsImportData = {
   url: '/workspaces/current/skills/import'
 }
 
+export type PostWorkspacesCurrentSkillsImportErrors = {
+  400: InvalidRequestError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentSkillsImportError =
+  PostWorkspacesCurrentSkillsImportErrors[keyof PostWorkspacesCurrentSkillsImportErrors]
+
 export type PostWorkspacesCurrentSkillsImportResponses = {
   201: SkillDetailResponse
 }
@@ -5461,6 +6819,13 @@ export type GetWorkspacesCurrentSkillsTagsData = {
   query?: never
   url: '/workspaces/current/skills/tags'
 }
+
+export type GetWorkspacesCurrentSkillsTagsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentSkillsTagsError =
+  GetWorkspacesCurrentSkillsTagsErrors[keyof GetWorkspacesCurrentSkillsTagsErrors]
 
 export type GetWorkspacesCurrentSkillsTagsResponses = {
   200: SkillTagListResponse
@@ -5478,6 +6843,14 @@ export type DeleteWorkspacesCurrentSkillsBySkillIdData = {
   url: '/workspaces/current/skills/{skill_id}'
 }
 
+export type DeleteWorkspacesCurrentSkillsBySkillIdErrors = {
+  400: InvalidRequestError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteWorkspacesCurrentSkillsBySkillIdError =
+  DeleteWorkspacesCurrentSkillsBySkillIdErrors[keyof DeleteWorkspacesCurrentSkillsBySkillIdErrors]
+
 export type DeleteWorkspacesCurrentSkillsBySkillIdResponses = {
   200: SkillDeleteResponse
 }
@@ -5493,6 +6866,13 @@ export type GetWorkspacesCurrentSkillsBySkillIdData = {
   query?: never
   url: '/workspaces/current/skills/{skill_id}'
 }
+
+export type GetWorkspacesCurrentSkillsBySkillIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdError =
+  GetWorkspacesCurrentSkillsBySkillIdErrors[keyof GetWorkspacesCurrentSkillsBySkillIdErrors]
 
 export type GetWorkspacesCurrentSkillsBySkillIdResponses = {
   200: SkillDetailResponse
@@ -5510,6 +6890,14 @@ export type PatchWorkspacesCurrentSkillsBySkillIdData = {
   url: '/workspaces/current/skills/{skill_id}'
 }
 
+export type PatchWorkspacesCurrentSkillsBySkillIdErrors = {
+  400: InvalidRequestError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchWorkspacesCurrentSkillsBySkillIdError =
+  PatchWorkspacesCurrentSkillsBySkillIdErrors[keyof PatchWorkspacesCurrentSkillsBySkillIdErrors]
+
 export type PatchWorkspacesCurrentSkillsBySkillIdResponses = {
   200: SkillResponse
 }
@@ -5525,6 +6913,14 @@ export type PostWorkspacesCurrentSkillsBySkillIdAssistMessagesData = {
   query?: never
   url: '/workspaces/current/skills/{skill_id}/assist/messages'
 }
+
+export type PostWorkspacesCurrentSkillsBySkillIdAssistMessagesErrors = {
+  400: InvalidRequestError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentSkillsBySkillIdAssistMessagesError =
+  PostWorkspacesCurrentSkillsBySkillIdAssistMessagesErrors[keyof PostWorkspacesCurrentSkillsBySkillIdAssistMessagesErrors]
 
 export type PostWorkspacesCurrentSkillsBySkillIdAssistMessagesResponses = {
   200: {
@@ -5544,6 +6940,13 @@ export type PostWorkspacesCurrentSkillsBySkillIdDuplicateData = {
   url: '/workspaces/current/skills/{skill_id}/duplicate'
 }
 
+export type PostWorkspacesCurrentSkillsBySkillIdDuplicateErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentSkillsBySkillIdDuplicateError =
+  PostWorkspacesCurrentSkillsBySkillIdDuplicateErrors[keyof PostWorkspacesCurrentSkillsBySkillIdDuplicateErrors]
+
 export type PostWorkspacesCurrentSkillsBySkillIdDuplicateResponses = {
   201: SkillDetailResponse
 }
@@ -5559,6 +6962,13 @@ export type GetWorkspacesCurrentSkillsBySkillIdExportData = {
   query?: never
   url: '/workspaces/current/skills/{skill_id}/export'
 }
+
+export type GetWorkspacesCurrentSkillsBySkillIdExportErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdExportError =
+  GetWorkspacesCurrentSkillsBySkillIdExportErrors[keyof GetWorkspacesCurrentSkillsBySkillIdExportErrors]
 
 export type GetWorkspacesCurrentSkillsBySkillIdExportResponses = {
   200: {
@@ -5578,6 +6988,14 @@ export type PatchWorkspacesCurrentSkillsBySkillIdFilesData = {
   url: '/workspaces/current/skills/{skill_id}/files'
 }
 
+export type PatchWorkspacesCurrentSkillsBySkillIdFilesErrors = {
+  400: InvalidRequestError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchWorkspacesCurrentSkillsBySkillIdFilesError =
+  PatchWorkspacesCurrentSkillsBySkillIdFilesErrors[keyof PatchWorkspacesCurrentSkillsBySkillIdFilesErrors]
+
 export type PatchWorkspacesCurrentSkillsBySkillIdFilesResponses = {
   200: SkillDetailResponse
 }
@@ -5594,6 +7012,14 @@ export type PutWorkspacesCurrentSkillsBySkillIdFilesData = {
   url: '/workspaces/current/skills/{skill_id}/files'
 }
 
+export type PutWorkspacesCurrentSkillsBySkillIdFilesErrors = {
+  400: InvalidRequestError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentSkillsBySkillIdFilesError =
+  PutWorkspacesCurrentSkillsBySkillIdFilesErrors[keyof PutWorkspacesCurrentSkillsBySkillIdFilesErrors]
+
 export type PutWorkspacesCurrentSkillsBySkillIdFilesResponses = {
   200: SkillDetailResponse
 }
@@ -5609,6 +7035,14 @@ export type PostWorkspacesCurrentSkillsBySkillIdFilesCheckData = {
   query?: never
   url: '/workspaces/current/skills/{skill_id}/files/check'
 }
+
+export type PostWorkspacesCurrentSkillsBySkillIdFilesCheckErrors = {
+  400: InvalidRequestError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentSkillsBySkillIdFilesCheckError =
+  PostWorkspacesCurrentSkillsBySkillIdFilesCheckErrors[keyof PostWorkspacesCurrentSkillsBySkillIdFilesCheckErrors]
 
 export type PostWorkspacesCurrentSkillsBySkillIdFilesCheckResponses = {
   200: SkillFileCheckResponse
@@ -5630,6 +7064,14 @@ export type GetWorkspacesCurrentSkillsBySkillIdFilesContentData = {
   url: '/workspaces/current/skills/{skill_id}/files/content'
 }
 
+export type GetWorkspacesCurrentSkillsBySkillIdFilesContentErrors = {
+  400: InvalidRequestError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdFilesContentError =
+  GetWorkspacesCurrentSkillsBySkillIdFilesContentErrors[keyof GetWorkspacesCurrentSkillsBySkillIdFilesContentErrors]
+
 export type GetWorkspacesCurrentSkillsBySkillIdFilesContentResponses = {
   200: BinaryFileResponse
 }
@@ -5649,6 +7091,14 @@ export type GetWorkspacesCurrentSkillsBySkillIdFilesPreviewData = {
   url: '/workspaces/current/skills/{skill_id}/files/preview'
 }
 
+export type GetWorkspacesCurrentSkillsBySkillIdFilesPreviewErrors = {
+  400: InvalidRequestError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdFilesPreviewError =
+  GetWorkspacesCurrentSkillsBySkillIdFilesPreviewErrors[keyof GetWorkspacesCurrentSkillsBySkillIdFilesPreviewErrors]
+
 export type GetWorkspacesCurrentSkillsBySkillIdFilesPreviewResponses = {
   200: SkillFilePreviewResponse
 }
@@ -5664,6 +7114,14 @@ export type PostWorkspacesCurrentSkillsBySkillIdPublishData = {
   query?: never
   url: '/workspaces/current/skills/{skill_id}/publish'
 }
+
+export type PostWorkspacesCurrentSkillsBySkillIdPublishErrors = {
+  400: InvalidRequestError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentSkillsBySkillIdPublishError =
+  PostWorkspacesCurrentSkillsBySkillIdPublishErrors[keyof PostWorkspacesCurrentSkillsBySkillIdPublishErrors]
 
 export type PostWorkspacesCurrentSkillsBySkillIdPublishResponses = {
   200: SkillVersionResponse
@@ -5681,6 +7139,13 @@ export type GetWorkspacesCurrentSkillsBySkillIdReferencesData = {
   url: '/workspaces/current/skills/{skill_id}/references'
 }
 
+export type GetWorkspacesCurrentSkillsBySkillIdReferencesErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdReferencesError =
+  GetWorkspacesCurrentSkillsBySkillIdReferencesErrors[keyof GetWorkspacesCurrentSkillsBySkillIdReferencesErrors]
+
 export type GetWorkspacesCurrentSkillsBySkillIdReferencesResponses = {
   200: SkillReferenceListResponse
 }
@@ -5697,6 +7162,14 @@ export type PostWorkspacesCurrentSkillsBySkillIdRestoreData = {
   url: '/workspaces/current/skills/{skill_id}/restore'
 }
 
+export type PostWorkspacesCurrentSkillsBySkillIdRestoreErrors = {
+  400: InvalidRequestError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentSkillsBySkillIdRestoreError =
+  PostWorkspacesCurrentSkillsBySkillIdRestoreErrors[keyof PostWorkspacesCurrentSkillsBySkillIdRestoreErrors]
+
 export type PostWorkspacesCurrentSkillsBySkillIdRestoreResponses = {
   200: SkillDetailResponse
 }
@@ -5712,6 +7185,13 @@ export type GetWorkspacesCurrentSkillsBySkillIdVersionsData = {
   query?: never
   url: '/workspaces/current/skills/{skill_id}/versions'
 }
+
+export type GetWorkspacesCurrentSkillsBySkillIdVersionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdVersionsError =
+  GetWorkspacesCurrentSkillsBySkillIdVersionsErrors[keyof GetWorkspacesCurrentSkillsBySkillIdVersionsErrors]
 
 export type GetWorkspacesCurrentSkillsBySkillIdVersionsResponses = {
   200: SkillVersionListResponse
@@ -5730,6 +7210,13 @@ export type DeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdData = {
   url: '/workspaces/current/skills/{skill_id}/versions/{version_id}'
 }
 
+export type DeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdError =
+  DeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdErrors[keyof DeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdErrors]
+
 export type DeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponses = {
   200: SkillVersionDeleteResponse
 }
@@ -5746,6 +7233,13 @@ export type GetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdData = {
   query?: never
   url: '/workspaces/current/skills/{skill_id}/versions/{version_id}'
 }
+
+export type GetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdError =
+  GetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdErrors[keyof GetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdErrors]
 
 export type GetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponses = {
   200: SkillVersionDetailResponse
@@ -5764,6 +7258,14 @@ export type PatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdData = {
   url: '/workspaces/current/skills/{skill_id}/versions/{version_id}'
 }
 
+export type PatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdErrors = {
+  400: InvalidRequestError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdError =
+  PatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdErrors[keyof PatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdErrors]
+
 export type PatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponses = {
   200: SkillVersionResponse
 }
@@ -5779,8 +7281,12 @@ export type GetWorkspacesCurrentSummaryData = {
 }
 
 export type GetWorkspacesCurrentSummaryErrors = {
-  409: unknown
+  409: CurrentWorkspaceArchivedError | ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetWorkspacesCurrentSummaryError =
+  GetWorkspacesCurrentSummaryErrors[keyof GetWorkspacesCurrentSummaryErrors]
 
 export type GetWorkspacesCurrentSummaryResponses = {
   200: CurrentWorkspaceSummaryResponse
@@ -5796,6 +7302,13 @@ export type GetWorkspacesCurrentToolLabelsData = {
   url: '/workspaces/current/tool-labels'
 }
 
+export type GetWorkspacesCurrentToolLabelsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolLabelsError =
+  GetWorkspacesCurrentToolLabelsErrors[keyof GetWorkspacesCurrentToolLabelsErrors]
+
 export type GetWorkspacesCurrentToolLabelsResponses = {
   200: ToolLabelListResponse
 }
@@ -5810,6 +7323,13 @@ export type PostWorkspacesCurrentToolProviderApiAddData = {
   url: '/workspaces/current/tool-provider/api/add'
 }
 
+export type PostWorkspacesCurrentToolProviderApiAddErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentToolProviderApiAddError =
+  PostWorkspacesCurrentToolProviderApiAddErrors[keyof PostWorkspacesCurrentToolProviderApiAddErrors]
+
 export type PostWorkspacesCurrentToolProviderApiAddResponses = {
   200: SimpleResultResponse
 }
@@ -5823,6 +7343,13 @@ export type PostWorkspacesCurrentToolProviderApiDeleteData = {
   query?: never
   url: '/workspaces/current/tool-provider/api/delete'
 }
+
+export type PostWorkspacesCurrentToolProviderApiDeleteErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentToolProviderApiDeleteError =
+  PostWorkspacesCurrentToolProviderApiDeleteErrors[keyof PostWorkspacesCurrentToolProviderApiDeleteErrors]
 
 export type PostWorkspacesCurrentToolProviderApiDeleteResponses = {
   200: SimpleResultResponse
@@ -5840,6 +7367,13 @@ export type GetWorkspacesCurrentToolProviderApiGetData = {
   url: '/workspaces/current/tool-provider/api/get'
 }
 
+export type GetWorkspacesCurrentToolProviderApiGetErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolProviderApiGetError =
+  GetWorkspacesCurrentToolProviderApiGetErrors[keyof GetWorkspacesCurrentToolProviderApiGetErrors]
+
 export type GetWorkspacesCurrentToolProviderApiGetResponses = {
   200: ApiProviderDetailResponse
 }
@@ -5856,6 +7390,13 @@ export type GetWorkspacesCurrentToolProviderApiRemoteData = {
   url: '/workspaces/current/tool-provider/api/remote'
 }
 
+export type GetWorkspacesCurrentToolProviderApiRemoteErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolProviderApiRemoteError =
+  GetWorkspacesCurrentToolProviderApiRemoteErrors[keyof GetWorkspacesCurrentToolProviderApiRemoteErrors]
+
 export type GetWorkspacesCurrentToolProviderApiRemoteResponses = {
   200: ApiProviderRemoteSchemaResponse
 }
@@ -5870,6 +7411,13 @@ export type PostWorkspacesCurrentToolProviderApiSchemaData = {
   url: '/workspaces/current/tool-provider/api/schema'
 }
 
+export type PostWorkspacesCurrentToolProviderApiSchemaErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentToolProviderApiSchemaError =
+  PostWorkspacesCurrentToolProviderApiSchemaErrors[keyof PostWorkspacesCurrentToolProviderApiSchemaErrors]
+
 export type PostWorkspacesCurrentToolProviderApiSchemaResponses = {
   200: ApiSchemaParseResponse
 }
@@ -5883,6 +7431,13 @@ export type PostWorkspacesCurrentToolProviderApiTestPreData = {
   query?: never
   url: '/workspaces/current/tool-provider/api/test/pre'
 }
+
+export type PostWorkspacesCurrentToolProviderApiTestPreErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentToolProviderApiTestPreError =
+  PostWorkspacesCurrentToolProviderApiTestPreErrors[keyof PostWorkspacesCurrentToolProviderApiTestPreErrors]
 
 export type PostWorkspacesCurrentToolProviderApiTestPreResponses = {
   200: ApiToolPreviewResponse
@@ -5900,6 +7455,13 @@ export type GetWorkspacesCurrentToolProviderApiToolsData = {
   url: '/workspaces/current/tool-provider/api/tools'
 }
 
+export type GetWorkspacesCurrentToolProviderApiToolsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolProviderApiToolsError =
+  GetWorkspacesCurrentToolProviderApiToolsErrors[keyof GetWorkspacesCurrentToolProviderApiToolsErrors]
+
 export type GetWorkspacesCurrentToolProviderApiToolsResponses = {
   200: ToolApiListResponse
 }
@@ -5913,6 +7475,13 @@ export type PostWorkspacesCurrentToolProviderApiUpdateData = {
   query?: never
   url: '/workspaces/current/tool-provider/api/update'
 }
+
+export type PostWorkspacesCurrentToolProviderApiUpdateErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentToolProviderApiUpdateError =
+  PostWorkspacesCurrentToolProviderApiUpdateErrors[keyof PostWorkspacesCurrentToolProviderApiUpdateErrors]
 
 export type PostWorkspacesCurrentToolProviderApiUpdateResponses = {
   200: SimpleResultResponse
@@ -5929,6 +7498,13 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddData = {
   query?: never
   url: '/workspaces/current/tool-provider/builtin/{provider}/add'
 }
+
+export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddError =
+  PostWorkspacesCurrentToolProviderBuiltinByProviderAddErrors[keyof PostWorkspacesCurrentToolProviderBuiltinByProviderAddErrors]
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddResponses = {
   200: SimpleResultResponse
@@ -5948,6 +7524,13 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoData 
   url: '/workspaces/current/tool-provider/builtin/{provider}/credential/info'
 }
 
+export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoError =
+  GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoErrors[keyof GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoErrors]
+
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoResponses = {
   200: ToolProviderCredentialInfoApiEntity
 }
@@ -5965,6 +7548,14 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByC
     query?: never
     url: '/workspaces/current/tool-provider/builtin/{provider}/credential/schema/{credential_type}'
   }
+
+export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypeErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypeError =
+  GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypeErrors[keyof GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypeErrors]
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypeResponses =
   {
@@ -5985,6 +7576,13 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsData = {
   url: '/workspaces/current/tool-provider/builtin/{provider}/credentials'
 }
 
+export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsError =
+  GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsErrors[keyof GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsErrors]
+
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsResponses = {
   200: ToolProviderCredentialListResponse
 }
@@ -6000,6 +7598,13 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialD
   query?: never
   url: '/workspaces/current/tool-provider/builtin/{provider}/default-credential'
 }
+
+export type PostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialError =
+  PostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialErrors[keyof PostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialErrors]
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialResponses = {
   200: SimpleResultResponse
@@ -6017,6 +7622,13 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderDeleteData = {
   url: '/workspaces/current/tool-provider/builtin/{provider}/delete'
 }
 
+export type PostWorkspacesCurrentToolProviderBuiltinByProviderDeleteErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentToolProviderBuiltinByProviderDeleteError =
+  PostWorkspacesCurrentToolProviderBuiltinByProviderDeleteErrors[keyof PostWorkspacesCurrentToolProviderBuiltinByProviderDeleteErrors]
+
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderDeleteResponses = {
   200: SimpleResultResponse
 }
@@ -6032,6 +7644,13 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderIconData = {
   query?: never
   url: '/workspaces/current/tool-provider/builtin/{provider}/icon'
 }
+
+export type GetWorkspacesCurrentToolProviderBuiltinByProviderIconErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolProviderBuiltinByProviderIconError =
+  GetWorkspacesCurrentToolProviderBuiltinByProviderIconErrors[keyof GetWorkspacesCurrentToolProviderBuiltinByProviderIconErrors]
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderIconResponses = {
   200: {
@@ -6051,6 +7670,13 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderInfoData = {
   url: '/workspaces/current/tool-provider/builtin/{provider}/info'
 }
 
+export type GetWorkspacesCurrentToolProviderBuiltinByProviderInfoErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolProviderBuiltinByProviderInfoError =
+  GetWorkspacesCurrentToolProviderBuiltinByProviderInfoErrors[keyof GetWorkspacesCurrentToolProviderBuiltinByProviderInfoErrors]
+
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderInfoResponses = {
   200: ToolProviderApiEntityResponse
 }
@@ -6066,6 +7692,13 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaDa
   query?: never
   url: '/workspaces/current/tool-provider/builtin/{provider}/oauth/client-schema'
 }
+
+export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaError =
+  GetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaErrors[keyof GetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaErrors]
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaResponses = {
   200: BuiltinProviderOAuthClientSchemaResponse
@@ -6083,6 +7716,13 @@ export type DeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClien
   url: '/workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client'
 }
 
+export type DeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientError =
+  DeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientErrors[keyof DeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientErrors]
+
 export type DeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponses = {
   200: SimpleResultResponse
 }
@@ -6098,6 +7738,13 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientDa
   query?: never
   url: '/workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client'
 }
+
+export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientError =
+  GetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientErrors[keyof GetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientErrors]
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponses = {
   200: {
@@ -6117,6 +7764,13 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientD
   url: '/workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client'
 }
 
+export type PostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientError =
+  PostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientErrors[keyof PostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientErrors]
+
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponses = {
   200: SimpleResultResponse
 }
@@ -6132,6 +7786,13 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderToolsData = {
   query?: never
   url: '/workspaces/current/tool-provider/builtin/{provider}/tools'
 }
+
+export type GetWorkspacesCurrentToolProviderBuiltinByProviderToolsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolProviderBuiltinByProviderToolsError =
+  GetWorkspacesCurrentToolProviderBuiltinByProviderToolsErrors[keyof GetWorkspacesCurrentToolProviderBuiltinByProviderToolsErrors]
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderToolsResponses = {
   200: ToolApiListResponse
@@ -6149,6 +7810,13 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderUpdateData = {
   url: '/workspaces/current/tool-provider/builtin/{provider}/update'
 }
 
+export type PostWorkspacesCurrentToolProviderBuiltinByProviderUpdateErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentToolProviderBuiltinByProviderUpdateError =
+  PostWorkspacesCurrentToolProviderBuiltinByProviderUpdateErrors[keyof PostWorkspacesCurrentToolProviderBuiltinByProviderUpdateErrors]
+
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderUpdateResponses = {
   200: SimpleResultResponse
 }
@@ -6162,6 +7830,13 @@ export type DeleteWorkspacesCurrentToolProviderMcpData = {
   query?: never
   url: '/workspaces/current/tool-provider/mcp'
 }
+
+export type DeleteWorkspacesCurrentToolProviderMcpErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteWorkspacesCurrentToolProviderMcpError =
+  DeleteWorkspacesCurrentToolProviderMcpErrors[keyof DeleteWorkspacesCurrentToolProviderMcpErrors]
 
 export type DeleteWorkspacesCurrentToolProviderMcpResponses = {
   200: SimpleResultResponse
@@ -6177,6 +7852,13 @@ export type PostWorkspacesCurrentToolProviderMcpData = {
   url: '/workspaces/current/tool-provider/mcp'
 }
 
+export type PostWorkspacesCurrentToolProviderMcpErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentToolProviderMcpError =
+  PostWorkspacesCurrentToolProviderMcpErrors[keyof PostWorkspacesCurrentToolProviderMcpErrors]
+
 export type PostWorkspacesCurrentToolProviderMcpResponses = {
   200: ToolProviderApiEntityResponse
 }
@@ -6191,6 +7873,13 @@ export type PutWorkspacesCurrentToolProviderMcpData = {
   url: '/workspaces/current/tool-provider/mcp'
 }
 
+export type PutWorkspacesCurrentToolProviderMcpErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentToolProviderMcpError =
+  PutWorkspacesCurrentToolProviderMcpErrors[keyof PutWorkspacesCurrentToolProviderMcpErrors]
+
 export type PutWorkspacesCurrentToolProviderMcpResponses = {
   200: SimpleResultResponse
 }
@@ -6204,6 +7893,13 @@ export type PostWorkspacesCurrentToolProviderMcpAuthData = {
   query?: never
   url: '/workspaces/current/tool-provider/mcp/auth'
 }
+
+export type PostWorkspacesCurrentToolProviderMcpAuthErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentToolProviderMcpAuthError =
+  PostWorkspacesCurrentToolProviderMcpAuthErrors[keyof PostWorkspacesCurrentToolProviderMcpAuthErrors]
 
 export type PostWorkspacesCurrentToolProviderMcpAuthResponses = {
   200: McpAuthResponse
@@ -6221,6 +7917,13 @@ export type GetWorkspacesCurrentToolProviderMcpToolsByProviderIdData = {
   url: '/workspaces/current/tool-provider/mcp/tools/{provider_id}'
 }
 
+export type GetWorkspacesCurrentToolProviderMcpToolsByProviderIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolProviderMcpToolsByProviderIdError =
+  GetWorkspacesCurrentToolProviderMcpToolsByProviderIdErrors[keyof GetWorkspacesCurrentToolProviderMcpToolsByProviderIdErrors]
+
 export type GetWorkspacesCurrentToolProviderMcpToolsByProviderIdResponses = {
   200: ToolProviderApiEntityResponse
 }
@@ -6237,6 +7940,13 @@ export type GetWorkspacesCurrentToolProviderMcpUpdateByProviderIdData = {
   url: '/workspaces/current/tool-provider/mcp/update/{provider_id}'
 }
 
+export type GetWorkspacesCurrentToolProviderMcpUpdateByProviderIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolProviderMcpUpdateByProviderIdError =
+  GetWorkspacesCurrentToolProviderMcpUpdateByProviderIdErrors[keyof GetWorkspacesCurrentToolProviderMcpUpdateByProviderIdErrors]
+
 export type GetWorkspacesCurrentToolProviderMcpUpdateByProviderIdResponses = {
   200: ToolProviderApiEntityResponse
 }
@@ -6251,6 +7961,14 @@ export type PostWorkspacesCurrentToolProviderWorkflowCreateData = {
   url: '/workspaces/current/tool-provider/workflow/create'
 }
 
+export type PostWorkspacesCurrentToolProviderWorkflowCreateErrors = {
+  400: WorkflowToolHumanInputNotSupportedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentToolProviderWorkflowCreateError =
+  PostWorkspacesCurrentToolProviderWorkflowCreateErrors[keyof PostWorkspacesCurrentToolProviderWorkflowCreateErrors]
+
 export type PostWorkspacesCurrentToolProviderWorkflowCreateResponses = {
   200: SimpleResultResponse
 }
@@ -6264,6 +7982,13 @@ export type PostWorkspacesCurrentToolProviderWorkflowDeleteData = {
   query?: never
   url: '/workspaces/current/tool-provider/workflow/delete'
 }
+
+export type PostWorkspacesCurrentToolProviderWorkflowDeleteErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentToolProviderWorkflowDeleteError =
+  PostWorkspacesCurrentToolProviderWorkflowDeleteErrors[keyof PostWorkspacesCurrentToolProviderWorkflowDeleteErrors]
 
 export type PostWorkspacesCurrentToolProviderWorkflowDeleteResponses = {
   200: SimpleResultResponse
@@ -6282,6 +8007,13 @@ export type GetWorkspacesCurrentToolProviderWorkflowGetData = {
   url: '/workspaces/current/tool-provider/workflow/get'
 }
 
+export type GetWorkspacesCurrentToolProviderWorkflowGetErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolProviderWorkflowGetError =
+  GetWorkspacesCurrentToolProviderWorkflowGetErrors[keyof GetWorkspacesCurrentToolProviderWorkflowGetErrors]
+
 export type GetWorkspacesCurrentToolProviderWorkflowGetResponses = {
   200: WorkflowToolDetailResponse
 }
@@ -6298,6 +8030,13 @@ export type GetWorkspacesCurrentToolProviderWorkflowToolsData = {
   url: '/workspaces/current/tool-provider/workflow/tools'
 }
 
+export type GetWorkspacesCurrentToolProviderWorkflowToolsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolProviderWorkflowToolsError =
+  GetWorkspacesCurrentToolProviderWorkflowToolsErrors[keyof GetWorkspacesCurrentToolProviderWorkflowToolsErrors]
+
 export type GetWorkspacesCurrentToolProviderWorkflowToolsResponses = {
   200: ToolApiListResponse
 }
@@ -6311,6 +8050,14 @@ export type PostWorkspacesCurrentToolProviderWorkflowUpdateData = {
   query?: never
   url: '/workspaces/current/tool-provider/workflow/update'
 }
+
+export type PostWorkspacesCurrentToolProviderWorkflowUpdateErrors = {
+  400: WorkflowToolHumanInputNotSupportedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentToolProviderWorkflowUpdateError =
+  PostWorkspacesCurrentToolProviderWorkflowUpdateErrors[keyof PostWorkspacesCurrentToolProviderWorkflowUpdateErrors]
 
 export type PostWorkspacesCurrentToolProviderWorkflowUpdateResponses = {
   200: SimpleResultResponse
@@ -6328,6 +8075,13 @@ export type GetWorkspacesCurrentToolProvidersData = {
   url: '/workspaces/current/tool-providers'
 }
 
+export type GetWorkspacesCurrentToolProvidersErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolProvidersError =
+  GetWorkspacesCurrentToolProvidersErrors[keyof GetWorkspacesCurrentToolProvidersErrors]
+
 export type GetWorkspacesCurrentToolProvidersResponses = {
   200: ToolProviderListResponse
 }
@@ -6341,6 +8095,13 @@ export type GetWorkspacesCurrentToolsApiData = {
   query?: never
   url: '/workspaces/current/tools/api'
 }
+
+export type GetWorkspacesCurrentToolsApiErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolsApiError =
+  GetWorkspacesCurrentToolsApiErrors[keyof GetWorkspacesCurrentToolsApiErrors]
 
 export type GetWorkspacesCurrentToolsApiResponses = {
   200: ToolProviderListResponse
@@ -6356,6 +8117,13 @@ export type GetWorkspacesCurrentToolsBuiltinData = {
   url: '/workspaces/current/tools/builtin'
 }
 
+export type GetWorkspacesCurrentToolsBuiltinErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolsBuiltinError =
+  GetWorkspacesCurrentToolsBuiltinErrors[keyof GetWorkspacesCurrentToolsBuiltinErrors]
+
 export type GetWorkspacesCurrentToolsBuiltinResponses = {
   200: ToolProviderListResponse
 }
@@ -6370,6 +8138,13 @@ export type GetWorkspacesCurrentToolsMcpData = {
   url: '/workspaces/current/tools/mcp'
 }
 
+export type GetWorkspacesCurrentToolsMcpErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolsMcpError =
+  GetWorkspacesCurrentToolsMcpErrors[keyof GetWorkspacesCurrentToolsMcpErrors]
+
 export type GetWorkspacesCurrentToolsMcpResponses = {
   200: ToolProviderListResponse
 }
@@ -6383,6 +8158,13 @@ export type GetWorkspacesCurrentToolsWorkflowData = {
   query?: never
   url: '/workspaces/current/tools/workflow'
 }
+
+export type GetWorkspacesCurrentToolsWorkflowErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentToolsWorkflowError =
+  GetWorkspacesCurrentToolsWorkflowErrors[keyof GetWorkspacesCurrentToolsWorkflowErrors]
 
 export type GetWorkspacesCurrentToolsWorkflowResponses = {
   200: ToolProviderListResponse
@@ -6399,6 +8181,13 @@ export type GetWorkspacesCurrentTriggerProviderByProviderIconData = {
   query?: never
   url: '/workspaces/current/trigger-provider/{provider}/icon'
 }
+
+export type GetWorkspacesCurrentTriggerProviderByProviderIconErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentTriggerProviderByProviderIconError =
+  GetWorkspacesCurrentTriggerProviderByProviderIconErrors[keyof GetWorkspacesCurrentTriggerProviderByProviderIconErrors]
 
 export type GetWorkspacesCurrentTriggerProviderByProviderIconResponses = {
   200: {
@@ -6418,6 +8207,13 @@ export type GetWorkspacesCurrentTriggerProviderByProviderInfoData = {
   url: '/workspaces/current/trigger-provider/{provider}/info'
 }
 
+export type GetWorkspacesCurrentTriggerProviderByProviderInfoErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentTriggerProviderByProviderInfoError =
+  GetWorkspacesCurrentTriggerProviderByProviderInfoErrors[keyof GetWorkspacesCurrentTriggerProviderByProviderInfoErrors]
+
 export type GetWorkspacesCurrentTriggerProviderByProviderInfoResponses = {
   200: TriggerProviderApiEntity
 }
@@ -6433,6 +8229,13 @@ export type DeleteWorkspacesCurrentTriggerProviderByProviderOauthClientData = {
   query?: never
   url: '/workspaces/current/trigger-provider/{provider}/oauth/client'
 }
+
+export type DeleteWorkspacesCurrentTriggerProviderByProviderOauthClientErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteWorkspacesCurrentTriggerProviderByProviderOauthClientError =
+  DeleteWorkspacesCurrentTriggerProviderByProviderOauthClientErrors[keyof DeleteWorkspacesCurrentTriggerProviderByProviderOauthClientErrors]
 
 export type DeleteWorkspacesCurrentTriggerProviderByProviderOauthClientResponses = {
   200: SimpleResultResponse
@@ -6450,6 +8253,13 @@ export type GetWorkspacesCurrentTriggerProviderByProviderOauthClientData = {
   url: '/workspaces/current/trigger-provider/{provider}/oauth/client'
 }
 
+export type GetWorkspacesCurrentTriggerProviderByProviderOauthClientErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentTriggerProviderByProviderOauthClientError =
+  GetWorkspacesCurrentTriggerProviderByProviderOauthClientErrors[keyof GetWorkspacesCurrentTriggerProviderByProviderOauthClientErrors]
+
 export type GetWorkspacesCurrentTriggerProviderByProviderOauthClientResponses = {
   200: TriggerOAuthClientResponse
 }
@@ -6465,6 +8275,13 @@ export type PostWorkspacesCurrentTriggerProviderByProviderOauthClientData = {
   query?: never
   url: '/workspaces/current/trigger-provider/{provider}/oauth/client'
 }
+
+export type PostWorkspacesCurrentTriggerProviderByProviderOauthClientErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentTriggerProviderByProviderOauthClientError =
+  PostWorkspacesCurrentTriggerProviderByProviderOauthClientErrors[keyof PostWorkspacesCurrentTriggerProviderByProviderOauthClientErrors]
 
 export type PostWorkspacesCurrentTriggerProviderByProviderOauthClientResponses = {
   200: SimpleResultResponse
@@ -6484,6 +8301,14 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBu
     url: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscription_builder_id}'
   }
 
+export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdError =
+  PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdErrors[keyof PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdErrors]
+
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdResponses =
   {
     200: SimpleResultResponse
@@ -6500,6 +8325,13 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCr
   query?: never
   url: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/create'
 }
+
+export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreateErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreateError =
+  PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreateErrors[keyof PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreateErrors]
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreateResponses = {
   200: TriggerSubscriptionBuilderCreateResponse
@@ -6518,6 +8350,14 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLog
     query?: never
     url: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/logs/{subscription_builder_id}'
   }
+
+export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLogsBySubscriptionBuilderIdErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLogsBySubscriptionBuilderIdError =
+  GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLogsBySubscriptionBuilderIdErrors[keyof GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLogsBySubscriptionBuilderIdErrors]
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLogsBySubscriptionBuilderIdResponses =
   {
@@ -6538,6 +8378,14 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUp
     url: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/update/{subscription_builder_id}'
   }
 
+export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUpdateBySubscriptionBuilderIdErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUpdateBySubscriptionBuilderIdError =
+  PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUpdateBySubscriptionBuilderIdErrors[keyof PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUpdateBySubscriptionBuilderIdErrors]
+
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUpdateBySubscriptionBuilderIdResponses =
   {
     200: SubscriptionBuilderApiEntity
@@ -6556,6 +8404,14 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVe
     query?: never
     url: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/verify-and-update/{subscription_builder_id}'
   }
+
+export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdError =
+  PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdErrors[keyof PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdErrors]
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdResponses =
   {
@@ -6576,6 +8432,14 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderByS
     url: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/{subscription_builder_id}'
   }
 
+export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBySubscriptionBuilderIdErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBySubscriptionBuilderIdError =
+  GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBySubscriptionBuilderIdErrors[keyof GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBySubscriptionBuilderIdErrors]
+
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBySubscriptionBuilderIdResponses =
   {
     200: SubscriptionBuilderApiEntity
@@ -6594,7 +8458,8 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListData =
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListErrors = {
-  404: TriggerProviderErrorResponse
+  404: TriggerProviderErrorResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListError =
@@ -6616,6 +8481,13 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAutho
   url: '/workspaces/current/trigger-provider/{provider}/subscriptions/oauth/authorize'
 }
 
+export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeError =
+  GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeErrors[keyof GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeErrors]
+
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeResponses = {
   200: TriggerOAuthAuthorizeResponse
 }
@@ -6634,6 +8506,14 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyByS
     url: '/workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscription_id}'
   }
 
+export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdError =
+  PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdErrors[keyof PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdErrors]
+
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdResponses =
   {
     200: TriggerVerificationResponse
@@ -6651,6 +8531,13 @@ export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDel
   url: '/workspaces/current/trigger-provider/{subscription_id}/subscriptions/delete'
 }
 
+export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteError =
+  PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteErrors[keyof PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteErrors]
+
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponses = {
   200: SimpleResultResponse
 }
@@ -6667,6 +8554,13 @@ export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpd
   url: '/workspaces/current/trigger-provider/{subscription_id}/subscriptions/update'
 }
 
+export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateError =
+  PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateErrors[keyof PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateErrors]
+
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponses = {
   200: SimpleResultResponse
 }
@@ -6680,6 +8574,13 @@ export type GetWorkspacesCurrentTriggersData = {
   query?: never
   url: '/workspaces/current/triggers'
 }
+
+export type GetWorkspacesCurrentTriggersErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentTriggersError =
+  GetWorkspacesCurrentTriggersErrors[keyof GetWorkspacesCurrentTriggersErrors]
 
 export type GetWorkspacesCurrentTriggersResponses = {
   200: TriggerProviderListResponse
@@ -6695,6 +8596,13 @@ export type GetWorkspacesCustomConfigData = {
   url: '/workspaces/custom-config'
 }
 
+export type GetWorkspacesCustomConfigErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCustomConfigError =
+  GetWorkspacesCustomConfigErrors[keyof GetWorkspacesCustomConfigErrors]
+
 export type GetWorkspacesCustomConfigResponses = {
   200: WorkspaceCustomConfigResponse
 }
@@ -6708,6 +8616,13 @@ export type PostWorkspacesCustomConfigData = {
   query?: never
   url: '/workspaces/custom-config'
 }
+
+export type PostWorkspacesCustomConfigErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCustomConfigError =
+  PostWorkspacesCustomConfigErrors[keyof PostWorkspacesCustomConfigErrors]
 
 export type PostWorkspacesCustomConfigResponses = {
   200: WorkspaceTenantResultResponse
@@ -6725,6 +8640,16 @@ export type PostWorkspacesCustomConfigWebappLogoUploadData = {
   url: '/workspaces/custom-config/webapp-logo/upload'
 }
 
+export type PostWorkspacesCustomConfigWebappLogoUploadErrors = {
+  400: FilenameNotExistsError | NoFileUploadedError | TooManyFilesError | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCustomConfigWebappLogoUploadError =
+  PostWorkspacesCustomConfigWebappLogoUploadErrors[keyof PostWorkspacesCustomConfigWebappLogoUploadErrors]
+
 export type PostWorkspacesCustomConfigWebappLogoUploadResponses = {
   201: WorkspaceLogoUploadResponse
 }
@@ -6739,6 +8664,12 @@ export type PostWorkspacesInfoData = {
   url: '/workspaces/info'
 }
 
+export type PostWorkspacesInfoErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesInfoError = PostWorkspacesInfoErrors[keyof PostWorkspacesInfoErrors]
+
 export type PostWorkspacesInfoResponses = {
   200: WorkspaceTenantResultResponse
 }
@@ -6752,6 +8683,13 @@ export type PostWorkspacesSwitchData = {
   query?: never
   url: '/workspaces/switch'
 }
+
+export type PostWorkspacesSwitchErrors = {
+  403: AccountNotLinkTenantError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesSwitchError = PostWorkspacesSwitchErrors[keyof PostWorkspacesSwitchErrors]
 
 export type PostWorkspacesSwitchResponses = {
   200: SwitchWorkspaceResponse
@@ -6771,6 +8709,13 @@ export type GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangData 
   query?: never
   url: '/workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}'
 }
+
+export type GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangError =
+  GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangErrors[keyof GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangErrors]
 
 export type GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponses = {
   200: {

@@ -33,7 +33,7 @@ const CategoryEmptyState = ({
   category: EmbeddedMarketplaceCategory
   showMarketplaceLink: boolean
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const config = categoryConfig[category as Category]
 
   if (!config) return null

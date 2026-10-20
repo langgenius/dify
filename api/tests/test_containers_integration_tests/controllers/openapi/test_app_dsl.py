@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Generator
-from inspect import unwrap
+from typing import Protocol, cast
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -12,21 +12,27 @@ from faker import Faker
 from flask import Flask
 from sqlalchemy.orm import Session
 
-from controllers.openapi._models import AppDslExportQuery, AppDslImportPayload
+from controllers.openapi._errors import DraftNotFound
+from controllers.openapi._models import AppDslExportQuery, AppDslExportResponse, AppDslImportPayload
 from controllers.openapi.app_dsl import (
     AppDslCheckDependenciesApi,
     AppDslExportApi,
     AppDslImportApi,
     AppDslImportConfirmApi,
 )
+from machinery.context import AppRequestContext, RequestContext
 from models import Account, App
-from models.model import AppModelConfig
-from services.account_service import AccountService, TenantService
+from models.model import AppMode, AppModelConfig
 from services.app_dsl_service import CURRENT_DSL_VERSION
 from services.app_service import AppService, CreateAppParams
-from services.entities.dsl_entities import ImportStatus
-from tests.test_containers_integration_tests.controllers.openapi.conftest import auth_for
+from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportStatus
+from services.errors.app import WorkflowNotFoundError
+from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
+
+
+class _Endpoint[T](Protocol):
+    __handler__: Callable[..., T]
 
 
 def _workflow_yaml(*, version: str = CURRENT_DSL_VERSION, name: str = "My App") -> str:
@@ -42,7 +48,7 @@ def _workflow_yaml(*, version: str = CURRENT_DSL_VERSION, name: str = "My App") 
 
 
 @pytest.fixture
-def external_deps() -> Generator[dict[str, object], None, None]:
+def external_deps() -> Generator[dict[str, object]]:
     """Stub the heavy collaborators an import/export touches (model runtime,
     workflow sync, dependency analysis, enterprise hooks) while leaving the DSL
     service and DB writes real."""
@@ -54,6 +60,8 @@ def external_deps() -> Generator[dict[str, object], None, None]:
         patch("services.app_service.SystemFeatureService") as mock_feature_service,
         patch("services.app_service.EnterpriseService") as mock_enterprise_service,
     ):
+        mock_workflow_service.get_draft_workflow.return_value = None
+        mock_workflow_service.get_published_workflow_by_id.return_value = None
         mock_workflow_service.return_value.get_draft_workflow.return_value = None
         mock_workflow_service.return_value.sync_draft_workflow.return_value = None
         mock_dependencies_service.generate_latest_dependencies.return_value = []  # type: ignore[assignment]
@@ -74,16 +82,16 @@ def external_deps() -> Generator[dict[str, object], None, None]:
 
 def _app_and_account(db_session: Session, *, mode: str = "chat") -> tuple[App, Account]:
     fake = Faker()
-    with patch("services.account_service.SystemFeatureService") as mock_account_feature_service:
+    with patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service:
         mock_account_feature_service.is_registration_allowed.return_value = True
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session)
         tenant = account.current_tenant
         assert tenant is not None
         app_args = CreateAppParams(
@@ -111,7 +119,12 @@ class TestDslImport:
         api = AppDslImportApi()
         body = AppDslImportPayload(mode="yaml-content", yaml_content="[]")  # not a mapping
         with app.test_request_context(f"/openapi/v1/workspaces/{tenant.id}/apps/imports", method="POST"):
-            result, code = unwrap(api.post)(api, workspace_id=tenant.id, auth_data=auth_for(account), body=body)
+            result, code = cast(_Endpoint[tuple[Import, int]], api.post).__handler__(
+                api,
+                RequestContext("test-request", None, account.id, tenant.id),
+                tenant.id,
+                body=body,
+            )
 
         assert code == 400
         assert result.status == ImportStatus.FAILED
@@ -128,7 +141,12 @@ class TestDslImport:
         api = AppDslImportApi()
         body = AppDslImportPayload(mode="yaml-content", yaml_content=_workflow_yaml(version="99.0.0"))
         with app.test_request_context(f"/openapi/v1/workspaces/{tenant.id}/apps/imports", method="POST"):
-            result, code = unwrap(api.post)(api, workspace_id=tenant.id, auth_data=auth_for(account), body=body)
+            result, code = cast(_Endpoint[tuple[Import, int]], api.post).__handler__(
+                api,
+                RequestContext("test-request", None, account.id, tenant.id),
+                tenant.id,
+                body=body,
+            )
 
         assert code == 202
         assert result.status == ImportStatus.PENDING
@@ -148,7 +166,12 @@ class TestDslImport:
         api = AppDslImportApi()
         body = AppDslImportPayload(mode="yaml-content", yaml_content=_workflow_yaml(name="Imported"))
         with app.test_request_context(f"/openapi/v1/workspaces/{tenant.id}/apps/imports", method="POST"):
-            result, code = unwrap(api.post)(api, workspace_id=tenant.id, auth_data=auth_for(account), body=body)
+            result, code = cast(_Endpoint[tuple[Import, int]], api.post).__handler__(
+                api,
+                RequestContext("test-request", None, account.id, tenant.id),
+                tenant.id,
+                body=body,
+            )
 
         assert code == 200
         assert result.status in (ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS)
@@ -169,8 +192,11 @@ class TestDslImportConfirm:
         with app.test_request_context(
             f"/openapi/v1/workspaces/{tenant.id}/apps/imports/{import_id}:confirm", method="POST"
         ):
-            result, code = unwrap(api.post)(
-                api, workspace_id=tenant.id, import_id=import_id, auth_data=auth_for(account)
+            result, code = cast(_Endpoint[tuple[Import, int]], api.post).__handler__(
+                api,
+                RequestContext("test-request", None, account.id, tenant.id),
+                tenant.id,
+                import_id,
             )
 
         assert code == 400
@@ -199,30 +225,48 @@ class TestDslExport:
 
         api = AppDslExportApi()
         with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dsl"):
-            response, code = unwrap(api.get)(
-                api, app_id=app_model.id, auth_data=auth_for(account, app_model=app_model), query=AppDslExportQuery()
+            response, code = cast(_Endpoint[tuple[AppDslExportResponse, int]], api.get).__handler__(
+                api,
+                AppRequestContext(tenant_id=app_model.tenant_id, app_id=app_model.id),
+                app_model.id,
+                query=AppDslExportQuery(),
             )
 
         assert code == 200
+        assert isinstance(response, AppDslExportResponse)
         parsed = yaml.safe_load(response.data)
         assert parsed["kind"] == "app"
         assert parsed["app"]["name"] == app_model.name
 
     def test_export_workflow_app_without_draft_maps_to_404(
-        self, app: Flask, db_session_with_containers: Session, external_deps: dict[str, object]
+        self, app: Flask, db_session_with_containers: Session
     ) -> None:
         """A workflow app with no draft workflow can't be exported → the service
-        raises WorkflowNotFoundError, which the controller maps to 404."""
-        app_model, account = _app_and_account(db_session_with_containers, mode="workflow")
+        raises WorkflowNotFoundError, which the controller maps to 404 draft_not_found."""
+        app_model = App(
+            id=str(uuid4()),
+            tenant_id=str(uuid4()),
+            name="Workflow without draft",
+            mode=AppMode.WORKFLOW,
+            enable_api=True,
+            enable_site=False,
+        )
+        db_session_with_containers.add(app_model)
+        db_session_with_containers.commit()
 
         api = AppDslExportApi()
-        with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dsl"):
-            result, code = unwrap(api.get)(
-                api, app_id=app_model.id, auth_data=auth_for(account, app_model=app_model), query=AppDslExportQuery()
+        with (
+            app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dsl"),
+            pytest.raises(DraftNotFound) as exc_info,
+        ):
+            cast(_Endpoint[tuple[AppDslExportResponse, int]], api.get).__handler__(
+                api,
+                AppRequestContext(tenant_id=app_model.tenant_id, app_id=app_model.id),
+                app_model.id,
+                query=AppDslExportQuery(),
             )
 
-        assert code == 404
-        assert isinstance(result, str)
+        assert isinstance(exc_info.value.__cause__, WorkflowNotFoundError)
 
 
 class TestDslCheckDependencies:
@@ -233,7 +277,11 @@ class TestDslCheckDependencies:
 
         api = AppDslCheckDependenciesApi()
         with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dependencies:check"):
-            result, code = unwrap(api.get)(api, app_id=app_model.id, auth_data=auth_for(account, app_model=app_model))
+            result, code = cast(_Endpoint[tuple[CheckDependenciesResult, int]], api.get).__handler__(
+                api,
+                RequestContext("test-request", None, account.id, app_model.tenant_id),
+                app_model.id,
+            )
 
         assert code == 200
         assert result.leaked_dependencies == []

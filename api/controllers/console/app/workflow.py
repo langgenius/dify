@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, NotRequired, Self, TypedDict
+from typing import Any, Literal, NotRequired, Self, TypedDict
 
 from flask import abort, request
 from flask_restx import Resource
@@ -16,12 +16,12 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from pydantic.json_schema import SkipJsonSchema
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
 from configs import dify_config
-from controllers.common.app_access import resolve_app_access_filter
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import GeneratedAppResponse, NewAppResponse, SimpleResultResponse
@@ -52,8 +52,6 @@ from controllers.console.wraps import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
 from core.db.session_factory import session_factory
@@ -84,12 +82,12 @@ from fields.workflow_run_fields import (
 from graphon.enums import NodeType
 from graphon.file import File
 from graphon.file import helpers as file_helpers
-from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.variables import SecretVariable, SegmentType, VariableBase
 from graphon.variables.exc import VariableError
 from libs import helper
 from libs.datetime_utils import naive_utc_now
+from libs.external_api import error_responses
 from libs.helper import TimestampField, dump_response, to_timestamp, uuid_value
 from libs.login import login_required
 from models import Account, App
@@ -97,11 +95,14 @@ from models.model import AppMode
 from models.workflow import Workflow
 from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
 from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.app.access import resolve_app_access_filter
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
+from services.workflow_variable_reference_validator import advisory_variable_reference_warning
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +150,7 @@ class SyncDraftWorkflowPayload(BaseModel):
     graph: dict[str, Any]
     features: dict[str, Any]
     hash: str | None = None
+    force: bool = Field(default=False, strict=True, description="Explicitly confirm saving an empty workflow graph.")
     is_collaborative: bool = Field(default=False, alias="_is_collaborative")
     environment_variable_patch: SyncEnvironmentVariablePatchPayload | None = None
     conversation_variables: list[dict[str, Any]] = Field(
@@ -217,7 +219,7 @@ class WorkflowSuggestedQuestionsAfterAnswerPayload(WorkflowFeatureTogglePayload)
 class WorkflowTextToSpeechPayload(WorkflowFeatureTogglePayload):
     language: str | None = None
     voice: str | None = None
-    autoPlay: str | None = None
+    autoPlay: Literal["enabled", "disabled"] | None = None
 
 
 class WorkflowSensitiveWordAvoidancePayload(WorkflowFeatureTogglePayload):
@@ -280,6 +282,13 @@ class WorkflowOnlineUsersPayload(BaseModel):
     @classmethod
     def normalize_app_ids(cls, app_ids: list[str]) -> list[str]:
         return list(dict.fromkeys(app_id.strip() for app_id in app_ids if app_id.strip()))
+
+
+class WorkflowTriggerRunErrorResponse(ResponseModel):
+    """400 body when a draft trigger run fails; ``error`` is omitted when there is nothing user-facing to say."""
+
+    status: Literal["error"]
+    error: str | SkipJsonSchema[None] = None
 
 
 class PipelineVariableResponse(ResponseModel):
@@ -402,6 +411,10 @@ class WorkflowOnlineUsersResponse(ResponseModel):
 class WorkflowPublishResponse(ResponseModel):
     result: str
     created_at: int
+    warning: str | None = Field(
+        default=None,
+        description="Advisory warning for variable references that can read a skipped branch. Publish still succeeds.",
+    )
 
 
 class SyncDraftWorkflowResponse(ResponseModel):
@@ -483,6 +496,7 @@ register_schema_models(
 register_response_schema_model(console_ns, WorkflowRunNodeExecutionResponse)
 register_response_schema_models(
     console_ns,
+    WorkflowTriggerRunErrorResponse,
     WorkflowConversationVariableResponse,
     PipelineVariableResponse,
     WorkflowEnvironmentVariableResponse,
@@ -572,6 +586,7 @@ def _serialize_environment_variable(value: Any) -> EnvironmentVariableResponseDi
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft")
 class DraftWorkflowApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc("get_draft_workflow")
     @console_ns.doc(description="Get draft workflow for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -612,6 +627,7 @@ class DraftWorkflowApi(Resource):
         )
         return response
 
+    @error_responses(DraftWorkflowNotSync)
     @setup_required
     @login_required
     @account_initialization_required
@@ -638,15 +654,21 @@ class DraftWorkflowApi(Resource):
         if "application/json" in content_type:
             payload_data = request.get_json(silent=True)
             if not isinstance(payload_data, dict):
-                return {"message": "Invalid JSON data"}, 400
+                raise InvalidArgumentError("Invalid JSON data")
             args_model = SyncDraftWorkflowPayload.model_validate(payload_data)
         elif "text/plain" in content_type:
             try:
                 args_model = SyncDraftWorkflowPayload.model_validate_json(request.data)
-            except (ValueError, ValidationError):
-                return {"message": "Invalid JSON data"}, 400
+            except (ValueError, ValidationError) as caught_error:
+                raise InvalidArgumentError("Invalid JSON data") from caught_error
         else:
             abort(415)
+
+        # Empty autosaves can otherwise replace a populated draft, even with a matching hash.
+        # Require explicit confirmation for both regular saves and text/plain unload beacons.
+        if args_model.graph.get("nodes") == [] and args_model.graph.get("edges") == [] and not args_model.force:
+            raise InvalidArgumentError(description="Saving an empty workflow requires force=true.")
+
         workflow_service = WorkflowService()
 
         try:
@@ -680,10 +702,10 @@ class DraftWorkflowApi(Resource):
                 preserve_environment_variables=True,
                 graph_only=args_model.is_collaborative,
             )
-        except WorkflowHashNotEqualError:
-            raise DraftWorkflowNotSync()
+        except WorkflowHashNotEqualError as caught_error:
+            raise DraftWorkflowNotSync() from caught_error
         except VariableError as e:
-            raise InvalidArgumentError(description=str(e))
+            raise InvalidArgumentError(description=str(e)) from e
 
         return dump_response(
             SyncDraftWorkflowResponse,
@@ -697,6 +719,7 @@ class DraftWorkflowApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/run")
 class AdvancedChatDraftWorkflowRunApi(Resource):
+    @error_responses(InvokeRateLimitHttpError)
     @console_ns.doc("run_advanced_chat_draft_workflow")
     @console_ns.doc(description="Run draft workflow for advanced chat application")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -734,17 +757,17 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/iteration/nodes/<string:node_id>/run")
@@ -785,15 +808,15 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run")
@@ -834,15 +857,15 @@ class WorkflowDraftRunIterationNodeApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/loop/nodes/<string:node_id>/run")
@@ -878,15 +901,15 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/loop/nodes/<string:node_id>/run")
@@ -926,15 +949,15 @@ class WorkflowDraftRunLoopNodeApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 class HumanInputFormPreviewPayload(BaseModel):
@@ -944,7 +967,7 @@ class HumanInputFormPreviewPayload(BaseModel):
     )
 
 
-class HumanInputFormSubmitPayload(BaseModel):
+class HumanInputFormPreviewSubmitPayload(BaseModel):
     form_inputs: dict[str, Any] = Field(
         ...,
         description="Values the user provides for the form's own fields",
@@ -967,7 +990,7 @@ class HumanInputDeliveryTestPayload(BaseModel):
 register_schema_models(
     console_ns,
     HumanInputFormPreviewPayload,
-    HumanInputFormSubmitPayload,
+    HumanInputFormPreviewSubmitPayload,
     HumanInputDeliveryTestPayload,
 )
 
@@ -1009,7 +1032,7 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
     @console_ns.doc("submit_advanced_chat_draft_human_input_form")
     @console_ns.doc(description="Submit human input form preview for advanced chat workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @console_ns.expect(console_ns.models[HumanInputFormPreviewSubmitPayload.__name__])
     @console_ns.response(
         200,
         "Human input form submission result",
@@ -1022,8 +1045,8 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
-    @model_validate(HumanInputFormSubmitPayload)
-    def post(self, args: HumanInputFormSubmitPayload, current_user: Account, app_model: App, node_id: str):
+    @model_validate(HumanInputFormPreviewSubmitPayload)
+    def post(self, args: HumanInputFormPreviewSubmitPayload, current_user: Account, app_model: App, node_id: str):
         """
         Submit human input form preview
         """
@@ -1077,7 +1100,7 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
     @console_ns.doc("submit_workflow_draft_human_input_form")
     @console_ns.doc(description="Submit human input form preview for workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @console_ns.expect(console_ns.models[HumanInputFormPreviewSubmitPayload.__name__])
     @console_ns.response(
         200,
         "Human input form submission result",
@@ -1090,8 +1113,8 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    @model_validate(HumanInputFormSubmitPayload)
-    def post(self, args: HumanInputFormSubmitPayload, current_user: Account, app_model: App, node_id: str):
+    @model_validate(HumanInputFormPreviewSubmitPayload)
+    def post(self, args: HumanInputFormPreviewSubmitPayload, current_user: Account, app_model: App, node_id: str):
         """
         Submit human input form preview
         """
@@ -1141,6 +1164,7 @@ class WorkflowDraftHumanInputDeliveryTestApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/run")
 class DraftWorkflowRunApi(Resource):
+    @error_responses(InvokeRateLimitHttpError)
     @console_ns.doc("run_draft_workflow")
     @console_ns.doc(description="Run draft workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -1182,7 +1206,7 @@ class DraftWorkflowRunApi(Resource):
 
             return helper.compact_generate_response(response)
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop")
@@ -1203,12 +1227,13 @@ class WorkflowTaskStopApi(Resource):
         """
         Stop workflow task
         """
-        # Stop using both mechanisms for backward compatibility
-        # Legacy stop flag mechanism (without user check)
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
-
-        # New graph engine command channel mechanism
-        GraphEngineManager(redis_client).send_stop_command(task_id)
+        AppTaskService.stop_workflow_task(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            task_id=task_id,
+            app_mode=AppMode.value_of(app_model.mode),
+            owner=None,
+        )
 
         return {"result": "success"}
 
@@ -1331,11 +1356,16 @@ class PublishedWorkflowApi(Resource):
                 app_model_in_session.updated_at = naive_utc_now()
 
             workflow_created_at = TimestampField().format(workflow.created_at)
+            graph_text = workflow.graph
 
-        return {
+        warning = advisory_variable_reference_warning(graph_text)
+        payload: dict[str, object] = {
             "result": "success",
             "created_at": workflow_created_at,
         }
+        if warning:
+            payload["warning"] = warning
+        return payload
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
@@ -1391,8 +1421,8 @@ class DefaultBlockConfigApi(Resource):
         if args.q:
             try:
                 filters = json.loads(args.q)
-            except json.JSONDecodeError:
-                raise ValueError("Invalid filters")
+            except json.JSONDecodeError as caught_error:
+                raise ValueError("Invalid filters") from caught_error
 
         # Get default block configs
         workflow_service = WorkflowService()
@@ -1596,7 +1626,7 @@ class WorkflowByIdApi(Resource):
             update_data["marked_comment"] = args.marked_comment
 
         if not update_data:
-            return {"message": "No valid fields to update"}, 400
+            raise InvalidArgumentError("No valid fields to update")
 
         workflow_service = WorkflowService()
         workflow_ref = WorkflowRefService.create_app_workflow_ref(app_model, workflow_id)
@@ -1644,7 +1674,7 @@ class WorkflowByIdApi(Resource):
             except DraftWorkflowDeletionError as e:
                 abort(400, description=str(e))
             except ValueError as e:
-                raise NotFound(str(e))
+                raise NotFound(str(e)) from e
 
         WorkflowAgentRetirementService.retire_unowned(
             tenant_id=app_model.tenant_id,
@@ -1695,6 +1725,7 @@ class DraftWorkflowTriggerRunApi(Resource):
     Path: /apps/<uuid:app_id>/workflows/draft/trigger/run
     """
 
+    @error_responses(InvokeRateLimitHttpError)
     @console_ns.doc("poll_draft_workflow_trigger_run")
     @console_ns.doc(description="Poll for trigger events and execute full workflow when event arrives")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -1704,6 +1735,7 @@ class DraftWorkflowTriggerRunApi(Resource):
         "Trigger event received and workflow executed successfully",
         console_ns.models[GeneratedAppResponse.__name__],
     )
+    @console_ns.response(400, "Trigger run failed", console_ns.models[WorkflowTriggerRunErrorResponse.__name__])
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
     @setup_required
@@ -1737,22 +1769,19 @@ class DraftWorkflowTriggerRunApi(Resource):
             event = poller.poll()
             if not event:
                 return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
-            workflow_args = dict(event.workflow_args)
-
-            workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             return helper.compact_generate_response(
                 AppGenerateService.generate(
                     session=session,
                     app_model=app_model,
                     user=current_user,
-                    args=workflow_args,
+                    args=event.workflow_args,
                     invoke_from=InvokeFrom.DEBUGGER,
                     streaming=True,
                     root_node_id=node_id,
                 )
             )
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except PluginInvokeError as e:
             return jsonable_encoder({"status": "error", "error": e.to_user_friendly_error()}), 400
         except Exception as e:
@@ -1775,6 +1804,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
         "Trigger event received and node executed successfully",
         console_ns.models[GeneratedAppResponse.__name__],
     )
+    @console_ns.response(400, "Trigger run failed", console_ns.models[WorkflowTriggerRunErrorResponse.__name__])
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
     @setup_required
@@ -1837,7 +1867,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
                 files=files,
             )
             return jsonable_encoder(node_execution)
-        except Exception as e:
+        except Exception:
             logger.exception("Error running draft workflow trigger node")
             return jsonable_encoder(
                 {"status": "error", "error": "An unexpected error occurred while running the node."}
@@ -1851,11 +1881,13 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     Path: /apps/<uuid:app_id>/workflows/draft/trigger/run-all
     """
 
+    @error_responses(InvokeRateLimitHttpError)
     @console_ns.doc("draft_workflow_trigger_run_all")
     @console_ns.doc(description="Full workflow debug when the start node is a trigger")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[DraftWorkflowTriggerRunAllPayload.__name__])
     @console_ns.response(200, "Workflow executed successfully", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(400, "Trigger run failed", console_ns.models[WorkflowTriggerRunErrorResponse.__name__])
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
     @setup_required
@@ -1894,21 +1926,18 @@ class DraftWorkflowTriggerRunAllApi(Resource):
             return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
 
         try:
-            workflow_args = dict(trigger_debug_event.workflow_args)
-
-            workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             response = AppGenerateService.generate(
                 session=session,
                 app_model=app_model,
                 user=current_user,
-                args=workflow_args,
+                args=trigger_debug_event.workflow_args,
                 invoke_from=InvokeFrom.DEBUGGER,
                 streaming=True,
                 root_node_id=trigger_debug_event.node_id,
             )
             return helper.compact_generate_response(response)
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except Exception:
             logger.exception("Error running draft workflow trigger run-all")
             return jsonable_encoder(
@@ -1943,10 +1972,10 @@ class WorkflowOnlineUsersApi(Resource):
             return {"data": []}
 
         access_filter = None
+        if dify_config.RBAC_ENABLED:
+            access_filter = resolve_app_access_filter(current_tenant_id, current_user.id)
         workflow_service = WorkflowService()
         with session_factory.create_session() as session:
-            if dify_config.RBAC_ENABLED:
-                access_filter = resolve_app_access_filter(current_tenant_id, current_user.id, session=session)
             app_maintainers = workflow_service.get_tenant_app_maintainers(app_ids, current_tenant_id, session=session)
 
         accessible_app_ids = set(app_maintainers)
@@ -1968,7 +1997,7 @@ class WorkflowOnlineUsersApi(Resource):
                 pipe.hgetall(f"{WORKFLOW_ONLINE_USERS_PREFIX}{app_id}")
 
             users_json_batch = pipe.execute()
-            for app_id, users_json in zip(app_id_batch, users_json_batch):
+            for app_id, users_json in zip(app_id_batch, users_json_batch, strict=False):
                 users_json_by_app_id[app_id] = users_json
 
         results = []

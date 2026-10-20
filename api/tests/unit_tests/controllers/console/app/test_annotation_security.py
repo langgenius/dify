@@ -21,12 +21,11 @@ from models.model import App, AppMode, IconType
 from services.annotation_service import AppAnnotationService
 from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_account
 
 
 def _account() -> Account:
-    account = Account(name="Annotation Tester", email="annotation-tester@example.com")
-    account.id = "user_id"
-    return account
+    return make_account(account_id="user_id", name="Annotation Tester", email="annotation-tester@example.com")
 
 
 def _persist_app(session: Session) -> App:
@@ -76,7 +75,13 @@ class TestAnnotationImportRateLimiting:
             return "success"
 
         # Should abort with 429
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(
+            Exception,
+            match=(
+                "429 Too Many Requests: Too many annotation import requests\\. Maximum "
+                "5 requests per minute allowed\\. Please try again later\\."
+            ),
+        ) as exc_info:
             dummy_view()
 
         # Verify it's a rate limit error
@@ -96,7 +101,13 @@ class TestAnnotationImportRateLimiting:
             return "success"
 
         # Should abort with 429
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(
+            Exception,
+            match=(
+                "429 Too Many Requests: Too many annotation import requests\\. Maximum "
+                "20 requests per hour allowed\\. Please try again later\\."
+            ),
+        ) as exc_info:
             dummy_view()
 
         assert "429" in str(exc_info.value) or "Too many" in str(exc_info.value)
@@ -147,7 +158,14 @@ class TestAnnotationImportConcurrencyControl:
             return "success"
 
         # Should abort with 429
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(
+            Exception,
+            match=(
+                "429 Too Many Requests: Too many concurrent import tasks\\. Maximum 2 "
+                "concurrent imports allowed per workspace\\. Please wait for existing "
+                "imports to complete\\."
+            ),
+        ) as exc_info:
             dummy_view()
 
         assert "429" in str(exc_info.value) or "concurrent" in str(exc_info.value).lower()
@@ -190,21 +208,21 @@ class TestAnnotationImportFileValidation:
         max_size = dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT * 1024 * 1024
         large_content = b"x" * (max_size + 1024)  # Exceed by 1KB
 
-        file = FileStorage(stream=io.BytesIO(large_content), filename="test.csv", content_type="text/csv")
+        FileStorage(stream=io.BytesIO(large_content), filename="test.csv", content_type="text/csv")
 
         # Should be rejected in controller
         # This would be tested in integration tests with actual endpoint
 
     def test_empty_file_rejected(self):
         """Test that empty files are rejected."""
-        file = FileStorage(stream=io.BytesIO(b""), filename="test.csv", content_type="text/csv")
+        FileStorage(stream=io.BytesIO(b""), filename="test.csv", content_type="text/csv")
 
         # Should be rejected
         # This would be tested in integration tests
 
     def test_non_csv_file_rejected(self):
         """Test that non-CSV files are rejected."""
-        file = FileStorage(stream=io.BytesIO(b"test"), filename="test.txt", content_type="text/plain")
+        FileStorage(stream=io.BytesIO(b"test"), filename="test.txt", content_type="text/plain")
 
         # Should be rejected based on extension
         # This would be tested in integration tests
@@ -230,7 +248,7 @@ class TestAnnotationImportServiceValidation:
         with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
             mock_auth.return_value = (_account(), "tenant_id")
 
-            with patch("services.annotation_service.FeatureService") as mock_features:
+            with patch("services.annotation_service.FeatureService"):
                 result = AppAnnotationService.batch_import_app_annotations("app_id", file, sqlite_session)
 
                 # Should return error about too many records
@@ -287,8 +305,8 @@ class TestAnnotationImportServiceValidation:
         with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
             mock_auth.return_value = (_account(), "tenant_id")
 
-            with patch("services.annotation_service.FeatureService") as mock_features:
-                with patch("services.annotation_service.batch_import_annotations_task") as mock_task:
+            with patch("services.annotation_service.FeatureService"):
+                with patch("services.annotation_service.batch_import_annotations_task"):
                     with patch("services.annotation_service.redis_client"):
                         result = AppAnnotationService.batch_import_app_annotations("app_id", file, sqlite_session)
 

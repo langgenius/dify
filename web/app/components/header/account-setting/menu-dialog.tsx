@@ -18,7 +18,7 @@ type MenuDialogProps = {
 }
 
 const MenuDialog = ({ children, title, onClose }: MenuDialogProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <Dialog
@@ -30,7 +30,7 @@ const MenuDialog = ({ children, title, onClose }: MenuDialogProps) => {
       <DialogPortal>
         <DialogBackdrop className="bg-transparent" />
         <DialogViewport>
-          <DialogPopup className="pointer-events-none relative isolate h-full w-full scale-100 overflow-visible rounded-none border-none bg-transparent shadow-none transition-opacity data-ending-style:scale-100 data-starting-style:scale-100">
+          <DialogPopup className="pointer-events-none isolate h-full w-full scale-100 transition-opacity data-ending-style:scale-100 data-starting-style:scale-100">
             <DialogTitle className="sr-only">{title}</DialogTitle>
             <div className="pointer-events-auto absolute top-6 right-6 z-10 flex shrink-0 flex-col items-center">
               <DialogClose

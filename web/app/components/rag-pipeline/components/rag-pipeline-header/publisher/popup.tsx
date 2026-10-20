@@ -1,35 +1,36 @@
 import type { PublishWorkflowParams } from '@/types/workflow'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowRightUpLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Divider from '@/app/components/base/divider'
-import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import {
   pricingQueryParamName,
   pricingQueryParser,
 } from '@/app/components/billing/pricing/query-params'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-checklist'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
   workspacePermissionKeysAtom,
@@ -42,9 +43,6 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import { useInvalid } from '@/service/use-base'
-import { publishedPipelineInfoQueryKeyPrefix } from '@/service/use-pipeline'
 import { usePublishWorkflow } from '@/service/use-workflow'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { RAG_PIPELINE_PUBLISH_HOTKEY } from '../hotkeys'
@@ -66,7 +64,8 @@ export function Popup({
   isPublishingAsCustomizedPipeline = false,
   onShowPublishAsKnowledgePipelineModal,
 }: PopupProps) {
-  const { t } = useTranslation()
+  const popupRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation(['billing', 'common', 'datasetPipeline', 'pipeline', 'workflow'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -74,7 +73,7 @@ export function Popup({
   const { datasetId } = useParams()
   const publishedAt = useStore((s) => s.publishedAt)
   const draftUpdatedAt = useStore((s) => s.draftUpdatedAt)
-  const pipelineId = useStore((s) => s.pipelineId)
+  const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
   const mutateDatasetRes = useDatasetDetailContextWithSelector((s) => s.mutateDatasetRes)
   const { data: currentUserId } = useSuspenseQuery({
@@ -108,11 +107,10 @@ export function Popup({
   const showConfirm = onShowConfirm ?? showLocalConfirm
   const hideConfirm = onHideConfirm ?? hideLocalConfirm
   const [publishing, { setFalse: hidePublishing, setTrue: showPublishing }] = useBoolean(false)
-  const invalidPublishedPipelineInfo = useInvalid([
-    ...publishedPipelineInfoQueryKeyPrefix,
-    pipelineId,
-  ])
-  const invalidDatasetList = useInvalidDatasetList()
+  const queryClient = useQueryClient()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
   const handleHideConfirm = useCallback(() => {
     hideConfirm()
     onRequestClose?.()
@@ -165,7 +163,11 @@ export function Popup({
             )
             workflowStore.getState().setPublishedAt(res.created_at)
             mutateDatasetRes?.()
-            invalidPublishedPipelineInfo()
+            queryClient.invalidateQueries({
+              queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryKey({
+                input: { params: { pipeline_id: pipelineId || '' } },
+              }),
+            })
             invalidDatasetList()
           }
         }
@@ -189,16 +191,17 @@ export function Popup({
       t,
       workflowStore,
       mutateDatasetRes,
-      invalidPublishedPipelineInfo,
+      queryClient,
       invalidDatasetList,
       hidePublishing,
       handleHideConfirm,
     ],
   )
   useHotkey(RAG_PIPELINE_PUBLISH_HOTKEY, () => void handlePublish(), {
-    enabled: !published && !publishing,
+    target: popupRef,
+    enabled: !published && !publishing && !confirmVisible,
     ignoreInputs: true,
-    preventDefault: true,
+    requireReset: true,
   })
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     if (isAllowPublishAsCustomKnowledgePipelineTemplate === undefined) return
@@ -218,6 +221,7 @@ export function Popup({
   ])
   return (
     <div
+      ref={popupRef}
       className={cn(
         'rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5',
         isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-90' : 'w-100',
@@ -254,9 +258,9 @@ export function Popup({
             <div className="flex gap-1">
               <span>{t(($) => $['common.publishUpdate'], { ns: 'workflow' })}</span>
               <KbdGroup>
-                {RAG_PIPELINE_PUBLISH_HOTKEY.split('+').map((key) => (
+                {formatForDisplay(RAG_PIPELINE_PUBLISH_HOTKEY, { parts: true }).map((key) => (
                   <Kbd key={key} color="white">
-                    {formatForDisplay(key)}
+                    {key}
                   </Kbd>
                 ))}
               </KbdGroup>
@@ -321,7 +325,7 @@ export function Popup({
             <RiArrowRightUpLine className="size-4 shrink-0" />
           </Button>
         )}
-        <Divider className="my-2" />
+        <Separator className="my-2 h-[0.5px]" />
         <Button
           className="w-full hover:bg-state-accent-hover hover:text-text-accent"
           variant="tertiary"
@@ -343,9 +347,9 @@ export function Popup({
             {deploymentEdition === 'CLOUD' &&
               isAllowPublishAsCustomKnowledgePipelineTemplate === false && (
                 <PremiumBadge className="shrink-0 select-none" size="s" color="indigo">
-                  <SparklesSoft
+                  <span
                     aria-hidden="true"
-                    className="flex size-3 items-center text-components-premium-badge-indigo-text-stop-0"
+                    className="i-custom-public-common-sparkles-soft flex size-3 items-center text-components-premium-badge-indigo-text-stop-0"
                   />
                   <span className="p-0.5 system-2xs-medium">
                     {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
@@ -357,25 +361,26 @@ export function Popup({
       </div>
       <AlertDialog open={confirmVisible} onOpenChange={(open) => !open && handleHideConfirm()}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle
-              title={t(($) => $['common.confirmPublish'], { ns: 'pipeline' })}
-              className="w-full truncate title-2xl-semi-bold text-text-primary"
-            >
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['common.confirmPublish'], { ns: 'pipeline' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['common.confirmPublishContent'], { ns: 'pipeline' })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton disabled={publishing} onClick={() => void handlePublish()}>
+            <AlertDialogConfirmButton
+              tone="default"
+              disabled={publishing}
+              onClick={() => void handlePublish()}
+            >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

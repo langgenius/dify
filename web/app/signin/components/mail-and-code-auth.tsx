@@ -5,12 +5,12 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
 import { emailRegex, TURNSTILE_SITE_KEY } from '@/config'
-import { useLocale } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { sendEMailLoginCode } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import Turnstile from './turnstile'
 
 type MailAndCodeAuthProps = {
@@ -18,7 +18,7 @@ type MailAndCodeAuthProps = {
 }
 
 export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -39,11 +39,13 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
     try {
       setLoading(true)
       shouldResetTurnstile = isTurnstileRequired
-      const ret = await sendEMailLoginCode(
-        email,
-        locale,
-        isTurnstileRequired ? turnstileToken : undefined,
-      )
+      const ret = await consoleClient.emailCodeLogin.post({
+        body: {
+          email,
+          language: locale,
+          ...(isTurnstileRequired ? { turnstile_token: turnstileToken } : {}),
+        },
+      })
       if (ret.result === 'success') {
         setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)

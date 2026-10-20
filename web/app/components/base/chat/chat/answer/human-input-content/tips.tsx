@@ -1,7 +1,7 @@
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 
 type TipsProps = {
@@ -29,11 +29,11 @@ const EmailDebugTip = () => {
 }
 
 const Tips = ({ showEmailTip, isEmailDebugMode, showDebugModeTip }: TipsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <>
-      <Divider className="my-2! w-7.5" />
+      <Separator className="my-2 h-[0.5px] w-7.5" />
       <div className="space-y-1 pt-1" data-testid="tips">
         {showEmailTip && !isEmailDebugMode && (
           <div className="system-xs-regular text-text-secondary">

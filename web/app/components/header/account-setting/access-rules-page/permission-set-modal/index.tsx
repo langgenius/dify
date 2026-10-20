@@ -3,18 +3,21 @@ import type { AccessPolicyResourceType } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getEnterpriseDocUrl, useLocale } from '@/context/i18n'
-import { getDocLanguage } from '@/i18n-config/language'
+import { useLocale } from '#i18n'
+import { getEnterpriseDocUrl } from '@/context/i18n'
+import { getDocLanguage } from '@/i18n/language'
 import PermissionPicker from './permission-picker'
 
 export type PermissionSetModalMode = 'create' | 'edit' | 'view'
@@ -43,7 +46,7 @@ const PermissionSetModalBody = ({
   onClose,
   onSubmit,
 }: PermissionSetModalBodyProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const locale = useLocale()
   const docLanguage = getDocLanguage(locale)
   const [name, setName] = useState(initialValues?.name ?? '')
@@ -77,10 +80,7 @@ const PermissionSetModalBody = ({
   }
 
   return (
-    <DialogContent
-      className="flex h-[85vh] w-140 flex-col overflow-hidden p-0"
-      backdropProps={{ forceRender: true }}
-    >
+    <DialogContent className="h-[85vh] w-140" backdropProps={{ forceRender: true }}>
       <form
         className="contents"
         onSubmit={(event) => {
@@ -88,35 +88,21 @@ const PermissionSetModalBody = ({
           void handleConfirm()
         }}
       >
-        <div className="relative shrink-0 px-6 pt-6 pb-4">
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="lg"
-                className="absolute inset-e-6 top-6"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-          <div className="pr-8">
-            <DialogTitle className="system-xl-semibold text-text-primary">
-              {t(($) => $[`permissionSet.modal.${mode}.${resourceType}.title`], {
-                ns: 'permission',
-              })}
-            </DialogTitle>
-            <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-              {t(($) => $[`permissionSet.modal.${mode}.${resourceType}.description`], {
-                ns: 'permission',
-              })}
-            </DialogDescription>
-          </div>
-        </div>
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $[`permissionSet.modal.${mode}.${resourceType}.title`], {
+              ns: 'permission',
+            })}
+          </DialogTitle>
+          <DialogDescription>
+            {t(($) => $[`permissionSet.modal.${mode}.${resourceType}.description`], {
+              ns: 'permission',
+            })}
+          </DialogDescription>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
 
-        <div className="border-t border-divider-subtle" />
-
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-hidden px-6 py-5">
+        <DialogBody className="flex flex-col gap-5">
           <div className="flex shrink-0 flex-col gap-1">
             <label htmlFor="permission-set-name" className="system-sm-medium text-text-secondary">
               {t(($) => $['permissionSet.nameLabel'], { ns: 'permission' })}
@@ -164,11 +150,11 @@ const PermissionSetModalBody = ({
               readonly={readonly}
             />
           </div>
-        </div>
+        </DialogBody>
 
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-divider-subtle px-6 py-4">
+        <DialogFooter>
           {submitFailed && (
-            <p role="alert" className="system-xs-regular text-text-destructive">
+            <p role="alert" className="me-auto system-xs-regular text-text-destructive">
               {t(($) => $['api.actionFailed'], { ns: 'common' })}
             </p>
           )}
@@ -176,24 +162,22 @@ const PermissionSetModalBody = ({
             href={getEnterpriseDocUrl('/use/workspace/permission-reference', docLanguage)}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
+            className="me-auto inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
           >
             <span>{t(($) => $['permissionSet.learnMore'], { ns: 'permission' })}</span>
             <span aria-hidden className="i-ri-external-link-line h-3.5 w-3.5" />
           </a>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="secondary" onClick={onClose}>
-              {readonly
-                ? t(($) => $['operation.close'], { ns: 'common' })
-                : t(($) => $['operation.cancel'], { ns: 'common' })}
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {readonly
+              ? t(($) => $['operation.close'], { ns: 'common' })
+              : t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
+          {!readonly && (
+            <Button type="submit" variant="primary" disabled={!canSubmit} loading={isSubmitting}>
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
             </Button>
-            {!readonly && (
-              <Button type="submit" variant="primary" disabled={!canSubmit} loading={isSubmitting}>
-                {t(($) => $['operation.confirm'], { ns: 'common' })}
-              </Button>
-            )}
-          </div>
-        </div>
+          )}
+        </DialogFooter>
       </form>
     </DialogContent>
   )

@@ -71,7 +71,7 @@ export const getPluginIconInMarketplace = (
 }
 
 export const getFormattedPlugin = (payload: MarketplacePluginPayload): Plugin => {
-  const plugin = payload as unknown as Plugin
+  const plugin = payload as Plugin
 
   if (payload.type === 'bundle') {
     return {
@@ -261,15 +261,14 @@ export const getMarketplacePlugins = async (
 }
 
 export const getMarketplaceListCondition = (pluginType: string) => {
-  if (
-    [
-      PluginCategoryEnum.tool,
-      PluginCategoryEnum.agent,
-      PluginCategoryEnum.model,
-      PluginCategoryEnum.datasource,
-      PluginCategoryEnum.trigger,
-    ].includes(pluginType as PluginCategoryEnum)
-  )
+  const marketplaceCategories: PluginCategoryEnum[] = [
+    PluginCategoryEnum.tool,
+    PluginCategoryEnum.agent,
+    PluginCategoryEnum.model,
+    PluginCategoryEnum.datasource,
+    PluginCategoryEnum.trigger,
+  ]
+  if (marketplaceCategories.includes(pluginType as PluginCategoryEnum))
     return `category=${pluginType}`
 
   if (pluginType === PluginCategoryEnum.extension) return 'category=endpoint'

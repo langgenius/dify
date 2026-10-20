@@ -9,9 +9,9 @@ from core.plugin.impl.exc import PluginDaemonClientSideError
 from models import Account, AppMode, CreatorUserRole
 from models.enums import ConversationFromSource, EndUserType, MessageFileBelongsTo
 from models.model import AppModelConfig, Conversation, EndUser, Message, MessageAgentThought
-from services.account_service import AccountService, TenantService
 from services.agent_service import AgentService
 from services.app_service import AppService, CreateAppParams
+from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -29,7 +29,9 @@ class TestAgentService:
             patch("services.app_service.SystemFeatureService", autospec=True) as mock_feature_service,
             patch("services.app_service.EnterpriseService", autospec=True) as mock_enterprise_service,
             patch("services.app_service.ModelManager.for_tenant", autospec=True) as mock_model_manager,
-            patch("services.account_service.SystemFeatureService", autospec=True) as mock_account_feature_service,
+            patch(
+                "services.account.login_adapters.SystemFeatureService", autospec=True
+            ) as mock_account_feature_service,
         ):
             # Setup default mock returns for agent service
             mock_plugin_agent_client_instance = mock_plugin_agent_client.return_value
@@ -107,14 +109,14 @@ class TestAgentService:
         mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app with realistic data
@@ -133,8 +135,9 @@ class TestAgentService:
         app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Update the app model config to set agent_mode for agent-chat mode
-        if app.mode == AppMode.AGENT_CHAT and app.app_model_config:
-            app.app_model_config.agent_mode = json.dumps({"enabled": True, "strategy": "react", "tools": []})
+        app_model_config = app.app_model_config_with_session(session=db_session_with_containers)
+        if app.mode == AppMode.AGENT_CHAT and app_model_config:
+            app_model_config.agent_mode = json.dumps({"enabled": True, "strategy": "react", "tools": []})
 
             db_session_with_containers.commit()
 
@@ -221,7 +224,6 @@ class TestAgentService:
         Returns:
             list: Created agent thoughts
         """
-        fake = Faker()
 
         agent_thoughts = []
 
@@ -285,12 +287,11 @@ class TestAgentService:
         """
         Test successful retrieval of agent logs with complete data.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
-        agent_thoughts = self._create_test_agent_thoughts(db_session_with_containers, message)
+        self._create_test_agent_thoughts(db_session_with_containers, message)
 
         # Execute the method under test
         result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
@@ -534,7 +535,6 @@ class TestAgentService:
         """
         Test agent logs retrieval with tool errors.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -584,7 +584,6 @@ class TestAgentService:
         """
         Test agent logs retrieval when message has no agent thoughts.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -661,7 +660,6 @@ class TestAgentService:
         """
         Test error handling when agent config is not found.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -680,7 +678,6 @@ class TestAgentService:
         """
         Test successful listing of agent providers.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -701,7 +698,6 @@ class TestAgentService:
         """
         Test successful retrieval of specific agent provider.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -725,7 +721,6 @@ class TestAgentService:
         """
         Test error handling when plugin daemon client raises an error.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -747,7 +742,6 @@ class TestAgentService:
         """
         Test agent logs retrieval with complex tool data and multiple tools.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -834,7 +828,6 @@ class TestAgentService:
         """
         Test agent logs retrieval with message files and agent thought files.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -914,7 +907,6 @@ class TestAgentService:
         """
         Test agent logs retrieval with different timezone settings.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -941,7 +933,6 @@ class TestAgentService:
         """
         Test agent logs retrieval with empty tool data.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -982,7 +973,6 @@ class TestAgentService:
         """
         Test agent logs retrieval with malformed JSON data in tool fields.
         """
-        fake = Faker()
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)

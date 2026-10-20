@@ -1,867 +1,777 @@
 'use client'
-import type { FC } from 'react'
 import type {
-  AliyunConfig,
-  ArizeConfig,
-  DatabricksConfig,
-  LangFuseConfig,
-  LangSmithConfig,
-  MLflowConfig,
-  OpikConfig,
-  PhoenixConfig,
-  TencentConfig,
-  WeaveConfig,
-} from './type'
+  TraceAppConfigResponse,
+  TraceConfigPayload,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { FC, RefObject } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useBoolean } from 'ahooks'
+import { DialogClose, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
+import { consoleQuery } from '@/service/console'
 import { docURL } from './config'
-import Field from './field'
 import { TracingProvider } from './type'
 
 type Props = Readonly<{
   appId: string
   type: TracingProvider
-  payload?:
-    | ArizeConfig
-    | PhoenixConfig
-    | LangSmithConfig
-    | LangFuseConfig
-    | OpikConfig
-    | WeaveConfig
-    | AliyunConfig
-    | MLflowConfig
-    | DatabricksConfig
-    | TencentConfig
-    | null
+  payload?: TraceAppConfigResponse['tracing_config']
   onRemoved: () => void
-  onCancel: () => void
-  onSaved: (
-    payload:
-      | ArizeConfig
-      | PhoenixConfig
-      | LangSmithConfig
-      | LangFuseConfig
-      | OpikConfig
-      | WeaveConfig
-      | AliyunConfig
-      | MLflowConfig
-      | DatabricksConfig
-      | TencentConfig,
-  ) => void
+  firstInputRef: RefObject<HTMLInputElement | null>
+  onSaved: () => void
   onChosen: (provider: TracingProvider) => void
 }>
 
 const I18N_PREFIX = 'tracing.configProvider'
-
-const arizeConfigTemplate = {
-  api_key: '',
-  space_id: '',
-  project: '',
-  endpoint: '',
-}
-
-const phoenixConfigTemplate = {
-  api_key: '',
-  project: '',
-  endpoint: '',
-}
-
-const langSmithConfigTemplate = {
-  api_key: '',
-  project: '',
-  endpoint: '',
-}
-
-const langFuseConfigTemplate = {
-  public_key: '',
-  secret_key: '',
-  host: '',
-}
-
-const opikConfigTemplate = {
-  api_key: '',
-  project: '',
-  url: '',
-  workspace: '',
-}
-
-const weaveConfigTemplate = {
-  api_key: '',
-  entity: '',
-  project: '',
-  endpoint: '',
-  host: '',
-}
-
-const aliyunConfigTemplate = {
-  app_name: '',
-  license_key: '',
-  endpoint: '',
-}
-
-const mlflowConfigTemplate = {
-  tracking_uri: '',
-  experiment_id: '',
-  username: '',
-  password: '',
-}
-
-const databricksConfigTemplate = {
-  experiment_id: '',
-  host: '',
-  client_id: '',
-  client_secret: '',
-  personal_access_token: '',
-}
-
-const tencentConfigTemplate = {
-  token: '',
-  endpoint: '',
-  service_name: '',
-}
 
 const ProviderConfigModal: FC<Props> = ({
   appId,
   type,
   payload,
   onRemoved,
-  onCancel,
+  firstInputRef,
   onSaved,
   onChosen,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'modelProvider'])
   const isEdit = !!payload
-  const isAdd = !isEdit
-  const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<
-    | ArizeConfig
-    | PhoenixConfig
-    | LangSmithConfig
-    | LangFuseConfig
-    | OpikConfig
-    | WeaveConfig
-    | AliyunConfig
-    | MLflowConfig
-    | DatabricksConfig
-    | TencentConfig
-  >(
-    (() => {
-      if (isEdit) return payload
-
-      if (type === TracingProvider.arize) return arizeConfigTemplate
-      else if (type === TracingProvider.phoenix) return phoenixConfigTemplate
-      else if (type === TracingProvider.langSmith) return langSmithConfigTemplate
-      else if (type === TracingProvider.langfuse) return langFuseConfigTemplate
-      else if (type === TracingProvider.opik) return opikConfigTemplate
-      else if (type === TracingProvider.aliyun) return aliyunConfigTemplate
-      else if (type === TracingProvider.mlflow) return mlflowConfigTemplate
-      else if (type === TracingProvider.databricks) return databricksConfigTemplate
-      else if (type === TracingProvider.tencent) return tencentConfigTemplate
-
-      return weaveConfigTemplate
-    })(),
+  const createConfig = useMutation(
+    consoleQuery.apps.byAppId.traceConfig.post.mutationOptions({
+      context: { silent: true },
+      onSuccess: () => {
+        onSaved()
+        onChosen(type)
+      },
+    }),
   )
-  const [isConfigDialogOpen, { set: setIsConfigDialogOpen }] = useBoolean(true)
-  const [
-    isRemoveDialogOpen,
-    { set: setIsRemoveDialogOpen, setTrue: showRemoveConfirm, setFalse: hideRemoveConfirm },
-  ] = useBoolean(false)
+  const updateConfig = useMutation(
+    consoleQuery.apps.byAppId.traceConfig.patch.mutationOptions({
+      context: { silent: true },
+      onSuccess: onSaved,
+    }),
+  )
+  const removeConfig = useMutation(
+    consoleQuery.apps.byAppId.traceConfig.delete.mutationOptions({
+      onSuccess: onRemoved,
+    }),
+  )
+  const saveConfig = isEdit ? updateConfig : createConfig
 
-  const handleRemove = useCallback(async () => {
-    await removeTracingConfig({
-      appId,
-      provider: type,
+  const handleRemove = () => {
+    removeConfig.mutate({
+      params: { app_id: appId },
+      query: { tracing_provider: type },
     })
-    toast(
-      t(($) => $['api.remove'], { ns: 'common' }),
-      { type: 'success' },
-    )
-    onRemoved()
-    hideRemoveConfirm()
-  }, [hideRemoveConfirm, appId, type, t, onRemoved])
+  }
 
-  const handleConfigChange = useCallback(
-    (key: string) => {
-      return (value: string) => {
-        setConfig({
-          ...config,
-          [key]: value,
-        })
-      }
-    },
-    [config],
-  )
-
-  const checkValid = useCallback(() => {
-    let errorMessage = ''
-    if (type === TracingProvider.arize) {
-      const postData = config as ArizeConfig
-      if (!postData.api_key)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'API Key' })
-      if (!postData.space_id)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'Space ID' })
-      if (!errorMessage && !postData.project)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-        })
-    }
-
-    if (type === TracingProvider.phoenix) {
-      const postData = config as PhoenixConfig
-      if (!postData.api_key)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'API Key' })
-      if (!errorMessage && !postData.project)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-        })
-    }
-
-    if (type === TracingProvider.langSmith) {
-      const postData = config as LangSmithConfig
-      if (!postData.api_key)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'API Key' })
-      if (!errorMessage && !postData.project)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-        })
-    }
-
-    if (type === TracingProvider.langfuse) {
-      const postData = config as LangFuseConfig
-      if (!errorMessage && !postData.secret_key)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: t(($) => $[`${I18N_PREFIX}.secretKey`], { ns: 'app' }),
-        })
-      if (!errorMessage && !postData.public_key)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: t(($) => $[`${I18N_PREFIX}.publicKey`], { ns: 'app' }),
-        })
-      if (!errorMessage && !postData.host)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'Host' })
-    }
-
-    if (type === TracingProvider.opik) {
-      // todo: check field validity
-      // const postData = config as OpikConfig
-    }
-
-    if (type === TracingProvider.weave) {
-      const postData = config as WeaveConfig
-      if (!errorMessage && !postData.api_key)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'API Key' })
-      if (!errorMessage && !postData.project)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-        })
-    }
-
-    if (type === TracingProvider.aliyun) {
-      const postData = config as AliyunConfig
-      if (!errorMessage && !postData.app_name)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'App Name' })
-      if (!errorMessage && !postData.license_key)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'License Key' })
-      if (!errorMessage && !postData.endpoint)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'Endpoint' })
-    }
-
-    if (type === TracingProvider.mlflow) {
-      const postData = config as MLflowConfig
-      if (!errorMessage && !postData.tracking_uri)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: 'Tracking URI',
-        })
-    }
-
-    if (type === TracingProvider.databricks) {
-      const postData = config as DatabricksConfig
-      if (!errorMessage && !postData.experiment_id)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: 'Experiment ID',
-        })
-      if (!errorMessage && !postData.host)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'Host' })
-    }
-
-    if (type === TracingProvider.tencent) {
-      const postData = config as TencentConfig
-      if (!errorMessage && !postData.token)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'Token' })
-      if (!errorMessage && !postData.endpoint)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'Endpoint' })
-      if (!errorMessage && !postData.service_name)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: 'Service Name',
-        })
-    }
-
-    return errorMessage
-  }, [config, t, type])
-  const handleSave = useCallback(async () => {
-    if (isSaving) return
-    const errorMessage = checkValid()
-    if (errorMessage) {
-      toast(errorMessage, { type: 'error' })
-      return
-    }
-    const action = isEdit ? updateTracingConfig : addTracingConfig
-    try {
-      await action({
-        appId,
-        body: {
-          tracing_provider: type,
-          tracing_config: config,
-        },
-      })
-      toast(
-        t(($) => $['api.success'], { ns: 'common' }),
-        { type: 'success' },
-      )
-      onSaved(config)
-      if (isAdd) onChosen(type)
-    } finally {
-      setIsSaving(false)
-    }
-  }, [appId, checkValid, config, isAdd, isEdit, isSaving, onChosen, onSaved, t, type])
-
-  // Defer onCancel to onOpenChangeComplete so the dialog's exit animation
-  // (scale/opacity transition) can finish before the parent unmounts this modal.
-  const handleConfigDialogOpenChangeComplete = useCallback(
-    (open: boolean) => {
-      if (!open) onCancel()
-    },
-    [onCancel],
-  )
+  const handleSave = (values: TraceConfigPayload['tracing_config']) => {
+    if (saveConfig.isPending) return
+    const config: TraceConfigPayload['tracing_config'] = {}
+    for (const [key, value] of Object.entries(values))
+      config[key] = value === '' && payload?.[key] === null ? null : value
+    saveConfig.mutate({
+      params: { app_id: appId },
+      body: { tracing_provider: type, tracing_config: config },
+    })
+  }
 
   return (
     <>
-      {!isRemoveDialogOpen ? (
-        <Dialog
-          open={isConfigDialogOpen}
-          onOpenChange={setIsConfigDialogOpen}
-          onOpenChangeComplete={handleConfigDialogOpenChangeComplete}
-        >
-          <DialogContent className="max-h-[calc(100dvh-1rem)] w-auto max-w-[calc(100vw-1rem)] overflow-visible border-none bg-transparent p-0 shadow-none">
-            <div className="flex items-center justify-center">
-              <div className="mx-2 max-h-[calc(100vh-120px)] w-160 overflow-y-auto rounded-2xl bg-components-panel-bg shadow-xl">
-                <div className="px-8 pt-8">
-                  <div className="mb-4 flex items-center justify-between">
-                    <div className="title-2xl-semi-bold text-text-primary">
-                      {t(($) => $[`${I18N_PREFIX}.title`], { ns: 'app' })}
-                      {t(($) => $[`tracing.${type}.title`], { ns: 'app' })}
-                    </div>
-                  </div>
+      <div className="flex items-center justify-between gap-4 px-8 pt-8 pb-4">
+        <DialogTitle className="min-w-0 flex-1">
+          {t(($) => $[`${I18N_PREFIX}.title`], { ns: 'app' })}
+          {t(($) => $[`tracing.${type}.title`], { ns: 'app' })}
+        </DialogTitle>
+        <DialogClose
+          render={
+            <IconButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} size="lg">
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
+      </div>
 
-                  <div className="space-y-4">
-                    {type === TracingProvider.arize && (
-                      <>
-                        <Field
-                          label="API Key"
-                          labelClassName="text-sm!"
-                          isRequired
-                          value={(config as ArizeConfig).api_key}
-                          onChange={handleConfigChange('api_key')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: 'API Key',
-                          })!}
-                        />
-                        <Field
-                          label="Space ID"
-                          labelClassName="text-sm!"
-                          isRequired
-                          value={(config as ArizeConfig).space_id}
-                          onChange={handleConfigChange('space_id')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: 'Space ID',
-                          })!}
-                        />
-                        <Field
-                          label={t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })!}
-                          labelClassName="text-sm!"
-                          isRequired
-                          value={(config as ArizeConfig).project}
-                          onChange={handleConfigChange('project')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-                          })!}
-                        />
-                        <Field
-                          label="Endpoint"
-                          labelClassName="text-sm!"
-                          value={(config as ArizeConfig).endpoint}
-                          onChange={handleConfigChange('endpoint')}
-                          placeholder="https://otlp.arize.com"
-                        />
-                      </>
-                    )}
-                    {type === TracingProvider.phoenix && (
-                      <>
-                        <Field
-                          label="API Key"
-                          labelClassName="text-sm!"
-                          isRequired
-                          value={(config as PhoenixConfig).api_key}
-                          onChange={handleConfigChange('api_key')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: 'API Key',
-                          })!}
-                        />
-                        <Field
-                          label={t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })!}
-                          labelClassName="text-sm!"
-                          isRequired
-                          value={(config as PhoenixConfig).project}
-                          onChange={handleConfigChange('project')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-                          })!}
-                        />
-                        <Field
-                          label="Endpoint"
-                          labelClassName="text-sm!"
-                          value={(config as PhoenixConfig).endpoint}
-                          onChange={handleConfigChange('endpoint')}
-                          placeholder="https://app.phoenix.arize.com"
-                        />
-                      </>
-                    )}
-                    {type === TracingProvider.aliyun && (
-                      <>
-                        <Field
-                          label="License Key"
-                          labelClassName="text-sm!"
-                          isRequired
-                          value={(config as AliyunConfig).license_key}
-                          onChange={handleConfigChange('license_key')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: 'License Key',
-                          })!}
-                        />
-                        <Field
-                          label="Endpoint"
-                          labelClassName="text-sm!"
-                          value={(config as AliyunConfig).endpoint}
-                          onChange={handleConfigChange('endpoint')}
-                          placeholder="https://tracing.arms.aliyuncs.com"
-                        />
-                        <Field
-                          label="App Name"
-                          labelClassName="text-sm!"
-                          value={(config as AliyunConfig).app_name}
-                          onChange={handleConfigChange('app_name')}
-                        />
-                      </>
-                    )}
-                    {type === TracingProvider.tencent && (
-                      <>
-                        <Field
-                          label="Token"
-                          labelClassName="text-sm!"
-                          isRequired
-                          value={(config as TencentConfig).token}
-                          onChange={handleConfigChange('token')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: 'Token',
-                          })!}
-                        />
-                        <Field
-                          label="Endpoint"
-                          labelClassName="text-sm!"
-                          isRequired
-                          value={(config as TencentConfig).endpoint}
-                          onChange={handleConfigChange('endpoint')}
-                          placeholder="https://your-region.cls.tencentcs.com"
-                        />
-                        <Field
-                          label="Service Name"
-                          labelClassName="text-sm!"
-                          isRequired
-                          value={(config as TencentConfig).service_name}
-                          onChange={handleConfigChange('service_name')}
-                          placeholder="dify_app"
-                        />
-                      </>
-                    )}
-                    {type === TracingProvider.weave && (
-                      <>
-                        <Field
-                          label="API Key"
-                          labelClassName="text-sm!"
-                          isRequired
-                          value={(config as WeaveConfig).api_key}
-                          onChange={handleConfigChange('api_key')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: 'API Key',
-                          })!}
-                        />
-                        <Field
-                          label={t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })!}
-                          labelClassName="text-sm!"
-                          isRequired
-                          value={(config as WeaveConfig).project}
-                          onChange={handleConfigChange('project')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-                          })!}
-                        />
-                        <Field
-                          label="Entity"
-                          labelClassName="text-sm!"
-                          value={(config as WeaveConfig).entity}
-                          onChange={handleConfigChange('entity')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: 'Entity',
-                          })!}
-                        />
-                        <Field
-                          label="Endpoint"
-                          labelClassName="text-sm!"
-                          value={(config as WeaveConfig).endpoint}
-                          onChange={handleConfigChange('endpoint')}
-                          placeholder="https://trace.wandb.ai/"
-                        />
-                        <Field
-                          label="Host"
-                          labelClassName="text-sm!"
-                          value={(config as WeaveConfig).host}
-                          onChange={handleConfigChange('host')}
-                          placeholder="https://api.wandb.ai"
-                        />
-                      </>
-                    )}
-                    {type === TracingProvider.langSmith && (
-                      <>
-                        <Field
-                          label="API Key"
-                          labelClassName="text-sm!"
-                          isRequired
-                          value={(config as LangSmithConfig).api_key}
-                          onChange={handleConfigChange('api_key')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: 'API Key',
-                          })!}
-                        />
-                        <Field
-                          label={t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })!}
-                          labelClassName="text-sm!"
-                          isRequired
-                          value={(config as LangSmithConfig).project}
-                          onChange={handleConfigChange('project')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-                          })!}
-                        />
-                        <Field
-                          label="Endpoint"
-                          labelClassName="text-sm!"
-                          value={(config as LangSmithConfig).endpoint}
-                          onChange={handleConfigChange('endpoint')}
-                          placeholder="https://api.smith.langchain.com"
-                        />
-                      </>
-                    )}
-                    {type === TracingProvider.langfuse && (
-                      <>
-                        <Field
-                          label={t(($) => $[`${I18N_PREFIX}.secretKey`], { ns: 'app' })!}
-                          labelClassName="text-sm!"
-                          value={(config as LangFuseConfig).secret_key}
-                          isRequired
-                          onChange={handleConfigChange('secret_key')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: t(($) => $[`${I18N_PREFIX}.secretKey`], { ns: 'app' }),
-                          })!}
-                        />
-                        <Field
-                          label={t(($) => $[`${I18N_PREFIX}.publicKey`], { ns: 'app' })!}
-                          labelClassName="text-sm!"
-                          isRequired
-                          value={(config as LangFuseConfig).public_key}
-                          onChange={handleConfigChange('public_key')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: t(($) => $[`${I18N_PREFIX}.publicKey`], { ns: 'app' }),
-                          })!}
-                        />
-                        <Field
-                          label="Host"
-                          labelClassName="text-sm!"
-                          isRequired
-                          value={(config as LangFuseConfig).host}
-                          onChange={handleConfigChange('host')}
-                          placeholder="https://cloud.langfuse.com"
-                        />
-                      </>
-                    )}
-                    {type === TracingProvider.opik && (
-                      <>
-                        <Field
-                          label="API Key"
-                          labelClassName="text-sm!"
-                          value={(config as OpikConfig).api_key}
-                          onChange={handleConfigChange('api_key')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: 'API Key',
-                          })!}
-                        />
-                        <Field
-                          label={t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })!}
-                          labelClassName="text-sm!"
-                          value={(config as OpikConfig).project}
-                          onChange={handleConfigChange('project')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-                          })!}
-                        />
-                        <Field
-                          label="Workspace"
-                          labelClassName="text-sm!"
-                          value={(config as OpikConfig).workspace}
-                          onChange={handleConfigChange('workspace')}
-                          placeholder="default"
-                        />
-                        <Field
-                          label="Url"
-                          labelClassName="text-sm!"
-                          value={(config as OpikConfig).url}
-                          onChange={handleConfigChange('url')}
-                          placeholder="https://www.comet.com/opik/api/"
-                        />
-                      </>
-                    )}
-                    {type === TracingProvider.mlflow && (
-                      <>
-                        <Field
-                          label={t(($) => $[`${I18N_PREFIX}.trackingUri`], { ns: 'app' })!}
-                          labelClassName="text-sm!"
-                          value={(config as MLflowConfig).tracking_uri}
-                          isRequired
-                          onChange={handleConfigChange('tracking_uri')}
-                          placeholder="http://localhost:5000"
-                        />
-                        <Field
-                          label={t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' })!}
-                          labelClassName="text-sm!"
-                          isRequired
-                          value={(config as MLflowConfig).experiment_id}
-                          onChange={handleConfigChange('experiment_id')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' }),
-                          })!}
-                        />
-                        <Field
-                          label={t(($) => $[`${I18N_PREFIX}.username`], { ns: 'app' })!}
-                          labelClassName="text-sm!"
-                          value={(config as MLflowConfig).username}
-                          onChange={handleConfigChange('username')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: t(($) => $[`${I18N_PREFIX}.username`], { ns: 'app' }),
-                          })!}
-                        />
-                        <Field
-                          label={t(($) => $[`${I18N_PREFIX}.password`], { ns: 'app' })!}
-                          labelClassName="text-sm!"
-                          value={(config as MLflowConfig).password}
-                          onChange={handleConfigChange('password')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: t(($) => $[`${I18N_PREFIX}.password`], { ns: 'app' }),
-                          })!}
-                        />
-                      </>
-                    )}
-                    {type === TracingProvider.databricks && (
-                      <>
-                        <Field
-                          label={t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' })!}
-                          labelClassName="text-sm!"
-                          value={(config as DatabricksConfig).experiment_id}
-                          onChange={handleConfigChange('experiment_id')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' }),
-                          })!}
-                          isRequired
-                        />
-                        <Field
-                          label={t(($) => $[`${I18N_PREFIX}.databricksHost`], { ns: 'app' })!}
-                          labelClassName="text-sm!"
-                          value={(config as DatabricksConfig).host}
-                          onChange={handleConfigChange('host')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: t(($) => $[`${I18N_PREFIX}.databricksHost`], { ns: 'app' }),
-                          })!}
-                          isRequired
-                        />
-                        <Field
-                          label={t(($) => $[`${I18N_PREFIX}.clientId`], { ns: 'app' })!}
-                          labelClassName="text-sm!"
-                          value={(config as DatabricksConfig).client_id}
-                          onChange={handleConfigChange('client_id')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: t(($) => $[`${I18N_PREFIX}.clientId`], { ns: 'app' }),
-                          })!}
-                        />
-                        <Field
-                          label={t(($) => $[`${I18N_PREFIX}.clientSecret`], { ns: 'app' })!}
-                          labelClassName="text-sm!"
-                          value={(config as DatabricksConfig).client_secret}
-                          onChange={handleConfigChange('client_secret')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: t(($) => $[`${I18N_PREFIX}.clientSecret`], { ns: 'app' }),
-                          })!}
-                        />
-                        <Field
-                          label={t(($) => $[`${I18N_PREFIX}.personalAccessToken`], { ns: 'app' })!}
-                          labelClassName="text-sm!"
-                          value={(config as DatabricksConfig).personal_access_token}
-                          onChange={handleConfigChange('personal_access_token')}
-                          placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                            ns: 'app',
-                            key: t(($) => $[`${I18N_PREFIX}.personalAccessToken`], { ns: 'app' }),
-                          })!}
-                        />
-                      </>
-                    )}
-                  </div>
-                  <div className="my-8 flex h-8 items-center justify-between">
-                    <a
-                      className="flex items-center space-x-1 text-xs leading-4.5 font-normal text-primary-600"
-                      target="_blank"
-                      href={docURL[type]}
-                    >
-                      <span>
-                        {t(($) => $[`${I18N_PREFIX}.viewDocsLink`], {
+      <Form<TraceConfigPayload['tracing_config']> className="px-8 pb-8" onFormSubmit={handleSave}>
+        <div className="space-y-4">
+          {type === TracingProvider.arize && (
+            <>
+              <Field disabled={saveConfig.isPending} name="api_key">
+                <FieldLabel>
+                  API Key
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  ref={firstInputRef}
+                  required
+                  defaultValue={payload?.api_key ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: 'API Key',
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="space_id">
+                <FieldLabel>
+                  Space ID
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  required
+                  defaultValue={payload?.space_id ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: 'Space ID',
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="project">
+                <FieldLabel>
+                  {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  required
+                  defaultValue={payload?.project ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="endpoint">
+                <FieldLabel>Endpoint</FieldLabel>
+                <Input
+                  type="url"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
+                  defaultValue={payload?.endpoint ?? ''}
+                  placeholder="https://otlp.arize.com"
+                />
+                <FieldError />
+              </Field>
+            </>
+          )}
+          {type === TracingProvider.phoenix && (
+            <>
+              <Field disabled={saveConfig.isPending} name="api_key">
+                <FieldLabel>
+                  API Key
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  ref={firstInputRef}
+                  required
+                  defaultValue={payload?.api_key ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: 'API Key',
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="project">
+                <FieldLabel>
+                  {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  required
+                  defaultValue={payload?.project ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="endpoint">
+                <FieldLabel>Endpoint</FieldLabel>
+                <Input
+                  type="url"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
+                  defaultValue={payload?.endpoint ?? ''}
+                  placeholder="https://app.phoenix.arize.com"
+                />
+                <FieldError />
+              </Field>
+            </>
+          )}
+          {type === TracingProvider.aliyun && (
+            <>
+              <Field disabled={saveConfig.isPending} name="license_key">
+                <FieldLabel>
+                  License Key
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  pattern=".*\S.*"
+                  ref={firstInputRef}
+                  required
+                  defaultValue={payload?.license_key ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: 'License Key',
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="endpoint">
+                <FieldLabel>
+                  Endpoint
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  type="url"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
+                  required
+                  defaultValue={payload?.endpoint ?? ''}
+                  placeholder="https://tracing.arms.aliyuncs.com"
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="app_name">
+                <FieldLabel>
+                  App Name
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input required defaultValue={payload?.app_name ?? ''} />
+                <FieldError />
+              </Field>
+            </>
+          )}
+          {type === TracingProvider.tencent && (
+            <>
+              <Field disabled={saveConfig.isPending} name="token">
+                <FieldLabel>
+                  Token
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  pattern=".*\S.*"
+                  ref={firstInputRef}
+                  required
+                  defaultValue={payload?.token ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: 'Token',
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="endpoint">
+                <FieldLabel>
+                  Endpoint
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  type="url"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
+                  required
+                  defaultValue={payload?.endpoint ?? ''}
+                  placeholder="https://your-region.cls.tencentcs.com"
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="service_name">
+                <FieldLabel>
+                  Service Name
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input required defaultValue={payload?.service_name ?? ''} placeholder="dify_app" />
+                <FieldError />
+              </Field>
+            </>
+          )}
+          {type === TracingProvider.weave && (
+            <>
+              <Field disabled={saveConfig.isPending} name="api_key">
+                <FieldLabel>
+                  API Key
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  ref={firstInputRef}
+                  required
+                  defaultValue={payload?.api_key ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: 'API Key',
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="project">
+                <FieldLabel>
+                  {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  required
+                  defaultValue={payload?.project ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="entity">
+                <FieldLabel>Entity</FieldLabel>
+                <Input
+                  defaultValue={payload?.entity ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: 'Entity',
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="endpoint">
+                <FieldLabel>Endpoint</FieldLabel>
+                <Input
+                  type="url"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]://.+"
+                  defaultValue={payload?.endpoint ?? ''}
+                  placeholder="https://trace.wandb.ai/"
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="host">
+                <FieldLabel>Host</FieldLabel>
+                <Input
+                  type="url"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
+                  defaultValue={payload?.host ?? ''}
+                  placeholder="https://api.wandb.ai"
+                />
+                <FieldError />
+              </Field>
+            </>
+          )}
+          {type === TracingProvider.langSmith && (
+            <>
+              <Field disabled={saveConfig.isPending} name="api_key">
+                <FieldLabel>
+                  API Key
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  ref={firstInputRef}
+                  required
+                  defaultValue={payload?.api_key ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: 'API Key',
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="project">
+                <FieldLabel>
+                  {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  required
+                  defaultValue={payload?.project ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="endpoint">
+                <FieldLabel>Endpoint</FieldLabel>
+                <Input
+                  type="url"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]://.+"
+                  defaultValue={payload?.endpoint ?? ''}
+                  placeholder="https://api.smith.langchain.com"
+                />
+                <FieldError />
+              </Field>
+            </>
+          )}
+          {type === TracingProvider.langfuse && (
+            <>
+              <Field disabled={saveConfig.isPending} name="secret_key">
+                <FieldLabel>
+                  {t(($) => $[`${I18N_PREFIX}.secretKey`], { ns: 'app' })}
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  ref={firstInputRef}
+                  defaultValue={payload?.secret_key ?? ''}
+                  required
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: t(($) => $[`${I18N_PREFIX}.secretKey`], { ns: 'app' }),
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="public_key">
+                <FieldLabel>
+                  {t(($) => $[`${I18N_PREFIX}.publicKey`], { ns: 'app' })}
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  required
+                  defaultValue={payload?.public_key ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: t(($) => $[`${I18N_PREFIX}.publicKey`], { ns: 'app' }),
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="host">
+                <FieldLabel>
+                  Host
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  type="url"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
+                  required
+                  defaultValue={payload?.host ?? ''}
+                  placeholder="https://cloud.langfuse.com"
+                />
+                <FieldError />
+              </Field>
+            </>
+          )}
+          {type === TracingProvider.opik && (
+            <>
+              <Field disabled={saveConfig.isPending} name="api_key">
+                <FieldLabel>API Key</FieldLabel>
+                <Input
+                  ref={firstInputRef}
+                  defaultValue={payload?.api_key ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: 'API Key',
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="project">
+                <FieldLabel>{t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}</FieldLabel>
+                <Input
+                  defaultValue={payload?.project ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="workspace">
+                <FieldLabel>Workspace</FieldLabel>
+                <Input defaultValue={payload?.workspace ?? ''} placeholder="default" />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="url">
+                <FieldLabel>Url</FieldLabel>
+                <Input
+                  type="url"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.*/api/"
+                  defaultValue={payload?.url ?? ''}
+                  placeholder="https://www.comet.com/opik/api/"
+                />
+                <FieldError />
+              </Field>
+            </>
+          )}
+          {type === TracingProvider.mlflow && (
+            <>
+              <Field disabled={saveConfig.isPending} name="tracking_uri">
+                <FieldLabel>
+                  {t(($) => $[`${I18N_PREFIX}.trackingUri`], { ns: 'app' })}
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  type="url"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
+                  ref={firstInputRef}
+                  defaultValue={payload?.tracking_uri ?? ''}
+                  required
+                  placeholder="http://localhost:5000"
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="experiment_id">
+                <FieldLabel>
+                  {t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' })}
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  inputMode="numeric"
+                  pattern="\s*[0-9]+\s*"
+                  required
+                  defaultValue={payload?.experiment_id ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' }),
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="username">
+                <FieldLabel>{t(($) => $[`${I18N_PREFIX}.username`], { ns: 'app' })}</FieldLabel>
+                <Input
+                  defaultValue={payload?.username ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: t(($) => $[`${I18N_PREFIX}.username`], { ns: 'app' }),
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="password">
+                <FieldLabel>{t(($) => $[`${I18N_PREFIX}.password`], { ns: 'app' })}</FieldLabel>
+                <Input
+                  defaultValue={payload?.password ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: t(($) => $[`${I18N_PREFIX}.password`], { ns: 'app' }),
+                  })}
+                />
+                <FieldError />
+              </Field>
+            </>
+          )}
+          {type === TracingProvider.databricks && (
+            <>
+              <Field disabled={saveConfig.isPending} name="experiment_id">
+                <FieldLabel>
+                  {t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' })}
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  inputMode="numeric"
+                  pattern="\s*[0-9]+\s*"
+                  ref={firstInputRef}
+                  defaultValue={payload?.experiment_id ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' }),
+                  })}
+                  required
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="host">
+                <FieldLabel>
+                  {t(($) => $[`${I18N_PREFIX}.databricksHost`], { ns: 'app' })}
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  type="url"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
+                  defaultValue={payload?.host ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: t(($) => $[`${I18N_PREFIX}.databricksHost`], { ns: 'app' }),
+                  })}
+                  required
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="client_id">
+                <FieldLabel>{t(($) => $[`${I18N_PREFIX}.clientId`], { ns: 'app' })}</FieldLabel>
+                <Input
+                  defaultValue={payload?.client_id ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: t(($) => $[`${I18N_PREFIX}.clientId`], { ns: 'app' }),
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="client_secret">
+                <FieldLabel>{t(($) => $[`${I18N_PREFIX}.clientSecret`], { ns: 'app' })}</FieldLabel>
+                <Input
+                  defaultValue={payload?.client_secret ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: t(($) => $[`${I18N_PREFIX}.clientSecret`], { ns: 'app' }),
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field disabled={saveConfig.isPending} name="personal_access_token">
+                <FieldLabel>
+                  {t(($) => $[`${I18N_PREFIX}.personalAccessToken`], { ns: 'app' })}
+                </FieldLabel>
+                <Input
+                  defaultValue={payload?.personal_access_token ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: t(($) => $[`${I18N_PREFIX}.personalAccessToken`], { ns: 'app' }),
+                  })}
+                />
+                <FieldError />
+              </Field>
+            </>
+          )}
+        </div>
+        {saveConfig.error && (
+          <p role="alert" className="mt-4 system-sm-regular text-text-destructive">
+            {saveConfig.error.message}
+          </p>
+        )}
+        <div className="mt-8 flex items-center justify-between gap-4">
+          <a
+            className="flex items-center space-x-1 text-xs leading-4.5 font-normal text-primary-600"
+            target="_blank"
+            href={docURL[type]}
+          >
+            <span>
+              {t(($) => $[`${I18N_PREFIX}.viewDocsLink`], {
+                ns: 'app',
+                key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }),
+              })}
+            </span>
+            <span aria-hidden className="i-custom-vender-line-general-link-external-02 size-3" />
+          </a>
+          <div className="flex items-center">
+            {isEdit && (
+              <>
+                <AlertDialog>
+                  <AlertDialogTrigger
+                    render={<Button className="h-9 text-sm font-medium" tone="destructive" />}
+                  >
+                    {t(($) => $['operation.remove'], { ns: 'common' })}
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        {t(($) => $[`${I18N_PREFIX}.removeConfirmTitle`], {
                           ns: 'app',
                           key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }),
                         })}
-                      </span>
-                      <LinkExternal02 className="size-3" />
-                    </a>
-                    <div className="flex items-center">
-                      {isEdit && (
-                        <>
-                          <Button
-                            className="h-9 text-sm font-medium text-text-secondary"
-                            onClick={showRemoveConfirm}
-                          >
-                            <span className="text-[#D92D20]">
-                              {t(($) => $['operation.remove'], { ns: 'common' })}
-                            </span>
-                          </Button>
-                          <Divider type="vertical" className="mx-3 h-4.5" />
-                        </>
-                      )}
-                      <Button
-                        className="mr-2 h-9 text-sm font-medium text-text-secondary"
-                        onClick={() => setIsConfigDialogOpen(false)}
-                      >
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t(($) => $[`${I18N_PREFIX}.removeConfirmContent`], { ns: 'app' })}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancelButton>
                         {t(($) => $['operation.cancel'], { ns: 'common' })}
-                      </Button>
-                      <Button
-                        className="h-9 text-sm font-medium"
-                        variant="primary"
-                        onClick={handleSave}
-                        loading={isSaving}
+                      </AlertDialogCancelButton>
+                      <AlertDialogConfirmButton
+                        onClick={handleRemove}
+                        loading={removeConfig.isPending}
                       >
-                        {t(($) => $[`operation.${isAdd ? 'saveAndEnable' : 'save'}`], {
-                          ns: 'common',
-                        })}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                <div className="border-t-[0.5px] border-divider-regular">
-                  <div className="flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary">
-                    <Lock01 className="mr-1 size-3 text-text-tertiary" />
-                    {t(($) => $['modelProvider.encrypted.front'], { ns: 'common' })}
-                    <a
-                      className="mx-1 text-primary-600"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      href="https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html"
-                    >
-                      PKCS1_OAEP
-                    </a>
-                    {t(($) => $['modelProvider.encrypted.back'], { ns: 'common' })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      ) : (
-        <AlertDialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
-          <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t(($) => $[`${I18N_PREFIX}.removeConfirmTitle`], {
-                  ns: 'app',
-                  key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }),
-                })!}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t(($) => $[`${I18N_PREFIX}.removeConfirmContent`], { ns: 'app' })}
-              </AlertDialogDescription>
-            </div>
-            <AlertDialogActions>
-              <AlertDialogCancelButton>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </AlertDialogCancelButton>
-              <AlertDialogConfirmButton onClick={handleRemove}>
-                {t(($) => $['operation.confirm'], { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogActions>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+                        {t(($) => $['operation.confirm'], { ns: 'common' })}
+                      </AlertDialogConfirmButton>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <Separator orientation="vertical" className="mx-3 h-4.5" />
+              </>
+            )}
+            <DialogClose
+              render={<Button className="mr-2 h-9 text-sm font-medium text-text-secondary" />}
+            >
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </DialogClose>
+            <Button
+              className="h-9 text-sm font-medium"
+              variant="primary"
+              type="submit"
+              loading={saveConfig.isPending}
+            >
+              {t(($) => $[`operation.${isEdit ? 'save' : 'saveAndEnable'}`], {
+                ns: 'common',
+              })}
+            </Button>
+          </div>
+        </div>
+      </Form>
+      <div className="border-t-[0.5px] border-divider-regular">
+        <div className="flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary">
+          <span
+            aria-hidden
+            className="mr-1 i-custom-vender-solid-security-lock-01 size-3 text-text-tertiary"
+          />
+          {t(($) => $['modelProvider.encrypted.front'], { ns: 'modelProvider' })}
+          <a
+            className="mx-1 text-primary-600"
+            target="_blank"
+            rel="noopener noreferrer"
+            href="https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html"
+          >
+            PKCS1_OAEP
+          </a>
+          {t(($) => $['modelProvider.encrypted.back'], { ns: 'modelProvider' })}
+        </div>
+      </div>
     </>
   )
 }

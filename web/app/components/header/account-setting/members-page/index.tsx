@@ -1,27 +1,26 @@
 'use client'
-import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  AccountWithRoleResponse,
+  MemberInviteResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { Member } from '@/models/common'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { useLocale } from '@/context/i18n'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n-config/language'
-import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
+import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
-import { useMembers } from '@/service/use-common'
 import { hasPermission } from '@/utils/permission'
 import EditWorkspaceModal from './edit-workspace-modal'
-import InviteButton from './invite-button'
 import { InviteModal } from './invite-modal'
 import InvitedModal from './invited-modal'
 import MemberDetailsModal from './member-details-modal'
@@ -29,7 +28,7 @@ import MemberRow from './member-row'
 import TransferOwnershipModal from './transfer-ownership-modal'
 
 const MembersPage = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'common', 'workspaceMembers', 'accountSettings'])
   const locale = useLocale()
   const language = getAccessControlTemplateLanguage(locale)
 
@@ -40,9 +39,10 @@ const MembersPage = () => {
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { data, refetch } = useMembers(language)
+  const { data, refetch } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: { query: { language } } }),
+  )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationResults, setInvitationResults] = useState<
     MemberInviteResponse['invitation_results'] | null
   >(null)
@@ -67,14 +67,14 @@ const MembersPage = () => {
     accounts.length >= features.members.limit
   const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
   const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)
-  const [detailsMember, setDetailsMember] = useState<Member | null>(null)
+  const [detailsMember, setDetailsMember] = useState<AccountWithRoleResponse | null>(null)
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
   const roleColumnLabel = systemFeatures.rbac_enabled
-    ? t(($) => $['members.roles'], { ns: 'common' })
-    : t(($) => $['members.role'], { ns: 'common' })
+    ? t(($) => $['members.roles'], { ns: 'workspaceMembers' })
+    : t(($) => $['members.role'], { ns: 'workspaceMembers' })
 
-  const handleOpenDetails = useCallback((member: Member) => {
+  const handleOpenDetails = useCallback((member: AccountWithRoleResponse) => {
     setDetailsMember(member)
   }, [])
 
@@ -82,22 +82,21 @@ const MembersPage = () => {
     setDetailsMember(null)
   }, [])
 
-  const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
+  const { mutateAsync: updateRolesOfMember } = useMutation(
+    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions(),
+  )
 
   const handleAssignRolesSubmit = (roles: Role[]) => {
     const roleIds = systemFeatures.rbac_enabled
       ? roles.map((role) => role.id)
       : roles.slice(0, 1).map((role) => role.id)
 
-    updateRolesOfMember(
+    return updateRolesOfMember(
+      { params: { member_id: detailsMember!.id }, body: { role_ids: roleIds } },
       {
-        memberId: detailsMember!.id,
-        roleIds,
-      },
-      {
-        onSuccess: () => {
+        onSuccess: async () => {
           toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-          refetch()
+          await refetch()
         },
       },
     )
@@ -122,7 +121,9 @@ const MembersPage = () => {
                       render={
                         <button
                           type="button"
-                          aria-label={t(($) => $['account.editWorkspaceInfo'], { ns: 'common' })}
+                          aria-label={t(($) => $['account.editWorkspaceInfo'], {
+                            ns: 'accountSettings',
+                          })}
                           className="cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-black/5"
                           onClick={() => {
                             setEditWorkspaceModalVisible(true)
@@ -136,7 +137,7 @@ const MembersPage = () => {
                       }
                     />
                     <TooltipContent>
-                      {t(($) => $['account.editWorkspaceInfo'], { ns: 'common' })}
+                      {t(($) => $['account.editWorkspaceInfo'], { ns: 'accountSettings' })}
                     </TooltipContent>
                   </Tooltip>
                 </span>
@@ -172,10 +173,7 @@ const MembersPage = () => {
           <div className="shrink-0">
             {canManageMembers && (
               <InviteModal
-                open={inviteModalVisible}
-                trigger={<InviteButton />}
                 isEmailSetup={systemFeatures.is_email_setup}
-                onOpenChange={setInviteModalVisible}
                 onSend={setInvitationResults}
               />
             )}
@@ -192,10 +190,10 @@ const MembersPage = () => {
             <thead>
               <tr className="border-b border-divider-regular">
                 <th className="px-3 py-1.75 text-left system-xs-medium-uppercase text-text-tertiary">
-                  {t(($) => $['members.name'], { ns: 'common' })}
+                  {t(($) => $['members.name'], { ns: 'workspaceMembers' })}
                 </th>
                 <th className="py-1.75 text-left system-xs-medium-uppercase text-text-tertiary">
-                  {t(($) => $['members.lastActive'], { ns: 'common' })}
+                  {t(($) => $['members.lastActive'], { ns: 'workspaceMembers' })}
                 </th>
                 <th className="px-3 py-1.75 text-left system-xs-medium-uppercase text-text-tertiary">
                   {roleColumnLabel}
@@ -208,7 +206,7 @@ const MembersPage = () => {
                 <MemberRow
                   key={account.id}
                   member={account}
-                  roles={account.roles}
+                  roles={account.roles ?? []}
                   isCurrentUser={userProfileEmail === account.email}
                   canManage={canManageMembers}
                   canTransferOwnership={

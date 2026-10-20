@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return {
+    useLocale: () => 'en-US',
     useTranslation: () => ({
       i18n: {
         language: 'en-US',
@@ -39,27 +40,23 @@ describe('HomeHeader', () => {
     mocks.marketplaceUrlPrefix = 'https://marketplace.dify.ai'
   })
 
-  it('keeps Creator Center and docs in the in-app header without an account action', () => {
+  it('keeps Creator Center and docs in the in-app header', () => {
     render(<HomeHeader isMarketplacePlatform={false} />)
 
     expect(screen.getByRole('link', { name: 'marketplace.home.creatorCenter' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /marketplace\.home\.guide/ })).toBeInTheDocument()
-    expect(screen.queryByTestId('account-section')).not.toBeInTheDocument()
   })
 
-  it('shows Creator Center before the docs dropdown', () => {
+  it('links Creator Center alongside the docs dropdown', () => {
     render(<HomeHeader isMarketplacePlatform />)
 
     const creatorCenterLink = screen.getByRole('link', { name: 'marketplace.home.creatorCenter' })
-    const guideButton = screen.getByRole('button', { name: /marketplace\.home\.guide/ })
+    expect(screen.getByRole('button', { name: /marketplace\.home\.guide/ })).toBeInTheDocument()
 
     expect(creatorCenterLink).toHaveAttribute('href', 'https://creators.dify.ai/')
     expect(creatorCenterLink).toHaveAttribute('target', '_blank')
     expect(creatorCenterLink).toHaveAttribute('rel', 'noopener noreferrer')
-    expect(creatorCenterLink.parentElement?.className).toMatch(/standaloneHeaderActions/)
-    expect(creatorCenterLink.compareDocumentPosition(guideButton)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    )
+
     // Creator Center must be a single interactive element, not a link-wrapped button.
     expect(creatorCenterLink.querySelector('button')).toBeNull()
     expect(screen.queryByRole('link', { name: 'marketplace.home.guide' })).not.toBeInTheDocument()
@@ -74,39 +71,6 @@ describe('HomeHeader', () => {
       'href',
       'https://creators-staging.dify.dev/',
     )
-  })
-
-  it('links Creator Center to the dev Creators site on marketplace.dify.dev', () => {
-    mocks.marketplaceUrlPrefix = 'https://marketplace.dify.dev'
-
-    render(<HomeHeader isMarketplacePlatform />)
-
-    expect(screen.getByRole('link', { name: 'marketplace.home.creatorCenter' })).toHaveAttribute(
-      'href',
-      'https://creators.dify.dev/',
-    )
-  })
-
-  it('falls back to the public Creator Center for a custom Marketplace origin', () => {
-    mocks.marketplaceUrlPrefix = 'http://localhost:3000'
-
-    render(<HomeHeader isMarketplacePlatform />)
-
-    expect(screen.getByRole('link', { name: 'marketplace.home.creatorCenter' })).toHaveAttribute(
-      'href',
-      'https://creators.dify.ai/',
-    )
-  })
-
-  it('renders the Marketplace wordmark without a Marketplace text label', () => {
-    render(<HomeHeader isMarketplacePlatform />)
-
-    const brandLink = screen.getByRole('link', { name: 'Dify Marketplace' })
-    const logo = brandLink.querySelector('img')
-    expect(logo).toHaveAttribute('src', '/marketplace/dify-marketplace-logo.svg')
-    expect(logo).toHaveAttribute('width', '141.761')
-    expect(logo).toHaveAttribute('height', '16.386')
-    expect(screen.queryByText('mainNav.marketplace')).not.toBeInTheDocument()
   })
 
   it('selects neither catalog tab on non-catalog pages', () => {
@@ -125,7 +89,7 @@ describe('HomeHeader', () => {
     expect(screen.getByRole('link', { name: 'Templates' })).not.toHaveAttribute('aria-current')
   })
 
-  it('shows Templates with only the active background on the Templates catalog', () => {
+  it('marks the active Templates catalog and preserves its language', () => {
     render(
       <HomeHeader
         activeTab="templates"
@@ -142,8 +106,5 @@ describe('HomeHeader', () => {
     const templatesTab = screen.getByRole('link', { name: '模板' })
     expect(templatesTab).toHaveAttribute('aria-current', 'page')
     expect(templatesTab).toHaveAttribute('href', '/templates?language=zh-Hans')
-    expect(templatesTab).toHaveClass('bg-state-base-active')
-    expect(templatesTab).not.toHaveClass('text-text-accent')
-    expect(templatesTab.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
   })
 })

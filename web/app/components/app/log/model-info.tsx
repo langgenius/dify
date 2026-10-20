@@ -1,5 +1,4 @@
 'use client'
-import type { ModelConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -19,20 +18,24 @@ const PARAM_MAP = {
   frequency_penalty: 'Frequency Penalty',
 }
 
+type LogModelConfig = {
+  name: string
+  provider: string
+  completion_params?: Record<string, unknown>
+}
+
 type Props = Readonly<{
-  model: Pick<ModelConfig, 'completion_params' | 'name' | 'provider'>
+  model: LogModelConfig
 }>
 
 const ModelInfo: FC<Props> = ({ model }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const modelName = model.name
   const providerName = model.provider
   const { currentModel, currentProvider } = useTextGenerationCurrentProviderAndModelAndModelList({
     provider: providerName,
     model: modelName,
   })
-
-  const [open, setOpen] = React.useState(false)
 
   const getParamValue = (param: keyof typeof PARAM_MAP) => {
     const value = model.completion_params?.[param] ?? '-'
@@ -50,7 +53,7 @@ const ModelInfo: FC<Props> = ({ model }) => {
         <ModelIcon className="size-5!" provider={currentProvider} modelName={currentModel?.model} />
         <ModelName modelItem={currentModel} showMode />
       </div>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover>
         <div className="relative">
           <PopoverTrigger
             render={

@@ -1,8 +1,9 @@
 'use client'
+
 import type { FC } from 'react'
+import type { FormInputSchema } from '../form-input-item.helpers'
 import type { HoverPopup } from './var-reference-picker.trigger'
 import type {
-  CredentialFormSchema,
   CredentialFormSchemaSelect,
   FormOption,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -20,18 +21,19 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes, useReactFlow, useStoreApi } from 'reactflow'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 // import type { BaseResource, BaseResourceProvider } from '@/app/components/workflow/nodes/_base/types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
-import { useIsChatMode } from '../../../../hooks/use-workflow'
 import { useWorkflowVariables } from '../../../../hooks/use-workflow-variables'
 import useAvailableVarList from '../../hooks/use-available-var-list'
 import { removeFileVars, varTypeToStructType } from './utils'
@@ -74,7 +76,7 @@ type Props = Readonly<{
   isAddBtnTrigger?: boolean
   trigger?: React.ReactNode
   isJustShowValue?: boolean
-  schema?: Partial<CredentialFormSchema>
+  schema?: Partial<Omit<FormInputSchema, 'default'>>
   valueTypePlaceHolder?: string
   isInTable?: boolean
   onRemove?: () => void
@@ -121,10 +123,10 @@ const VarReferencePicker: FC<Props> = ({
   currentProvider,
   preferSchemaType,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'] as const)
   const store = useStoreApi()
   const nodes = useNodes<CommonNodeType>()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   const isWorkflowDataLoaded = useWorkflowStore((s) => s.isWorkflowDataLoaded)
   const { getCurrentVariableType } = useWorkflowVariables()
   const { availableVars, availableNodesWithParent: availableNodes } = useAvailableVarList(nodeId, {
@@ -275,7 +277,7 @@ const VarReferencePicker: FC<Props> = ({
     parentNode: isInIteration ? iterationNode : loopNode,
     valueSelector: value as ValueSelector,
     availableNodes,
-    isChatMode,
+    isChatflow,
     isConstant: !!isConstant,
     preferSchemaType,
   })

@@ -1,7 +1,7 @@
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCheckLine, RiCloseLine } from '@remixicon/react'
 import AppIcon from '@/app/components/base/app-icon'
-import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import { shouldUseMcpIcon } from '@/utils/mcp'
 
 const iconSizeMap = {
@@ -45,18 +45,25 @@ const Icon = ({
   if (typeof src === 'object') {
     return (
       <div className={cn('relative', className)}>
-        <AppIcon
-          size={size}
-          iconType="emoji"
-          icon={src.content}
-          background={src.background}
-          className="rounded-md"
-          innerIcon={
-            shouldUseMcpIcon(src) ? (
-              <Mcp className="size-8 text-text-primary-on-surface" />
-            ) : undefined
-          }
-        />
+        {shouldUseMcpIcon(src) ? (
+          <Avatar
+            aria-hidden="true"
+            className={cn('rounded-md border-[0.5px] border-divider-regular', iconSizeMap[size])}
+          >
+            <AvatarFallback
+              className="text-text-primary-on-surface"
+              style={{ background: src.background || '#FFEAD5' }}
+            >
+              <span className="i-custom-vender-other-mcp size-8" />
+            </AvatarFallback>
+          </Avatar>
+        ) : (
+          <AppIcon
+            size={size}
+            icon={{ icon_type: 'emoji', icon: src.content, icon_background: src.background }}
+            className="rounded-md"
+          />
+        )}
       </div>
     )
   }

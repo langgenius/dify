@@ -9,6 +9,7 @@ import type {
   AgentComposerBindingResponse,
   WorkflowAgentComposerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { AgentPreviewChatController } from '@/features/agent-v2/agent-detail/configure/components/preview/chat-conversation'
 import {
   DropdownMenu,
@@ -16,18 +17,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  useDefaultModel,
-  useTextGenerationCurrentProviderAndModelAndModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { toast } from '@/app/notifications'
 import {
   agentSoulConfigToFormState,
   formStateToAgentSoulConfig,
@@ -73,8 +71,8 @@ import {
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
-import { FlowType } from '@/types/common'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
+import { InlineAgentLoading } from './inline-agent-loading'
 
 type WorkflowRosterAgentOrchestratePanelContentProps = {
   agentId?: string
@@ -84,8 +82,7 @@ type WorkflowRosterAgentOrchestratePanelContentProps = {
 
 type WorkflowInlineAgentConfigureWorkspaceProps = {
   agentId?: string
-  flowId?: string
-  flowType?: FlowType
+  resource?: Extract<EditorResource, { kind: 'app' | 'snippet' }>
   inlineComposerState?: WorkflowAgentComposerResponse
   nodeId: string
   onClose?: () => void
@@ -123,7 +120,7 @@ export function WorkflowRosterAgentOrchestratePanelContent(
   if (!agentId || !agentSoulConfig) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -158,8 +155,7 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
     } | null
   }
 }) {
-  const { currentModel, setConfigureModel, textGenerationModelList } =
-    useAgentOrchestrateModelOptions()
+  const { currentModel, setConfigureModel } = useAgentOrchestrateModelOptions()
 
   return (
     <AgentOrchestratePanel
@@ -167,13 +163,11 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
       agentSoulConfig={agentSoulConfig}
       agentName={composerState?.agent?.name}
       currentModel={currentModel}
-      textGenerationModelList={textGenerationModelList}
       readOnly
       showHeader={false}
       showPublishBar={false}
       className="h-full max-w-none min-w-0 flex-none rounded-none border-0"
       onSelectModel={setConfigureModel}
-      onPublish={() => undefined}
       onOpenVersions={() => undefined}
     />
   )
@@ -194,11 +188,7 @@ export function WorkflowInlineAgentConfigureWorkspace(
       : undefined
 
   if (!agentId) {
-    return (
-      <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <Loading type="app" />
-      </div>
-    )
+    return <InlineAgentLoading />
   }
 
   const composerSessionKey = `${nodeId}:${agentId}`
@@ -245,11 +235,7 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
   const composerSessionKey = `${props.nodeId}:${agentId}`
 
   if (!agentSoulConfig || buildDraft.isPending) {
-    return (
-      <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <Loading type="app" />
-      </div>
-    )
+    return <InlineAgentLoading />
   }
 
   return (
@@ -284,8 +270,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   agentId,
   agentSoulConfig,
   buildDraft,
-  flowId,
-  flowType,
+  resource,
   inlineComposerState,
   nodeId,
   onClose,
@@ -297,8 +282,8 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   agentSoulConfig: AgentSoulConfig
   buildDraft: ReturnType<typeof useAgentConfigureBuildDraftData>
 }) {
-  const { t } = useTranslation('common')
-  const { t: tAgent } = useTranslation('agentV2')
+  const { t } = useTranslation(['common'])
+  const { t: tAgent } = useTranslation(['agentV2'])
   const agentScope = useInlineAgentScope()
   const queryClient = useQueryClient()
   const jotaiStore = useJotaiStore()
@@ -310,7 +295,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     null,
   )
   const rightPanelChatControllerRef = useRef<AgentPreviewChatController>(null)
-  const appId = flowType === FlowType.appFlow ? flowId : undefined
+  const appId = resource?.kind === 'app' ? resource.appId : undefined
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const [rightPanelMode, setRightPanelMode] = useAtom(agentConfigureRightPanelModeAtom)
   const previewEnabled = systemFeatures?.deployment_edition !== 'COMMUNITY'
@@ -325,8 +310,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
   const setConversationId = useSetAtom(setAgentConfigureConversationIdAtom)
   const rebaseComposerDraft = useSetAtom(rebaseAgentComposerDraftAtom)
-  const { currentModel, setConfigureModel, textGenerationModelList } =
-    useAgentOrchestrateModelOptions()
+  const { currentModel, setConfigureModel } = useAgentOrchestrateModelOptions()
   const [isApplyingInlineBuildDraft, setIsApplyingInlineBuildDraft] = useState(false)
   const { saveAgentSoulConfig, saveDraft } = useWorkflowInlineAgentConfigureSync({
     nodeId,
@@ -366,15 +350,15 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
             }
           },
         )
-        if (!flowId) return
+        if (!resource) return
 
-        if (flowType === FlowType.snippet) {
+        if (resource.kind === 'snippet') {
           queryClient.setQueryData<WorkflowAgentComposerResponse | undefined>(
             consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
               {
                 input: {
                   params: {
-                    snippet_id: flowId,
+                    snippet_id: resource.snippetId,
                     node_id: nodeId,
                   },
                 },
@@ -393,12 +377,12 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           return
         }
 
-        if (flowType === FlowType.appFlow) {
+        if (resource.kind === 'app') {
           queryClient.setQueryData<WorkflowAgentComposerResponse | undefined>(
             consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
               input: {
                 params: {
-                  app_id: flowId,
+                  app_id: resource.appId,
                   node_id: nodeId,
                 },
               },
@@ -687,7 +671,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           agentSoulConfig={buildDraft.agentSoulConfig}
           agentName={composerState?.agent?.name}
           currentModel={currentModel}
-          textGenerationModelList={textGenerationModelList}
           readOnly={buildDraft.isActive}
           isBuildDraftActive={buildDraft.isActive}
           buildDraftChangedKeys={buildDraft.changedKeys}
@@ -716,9 +699,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           }
           className="min-w-90"
           onSelectModel={setConfigureModel}
-          onPublish={() => {
-            void saveDraft()
-          }}
           onOpenVersions={() => undefined}
         />
       }
@@ -753,13 +733,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
             <AgentConfigureRightPanelChat
               agentId={agentId}
               answerActionPosition="below"
-              agentIcon={composerState?.agent?.icon}
-              agentIconBackground={composerState?.agent?.icon_background}
-              agentIconType={
-                composerState?.agent?.icon_type as Parameters<
-                  typeof AgentConfigureRightPanelChat
-                >[0]['agentIconType']
-              }
               agentName={composerState?.agent?.name}
               agentSoulConfig={buildDraft.agentSoulConfig}
               clearChatList={clearPreviewChat}
@@ -826,7 +799,7 @@ function WorkflowInlineAgentConfigureMoreAction({
 }: {
   onSaveInlineToRoster: () => void
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common', 'agentRoster'])
   const canCreateAgents = useCanCreateAgents()
 
   if (!canCreateAgents) return null
@@ -837,7 +810,7 @@ function WorkflowInlineAgentConfigureMoreAction({
         render={
           <button
             type="button"
-            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
             aria-label={t(($) => $['operation.more'])}
           >
             <span aria-hidden className="i-ri-more-fill size-4" />
@@ -850,7 +823,7 @@ function WorkflowInlineAgentConfigureMoreAction({
             aria-hidden
             className="i-ri-inbox-archive-line size-4 shrink-0 text-text-tertiary"
           />
-          <span>{t(($) => $['roster.saveToRoster'], { ns: 'agentV2' })}</span>
+          <span>{t(($) => $['roster.saveToRoster'], { ns: 'agentRoster' })}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -867,12 +840,9 @@ function useAgentOrchestrateModelOptions() {
       }
     : undefined
   const currentModel = model ?? defaultModel
-  const { textGenerationModelList } =
-    useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
 
   return {
     currentModel,
     setConfigureModel: setModel,
-    textGenerationModelList,
   }
 }

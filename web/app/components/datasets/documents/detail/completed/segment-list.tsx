@@ -1,9 +1,12 @@
-import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
+import type {
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { ChunkingMode } from '@/models/datasets'
 import { useDocumentContext } from '../context'
 import Empty from './common/empty'
@@ -14,13 +17,13 @@ import ParagraphListSkeleton from './skeleton/paragraph-list-skeleton'
 
 type ISegmentListProps = {
   isLoading: boolean
-  items: SegmentDetailModel[]
-  onClick: (detail: SegmentDetailModel, isEditMode?: boolean) => void
+  items: SegmentResponse[]
+  onClick: (detail: SegmentResponse, isEditMode?: boolean) => void
   onChangeSwitch: (enabled: boolean, segId?: string) => Promise<void>
   onDelete: (segId: string) => Promise<void>
   onDeleteChildChunk: (sgId: string, childChunkId: string) => Promise<void>
   handleAddNewChildChunk: (parentChunkId: string) => void
-  onClickSlice: (childChunk: ChildChunkDetail) => void
+  onClickSlice: (childChunk: ChildChunkResponse) => void
   archived?: boolean
   embeddingAvailable: boolean
   onClearFilter: () => void
@@ -42,7 +45,7 @@ const SegmentList = ({
 }: ISegmentListProps & {
   ref: React.LegacyRef<HTMLDivElement>
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
   const docForm = useDocumentContext((s) => s.docForm)
   const parentMode = useDocumentContext((s) => s.parentMode)
   const currSegment = useSegmentListContext((s) => s.currSegment)
@@ -103,7 +106,11 @@ const SegmentList = ({
               />
               {!isLast && (
                 <div className="w-full px-3">
-                  <Divider type="horizontal" className="my-1 bg-divider-subtle" />
+                  <Separator
+                    decorative
+                    orientation="horizontal"
+                    className="my-1 h-[0.5px] bg-divider-subtle"
+                  />
                 </div>
               )}
             </div>

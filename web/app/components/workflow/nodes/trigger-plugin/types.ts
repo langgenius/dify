@@ -1,5 +1,5 @@
-import type { ResourceVarInputs } from '../_base/types'
 import type { CollectionType } from '@/app/components/tools/types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 
 export type PluginTriggerNodeType = CommonNodeType & {
@@ -8,7 +8,7 @@ export type PluginTriggerNodeType = CommonNodeType & {
   provider_name: string
   event_name: string
   event_label: string
-  event_parameters: PluginTriggerVarInputs
+  event_parameters: ResourceVarInputs
   event_configurations: Record<string, any>
   output_schema: Record<string, any>
   parameters_schema?: Record<string, any>[]
@@ -18,7 +18,3 @@ export type PluginTriggerNodeType = CommonNodeType & {
   config?: Record<string, any>
   plugin_unique_identifier?: string
 }
-
-// Use base types directly
-
-export type PluginTriggerVarInputs = ResourceVarInputs

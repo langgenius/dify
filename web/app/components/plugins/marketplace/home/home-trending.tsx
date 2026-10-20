@@ -92,7 +92,7 @@ function HomeTrending({
   isMarketplacePlatform: boolean
   page: MarketplaceBannerPage
 }) {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin'])
   const carouselRootRef = useRef<HTMLDivElement>(null)
   const swipeGestureRef = useRef<SwipeGesture | null>(null)
   const suppressClickRef = useRef(false)

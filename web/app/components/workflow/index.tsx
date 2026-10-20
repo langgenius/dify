@@ -11,18 +11,20 @@ import type { EventEmitterValue } from '@/context/event-emitter'
 import type { VarInInspect } from '@/types/workflow'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
 import { useEventListener } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
+import { useAtomValue } from 'jotai'
 import {
   Fragment,
   memo,
@@ -36,7 +38,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import ReactFlow, {
+import {
   Background,
   ReactFlowProvider,
   SelectionMode,
@@ -47,14 +49,13 @@ import ReactFlow, {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { getEditorResourceId } from '@/app/components/workflow/editor-resource/resource'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
+import { toast } from '@/app/notifications'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import { fetchAllInspectVars } from '@/service/workflow'
 import CandidateNode from './candidate-node'
 import UserCursors from './collaboration/components/user-cursors'
@@ -63,13 +64,14 @@ import CommentManager from './comment-manager'
 import { CommentIcon } from './comment/comment-icon'
 import { CommentInput } from './comment/comment-input'
 import { CommentCursor } from './comment/cursor'
+import { CommentPlacementPreview } from './comment/placement-preview'
 import { CommentThread } from './comment/thread'
 import { CUSTOM_EDGE, CUSTOM_NODE, WORKFLOW_DATA_UPDATE } from './constants'
 import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import HelpLine from './help-line'
-import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
+import { HooksStoreContextProvider } from './hooks-store'
 import { useEdgesInteractions } from './hooks/use-edges-interactions'
 import { useLocateNode } from './hooks/use-locate-node'
 import { useNodeKeyboardInteractions } from './hooks/use-node-keyboard-interactions'
@@ -80,9 +82,9 @@ import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useSetWorkflowVarsWithValue } from './hooks/use-set-workflow-vars-with-value'
 import { useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './hooks/use-workflow'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
+import { useWorkflowControlScale } from './hooks/use-workflow-control-scale'
 import { useWorkflowRefreshDraft } from './hooks/use-workflow-refresh-draft'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
-import { shouldPreventWorkflowBrowserDefault } from './hotkeys'
 import CustomNode from './nodes'
 import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
 import CustomDataSourceEmptyNode from './nodes/data-source-empty'
@@ -96,7 +98,7 @@ import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import Operator from './operator'
 import Control from './operator/control'
 import { WorkflowLocalStorageBridge } from './persistence/local-storage-bridge'
-import { useWorkflowHotkeys } from './shortcuts/use-workflow-hotkeys'
+import { WorkflowCanvas } from './shortcuts/workflow-canvas'
 import CustomSimpleNode from './simple-node'
 import { CUSTOM_SIMPLE_NODE } from './simple-node/constants'
 import { useStore, useWorkflowStore } from './store/workflow'
@@ -141,37 +143,6 @@ export type WorkflowProps = {
   onlineUsers?: OnlineUser[]
 }
 
-const CommentPlacementPreview = memo(
-  ({
-    onSubmit,
-    onCancel,
-  }: {
-    onSubmit: (content: string, mentionedUserIds: string[]) => void
-    onCancel: () => void
-  }) => {
-    const isCommentPlacing = useStore((s) => s.isCommentPlacing)
-    const pendingComment = useStore((s) => s.pendingComment)
-    const mousePosition = useStore((s) => s.mousePosition)
-
-    if (!isCommentPlacing || pendingComment) return null
-
-    return (
-      <CommentInput
-        position={{
-          x: mousePosition.elementX,
-          y: mousePosition.elementY,
-        }}
-        onSubmit={onSubmit}
-        onCancel={onCancel}
-        autoFocus={false}
-        disabled
-      />
-    )
-  },
-)
-
-CommentPlacementPreview.displayName = 'CommentPlacementPreview'
-
 export const Workflow: FC<WorkflowProps> = memo(
   ({
     nodes: originalNodes,
@@ -184,8 +155,9 @@ export const Workflow: FC<WorkflowProps> = memo(
     myUserId,
     onlineUsers,
   }) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['common', 'workflow', 'workflowHistory', 'workflowComments'])
     const workflowContainerRef = useRef<HTMLDivElement>(null)
+    useWorkflowControlScale(workflowContainerRef)
     const workflowStore = useWorkflowStore()
     const reactflow = useReactFlow()
     const store = useStoreApi()
@@ -293,7 +265,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       return collaborationManager.onRestoreIntent((data) => {
         toast.info(
           t(($) => $['versionHistory.action.restoreInProgress'], {
-            ns: 'workflow',
+            ns: 'workflowHistory',
             userName: data.initiatorName,
             versionName: data.versionName || data.versionId,
           }),
@@ -462,8 +434,8 @@ export const Workflow: FC<WorkflowProps> = memo(
       (commentId: string) => {
         if (!showConfirm) {
           setShowConfirm({
-            title: t(($) => $['comments.confirm.deleteThreadTitle'], { ns: 'workflow' }),
-            desc: t(($) => $['comments.confirm.deleteThreadDesc'], { ns: 'workflow' }),
+            title: t(($) => $['comments.confirm.deleteThreadTitle'], { ns: 'workflowComments' }),
+            desc: t(($) => $['comments.confirm.deleteThreadDesc'], { ns: 'workflowComments' }),
             onConfirm: async () => {
               await handleCommentDelete(commentId)
               setShowConfirm(undefined)
@@ -478,8 +450,8 @@ export const Workflow: FC<WorkflowProps> = memo(
       (commentId: string, replyId: string) => {
         if (!showConfirm) {
           setShowConfirm({
-            title: t(($) => $['comments.confirm.deleteReplyTitle'], { ns: 'workflow' }),
-            desc: t(($) => $['comments.confirm.deleteReplyDesc'], { ns: 'workflow' }),
+            title: t(($) => $['comments.confirm.deleteReplyTitle'], { ns: 'workflowComments' }),
+            desc: t(($) => $['comments.confirm.deleteReplyDesc'], { ns: 'workflowComments' }),
             onConfirm: async () => {
               await handleCommentReplyDelete(commentId, replyId)
               setShowConfirm(undefined)
@@ -500,9 +472,6 @@ export const Workflow: FC<WorkflowProps> = memo(
       }
     }, [handleSyncWorkflowDraftWhenPageClose, handleBeforeUnload])
 
-    useEventListener('keydown', (e) => {
-      if (shouldPreventWorkflowBrowserDefault(e)) e.preventDefault()
-    })
     useEventListener('mousemove', (e) => {
       const containerClientRect = workflowContainerRef.current?.getBoundingClientRect()
 
@@ -586,7 +555,6 @@ export const Workflow: FC<WorkflowProps> = memo(
       },
     })
 
-    useWorkflowHotkeys()
     // Initialize workflow node search functionality
     useWorkflowSearch()
 
@@ -600,23 +568,39 @@ export const Workflow: FC<WorkflowProps> = memo(
 
     const { schemaTypeDefinitions } = useMatchSchemaType()
     const { fetchInspectVars } = useSetWorkflowVarsWithValue()
-    const { data: buildInTools } = useAllBuiltInTools()
-    const { data: customTools } = useAllCustomTools()
-    const { data: workflowTools } = useAllWorkflowTools()
-    const { data: mcpTools } = useAllMCPTools()
+    const { data: buildInTools } = useQuery(
+      consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+        select: selectToolsWithProvider,
+      }),
+    )
+    const { data: customTools } = useQuery(
+      consoleQuery.workspaces.current.tools.api.get.queryOptions({
+        select: selectToolsWithProvider,
+      }),
+    )
+    const { data: workflowTools } = useQuery(
+      consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+        select: selectToolsWithProvider,
+      }),
+    )
+    const { data: mcpTools } = useQuery(
+      consoleQuery.workspaces.current.tools.mcp.get.queryOptions({
+        select: selectToolsWithProvider,
+      }),
+    )
     const dataSourceList = useStore((s) => s.dataSourceList)
     // buildInTools, customTools, workflowTools, mcpTools, dataSourceList
-    const configsMap = useHooksStore((s) => s.configsMap)
+    const resource = useAtomValue(editorResourceAtom)
     const [isLoadedVars, setIsLoadedVars] = useState(false)
     const [vars, setVars] = useState<VarInInspect[]>([])
     useEffect(() => {
       ;(async () => {
-        if (!configsMap?.flowType || !configsMap?.flowId) return
-        const data = await fetchAllInspectVars(configsMap.flowType, configsMap.flowId)
+        if (!getEditorResourceId(resource)) return
+        const data = await fetchAllInspectVars(resource)
         setVars(data)
         setIsLoadedVars(true)
       })()
-    }, [configsMap?.flowType, configsMap?.flowId])
+    }, [resource])
     useEffect(() => {
       if (schemaTypeDefinitions && isLoadedVars) {
         fetchInspectVars({
@@ -673,27 +657,28 @@ export const Workflow: FC<WorkflowProps> = memo(
         <HelpLine />
         <AlertDialog
           open={!!showConfirm}
-          onOpenChange={(open) => !open && setShowConfirm(undefined)}
+          onOpenChange={(open) => {
+            if (!open) {
+              showConfirm?.onCancel?.()
+              setShowConfirm(undefined)
+            }
+          }}
         >
           <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {showConfirm?.title}
-              </AlertDialogTitle>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{showConfirm?.title}</AlertDialogTitle>
               {showConfirm?.desc && (
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                  {showConfirm.desc}
-                </AlertDialogDescription>
+                <AlertDialogDescription>{showConfirm.desc}</AlertDialogDescription>
               )}
-            </div>
-            <AlertDialogActions>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={showConfirm?.onConfirm}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
         {controlMode === ControlMode.Comment && isMouseOverCanvas && <CommentCursor />}
@@ -765,7 +750,7 @@ export const Workflow: FC<WorkflowProps> = memo(
         })}
         {children}
         <WorkflowContextmenu>
-          <ReactFlow
+          <WorkflowCanvas
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             nodes={nodes}
@@ -824,7 +809,7 @@ export const Workflow: FC<WorkflowProps> = memo(
                 onlineUsers={onlineUsers || []}
               />
             )}
-          </ReactFlow>
+          </WorkflowCanvas>
         </WorkflowContextmenu>
         <SyncingDataModal />
       </div>

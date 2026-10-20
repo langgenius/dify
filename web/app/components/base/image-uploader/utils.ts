@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next'
+import { ORPCError } from '@orpc/client'
 import { upload } from '@/service/base'
 
 /**
@@ -9,13 +10,13 @@ import { upload } from '@/service/base'
  * @returns Localized error message
  */
 export const getImageUploadErrorMessage = (
-  error: any,
+  error: unknown,
   defaultMessage: string,
-  t: TFunction,
+  t: TFunction<['common']>,
 ): string => {
-  const errorCode = error?.response?.code
+  const errorCode = error instanceof ORPCError ? error.code : undefined
 
-  if (errorCode === 'forbidden') return error?.response?.message
+  if (errorCode === 'forbidden') return error instanceof Error ? error.message : defaultMessage
 
   if (errorCode === 'file_extension_blocked')
     return t(($) => $['fileUploader.fileExtensionBlocked'], { ns: 'common' })
@@ -27,7 +28,7 @@ type ImageUploadParams = {
   file: File
   onProgressCallback: (progress: number) => void
   onSuccessCallback: (res: { id: string }) => void
-  onErrorCallback: (error?: any) => void
+  onErrorCallback: (error?: unknown) => void
 }
 type ImageUpload = (v: ImageUploadParams, isPublic?: boolean, url?: string) => void
 export const imageUpload: ImageUpload = (

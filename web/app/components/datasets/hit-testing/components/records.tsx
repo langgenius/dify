@@ -1,4 +1,8 @@
-import type { Attachment, HitTestingRecord, Query } from '@/models/datasets'
+import type {
+  DatasetQueryContentResponse,
+  DatasetQueryDetailResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
+import type { Attachment } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiApps2Line, RiArrowDownLine, RiFocus2Line } from '@remixicon/react'
 import * as React from 'react'
@@ -8,12 +12,12 @@ import useTimestamp from '@/hooks/use-timestamp'
 import ImageList from '../../common/image-list'
 
 type RecordsProps = {
-  records: HitTestingRecord[]
-  onClickRecord: (record: HitTestingRecord) => void
+  records: DatasetQueryDetailResponse[]
+  onClickRecord: (record: DatasetQueryDetailResponse) => void
 }
 
 const Records = ({ records, onClickRecord }: RecordsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetHitTesting'])
   const { formatTime } = useTimestamp()
 
   const [sortTimeOrder, setTimeOrder] = useState<'asc' | 'desc'>('desc')
@@ -28,7 +32,7 @@ const Records = ({ records, onClickRecord }: RecordsProps) => {
     })
   }, [records, sortTimeOrder])
 
-  const getImageList = (queries: Query[]) => {
+  const getImageList = (queries: DatasetQueryContentResponse[]) => {
     const imageQueries = queries
       .filter((query) => query.content_type === 'image_query')
       .map((query) => query.file_info)

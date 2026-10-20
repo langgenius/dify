@@ -23,7 +23,6 @@ from controllers.common.errors import (
 )
 from controllers.web import remote_files as remote_files_module
 from libs.exception import BaseHTTPException
-from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from services.errors.file import (
     BlockedFileExtensionError as ServiceBlockedFileExtensionError,
@@ -41,6 +40,7 @@ from services.remote_file_service import RemoteFileInvalidUrlError as RemoteFile
 from services.remote_file_service import RemoteFileNotFoundError as RemoteFileNotFoundServiceError
 from services.remote_file_service import RemoteFileUnavailableError as RemoteFileUnavailableServiceError
 from services.remote_file_service import RemoteFileUrlBlockedError as RemoteFileUrlBlockedServiceError
+from tests.unit_tests.model_factories import make_end_user
 
 REMOTE_FILE_ERROR_CASES: tuple[tuple[type[RemoteFileError], type[BaseHTTPException], str, int], ...] = (
     (RemoteFileInvalidUrlServiceError, RemoteFileInvalidUrlError, "remote_file_invalid_url", 400),
@@ -71,13 +71,7 @@ def _app_model() -> App:
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="eu-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        type=EndUserType.BROWSER,
-        session_id="session-1",
-    )
+    return make_end_user(end_user_id="eu-1", app_id="app-1")
 
 
 def _upload_result() -> RemoteFileUploadResult:

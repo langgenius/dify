@@ -3,7 +3,7 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { MarketplaceViewProps } from './view'
 import { queryOptions, useQuery } from '@tanstack/react-query'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { useResetMarketplaceSearchModeOnMount } from './atoms'
 import { fetchPluginBanners } from './home/banners'
 import { MarketplaceView } from './view'

@@ -23,7 +23,7 @@ const ImageUploaderInRetrievalTesting = ({
   className,
   actionAreaClassName,
 }: ImageUploaderInRetrievalTestingProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetHitTesting'])
   const files = useFileStoreWithSelector((s) => s.files)
   const [previewIndex, setPreviewIndex] = useState(0)
   const [previewImages, setPreviewImages] = useState<ImageInfo[]>([])

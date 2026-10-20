@@ -1,10 +1,29 @@
 import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
 import type { Window } from 'happy-dom'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test'
+import { render } from '@/test/console/render'
 import TemplateCard from '../template-card'
 import { TemplateDetailRouteProvider } from '../template-detail-route'
+
+const deploymentState = vi.hoisted(() => ({
+  deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
+}))
+
+vi.mock('@/features/system-features/state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
+  return createSystemFeaturesStateModuleMock(() => deploymentState)
+})
 
 const { mockPush } = vi.hoisted(() => ({
   mockPush: vi.fn(),
@@ -41,6 +60,7 @@ const template: MarketplaceTemplate = {
 }
 
 describe('TemplateCard', () => {
+  const originalUrl = window.location.href
   const navigationSettings = (window as unknown as Window).happyDOM.settings.navigation
   const originalDisableChildFrameNavigation = navigationSettings.disableChildFrameNavigation
 
@@ -49,7 +69,12 @@ describe('TemplateCard', () => {
   })
 
   beforeEach(() => {
+    deploymentState.deploymentEdition = 'CLOUD'
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    ;(window as unknown as Window).happyDOM.setURL(originalUrl)
   })
 
   afterAll(() => {
@@ -124,4 +149,33 @@ describe('TemplateCard', () => {
     expect(window.location.pathname).toBe(`/templates/dify/${routedTemplate.id}`)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
+    'opens %s template links outside Dify without changing the catalog route',
+    (edition) => {
+      deploymentState.deploymentEdition = edition
+      ;(window as unknown as Window).happyDOM.setURL(
+        'https://ai.njueai.com:8443/templates?q=research',
+      )
+      const before = window.location.href
+      render(
+        <TemplateDetailRouteProvider>
+          <TemplateCard partnerText="Partner" template={template} />
+        </TemplateDetailRouteProvider>,
+      )
+      const link = screen.getByRole('link', { name: template.template_name })
+      const url = new URL(link.getAttribute('href')!)
+      expect(url.origin).toBe('https://marketplace.dify.ai')
+      expect(url.pathname).toBe('/template/dify/template%2Fone')
+      expect(Object.fromEntries(url.searchParams)).toEqual({
+        source: window.location.origin,
+        language: 'en-US',
+        theme: 'dark',
+      })
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(document.querySelector('iframe')).toBeNull()
+      expect(window.location.href).toBe(before)
+    },
+  )
 })

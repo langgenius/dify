@@ -21,14 +21,16 @@ from controllers.console.human_input_form import (
     _jsonify_form_definition,
 )
 from core.workflow.human_input_policy import HumanInputSurface
+from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
+from core.workflow.nodes.human_input.enums import ValueSourceType
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models import Account
-from models.account import AccountStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import RecipientType
 from models.model import App, AppMode
 from models.workflow import WorkflowRun
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_account, make_app
 
 
 @pytest.fixture(autouse=True)
@@ -38,20 +40,15 @@ def bind_console_human_input_database(sqlite_engine: Engine, monkeypatch: pytest
 
 
 def _account(*, account_id: str = "user-1") -> Account:
-    account = Account(name="Console User", email=f"{account_id}@example.com", status=AccountStatus.ACTIVE)
-    account.id = account_id
-    return account
+    return make_account(account_id=account_id, name="Console User", email=f"{account_id}@example.com")
 
 
 def _app() -> App:
-    return App(
-        id="app-1",
+    return make_app(
         tenant_id="t1",
         name="Human Input App",
-        description="",
         mode=AppMode.WORKFLOW,
-        enable_site=True,
-        enable_api=True,
+        icon_type=None,
         max_active_requests=0,
     )
 
@@ -103,6 +100,10 @@ def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch
     expiration = datetime(2024, 1, 1, tzinfo=UTC)
     definition = SimpleNamespace(model_dump=lambda: {"fields": ["a"]})
     form = SimpleNamespace(tenant_id="tenant-1", get_definition=lambda: definition, expiration_time=expiration)
+    resolved_input = SelectInputConfig(
+        output_variable_name="choice",
+        option_source=StringListSource(type=ValueSourceType.CONSTANT, value=["a"]),
+    )
 
     class _ServiceStub:
         def __init__(self, *_args, **_kwargs):
@@ -110,6 +111,10 @@ def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch
 
         def get_form_definition_by_token_for_console(self, _token):
             return form
+
+        def resolve_form_inputs(self, resolved_form):
+            assert resolved_form is form
+            return [resolved_input]
 
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
 
@@ -121,6 +126,7 @@ def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch
 
     payload = json.loads(response.get_data(as_text=True))
     assert payload["fields"] == ["a"]
+    assert payload["inputs"] == [resolved_input.model_dump(mode="json")]
 
 
 def test_get_form_definition_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -383,9 +389,11 @@ def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeyp
         def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
             return workflow_run
 
-    workflow_generator = Mock()
-    workflow_generator.convert_to_event_stream.return_value = iter(["data: snapshot\n\n"])
-    snapshot_builder = Mock(return_value=["snapshot-events"])
+    snapshot_calls: list[dict[str, object]] = []
+
+    def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
+        snapshot_calls.append(kwargs)
+        return [{"event": "snapshot"}]
 
     monkeypatch.setattr(
         DifyAPIRepositoryFactory,
@@ -395,10 +403,6 @@ def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeyp
     monkeypatch.setattr(
         "controllers.console.human_input_form._retrieve_app_for_workflow_run",
         lambda *_args, **_kwargs: app_model,
-    )
-    monkeypatch.setattr(
-        "controllers.console.human_input_form.WorkflowAppGenerator",
-        lambda: workflow_generator,
     )
     monkeypatch.setattr(
         "controllers.console.human_input_form.build_workflow_event_stream",
@@ -414,13 +418,15 @@ def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeyp
     ):
         response = handler(api, "t1", _account(), workflow_run_id="run-1")
 
-    assert response.get_data(as_text=True) == "data: snapshot\n\n"
-    snapshot_builder.assert_called_once_with(
-        app_mode=AppMode.WORKFLOW,
-        workflow_run=workflow_run,
-        tenant_id="t1",
-        app_id="app-1",
-        session_maker=ANY,
-        human_input_surface=HumanInputSurface.CONSOLE,
-        close_on_pause=False,
-    )
+    assert response.get_data(as_text=True) == 'data: {"event":"snapshot"}\n\n'
+    assert snapshot_calls == [
+        {
+            "app_mode": AppMode.WORKFLOW,
+            "workflow_run": workflow_run,
+            "tenant_id": "t1",
+            "app_id": "app-1",
+            "session_maker": ANY,
+            "human_input_surface": HumanInputSurface.CONSOLE,
+            "close_on_pause": False,
+        }
+    ]

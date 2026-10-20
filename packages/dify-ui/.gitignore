@@ -2,3 +2,4 @@
 /.vitest-browser
 /dist
 /storybook-static
+.vitest/

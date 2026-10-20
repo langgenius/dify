@@ -33,7 +33,7 @@ export function StarredAppList({
   stepByStepTourCardHighlightPart,
   stepByStepTourHighlightedCardCount = 0,
 }: StarredAppListProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   if (apps.length === 0) return null
 
