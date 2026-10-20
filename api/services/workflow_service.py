@@ -803,7 +803,7 @@ class WorkflowService:
             # Extract and validate credentials based on node type
             if node_type == "tool":
                 config = ToolCredentialConfig.model_validate(node_data)
-                if config.credential_source == "end_user":
+                if config.credential_source != "workspace":
                     return
                 credential_id = node_data.get("credential_id")
                 provider = node_data.get("provider_id")

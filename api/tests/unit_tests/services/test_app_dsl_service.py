@@ -965,9 +965,18 @@ def test_workflow_export_filters_test_credentials_but_keeps_personal_requirement
         "credential_source": "end_user",
         "credential_id": None,
         "test_credential_id": "workspace-test-credential",
-        "end_user_auth": {"credential_type": "oauth2", "selection_mode": "independent", "purpose": "Read mail."},
+        "end_user_auth": {"allowed_credential_types": ["oauth2", "api-key"], "purpose": "Read mail."},
     }
-    workflow = _workflow(graph={"nodes": [{"id": "personal", "data": node_data}], "edges": []})
+    reuse_data = {"type": "tool", "credential_source": "reuse_node", "reuse_node_id": "personal"}
+    workflow = _workflow(
+        graph={
+            "nodes": [
+                {"id": "personal", "data": node_data},
+                {"id": "reuse", "data": reuse_data},
+            ],
+            "edges": [],
+        }
+    )
     monkeypatch.setattr(AppDslService, "_load_export_workflow", Mock(return_value=workflow))
     monkeypatch.setattr(AppDslService, "_extract_dependencies_from_workflow", Mock(return_value=[]))
     monkeypatch.setattr(
@@ -987,6 +996,7 @@ def test_workflow_export_filters_test_credentials_but_keeps_personal_requirement
     assert ("test_credential_id" in exported_data) is include_secret
     assert exported_data["end_user_auth"] == node_data["end_user_auth"]
     assert exported_data["credential_source"] == "end_user"
+    assert exported["workflow"]["graph"]["nodes"][1]["data"] == reuse_data
     assert workflow.graph_dict["nodes"][0]["data"] == node_data
 
 

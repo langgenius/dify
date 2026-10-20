@@ -30,8 +30,7 @@ def tool_node(node_id: str = "tool", /, **overrides: object) -> ToolNodeFixture:
             "tool_parameters": {},
             "credential_source": "end_user",
             "end_user_auth": {
-                "credential_type": "oauth2",
-                "selection_mode": "independent",
+                "allowed_credential_types": ["oauth2"],
                 "purpose": "Read the user's calendar.",
             },
             **overrides,
@@ -50,7 +49,7 @@ def test_legacy_nodes_keep_their_workspace_source_without_rewriting_data() -> No
     assert node == original
 
 
-@pytest.mark.parametrize("auth", [None, {}, {"selection_mode": "reuse_node"}, {"purpose": " "}])
+@pytest.mark.parametrize("auth", [None, {}, {"allowed_credential_types": []}, {"purpose": " "}])
 def test_unfinished_drafts_can_be_saved_but_are_not_ready(auth: object) -> None:
     graph = {"nodes": [tool_node(end_user_auth=auth)]}
 
@@ -65,13 +64,21 @@ def test_unfinished_drafts_can_be_saved_but_are_not_ready(auth: object) -> None:
         ({"credential_source": None}, ("credential_source",)),
         ({"test_credential_id": 1}, ("test_credential_id",)),
         ({"test_credential_id": ""}, ("test_credential_id",)),
-        ({"end_user_auth": {"credential_type": "unauthorized"}}, ("end_user_auth", "credential_type")),
-        ({"end_user_auth": {"selection_mode": "default"}}, ("end_user_auth", "selection_mode")),
+        (
+            {"end_user_auth": {"allowed_credential_types": ["unauthorized"]}},
+            ("end_user_auth", "allowed_credential_types", 0),
+        ),
+        ({"end_user_auth": {"allowed_credential_types": "oauth2"}}, ("end_user_auth", "allowed_credential_types")),
+        (
+            {"end_user_auth": {"allowed_credential_types": ["oauth2", "oauth2"]}},
+            ("end_user_auth", "allowed_credential_types"),
+        ),
+        ({"reuse_node_id": ""}, ("reuse_node_id",)),
         ({"end_user_auth": {"purpose": "x" * 51}}, ("end_user_auth", "purpose")),
         ({"end_user_auth": {"connection_id": "personal-connection"}}, ("end_user_auth", "connection_id")),
     ],
 )
-def test_malformed_draft_fields_are_located(overrides: dict[str, object], path: tuple[str, ...]) -> None:
+def test_malformed_draft_fields_are_located(overrides: dict[str, object], path: tuple[str | int, ...]) -> None:
     graph = {"nodes": [tool_node(**overrides)]}
     [issue] = check_tool_credentials(graph, complete=False)
 
@@ -122,68 +129,156 @@ def test_complete_configuration_rejects_invalid_sources_and_providers(
     assert issue.path == path
 
 
-def test_same_provider_cannot_require_conflicting_personal_authentication() -> None:
-    oauth = tool_node("oauth")
-    api_key = tool_node("api-key")
-    cast(dict[str, object], api_key["data"]["end_user_auth"])["credential_type"] = "api-key"
+@pytest.mark.parametrize("methods", [["oauth2"], ["api-key"], ["oauth2", "api-key"]])
+def test_end_user_nodes_allow_one_or_both_authentication_methods(methods: list[str]) -> None:
+    node = tool_node()
+    cast(dict[str, object], node["data"]["end_user_auth"])["allowed_credential_types"] = methods
 
-    [issue] = check_tool_credentials({"nodes": [oauth, api_key]}, complete=True)
+    assert check_tool_credentials({"nodes": [node]}, complete=True) == []
+
+
+@pytest.mark.parametrize(
+    ("first_methods", "second_methods", "valid"),
+    [
+        (["oauth2"], ["api-key"], False),
+        (["oauth2", "api-key"], ["api-key"], True),
+        (["oauth2", "api-key"], ["api-key", "oauth2"], True),
+    ],
+)
+def test_provider_wide_compatibility_policy_is_preserved(
+    first_methods: list[str], second_methods: list[str], valid: bool
+) -> None:
+    first = tool_node("first")
+    second = tool_node("second")
+    cast(dict[str, object], first["data"]["end_user_auth"])["allowed_credential_types"] = first_methods
+    cast(dict[str, object], second["data"]["end_user_auth"])["allowed_credential_types"] = second_methods
+
+    issues = check_tool_credentials({"nodes": [first, second]}, complete=True)
+
+    if valid:
+        assert issues == []
+    else:
+        [issue] = issues
+        assert issue.node_id == "second"
+        assert issue.path == ("end_user_auth", "allowed_credential_types")
+
+
+def test_all_provider_requirements_must_share_a_method_under_the_current_policy() -> None:
+    nodes = [tool_node("both"), tool_node("oauth"), tool_node("api-key")]
+    for node, methods in zip(nodes, (["oauth2", "api-key"], ["oauth2"], ["api-key"]), strict=True):
+        cast(dict[str, object], node["data"]["end_user_auth"])["allowed_credential_types"] = methods
+
+    [issue] = check_tool_credentials({"nodes": nodes}, complete=True)
 
     assert issue.node_id == "api-key"
-    assert issue.path == ("end_user_auth", "credential_type")
-    assert "oauth" in issue.message
+    assert issue.path == ("end_user_auth", "allowed_credential_types")
 
 
 def reuse_node(node_id: str, target: str | None) -> ToolNodeFixture:
-    node = tool_node(node_id)
-    cast(dict[str, object], node["data"]["end_user_auth"]).update(selection_mode="reuse_node", reuse_node_id=target)
+    node = tool_node(node_id, credential_source="reuse_node", reuse_node_id=target)
+    del node["data"]["end_user_auth"]
     return node
 
 
-def test_reuse_chains_do_not_depend_on_node_execution_order() -> None:
-    graph = {"nodes": [reuse_node("first", "second"), reuse_node("second", "root"), tool_node("root")]}
+@pytest.mark.parametrize("source", ["workspace", "end_user"])
+@pytest.mark.parametrize("target_first", [False, True])
+def test_reuse_inherits_direct_workspace_or_end_user_auth_without_duplicate_settings(
+    source: str, target_first: bool
+) -> None:
+    target = tool_node("target")
+    if source == "workspace":
+        target["data"].update(credential_source="workspace", end_user_auth=None, credential_id="shared")
+    else:
+        target["data"]["test_credential_id"] = "test-credential"
+    reuse = reuse_node("reuse", "target")
+    graph = {"nodes": [target, reuse] if target_first else [reuse, target]}
 
     assert check_tool_credentials(graph, complete=True) == []
+    assert check_graph(graph, mode=AppMode.WORKFLOW) == []
+    assert "end_user_auth" not in reuse["data"]
+    assert "test_credential_id" not in reuse["data"]
 
 
-@pytest.mark.parametrize("target", [None, "missing", "start", "workspace", "other-provider"])
+def test_reuse_of_legacy_workspace_auth_keeps_default_credential_resolution() -> None:
+    target = tool_node("target")
+    del target["data"]["credential_source"]
+    del target["data"]["end_user_auth"]
+
+    assert check_tool_credentials({"nodes": [target, reuse_node("reuse", "target")]}, complete=True) == []
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"credential_id": "own-credential"},
+        {"test_credential_id": "own-test-credential"},
+        {"end_user_auth": {"allowed_credential_types": ["api-key"], "purpose": "Override target."}},
+    ],
+)
+def test_reuse_cannot_override_the_target_authentication(overrides: dict[str, object]) -> None:
+    reuse = reuse_node("reuse", "target")
+    reuse["data"].update(overrides)
+
+    [issue] = check_tool_credentials({"nodes": [tool_node("target"), reuse]}, complete=True)
+
+    assert issue.node_id == "reuse"
+    assert issue.path == (next(iter(overrides)),)
+
+
+@pytest.mark.parametrize(
+    "target", [None, "missing", "start", "incomplete", "other-provider", "other-plugin", "other-tool"]
+)
 def test_invalid_reuse_targets_are_located(target: str | None) -> None:
     nodes = [
         reuse_node("reuse", target),
         {"id": "start", "data": {"type": "start"}},
-        tool_node("workspace", credential_source="workspace", end_user_auth=None),
-        tool_node("other-provider", provider_id="langgenius/mail/mail"),
+        tool_node("incomplete", end_user_auth={}),
+        tool_node("other-provider", provider_id="langgenius/calendar/other"),
+        tool_node("other-plugin", provider_id="vendor/calendar/calendar"),
+        tool_node("other-tool", tool_name="send"),
     ]
-    [issue] = check_tool_credentials({"nodes": nodes}, complete=True)
+    issues = check_tool_credentials({"nodes": nodes}, complete=True)
+    [issue] = [issue for issue in issues if issue.node_id == "reuse"]
 
-    assert issue.node_id == "reuse"
-    assert issue.path == ("end_user_auth", "reuse_node_id")
+    assert issue.path == ("reuse_node_id",)
 
 
-def test_independent_nodes_cannot_reference_a_reuse_target() -> None:
-    node = tool_node()
-    cast(dict[str, object], node["data"]["end_user_auth"])["reuse_node_id"] = "other"
+@pytest.mark.parametrize("source", ["workspace", "end_user"])
+def test_direct_authentication_cannot_reference_a_reuse_target(source: str) -> None:
+    node = tool_node(credential_source=source, reuse_node_id="other")
+    if source == "workspace":
+        node["data"]["end_user_auth"] = None
 
     [issue] = check_tool_credentials({"nodes": [node]}, complete=True)
 
-    assert issue.path == ("end_user_auth", "reuse_node_id")
+    assert issue.path == ("reuse_node_id",)
+
+
+def test_reuse_chains_are_rejected_even_without_a_cycle() -> None:
+    graph = {"nodes": [reuse_node("child", "middle"), reuse_node("middle", "root"), tool_node("root")]}
+
+    [issue] = check_tool_credentials(graph, complete=True)
+
+    assert issue.node_id == "child"
+    assert issue.path == ("reuse_node_id",)
+    assert "directly" in issue.message
 
 
 @pytest.mark.parametrize("cycle", [["self"], ["a", "b"], ["a", "b", "c"]])
-def test_reuse_cycles_report_every_member_once(cycle: list[str]) -> None:
+def test_self_reuse_and_reuse_cycles_are_rejected(cycle: list[str]) -> None:
     nodes = [reuse_node(node_id, cycle[(index + 1) % len(cycle)]) for index, node_id in enumerate(cycle)]
-    nodes.insert(0, reuse_node("outside", cycle[0]))
     issues = check_tool_credentials({"nodes": nodes}, complete=True)
 
     assert [issue.node_id for issue in issues] == cycle
-    assert all("cycle" in issue.message for issue in issues)
+    assert all(issue.path == ("reuse_node_id",) for issue in issues)
 
 
-def test_reuse_validation_handles_long_chains_without_recursion() -> None:
-    nodes = [reuse_node(str(index), str(index + 1)) for index in range(1100)]
-    nodes.append(tool_node("1100"))
+def test_unfinished_reuse_drafts_can_be_saved() -> None:
+    graph = {"nodes": [reuse_node("reuse", None)]}
 
-    assert check_tool_credentials({"nodes": nodes}, complete=True) == []
+    assert check_tool_credentials(graph, complete=False) == []
+    [issue] = check_tool_credentials(graph, complete=True)
+    assert issue.path == ("reuse_node_id",)
 
 
 def test_graph_check_reports_config_errors_once_at_the_field_location() -> None:

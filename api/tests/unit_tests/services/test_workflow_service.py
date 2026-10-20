@@ -738,14 +738,24 @@ class TestWorkflowService:
 
     @pytest.mark.parametrize("collaborative", [False, True])
     @pytest.mark.parametrize(
-        "end_user_auth", [{}, {"credential_type": "oauth2", "selection_mode": "independent", "purpose": "Read mail."}]
+        "credential_settings",
+        [
+            {"credential_source": "end_user", "end_user_auth": {}},
+            {
+                "credential_source": "end_user",
+                "end_user_auth": {"allowed_credential_types": ["oauth2", "api-key"], "purpose": "Read mail."},
+                "test_credential_id": "workspace-test-credential",
+            },
+            {"credential_source": "reuse_node"},
+            {"credential_source": "reuse_node", "reuse_node_id": "workspace"},
+        ],
     )
     def test_sync_draft_preserves_tool_credentials_and_unfinished_configuration(
         self,
         workflow_service: WorkflowService,
         sqlite_session: Session,
         collaborative: bool,
-        end_user_auth: dict[str, str],
+        credential_settings: dict[str, object],
     ) -> None:
         app = TestWorkflowAssociatedDataFactory.create_app()
         account = TestWorkflowAssociatedDataFactory.create_account()
@@ -757,11 +767,10 @@ class TestWorkflowService:
                         "type": "tool",
                         "provider_type": "builtin",
                         "provider_id": "langgenius/mail/mail",
-                        "credential_source": "end_user",
-                        "end_user_auth": end_user_auth,
-                        "test_credential_id": "workspace-test-credential",
+                        **credential_settings,
                     },
-                }
+                },
+                {"id": "workspace", "data": {"type": "tool", "credential_id": "shared"}},
             ],
             "edges": [],
         }
@@ -2226,8 +2235,9 @@ class TestWorkflowServiceCredentialValidation:
     # --- _validate_workflow_credentials: tool node (with credential_id) ---
 
     @pytest.mark.parametrize("credential_id", [None, "old-workspace-credential"])
-    def test_end_user_nodes_do_not_check_workspace_or_test_credentials(
-        self, service: WorkflowService, sqlite_session: Session, credential_id: str | None
+    @pytest.mark.parametrize("source", ["end_user", "reuse_node"])
+    def test_indirect_credentials_do_not_check_workspace_or_test_credentials(
+        self, service: WorkflowService, sqlite_session: Session, credential_id: str | None, source: str
     ) -> None:
         workflow = self._make_workflow(
             [
@@ -2236,7 +2246,7 @@ class TestWorkflowServiceCredentialValidation:
                     "data": {
                         "type": "tool",
                         "provider_id": "langgenius/mail/mail",
-                        "credential_source": "end_user",
+                        "credential_source": source,
                         "credential_id": credential_id,
                         "test_credential_id": "deleted-test-credential",
                     },
@@ -2252,6 +2262,33 @@ class TestWorkflowServiceCredentialValidation:
 
         check_default.assert_not_called()
         check_policy.assert_not_called()
+
+    def test_reused_workspace_credential_is_checked_on_the_target_node(
+        self, service: WorkflowService, sqlite_session: Session
+    ) -> None:
+        workflow = self._make_workflow(
+            [
+                {"id": "target", "data": {"type": "tool", "provider_id": "provider", "credential_id": "shared"}},
+                {
+                    "id": "reuse",
+                    "data": {
+                        "type": "tool",
+                        "provider_id": "provider",
+                        "credential_source": "reuse_node",
+                        "reuse_node_id": "target",
+                    },
+                },
+            ]
+        )
+        with (
+            patch.object(service, "_check_default_tool_credential") as check_default,
+            patch("core.helper.credential_utils.check_credential_policy_compliance") as check_policy,
+        ):
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
+
+        check_default.assert_not_called()
+        check_policy.assert_called_once()
+        assert check_policy.call_args.kwargs["credential_id"] == "shared"
 
     def test_validate_workflow_credentials_should_check_tool_credential_when_credential_id_present(
         self, service: WorkflowService, sqlite_session: Session

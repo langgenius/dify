@@ -66,7 +66,7 @@ def _build_tool_node_data() -> ToolNodeData:
     )
 
 
-@pytest.mark.parametrize("source", ["end_user", "invalid", None])
+@pytest.mark.parametrize("source", ["end_user", "reuse_node", "invalid", None])
 def test_unimplemented_or_invalid_sources_cannot_fall_back_to_workspace_credentials(source: object) -> None:
     params = build_test_graph_init_params()
     runtime = DifyToolNodeRuntime(params.run_context)
