@@ -142,6 +142,9 @@ const useConfig = (id: string, payload: CodeNodeType) => {
             case VarType.number:
               param_type = ': float'
               break
+            case VarType.integer:
+              param_type = ': int'
+              break
             case VarType.object:
               param_type = ': dict'
               break
@@ -196,6 +199,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     const supportedVariableTypes: readonly VarType[] = [
       VarType.string,
       VarType.number,
+      VarType.integer,
       VarType.boolean,
       VarType.secret,
       VarType.object,

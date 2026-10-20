@@ -113,6 +113,7 @@ describe('code/use-config', () => {
       variables: [
         createVariable('text'),
         createVariable('score', VarType.number),
+        createVariable('count', VarType.integer),
         createVariable('payload', VarType.object),
         createVariable('items', VarType.array),
         createVariable('numbers', VarType.arrayNumber),
@@ -120,7 +121,7 @@ describe('code/use-config', () => {
         createVariable('records', VarType.arrayObject),
       ],
       expected:
-        'def main(text: str, score: float, payload: dict, items: list, numbers: list[float], names: list[str], records: list[dict]): return {}',
+        'def main(text: str, score: float, count: int, payload: dict, items: list, numbers: list[float], names: list[str], records: list[dict]): return {}',
     },
     {
       language: CodeLanguage.json,
@@ -140,6 +141,15 @@ describe('code/use-config', () => {
       expect(result.current.flow.getNode('node')?.data.code).toBe(expected)
     },
   )
+
+  it('allows integer outputs from upstream nodes as Code input variables', () => {
+    const { result } = renderNodeConfig(useConfig, createData(), {
+      resource: { kind: 'snippet', snippetId: 's' },
+    })
+
+    expect(result.current.config.filterVar({ variable: 'code', type: VarType.integer })).toBe(true)
+  })
+
   it('preserves code and outputs when a snippet has no server language defaults', () => {
     const inputs = createData({
       outputs: { ...createOutputs('summary'), ...createOutputs('count', VarType.number) },
