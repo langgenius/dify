@@ -368,7 +368,17 @@ class TestGetOauthClient:
         assert second is not None
         assert second.credentials == {"client_secret": "rotated-test-secret"}
 
-        controller.plugin_unique_identifier = f"langgenius/google:2.0.0@{'b' * 32}"
+        replacement_identifier = f"langgenius/google:2.0.0@{'b' * 32}"
+
+        def replace_during_verification(_tenant: str, value: str) -> bool:
+            controller.plugin_unique_identifier = replacement_identifier
+            return value == identifier
+
+        monkeypatch.setattr(service_module.PluginService, "is_plugin_verified", replace_during_verification)
+        third = BuiltinToolManageService.get_oauth_client("tenant-1", "google")
+        assert third is not None
+        assert third.plugin_unique_identifier == identifier
+        assert controller.plugin_unique_identifier == replacement_identifier
         assert BuiltinToolManageService.get_oauth_client("tenant-1", "google") is None
         requests: list[httpx.Request] = []
 
@@ -380,7 +390,7 @@ class TestGetOauthClient:
 
         with httpx.Client(transport=httpx.MockTransport(handle)) as client:
             monkeypatch.setattr(client_module, "_httpx_client", client)
-            for config in (first, second):
+            for config in (first, second, third):
                 OAuthHandler().get_authorization_url(
                     "tenant-1",
                     "user",
@@ -391,9 +401,14 @@ class TestGetOauthClient:
                     plugin_unique_identifier=config.plugin_unique_identifier,
                 )
 
-        assert [request.headers["X-Plugin-Unique-Identifier"] for request in requests] == [identifier, identifier]
+        assert [request.headers["X-Plugin-Unique-Identifier"] for request in requests] == [
+            identifier,
+            identifier,
+            identifier,
+        ]
         assert [json.loads(request.content)["data"]["system_credentials"] for request in requests] == [
             {"client_secret": "first-test-secret"},
+            {"client_secret": "rotated-test-secret"},
             {"client_secret": "rotated-test-secret"},
         ]
 

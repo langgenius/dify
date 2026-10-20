@@ -602,6 +602,7 @@ class TriggerProviderService:
         """
         if provider_controller is None:
             provider_controller = TriggerManager.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id)
+        plugin_unique_identifier = provider_controller.plugin_unique_identifier
         with Session(db.engine, expire_on_commit=False) as session:
             tenant_client = session.scalar(
                 select(TriggerOAuthTenantClient)
@@ -622,9 +623,9 @@ class TriggerProviderService:
                     cache=NoOpProviderCredentialCache(),
                 )
                 oauth_params = encrypter.decrypt(dict(tenant_client.oauth_params))
-                return PluginOAuthClientConfig(provider_controller.plugin_unique_identifier, dict(oauth_params))
+                return PluginOAuthClientConfig(plugin_unique_identifier, dict(oauth_params))
 
-            is_verified = PluginService.is_plugin_verified(tenant_id, provider_controller.plugin_unique_identifier)
+            is_verified = PluginService.is_plugin_verified(tenant_id, plugin_unique_identifier)
             if not is_verified:
                 return None
 
@@ -645,7 +646,7 @@ class TriggerProviderService:
                     raise ValueError(f"Error decrypting system oauth params: {e}") from e
 
             return (
-                PluginOAuthClientConfig(provider_controller.plugin_unique_identifier, dict(oauth_params))
+                PluginOAuthClientConfig(plugin_unique_identifier, dict(oauth_params))
                 if oauth_params is not None
                 else None
             )

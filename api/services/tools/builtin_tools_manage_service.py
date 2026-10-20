@@ -536,6 +536,7 @@ class BuiltinToolManageService:
         tool_provider = ToolProviderID(provider)
         if provider_controller is None:
             provider_controller = ToolManager.get_plugin_provider(provider, tenant_id)
+        plugin_unique_identifier = provider_controller.plugin_unique_identifier
         encrypter, _ = create_provider_encrypter(
             tenant_id=tenant_id,
             config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
@@ -555,10 +556,10 @@ class BuiltinToolManageService:
             oauth_params: Mapping[str, Any] | None = None
             if user_client:
                 oauth_params = encrypter.decrypt(user_client.oauth_params)
-                return PluginOAuthClientConfig(provider_controller.plugin_unique_identifier, dict(oauth_params))
+                return PluginOAuthClientConfig(plugin_unique_identifier, dict(oauth_params))
 
             # only verified provider can use official oauth client
-            is_verified = PluginService.is_plugin_verified(tenant_id, provider_controller.plugin_unique_identifier)
+            is_verified = PluginService.is_plugin_verified(tenant_id, plugin_unique_identifier)
             if not is_verified:
                 return None
 
@@ -577,7 +578,7 @@ class BuiltinToolManageService:
                     raise ValueError(f"Error decrypting system oauth params: {e}") from e
 
             return (
-                PluginOAuthClientConfig(provider_controller.plugin_unique_identifier, dict(oauth_params))
+                PluginOAuthClientConfig(plugin_unique_identifier, dict(oauth_params))
                 if oauth_params is not None
                 else None
             )

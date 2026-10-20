@@ -131,6 +131,7 @@ def resolve_datasource_oauth_client(
         tenant_id=workspace_id,
         provider_id=str(provider_id),
     )
+    plugin_unique_identifier = provider.plugin_unique_identifier
     if config.encrypted_tenant_params is not None:
         oauth_schema = provider.declaration.oauth_schema
         if oauth_schema is None:
@@ -141,13 +142,13 @@ def resolve_datasource_oauth_client(
             cache=NoOpProviderCredentialCache(),
         )
         return PluginOAuthClientConfig(
-            provider.plugin_unique_identifier, dict(credential_encrypter.decrypt(dict(config.encrypted_tenant_params)))
+            plugin_unique_identifier, dict(credential_encrypter.decrypt(dict(config.encrypted_tenant_params)))
         )
 
     if config.system_credentials is not None and PluginService.is_plugin_verified(
-        workspace_id, provider.plugin_unique_identifier
+        workspace_id, plugin_unique_identifier
     ):
-        return PluginOAuthClientConfig(provider.plugin_unique_identifier, dict(config.system_credentials))
+        return PluginOAuthClientConfig(plugin_unique_identifier, dict(config.system_credentials))
     raise DatasourceCredentialError(f"OAuth client is not configured for {provider_id}")
 
 
