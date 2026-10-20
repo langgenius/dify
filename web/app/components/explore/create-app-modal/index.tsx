@@ -4,7 +4,7 @@ import type {
   AppDetailWithSite,
   UpdateAppPayload,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { IconPickerInputValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -58,7 +58,7 @@ export type CreateAppModalProps = {
   onHide: () => void
 }
 
-const SUBMIT_APP_HOTKEY = 'Mod+Enter' satisfies Hotkey
+const SUBMIT_APP_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
 const CreateAppModal = ({
   show = false,
