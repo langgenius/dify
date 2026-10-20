@@ -2,6 +2,7 @@
 
 import type { ContactImIntegrationView, ContactImProviderDefinition } from './types'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogClose,
@@ -13,11 +14,14 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dif
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import copy from 'copy-to-clipboard'
-import { useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ContactImCallbackSetup } from './callback-setup'
 import { useSaveContactImCredentials, useTestContactImConnection } from './hooks'
-import { resolveContactImProviderFormAdapter } from './provider-form-adapters'
+import {
+  resolveContactImCallbackSetup,
+  resolveContactImProviderFormAdapter,
+} from './provider-form-adapters'
 import {
   ContactImProvider,
   ContactImProviderField,
@@ -50,19 +54,46 @@ export function ContactImBindingDialog({
   const saveCredentials = useSaveContactImCredentials()
   const testConnection = useTestContactImConnection()
   const formRef = useRef<HTMLFormElement>(null)
-  const [values, setValues] = useState<CredentialValues>(() => ({
-    ...integration?.configuredValues,
-  }))
+  const firstCredentialRef = useRef<HTMLInputElement>(null)
+  const saveLabelId = useId()
+  const testLabelId = useId()
+  const [savedIntegration, setSavedIntegration] = useState(() =>
+    replaceActiveProvider ? null : integration,
+  )
+  const [step, setStep] = useState<'credentials' | 'callbacks'>(() =>
+    !replaceActiveProvider && integration?.callbackUrl ? 'callbacks' : 'credentials',
+  )
+  const [values, setValues] = useState<CredentialValues>(() => {
+    const configuredValues = { ...integration?.configuredValues }
+    if (
+      !replaceActiveProvider &&
+      (provider.provider === ContactImProvider.Feishu ||
+        provider.provider === ContactImProvider.Lark) &&
+      integration?.displayIdentifier
+    ) {
+      configuredValues[ContactImProviderField.AppId] ??= integration.displayIdentifier
+    }
+    return configuredValues
+  })
   const [secret, setSecret] = useState('')
-  const [copied, setCopied] = useState(false)
+  const [credentialsEdited, setCredentialsEdited] = useState(false)
   const [testSucceeded, setTestSucceeded] = useState(false)
-  const isCurrentProvider = Boolean(integration) && !replaceActiveProvider
+  const isCurrentProvider = Boolean(savedIntegration)
   const isPending = saveCredentials.isPending || testConnection.isPending
-  const callbackUrl =
-    integration?.callbackUrl ?? (provider.requiresFreshCredentials ? null : provider.callbackUrl)
+  const callbackUrl = savedIntegration?.callbackUrl
+  const callbackSetup =
+    provider.provider === ContactImProvider.Email
+      ? null
+      : resolveContactImCallbackSetup(provider.provider)
+  const hasCallbackSetup = Boolean(callbackUrl || (!savedIntegration && callbackSetup))
+  const canContinueWithoutSaving = Boolean(callbackUrl) && !credentialsEdited
   const canRetainSecret =
-    !provider.requiresFreshCredentials && isCurrentProvider && integration?.secretConfigured
-  const targetIntegration = integration ?? replacedIntegration
+    !provider.requiresFreshCredentials && isCurrentProvider && savedIntegration?.secretConfigured
+  const targetIntegration = savedIntegration ?? replacedIntegration
+
+  useEffect(() => {
+    if (step === 'credentials') firstCredentialRef.current?.focus()
+  }, [step])
   const credentialCommand = () => ({
     provider: provider.provider,
     retainSecret: Boolean(canRetainSecret && !secret.trim()),
@@ -87,13 +118,14 @@ export function ContactImBindingDialog({
       return t(($) => $['imPlatform.configurationUpdated'])
     return error.statusDescription ?? fallback
   }
-  const title = isCurrentProvider
-    ? t(($) => $['imPlatform.bindingDialog.configureTitle'], {
-        provider: provider.displayName,
-      })
-    : t(($) => $['imPlatform.bindingDialog.connectTitle'], {
-        provider: provider.displayName,
-      })
+  const title =
+    isCurrentProvider || hasCallbackSetup
+      ? t(($) => $['imPlatform.bindingDialog.configureTitle'], {
+          provider: provider.displayName,
+        })
+      : t(($) => $['imPlatform.bindingDialog.connectTitle'], {
+          provider: provider.displayName,
+        })
 
   const closeDialog = () => {
     if (isPending) return
@@ -103,12 +135,6 @@ export function ContactImBindingDialog({
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) closeDialog()
-  }
-
-  const handleCopyCallback = () => {
-    if (!callbackUrl) return
-    copy(callbackUrl)
-    setCopied(true)
   }
 
   const handleTestConnection = async () => {
@@ -126,14 +152,17 @@ export function ContactImBindingDialog({
     if (isPending) return
     setTestSucceeded(false)
     try {
-      await saveCredentials.saveCredentials({
+      const saved = await saveCredentials.saveCredentials({
         ...credentialCommand(),
         channelId: targetIntegration?.channelId,
         expectedConfigVersion: targetIntegration?.configVersion,
-        replaceActiveProvider,
+        replaceActiveProvider: replaceActiveProvider && !savedIntegration,
       })
+      setSavedIntegration(saved)
+      setCredentialsEdited(false)
       clearSecrets()
-      onOpenChange(false)
+      if (saved.callbackUrl) setStep('callbacks')
+      else onOpenChange(false)
     } catch {
       clearSecrets()
     }
@@ -166,9 +195,30 @@ export function ContactImBindingDialog({
     [ContactImProviderField.SenderName]: t(($) => $['imPlatform.email.senderName']),
   }
 
+  const fieldPlaceholders: Partial<Record<ContactImProviderField, string>> = {
+    [ContactImProviderField.AppId]: t(($) => $['imPlatform.bindingDialog.fieldPlaceholder.appId']),
+    [ContactImProviderField.VerificationToken]: t(
+      ($) => $['imPlatform.bindingDialog.fieldPlaceholder.verificationToken'],
+    ),
+    [ContactImProviderField.EncryptKey]: t(
+      ($) => $['imPlatform.bindingDialog.fieldPlaceholder.encryptKey'],
+    ),
+    ...((provider.provider === ContactImProvider.Feishu ||
+      provider.provider === ContactImProvider.Lark) && {
+      [ContactImProviderField.Secret]: t(
+        ($) => $['imPlatform.bindingDialog.fieldPlaceholder.secret'],
+      ),
+    }),
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal={isPending}>
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-104 flex-col overflow-hidden! p-0!">
+      <DialogContent
+        className={cn(
+          'flex max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] flex-col overflow-hidden! p-0!',
+          hasCallbackSetup ? 'w-120' : 'w-104',
+        )}
+      >
         <DialogClose
           render={
             <IconButton
@@ -183,145 +233,181 @@ export function ContactImBindingDialog({
         />
         <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">{title}</DialogTitle>
-          <DialogDescription className="sr-only">
-            {t(($) => $['imPlatform.bindingDialog.description'])}
+          <DialogDescription
+            className={hasCallbackSetup ? 'mt-1 system-sm-regular text-text-tertiary' : 'sr-only'}
+          >
+            {hasCallbackSetup
+              ? step === 'callbacks'
+                ? t(($) => $['imPlatform.bindingDialog.callbackDescription'], {
+                    provider: provider.displayName,
+                  })
+                : t(($) => $['imPlatform.bindingDialog.credentialsDescription'], {
+                    provider: provider.displayName,
+                  })
+              : t(($) => $['imPlatform.bindingDialog.description'])}
           </DialogDescription>
         </div>
 
-        {callbackUrl && (
-          <div className="mx-6 mb-3 rounded-xl border border-divider-subtle bg-background-default-subtle p-3">
-            <div className="system-xs-medium text-text-secondary">
-              {t(($) => $['imPlatform.bindingDialog.callback'])}
-            </div>
-            <div className="mt-1 system-xs-regular text-text-tertiary">
-              {t(($) => $['imPlatform.bindingDialog.callbackDescription'])}
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-              <code className="min-w-0 flex-1 truncate rounded-md bg-background-default px-2 py-1 text-xs text-text-secondary">
-                {callbackUrl}
-              </code>
-              <Button
-                aria-label={t(($) => $['imPlatform.action.copyCallback'])}
-                className="px-2"
-                onClick={handleCopyCallback}
+        {hasCallbackSetup && (
+          <ol className="flex shrink-0 items-center gap-3 px-6 pt-2 pb-5">
+            {(['credentials', 'callbacks'] as const).map((item, index) => (
+              <li
+                key={item}
+                aria-current={step === item ? 'step' : undefined}
+                className={cn(
+                  'flex min-w-0 items-center gap-2 system-xs-medium-uppercase',
+                  step === item ? 'text-text-accent' : 'text-text-quaternary',
+                )}
               >
+                {index > 0 && <span aria-hidden className="mr-1 h-px w-4 bg-divider-subtle" />}
                 <span
-                  aria-hidden="true"
-                  className={copied ? 'i-ri-check-line size-4' : 'i-ri-file-copy-line size-4'}
-                />
-                <span className="sr-only">
-                  {copied
-                    ? t(($) => $['imPlatform.action.copied'])
-                    : t(($) => $['imPlatform.action.copyCallback'])}
+                  className={cn(
+                    'shrink-0 rounded-full px-1.5 py-0.5',
+                    step === item
+                      ? 'bg-components-button-primary-bg text-components-button-primary-text'
+                      : 'ring-1 ring-divider-subtle',
+                  )}
+                >
+                  {step === item
+                    ? t(($) => $['imPlatform.bindingDialog.step'], { step: index + 1 })
+                    : index + 1}
                 </span>
-              </Button>
-            </div>
-          </div>
+                {item === 'credentials'
+                  ? t(($) => $['imPlatform.bindingDialog.credentialsStep'])
+                  : t(($) => $['imPlatform.bindingDialog.callbackStep'])}
+              </li>
+            ))}
+          </ol>
         )}
 
-        <Form<CredentialValues>
-          ref={formRef}
-          className="flex min-h-0 flex-1 flex-col"
-          onFormSubmit={handleSave}
-        >
-          <div className="space-y-4 overflow-y-auto px-6 py-3">
-            {isCurrentProvider && provider.requiresFreshCredentials && (
-              <p className="system-sm-regular text-text-tertiary">
-                {t(($) => $['imPlatform.bindingDialog.freshCredentials'])}
-              </p>
-            )}
-            {adapter.fields.map(({ field, required, secret: isSecret }) => (
-              <Field key={field} name={field}>
-                <FieldLabel>{fieldLabels[field]}</FieldLabel>
-                <Input
-                  autoComplete={isSecret ? 'new-password' : 'off'}
-                  disabled={isPending}
-                  required={
-                    required && !(field === ContactImProviderField.Secret && canRetainSecret)
-                  }
-                  type={isSecret ? 'password' : 'text'}
-                  value={field === ContactImProviderField.Secret ? secret : (values[field] ?? '')}
-                  onChange={(event) => {
-                    const value = event.currentTarget.value
-                    setTestSucceeded(false)
-                    testConnection.reset()
-                    saveCredentials.reset()
-                    if (field === ContactImProviderField.Secret) setSecret(value)
-                    else setValues((current) => ({ ...current, [field]: value }))
-                  }}
-                />
-                {field === ContactImProviderField.Secret && canRetainSecret && (
-                  <FieldDescription>
-                    {t(($) => $['imPlatform.bindingDialog.secretConfigured'])}
-                  </FieldDescription>
-                )}
-                <FieldError match="valueMissing">
-                  {t(($) => $['imPlatform.bindingDialog.required'])}
-                </FieldError>
-              </Field>
-            ))}
-            <Button
-              disabled={saveCredentials.isPending}
-              loading={testConnection.isPending}
-              onClick={handleTestConnection}
-            >
-              <span aria-hidden className="i-ri-send-plane-2-line size-4" />
-              {testConnection.isPending
-                ? t(($) => $['imPlatform.action.testing'])
-                : t(($) => $['imPlatform.action.testConnection'])}
-            </Button>
-            {testSucceeded && (
-              <div role="status" className="system-xs-regular text-text-success">
-                {t(($) => $['imPlatform.email.testSucceeded'])}
-              </div>
-            )}
-            {testConnection.isError && (
-              <div role="alert" className="system-sm-regular text-text-destructive">
-                {safeErrorMessage(
-                  testConnection.error,
-                  t(($) => $['imPlatform.bindingDialog.testFailed']),
-                )}
-              </div>
-            )}
-            {saveCredentials.isError && (
-              <div role="alert" className="system-sm-regular text-text-destructive">
-                {safeErrorMessage(
-                  saveCredentials.error,
-                  t(($) => $['imPlatform.bindingDialog.saveFailed']),
-                )}
-              </div>
-            )}
-          </div>
-          <div className="mt-auto flex shrink-0 items-center justify-between gap-3 px-6 pt-5 pb-6">
-            <a
-              className="inline-flex items-center gap-1 rounded-sm system-xs-regular text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              href={adapter.setupGuideUrl}
-              rel="noreferrer"
-              target="_blank"
-            >
-              {t(($) => $['imPlatform.action.setupGuide'])}
-              <span aria-hidden className="i-ri-external-link-line size-3" />
-            </a>
-            <div className="flex gap-2">
-              <Button className="min-w-18" disabled={isPending} onClick={closeDialog}>
-                {tCommon(($) => $['operation.cancel'])}
-              </Button>
+        {step === 'callbacks' && callbackUrl ? (
+          <ContactImCallbackSetup
+            callbackUrl={callbackUrl}
+            providerName={provider.displayName}
+            setup={callbackSetup}
+            setupGuideUrl={adapter.setupGuideUrl}
+            onBack={() => setStep('credentials')}
+            onFinish={closeDialog}
+          />
+        ) : (
+          <Form<CredentialValues>
+            ref={formRef}
+            className="flex min-h-0 flex-1 flex-col"
+            onFormSubmit={handleSave}
+          >
+            <div className="space-y-4 overflow-y-auto px-6 py-3">
+              {isCurrentProvider && provider.requiresFreshCredentials && (
+                <p className="system-sm-regular text-text-tertiary">
+                  {t(($) => $['imPlatform.bindingDialog.freshCredentials'])}
+                </p>
+              )}
+              {adapter.fields.map(({ field, required, secret: isSecret }, index) => (
+                <Field key={field} name={field}>
+                  <FieldLabel>{fieldLabels[field]}</FieldLabel>
+                  <Input
+                    ref={index === 0 ? firstCredentialRef : undefined}
+                    autoComplete={isSecret ? 'new-password' : 'off'}
+                    disabled={isPending}
+                    placeholder={fieldPlaceholders[field]}
+                    required={
+                      required && !(field === ContactImProviderField.Secret && canRetainSecret)
+                    }
+                    type={isSecret ? 'password' : 'text'}
+                    value={field === ContactImProviderField.Secret ? secret : (values[field] ?? '')}
+                    onChange={(event) => {
+                      const value = event.currentTarget.value
+                      setCredentialsEdited(true)
+                      setTestSucceeded(false)
+                      testConnection.reset()
+                      saveCredentials.reset()
+                      if (field === ContactImProviderField.Secret) setSecret(value)
+                      else setValues((current) => ({ ...current, [field]: value }))
+                    }}
+                  />
+                  {field === ContactImProviderField.Secret && canRetainSecret && (
+                    <FieldDescription>
+                      {t(($) => $['imPlatform.bindingDialog.secretConfigured'])}
+                    </FieldDescription>
+                  )}
+                  <FieldError match="valueMissing">
+                    {t(($) => $['imPlatform.bindingDialog.required'])}
+                  </FieldError>
+                </Field>
+              ))}
               <Button
-                type="submit"
-                className="min-w-18"
-                variant="primary"
-                disabled={testConnection.isPending}
-                loading={saveCredentials.isPending}
+                aria-labelledby={testLabelId}
+                disabled={saveCredentials.isPending}
+                loading={testConnection.isPending}
+                onClick={handleTestConnection}
               >
-                {saveCredentials.isPending
-                  ? t(($) => $['imPlatform.action.saving'])
-                  : isCurrentProvider
-                    ? t(($) => $['imPlatform.action.save'])
-                    : t(($) => $['imPlatform.action.connect'])}
+                <span aria-hidden className="i-ri-send-plane-2-line size-4" />
+                <span id={testLabelId}>
+                  {testConnection.isPending
+                    ? t(($) => $['imPlatform.action.testing'])
+                    : t(($) => $['imPlatform.action.testConnection'])}
+                </span>
               </Button>
+              {testSucceeded && (
+                <div role="status" className="system-xs-regular text-text-success">
+                  {t(($) => $['imPlatform.email.testSucceeded'])}
+                </div>
+              )}
+              {testConnection.isError && (
+                <div role="alert" className="system-sm-regular text-text-destructive">
+                  {safeErrorMessage(
+                    testConnection.error,
+                    t(($) => $['imPlatform.bindingDialog.testFailed']),
+                  )}
+                </div>
+              )}
+              {saveCredentials.isError && (
+                <div role="alert" className="system-sm-regular text-text-destructive">
+                  {safeErrorMessage(
+                    saveCredentials.error,
+                    t(($) => $['imPlatform.bindingDialog.saveFailed']),
+                  )}
+                </div>
+              )}
             </div>
-          </div>
-        </Form>
+            <div className="mt-auto flex shrink-0 flex-wrap items-center justify-between gap-3 px-6 pt-5 pb-6">
+              <a
+                className="inline-flex items-center gap-1 rounded-sm system-xs-regular text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                href={adapter.setupGuideUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                {hasCallbackSetup
+                  ? t(($) => $['imPlatform.bindingDialog.openSetupGuide'])
+                  : t(($) => $['imPlatform.action.setupGuide'])}
+                <span aria-hidden className="i-ri-external-link-line size-3" />
+              </a>
+              <div className="ml-auto flex gap-2">
+                <Button className="min-w-18" disabled={isPending} onClick={closeDialog}>
+                  {tCommon(($) => $['operation.cancel'])}
+                </Button>
+                <Button
+                  aria-labelledby={saveLabelId}
+                  type={canContinueWithoutSaving ? 'button' : 'submit'}
+                  onClick={canContinueWithoutSaving ? () => setStep('callbacks') : undefined}
+                  className="min-w-18"
+                  variant="primary"
+                  disabled={testConnection.isPending}
+                  loading={saveCredentials.isPending}
+                >
+                  <span id={saveLabelId}>
+                    {saveCredentials.isPending
+                      ? t(($) => $['imPlatform.action.saving'])
+                      : hasCallbackSetup
+                        ? t(($) => $['imPlatform.bindingDialog.saveAndContinue'])
+                        : isCurrentProvider
+                          ? t(($) => $['imPlatform.action.save'])
+                          : t(($) => $['imPlatform.action.connect'])}
+                  </span>
+                </Button>
+              </div>
+            </div>
+          </Form>
+        )}
       </DialogContent>
     </Dialog>
   )
