@@ -523,19 +523,10 @@ class TestCleanDatasetTask:
         # Should be called 4 times (once for each test case)
         assert mock_factory.call_count == 4
 
-    def test_clean_dataset_task_error_handling_and_rollback(
+    def test_index_cleanup_failure_preserves_documents_and_segments(
         self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test error handling and rollback mechanism when database operations fail.
-
-        This test verifies that the task can properly:
-        1. Handle database operation failures gracefully
-        2. Rollback database session to prevent dirty state
-        3. Continue cleanup operations even if some parts fail
-        4. Log appropriate error messages
-        5. Maintain database session integrity
-        """
+    ) -> None:
+        """An incomplete index cleanup must preserve its dependent records for retry."""
         # Create test data
         account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
@@ -544,37 +535,31 @@ class TestCleanDatasetTask:
 
         # Mock IndexProcessorFactory to raise an exception
         mock_index_processor = mock_external_service_dependencies["index_processor"]
-        mock_index_processor.clean.side_effect = Exception("Vector database cleanup failed")
+        mock_index_processor.clean.side_effect = RuntimeError("Vector database cleanup failed")
 
-        # Execute the task - it should handle the exception gracefully
-        clean_dataset_task(
-            dataset_id=dataset.id,
-            tenant_id=tenant.id,
-            indexing_technique=dataset.indexing_technique,
-            index_struct=dataset.index_struct,
-            collection_binding_id=dataset.collection_binding_id,
-            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
-        )
+        # A direct call propagates the original exception instead of publishing a retry.
+        with pytest.raises(RuntimeError, match="Vector database cleanup failed"):
+            clean_dataset_task(
+                dataset_id=dataset.id,
+                tenant_id=tenant.id,
+                indexing_technique=dataset.indexing_technique,
+                index_struct=dataset.index_struct,
+                collection_binding_id=dataset.collection_binding_id,
+                doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
+            )
 
-        # Verify results - even with vector cleanup failure, documents and segments should be deleted
-
-        # Check that documents were still deleted despite vector cleanup failure
         remaining_documents = db_session_with_containers.scalars(
             select(Document).where(Document.dataset_id == dataset.id)
         ).all()
-        assert len(remaining_documents) == 0
+        assert len(remaining_documents) == 1
 
-        # Check that segments were still deleted despite vector cleanup failure
         remaining_segments = db_session_with_containers.scalars(
             select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
         ).all()
-        assert len(remaining_segments) == 0
+        assert len(remaining_segments) == 1
 
-        # Verify that index processor was called and failed
         mock_index_processor.clean.assert_called_once()
-
-        # Verify that the task continued with cleanup despite the error
-        # This demonstrates the resilience of the cleanup process
+        mock_external_service_dependencies["storage"].delete.assert_not_called()
 
     def test_clean_dataset_task_with_image_file_references(
         self, db_session_with_containers: Session, mock_external_service_dependencies

@@ -13,13 +13,14 @@ This module tests the dataset cleanup task functionality including:
 
 import json
 import uuid
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 from celery.exceptions import Retry
 from sqlalchemy import Engine, event
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -27,6 +28,7 @@ from extensions.storage.storage_type import StorageType
 from models.base import TypeBase
 from models.dataset import (
     AppDatasetJoin,
+    ChildChunk,
     DatasetMetadata,
     DatasetMetadataBinding,
     DatasetProcessRule,
@@ -79,6 +81,7 @@ def orm_session_maker(
     models = (
         Document,
         DocumentSegment,
+        ChildChunk,
         SegmentAttachmentBinding,
         UploadFile,
         DatasetProcessRule,
@@ -622,7 +625,7 @@ class TestIndexProcessorParameters:
         assert call_args[1]["delete_child_chunks"] is True
         schedule_refresh.assert_called_once_with(tenant_id)
 
-    def test_vector_cleanup_failure_does_not_schedule_billing_refresh(
+    def test_vector_cleanup_failure_preserves_documents_and_does_not_schedule_billing_refresh(
         self,
         dataset_id: str,
         tenant_id: str,
@@ -632,9 +635,17 @@ class TestIndexProcessorParameters:
         mock_index_processor_factory: dict[str, MagicMock],
         mock_get_image_upload_file_ids: MagicMock,
     ) -> None:
-        mock_index_processor_factory["processor"].clean.side_effect = RuntimeError("vector cleanup failed")
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segment = _persist_segment(
+            orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id
+        )
+        failure = RuntimeError("vector cleanup failed")
+        mock_index_processor_factory["processor"].clean.side_effect = failure
 
-        with patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh:
+        with (
+            patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh,
+            pytest.raises(RuntimeError, match="vector cleanup failed") as raised,
+        ):
             clean_dataset_task(
                 dataset_id=dataset_id,
                 tenant_id=tenant_id,
@@ -644,7 +655,110 @@ class TestIndexProcessorParameters:
                 doc_form=IndexStructureType.PARAGRAPH_INDEX,
             )
 
+        assert raised.value is failure
         schedule_refresh.assert_not_called()
+        with orm_session_maker() as session:
+            assert session.get(Document, document.id) is not None
+            assert session.get(DocumentSegment, segment.id) is not None
+
+    @pytest.mark.parametrize("failure_phase", ["flush", "commit"])
+    def test_index_database_failure_preserves_parent_and_child_rows_until_retry(
+        self,
+        failure_phase: str,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        orm_session_maker: sessionmaker[Session],
+        sqlite_engine: Engine,
+        mock_storage: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """An index rollback must not strand its child rows after parent deletion."""
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segment = _persist_segment(
+            orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id
+        )
+        child = ChildChunk(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_id=document.id,
+            segment_id=segment.id,
+            position=1,
+            content="child",
+            word_count=1,
+            created_by=str(uuid.uuid4()),
+        )
+        with orm_session_maker.begin() as session:
+            session.add(child)
+        failure = OperationalError(failure_phase, {}, RuntimeError("temporary index database failure"))
+        child_deletes: list[str] = []
+        injected_failures: list[OperationalError] = []
+
+        def record_child_delete(statement: str, **_kwargs: object) -> None:
+            if statement.lower().startswith("delete from child_chunks"):
+                child_deletes.append(statement)
+
+        def fail_first_index_commit(_session: Session) -> None:
+            if failure_phase == "commit" and child_deletes and not injected_failures:
+                injected_failures.append(failure)
+                raise failure
+
+        original_flush = Session.flush
+
+        def fail_first_index_flush(session: Session, objects: Sequence[object] | None = None) -> None:
+            if failure_phase == "flush" and child_deletes and not injected_failures:
+                injected_failures.append(failure)
+                raise failure
+            original_flush(session, objects)
+
+        with (
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Vector", autospec=True) as vector,
+            patch.object(Session, "flush", autospec=True, side_effect=fail_first_index_flush),
+            patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh,
+            caplog.at_level("INFO", logger="tasks.clean_dataset_task"),
+        ):
+            event.listen(sqlite_engine, "after_cursor_execute", record_child_delete, named=True)
+            event.listen(orm_session_maker, "before_commit", fail_first_index_commit)
+            try:
+                with pytest.raises(Retry) as retried:
+                    clean_dataset_task.apply(
+                        kwargs={
+                            "dataset_id": dataset_id,
+                            "tenant_id": tenant_id,
+                            "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
+                            "index_struct": None,
+                            "collection_binding_id": collection_binding_id,
+                            "doc_form": IndexStructureType.PARENT_CHILD_INDEX,
+                        },
+                        throw=True,
+                    )
+            finally:
+                event.remove(sqlite_engine, "after_cursor_execute", record_child_delete)
+                event.remove(orm_session_maker, "before_commit", fail_first_index_commit)
+
+            assert len(child_deletes) == 1
+            assert injected_failures == [failure]
+            assert retried.value.exc is failure
+            # celery-stubs omits the signature stored on Retry at runtime.
+            retry_signature = retried.value.sig  # pyrefly: ignore[missing-attribute]
+            assert retry_signature is not None
+            assert retry_signature.kwargs["index_cleanup_done"] is False
+            with orm_session_maker() as session:
+                assert session.get(ChildChunk, child.id) is not None
+                assert session.get(DocumentSegment, segment.id) is not None
+                assert session.get(Document, document.id) is not None
+            schedule_refresh.assert_not_called()
+            assert not any("Cleaned dataset when dataset deleted:" in message for message in caplog.messages)
+
+            assert retry_signature.apply(throw=True).successful()
+            assert vector.return_value.delete.call_count == 2
+            schedule_refresh.assert_called_once_with(tenant_id)
+
+        with orm_session_maker() as session:
+            assert session.get(ChildChunk, child.id) is None
+            assert session.get(DocumentSegment, segment.id) is None
+            assert session.get(Document, document.id) is None
+        mock_storage.delete.assert_not_called()
 
 
 # ============================================================================

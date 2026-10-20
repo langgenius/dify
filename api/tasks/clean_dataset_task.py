@@ -90,13 +90,10 @@ def clean_dataset_task(
 
         with session_factory.create_session() as session:
             if not index_cleanup_done:
-                try:
-                    _run_step(session, dataset_id, "vector database", lambda: _clean_index(session, dataset, doc_form))
-                except Exception:
-                    logger.info("Continuing relational cleanup after index cleanup failed, dataset_id=%s", dataset_id)
-                else:
-                    index_cleanup_done = True
-                    schedule_billing_vector_space_refresh(dataset.tenant_id)
+                # Index processors also delete relational child rows, so the whole step must succeed first.
+                _run_step(session, dataset_id, "dataset index", lambda: _clean_index(session, dataset, doc_form))
+                index_cleanup_done = True
+                schedule_billing_vector_space_refresh(dataset.tenant_id)
 
             # Stop on failure so documents and their resources outlive any remaining segments.
             _run_step(session, dataset_id, "segments", lambda: _delete_segments(session, dataset_id))
