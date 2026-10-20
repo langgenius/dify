@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useAtomValue } from 'jotai'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
@@ -23,7 +24,7 @@ import {
 
 type EnvironmentDeployMenuProps = {
   appearance?: 'empty' | 'header'
-  onSelectEnvironment: (environment: AppEnvironment) => void
+  onSelectEnvironment: (environment: AppEnvironment, trigger: HTMLElement | null) => void
 }
 
 export function EnvironmentDeployMenu({
@@ -39,12 +40,18 @@ export function EnvironmentDeployMenu({
   const refetchEnvironments = useAtomValue(appEnvironmentsRefetchAtom)
   const isEmptyState = appearance === 'empty'
   const label = tCommon(($) => $['appMenus.deploy'])
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const [isOpeningDialog, setIsOpeningDialog] = useState(false)
 
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu modal={false} onOpenChange={(open) => open && setIsOpeningDialog(false)}>
       <DropdownMenuTrigger
         render={
-          <Button variant={isEmptyState ? 'secondary' : 'primary'} className="gap-0 px-2">
+          <Button
+            ref={triggerRef}
+            variant={isEmptyState ? 'secondary' : 'primary'}
+            className="gap-0 px-2"
+          >
             <span aria-hidden className="i-ri-add-line size-4" />
             <span className="pl-1.5">{label}</span>
             <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
@@ -52,6 +59,7 @@ export function EnvironmentDeployMenu({
         }
       />
       <DropdownMenuContent
+        finalFocus={!isOpeningDialog}
         aria-busy={isLoading || isRetrying}
         placement="bottom-end"
         sideOffset={4}
@@ -95,7 +103,10 @@ export function EnvironmentDeployMenu({
               <DropdownMenuItem
                 key={environment.id}
                 className="mx-0 gap-2 py-1.5"
-                onClick={() => onSelectEnvironment(environment)}
+                onClick={() => {
+                  setIsOpeningDialog(true)
+                  onSelectEnvironment(environment, triggerRef.current)
+                }}
               >
                 <span
                   aria-hidden

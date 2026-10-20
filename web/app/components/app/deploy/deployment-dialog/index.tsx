@@ -1,41 +1,50 @@
 'use client'
 
+import type { RefObject } from 'react'
 import type { DeploymentDialogRequest } from '../types'
 import type { DeploymentVersion } from '../utils/version'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { DeploymentConfiguration } from '../shared/deployment-configuration'
 import { VersionSelection } from '../shared/version-selection'
 
 type DeploymentDialogProps = {
   appId: string
-  request?: DeploymentDialogRequest
+  open: boolean
+  finalFocus: RefObject<HTMLElement | null>
+  request: DeploymentDialogRequest
   onClose: () => void
 }
 
 function DeploymentDialogSession({
   appId,
   request,
+  titleRef,
   onClose,
 }: {
   appId: string
   request: DeploymentDialogRequest
+  titleRef: RefObject<HTMLHeadingElement | null>
   onClose: () => void
 }) {
   const [selectedVersion, setSelectedVersion] = useState<DeploymentVersion | undefined>(() =>
     'initialVersion' in request ? request.initialVersion : undefined,
   )
+  useLayoutEffect(() => {
+    titleRef.current?.focus()
+  }, [selectedVersion, titleRef])
 
   return (
-    <DialogContent
+    <div
       className={cn(
-        'max-h-[min(44rem,calc(100dvh-32px))] overflow-hidden',
+        'flex min-h-0 flex-1 flex-col',
         !selectedVersion && 'h-[min(44rem,calc(100dvh-32px))]',
       )}
     >
       {selectedVersion ? (
         <DeploymentConfiguration
+          titleRef={titleRef}
           appId={appId}
           key={selectedVersion.id}
           request={request}
@@ -44,21 +53,34 @@ function DeploymentDialogSession({
           onClose={onClose}
         />
       ) : (
-        <VersionSelection appId={appId} request={request} onSelect={setSelectedVersion} />
+        <VersionSelection
+          titleRef={titleRef}
+          appId={appId}
+          request={request}
+          onSelect={setSelectedVersion}
+        />
       )}
-    </DialogContent>
+    </div>
   )
 }
 
-export function DeploymentDialog({ appId, request, onClose }: DeploymentDialogProps) {
+export function DeploymentDialog({
+  appId,
+  finalFocus,
+  open,
+  request,
+  onClose,
+}: DeploymentDialogProps) {
+  const titleRef = useRef<HTMLHeadingElement | null>(null)
   return (
-    <Dialog
-      open={Boolean(request)}
-      disablePointerDismissal
-      onOpenChange={(open) => !open && onClose()}
-    >
-      {request && (
+    <Dialog open={open} disablePointerDismissal onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        initialFocus={titleRef}
+        finalFocus={finalFocus}
+        className="max-h-[min(44rem,calc(100dvh-32px))] overflow-hidden"
+      >
         <DeploymentDialogSession
+          titleRef={titleRef}
           appId={appId}
           key={`${request.kind}-${request.environmentId}-${request.currentVersionId ?? 'none'}-${
             'initialVersion' in request ? request.initialVersion.name : 'none'
@@ -66,7 +88,7 @@ export function DeploymentDialog({ appId, request, onClose }: DeploymentDialogPr
           request={request}
           onClose={onClose}
         />
-      )}
+      </DialogContent>
     </Dialog>
   )
 }

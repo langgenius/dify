@@ -1,4 +1,5 @@
 'use client'
+import type { RefObject } from 'react'
 import type { DeploymentDialogRequest } from '../../types'
 import type { DeploymentVersion } from '../../utils/version'
 import { Button } from '@langgenius/dify-ui/button'
@@ -13,6 +14,7 @@ import { useDeploymentConfigurationValues } from './use-deployment-configuration
 
 export function DeploymentConfiguration({
   appId,
+  titleRef,
   disabled = false,
   embedded = false,
   invalidateAppEnvironmentsOnSuccess = true,
@@ -23,6 +25,7 @@ export function DeploymentConfiguration({
   onDeploymentStarted,
 }: {
   appId?: string
+  titleRef?: RefObject<HTMLHeadingElement | null>
   disabled?: boolean
   embedded?: boolean
   invalidateAppEnvironmentsOnSuccess?: boolean
@@ -40,20 +43,21 @@ export function DeploymentConfiguration({
     environmentId: request.environmentId,
     workflowId: version.id,
   })
-  const { canDeploy, handleSubmit, isDeploying } = useDeploymentConfigurationForm({
-    appId,
-    configurationValues,
-    disabled,
-    environmentId: request.environmentId,
-    invalidateAppEnvironmentsOnSuccess,
-    queryState,
-    workflowId: version.id,
-    onClose,
-    onDeploymentStarted,
-  })
+  const { canDeploy, clearFieldError, fieldError, formRef, handleSubmit, isDeploying } =
+    useDeploymentConfigurationForm({
+      appId,
+      configurationValues,
+      disabled,
+      environmentId: request.environmentId,
+      invalidateAppEnvironmentsOnSuccess,
+      queryState,
+      workflowId: version.id,
+      onClose,
+      onDeploymentStarted,
+    })
 
   return (
-    <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
+    <form ref={formRef} className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
       {!embedded && (
         <DialogClose
           render={
@@ -86,15 +90,19 @@ export function DeploymentConfiguration({
             {t(($) => $['studio.deployConfiguration'])}
           </h2>
         ) : (
-          <DialogTitle className="mt-0.5 px-1">
-            {t(($) => $['studio.deployConfiguration'])}
-          </DialogTitle>
+          <div className="mt-0.5 px-1">
+            <DialogTitle ref={titleRef} tabIndex={-1}>
+              {t(($) => $['studio.deployConfiguration'])}
+            </DialogTitle>
+          </div>
         )}
       </header>
 
       <DeploymentConfigurationContent
         compact={embedded}
         configurationValues={configurationValues}
+        fieldError={fieldError}
+        onConfigurationChange={clearFieldError}
         queryState={queryState}
         request={request}
         version={version}

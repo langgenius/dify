@@ -9,7 +9,7 @@ import type { DeploymentVersion } from './utils/version'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { getEnterpriseDocUrl } from '@/context/i18n'
@@ -44,38 +44,67 @@ function AppDeployContent({
   const docLanguage = getDocLanguage(locale)
   const deployOverviewDocUrl = getEnterpriseDocUrl('/use/deploy/overview', docLanguage)
   const [deploymentRequest, setDeploymentRequest] = useState<DeploymentDialogRequest>()
-  useRefreshAppEnvironmentsAfterDeploymentPolling(appId)
-  const undeployWorkflow = useUndeployWorkflow(appId)
-
-  const handleDeployToEnvironment = useCallback((environment: AppEnvironment) => {
-    setDeploymentRequest({
-      environment: environment.display_name,
-      environmentId: environment.id,
-      kind: 'deploy',
-    })
-  }, [])
-  const handleChangeVersion = useCallback((deployment: EnvironmentDeployment) => {
-    setDeploymentRequest({
-      currentVersionId: deployment.deployment?.current_version?.id,
-      environment: deployment.environment.display_name,
-      environmentId: deployment.environment.id,
-      kind: 'changeVersion',
-    })
-  }, [])
-  const handleDeployLatest = useCallback(
-    (deployment: EnvironmentDeployment, latestVersion: DeploymentVersion) => {
-      setDeploymentRequest({
-        currentVersionId: deployment.deployment?.current_version?.id,
-        environment: deployment.environment.display_name,
-        environmentId: deployment.environment.id,
-        initialVersion: latestVersion,
-        kind: 'deployLatest',
-      })
+  const [isDeploymentDialogOpen, setIsDeploymentDialogOpen] = useState(false)
+  const deploymentReturnFocusRef = useRef<HTMLElement | null>(null)
+  const openDeploymentDialog = useCallback(
+    (request: DeploymentDialogRequest, trigger: HTMLElement | null) => {
+      deploymentReturnFocusRef.current = trigger
+      setDeploymentRequest(request)
+      setIsDeploymentDialogOpen(true)
     },
     [],
   )
+  useRefreshAppEnvironmentsAfterDeploymentPolling(appId)
+  const undeployWorkflow = useUndeployWorkflow(appId)
+
+  const handleDeployToEnvironment = useCallback(
+    (environment: AppEnvironment, trigger: HTMLElement | null) => {
+      openDeploymentDialog(
+        {
+          environment: environment.display_name,
+          environmentId: environment.id,
+          kind: 'deploy',
+        },
+        trigger,
+      )
+    },
+    [openDeploymentDialog],
+  )
+  const handleChangeVersion = useCallback(
+    (deployment: EnvironmentDeployment, trigger: HTMLElement | null) => {
+      openDeploymentDialog(
+        {
+          currentVersionId: deployment.deployment?.current_version?.id,
+          environment: deployment.environment.display_name,
+          environmentId: deployment.environment.id,
+          kind: 'changeVersion',
+        },
+        trigger,
+      )
+    },
+    [openDeploymentDialog],
+  )
+  const handleDeployLatest = useCallback(
+    (
+      deployment: EnvironmentDeployment,
+      latestVersion: DeploymentVersion,
+      trigger: HTMLElement | null,
+    ) => {
+      openDeploymentDialog(
+        {
+          currentVersionId: deployment.deployment?.current_version?.id,
+          environment: deployment.environment.display_name,
+          environmentId: deployment.environment.id,
+          initialVersion: latestVersion,
+          kind: 'deployLatest',
+        },
+        trigger,
+      )
+    },
+    [openDeploymentDialog],
+  )
   const handleRedeploy = useCallback(
-    (deployment: EnvironmentDeployment) => {
+    (deployment: EnvironmentDeployment, trigger: HTMLElement | null) => {
       const deploymentState = deployment.deployment
       const version =
         deploymentState?.latest_operation?.target_version ?? deploymentState?.current_version
@@ -83,39 +112,45 @@ function AppDeployContent({
       const environmentId = deployment.environment.id
 
       if (!version) {
-        setDeploymentRequest({
-          environment,
-          environmentId,
-          kind: 'changeVersion',
-        })
+        openDeploymentDialog(
+          {
+            environment,
+            environmentId,
+            kind: 'changeVersion',
+          },
+          trigger,
+        )
         return
       }
 
-      setDeploymentRequest({
-        currentVersionId: deploymentState?.current_version?.id,
-        environment,
-        environmentId,
-        initialVersion: toDeploymentVersion(
-          version,
-          tWorkflow(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
-        ),
-        kind: 'redeploy',
-      })
+      openDeploymentDialog(
+        {
+          currentVersionId: deploymentState?.current_version?.id,
+          environment,
+          environmentId,
+          initialVersion: toDeploymentVersion(
+            version,
+            tWorkflow(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
+          ),
+          kind: 'redeploy',
+        },
+        trigger,
+      )
     },
-    [tWorkflow],
+    [openDeploymentDialog, tWorkflow],
   )
-  const handleCloseDeploymentDialog = useCallback(() => setDeploymentRequest(undefined), [])
+  const handleCloseDeploymentDialog = useCallback(() => setIsDeploymentDialogOpen(false), [])
 
   return (
     <>
-      <div className="flex h-full flex-col bg-components-panel-bg">
+      <div className="flex h-full min-w-0 flex-col overflow-y-auto bg-components-panel-bg">
         <header className="flex shrink-0 flex-col gap-y-0.5 px-6 pt-3 pb-2">
           <div className="flex h-6 items-center">
             <h1 className="title-xl-semi-bold text-text-primary">
               {tCommon(($) => $['appMenus.deploy'])}
             </h1>
           </div>
-          <p className="flex items-center gap-x-1 system-xs-regular text-text-tertiary">
+          <p className="flex flex-wrap items-center gap-x-1 system-xs-regular text-text-tertiary">
             <span>{t(($) => $['studio.description'])}</span>
             <a
               href={deployOverviewDocUrl}
@@ -128,7 +163,7 @@ function AppDeployContent({
           </p>
         </header>
 
-        <div className="flex min-h-0 grow flex-col gap-4 px-6 py-2">
+        <div className="flex min-h-0 grow flex-col gap-4 px-6 py-2 max-md:min-h-max">
           <BuiltInEnvironmentCard canViewAccessPoint={canViewAccessPoint} />
           <EnvironmentTable
             appId={appId}
@@ -144,6 +179,8 @@ function AppDeployContent({
       {deploymentRequest && (
         <DeploymentDialog
           appId={appId}
+          open={isDeploymentDialogOpen}
+          finalFocus={deploymentReturnFocusRef}
           request={deploymentRequest}
           onClose={handleCloseDeploymentDialog}
         />

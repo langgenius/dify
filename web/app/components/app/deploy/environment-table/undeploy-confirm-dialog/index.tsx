@@ -1,5 +1,6 @@
 'use client'
 
+import type { RefObject } from 'react'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -13,6 +14,7 @@ import {
 import { useTranslation } from 'react-i18next'
 
 type UndeployConfirmDialogProps = {
+  finalFocus: RefObject<HTMLElement | null>
   environmentName: string
   isPending?: boolean
   open: boolean
@@ -22,6 +24,7 @@ type UndeployConfirmDialogProps = {
 }
 
 export function UndeployConfirmDialog({
+  finalFocus,
   environmentName,
   isPending = false,
   open,
@@ -39,7 +42,7 @@ export function UndeployConfirmDialog({
         if (!isPending) onOpenChange(nextOpen)
       }}
     >
-      <AlertDialogContent>
+      <AlertDialogContent finalFocus={finalFocus}>
         <AlertDialogHeader>
           <AlertDialogTitle>
             {t(($) => $['studio.undeployConfirmTitle'], {

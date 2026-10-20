@@ -9,7 +9,7 @@ import { EmptyTableSkeleton } from './skeleton'
 type EnvironmentTableEmptyProps =
   | {
       state: 'empty'
-      onSelectEnvironment: (environment: AppEnvironment) => void
+      onSelectEnvironment: (environment: AppEnvironment, trigger: HTMLElement | null) => void
     }
   | {
       state: 'error'

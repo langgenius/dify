@@ -905,6 +905,44 @@ describe('AppDeploy', () => {
     )
   })
 
+  it('names the deployment table and identifies each environment as its row header', () => {
+    render(<AppDeploy />)
+
+    const table = within(screen.getByRole('table', { name: 'deployments.studio.environments' }))
+    expect(table.getByRole('rowheader', { name: 'Canary' })).toHaveAttribute('scope', 'row')
+    for (const header of table.getAllByRole('columnheader'))
+      expect(header).toHaveAttribute('scope', 'col')
+  })
+
+  it('keeps the environment name in the live status when deployment state changes', async () => {
+    const view = render(<AppDeploy />, {
+      environmentDeployments: [
+        environmentDeployment({
+          id: 'canary',
+          name: 'Canary',
+          runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
+        }),
+      ],
+    })
+    const status = within(screen.getByRole('row', { name: /Canary/ })).getByRole('status')
+    expect(status).toHaveTextContent('Canary: Running')
+    expect(status).toHaveAttribute('aria-atomic', 'true')
+
+    act(() => {
+      view.queryClient.setQueryData(appEnvironmentDeploymentsQueryOptions.queryKey, {
+        environment_deployments: [
+          environmentDeployment({
+            id: 'canary',
+            name: 'Canary',
+            runtimeState: RuntimeState.RUNTIME_STATE_ERROR,
+          }),
+        ],
+      })
+    })
+
+    await waitFor(() => expect(status).toHaveTextContent('Canary: Invalid'))
+  })
+
   it.each(ACTION_MATRIX_CASES)(
     'provides the designed row actions when $name',
     ({ actions, row }) => {
@@ -972,7 +1010,8 @@ describe('AppDeploy', () => {
       name: 'deployments.studio.deployLatest',
     })
     expect(deployLatestButtons.length).toBeGreaterThan(0)
-    for (const button of deployLatestButtons) expect(button).toBeDisabled()
+    for (const button of deployLatestButtons)
+      expect(button).toHaveAttribute('aria-disabled', 'true')
 
     await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
 
@@ -988,7 +1027,7 @@ describe('AppDeploy', () => {
     })
     expect(
       stagingRow.getByRole('button', { name: 'deployments.studio.deployLatest' }),
-    ).toBeDisabled()
+    ).toHaveAttribute('aria-disabled', 'true')
     expect(requestCount).toBe(2)
   })
 
@@ -1143,7 +1182,7 @@ describe('AppDeploy', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
 
-    expect(screen.getByRole('status')).toHaveTextContent(
+    expect(within(screen.getByRole('menu')).getByRole('status')).toHaveTextContent(
       'deployments.deployDrawer.noNewEnvironmentAvailable',
     )
     expect(screen.queryByRole('menuitem')).not.toBeInTheDocument()
@@ -1276,6 +1315,7 @@ describe('AppDeploy', () => {
     const portSource = rootVariables.getByRole('combobox', { name: /PORT/ })
     expect(portSource).toHaveTextContent('Version value')
     const portInput = rootVariables.getByRole('textbox', { name: 'PORT' })
+    expect(portInput).toHaveAccessibleDescription('Server port')
     expect(portInput).toBeDisabled()
     expect(portInput).toHaveAttribute('placeholder', '2')
     expect(rootVariables.getByRole('textbox', { name: 'API_KEY' })).toHaveAttribute(
@@ -1405,9 +1445,17 @@ describe('AppDeploy', () => {
       within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
     )
     expect(deploymentRequests).toHaveLength(0)
-    expect(toast.error).toHaveBeenCalledWith('Finance APP · PORT: workflow.env.modal.valueRequired')
+    expect(customPortInput).toHaveAttribute('aria-invalid', 'true')
+    expect(customPortInput).toHaveAccessibleDescription(
+      'Server port workflow.env.modal.valueRequired',
+    )
+    expect(customPortInput).toHaveFocus()
+    expect(
+      within(rootVariables.getByRole('group', { name: 'PORT' })).getByRole('alert'),
+    ).toHaveTextContent('workflow.env.modal.valueRequired')
 
     await user.type(customPortInput, '3000')
+    expect(customPortInput).not.toHaveAttribute('aria-invalid', 'true')
     await user.click(
       within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
     )
@@ -1421,7 +1469,7 @@ describe('AppDeploy', () => {
     })
   })
 
-  it('shows a toast instead of submitting when a credential is missing', async () => {
+  it('identifies and focuses a missing credential instead of submitting', async () => {
     const user = userEvent.setup()
     const deploymentRequests: Request[] = []
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -1472,7 +1520,10 @@ describe('AppDeploy', () => {
     await user.click(deployButton)
 
     expect(deploymentRequests).toHaveLength(0)
-    expect(toast.error).toHaveBeenCalledWith('Moonshot: deployments.deployDrawer.selectCredential')
+    const credential = within(configurationDialog).getByRole('combobox', { name: 'Moonshot' })
+    expect(credential).toHaveAttribute('aria-invalid', 'true')
+    expect(credential).toHaveAccessibleDescription('deployments.deployDrawer.selectCredential')
+    expect(credential).toHaveFocus()
   })
 
   it('deploys the selected workflow configuration and refreshes the deployment list', async () => {
@@ -2136,7 +2187,7 @@ describe('AppDeploy', () => {
 
     await user.click(retryButton)
 
-    expect(await screen.findByRole('cell', { name: /Staging/ })).toBeInTheDocument()
+    expect(await screen.findByRole('rowheader', { name: /Staging/ })).toBeInTheDocument()
     expect(deploymentRequests).toHaveLength(2)
   })
 
@@ -2185,7 +2236,7 @@ describe('AppDeploy', () => {
       stagingRow.getByRole('button', {
         name: 'deployments.studio.deployLatest',
       }),
-    ).toBeDisabled()
+    ).toHaveAttribute('aria-disabled', 'true')
 
     await user.click(
       stagingRow.getByRole('button', {

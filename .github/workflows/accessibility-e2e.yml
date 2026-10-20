@@ -15,6 +15,7 @@ on:
           - studio
           - agents
           - app-access-point
+          - app-deploy
           - knowledge
           - integrations
           - all
@@ -55,6 +56,7 @@ jobs:
           run-install: 'false'
 
       - name: Setup UV and Python
+        if: ${{ inputs.page != 'app-deploy' }}
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
@@ -65,6 +67,7 @@ jobs:
       # API and web installs are independent, so overlap them; the browser
       # install needs Playwright from the web dependencies.
       - name: Install API dependencies
+        if: ${{ inputs.page != 'app-deploy' }}
         id: install-api-dependencies
         background: true
         timeout-minutes: 15
@@ -80,9 +83,11 @@ jobs:
         run: vp run e2e:install:ci:chromium
 
       - name: Wait for API dependencies
+        if: ${{ inputs.page != 'app-deploy' }}
         wait: install-api-dependencies
 
       - name: Run automated WCAG Level ${{ inputs.level == 'a' && 'A' || 'AA' }} checks
+        if: ${{ inputs.page != 'app-deploy' }}
         working-directory: ./e2e
         env:
           E2E_ADMIN_EMAIL: e2e-admin@example.com
@@ -98,8 +103,27 @@ jobs:
             pnpm exec node ./scripts/run-cucumber.ts --full -- --tags "@axe and @wcag-${{ inputs.level }} and @wcag-page-$WCAG_PAGE"
           fi
 
+      # Community app responses have no deploy ACL and cannot open this Enterprise page.
+      # Scan the production page and overlays in Chromium with Enterprise query fixtures.
+      - name: Audit app deploy in Browser Mode
+        if: ${{ inputs.page == 'app-deploy' || inputs.page == 'all' }}
+        working-directory: ./web
+        env:
+          VITE_WCAG_LEVEL: ${{ inputs.level }}
+        run: vp test run --project browser app/components/app/deploy/__tests__/accessibility.browser.spec.tsx
+
+      - name: Upload app deploy browser diagnostics
+        if: ${{ !cancelled() && (inputs.page == 'app-deploy' || inputs.page == 'all') }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: app-deploy-accessibility-${{ inputs.level }}
+          path: web/.vitest-browser
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 7
+
       - name: Upload accessibility Cucumber report
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && inputs.page != 'app-deploy' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cucumber-report-accessibility-${{ inputs.level }}-${{ inputs.page }}
@@ -107,7 +131,7 @@ jobs:
           retention-days: 7
 
       - name: Upload accessibility E2E logs
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && inputs.page != 'app-deploy' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-logs-accessibility-${{ inputs.level }}-${{ inputs.page }}

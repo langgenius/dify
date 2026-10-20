@@ -38,8 +38,8 @@ export function ActivityCell({ activity }: { activity?: EnvironmentDeploymentOpe
     <div className="flex min-w-0 flex-col gap-0.5">
       <div
         className={cn(
-          'flex min-w-0 items-center gap-1 truncate system-xs-medium',
-          failed ? 'text-text-warning' : 'text-text-secondary',
+          'flex min-w-0 items-center gap-1 system-xs-medium',
+          failed ? 'text-util-colors-orange-orange-700' : 'text-text-secondary',
         )}
       >
         {inProgress && (
@@ -51,7 +51,7 @@ export function ActivityCell({ activity }: { activity?: EnvironmentDeploymentOpe
         {failed && (
           <span aria-hidden className="i-ri-error-warning-fill size-3 shrink-0 text-text-warning" />
         )}
-        <span className="truncate">
+        <span className="min-w-0 wrap-anywhere">
           {activityLabel(
             activity,
             t,
@@ -59,7 +59,7 @@ export function ActivityCell({ activity }: { activity?: EnvironmentDeploymentOpe
           )}
         </span>
       </div>
-      <div className="truncate system-xs-regular text-text-tertiary">
+      <div className="system-xs-regular wrap-anywhere text-text-tertiary">
         {t(($) => $['studio.activity.meta'], {
           name: activity.operator.display_name,
           time: formatTimeFromNow(activity.activity_at * 1000),

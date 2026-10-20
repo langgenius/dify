@@ -31,10 +31,14 @@ import { EnvironmentRow } from './row'
 type EnvironmentTableProps = {
   appId: string
   canViewAccessPoint: boolean
-  onChangeVersion: (deployment: EnvironmentDeployment) => void
-  onDeployLatest: (deployment: EnvironmentDeployment, version: DeploymentVersion) => void
-  onDeployToEnvironment: (environment: AppEnvironment) => void
-  onRedeploy: (deployment: EnvironmentDeployment) => void
+  onChangeVersion: (deployment: EnvironmentDeployment, trigger: HTMLElement | null) => void
+  onDeployLatest: (
+    deployment: EnvironmentDeployment,
+    version: DeploymentVersion,
+    trigger: HTMLElement | null,
+  ) => void
+  onDeployToEnvironment: (environment: AppEnvironment, trigger: HTMLElement | null) => void
+  onRedeploy: (deployment: EnvironmentDeployment, trigger: HTMLElement | null) => void
   onUndeploy: UndeployHandler
 }
 
@@ -57,22 +61,40 @@ function EnvironmentTableHeader() {
   return (
     <thead>
       <tr className="sticky top-0 z-10 h-7 bg-background-section-burn">
-        <th className="rounded-l-lg pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
+        <th
+          scope="col"
+          className="rounded-l-lg pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+        >
           {t(($) => $['deployTab.col.environment'])}
         </th>
-        <th className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
+        <th
+          scope="col"
+          className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+        >
           {t(($) => $['studio.liveVersion'])}
         </th>
-        <th className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
+        <th
+          scope="col"
+          className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+        >
           {t(($) => $['deployTab.col.status'])}
         </th>
-        <th className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
+        <th
+          scope="col"
+          className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+        >
           {t(($) => $['studio.lastActivity'])}
         </th>
-        <th className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
+        <th
+          scope="col"
+          className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+        >
           {t(($) => $['studio.accessPoints'])}
         </th>
-        <th className="rounded-r-lg pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
+        <th
+          scope="col"
+          className="rounded-r-lg pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+        >
           {t(($) => $['deployTab.col.actions'])}
         </th>
       </tr>
@@ -111,10 +133,10 @@ export const EnvironmentTable = memo(
       <section
         aria-labelledby="deploy-environments-title"
         aria-busy={showLoadingState || isRetrying || latestVersionIsRetrying}
-        className="flex min-h-0 grow flex-col gap-3"
+        className="flex min-h-60 min-w-0 grow flex-col gap-3"
       >
-        <div className="flex shrink-0 items-center justify-between">
-          <div className="flex min-w-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h2
               id="deploy-environments-title"
               className="truncate system-md-semibold text-text-primary"
@@ -177,7 +199,10 @@ export const EnvironmentTable = memo(
           ) : showEmptyState ? (
             <EnvironmentTableEmpty state="empty" onSelectEnvironment={onDeployToEnvironment} />
           ) : (
-            <table className="w-full min-w-260 table-fixed border-separate border-spacing-0">
+            <table
+              aria-labelledby="deploy-environments-title"
+              className="w-full min-w-260 table-fixed border-separate border-spacing-0"
+            >
               <EnvironmentTableColumns />
               <EnvironmentTableHeader />
               <tbody>

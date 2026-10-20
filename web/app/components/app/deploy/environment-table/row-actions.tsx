@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Fragment, useCallback, useState } from 'react'
+import { Fragment, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { toast } from '@/app/notifications'
@@ -63,9 +63,13 @@ export function EnvironmentRowActions({
 }: {
   latestVersion?: DeploymentVersion
   row: EnvironmentDeployment
-  onChangeVersion: (deployment: EnvironmentDeployment) => void
-  onDeployLatest: (deployment: EnvironmentDeployment, version: DeploymentVersion) => void
-  onRedeploy: (deployment: EnvironmentDeployment) => void
+  onChangeVersion: (deployment: EnvironmentDeployment, trigger: HTMLElement | null) => void
+  onDeployLatest: (
+    deployment: EnvironmentDeployment,
+    version: DeploymentVersion,
+    trigger: HTMLElement | null,
+  ) => void
+  onRedeploy: (deployment: EnvironmentDeployment, trigger: HTMLElement | null) => void
   onUndeploy: UndeployHandler
 }) {
   const { t } = useTranslation(['deployments'])
@@ -79,6 +83,8 @@ export function EnvironmentRowActions({
   )
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
   const [isUndeploying, setIsUndeploying] = useState(false)
+  const [isOpeningDialog, setIsOpeningDialog] = useState(false)
+  const menuTriggerRef = useRef<HTMLButtonElement | null>(null)
   const actions = getEnvironmentDeploymentActions(row, {
     deployLatestDisabled: !latestVersion,
   })
@@ -86,12 +92,12 @@ export function EnvironmentRowActions({
   const moreActions = actions.slice(1)
 
   const handleAction = useCallback(
-    (action: EnvironmentDeploymentAction) => {
+    (action: EnvironmentDeploymentAction, trigger: HTMLElement | null) => {
       if (action.disabled) return
 
       switch (action.kind) {
         case 'changeVersion':
-          onChangeVersion(row)
+          onChangeVersion(row, trigger)
           break
         case 'deployLatest': {
           if (!latestVersion) {
@@ -99,12 +105,12 @@ export function EnvironmentRowActions({
             return
           }
 
-          onDeployLatest(row, latestVersion)
+          onDeployLatest(row, latestVersion, trigger)
           break
         }
         case 'redeploy':
         case 'retry':
-          onRedeploy(row)
+          onRedeploy(row, trigger)
           break
         case 'undeploy':
           setShowUndeployConfirm(true)
@@ -137,7 +143,8 @@ export function EnvironmentRowActions({
           size="small"
           variant="secondary"
           disabled={primaryAction.disabled}
-          onClick={() => handleAction(primaryAction)}
+          focusableWhenDisabled
+          onClick={(event) => handleAction(primaryAction, event.currentTarget)}
           className="min-w-0 gap-1 px-2"
         >
           <span
@@ -148,10 +155,11 @@ export function EnvironmentRowActions({
             {rowActionLabel(primaryAction, row, t, defaultVersionName)}
           </span>
         </Button>
-        <DropdownMenu modal={false}>
+        <DropdownMenu modal={false} onOpenChange={(open) => open && setIsOpeningDialog(false)}>
           <DropdownMenuTrigger
             render={
               <IconButton
+                ref={menuTriggerRef}
                 size="md"
                 variant="secondary"
                 aria-label={`${row.environment.display_name} · ${t(($) => $['deployTab.moreActions'])}`}
@@ -161,14 +169,22 @@ export function EnvironmentRowActions({
               </IconButton>
             }
           />
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-50">
+          <DropdownMenuContent
+            finalFocus={!isOpeningDialog}
+            placement="bottom-end"
+            sideOffset={4}
+            className="w-50"
+          >
             {moreActions.map((action, index) => (
               <Fragment key={action.kind}>
                 {action.kind === 'undeploy' && index > 0 && <DropdownMenuSeparator />}
                 <DropdownMenuItem
                   disabled={action.disabled}
                   className="gap-2 px-2"
-                  onClick={() => handleAction(action)}
+                  onClick={() => {
+                    setIsOpeningDialog(true)
+                    handleAction(action, menuTriggerRef.current)
+                  }}
                 >
                   <span
                     aria-hidden
@@ -187,6 +203,7 @@ export function EnvironmentRowActions({
         </DropdownMenu>
       </div>
       <UndeployConfirmDialog
+        finalFocus={menuTriggerRef}
         environmentName={row.environment.display_name}
         isPending={isUndeploying}
         open={showUndeployConfirm}
