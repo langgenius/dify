@@ -804,7 +804,7 @@ def test_legacy_caller_rejects_human_input_before_creating_run_or_form(sqlite_en
 
     runner, workflow_repository, node_repository = make_workflow_runner(sqlite_engine, human_input=True)
     runner.application_generate_entity.allow_human_input = False
-    with pytest.raises(ValueError, match="require Engine-managed container execution"):
+    with pytest.raises(ValueError, match="Human Input nodes are not supported"):
         WorkflowRunAgg.run(runner, None, workflow_repository, node_repository)
     with Session(sqlite_engine) as session:
         assert session.scalar(select(WorkflowRun)) is None

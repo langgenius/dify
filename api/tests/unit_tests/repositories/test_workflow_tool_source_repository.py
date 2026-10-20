@@ -374,7 +374,7 @@ def test_materialize_recursive_tools_checks_nested_human_input(
     if allow_human_input:
         materialized = service.load(tenant_id=_TENANT_ID, graph_config=graph(parent_id), allow_human_input=True)
         assert set(materialized.sources) == {_PUBLISHED_WORKFLOW_ID, _LATEST_WORKFLOW_ID}
-        with pytest.raises(ValueError, match="require Engine-managed container execution"):
+        with pytest.raises(ValueError, match="Human Input nodes are not supported"):
             service.load(
                 tenant_id=_TENANT_ID,
                 graph_config=graph(parent_id),
@@ -382,7 +382,7 @@ def test_materialize_recursive_tools_checks_nested_human_input(
                 snapshot=materialized.snapshot(),
             )
     else:
-        with pytest.raises(ValueError, match="require Engine-managed container execution"):
+        with pytest.raises(ValueError, match="Human Input nodes are not supported"):
             service.load(tenant_id=_TENANT_ID, graph_config=graph(parent_id), allow_human_input=False)
 
 

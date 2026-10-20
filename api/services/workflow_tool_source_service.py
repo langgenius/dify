@@ -112,7 +112,7 @@ class WorkflowToolSourceService:
                 for node in graph.get("nodes", []):
                     data = node.get("data", {})
                     if not allow_human_input and data.get("type") == "human-input":
-                        raise ValueError("Human Input Workflow Tools require Engine-managed container execution.")
+                        raise ValueError("Human Input nodes are not supported in this execution context.")
                     if data.get("type") == "tool" and data.get("provider_type") == "workflow":
                         provider_id = data.get("provider_id")
                         if isinstance(provider_id, str) and provider_id not in visited:
