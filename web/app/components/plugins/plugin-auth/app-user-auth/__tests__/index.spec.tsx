@@ -571,6 +571,50 @@ describe('AppUserAuth', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it.each([
+    {
+      mode: 'OAuth with a provider name',
+      canOAuth: true,
+      canApiKey: false,
+      providerName: 'Google',
+      description:
+        'plugin.auth.appUser.testConnectionOAuthDescriptionWithProvider:{"provider":"Google"}',
+    },
+    {
+      mode: 'OAuth without a provider name',
+      canOAuth: true,
+      canApiKey: false,
+      providerName: undefined,
+      description: 'plugin.auth.appUser.testConnectionOAuthDescription',
+    },
+    {
+      mode: 'API key only',
+      canOAuth: false,
+      canApiKey: true,
+      providerName: 'Google',
+      description: 'plugin.auth.appUser.testConnectionApiKeyDescription',
+    },
+  ])(
+    'shows the $mode explanation for Test run connection',
+    ({ canOAuth, canApiKey, providerName, description }) => {
+      render(
+        <AppUserAuth
+          pluginPayload={pluginPayload}
+          canOAuth={canOAuth}
+          canApiKey={canApiKey}
+          providerName={providerName}
+        />,
+      )
+      const testConnection = within(
+        screen.getByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
+      )
+      expect(testConnection.getByText(description)).toBeVisible()
+      expect(
+        testConnection.queryByText('plugin.auth.appUser.testConnectionDescription'),
+      ).not.toBeInTheDocument()
+    },
+  )
+
   it('revalidates empty and whitespace descriptions immediately as the user edits', async () => {
     const user = userEvent.setup()
     const initialDraft = createAppUserAuthDraft({ canOAuth: false })

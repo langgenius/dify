@@ -271,7 +271,9 @@ describe('PluginAuth', () => {
     })
     expect(mockConnection).toBeVisible()
     expect(mockConnection).toHaveTextContent('•••• 7A2F')
-    expect(testConnection.getByText('plugin.auth.appUser.testConnectionDescription')).toBeVisible()
+    expect(
+      testConnection.getByText('plugin.auth.appUser.testConnectionApiKeyDescription'),
+    ).toBeVisible()
     expect(
       testConnection.queryByRole('button', { name: 'plugin.auth.common.addApiKey' }),
     ).not.toBeInTheDocument()

@@ -282,7 +282,16 @@ const AppUserAuth = ({
             {t(($) => $['auth.appUser.testConnection'], { ns: 'plugin' })}
           </h4>
           <p className="body-xs-regular text-text-tertiary">
-            {t(($) => $['auth.appUser.testConnectionDescription'], { ns: 'plugin' })}
+            {oauthOnly
+              ? providerName
+                ? t(($) => $['auth.appUser.testConnectionOAuthDescriptionWithProvider'], {
+                    ns: 'plugin',
+                    provider: providerName,
+                  })
+                : t(($) => $['auth.appUser.testConnectionOAuthDescription'], { ns: 'plugin' })
+              : apiKeyOnly
+                ? t(($) => $['auth.appUser.testConnectionApiKeyDescription'], { ns: 'plugin' })
+                : t(($) => $['auth.appUser.testConnectionDescription'], { ns: 'plugin' })}
           </p>
         </div>
         <ConnectionSelector dataSource={testConnectionSource} />
