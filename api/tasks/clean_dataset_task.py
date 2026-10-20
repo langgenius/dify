@@ -31,21 +31,16 @@ from tasks.refresh_billing_vector_space_task import schedule_billing_vector_spac
 
 logger = logging.getLogger(__name__)
 
-# The dataset row is already gone by the time this task runs, so if the cleanup fails
-# there is nothing left to trigger a retry. Deleting everything in a single transaction
-# meant one timeout or deadlock -- on a multi-million-row dataset, or on a lock held by
-# indexing that was still running at delete time -- rolled the whole task back and
-# orphaned the documents, segments, child chunks and the vector index forever. Instead,
-# clean each concern independently and commit as we go, so a failure in one step neither
-# rolls back finished work nor skips the later steps, and delete the large child tables in
-# bounded batches instead of one statement with a multi-million-element IN (...).
-#
-# Read through the module global (never as a default argument value) so tests can patch it.
+# Keep committed batches on failure, but preserve dependent rows until a retry
+# finishes their prerequisite cleanup.
 _DELETE_BATCH_SIZE = 1000
+_MAX_RETRIES = 3
+_RETRY_DELAY_SECONDS = 30
 
 
-@shared_task(queue="dataset")
+@shared_task(queue="dataset", bind=True, max_retries=_MAX_RETRIES, default_retry_delay=_RETRY_DELAY_SECONDS)
 def clean_dataset_task(
+    self,
     dataset_id: str,
     tenant_id: str,
     indexing_technique: str | None,
@@ -53,7 +48,9 @@ def clean_dataset_task(
     collection_binding_id: str | None,
     doc_form: str,
     pipeline_id: str | None = None,
-):
+    *,
+    index_cleanup_done: bool = False,
+) -> None:
     """
     Clean dataset when dataset deleted.
     :param dataset_id: dataset id
@@ -62,6 +59,7 @@ def clean_dataset_task(
     :param index_struct: index struct dict
     :param collection_binding_id: collection binding id
     :param doc_form: dataset form
+    :param index_cleanup_done: preserve successful index cleanup across explicit retries
 
     Usage: clean_dataset_task.delay(dataset_id, tenant_id, indexing_technique, index_struct)
     """
@@ -87,19 +85,20 @@ def clean_dataset_task(
         collection_binding_id=collection_binding_id,
     )
 
-    cleanup_dataset_crawl_cache(tenant_id, dataset_id)
+    try:
+        cleanup_dataset_crawl_cache(tenant_id, dataset_id)
 
-    with session_factory.create_session() as session:
-        try:
-            # The index cleanup is a step of its own with its own commit: the index
-            # processors flush their relational side effects (child chunks, summaries,
-            # keyword table) without committing, so a rollback in any later step would
-            # otherwise silently undo them while the vector store stays cleaned.
-            vector_cleanup_succeeded = _run_step(
-                session, dataset_id, "vector database", lambda: _clean_index(session, dataset, doc_form)
-            )
+        with session_factory.create_session() as session:
+            if not index_cleanup_done:
+                try:
+                    _run_step(session, dataset_id, "vector database", lambda: _clean_index(session, dataset, doc_form))
+                except Exception:
+                    logger.info("Continuing relational cleanup after index cleanup failed, dataset_id=%s", dataset_id)
+                else:
+                    index_cleanup_done = True
+                    schedule_billing_vector_space_refresh(dataset.tenant_id)
 
-            # Order matters: segments reference documents, so they go first.
+            # Stop on failure so documents and their resources outlive any remaining segments.
             _run_step(session, dataset_id, "segments", lambda: _delete_segments(session, dataset_id))
             _run_step(session, dataset_id, "documents", lambda: _delete_documents(session, dataset_id))
             _run_step(session, dataset_id, "attachments", lambda: _delete_attachments(session, tenant_id, dataset_id))
@@ -110,29 +109,46 @@ def clean_dataset_task(
                 lambda: _delete_dataset_scoped_rows(session, tenant_id, dataset_id, pipeline_id),
             )
 
-            if vector_cleanup_succeeded:
-                schedule_billing_vector_space_refresh(dataset.tenant_id)
+    except Exception as exc:
+        if self.request.retries >= _MAX_RETRIES:
+            logger.exception("Dataset cleanup retry budget exhausted, dataset_id=%s", dataset_id)
+            raise
 
-            end_at = time.perf_counter()
-            logger.info(
-                click.style(
-                    f"Cleaned dataset when dataset deleted: {dataset_id} latency: {end_at - start_at}",
-                    fg="green",
-                )
-            )
-        finally:
-            # Explicitly close the session for test expectations and safety
-            try:
-                session.close()
-            except Exception:
-                logger.exception("Failed to close database session")
+        logger.warning(
+            "Dataset cleanup failed, scheduling retry %d/%d, dataset_id=%s",
+            self.request.retries + 1,
+            _MAX_RETRIES,
+            dataset_id,
+            exc_info=True,
+        )
+        # The session is closed before retrying. Normalize arguments for positional callers too.
+        raise self.retry(
+            exc=exc,
+            args=(),
+            kwargs={
+                "dataset_id": dataset_id,
+                "tenant_id": tenant_id,
+                "indexing_technique": indexing_technique,
+                "index_struct": index_struct,
+                "collection_binding_id": collection_binding_id,
+                "doc_form": doc_form,
+                "pipeline_id": pipeline_id,
+                "index_cleanup_done": index_cleanup_done,
+            },
+            countdown=_RETRY_DELAY_SECONDS * (2**self.request.retries),
+        )
+
+    end_at = time.perf_counter()
+    logger.info(
+        click.style(
+            f"Cleaned dataset when dataset deleted: {dataset_id} latency: {end_at - start_at}",
+            fg="green",
+        )
+    )
 
 
-def _run_step(session: Session, dataset_id: str, name: str, step: Callable[[], None]) -> bool:
-    """Run one cleanup step in isolation: a failure is logged and the (partial,
-    uncommitted) work is rolled back, but the remaining steps still run.
-
-    Returns whether the step completed successfully."""
+def _run_step(session: Session, dataset_id: str, name: str, step: Callable[[], None]) -> None:
+    """Roll back uncommitted work on failure and stop dependent steps until retry."""
     try:
         step()
     except Exception:
@@ -141,13 +157,11 @@ def _run_step(session: Session, dataset_id: str, name: str, step: Callable[[], N
             session.rollback()
         except Exception:
             logger.exception("Failed to rollback database session")
-        return False
-    return True
+        raise
 
 
 def _clean_index(session: Session, dataset: Dataset, doc_form: str) -> None:
-    """Drop the vector/keyword index for the dataset and commit the relational rows
-    the index processor deleted along the way (child chunks, summaries, keywords)."""
+    """Clean the dataset index and commit any relational rows removed by its processor."""
     index_processor = IndexProcessorFactory(doc_form).init_index_processor()
     index_processor.clean(dataset, None, with_keywords=True, delete_child_chunks=True, session=session)
     session.commit()
@@ -190,11 +204,11 @@ def _delete_documents(session: Session, dataset_id: str) -> None:
 
 
 def _delete_upload_files(session: Session, file_ids: Sequence[str]) -> None:
-    """Delete ``UploadFile`` rows and their object-storage blobs in one statement.
+    """Delete ``UploadFile`` rows and attempt to remove their object-storage blobs.
 
-    Storage errors are logged but do not keep the row: the dataset is already gone, so
-    leaving the row would orphan it forever, while a stray blob can still be reclaimed
-    by storage garbage collection."""
+    Storage errors are logged but do not keep the row. Task retries only resume
+    remaining database rows; blob cleanup retains its existing best-effort behavior.
+    """
     if not file_ids:
         return
     files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()

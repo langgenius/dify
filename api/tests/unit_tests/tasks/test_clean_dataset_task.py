@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+from celery.exceptions import Retry
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -290,15 +291,17 @@ class TestErrorHandling:
 
         # Act
         try:
-            _run_clean_dataset(
-                dataset_id=dataset_id,
-                tenant_id=tenant_id,
-                collection_binding_id=collection_binding_id,
-            )
+            with patch.object(clean_dataset_task, "retry", side_effect=Retry()) as retry, pytest.raises(Retry):
+                _run_clean_dataset(
+                    dataset_id=dataset_id,
+                    tenant_id=tenant_id,
+                    collection_binding_id=collection_binding_id,
+                )
         finally:
             event.remove(orm_session_maker.class_, "before_commit", fail_commit)
             event.remove(orm_session_maker.class_, "after_rollback", fail_rollback)
 
+        retry.assert_called_once()
         # Assert: rollback happened before its hook failed, and the closed task
         # session did not prevent a new real session from reading the row.
         with orm_session_maker() as session:
@@ -650,7 +653,7 @@ class TestIndexProcessorParameters:
 
 
 class TestStepIsolation:
-    """Each cleanup step is committed on its own, so one failure cannot undo the rest."""
+    """Committed batches survive failure, while dependent cleanup waits for retry."""
 
     def test_cleanup_commits_more_than_once(
         self,
@@ -686,7 +689,7 @@ class TestStepIsolation:
             f"Cleanup still runs as one transaction ({len(commits)} commit); a failure anywhere rolls back everything"
         )
 
-    def test_failing_step_keeps_earlier_work_and_still_runs_later_steps(
+    def test_document_failure_keeps_segments_deleted_and_preserves_metadata(
         self,
         orm_session_maker: sessionmaker[Session],
         dataset_id: str,
@@ -695,10 +698,8 @@ class TestStepIsolation:
         mock_storage: MagicMock,
         mock_index_processor_factory: dict[str, MagicMock],
         mock_get_image_upload_file_ids: MagicMock,
-    ):
-        """Segments are deleted before documents and metadata after them. With documents
-        failing, the committed segment deletion must survive and the metadata step must
-        still run."""
+    ) -> None:
+        """A document failure must preserve later cleanup inputs for the retry."""
         document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
         segment = _persist_segment(
             orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id
@@ -713,9 +714,9 @@ class TestStepIsolation:
         with orm_session_maker.begin() as session:
             session.add(metadata)
 
-        with patch(
-            "tasks.clean_dataset_task._delete_documents",
-            side_effect=RuntimeError("deadlock on documents"),
+        with (
+            patch("tasks.clean_dataset_task._delete_documents", side_effect=RuntimeError("deadlock on documents")),
+            pytest.raises(RuntimeError, match="deadlock on documents"),
         ):
             _run_clean_dataset(
                 dataset_id=dataset_id,
@@ -727,10 +728,161 @@ class TestStepIsolation:
             assert session.get(DocumentSegment, segment.id) is None, (
                 "The committed segment deletion was rolled back by a later failure"
             )
-            assert session.get(DatasetMetadata, metadata.id) is None, "A failed step skipped the steps after it"
+            assert session.get(DatasetMetadata, metadata.id) is not None
             assert session.get(Document, document.id) is not None, (
                 "Sanity check: the failing step should not have deleted its own rows"
             )
+
+    @pytest.mark.parametrize("call_style", ["positional", "keywords"])
+    def test_second_segment_batch_failure_preserves_cleanup_inputs_and_resumes(
+        self,
+        call_style: str,
+        orm_session_maker: sessionmaker[Session],
+        sqlite_engine: Engine,
+        dataset_id: str,
+        tenant_id: str,
+        pipeline_id: str,
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segments = [
+            _persist_segment(
+                orm_session_maker,
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                document_id=document.id,
+                position=position,
+            )
+            for position in range(5)
+        ]
+        binding, attachment_file = _persist_attachment(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        metadata = DatasetMetadata(
+            tenant_id=tenant_id, dataset_id=dataset_id, type="string", name="meta", created_by=str(uuid.uuid4())
+        )
+        with orm_session_maker.begin() as session:
+            session.add(metadata)
+        task_kwargs = {
+            "dataset_id": dataset_id,
+            "tenant_id": tenant_id,
+            "indexing_technique": None,
+            "index_struct": None,
+            "collection_binding_id": None,
+            "doc_form": IndexStructureType.PARAGRAPH_INDEX,
+            "pipeline_id": pipeline_id,
+        }
+        failure = RuntimeError("second segment batch commit failed")
+        segment_deletes: list[str] = []
+
+        def record_segment_delete(statement: str, **_kwargs: object) -> None:
+            if statement.lower().startswith("delete from document_segments"):
+                segment_deletes.append(statement)
+
+        def fail_second_segment_commit(_session: Session) -> None:
+            if len(segment_deletes) == 2:
+                raise failure
+
+        retry_task = clean_dataset_task.retry
+
+        def retry_after_transaction_ends(
+            *, exc: Exception, args: tuple[object, ...], kwargs: dict[str, object], countdown: int
+        ) -> Retry:
+            cleanup_session = mock_index_processor_factory["processor"].clean.call_args.kwargs["session"]
+            assert not cleanup_session.in_transaction()
+            return retry_task(exc=exc, args=args, kwargs=kwargs, countdown=countdown)
+
+        with (
+            patch("tasks.clean_dataset_task._DELETE_BATCH_SIZE", 2),
+            patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh,
+            patch.object(clean_dataset_task, "retry", side_effect=retry_after_transaction_ends),
+            caplog.at_level("INFO", logger="tasks.clean_dataset_task"),
+        ):
+            event.listen(sqlite_engine, "after_cursor_execute", record_segment_delete, named=True)
+            event.listen(orm_session_maker, "before_commit", fail_second_segment_commit)
+            try:
+                with pytest.raises(Retry) as retried:
+                    clean_dataset_task.apply(
+                        args=tuple(task_kwargs.values()) if call_style == "positional" else (),
+                        kwargs=task_kwargs if call_style == "keywords" else {},
+                        throw=True,
+                    )
+            finally:
+                event.remove(sqlite_engine, "after_cursor_execute", record_segment_delete)
+                event.remove(orm_session_maker, "before_commit", fail_second_segment_commit)
+
+            assert len(segment_deletes) == 2
+            assert not any("Cleaned dataset when dataset deleted:" in message for message in caplog.messages)
+            with orm_session_maker() as session:
+                assert sum(session.get(DocumentSegment, segment.id) is not None for segment in segments) == 3
+                assert session.get(Document, document.id) is not None
+                assert session.get(SegmentAttachmentBinding, binding.id) is not None
+                assert session.get(UploadFile, attachment_file.id) is not None
+                assert session.get(DatasetMetadata, metadata.id) is not None
+            mock_storage.delete.assert_not_called()
+            schedule_refresh.assert_called_once_with(tenant_id)
+            assert retried.value.exc is failure
+            assert retried.value.when == 30
+            # celery-stubs omits the signature stored on Retry at runtime.
+            retry_signature = getattr(retried.value, "sig", None)
+            assert retry_signature is not None
+            assert retry_signature.args == ()
+            assert retry_signature.kwargs == {**task_kwargs, "index_cleanup_done": True}
+            assert retry_signature.apply(throw=True).successful()
+            mock_index_processor_factory["processor"].clean.assert_called_once()
+            schedule_refresh.assert_called_once_with(tenant_id)
+
+        with orm_session_maker() as session:
+            assert all(session.get(DocumentSegment, segment.id) is None for segment in segments)
+            assert session.get(Document, document.id) is None
+            assert session.get(SegmentAttachmentBinding, binding.id) is None
+            assert session.get(UploadFile, attachment_file.id) is None
+            assert session.get(DatasetMetadata, metadata.id) is None
+        mock_storage.delete.assert_called_once_with(attachment_file.key)
+
+    @pytest.mark.parametrize(("retries", "delay"), [(1, 60), (2, 120), (3, None)])
+    def test_crawl_cache_failure_retries_before_index_cleanup_and_stops_at_limit(
+        self,
+        retries: int,
+        delay: int | None,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_index_processor_factory: dict[str, MagicMock],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        failure = RuntimeError("crawl cache unavailable")
+        with (
+            patch("tasks.clean_dataset_task.cleanup_dataset_crawl_cache", side_effect=failure),
+            patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh,
+            caplog.at_level("INFO", logger="tasks.clean_dataset_task"),
+            pytest.raises(Retry if delay is not None else RuntimeError) as raised,
+        ):
+            clean_dataset_task.apply(
+                kwargs={
+                    "dataset_id": dataset_id,
+                    "tenant_id": tenant_id,
+                    "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
+                    "index_struct": '{"type": "paragraph"}',
+                    "collection_binding_id": collection_binding_id,
+                    "doc_form": IndexStructureType.PARAGRAPH_INDEX,
+                },
+                retries=retries,
+                throw=True,
+            )
+
+        if delay is None:
+            assert raised.value is failure
+        else:
+            assert isinstance(raised.value, Retry)
+            assert raised.value.exc is failure
+            assert raised.value.when == delay
+            retry_signature = getattr(raised.value, "sig", None)
+            assert retry_signature is not None
+            assert retry_signature.kwargs["index_cleanup_done"] is False
+        assert not any("Cleaned dataset when dataset deleted:" in message for message in caplog.messages)
+        mock_index_processor_factory["processor"].clean.assert_not_called()
+        schedule_refresh.assert_not_called()
 
 
 class TestBatchedDeletes:
