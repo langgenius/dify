@@ -163,6 +163,79 @@ def test_add_builtin_tool_provider_validates_before_acquiring_expiring_lock(
     assert saved_provider is not None
 
 
+def test_add_builtin_tool_provider_without_credentials_fails_before_lock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class ProviderController:
+        need_credentials = False
+
+        def validate_credentials(self, _user_id: str, _credentials: dict[str, str]) -> None:
+            raise AssertionError("credentials must not be validated for this provider")
+
+    def forbidden_lock(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("the creation lock must not be acquired for a provider without credentials")
+
+    monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", lambda *_args: ProviderController())
+    monkeypatch.setattr(service_module.redis_client, "lock", forbidden_lock)
+
+    with pytest.raises(ValueError, match="provider google does not need credentials"):
+        BuiltinToolManageService.add_builtin_tool_provider(
+            user_id="user-1",
+            api_type=CredentialType.API_KEY,
+            tenant_id="tenant-1",
+            provider="google",
+            credentials={},
+            name="Google credential",
+        )
+
+
+def test_add_builtin_tool_provider_skips_validation_for_oauth_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+    repository_session: Session,
+) -> None:
+    events: list[str] = []
+
+    class ProviderController:
+        need_credentials = True
+
+        def validate_credentials(self, _user_id: str, _credentials: dict[str, str]) -> None:
+            raise AssertionError("OAuth credentials must not use API key validation")
+
+        def get_credentials_schema_by_type(self, _credential_type: CredentialType) -> list[object]:
+            return []
+
+    @contextmanager
+    def lock(*_args: object, **_kwargs: object) -> Generator[None]:
+        events.append("lock_acquired")
+        yield
+        events.append("lock_released")
+
+    monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", lambda *_args: ProviderController())
+    monkeypatch.setattr(service_module.redis_client, "lock", lock)
+
+    result = BuiltinToolManageService.add_builtin_tool_provider(
+        user_id="user-1",
+        api_type=CredentialType.OAUTH2,
+        tenant_id="tenant-1",
+        provider="google",
+        credentials={"access_token": "token"},
+        name="Google OAuth credential",
+    )
+
+    assert result["result"] == "success"
+    assert events == ["lock_acquired", "lock_released"]
+    repository_session.expire_all()
+    saved_provider = repository_session.scalar(
+        select(BuiltinToolProvider).where(
+            BuiltinToolProvider.tenant_id == "tenant-1",
+            BuiltinToolProvider.provider == "google",
+            BuiltinToolProvider.name == "Google OAuth credential",
+        )
+    )
+    assert saved_provider is not None
+    assert saved_provider.credential_type == CredentialType.OAUTH2
+
+
 class TestListBuiltinToolProviderTools:
     def test_transforms_each_tool(self, monkeypatch: pytest.MonkeyPatch) -> None:
         controller = MagicMock()
