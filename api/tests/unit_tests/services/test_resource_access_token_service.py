@@ -221,3 +221,47 @@ def test_managed_token_is_invalid_on_account_facing_routes(
     with pytest.raises(ResourceAccessTokenInvalidError):
         authorize(service)
     assert store.usage_calls == []
+
+
+def _appdeploy_access(*, active: bool = True, managed_by: ManagedBy = ManagedBy.APPDEPLOY) -> ResourceAccessTokenAccess:
+    return ResourceAccessTokenAccess(
+        "token",
+        "workspace",
+        active,
+        (
+            BoundResource(ResourceType.KNOWLEDGE, "kb-a", True, True),
+            BoundResource(ResourceType.APP, "kb-b", True, True),
+        ),
+        managed_by,
+    )
+
+
+def test_appdeploy_knowledge_returns_the_token_tenant_without_recording_usage(
+    service: ResourceAccessTokenService, store: FakeResourceAccessTokenStore
+) -> None:
+    store.access = _appdeploy_access()
+    assert service.authorize_appdeploy_knowledge(token="secret", dataset_ids=["kb-a"]) == "workspace"
+    assert store.usage_calls == []
+
+
+@pytest.mark.parametrize(
+    ("access", "dataset_ids", "error"),
+    [
+        (_appdeploy_access(managed_by=ManagedBy.USER), ["kb-a"], ResourceAccessTokenInvalidError),
+        (_appdeploy_access(active=False), ["kb-a"], ResourceAccessTokenForbiddenError),
+        # One bound dataset does not authorize an unbound one requested alongside it.
+        (_appdeploy_access(), ["kb-a", "kb-c"], ResourceAccessTokenForbiddenError),
+        # An app binding with the same id is not a knowledge binding.
+        (_appdeploy_access(), ["kb-b"], ResourceAccessTokenForbiddenError),
+    ],
+)
+def test_appdeploy_knowledge_denials(
+    service: ResourceAccessTokenService,
+    store: FakeResourceAccessTokenStore,
+    access: ResourceAccessTokenAccess,
+    dataset_ids: list[str],
+    error: type[Exception],
+) -> None:
+    store.access = access
+    with pytest.raises(error):
+        service.authorize_appdeploy_knowledge(token="secret", dataset_ids=dataset_ids)

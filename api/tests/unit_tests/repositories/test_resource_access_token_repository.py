@@ -491,3 +491,28 @@ def test_enterprise_delete_removes_any_token_in_its_workspace_and_tolerates_miss
     sqlite_session.expire_all()
     assert sqlite_session.get(ResourceAccessToken, created.token_id) is None
     assert sqlite_session.scalars(select(ResourceAccessTokenRelation)).all() == []
+
+
+def test_appdeploy_token_authorizes_only_its_bound_knowledge(
+    sqlite_session: Session, service: ResourceAccessTokenService
+) -> None:
+    tenant, owner = _workspace(sqlite_session)
+    bound = _dataset(sqlite_session, tenant.id, owner.id)
+    unbound = _dataset(sqlite_session, tenant.id, owner.id)
+    knowledge = (ResourceAccessTokenResource(ResourceAccessTokenResourceType.KNOWLEDGE, bound.id),)
+    managed = service.create_for_enterprise(
+        tenant_id=tenant.id,
+        managed_by=ResourceAccessTokenManagedBy.APPDEPLOY,
+        name="appdeploy",
+        created_by=None,
+        resources=knowledge,
+    )
+    user = service.create(RequestContext("test", None, owner.id, tenant.id), name="Console", resources=knowledge)
+
+    assert service.authorize_appdeploy_knowledge(token=managed.token, dataset_ids=[bound.id]) == tenant.id
+    with pytest.raises(ResourceAccessTokenForbiddenError):
+        service.authorize_appdeploy_knowledge(token=managed.token, dataset_ids=[bound.id, unbound.id])
+    with pytest.raises(ResourceAccessTokenInvalidError):
+        service.authorize_appdeploy_knowledge(token=user.token, dataset_ids=[bound.id])
+    with pytest.raises(ResourceAccessTokenInvalidError):
+        service.authorize_appdeploy_knowledge(token="sk-unknown", dataset_ids=[bound.id])

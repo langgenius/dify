@@ -1,5 +1,6 @@
 """Workspace machine-credential policies; storage owns sessions and transactions."""
 
+from collections.abc import Sequence
 from typing import Protocol
 
 from constants.resource_access_token import ResourceAccessTokenManagedBy, ResourceAccessTokenResourceType
@@ -168,6 +169,24 @@ class ResourceAccessTokenService:
                 "Resource access token is not allowed to access this knowledge base."
             )
         self._tokens.record_usage(access.tenant_id, access.token_id)
+        return access.tenant_id
+
+    def authorize_appdeploy_knowledge(self, *, token: str, dataset_ids: Sequence[str]) -> str:
+        """Return the tenant an AppDeploy runner retrieves from; every requested dataset must be bound.
+
+        The tenant comes from the token, never from the caller. Usage is not recorded: managed tokens are
+        invisible to members, and the per-token row lock would serialize a deployment's concurrent runs.
+        """
+        access = self._tokens.access_by_secret(token)
+        if access.managed_by != ResourceAccessTokenManagedBy.APPDEPLOY:
+            raise ResourceAccessTokenInvalidError("Resource access token is invalid.")
+        if not access.workspace_active:
+            raise ResourceAccessTokenForbiddenError("workspace unavailable")
+        bound = {r.id for r in access.resources if r.type == ResourceAccessTokenResourceType.KNOWLEDGE}
+        if not set(dataset_ids) <= bound:
+            raise ResourceAccessTokenForbiddenError(
+                "Resource access token is not allowed to access this knowledge base."
+            )
         return access.tenant_id
 
     @staticmethod

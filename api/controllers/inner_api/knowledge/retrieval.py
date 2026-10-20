@@ -11,37 +11,13 @@ from flask_restx import Resource
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from controllers.common.knowledge_retrieval_errors import KnowledgeRetrievalHttpError, knowledge_retrieval_errors
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import plugin_inner_api_only
-from core.workflow.nodes.knowledge_retrieval import exc as retrieval_exc
-from libs.exception import BaseHTTPException
 from services.entities.knowledge_retrieval_inner import InnerKnowledgeRetrieveRequest, InnerKnowledgeRetrieveResponse
-from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError, InnerKnowledgeRetrievalServiceError
 from services.knowledge_retrieval_inner_service import InnerKnowledgeRetrievalService
-
-
-class InnerKnowledgeRetrievalHttpError(BaseHTTPException):
-    error_code = "knowledge_retrieve_failed"
-    description = "Knowledge retrieval failed."
-    code = 500
-
-    def __init__(
-        self,
-        *,
-        error_code: str | None = None,
-        description: str | None = None,
-        status_code: int | None = None,
-    ) -> None:
-        if error_code is not None:
-            self.error_code = error_code
-        if description is not None:
-            self.description = description
-        if status_code is not None:
-            self.code = status_code
-        super().__init__(self.description)
-
 
 register_schema_models(inner_api_ns, InnerKnowledgeRetrieveRequest)
 register_response_schema_models(inner_api_ns, InnerKnowledgeRetrieveResponse)
@@ -77,37 +53,13 @@ class InnerKnowledgeRetrieveApi(Resource):
         try:
             payload = InnerKnowledgeRetrieveRequest.model_validate(inner_api_ns.payload or {})
         except ValidationError as exc:
-            raise InnerKnowledgeRetrievalHttpError(
+            raise KnowledgeRetrievalHttpError(
                 error_code="invalid_request",
                 description=str(exc),
                 status_code=400,
             ) from exc
 
-        try:
+        with knowledge_retrieval_errors():
             response = InnerKnowledgeRetrievalService().retrieve(payload, session=session)
-        except InnerKnowledgeRetrievalServiceError as exc:
-            raise InnerKnowledgeRetrievalHttpError(
-                error_code=exc.error_code,
-                description=exc.description,
-                status_code=exc.status_code,
-            ) from exc
-        except retrieval_exc.RateLimitExceededError as exc:
-            raise InnerKnowledgeRetrievalHttpError(
-                error_code="knowledge_rate_limited",
-                description=str(exc),
-                status_code=429,
-            ) from exc
-        except ExternalKnowledgeRetrievalError as exc:
-            raise InnerKnowledgeRetrievalHttpError(
-                error_code="external_knowledge_failed",
-                description=str(exc),
-                status_code=502,
-            ) from exc
-        except ValueError as exc:
-            raise InnerKnowledgeRetrievalHttpError(
-                error_code="retrieval_config_invalid",
-                description=str(exc),
-                status_code=422,
-            ) from exc
 
         return response.model_dump(mode="json", by_alias=True)
