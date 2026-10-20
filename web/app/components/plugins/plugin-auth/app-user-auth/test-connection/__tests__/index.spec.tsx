@@ -87,8 +87,8 @@ const setup = (
         onChange(draft)
         setValue(draft)
       },
-      canOAuth: true,
-      canApiKey: true,
+      oauthEnabled: true,
+      apiKeyEnabled: true,
       onOAuthClientSettings,
     })
     return (

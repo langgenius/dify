@@ -2,6 +2,7 @@ import type { CommonNodeType, Node } from '../types'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
+import { getEnabledTestConnectionState } from '@/app/components/plugins/plugin-auth/app-user-auth/test-connection/model'
 import { CollectionType } from '@/app/components/tools/types'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { consoleQuery } from '@/service/console'
@@ -44,9 +45,12 @@ export const useSingleRunAuthorization = (id: string, data: Node['data']) => {
   let disabledReason: string | undefined
 
   if (usesAppUserAuth) {
-    // An absent test draft displays the initial mock connections. An explicitly
-    // empty list remains empty, including after the last connection is removed.
-    if (appUserDraft.draft?.testConnection?.connections.length === 0)
+    const draft = appUserDraft.draft
+    const { selectedConnection } = getEnabledTestConnectionState(draft?.testConnection, {
+      oauthEnabled: draft?.oauthEnabled ?? true,
+      apiKeyEnabled: draft?.apiKeyEnabled ?? true,
+    })
+    if (!selectedConnection)
       disabledReason = t(($) => $['panel.configureTestRunConnection'], { ns: 'workflow' })
   } else if (authorization?.status === 'invalid') {
     disabledReason = t(($) => $['panel.selectReuseNode'], { ns: 'workflow' })

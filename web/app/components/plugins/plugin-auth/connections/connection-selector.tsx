@@ -25,6 +25,7 @@ export type ConnectionSelectorDataSource = {
   }
   fallbackName: string
   unavailable?: boolean
+  disabled?: boolean
   loadError?: ConnectionPickerLoadError
   canUse: boolean
   canCreate: boolean
@@ -116,8 +117,9 @@ const ConnectionSelector = ({ dataSource }: { dataSource: ConnectionSelectorData
     <>
       {credentials.length || dataSource.emptyState === 'picker' ? (
         <ConnectionPicker
-          open={open}
-          onOpenChange={setOpen}
+          open={open && !dataSource.disabled}
+          onOpenChange={(nextOpen) => setOpen(nextOpen && !dataSource.disabled)}
+          disabled={dataSource.disabled}
           groups={groups}
           selected={selectedOption}
           fallbackName={dataSource.fallbackName}

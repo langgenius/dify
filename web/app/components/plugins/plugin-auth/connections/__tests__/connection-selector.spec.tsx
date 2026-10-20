@@ -55,6 +55,24 @@ const createDataSource = (
 }
 
 describe('ConnectionSelector connection status', () => {
+  it('keeps a disabled picker native-disabled and allows opening after it is enabled', async () => {
+    const user = userEvent.setup()
+    const dataSource = createDataSource({ disabled: true })
+    const { rerender } = render(<ConnectionSelector dataSource={dataSource} />)
+    const trigger = screen.getByRole('button', { name: /Personal Gmail/ })
+    expect(trigger).toBeDisabled()
+    await user.click(trigger)
+    expect(
+      screen.queryByRole('dialog', { name: 'plugin.auth.authorization' }),
+    ).not.toBeInTheDocument()
+    expect(dataSource.select).not.toHaveBeenCalled()
+
+    rerender(<ConnectionSelector dataSource={{ ...dataSource, disabled: false }} />)
+    expect(trigger).toBeEnabled()
+    await user.click(trigger)
+    expect(await screen.findByRole('dialog', { name: 'plugin.auth.authorization' })).toBeVisible()
+  })
+
   it('keeps a connection requiring reauthorization selected and allows switching away and back', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()

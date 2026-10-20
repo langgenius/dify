@@ -9,14 +9,18 @@ import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { CredentialTypeEnum } from '../../types'
-import { MOCK_API_KEY_CONNECTION_NAME, MOCK_OAUTH_CONNECTION_NAME } from './model'
+import {
+  getEnabledTestConnectionState,
+  MOCK_API_KEY_CONNECTION_NAME,
+  MOCK_OAUTH_CONNECTION_NAME,
+} from './model'
 
 type MockTestConnectionSourceProps = {
   pluginPayload: PluginPayload
   active?: boolean
   value: TestConnectionDraft
-  canOAuth: boolean
-  canApiKey: boolean
+  oauthEnabled: boolean
+  apiKeyEnabled: boolean
   onChange: (draft: TestConnectionDraft) => void
   onOAuthClientSettings: () => void
   providerName?: string
@@ -27,8 +31,8 @@ export const useMockTestConnectionSource = ({
   pluginPayload,
   active = true,
   value,
-  canOAuth,
-  canApiKey,
+  oauthEnabled,
+  apiKeyEnabled,
   onChange,
   onOAuthClientSettings,
   providerName,
@@ -40,7 +44,7 @@ export const useMockTestConnectionSource = ({
     consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get.queryOptions(
       {
         input:
-          canApiKey && active
+          apiKeyEnabled && active
             ? {
                 params: {
                   provider: pluginPayload.provider,
@@ -62,7 +66,12 @@ export const useMockTestConnectionSource = ({
     options: field.options?.map((option) => ({ ...option, label: renderI18nObject(option.label) })),
   }))
   const { connections } = value
-  const credentials: Credential[] = connections.map((connection) => ({
+  const enabledState = getEnabledTestConnectionState(value, { oauthEnabled, apiKeyEnabled })
+  const enabledConnections = enabledState.connections
+  const hasEnabledMethods = oauthEnabled || apiKeyEnabled
+  const isEnabledConnection = (credential: Credential) =>
+    enabledConnections.some((connection) => connection.id === credential.id)
+  const credentials: Credential[] = enabledConnections.map((connection) => ({
     id: connection.id,
     name: connection.name,
     provider: 'mock-test-run',
@@ -70,17 +79,19 @@ export const useMockTestConnectionSource = ({
     visibility: connection.visibility ?? PermissionLevel.onlyMe,
     is_default: !!connection.isDefault,
   }))
-  const selectedCredential =
-    credentials.find((credential) => credential.id === value.selectedId) ?? credentials[0]
+  const selectedCredential = credentials.find(
+    (credential) => credential.id === enabledState.selectedConnection?.id,
+  )
   const apiKey: NonNullable<ConnectionSelectorDataSource['apiKey']> = {
     schemas,
     isLoading: schema.isPending,
     defaultName: `${MOCK_API_KEY_CONNECTION_NAME} ${connections.length + 1}`,
     save: async ({ credentialId, name, credentials: values, visibility }) => {
+      if (!apiKeyEnabled) return
       const original = connections.find((connection) => connection.id === credentialId)
       const secretField = schemas.find((field) => field.type === FormTypeEnum.secretInput)
-      const value = secretField ? values[secretField.name] : undefined
-      const key = typeof value === 'string' ? value.trim() : ''
+      const secretValue = secretField ? values[secretField.name] : undefined
+      const key = typeof secretValue === 'string' ? secretValue.trim() : ''
       const connection: TestConnection = {
         ...original,
         id: original?.id ?? `mock-test-${crypto.randomUUID()}`,
@@ -97,7 +108,7 @@ export const useMockTestConnectionSource = ({
         connections: original
           ? connections.map((item) => (item.id === original.id ? connection : item))
           : [...connections, connection],
-        selectedId: original ? selectedCredential?.id : connection.id,
+        selectedId: original ? value.selectedId : connection.id,
       })
     },
   }
@@ -105,20 +116,27 @@ export const useMockTestConnectionSource = ({
   return {
     credentials,
     selectedCredential,
-    fallbackName: t(($) => $['auth.unavailable'], { ns: 'plugin' }),
-    canUse: true,
-    canCreate: !schema.isError,
-    canOAuth,
-    canApiKey,
-    allowCustom: true,
+    fallbackName: hasEnabledMethods
+      ? t(($) => $['auth.unavailable'], { ns: 'plugin' })
+      : t(($) => $['auth.appUser.selectMethod'], { ns: 'plugin' }),
+    disabled: !hasEnabledMethods,
+    emptyState: hasEnabledMethods ? 'actions' : 'picker',
+    canUse: hasEnabledMethods,
+    canCreate: apiKeyEnabled && !schema.isError,
+    canOAuth: oauthEnabled,
+    canApiKey: apiKeyEnabled,
+    allowCustom: hasEnabledMethods,
     pluginPayload,
     providerName,
     oauthDisabled,
     subtitle: (credential) =>
       connections.find((connection) => connection.id === credential?.id)?.subtitle ??
       t(($) => $['auth.unavailable'], { ns: 'plugin' }),
-    select: (credential) => onChange({ ...value, selectedId: credential.id }),
+    select: (credential) => {
+      if (isEnabledConnection(credential)) onChange({ ...value, selectedId: credential.id })
+    },
     addOAuth: () => {
+      if (!oauthEnabled || oauthDisabled) return
       const connection: TestConnection = {
         id: `mock-test-${crypto.randomUUID()}`,
         name: `${MOCK_OAUTH_CONNECTION_NAME} ${connections.length + 1}`,
@@ -127,16 +145,19 @@ export const useMockTestConnectionSource = ({
       }
       onChange({ connections: [...connections, connection], selectedId: connection.id })
     },
-    openOAuthClientSettings: onOAuthClientSettings,
+    openOAuthClientSettings: () => {
+      if (oauthEnabled && !oauthDisabled) onOAuthClientSettings()
+    },
     apiKey,
     connectionActions: {
-      canManageConnection: () => true,
-      canEditConnection: () => true,
+      canManageConnection: isEnabledConnection,
+      canEditConnection: isEnabledConnection,
       apiKey,
       edit: {
-        canEdit: true,
-        canUse: true,
+        canEdit: hasEnabledMethods,
+        canUse: hasEnabledMethods,
         save: async ({ credential, name, visibility, setDefault }) => {
+          if (!isEnabledConnection(credential)) return
           onChange({
             ...value,
             connections: connections.map((connection) => {
@@ -157,13 +178,17 @@ export const useMockTestConnectionSource = ({
         },
       },
       remove: async (credential) => {
+        if (!isEnabledConnection(credential)) return
         const nextConnections = connections.filter((connection) => connection.id !== credential.id)
         onChange({
           connections: nextConnections,
           selectedId:
-            selectedCredential?.id === credential.id
-              ? nextConnections[0]?.id
-              : selectedCredential?.id,
+            value.selectedId === credential.id
+              ? getEnabledTestConnectionState(
+                  { connections: nextConnections },
+                  { oauthEnabled, apiKeyEnabled },
+                ).selectedConnection?.id
+              : value.selectedId,
         })
       },
     },

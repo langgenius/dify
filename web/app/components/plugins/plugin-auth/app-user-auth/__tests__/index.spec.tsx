@@ -10,6 +10,7 @@ import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console
 import AppUserAuth from '..'
 import { AuthCategory } from '../../types'
 import { createAppUserAuthDraft } from '../draft'
+import { createMockTestConnectionDraft } from '../test-connection/model'
 
 const clientDialogName = 'plugin.auth.oauthClientSettings'
 const clientIdLabel = 'Client ID'
@@ -152,6 +153,132 @@ describe('AppUserAuth', () => {
       serverClient = { ...serverClient, is_oauth_custom_client_enabled: false, client_params: {} }
     })
   })
+  it.each([
+    {
+      checkbox: 'plugin.auth.appUser.oauth',
+      selectedId: 'mock-test-oauth',
+      selectedName: 'OAuth test connection',
+      fallbackName: 'API key test connection',
+      disabledAdd: 'plugin.auth.addOAuth',
+      enabledAdd: 'plugin.auth.common.addApiKey',
+      oauthEnabled: false,
+    },
+    {
+      checkbox: 'plugin.auth.connection.apiKey',
+      selectedId: 'mock-test-api-key',
+      selectedName: 'API key test connection',
+      fallbackName: 'OAuth test connection',
+      disabledAdd: 'plugin.auth.common.addApiKey',
+      enabledAdd: 'plugin.auth.addOAuth',
+      oauthEnabled: true,
+    },
+  ])(
+    'filters disabled test connections and restores the selection when $checkbox is enabled again',
+    async ({
+      checkbox,
+      selectedId,
+      selectedName,
+      fallbackName,
+      disabledAdd,
+      enabledAdd,
+      oauthEnabled,
+    }) => {
+      const user = userEvent.setup()
+      const testConnection = {
+        ...createMockTestConnectionDraft({ canOAuth: true, canApiKey: true }),
+        selectedId,
+      }
+      const onChange = vi.fn<(draft: AppUserAuthDraft) => void>()
+      render(
+        <ControlledHarness
+          initialDraft={{ ...createAppUserAuthDraft(), testConnection }}
+          onChange={onChange}
+        />,
+      )
+      const region = screen.getByRole('region', { name: 'plugin.auth.appUser.testConnection' })
+      expect(within(region).getByRole('button')).toHaveTextContent(selectedName)
+
+      await user.click(screen.getByRole('checkbox', { name: checkbox }))
+      expect(within(region).getByRole('button')).toHaveTextContent(fallbackName)
+      expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ testConnection }))
+      await user.click(within(region).getByRole('button'))
+      const popup = await screen.findByRole('dialog', { name: 'plugin.auth.authorization' })
+      expect(
+        within(popup).queryByRole('button', { name: new RegExp(`^${selectedName}`) }),
+      ).not.toBeInTheDocument()
+      expect(within(popup).queryByRole('button', { name: disabledAdd })).not.toBeInTheDocument()
+      expect(within(popup).getByRole('button', { name: enabledAdd })).toBeVisible()
+      expect(
+        within(popup).queryByRole('button', {
+          name: 'plugin.auth.connection.oauthClientSettings',
+        }) !== null,
+      ).toBe(oauthEnabled)
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(popup).not.toBeInTheDocument())
+
+      await user.click(screen.getByRole('checkbox', { name: checkbox }))
+      expect(within(region).getByRole('button')).toHaveTextContent(selectedName)
+      expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ testConnection }))
+    },
+  )
+
+  it('disables the test connection entry when both methods are off and restores the saved selection when enabled again', async () => {
+    const user = userEvent.setup()
+    const testConnection = createMockTestConnectionDraft({ canOAuth: true, canApiKey: true })
+    const onChange = vi.fn<(draft: AppUserAuthDraft) => void>()
+    render(
+      <ControlledHarness
+        initialDraft={{ ...createAppUserAuthDraft(), testConnection }}
+        onChange={onChange}
+      />,
+    )
+    const oauth = screen.getByRole('checkbox', { name: 'plugin.auth.appUser.oauth' })
+    const apiKey = screen.getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' })
+    const region = screen.getByRole('region', { name: 'plugin.auth.appUser.testConnection' })
+    await user.click(oauth)
+    await user.click(apiKey)
+    const trigger = within(region).getByRole('button')
+    expect(trigger).toBeDisabled()
+    await user.click(trigger)
+    expect(
+      screen.queryByRole('dialog', { name: 'plugin.auth.authorization' }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(region).queryByRole('button', { name: 'plugin.auth.addOAuth' }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(region).queryByRole('button', { name: 'plugin.auth.common.addApiKey' }),
+    ).not.toBeInTheDocument()
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ testConnection }))
+
+    await user.click(oauth)
+    expect(within(region).getByRole('button')).toBeEnabled()
+    expect(within(region).getByRole('button')).toHaveTextContent('OAuth test connection')
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ testConnection }))
+  })
+
+  it('offers only the enabled method when all saved test connections use a disabled method', async () => {
+    const user = userEvent.setup()
+    const oauthDraft = createMockTestConnectionDraft({ canOAuth: true, canApiKey: false })
+    render(
+      <AppUserAuth
+        pluginPayload={pluginPayload}
+        value={{ ...createAppUserAuthDraft(), oauthEnabled: false, testConnection: oauthDraft }}
+      />,
+    )
+    const region = screen.getByRole('region', { name: 'plugin.auth.appUser.testConnection' })
+    expect(
+      within(region).queryByRole('button', { name: /OAuth test connection/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(region).queryByRole('button', { name: 'plugin.auth.addOAuth' }),
+    ).not.toBeInTheDocument()
+    const add = within(region).getByRole('button', { name: 'plugin.auth.common.addApiKey' })
+    expect(add).toBeEnabled()
+    await user.click(add)
+    expect(await screen.findByRole('dialog', { name: 'plugin.auth.useApiAuth' })).toBeVisible()
+  })
+
   it('enables both available methods by default and toggles the API key explanation', async () => {
     const user = userEvent.setup()
     render(<AppUserAuth pluginPayload={pluginPayload} />)
@@ -499,7 +626,11 @@ describe('AppUserAuth', () => {
       oauthEnabled: false,
       apiKeyEnabled: false,
     })
-    expect(screen.getByText('plugin.auth.appUser.selectMethod')).toBeVisible()
+    expect(
+      within(screen.getByRole('group', { name: 'plugin.auth.authorization' })).getByText(
+        'plugin.auth.appUser.selectMethod',
+      ),
+    ).toBeVisible()
     expect(oauth).toHaveAttribute('aria-invalid', 'true')
     expect(apiKey).toHaveAttribute('aria-invalid', 'true')
     expect(oauth).toHaveAccessibleDescription(/plugin\.auth\.appUser\.selectMethod/)

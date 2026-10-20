@@ -976,3 +976,83 @@ it('updates single-run authorization when a Reuse source is removed from and res
   await user.click(screen.getByRole('button', { name: 'Restore source' }))
   await waitFor(() => expect(authorization).toHaveTextContent('Ready'))
 })
+
+it.each([
+  {
+    name: 'OAuth disabled',
+    oauthEnabled: false,
+    apiKeyEnabled: true,
+    methods: [CredentialTypeEnum.OAUTH2],
+    blocked: true,
+  },
+  {
+    name: 'API Key disabled',
+    oauthEnabled: true,
+    apiKeyEnabled: false,
+    methods: [CredentialTypeEnum.API_KEY],
+    blocked: true,
+  },
+  {
+    name: 'all methods disabled',
+    oauthEnabled: false,
+    apiKeyEnabled: false,
+    methods: [CredentialTypeEnum.OAUTH2, CredentialTypeEnum.API_KEY],
+    blocked: true,
+  },
+  {
+    name: 'fallback to enabled API Key',
+    oauthEnabled: false,
+    apiKeyEnabled: true,
+    methods: [CredentialTypeEnum.OAUTH2, CredentialTypeEnum.API_KEY],
+    blocked: false,
+  },
+])(
+  'checks only enabled test connections from a Reuse source: $name',
+  async ({ oauthEnabled, apiKeyEnabled, methods, blocked }) => {
+    const user = userEvent.setup()
+    renderPanel({
+      data: toolData,
+      tools: [toolProvider()],
+      otherNodes: [createNode({ id: 'auth-source', data: { ...toolData, title: 'Source tool' } })],
+      initialStoreState: {
+        nodeAuthDrafts: {
+          'node-1': {
+            provider: 'Tool',
+            providerId: 'provider/tool',
+            authorizationTab: 'reuse-from-node',
+            reuseFromNode: { source: { id: 'auth-source', title: 'Source tool' } },
+          },
+          'auth-source': {
+            provider: 'Tool',
+            providerId: 'provider/tool',
+            authorizationTab: 'app-user-auth',
+            draft: {
+              ...appUserDraft,
+              oauthEnabled,
+              apiKeyEnabled,
+              testConnection: {
+                connections: methods.map((method) => ({
+                  id: method,
+                  name: method,
+                  method,
+                  subtitle: method,
+                })),
+                selectedId: methods[0],
+              },
+            },
+          },
+        },
+      },
+    })
+    const run = panel().getByRole('button', { name: 'workflow.panel.runThisStep' })
+    if (blocked) {
+      expect(run).toHaveAttribute('aria-disabled', 'true')
+      await user.hover(run)
+      expect(await screen.findByText('workflow.panel.configureTestRunConnection')).toBeVisible()
+      await user.click(run)
+      expect(api.run).not.toHaveBeenCalled()
+    } else {
+      expect(run).not.toHaveAttribute('aria-disabled', 'true')
+    }
+  },
+)

@@ -40,6 +40,7 @@ export type ConnectionPickerProps = {
   selected?: ConnectionPickerOption
   fallbackName: string
   unavailable?: boolean
+  disabled?: boolean
   loadError?: ConnectionPickerLoadError
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -57,6 +58,7 @@ const ConnectionPicker = ({
   selected,
   fallbackName,
   unavailable,
+  disabled,
   loadError,
   open,
   onOpenChange,
@@ -73,7 +75,10 @@ const ConnectionPicker = ({
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger className="flex h-13 w-full cursor-pointer items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-1 py-1.5 text-left hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt">
+      <PopoverTrigger
+        disabled={disabled}
+        className="flex h-13 w-full cursor-pointer items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-1 py-1.5 text-left hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt"
+      >
         <span className="flex size-6 shrink-0 items-center justify-center" aria-hidden>
           <Avatar size="xs" className="border-[0.5px] border-divider-regular">
             <AvatarFallback className="bg-components-icon-bg-blue-soft text-xs text-text-accent">
