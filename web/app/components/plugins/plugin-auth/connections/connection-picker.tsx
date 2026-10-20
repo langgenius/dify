@@ -6,6 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
+import Badge from '@/app/components/base/badge'
 import { CredentialTypeEnum } from '../types'
 
 export type ConnectionPickerOption = {
@@ -13,6 +14,7 @@ export type ConnectionPickerOption = {
   name: string
   subtitle: string
   method?: CredentialType
+  isDefault?: boolean
   disabled?: boolean
   info?: string
 }
@@ -92,6 +94,9 @@ const ConnectionPicker = ({
             {selected?.subtitle ?? t(($) => $['auth.unavailable'], { ns: 'plugin' })}
           </span>
         </span>
+        {selected?.isDefault && (
+          <Badge className="shrink-0">{t(($) => $['auth.default'], { ns: 'plugin' })}</Badge>
+        )}
         <span
           aria-hidden
           className="mr-1 i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary"
@@ -166,6 +171,11 @@ const ConnectionPicker = ({
                                   {option.subtitle}
                                 </span>
                               </span>
+                              {option.isDefault && (
+                                <Badge className="shrink-0">
+                                  {t(($) => $['auth.default'], { ns: 'plugin' })}
+                                </Badge>
+                              )}
                               {option.method && (
                                 <span className="shrink-0 system-xs-regular text-text-tertiary">
                                   {methodLabel(option.method)}

@@ -54,6 +54,7 @@ const ConnectionSelector = ({ dataSource }: { dataSource: ConnectionSelectorData
     name: credential.name,
     subtitle: dataSource.subtitle(credential),
     method: credential.credential_type ?? CredentialTypeEnum.API_KEY,
+    isDefault: credential.is_default,
     disabled: !dataSource.canUse || credential.not_allowed_to_use,
     info: credential.from_other_member
       ? t(($) => $['auth.onlyAtCreationHintTooltip'], { ns: 'plugin' })

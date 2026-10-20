@@ -189,6 +189,46 @@ describe('WorkspaceConnectionSelector', () => {
     expect(screen.queryByRole('button', { name: /Team API connection/ })).not.toBeInTheDocument()
   })
 
+  it('shows the default badge independently of the current connection selection', async () => {
+    const user = userEvent.setup()
+    const ControlledSelector = () => {
+      const [credentialId, setCredentialId] = useState('personal-oauth')
+      return (
+        <WorkspaceConnectionSelector
+          pluginPayload={pluginPayload}
+          credentialId={credentialId}
+          authorization={createAuthorization()}
+          onAuthorizationItemClick={setCredentialId}
+        />
+      )
+    }
+    renderSelector({}, undefined, <ControlledSelector />)
+    const trigger = screen.getByRole('button', { name: /^Personal OAuth connection/ })
+    expect(trigger).not.toHaveTextContent('plugin.auth.default')
+    await user.click(trigger)
+
+    const group = within(screen.getByRole('group', { name: 'common.userProfile.workspace' }))
+    const defaultRow = group.getByRole('button', { name: /^Team API connection/ })
+    expect(defaultRow).toHaveTextContent('plugin.auth.default')
+    expect(defaultRow).toHaveAttribute('aria-pressed', 'false')
+    expect(
+      screen.getByRole('button', { name: /^Personal OAuth connection/, pressed: true }),
+    ).not.toHaveTextContent('plugin.auth.default')
+    await user.click(defaultRow)
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('button', { name: /^Team API connection/ })).toHaveTextContent(
+      'plugin.auth.default',
+    )
+    await user.click(screen.getByRole('button', { name: /^Team API connection/ }))
+    expect(
+      within(screen.getByRole('group', { name: 'common.userProfile.workspace' })).getByRole(
+        'button',
+        { name: /^Team API connection/ },
+      ),
+    ).toHaveAttribute('aria-pressed', 'true')
+  })
+
   it('retries loading the list without changing the selected connection', async () => {
     const user = userEvent.setup()
     const onRetry = vi.fn()
