@@ -78,7 +78,7 @@ class RetrievalReranker(Protocol):
 
 
 class DatasetRetriever(Protocol):
-    """Retrieval operations consumed by the workflow execution layer."""
+    """Retrieval operations consumed by workflow execution and hit testing."""
 
     @property
     def llm_usage(self) -> LLMUsage: ...

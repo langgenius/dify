@@ -1,6 +1,11 @@
+from sqlalchemy.orm import sessionmaker
+
+from extensions.application_services.retrieval import build_dataset_retrieval
+from repositories.knowledge.retrieval_repository import KnowledgeRetrievalRepository
+
 """Unit tests for the inner knowledge retrieval service."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.orm import Session
@@ -113,10 +118,8 @@ def _build_source() -> Source:
 
 class TestInnerKnowledgeRetrievalService:
     @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
-    @patch("services.knowledge_retrieval_inner_service.DatasetRetrieval")
     def test_retrieve_maps_multiple_request_and_skips_enable_api_check(
         self,
-        mock_rag_cls,
         sqlite_session: Session,
     ):
         request = _build_request()
@@ -145,9 +148,10 @@ class TestInnerKnowledgeRetrievalService:
             "time_to_first_token": None,
             "time_to_generate": None,
         }
-        mock_rag_cls.return_value = rag
 
-        response = InnerKnowledgeRetrievalService().retrieve(request, sqlite_session)
+        response = InnerKnowledgeRetrievalService(
+            scopes=KnowledgeRetrievalRepository(sessionmaker(bind=sqlite_session.get_bind())), retrieval=lambda: rag
+        ).retrieve(request)
 
         rag_request = rag.knowledge_retrieval.call_args.kwargs["request"]
         assert rag_request.tenant_id == TENANT_ID
@@ -171,12 +175,11 @@ class TestInnerKnowledgeRetrievalService:
         assert rag_request.attachment_ids == ["attachment-1"]
         assert response.results[0].title == "FAQ.md"
         assert response.usage.currency == "USD"
-        assert rag.knowledge_retrieval.call_args.kwargs["session"] is sqlite_session
-        assert sqlite_session.in_transaction()
+        assert "session" not in rag.knowledge_retrieval.call_args.kwargs
+        assert not sqlite_session.in_transaction()
 
     @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
-    @patch("services.knowledge_retrieval_inner_service.DatasetRetrieval")
-    def test_retrieve_maps_single_request(self, mock_rag_cls, sqlite_session: Session):
+    def test_retrieve_maps_single_request(self, sqlite_session: Session):
         request = _build_request(
             dataset_ids=[DATASET_1_ID],
             retrieval={
@@ -217,9 +220,10 @@ class TestInnerKnowledgeRetrievalService:
             "currency": "USD",
             "latency": 1,
         }
-        mock_rag_cls.return_value = rag
 
-        InnerKnowledgeRetrievalService().retrieve(request, sqlite_session)
+        InnerKnowledgeRetrievalService(
+            scopes=KnowledgeRetrievalRepository(sessionmaker(bind=sqlite_session.get_bind())), retrieval=lambda: rag
+        ).retrieve(request)
 
         rag_request = rag.knowledge_retrieval.call_args.kwargs["request"]
         assert rag_request.retrieval_mode == "single"
@@ -230,29 +234,38 @@ class TestInnerKnowledgeRetrievalService:
         assert rag_request.metadata_filtering_mode == "automatic"
         assert rag_request.metadata_model_config is not None
         assert rag_request.metadata_model_config.provider == "openai"
-        assert sqlite_session.in_transaction()
+        assert not sqlite_session.in_transaction()
 
     @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
     def test_retrieve_raises_when_app_missing(self, sqlite_session: Session):
         with pytest.raises(InnerKnowledgeRetrieveAppNotFoundError):
-            InnerKnowledgeRetrievalService().retrieve(_build_request(), sqlite_session)
-        assert sqlite_session.in_transaction()
+            InnerKnowledgeRetrievalService(
+                scopes=KnowledgeRetrievalRepository(sessionmaker(bind=sqlite_session.get_bind())),
+                retrieval=build_dataset_retrieval(sessionmaker(bind=sqlite_session.get_bind())),
+            ).retrieve(_build_request())
+        assert not sqlite_session.in_transaction()
 
     @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
     def test_retrieve_raises_when_app_belongs_to_other_tenant(self, sqlite_session: Session):
         _persist_state(sqlite_session, _app(tenant_id=OTHER_TENANT_ID))
 
         with pytest.raises(InnerKnowledgeRetrieveAppTenantMismatchError):
-            InnerKnowledgeRetrievalService().retrieve(_build_request(), sqlite_session)
-        assert sqlite_session.in_transaction()
+            InnerKnowledgeRetrievalService(
+                scopes=KnowledgeRetrievalRepository(sessionmaker(bind=sqlite_session.get_bind())),
+                retrieval=build_dataset_retrieval(sessionmaker(bind=sqlite_session.get_bind())),
+            ).retrieve(_build_request())
+        assert not sqlite_session.in_transaction()
 
     @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
     def test_retrieve_raises_when_dataset_missing(self, sqlite_session: Session):
         _persist_state(sqlite_session, _app(), _dataset(dataset_id=DATASET_1_ID))
 
         with pytest.raises(InnerKnowledgeRetrieveDatasetNotFoundError):
-            InnerKnowledgeRetrievalService().retrieve(_build_request(), sqlite_session)
-        assert sqlite_session.in_transaction()
+            InnerKnowledgeRetrievalService(
+                scopes=KnowledgeRetrievalRepository(sessionmaker(bind=sqlite_session.get_bind())),
+                retrieval=build_dataset_retrieval(sessionmaker(bind=sqlite_session.get_bind())),
+            ).retrieve(_build_request())
+        assert not sqlite_session.in_transaction()
 
     @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
     def test_retrieve_raises_when_dataset_belongs_to_other_tenant(self, sqlite_session: Session):
@@ -264,5 +277,8 @@ class TestInnerKnowledgeRetrievalService:
         )
 
         with pytest.raises(InnerKnowledgeRetrieveDatasetTenantMismatchError):
-            InnerKnowledgeRetrievalService().retrieve(_build_request(), sqlite_session)
-        assert sqlite_session.in_transaction()
+            InnerKnowledgeRetrievalService(
+                scopes=KnowledgeRetrievalRepository(sessionmaker(bind=sqlite_session.get_bind())),
+                retrieval=build_dataset_retrieval(sessionmaker(bind=sqlite_session.get_bind())),
+            ).retrieve(_build_request())
+        assert not sqlite_session.in_transaction()

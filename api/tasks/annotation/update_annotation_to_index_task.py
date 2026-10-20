@@ -9,7 +9,7 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
 from models.dataset import Dataset
-from services.knowledge.dataset_service import DatasetCollectionBindingService
+from repositories.knowledge.collection_binding_repository import DatasetCollectionBindingRepository
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +33,10 @@ def update_annotation_to_index_task(
 
     try:
         with session_factory.create_session() as session:
-            dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                collection_binding_id, session, "annotation"
+            dataset_collection_binding = (
+                DatasetCollectionBindingRepository.get_dataset_collection_binding_by_id_and_type(
+                    collection_binding_id, session, "annotation"
+                )
             )
 
         dataset = Dataset(
