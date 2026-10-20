@@ -1,3 +1,4 @@
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,7 +16,8 @@ pytest_plugins = ("tests.unit_tests.oss.__mock.baidu_obs",)
 
 class TestBaiduObs(BaseStorageTest):
     @pytest.fixture(autouse=True)
-    def setup_method(self, setup_baidu_obs_mock):
+    @override
+    def setup_method(self, setup_baidu_obs_mock: None) -> None:
         """Executed before each test method."""
         with (
             patch.object(BceCredentials, "__init__", return_value=None),
@@ -26,7 +28,7 @@ class TestBaiduObs(BaseStorageTest):
 
 
 class TestBaiduObsConfiguration:
-    def test_init_with_config(self):
+    def test_init_with_config(self) -> None:
         mock_dify_config = MagicMock()
         mock_dify_config.BAIDU_OBS_BUCKET_NAME = "test-bucket"
         mock_dify_config.BAIDU_OBS_ACCESS_KEY = "test-access-key"
