@@ -301,9 +301,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "Handleiding voor templatepublicatie",
-  "upgrade.close": "Close",
   "upgrade.description": "About to install the following plugin",
-  "upgrade.successfulTitle": "Install successful",
   "upgrade.title": "Install Plugin",
   "upgrade.upgrade": "Install",
   "upgrade.upgrading": "Installing..."

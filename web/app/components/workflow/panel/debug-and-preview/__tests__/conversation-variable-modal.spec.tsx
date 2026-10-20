@@ -1,19 +1,19 @@
+import type { PaginatedConversationVariableResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
-import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
+import { createDeferred } from '@/test/deferred'
 import ConversationVariableModal from '../conversation-variable-modal'
 
 vi.mock('copy-to-clipboard', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/service/workflow', () => ({
-  fetchCurrentValueOfConversationVariable: vi.fn(),
-}))
+const request = vi.hoisted(() => vi.fn<(url: string) => Promise<Response>>())
+vi.mock('@/service/base', () => ({ request }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
@@ -27,9 +27,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
   ),
 }))
 
-const mockFetchCurrentValueOfConversationVariable = vi.mocked(
-  fetchCurrentValueOfConversationVariable,
-)
 const mockCopy = vi.mocked(copy)
 
 const createConversationVariable = (
@@ -44,10 +41,8 @@ const createConversationVariable = (
 })
 
 const createConversationVariableResponse = (
-  data: Array<
-    Awaited<ReturnType<typeof fetchCurrentValueOfConversationVariable>>['data'][number]
-  > = [],
-): Awaited<ReturnType<typeof fetchCurrentValueOfConversationVariable>> => ({
+  data: PaginatedConversationVariableResponse['data'] = [],
+): PaginatedConversationVariableResponse => ({
   data,
   has_more: false,
   limit: 20,
@@ -58,39 +53,40 @@ const createConversationVariableResponse = (
 describe('ConversationVariableModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFetchCurrentValueOfConversationVariable.mockResolvedValue(
-      createConversationVariableResponse(),
-    )
+    request.mockImplementation(async () => Response.json(createConversationVariableResponse()))
   })
 
   afterEach(() => {
+    vi.clearAllTimers()
     vi.useRealTimers()
   })
 
   it('loads latest values, switches the active variable, and closes the modal', async () => {
     const user = userEvent.setup()
     const onHide = vi.fn()
-    mockFetchCurrentValueOfConversationVariable.mockResolvedValue(
-      createConversationVariableResponse([
-        {
-          ...createConversationVariable({
-            id: 'var-1',
-            value: '{"latest":1}',
-          }),
-          updated_at: 100,
-          created_at: 50,
-        },
-        {
-          ...createConversationVariable({
-            id: 'var-2',
-            name: 'summary',
-            value_type: ChatVarType.String,
-            value: 'latest text',
-          }),
-          updated_at: 200,
-          created_at: 150,
-        },
-      ]),
+    request.mockResolvedValue(
+      Response.json(
+        createConversationVariableResponse([
+          {
+            ...createConversationVariable({
+              id: 'var-1',
+              value: '{"latest":1}',
+            }),
+            updated_at: 100,
+            created_at: 50,
+          },
+          {
+            ...createConversationVariable({
+              id: 'var-2',
+              name: 'summary',
+              value_type: ChatVarType.String,
+              value: 'latest text',
+            }),
+            updated_at: 200,
+            created_at: 150,
+          },
+        ]),
+      ),
     )
 
     renderWorkflowComponent(
@@ -112,10 +108,13 @@ describe('ConversationVariableModal', () => {
     )
 
     await waitFor(() => {
-      expect(mockFetchCurrentValueOfConversationVariable).toHaveBeenCalledWith({
-        url: '/apps/app-1/conversation-variables',
-        params: { conversation_id: 'conversation-1' },
-      })
+      expect(request).toHaveBeenCalledWith(
+        expect.stringContaining(
+          '/apps/app-1/conversation-variables?conversation_id=conversation-1',
+        ),
+        expect.anything(),
+        expect.anything(),
+      )
     })
 
     expect(screen.getAllByText('session_state')).toHaveLength(2)
@@ -130,6 +129,37 @@ describe('ConversationVariableModal', () => {
     await user.click(screen.getByRole('button', { name: /operation\.close/ }))
 
     expect(onHide).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the current conversation values when a previous request finishes late', async () => {
+    const previous = createDeferred<Response>()
+    request.mockReturnValueOnce(previous.promise)
+    request.mockResolvedValueOnce(
+      Response.json(
+        createConversationVariableResponse([
+          { ...createConversationVariable(), value: '{"current":true}', updated_at: 200 },
+        ]),
+      ),
+    )
+    const { rerender } = renderWorkflowComponent(
+      <ConversationVariableModal conversationID="conversation-1" onHide={vi.fn()} />,
+      { initialStoreState: { conversationVariables: [createConversationVariable()] } },
+    )
+    await waitFor(() => expect(request).toHaveBeenCalledOnce())
+    rerender(<ConversationVariableModal conversationID="conversation-2" onHide={vi.fn()} />)
+    await waitFor(() =>
+      expect(screen.getByTestId('conversation-code-editor')).toHaveTextContent('{"current":true}'),
+    )
+    await act(async () =>
+      previous.resolve(
+        Response.json(
+          createConversationVariableResponse([
+            { ...createConversationVariable(), value: '{"previous":true}', updated_at: 100 },
+          ]),
+        ),
+      ),
+    )
+    expect(screen.getByTestId('conversation-code-editor')).toHaveTextContent('{"current":true}')
   })
 
   it('copies the current variable value and resets the copied state after the timeout', async () => {

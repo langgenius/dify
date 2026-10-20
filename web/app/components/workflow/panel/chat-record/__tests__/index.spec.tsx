@@ -23,6 +23,22 @@ describe('ChatRecord', () => {
     mockRequest.mockReset()
   })
 
+  it('renders paused history without a finished timestamp', async () => {
+    mockRequest.mockResolvedValue({ data: [] })
+
+    renderWorkflowComponent(<ChatRecord />, {
+      initialStoreState: {
+        historyWorkflowData: {
+          ...historyWorkflowData,
+          status: 'paused',
+          finished_at: undefined,
+        },
+      },
+    })
+
+    expect(await screen.findByText('TEST CHAT (Paused)')).toBeInTheDocument()
+  })
+
   it('renders chat history and keeps sibling selection within its conversation', async () => {
     const user = userEvent.setup()
 
@@ -52,7 +68,7 @@ describe('ChatRecord', () => {
           message_files: [],
         },
       ],
-    } as never)
+    })
 
     const { store } = renderWorkflowComponent(<ChatRecord />, {
       initialStoreState: { historyWorkflowData },
@@ -147,16 +163,14 @@ describe('ChatRecord', () => {
   it('stops loading when conversation fetching fails', async () => {
     mockRequest.mockRejectedValue(new Error('network error'))
 
-    const { container } = renderWorkflowComponent(<ChatRecord />, {
+    renderWorkflowComponent(<ChatRecord />, {
       initialStoreState: { historyWorkflowData },
       hooksStoreProps: {
         handleLoadBackupDraft: vi.fn(),
       },
     })
 
-    await waitFor(() => {
-      expect(container).toHaveTextContent('TEST CHAT')
-    })
+    expect(await screen.findByText(/^TEST CHAT/)).toBeVisible()
 
     expect(screen.queryByText('Question 1')).not.toBeInTheDocument()
   })

@@ -32,13 +32,18 @@ export default function AccessRulesBatchAction({
   const { t } = useTranslation(['common', 'permission'])
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [hasDeleteError, setHasDeleteError] = useState(false)
 
   const handleDelete = async () => {
+    if (isDeleting) return
     setIsDeleting(true)
+    setHasDeleteError(false)
 
     try {
       await onDelete()
       setIsDeleteConfirmOpen(false)
+    } catch {
+      setHasDeleteError(true)
     } finally {
       setIsDeleting(false)
     }
@@ -63,7 +68,14 @@ export default function AccessRulesBatchAction({
           </span>
         </div>
         <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
-        <Button variant="ghost" tone="destructive" onClick={() => setIsDeleteConfirmOpen(true)}>
+        <Button
+          variant="ghost"
+          tone="destructive"
+          onClick={() => {
+            setHasDeleteError(false)
+            setIsDeleteConfirmOpen(true)
+          }}
+        >
           <span className="i-ri-delete-bin-line size-4" aria-hidden />
           <span>{t(($) => $['operation.delete'], { ns: 'common' })}</span>
         </Button>
@@ -90,6 +102,9 @@ export default function AccessRulesBatchAction({
               })}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {hasDeleteError && (
+            <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancelButton disabled={isDeleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

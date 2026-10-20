@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from contextlib import nullcontext
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
@@ -91,9 +92,9 @@ class _FakeCurrentApp:
         return _FakeFlaskApp()
 
 
+@dataclass(eq=False, repr=False)
 class _DatabaseWithSession:
-    def __init__(self, session: scoped_session[Session]) -> None:
-        self.session = session
+    session: scoped_session[Session]
 
 
 class _UnusedProviderManager(ProviderManager):

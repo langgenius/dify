@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { ComponentProps } from 'react'
-import { useState } from 'react'
+import { useId, useState } from 'react'
+import { fn } from 'storybook/test'
 import TagInput from '.'
 
 const meta = {
@@ -48,9 +49,7 @@ const meta = {
     },
   },
   args: {
-    onChange: (items) => {
-      console.log('Tags updated:', items)
-    },
+    onChange: fn(),
   },
 } satisfies Meta<typeof TagInput>
 
@@ -68,7 +67,7 @@ const TagInputDemo = (args: ComponentProps<typeof TagInput>) => {
         items={items}
         onChange={(newItems) => {
           setItems(newItems)
-          console.log('Tags updated:', newItems)
+          args.onChange(newItems)
         }}
       />
       {items.length > 0 && (
@@ -172,6 +171,7 @@ export const SkillTags: Story = {
 
 // Real-world example - Email tags
 const EmailTagsDemo = () => {
+  const id = useId()
   const [recipients, setRecipients] = useState(['john@example.com', 'jane@example.com'])
 
   return (
@@ -179,8 +179,14 @@ const EmailTagsDemo = () => {
       <h3 className="mb-4 text-lg font-semibold">Send Email</h3>
       <div className="space-y-4">
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">To:</label>
+          <label
+            htmlFor={`${id}-recipients`}
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
+            To:
+          </label>
           <TagInput
+            id={`${id}-recipients`}
             items={recipients}
             onChange={setRecipients}
             placeholder="Add recipient email..."
@@ -188,8 +194,11 @@ const EmailTagsDemo = () => {
           />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Subject:</label>
+          <label htmlFor={`${id}-subject`} className="mb-2 block text-sm font-medium text-gray-700">
+            Subject:
+          </label>
           <input
+            id={`${id}-subject`}
             type="text"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             placeholder="Enter subject..."
@@ -214,6 +223,7 @@ export const EmailTags: Story = {
 
 // Real-world example - Search filters
 const SearchFiltersDemo = () => {
+  const id = useId()
   const [filters, setFilters] = useState(['urgent', 'pending'])
 
   const mockResults = [
@@ -232,8 +242,11 @@ const SearchFiltersDemo = () => {
     <div style={{ width: '600px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <h3 className="mb-4 text-lg font-semibold">Filter Tasks</h3>
       <div className="mb-4">
-        <label className="mb-2 block text-sm font-medium text-gray-700">Active Filters:</label>
+        <label htmlFor={`${id}-filters`} className="mb-2 block text-sm font-medium text-gray-700">
+          Active Filters:
+        </label>
         <TagInput
+          id={`${id}-filters`}
           items={filters}
           onChange={setFilters}
           placeholder="Add filter tag..."
@@ -273,6 +286,7 @@ export const SearchFilters: Story = {
 
 // Real-world example - Product categories
 const ProductCategoriesDemo = () => {
+  const id = useId()
   const [categories, setCategories] = useState(['Electronics', 'Computers'])
 
   return (
@@ -280,8 +294,11 @@ const ProductCategoriesDemo = () => {
       <h3 className="mb-4 text-lg font-semibold">Product Details</h3>
       <div className="space-y-4">
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Product Name</label>
+          <label htmlFor={`${id}-name`} className="mb-2 block text-sm font-medium text-gray-700">
+            Product Name
+          </label>
           <input
+            id={`${id}-name`}
             type="text"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             placeholder="Enter product name..."
@@ -289,8 +306,14 @@ const ProductCategoriesDemo = () => {
           />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Categories</label>
+          <label
+            htmlFor={`${id}-categories`}
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
+            Categories
+          </label>
           <TagInput
+            id={`${id}-categories`}
             items={categories}
             onChange={setCategories}
             placeholder="Add category..."
@@ -301,8 +324,14 @@ const ProductCategoriesDemo = () => {
           </p>
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Description</label>
+          <label
+            htmlFor={`${id}-description`}
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
+            Description
+          </label>
           <textarea
+            id={`${id}-description`}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             rows={3}
             placeholder="Enter product description..."
@@ -320,14 +349,18 @@ export const ProductCategories: Story = {
 
 // Real-world example - Keyword extraction
 const KeywordExtractionDemo = () => {
+  const id = useId()
   const [keywords, setKeywords] = useState(['AI', 'machine learning', 'automation'])
 
   return (
     <div style={{ width: '600px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <h3 className="mb-4 text-lg font-semibold">SEO Keywords</h3>
       <div>
-        <label className="mb-2 block text-sm font-medium text-gray-700">Meta Keywords</label>
+        <label htmlFor={`${id}-keywords`} className="mb-2 block text-sm font-medium text-gray-700">
+          Meta Keywords
+        </label>
         <TagInput
+          id={`${id}-keywords`}
           items={keywords}
           onChange={setKeywords}
           placeholder="Add keyword..."
@@ -356,6 +389,7 @@ export const KeywordExtraction: Story = {
 
 // Real-world example - Tags with suggestions
 const TagsWithSuggestionsDemo = () => {
+  const id = useId()
   const [tags, setTags] = useState(['design', 'frontend'])
   const suggestions = ['backend', 'devops', 'mobile', 'testing', 'security']
 
@@ -363,8 +397,11 @@ const TagsWithSuggestionsDemo = () => {
     <div style={{ width: '600px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <h3 className="mb-4 text-lg font-semibold">Project Tags</h3>
       <div>
-        <label className="mb-2 block text-sm font-medium text-gray-700">Add Tags</label>
+        <label htmlFor={`${id}-tags`} className="mb-2 block text-sm font-medium text-gray-700">
+          Add Tags
+        </label>
         <TagInput
+          id={`${id}-tags`}
           items={tags}
           onChange={setTags}
           placeholder="Type or select..."
@@ -398,6 +435,7 @@ export const TagsWithSuggestions: Story = {
 
 // Real-world example - Stop sequences (Tab mode)
 const StopSequencesDemo = () => {
+  const id = useId()
   const [stopSequences, setStopSequences] = useState(['Human:', 'AI:'])
 
   return (
@@ -405,12 +443,31 @@ const StopSequencesDemo = () => {
       <h3 className="mb-4 text-lg font-semibold">AI Model Configuration</h3>
       <div className="space-y-4">
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Temperature</label>
-          <input type="range" min="0" max="2" step="0.1" defaultValue="0.7" className="w-full" />
+          <label
+            htmlFor={`${id}-temperature`}
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
+            Temperature
+          </label>
+          <input
+            id={`${id}-temperature`}
+            type="range"
+            min="0"
+            max="2"
+            step="0.1"
+            defaultValue="0.7"
+            className="w-full"
+          />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Stop Sequences</label>
+          <label
+            htmlFor={`${id}-stop-sequences`}
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
+            Stop Sequences
+          </label>
           <TagInput
+            id={`${id}-stop-sequences`}
             items={stopSequences}
             onChange={setStopSequences}
             placeholder="Press Tab to add..."
@@ -421,8 +478,14 @@ const StopSequencesDemo = () => {
           </p>
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Max Tokens</label>
+          <label
+            htmlFor={`${id}-max-tokens`}
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
+            Max Tokens
+          </label>
           <input
+            id={`${id}-max-tokens`}
             type="number"
             defaultValue="2000"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
@@ -440,16 +503,21 @@ export const StopSequences: Story = {
 
 // Real-world example - Multi-language tags
 const MultiLanguageTagsDemo = () => {
+  const id = useId()
   const [tags, setTags] = useState(['Hello', '你好', 'Bonjour', 'Hola'])
 
   return (
     <div style={{ width: '600px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <h3 className="mb-4 text-lg font-semibold">Internationalization</h3>
       <div>
-        <label className="mb-2 block text-sm font-medium text-gray-700">
+        <label
+          htmlFor={`${id}-translations`}
+          className="mb-2 block text-sm font-medium text-gray-700"
+        >
           Greeting Translations
         </label>
         <TagInput
+          id={`${id}-translations`}
           items={tags}
           onChange={setTags}
           placeholder="Add translation..."

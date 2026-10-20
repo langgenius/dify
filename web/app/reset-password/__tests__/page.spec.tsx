@@ -1,17 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocale } from '#i18n'
+import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/storage'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
 import ResetPasswordPage from '../page'
 
 const mockPush = vi.fn()
-const mockSetCountdownLeftTime = vi.fn()
-
-vi.mock('@/app/components/signin/storage', () => ({
-  COUNT_DOWN_TIME_MS: 60_000,
-  useSetCountdownLeftTime: () => mockSetCountdownLeftTime,
-}))
 
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
@@ -36,9 +31,12 @@ vi.mock('@/service/console', async (importOriginal) => ({
   },
 }))
 
+afterEach(() => localStorage.removeItem(COUNT_DOWN_KEY))
+
 describe('ResetPasswordPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.removeItem(COUNT_DOWN_KEY)
     vi.mocked(useLocale).mockReturnValue('en-US')
     vi.mocked(useRouter).mockReturnValue({ push: mockPush } as unknown as ReturnType<
       typeof useRouter
@@ -66,6 +64,7 @@ describe('ResetPasswordPage', () => {
         body: { email: 'user@example.com', language: 'en-US' },
       })
     })
+    expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe(String(COUNT_DOWN_TIME_MS))
     expect(mockPush).toHaveBeenCalledWith(
       '/reset-password/check-code?token=reset-token&email=user%2540example.com',
     )

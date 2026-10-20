@@ -1,19 +1,10 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, expect, it, vi } from 'vite-plus/test'
 import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
-import { DSLImportStatus } from '@/models/app'
+import { DSLImportMode, DSLImportStatus } from '@/models/app'
+import { createDeferred } from '@/test/deferred'
 import UpdateDSLModal from '../update-dsl-modal'
-
-class MockFileReader {
-  onload: ((this: FileReader, event: ProgressEvent<FileReader>) => void) | null = null
-
-  readAsText(_file: Blob) {
-    const event = { target: { result: 'test content' } } as unknown as ProgressEvent<FileReader>
-    this.onload?.call(this as unknown as FileReader, event)
-  }
-}
-
-vi.stubGlobal('FileReader', MockFileReader as typeof FileReader)
 
 const toastMocks = vi.hoisted(() => {
   const call = vi.fn()
@@ -54,19 +45,6 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => ({
-      pipelineId: 'test-pipeline-id',
-    }),
-  }),
-}))
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  initialNodes: (nodes: unknown[]) => nodes,
-  initialEdges: (edges: unknown[]) => edges,
-}))
-
 const mockHandleCheckPluginDependencies = vi.fn()
 vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   usePluginDependencies: () => ({
@@ -76,12 +54,16 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
 
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'rag.pipelines.imports.post': () => ({ mutateAsync: mockImportDSL }),
-    'rag.pipelines.imports.byImportId.confirm.post': () => ({ mutateAsync: mockImportDSLConfirm }),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.imports.post': (input) => mockImportDSL(input),
+      'rag.pipelines.imports.byImportId.confirm.post': (input) => mockImportDSLConfirm(input),
+    }),
+  }
 })
 
 vi.mock('@/service/workflow', () => ({
@@ -92,1006 +74,154 @@ vi.mock('@/service/workflow', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
-  Uploader: ({ updateFile }: { updateFile: (file?: File) => void }) => (
-    <div data-testid="uploader">
-      <input
-        type="file"
-        data-testid="file-input"
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          updateFile(file)
-        }}
-      />
-      <button data-testid="clear-file" onClick={() => updateFile(undefined)}>
-        Clear
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/constants', () => ({
-  WORKFLOW_DATA_UPDATE: 'WORKFLOW_DATA_UPDATE',
-}))
-
-describe('UpdateDSLModal', () => {
-  const mockOnCancel = vi.fn()
-  const mockOnBackup = vi.fn()
-  const mockOnImport = vi.fn()
-
-  const defaultProps = {
-    onCancel: mockOnCancel,
-    onBackup: mockOnBackup,
-    onImport: mockOnImport,
+const setup = () => {
+  const onCancel = vi.fn()
+  const onBackup = vi.fn()
+  const onImport = vi.fn()
+  const view = render(
+    <UpdateDSLModal onCancel={onCancel} onBackup={onBackup} onImport={onImport} />,
+    {
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+    },
+  )
+  return { ...view, onCancel, onBackup, onImport, user: userEvent.setup() }
+}
+const importButton = () =>
+  screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' })
+const selectFile = async (user: ReturnType<typeof userEvent.setup>) => {
+  const loaded = createDeferred<void>()
+  const readAsText = FileReader.prototype.readAsText
+  const spy = vi.spyOn(FileReader.prototype, 'readAsText').mockImplementation(function (
+    this: FileReader,
+    file,
+    encoding,
+  ) {
+    this.addEventListener('loadend', () => loaded.resolve(), { once: true })
+    readAsText.call(this, file, encoding)
+  })
+  try {
+    await act(async () => {
+      await user.upload(
+        document.querySelector<HTMLInputElement>('input[type="file"]')!,
+        new File(['pipeline: updated'], 'updated.pipeline', { type: 'text/yaml' }),
+      )
+      await loaded.promise
+    })
+  } finally {
+    spy.mockRestore()
   }
+}
 
-  beforeEach(() => {
-    vi.clearAllMocks()
+beforeEach(() => {
+  vi.clearAllMocks()
+  mockImportDSL.mockReset().mockResolvedValue({
+    id: 'import-id',
+    status: DSLImportStatus.COMPLETED,
+    pipeline_id: 'test-pipeline-id',
+  })
+  mockImportDSLConfirm
+    .mockReset()
+    .mockResolvedValue({ status: DSLImportStatus.COMPLETED, pipeline_id: 'test-pipeline-id' })
+  mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
+})
+
+it('backs up the current draft and allows cancellation without importing', async () => {
+  const { user, onBackup, onCancel, onImport } = setup()
+  await user.click(screen.getByRole('button', { name: 'workflow.common.backupCurrentDraft' }))
+  expect(onBackup).toHaveBeenCalledOnce()
+  await user.click(screen.getByRole('button', { name: 'app.newApp.Cancel' }))
+  expect(onCancel).toHaveBeenCalledOnce()
+  expect(mockImportDSL).not.toHaveBeenCalled()
+  expect(onImport).not.toHaveBeenCalled()
+})
+
+it('enables import for an uploaded pipeline and disables it again after removal', async () => {
+  const { user } = setup()
+  expect(importButton()).toBeDisabled()
+  await selectFile(user)
+  expect(screen.getByText('updated.pipeline')).toBeInTheDocument()
+  expect(importButton()).toBeEnabled()
+  await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+  expect(screen.queryByText('updated.pipeline')).not.toBeInTheDocument()
+  expect(importButton()).toBeDisabled()
+  await user.click(importButton())
+  expect(mockImportDSL).not.toHaveBeenCalled()
+})
+
+it('imports the uploaded contents and completes only after dependencies are checked', async () => {
+  const pending = createDeferred<void>()
+  mockHandleCheckPluginDependencies.mockReturnValue(pending.promise)
+  const { user, onCancel, onImport } = setup()
+  await selectFile(user)
+  await user.click(importButton())
+  await waitFor(() =>
+    expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('test-pipeline-id', true),
+  )
+  expect(mockImportDSL).toHaveBeenCalledExactlyOnceWith({
+    body: {
+      mode: DSLImportMode.YAML_CONTENT,
+      yaml_content: 'pipeline: updated',
+      pipeline_id: 'test-pipeline-id',
+    },
+  })
+  expect(onImport).toHaveBeenCalledOnce()
+  expect(onCancel).not.toHaveBeenCalled()
+  await user.click(importButton())
+  expect(mockImportDSL).toHaveBeenCalledOnce()
+  await act(async () => pending.resolve())
+  await waitFor(() => expect(onCancel).toHaveBeenCalledOnce())
+})
+
+it('keeps the selected file after an import failure and allows retry', async () => {
+  mockImportDSL.mockResolvedValueOnce({
+    id: 'import-id',
+    status: DSLImportStatus.FAILED,
+    error: 'Invalid pipeline',
+  })
+  const { user, onImport, onCancel } = setup()
+  await selectFile(user)
+  await user.click(importButton())
+  await waitFor(() =>
+    expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'Invalid pipeline' }),
+  )
+  expect(screen.getByText('updated.pipeline')).toBeInTheDocument()
+  expect(onImport).not.toHaveBeenCalled()
+  expect(onCancel).not.toHaveBeenCalled()
+  await user.click(importButton())
+  await waitFor(() => expect(onCancel).toHaveBeenCalledOnce())
+  expect(mockImportDSL).toHaveBeenCalledTimes(2)
+})
+
+it.each(['Cancel', 'Confirm'] as const)(
+  'shows mismatched versions and handles %s before applying the import',
+  async (action) => {
     mockImportDSL.mockResolvedValue({
       id: 'import-id',
-      status: DSLImportStatus.COMPLETED,
+      status: DSLImportStatus.PENDING,
       pipeline_id: 'test-pipeline-id',
+      imported_dsl_version: '1.0.0',
+      current_dsl_version: '2.0.0',
     })
-    mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
-  })
-
-  describe('rendering', () => {
-    it('should render title', () => {
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      expect(screen.getByText('workflow.common.importDSL')).toBeInTheDocument()
+    const { user, onImport, onCancel } = setup()
+    await selectFile(user)
+    await user.click(importButton())
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'app.newApp.appCreateDSLErrorTitle',
     })
-
-    it('should render warning tip', () => {
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      expect(screen.getByText('workflow.common.importDSLTip')).toBeInTheDocument()
-    })
-
-    it('should render uploader', () => {
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      expect(screen.getByTestId('uploader')).toBeInTheDocument()
-    })
-
-    it('should render backup button', () => {
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      expect(screen.getByText('workflow.common.backupCurrentDraft')).toBeInTheDocument()
-    })
-
-    it('should render cancel button', () => {
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      expect(screen.getByText('app.newApp.Cancel')).toBeInTheDocument()
-    })
-
-    it('should render import button', () => {
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      expect(screen.getByText('workflow.common.overwriteAndImport')).toBeInTheDocument()
-    })
-
-    it('should render choose DSL section', () => {
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      expect(screen.getByText('workflow.common.chooseDSL')).toBeInTheDocument()
-    })
-  })
-
-  describe('user interactions', () => {
-    it('should call onCancel when cancel button is clicked', () => {
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const cancelButton = screen.getByText('app.newApp.Cancel')
-      fireEvent.click(cancelButton)
-
-      expect(mockOnCancel).toHaveBeenCalled()
-    })
-
-    it('should call onBackup when backup button is clicked', () => {
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const backupButton = screen.getByText('workflow.common.backupCurrentDraft')
-      fireEvent.click(backupButton)
-
-      expect(mockOnBackup).toHaveBeenCalled()
-    })
-
-    it('should handle file upload', async () => {
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('uploader')).toBeInTheDocument()
-      })
-    })
-
-    it('should clear file when clear button is clicked', () => {
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const clearButton = screen.getByTestId('clear-file')
-      fireEvent.click(clearButton)
-
-      expect(screen.getByTestId('uploader')).toBeInTheDocument()
-    })
-  })
-
-  describe('import functionality', () => {
-    it('should show import button disabled when no file is selected', () => {
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      expect(importButton).toBeDisabled()
-    })
-
-    it('should enable import button when file is selected', async () => {
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-    })
-
-    it('should disable import button after file is cleared', async () => {
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const clearButton = screen.getByTestId('clear-file')
-      fireEvent.click(clearButton)
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).toBeDisabled()
-      })
-    })
-  })
-
-  describe('import flow', () => {
-    it('should call importDSL when import button is clicked with file content', async () => {
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(() => {
-        expect(mockImportDSL).toHaveBeenCalled()
-      })
-    })
-
-    it('should show success notification on completed import', async () => {
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.COMPLETED,
-        pipeline_id: 'test-pipeline-id',
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
-      })
-    })
-
-    it('should call onCancel after successful import', async () => {
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.COMPLETED,
-        pipeline_id: 'test-pipeline-id',
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(() => {
-        expect(mockOnCancel).toHaveBeenCalled()
-      })
-    })
-
-    it('should call onImport after successful import', async () => {
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.COMPLETED,
-        pipeline_id: 'test-pipeline-id',
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(
-        () => {
-          const importButton = screen.getByText('workflow.common.overwriteAndImport')
-          expect(importButton).not.toBeDisabled()
-        },
-        { timeout: 1000 },
-      )
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(
-        () => {
-          expect(mockOnImport).toHaveBeenCalled()
-        },
-        { timeout: 1000 },
-      )
-    })
-
-    it('should show warning notification on import with warnings', async () => {
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
-        pipeline_id: 'test-pipeline-id',
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'warning',
-          }),
-        )
-      })
-    })
-
-    it('should show error notification when import fails', async () => {
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.FAILED,
-        pipeline_id: 'test-pipeline-id',
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
-      })
-    })
-
-    it('should show error notification when pipeline_id is missing on success', async () => {
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.COMPLETED,
-        pipeline_id: undefined,
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
-      })
-    })
-
-    it('should show error notification when import throws exception', async () => {
-      mockImportDSL.mockRejectedValue(new Error('Import failed'))
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
-      })
-    })
-
-    it('should call handleCheckPluginDependencies on successful import', async () => {
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.COMPLETED,
-        pipeline_id: 'test-pipeline-id',
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      await act(async () => {
-        await new Promise<void>((resolve) => queueMicrotask(resolve))
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(() => {
-        expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('test-pipeline-id', true)
-      })
-    })
-
-    it('should emit WORKFLOW_DATA_UPDATE event after successful import', async () => {
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.COMPLETED,
-        pipeline_id: 'test-pipeline-id',
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(() => {
-        expect(mockEmit).toHaveBeenCalled()
-      })
-    })
-
-    it('should show error modal when import status is PENDING', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.PENDING,
-        pipeline_id: 'test-pipeline-id',
-        imported_dsl_version: '1.0.0',
-        current_dsl_version: '2.0.0',
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-
-      await act(async () => {
-        fireEvent.change(fileInput, { target: { files: [file] } })
-        await new Promise<void>((resolve) => queueMicrotask(resolve))
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      expect(importButton).not.toBeDisabled()
-
-      await act(async () => {
-        fireEvent.click(importButton)
-        await Promise.resolve()
-        await vi.advanceTimersByTimeAsync(350)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-      })
-
-      vi.useRealTimers()
-    })
-
-    it('should show version info in error modal', async () => {
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.PENDING,
-        pipeline_id: 'test-pipeline-id',
-        imported_dsl_version: '1.0.0',
-        current_dsl_version: '2.0.0',
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(
-        () => {
-          expect(screen.getByText('1.0.0')).toBeInTheDocument()
-          expect(screen.getByText('2.0.0')).toBeInTheDocument()
-        },
-        { timeout: 1000 },
-      )
-    })
-
-    it('should close error modal when cancel button is clicked', async () => {
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.PENDING,
-        pipeline_id: 'test-pipeline-id',
-        imported_dsl_version: '1.0.0',
-        current_dsl_version: '2.0.0',
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(
-        () => {
-          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-        },
-        { timeout: 1000 },
-      )
-
-      const cancelButtons = screen.getAllByRole('button', { name: 'app.newApp.Cancel' })
-      fireEvent.click(cancelButtons.at(-1)!)
-
-      await waitFor(() => {
-        expect(screen.queryByText('app.newApp.appCreateDSLErrorTitle')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should call importDSLConfirm when confirm button is clicked in error modal', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.PENDING,
-        pipeline_id: 'test-pipeline-id',
-        imported_dsl_version: '1.0.0',
-        current_dsl_version: '2.0.0',
-      })
-
-      mockImportDSLConfirm.mockResolvedValue({
-        status: DSLImportStatus.COMPLETED,
-        pipeline_id: 'test-pipeline-id',
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-
-      await act(async () => {
-        fireEvent.change(fileInput, { target: { files: [file] } })
-        await new Promise<void>((resolve) => queueMicrotask(resolve))
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      expect(importButton).not.toBeDisabled()
-
-      await act(async () => {
-        fireEvent.click(importButton)
-        await Promise.resolve()
-        await vi.advanceTimersByTimeAsync(350)
-      })
-
-      await waitFor(
-        () => {
-          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-        },
-        { timeout: 1000 },
-      )
-
-      const confirmButton = screen.getByText('app.newApp.Confirm')
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(mockImportDSLConfirm).toHaveBeenCalledWith({ params: { import_id: 'import-id' } })
-      })
-
-      vi.useRealTimers()
-    })
-
-    it('should show success notification after confirm completes', async () => {
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.PENDING,
-        pipeline_id: 'test-pipeline-id',
-        imported_dsl_version: '1.0.0',
-        current_dsl_version: '2.0.0',
-      })
-
-      mockImportDSLConfirm.mockResolvedValue({
-        status: DSLImportStatus.COMPLETED,
-        pipeline_id: 'test-pipeline-id',
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(
-        () => {
-          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-        },
-        { timeout: 1000 },
-      )
-
-      const confirmButton = screen.getByText('app.newApp.Confirm')
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
-      })
-    })
-
-    it('should show error notification when confirm fails with FAILED status', async () => {
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.PENDING,
-        pipeline_id: 'test-pipeline-id',
-        imported_dsl_version: '1.0.0',
-        current_dsl_version: '2.0.0',
-      })
-
-      mockImportDSLConfirm.mockResolvedValue({
-        status: DSLImportStatus.FAILED,
-        pipeline_id: 'test-pipeline-id',
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(
-        () => {
-          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-        },
-        { timeout: 1000 },
-      )
-
-      const confirmButton = screen.getByText('app.newApp.Confirm')
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
-      })
-    })
-
-    it('should show error notification when confirm throws exception', async () => {
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.PENDING,
-        pipeline_id: 'test-pipeline-id',
-        imported_dsl_version: '1.0.0',
-        current_dsl_version: '2.0.0',
-      })
-
-      mockImportDSLConfirm.mockRejectedValue(new Error('Confirm failed'))
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(
-        () => {
-          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-        },
-        { timeout: 1000 },
-      )
-
-      const confirmButton = screen.getByText('app.newApp.Confirm')
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
-      })
-    })
-
-    it('should show error when confirm completes but pipeline_id is missing', async () => {
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.PENDING,
-        pipeline_id: 'test-pipeline-id',
-        imported_dsl_version: '1.0.0',
-        current_dsl_version: '2.0.0',
-      })
-
-      mockImportDSLConfirm.mockResolvedValue({
-        status: DSLImportStatus.COMPLETED,
-        pipeline_id: undefined,
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(
-        () => {
-          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-        },
-        { timeout: 1000 },
-      )
-
-      const confirmButton = screen.getByText('app.newApp.Confirm')
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
-      })
-    })
-
-    it('should call onImport after confirm completes successfully', async () => {
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.PENDING,
-        pipeline_id: 'test-pipeline-id',
-        imported_dsl_version: '1.0.0',
-        current_dsl_version: '2.0.0',
-      })
-
-      mockImportDSLConfirm.mockResolvedValue({
-        status: DSLImportStatus.COMPLETED,
-        pipeline_id: 'test-pipeline-id',
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(
-        () => {
-          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-        },
-        { timeout: 1000 },
-      )
-
-      const confirmButton = screen.getByText('app.newApp.Confirm')
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(mockOnImport).toHaveBeenCalled()
-      })
-    })
-
-    it('should call handleCheckPluginDependencies after confirm', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.PENDING,
-        pipeline_id: 'test-pipeline-id',
-        imported_dsl_version: '1.0.0',
-        current_dsl_version: '2.0.0',
-      })
-
-      mockImportDSLConfirm.mockResolvedValue({
-        status: DSLImportStatus.COMPLETED,
-        pipeline_id: 'test-pipeline-id',
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-
-      await act(async () => {
-        fireEvent.change(fileInput, { target: { files: [file] } })
-        await new Promise<void>((resolve) => queueMicrotask(resolve))
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      expect(importButton).not.toBeDisabled()
-
-      await act(async () => {
-        fireEvent.click(importButton)
-        await Promise.resolve()
-        await vi.advanceTimersByTimeAsync(350)
-      })
-
-      await waitFor(
-        () => {
-          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-        },
-        { timeout: 1000 },
-      )
-
-      const confirmButton = screen.getByText('app.newApp.Confirm')
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('test-pipeline-id', true)
-      })
-
-      vi.useRealTimers()
-    })
-
-    it('should handle undefined imported_dsl_version and current_dsl_version', async () => {
-      mockImportDSL.mockResolvedValue({
-        id: 'import-id',
-        status: DSLImportStatus.PENDING,
-        pipeline_id: 'test-pipeline-id',
-        imported_dsl_version: undefined,
-        current_dsl_version: undefined,
-      })
-
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      const fileInput = screen.getByTestId('file-input')
-      const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
-      fireEvent.change(fileInput, { target: { files: [file] } })
-
-      await waitFor(() => {
-        const importButton = screen.getByText('workflow.common.overwriteAndImport')
-        expect(importButton).not.toBeDisabled()
-      })
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      fireEvent.click(importButton)
-
-      await waitFor(
-        () => {
-          expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
-        },
-        { timeout: 1000 },
-      )
-    })
-
-    it('should not call importDSLConfirm when importId is not set', async () => {
-      render(<UpdateDSLModal {...defaultProps} />, {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
+    expect(within(dialog).getByText('1.0.0')).toBeInTheDocument()
+    expect(within(dialog).getByText('2.0.0')).toBeInTheDocument()
+    expect(onImport).not.toHaveBeenCalled()
+    await user.click(within(dialog).getByRole('button', { name: `app.newApp.${action}` }))
+    if (action === 'Cancel') {
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
       expect(mockImportDSLConfirm).not.toHaveBeenCalled()
-    })
-  })
-})
+      expect(onImport).not.toHaveBeenCalled()
+    } else {
+      await waitFor(() => expect(onCancel).toHaveBeenCalledOnce())
+      expect(mockImportDSLConfirm).toHaveBeenCalledExactlyOnceWith({
+        params: { import_id: 'import-id' },
+      })
+      expect(onImport).toHaveBeenCalledOnce()
+    }
+  },
+)

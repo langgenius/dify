@@ -1,6 +1,6 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppInfoOperation } from './app-info-modals'
 import type { Operation } from './app-operations'
-import type { AppInfoModalType } from './use-app-info-actions'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -14,7 +14,7 @@ import { getAppModeLabel } from './app-mode-labels'
 type AppInfoTriggerProps = {
   appDetail: AppDetailWithSite
   expand: boolean
-  openModal: (modal: Exclude<AppInfoModalType, null>) => void
+  openModal: (modal: AppInfoOperation) => void
   isExporting: boolean
   exportCheck: () => void
 }

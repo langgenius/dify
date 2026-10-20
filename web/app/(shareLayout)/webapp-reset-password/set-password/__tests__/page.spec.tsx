@@ -1,12 +1,9 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import useDocumentTitle from '@/hooks/use-document-title'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changeWebAppPasswordWithToken } from '@/service/common'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import ChangePasswordForm from '../page'
-
-vi.mock('ahooks', () => ({
-  useCountDown: () => [5000],
-}))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
@@ -17,15 +14,9 @@ vi.mock('@/service/common', () => ({
   changeWebAppPasswordWithToken: vi.fn(),
 }))
 
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
-
-const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
-
 describe('Webapp Reset Password Set Password Page', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     vi.mocked(useRouter).mockReturnValue({ replace: vi.fn() } as unknown as ReturnType<
       typeof useRouter
     >)
@@ -36,23 +27,31 @@ describe('Webapp Reset Password Set Password Page', () => {
   })
 
   it('reconciles the route title initially and updates it after a successful reset', async () => {
+    const user = userEvent.setup()
     render(<ChangePasswordForm />)
 
-    expect(mockUseDocumentTitle).toHaveBeenCalledWith('login.changePassword')
+    expect(document.title).toContain('login.changePassword')
 
-    fireEvent.change(screen.getByLabelText('accountSettings.account.newPassword'), {
-      target: { value: 'ValidPass123!' },
+    await user.type(screen.getByLabelText('accountSettings.account.newPassword'), 'ValidPass123!')
+    await user.type(
+      screen.getByLabelText('accountSettings.account.confirmPassword'),
+      'ValidPass123!',
+    )
+    await user.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
+    expect(changeWebAppPasswordWithToken).toHaveBeenCalledWith({
+      url: '/forgot-password/resets',
+      body: {
+        token: 'reset-token',
+        new_password: 'ValidPass123!',
+        password_confirm: 'ValidPass123!',
+      },
     })
-    fireEvent.change(screen.getByLabelText('accountSettings.account.confirmPassword'), {
-      target: { value: 'ValidPass123!' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
         'login.passwordChangedTip',
       )
     })
-    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.passwordChangedTip')
+    expect(document.title).toContain('login.passwordChangedTip')
   })
 })

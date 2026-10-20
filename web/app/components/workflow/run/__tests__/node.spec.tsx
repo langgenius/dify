@@ -2,43 +2,24 @@ import type { NodeTracing } from '@/types/workflow'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createNodeTracing } from '../../__tests__/fixtures'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import NodePanel from '../node'
 
-const createNodeInfo = (overrides: Partial<NodeTracing> = {}): NodeTracing => ({
-  id: 'trace-node-1',
-  index: 0,
-  predecessor_node_id: '',
-  node_id: 'node-1',
-  node_type: BlockEnum.Code,
-  title: 'Code Node',
-  inputs: undefined,
-  inputs_truncated: false,
-  process_data: undefined,
-  process_data_truncated: false,
-  outputs_truncated: false,
-  status: NodeRunningStatus.Succeeded,
-  elapsed_time: 1.25,
-  execution_metadata: {
-    total_tokens: 64,
-    total_price: 0,
-    currency: 'USD',
-  },
-  metadata: {
-    iterator_length: 0,
-    iterator_index: 0,
-    loop_length: 0,
-    loop_index: 0,
-  },
-  created_at: 0,
-  created_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  finished_at: 1,
-  ...overrides,
-})
+const createNodeInfo = (overrides: Partial<NodeTracing> = {}) =>
+  createNodeTracing({
+    id: 'trace-node-1',
+    node_id: 'node-1',
+    node_type: BlockEnum.Code,
+    title: 'Code Node',
+    inputs: undefined,
+    process_data: undefined,
+    outputs: undefined,
+    elapsed_time: 1.25,
+    created_by: { id: 'user-1', name: 'Alice', email: 'alice@example.com' },
+    execution_metadata: { total_tokens: 64, total_price: 0, currency: 'USD' },
+    ...overrides,
+  })
 
 describe('Run NodePanel', () => {
   it('expands and collapses trace details from the keyboard', async () => {
@@ -110,7 +91,7 @@ describe('Run NodePanel', () => {
     expect(screen.queryByText('1.250 s')).not.toBeInTheDocument()
   })
 
-  it('shows the stopped reason when the panel is expanded from tracing state', async () => {
+  it('opens trace details when requested by tracing state', async () => {
     render(
       <NodePanel
         nodeInfo={createNodeInfo({

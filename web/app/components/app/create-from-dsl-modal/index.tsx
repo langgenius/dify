@@ -1,18 +1,19 @@
 'use client'
 
 import type { AppImportPayload, AppMode, Import } from '@dify/contracts/api/console/apps/types.gen'
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogBackdrop,
-  DialogPopup,
-  DialogPortal,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
@@ -61,7 +62,7 @@ type ImportSource =
   | { type: (typeof CreateFromDSLModalTab)['FROM_FILE']; file: File }
   | { type: (typeof CreateFromDSLModalTab)['FROM_URL']; url: string }
 
-const CREATE_FROM_DSL_HOTKEY = 'Mod+Enter' satisfies Hotkey
+const CREATE_FROM_DSL_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
 function getImportedAppMode(mode?: string | null): AppMode | undefined {
   switch (mode) {
@@ -296,27 +297,9 @@ function CreateFromDSLModal({
           if (!open && !isImporting && !pendingImport) onClose()
         }}
       >
-        <DialogPortal>
-          <DialogBackdrop />
-          <DialogPopup
-            initialFocus={browseButtonRef}
-            className="fixed top-1/2 left-1/2 max-h-[80dvh] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden overscroll-contain text-left align-middle"
-          >
-            <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6">
-              <DialogTitle className="title-2xl-semi-bold text-text-primary">
-                {t(($) => $.importApp, { ns: 'app' })}
-              </DialogTitle>
-              <IconButton
-                variant="ghost"
-                size="lg"
-                aria-label={t(($) => $['operation.cancel'], { ns: 'common' })}
-                className="rounded-md"
-                disabled={isImporting}
-                onClick={onClose}
-              >
-                <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
-              </IconButton>
-            </div>
+        <DialogContent
+          initialFocus={browseButtonRef}
+          render={
             <Form<ImportFormValues>
               onFormSubmit={handleSubmit}
               onKeyDown={(event) => {
@@ -337,86 +320,84 @@ function CreateFromDSLModal({
                 if (event.repeat) return
                 event.currentTarget.requestSubmit()
               }}
+            />
+          }
+        >
+          <DialogHeader>
+            <DialogTitle>{t(($) => $.importApp, { ns: 'app' })}</DialogTitle>
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              disabled={isImporting}
+            />
+          </DialogHeader>
+          <Tabs className="contents" value={currentTab} onValueChange={handleTabChange}>
+            <TabsList className="h-9 shrink-0 gap-6 border-b border-divider-subtle px-6">
+              <TabsTab
+                value={CreateFromDSLModalTab.FROM_FILE}
+                className="h-full pt-0 pb-0"
+                disabled={isImporting}
+              >
+                {t(($) => $.importFromFile, { ns: 'app' })}
+              </TabsTab>
+              <TabsTab
+                value={CreateFromDSLModalTab.FROM_URL}
+                className="h-full pt-0 pb-0"
+                disabled={isImporting}
+              >
+                {t(($) => $.importFromDSLUrl, { ns: 'app' })}
+              </TabsTab>
+            </TabsList>
+            <TabsPanel
+              value={CreateFromDSLModalTab.FROM_FILE}
+              tabIndex={-1}
+              render={<DialogBody />}
             >
-              <Tabs value={currentTab} onValueChange={handleTabChange}>
-                <TabsList className="h-9 gap-6 border-b border-divider-subtle px-6">
-                  <TabsTab
-                    value={CreateFromDSLModalTab.FROM_FILE}
-                    className="h-full pt-0 pb-0"
-                    disabled={isImporting}
-                  >
-                    {t(($) => $.importFromFile, { ns: 'app' })}
-                  </TabsTab>
-                  <TabsTab
-                    value={CreateFromDSLModalTab.FROM_URL}
-                    className="h-full pt-0 pb-0"
-                    disabled={isImporting}
-                  >
-                    {t(($) => $.importFromDSLUrl, { ns: 'app' })}
-                  </TabsTab>
-                </TabsList>
-                <TabsPanel
-                  value={CreateFromDSLModalTab.FROM_FILE}
-                  tabIndex={-1}
-                  className="px-6 py-4"
-                >
-                  <Uploader
-                    importType="app"
-                    browseButtonRef={browseButtonRef}
-                    className="mt-0"
-                    file={currentFile}
-                    updateFile={setCurrentFile}
-                    disabled={isImporting}
-                  />
-                </TabsPanel>
-                <TabsPanel
-                  value={CreateFromDSLModalTab.FROM_URL}
-                  tabIndex={-1}
-                  className="px-6 py-4"
-                >
-                  <Field name="dslUrl">
-                    <FieldLabel>{t(($) => $.importFromDSLUrl, { ns: 'app' })}</FieldLabel>
-                    <Input
-                      type="url"
-                      inputMode="url"
-                      autoComplete="off"
-                      required
-                      disabled={isImporting}
-                      placeholder={t(($) => $.importAppUrlPlaceholder, { ns: 'app' }) || ''}
-                      defaultValue={dslUrl}
-                    />
-                    <FieldError />
-                  </Field>
-                </TabsPanel>
-              </Tabs>
-              {isAppsFull && (
-                <div className="px-6">
-                  <AppsFull className="mt-0" loc="app-create-dsl" />
-                </div>
-              )}
-              <div className="flex justify-end px-6 py-5">
-                <Button className="mr-2" disabled={isImporting} onClick={onClose}>
-                  {t(($) => $['newApp.Cancel'], { ns: 'app' })}
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createDisabled}
-                  loading={isImporting}
-                  variant="primary"
-                >
-                  <span>{t(($) => $['operation.create'], { ns: 'common' })}</span>
-                  <KbdGroup>
-                    {formatForDisplay(CREATE_FROM_DSL_HOTKEY, { parts: true }).map((key) => (
-                      <Kbd key={key} color="white">
-                        {key}
-                      </Kbd>
-                    ))}
-                  </KbdGroup>
-                </Button>
-              </div>
-            </Form>
-          </DialogPopup>
-        </DialogPortal>
+              <Uploader
+                importType="app"
+                browseButtonRef={browseButtonRef}
+                className="mt-0"
+                file={currentFile}
+                updateFile={setCurrentFile}
+                disabled={isImporting}
+              />
+            </TabsPanel>
+            <TabsPanel value={CreateFromDSLModalTab.FROM_URL} tabIndex={-1} render={<DialogBody />}>
+              <Field name="dslUrl">
+                <FieldLabel>{t(($) => $.importFromDSLUrl, { ns: 'app' })}</FieldLabel>
+                <Input
+                  type="url"
+                  inputMode="url"
+                  autoComplete="off"
+                  required
+                  disabled={isImporting}
+                  placeholder={t(($) => $.importAppUrlPlaceholder, { ns: 'app' }) || ''}
+                  defaultValue={dslUrl}
+                />
+                <FieldError />
+              </Field>
+            </TabsPanel>
+          </Tabs>
+          {isAppsFull && (
+            <div className="px-6">
+              <AppsFull className="mt-0" loc="app-create-dsl" />
+            </div>
+          )}
+          <DialogFooter>
+            <Button disabled={isImporting} onClick={onClose}>
+              {t(($) => $['newApp.Cancel'], { ns: 'app' })}
+            </Button>
+            <Button type="submit" disabled={createDisabled} loading={isImporting} variant="primary">
+              <span>{t(($) => $['operation.create'], { ns: 'common' })}</span>
+              <KbdGroup>
+                {formatForDisplay(CREATE_FROM_DSL_HOTKEY, { parts: true }).map((key) => (
+                  <Kbd key={key} color="white">
+                    {key}
+                  </Kbd>
+                ))}
+              </KbdGroup>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
       {pendingImport && (
         <DSLConfirmModal

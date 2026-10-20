@@ -1,25 +1,29 @@
+import type { PaginatedConversationVariableResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ChatWrapperRefType } from '../index'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { ConversationVariable } from '@/app/components/workflow/types'
+import type { EventEmitterValue } from '@/context/event-emitter'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useEventEmitter } from 'ahooks'
 import copy from 'copy-to-clipboard'
+import { FeaturesProvider } from '@/app/components/base/features/context'
 import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import {
-  renderWorkflowComponent,
-  renderWorkflowFlowComponent,
+  renderWorkflowComponent as renderWorkflowComponentBase,
+  renderWorkflowFlowComponent as renderWorkflowFlowComponentBase,
 } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { InputVarType } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
-import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
+import { EventEmitterContext } from '@/context/event-emitter'
 import ChatWrapper from '../chat-wrapper'
 import ConversationVariableModal from '../conversation-variable-modal'
 import UserInput from '../user-input'
 
 const mockUseChat = vi.fn()
 const mockChatRender = vi.fn()
-const mockUseSubscription = vi.fn()
+let emitter: ReturnType<typeof useEventEmitter<EventEmitterValue>>
 
 vi.mock('copy-to-clipboard', () => ({
   default: vi.fn(),
@@ -37,10 +41,6 @@ vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: { call: mockRequest },
 }))
 
-vi.mock('@/service/workflow', () => ({
-  fetchCurrentValueOfConversationVariable: vi.fn(),
-}))
-
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: (timestamp: number) => `formatted-${timestamp}`,
@@ -50,24 +50,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ value }: { value?: string }) => (
     <pre data-testid="conversation-code-editor">{value}</pre>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/form-item', () => ({
-  default: ({
-    payload,
-    value,
-    onChange,
-  }: {
-    payload: { label?: string; variable: string }
-    value?: string
-    onChange: (value: string) => void
-  }) => (
-    <input
-      aria-label={payload.label || payload.variable}
-      value={value ?? ''}
-      onChange={(e) => onChange(e.target.value)}
-    />
   ),
 }))
 
@@ -104,7 +86,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     return (
       <div data-testid="chat-shell">
         <div data-testid="chat-input-disabled">{`${inputDisabled}`}</div>
-        <button type="button" onClick={() => onSend?.('hello', [])}>
+        <button type="button" disabled={inputDisabled} onClick={() => onSend?.('hello', [])}>
           send-chat
         </button>
         <button
@@ -144,44 +126,23 @@ vi.mock('../hooks', () => ({
   useChat: (...args: unknown[]) => mockUseChat(...args),
 }))
 
-vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: <T,>(
-    selector: (state: {
-      features: {
-        opening?: { enabled?: boolean; opening_statement?: string; suggested_questions?: string[] }
-        suggested: boolean
-        text2speech: boolean
-        speech2text: boolean
-        citation: boolean
-        moderation: boolean
-        file: { enabled: boolean }
-      }
-    }) => T,
-  ) =>
-    selector({
-      features: {
-        opening: { enabled: false, opening_statement: '', suggested_questions: [] },
-        suggested: false,
-        text2speech: false,
-        speech2text: false,
-        citation: false,
-        moderation: false,
-        file: { enabled: false },
-      },
-    }),
-}))
+const Providers = ({ children }: { children: React.ReactNode }) => {
+  emitter = useEventEmitter<EventEmitterValue>()
+  return (
+    <EventEmitterContext.Provider value={{ eventEmitter: emitter }}>
+      <FeaturesProvider>{children}</FeaturesProvider>
+    </EventEmitterContext.Provider>
+  )
+}
+const renderWorkflowComponent = (
+  ui: React.ReactElement,
+  options?: Parameters<typeof renderWorkflowComponentBase>[1],
+) => renderWorkflowComponentBase(<Providers>{ui}</Providers>, options)
+const renderWorkflowFlowComponent = (
+  ui: React.ReactElement,
+  options?: Parameters<typeof renderWorkflowFlowComponentBase>[1],
+) => renderWorkflowFlowComponentBase(<Providers>{ui}</Providers>, options)
 
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: mockUseSubscription,
-    },
-  }),
-}))
-
-const mockFetchCurrentValueOfConversationVariable = vi.mocked(
-  fetchCurrentValueOfConversationVariable,
-)
 const mockCopy = vi.mocked(copy)
 
 const createConversationVariable = (
@@ -210,10 +171,8 @@ const createChatState = (overrides: Record<string, unknown> = {}) => ({
 })
 
 const createConversationVariableResponse = (
-  data: Array<
-    Awaited<ReturnType<typeof fetchCurrentValueOfConversationVariable>>['data'][number]
-  > = [],
-): Awaited<ReturnType<typeof fetchCurrentValueOfConversationVariable>> => ({
+  data: PaginatedConversationVariableResponse['data'] = [],
+): PaginatedConversationVariableResponse => ({
   data,
   has_more: false,
   limit: 20,
@@ -229,11 +188,8 @@ describe('debug-and-preview components', () => {
     vi.clearAllMocks()
     routeParams.appId = 'app-1'
     mockRequest.mockReset()
-    mockRequest.mockResolvedValue({ data: [] })
     mockUseChat.mockReturnValue(createChatState())
-    mockFetchCurrentValueOfConversationVariable.mockResolvedValue(
-      createConversationVariableResponse(),
-    )
+    mockRequest.mockResolvedValue(createConversationVariableResponse())
   })
 
   afterEach(() => {
@@ -241,9 +197,18 @@ describe('debug-and-preview components', () => {
   })
 
   describe('ConversationVariableModal', () => {
-    it('should copy the current variable value and reset the copied state after the timeout', async () => {
+    it('copies the displayed runtime value and re-enables copying after the timeout', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      mockRequest.mockResolvedValue(
+        createConversationVariableResponse([
+          {
+            ...createConversationVariable({ value: '{"latest":true}' }),
+            updated_at: 100,
+            created_at: 50,
+          },
+        ]),
+      )
       renderWorkflowComponent(
         <ConversationVariableModal conversationID="conversation-1" onHide={vi.fn()} />,
         {
@@ -254,13 +219,22 @@ describe('debug-and-preview components', () => {
         },
       )
 
+      await waitFor(() =>
+        expect(screen.getByTestId('conversation-code-editor')).toHaveTextContent('{"latest":true}'),
+      )
       const copyTrigger = screen.getByRole('button', { name: 'common.operation.copy' })
       await user.click(copyTrigger)
-      expect(mockCopy).toHaveBeenCalledWith('{"draft":true}')
+      expect(mockCopy).toHaveBeenCalledExactlyOnceWith('{"latest":true}')
+      expect(copyTrigger).toHaveAttribute('aria-disabled', 'true')
+      await user.click(copyTrigger)
+      expect(mockCopy).toHaveBeenCalledTimes(1)
 
       act(() => {
         vi.advanceTimersByTime(2000)
       })
+      expect(copyTrigger).toHaveAttribute('aria-disabled', 'false')
+      await user.click(copyTrigger)
+      expect(mockCopy).toHaveBeenCalledTimes(2)
     })
   })
 
@@ -391,6 +365,68 @@ describe('debug-and-preview components', () => {
       })
     })
 
+    it('preserves zero and false start defaults when initializing and restarting', async () => {
+      const chatRef = createChatWrapperRef()
+      const { store } = renderWorkflowFlowComponent(
+        <ChatWrapper
+          ref={chatRef}
+          showConversationVariableModal={false}
+          onConversationModalHide={vi.fn()}
+          showInputsFieldsPanel={false}
+          onHide={vi.fn()}
+        />,
+        {
+          nodes: [
+            createStartNode({
+              data: {
+                variables: [
+                  { variable: 'count', label: 'Count', type: InputVarType.number, default: 0 },
+                  {
+                    variable: 'ready',
+                    label: 'Ready',
+                    type: InputVarType.checkbox,
+                    default: false,
+                  },
+                ],
+              },
+            }),
+          ],
+        },
+      )
+      await waitFor(() => expect(store.getState().inputs).toEqual({ count: 0, ready: false }))
+      act(() => store.getState().setInputs({ count: 8, ready: true }))
+      act(() => chatRef.current?.handleRestart())
+      expect(store.getState().inputs).toEqual({ count: 0, ready: false })
+    })
+
+    it('disables sending while the latest workflow is paused', async () => {
+      const user = userEvent.setup()
+      const chatState = createChatState({
+        chatList: [
+          {
+            id: 'paused-answer',
+            isAnswer: true,
+            content: '',
+            workflowProcess: { status: 'paused' },
+          },
+        ],
+      })
+      mockUseChat.mockReturnValue(chatState)
+      renderWorkflowFlowComponent(
+        <ChatWrapper
+          ref={createChatWrapperRef()}
+          showConversationVariableModal={false}
+          onConversationModalHide={vi.fn()}
+          showInputsFieldsPanel={false}
+          onHide={vi.fn()}
+        />,
+      )
+      const send = screen.getByRole('button', { name: 'send-chat' })
+      expect(send).toBeDisabled()
+      await user.click(send)
+      expect(chatState.handleSend).not.toHaveBeenCalled()
+    })
+
     it('should hide the side panel while responding and render the conversation modal when requested', async () => {
       const onHide = vi.fn()
       mockUseChat.mockReturnValue(
@@ -398,7 +434,7 @@ describe('debug-and-preview components', () => {
           isResponding: true,
         }),
       )
-      mockFetchCurrentValueOfConversationVariable.mockResolvedValue(
+      mockRequest.mockResolvedValue(
         createConversationVariableResponse([
           {
             ...createConversationVariable({
@@ -442,7 +478,7 @@ describe('debug-and-preview components', () => {
       expect(screen.getAllByText('session_state')).toHaveLength(2)
     })
 
-    it('should forward chat actions, stop subscriptions, and expose paused input state', async () => {
+    it('forwards chat actions and responds to real stop events', async () => {
       const user = userEvent.setup()
       const handleSend = vi.fn()
       const handleSwitchSibling = vi.fn()
@@ -469,7 +505,7 @@ describe('debug-and-preview components', () => {
               parentMessageId: 'question-1',
               content: 'latest answer',
               workflowProcess: {
-                status: 'paused',
+                status: 'succeeded',
               },
             },
           ],
@@ -519,7 +555,7 @@ describe('debug-and-preview components', () => {
         })
       })
 
-      expect(screen.getByTestId('chat-input-disabled')).toHaveTextContent('true')
+      expect(screen.getByRole('button', { name: 'send-chat' })).toBeEnabled()
 
       await user.click(screen.getByRole('button', { name: 'send-chat' }))
       expect(handleSend).toHaveBeenCalledWith(
@@ -591,11 +627,12 @@ describe('debug-and-preview components', () => {
         expect.any(Object),
       )
 
-      const subscription = mockUseSubscription.mock.calls[0]?.[0] as (payload: {
-        type: string
-      }) => void
       act(() => {
-        subscription({ type: EVENT_WORKFLOW_STOP })
+        emitter.emit({ type: 'unrelated-event' })
+      })
+      expect(handleStop).not.toHaveBeenCalled()
+      act(() => {
+        emitter.emit({ type: EVENT_WORKFLOW_STOP })
       })
       expect(handleStop).toHaveBeenCalledTimes(1)
     })

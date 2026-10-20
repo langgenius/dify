@@ -1,8 +1,15 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { useAtomValue } from 'jotai'
 import { useId, useMemo, useState } from 'react'
@@ -58,32 +65,23 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
       }}
     >
       <DialogContent backdropProps={{ forceRender: true }}>
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-
         <form
-          className="flex flex-col"
+          className="contents"
           onSubmit={(e) => {
             e.preventDefault()
             void changeWorkspaceInfo()
           }}
         >
-          <div className="mb-4 pr-8">
-            <DialogTitle className="text-xl font-semibold text-text-primary">
+          <DialogHeader>
+            <DialogTitle>
               {t(($) => $['account.editWorkspaceInfo'], { ns: 'accountSettings' })}
             </DialogTitle>
-          </div>
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
+          </DialogHeader>
 
-          <div className="space-y-2">
+          <DialogBody className="space-y-2">
             <label htmlFor={inputId} className="block text-sm font-medium text-text-primary">
               {t(($) => $['account.workspaceName'], { ns: 'accountSettings' })}
             </label>
@@ -110,9 +108,9 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
                 </p>
               )}
             </div>
-          </div>
+          </DialogBody>
 
-          <div className="sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-end gap-x-2 bg-components-panel-bg px-2 pt-4">
+          <DialogFooter>
             <Button size="large" type="button" onClick={onCancel}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
@@ -130,7 +128,7 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
                 })}
               </span>
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

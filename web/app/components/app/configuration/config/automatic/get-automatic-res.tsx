@@ -268,11 +268,14 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="max-h-[calc(100dvh-2rem)] w-285 overflow-y-auto border-none p-0! text-left align-middle xl:h-[min(680px,calc(100dvh-2rem))] xl:overflow-hidden">
+      <DialogContent className="w-285 xl:h-[min(680px,calc(100dvh-2rem))] xl:overflow-hidden">
         <div className="flex min-h-0 flex-col xl:h-full xl:flex-row">
           <div className="min-w-0 border-divider-regular p-6 xl:h-full xl:flex-1 xl:overflow-y-auto xl:border-r">
             <div className="mb-5">
-              <DialogTitle className={`text-lg leading-7 font-bold ${s.textGradient}`}>
+              <DialogTitle
+                // oxlint-disable-next-line shadcn/no-restyle -- Gradient generator title keeps its own type; the module class paints the gradient.
+                className={`text-lg leading-7 font-bold ${s.textGradient}`}
+              >
                 {t(($) => $['generate.title'], { ns: 'appGeneration' })}
               </DialogTitle>
               <div className="mt-1 text-[13px] font-normal text-text-tertiary">
@@ -281,6 +284,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             </div>
             <div>
               <ModelParameterModal
+                triggerContainerClassName="min-w-0"
                 popupClassName="w-130! max-w-[calc(100vw-2rem)]"
                 isAdvancedMode={true}
                 provider={model.provider}

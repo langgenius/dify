@@ -15,7 +15,14 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import {
   Drawer,
   DrawerBackdrop,
@@ -305,27 +312,27 @@ const DatasetMetadataDrawer: FC<Props> = ({
                       if (!open) setIsShowRenameModal(false)
                     }}
                   >
-                    <DialogContent className="overflow-hidden! border-none text-left align-middle">
-                      <DialogTitle className="title-2xl-semi-bold text-text-primary">
-                        {t(($) => $[`${i18nPrefix}.rename`], { ns: 'dataset' })}
-                      </DialogTitle>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>
+                          {t(($) => $[`${i18nPrefix}.rename`], { ns: 'dataset' })}
+                        </DialogTitle>
+                      </DialogHeader>
 
-                      <Field
-                        label={t(($) => $[`${i18nPrefix}.name`], { ns: 'dataset' })}
-                        className="mt-4"
-                      >
-                        <Input
-                          aria-label={t(($) => $[`${i18nPrefix}.name`], { ns: 'dataset' })}
-                          value={templeName}
-                          onValueChange={setTempleName}
-                          placeholder={t(($) => $[`${i18nPrefix}.namePlaceholder`], {
-                            ns: 'dataset',
-                          })}
-                        />
-                      </Field>
-                      <div className="mt-4 flex justify-end">
+                      <DialogBody>
+                        <Field label={t(($) => $[`${i18nPrefix}.name`], { ns: 'dataset' })}>
+                          <Input
+                            aria-label={t(($) => $[`${i18nPrefix}.name`], { ns: 'dataset' })}
+                            value={templeName}
+                            onValueChange={setTempleName}
+                            placeholder={t(($) => $[`${i18nPrefix}.namePlaceholder`], {
+                              ns: 'dataset',
+                            })}
+                          />
+                        </Field>
+                      </DialogBody>
+                      <DialogFooter>
                         <Button
-                          className="mr-2"
                           onClick={() => {
                             setIsShowRenameModal(false)
                             setTempleName(currPayload!.name)
@@ -336,7 +343,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
                         <Button onClick={handleRenamed} variant="primary" disabled={!templeName}>
                           {t(($) => $['operation.save'], { ns: 'common' })}
                         </Button>
-                      </div>
+                      </DialogFooter>
                     </DialogContent>
                   </Dialog>
                 )}

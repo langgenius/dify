@@ -21,6 +21,7 @@ type ResultPanelProps = Readonly<{
 }>
 
 const ResultPanel: FC<ResultPanelProps> = ({
+  status,
   elapsed_time,
   total_tokens,
   error,
@@ -38,7 +39,12 @@ const ResultPanel: FC<ResultPanelProps> = ({
   return (
     <div className="bg-components-panel-bg py-2">
       <div className="px-4 py-2">
-        <StatusPanel status="succeeded" time={elapsed_time} tokens={total_tokens} error={error} />
+        <StatusPanel
+          status={status === 'success' ? 'succeeded' : status}
+          time={elapsed_time}
+          tokens={total_tokens}
+          error={error}
+        />
       </div>
       <div className="flex flex-col gap-2 px-4 py-2">
         <CodeEditor
@@ -70,7 +76,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
                 {t(($) => $['meta.status'], { ns: 'runLog' })}
               </div>
               <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
-                <span>SUCCESS</span>
+                <span>{status === 'succeeded' ? 'SUCCESS' : status.toUpperCase()}</span>
               </div>
             </div>
             <div className="flex">

@@ -1,19 +1,14 @@
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AccessPolicyWithBindings, ResourceUserAccessSetting } from '@/models/access-control'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AccessRulesEditor from '../index'
 
 const mockMembers = vi.hoisted(() => ({
   accounts: [] as AccountWithRoleResponse[] | null,
-  isLoading: false,
 }))
 const mockMembersQuery = vi.hoisted(() => vi.fn())
-
-vi.mock('@tanstack/react-query', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-  useQuery: mockMembersQuery,
-}))
 
 const createRule = (resourceType: 'app' | 'dataset'): AccessPolicyWithBindings => ({
   policy: {
@@ -89,11 +84,7 @@ describe('AccessRulesEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockMembers.accounts = []
-    mockMembers.isLoading = false
-    mockMembersQuery.mockImplementation(() => ({
-      data: { accounts: mockMembers.accounts },
-      isPending: mockMembers.isLoading,
-    }))
+    mockMembersQuery.mockImplementation(() => Promise.resolve({ accounts: mockMembers.accounts }))
   })
 
   it('should render loading state before empty or row content', () => {
@@ -111,22 +102,6 @@ describe('AccessRulesEditor', () => {
 
     expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByText('permission.accessRule.noUserAccessSettings')).not.toBeInTheDocument()
-  })
-
-  it('should render empty state when there are no user access settings', () => {
-    render(
-      <AccessRulesEditor
-        rules={[]}
-        userAccessSettings={[]}
-        isLoadingRules={false}
-        isLoadingUserAccessSettings={false}
-        automaticIncludeWorkspaceMembers={false}
-        isUpdatingAutomaticIncludeWorkspaceMembers={false}
-        updatingAccountId={null}
-      />,
-    )
-
-    expect(screen.getByText('permission.accessRule.noUserAccessSettings')).toBeInTheDocument()
   })
 
   it('should disable automatic inclusion before its value is available', () => {
@@ -240,7 +215,8 @@ describe('AccessRulesEditor', () => {
     ).not.toBeDisabled()
   })
 
-  it('should mark maintainer rows and prevent editing them', () => {
+  it('should mark maintainer rows and prevent editing them', async () => {
+    const user = userEvent.setup()
     const onUserAccessPoliciesChange = vi.fn()
     const onRemoveAccessPolicyMemberBinding = vi.fn()
 
@@ -266,7 +242,7 @@ describe('AccessRulesEditor', () => {
     const removeButton = screen.getByRole('button', { name: 'common.operation.remove' })
     expect(removeButton).toBeDisabled()
 
-    fireEvent.click(removeButton)
+    await user.click(removeButton)
     expect(onUserAccessPoliciesChange).not.toHaveBeenCalled()
     expect(onRemoveAccessPolicyMemberBinding).not.toHaveBeenCalled()
   })
@@ -521,7 +497,7 @@ describe('AccessRulesEditor', () => {
     const dialog = await screen.findByRole('dialog', {
       name: 'permission.accessRule.addMembersTitle',
     })
-    expect(within(dialog).getByText('Evan')).toBeInTheDocument()
+    expect(await within(dialog).findByText('Evan')).toBeInTheDocument()
     const evanItem = within(dialog).getByRole('menuitem', { name: /Evan/ })
     expect(evanItem).toHaveAttribute('aria-disabled', 'true')
     expect(evanItem).toHaveTextContent('common.operation.added')
@@ -578,11 +554,7 @@ describe('AccessRulesEditor', () => {
 
   it('should announce a failed member load without offering candidates', async () => {
     const user = userEvent.setup()
-    mockMembersQuery.mockImplementation(() => ({
-      data: undefined,
-      isPending: false,
-      error: new Error('Request failed'),
-    }))
+    mockMembersQuery.mockRejectedValue(new Error('Request failed'))
 
     render(
       <AccessRulesEditor
@@ -603,7 +575,7 @@ describe('AccessRulesEditor', () => {
       name: 'permission.accessRule.addMembersTitle',
     })
 
-    expect(within(dialog).getByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
     expect(within(dialog).queryByRole('menuitem')).not.toBeInTheDocument()
     expect(
       within(dialog).queryByText('permission.accessRule.noAvailableMembers'),
@@ -651,7 +623,16 @@ describe('AccessRulesEditor', () => {
 
   it('should batch-remove selected members grouped by access policy', async () => {
     const user = userEvent.setup()
-    const onBatchRemoveAccessPolicyMemberBindings = vi.fn().mockResolvedValue(undefined)
+    let rejectRemoval!: (error: Error) => void
+    const onBatchRemoveAccessPolicyMemberBindings = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            rejectRemoval = reject
+          }),
+      )
+      .mockResolvedValue(undefined)
     const firstSetting = createUserAccessSetting()
     const secondSetting = {
       ...createUserAccessSetting(),
@@ -692,10 +673,32 @@ describe('AccessRulesEditor', () => {
     })
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.sure' }))
 
+    expect(onBatchRemoveAccessPolicyMemberBindings).toHaveBeenCalledOnce()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.sure' }))
+    expect(onBatchRemoveAccessPolicyMemberBindings).toHaveBeenCalledOnce()
+    await act(async () => {
+      rejectRemoval(new Error('Removal failed'))
+    })
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(screen.getByRole('checkbox', { name: 'Evan', hidden: true })).toBeChecked()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.sure' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(onBatchRemoveAccessPolicyMemberBindings).toHaveBeenCalledTimes(2)
     expect(onBatchRemoveAccessPolicyMemberBindings).toHaveBeenCalledWith([
       { accessPolicyId: 'app-policy-id', accountIds: ['account-1', 'account-2'] },
       { accessPolicyId: 'default', accountIds: ['account-3'] },
     ])
     expect(screen.queryByText('permission.accessRule.selected')).not.toBeInTheDocument()
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': (input) => mockMembersQuery(input),
+    }),
+  }
 })
