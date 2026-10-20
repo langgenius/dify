@@ -48,7 +48,7 @@ def _persist_app_trigger(
 
 
 def test_parser_models_validate():
-    parser = workflow_trigger_module.Parser(node_id="node-1")
+    parser = workflow_trigger_module.WebhookTriggerQuery(node_id="node-1")
     enable_parser = workflow_trigger_module.ParserEnable(
         trigger_id="550e8400-e29b-41d4-a716-446655440000", enable_trigger=True
     )

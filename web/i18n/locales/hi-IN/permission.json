@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "पहुँच अनुमति",
   "accessRule.actions": "क्रियाएं",
-  "accessRule.addMemberAria": "{{name}} जोड़ें",
   "accessRule.addMembersTitle": "सदस्य जोड़ें",
   "accessRule.agentDescription": "इस एजेंट तक किसकी पहुँच है और उनकी अनुमतियाँ प्रबंधित करें।",
   "accessRule.agentTitle": "एजेंट अनुमति सेट",
@@ -21,7 +20,6 @@
   "accessRule.defaultPermission": "भूमिका अनुमतियों के अनुसार",
   "accessRule.deleteDescription": "यह एक्सेस नियम स्थायी रूप से हटा दिया जाएगा और संसाधन प्राधिकरण सूची से हटा दिया जाएगा।",
   "accessRule.deleteTitle": "\"{{name}}\" हटाएं?",
-  "accessRule.deleted": "एक्सेस नियम सफलतापूर्वक हटाया गया",
   "accessRule.exceptionPermissionFor": "{{name}} के लिए अपवाद अनुमति",
   "accessRule.expandSection": "{{title}} विस्तृत करें",
   "accessRule.maintainer": "रखरखावकर्ता",
@@ -83,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" {{count}} सदस्यों को सौंपी गई है। क्या आप चाहते हैं कि नई भूमिका प्रति में वही सदस्य शामिल हों?",
   "role.copyMembersLoading": "सदस्य असाइनमेंट लोड हो रहे हैं...",
   "role.copyMembersTitle": "सदस्य असाइनमेंट कॉपी करें?",
-  "role.created": "भूमिका सफलतापूर्वक बनाई गई",
   "role.deleteDescription": "यह भूमिका स्थायी रूप से हटा दी जाएगी और इसका उपयोग करने वाले किसी भी सदस्य या एक्सेस नियम से हटा दी जाएगी।",
   "role.deleteTitle": "\"{{name}}\" हटाएं?",
-  "role.deleted": "भूमिका सफलतापूर्वक हटाई गई",
-  "role.duplicated": "भूमिका सफलतापूर्वक डुप्लिकेट की गई",
   "role.groups.builtin": "सिस्टम भूमिकाएं",
   "role.groups.custom": "कस्टम भूमिकाएं",
   "role.loading": "भूमिकाएं लोड हो रही हैं...",
@@ -104,7 +99,6 @@
   "role.noDescription": "कोई विवरण नहीं",
   "role.noMatchingRoles": "कोई मिलती-जुलती भूमिका नहीं",
   "role.searchPlaceholder": "भूमिकाएं खोजें...",
-  "role.updated": "भूमिका सफलतापूर्वक अपडेट की गई",
   "role.workspaceRoles.description": "भूमिकाएं बनाएं और परिभाषित करें कि प्रत्येक भूमिका इस कार्यक्षेत्र में क्या कर सकती है।",
   "role.workspaceRoles.title": "कार्यक्षेत्र भूमिकाएं"
 }

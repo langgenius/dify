@@ -5,11 +5,12 @@ import type { DefaultModel } from '@/app/components/header/account-setting/model
 import type { RetrievalConfig } from '@/types/app'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -95,23 +96,23 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
           if (!open) onQAConfirmDialogClose()
         }}
       >
-        <AlertDialogContent className="w-108">
-          <div className="flex flex-col gap-2 p-6 pb-4">
-            <AlertDialogTitle className="text-lg/7 font-semibold text-text-primary">
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['stepTwo.qaSwitchHighQualityTipTitle'], { ns: 'datasetCreation' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm/5 text-text-secondary">
+            <AlertDialogDescription>
               {t(($) => $['stepTwo.qaSwitchHighQualityTipContent'], { ns: 'datasetCreation' })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton variant="secondary">
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton>
               {t(($) => $['stepTwo.cancel'], { ns: 'datasetCreation' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton tone="default" onClick={onQAConfirmDialogConfirm}>
               {t(($) => $['stepTwo.switch'], { ns: 'datasetCreation' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       <RadioGroup<IndexingType>

@@ -337,6 +337,11 @@
   "agentDetail.monitoring.sourceLabel": "Приложение",
   "agentDetail.monitoring.sourceTrigger": "Источник {{name}}",
   "agentDetail.monitoring.sources.all": "Все",
+  "agentDetail.monitoring.table.date": "Дата",
+  "agentDetail.monitoring.table.estimatedCost": "Ориентировочная стоимость",
+  "agentDetail.monitoring.table.hideData": "Скрыть данные",
+  "agentDetail.monitoring.table.value": "Значение",
+  "agentDetail.monitoring.table.viewData": "Показать данные",
   "agentDetail.monitoring.timeRangeLabel": "Временной диапазон",
   "agentDetail.monitoring.timeRanges.custom": "Произвольный",
   "agentDetail.monitoring.timeRanges.last30days": "Последние 30 дней",
@@ -358,5 +363,6 @@
   "agentDetail.versionHistory.filter": "Фильтровать версии",
   "agentDetail.versionHistory.restore": "Восстановить",
   "agentDetail.versionHistory.versionName": "Версия {{version}}",
-  "agentDetail.versionHistory.viewOnly": "Только просмотр"
+  "agentDetail.versionHistory.viewOnly": "Только просмотр",
+  "exportAgent": "Экспортировать агента"
 }

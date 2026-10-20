@@ -79,7 +79,7 @@ _httpx_client: httpx.Client = get_pooled_http_client(
 
 
 @contextmanager
-def use_plugin_daemon_request_timeout(timeout_seconds: float) -> Generator[None, None, None]:
+def use_plugin_daemon_request_timeout(timeout_seconds: float) -> Generator[None]:
     """Temporarily shorten plugin-daemon requests made in the current context."""
     if timeout_seconds <= 0:
         raise ValueError("timeout_seconds must be greater than zero")
@@ -147,9 +147,9 @@ class BasePluginClient:
 
         try:
             response = _httpx_client.request(**request_kwargs)
-        except httpx.RequestError:
+        except httpx.RequestError as caught_error:
             logger.exception("Request to Plugin Daemon Service failed")
-            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
+            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed") from caught_error
 
         return response
 
@@ -187,10 +187,7 @@ class BasePluginClient:
             data if isinstance(data, (bytes, str, dict)) or data is None else None
         )
         if isinstance(data, dict):
-            if prepared_headers.get("Content-Type") == "application/json":
-                prepared_data = json.dumps(data)
-            else:
-                prepared_data = data
+            prepared_data = json.dumps(data) if prepared_headers.get("Content-Type") == "application/json" else data
 
         return str(url), prepared_headers, prepared_data, params, files
 
@@ -227,7 +224,7 @@ class BasePluginClient:
         headers: dict[str, str] | None = None,
         data: bytes | dict[str, Any] | None = None,
         files: dict[str, Any] | None = None,
-    ) -> Generator[str, None, None]:
+    ) -> Generator[str]:
         """
         Make a stream request to the plugin daemon inner API
         """
@@ -257,9 +254,9 @@ class BasePluginClient:
                         line = line[5:].strip()
                     if line:
                         yield line
-        except httpx.RequestError:
+        except httpx.RequestError as caught_error:
             logger.exception("Stream request to Plugin Daemon Service failed")
-            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
+            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed") from caught_error
 
     def _stream_request_with_model[T: BaseModel | dict[str, Any] | list[Any] | bool | str](
         self,
@@ -270,7 +267,7 @@ class BasePluginClient:
         data: bytes | dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
         files: dict[str, Any] | None = None,
-    ) -> Generator[T, None, None]:
+    ) -> Generator[T]:
         """
         Make a stream request to the plugin daemon inner API and yield the response as a model.
         """
@@ -313,9 +310,9 @@ class BasePluginClient:
         except httpx.HTTPStatusError as e:
             logger.exception("Failed to request plugin daemon, status: %s, url: %s", e.response.status_code, path)
             if e.response.status_code < 500:
-                raise PluginDaemonClientSideError(description=str(e))
+                raise PluginDaemonClientSideError(description=str(e)) from e
             else:
-                raise PluginDaemonInternalServerError(description=str(e))
+                raise PluginDaemonInternalServerError(description=str(e)) from e
         except Exception as e:
             msg = f"Failed to request plugin daemon, url: {path}"
             logger.exception("Failed to request plugin daemon, url: %s", path)
@@ -358,23 +355,23 @@ class BasePluginClient:
         data: bytes | dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
         files: dict[str, Any] | None = None,
-    ) -> Generator[T, None, None]:
+    ) -> Generator[T]:
         """
         Make a stream request to the plugin daemon inner API and yield the response as a model.
         """
         for line in self._stream_request(method, path, params, headers, data, files):
             try:
                 rep = PluginDaemonBasicResponse[type_].model_validate_json(line)  # type: ignore
-            except (ValueError, TypeError):
+            except (ValueError, TypeError) as caught_error:
                 # TODO modify this when line_data has code and message
                 try:
                     line_data = json.loads(line)
-                except (ValueError, TypeError):
-                    raise ValueError(line)
+                except (ValueError, TypeError) as caught_error_inner:
+                    raise ValueError(line) from caught_error_inner
                 # If the dictionary contains the `error` key, use its value as the argument
                 # for `ValueError`.
                 # Otherwise, use the `line` to provide better contextual information about the error.
-                raise ValueError(line_data.get("error", line))
+                raise ValueError(line_data.get("error", line)) from caught_error
 
             if rep.code != 0:
                 if rep.code == -500:

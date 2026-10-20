@@ -274,7 +274,7 @@ def test_factory_initializes_collection_name_and_index_struct(baidu_module, monk
     monkeypatch.setattr(baidu_module.dify_config, "BAIDU_VECTOR_DB_REBUILD_INDEX_TIMEOUT_IN_SECONDS", 300)
 
     with patch.object(baidu_module, "BaiduVector", return_value="vector") as vector_cls:
-        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result == "vector"
     assert vector_cls.call_args.kwargs["collection_name"] == "auto_collection"
@@ -547,7 +547,7 @@ def test_factory_uses_existing_collection_prefix_when_index_struct_exists(
     monkeypatch.setattr(baidu_module.dify_config, "BAIDU_VECTOR_DB_REBUILD_INDEX_TIMEOUT_IN_SECONDS", 300)
 
     with patch.object(baidu_module, "BaiduVector", return_value="vector") as vector_cls:
-        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result == "vector"
     assert vector_cls.call_args.kwargs["collection_name"] == "existing_collection"

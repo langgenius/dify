@@ -3,49 +3,52 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from redis.client import Pipeline
 
 from extensions.ext_redis import RedisClientWrapper
+from graphon.engine.command import AbortCommand
 from services.app_task_service import AppTaskControlService
 
 
 @pytest.mark.parametrize("command_fails", [False, True])
 @pytest.mark.parametrize("task_id", ["task-1", ""])
-def test_workflow_stop_sets_flag_before_sending_command(command_fails: bool, task_id: str) -> None:
-    redis = MagicMock(spec=RedisClientWrapper)
+def test_workflow_stop_sets_flag_before_sending_command(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], command_fails: bool, task_id: str
+) -> None:
+    redis, commands = redis_transport
     events: list[str] = []
-    redis.setex.side_effect = lambda *_: events.append("flag")
-    failure = RuntimeError("command channel unavailable")
+    queued: list[tuple[object, ...]] = []
+    commands.side_effect = lambda *_, **__: events.append("flag")
 
-    def send_stop(requested_task_id: str) -> None:
-        assert requested_task_id == task_id
+    def execute_pipeline(pipeline: "Pipeline[bytes]") -> list[object]:
         events.append("command")
+        queued.extend(args for args, _ in pipeline.command_stack)
         if command_fails:
-            raise failure
+            raise RuntimeError("command channel unavailable")
+        return []
 
-    with patch("services.app_task_service.GraphEngineManager") as manager:
-        manager.return_value.send_stop_command.side_effect = send_stop
-        service = AppTaskControlService(redis_client=redis)
-        if command_fails:
-            with pytest.raises(RuntimeError) as caught:
-                service.stop_workflow_task_no_user_check(task_id=task_id)
-            assert caught.value is failure
-        else:
-            service.stop_workflow_task_no_user_check(task_id=task_id)
-        manager.assert_called_once_with(redis)
+    with patch.object(Pipeline, "execute", autospec=True, side_effect=execute_pipeline):
+        AppTaskControlService(redis_client=redis).stop_workflow_task_no_user_check(task_id=task_id)
 
     if task_id:
         assert events == ["flag", "command"]
-        redis.setex.assert_called_once_with("generate_task_stopped:task-1", 600, 1)
+        commands.assert_called_once_with("SETEX", "generate_task_stopped:task-1", 600, 1)
+        pushes = [args for args in queued if args[0] == "RPUSH"]
+        assert len(pushes) == 1
+        _, key, payload = pushes[0]
+        assert key == "workflow:task-1:commands"
+        assert isinstance(payload, str)
+        assert AbortCommand.model_validate_json(payload) == AbortCommand(reason="User requested stop")
     else:
-        assert events == ["command"]
-        redis.setex.assert_not_called()
-    redis.get.assert_not_called()
+        assert events == []
+        assert queued == []
+        commands.assert_not_called()
 
 
-def test_flag_failure_does_not_send_command() -> None:
-    redis = MagicMock(spec=RedisClientWrapper)
-    redis.setex.side_effect = RuntimeError("flag store unavailable")
-    with patch("services.app_task_service.GraphEngineManager") as manager:
+def test_flag_failure_does_not_send_command(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
+    redis, commands = redis_transport
+    commands.side_effect = RuntimeError("flag store unavailable")
+    with patch.object(Pipeline, "execute", autospec=True) as execute:
         with pytest.raises(RuntimeError, match="flag store unavailable"):
             AppTaskControlService(redis_client=redis).stop_workflow_task_no_user_check(task_id="task-1")
-    manager.assert_not_called()
+    execute.assert_not_called()

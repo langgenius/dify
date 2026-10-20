@@ -32,13 +32,11 @@ from core.ops.entities.trace_entity import (
 from graphon.enums import BuiltinNodeTypes
 from models import EndUser
 from models.enums import EndUserType, MessageStatus
+from tests.unit_tests.core.ops.trace_fixtures import message_trace_info, tool_trace_info, workflow_trace_info
 
 
 def _dt() -> datetime:
     return datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC)
-
-
-from tests.unit_tests.core.ops.trace_fixtures import message_trace_info, tool_trace_info, workflow_trace_info
 
 
 @pytest.fixture

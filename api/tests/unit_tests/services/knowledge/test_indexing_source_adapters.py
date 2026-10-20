@@ -3,17 +3,17 @@ from dataclasses import dataclass, field
 from unittest.mock import Mock
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import UploadFileExtractionInput
 from core.rag.extractor.notion_extractor import NotionExtractor
+from extensions.application_services.data_sources import build_data_source_credentials
 from services.data_source.credential_gateway import (
     DatasourceCredentialNotFoundError,
     DatasourceCredentialRefreshError,
-    DatasourceProviderCredentialStore,
 )
 from services.data_source.entities.notion_import import NotionPageType
-from services.data_source.provider_service import DatasourceProviderService
 from services.knowledge.indexing.adapters.sources import (
     CompositeStoredSourceResolver,
     FileSourceAdapter,
@@ -194,6 +194,7 @@ def test_stored_notion_resolution_uses_trusted_document_owner_chain() -> None:
 )
 @pytest.mark.parametrize("integration_token", ["environment-secret", None, ""])
 def test_stored_notion_preview_and_indexing_use_same_integration(
+    sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     credential_id: str | None,
     credentials: dict[str, object],
@@ -205,7 +206,7 @@ def test_stored_notion_preview_and_indexing_use_same_integration(
     stored = RecordingStoredCredentials(credentials, error=error)
     resolver = _notion_resolver(stored=stored)
     indexing_credentials = Mock(return_value=credentials, side_effect=error)
-    providers = DatasourceProviderService(credentials=Mock(spec=DatasourceProviderCredentialStore))
+    providers = build_data_source_credentials(database_client=sqlite_session_factory).providers
     monkeypatch.setattr(
         providers,
         "get_datasource_credentials",

@@ -7,7 +7,6 @@ import Cookies from 'js-cookie'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useLocale } from '#i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { useMailRegister } from '@/service/use-common'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { getBrowserTimezone } from '@/utils/timezone'
 import ChangePasswordForm from '../page'
@@ -32,10 +31,6 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useMailRegister: vi.fn(),
-}))
-
 vi.mock('@/utils/timezone', () => ({
   getBrowserTimezone: vi.fn(),
 }))
@@ -56,13 +51,10 @@ vi.mock('@/utils/create-app-tracking', () => ({
 const mockRegister = vi.fn()
 const mockReplace = vi.fn()
 
-const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
-const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
-const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
-const mockUseMailRegister = useMailRegister as unknown as MockedFunction<typeof useMailRegister>
-const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<
-  typeof getBrowserTimezone
->
+const mockUseLocale = useLocale as MockedFunction<typeof useLocale>
+const mockUseSearchParams = useSearchParams as MockedFunction<typeof useSearchParams>
+const mockUseRouter = useRouter as MockedFunction<typeof useRouter>
+const mockGetBrowserTimezone = getBrowserTimezone as MockedFunction<typeof getBrowserTimezone>
 
 const renderWithQueryClient = (ui: ReactElement) => {
   const queryClient = new QueryClient({
@@ -81,23 +73,13 @@ describe('Signup Set Password Page', () => {
     Cookies.remove('utm_info')
     mockUseLocale.mockReturnValue('zh-Hans')
     mockUseSearchParams.mockReturnValue(
-      new URLSearchParams('token=register-token') as unknown as ReturnType<typeof useSearchParams>,
+      new URLSearchParams('token=register-token') as ReturnType<typeof useSearchParams>,
     )
     mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<
       typeof useRouter
     >)
-    mockUseMailRegister.mockReturnValue({
-      mutateAsync: mockRegister,
-      isPending: false,
-    } as unknown as ReturnType<typeof useMailRegister>)
     mockGetBrowserTimezone.mockReturnValue('Asia/Shanghai')
     mockRegister.mockResolvedValue({ result: 'fail', data: {} })
-  })
-
-  it('exposes the page title as the main heading', () => {
-    renderWithQueryClient(<ChangePasswordForm />)
-
-    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
   })
 
   describe('Registration payload', () => {
@@ -117,11 +99,13 @@ describe('Signup Set Password Page', () => {
 
       await waitFor(() => {
         expect(mockRegister).toHaveBeenCalledWith({
-          token: 'register-token',
-          new_password: 'ValidPass123!',
-          password_confirm: 'ValidPass123!',
-          language: 'zh-Hans',
-          timezone: 'Asia/Shanghai',
+          body: {
+            token: 'register-token',
+            new_password: 'ValidPass123!',
+            password_confirm: 'ValidPass123!',
+            language: 'zh-Hans',
+            timezone: 'Asia/Shanghai',
+          },
         })
       })
     })
@@ -187,7 +171,7 @@ describe('Signup Set Password Page', () => {
       mockUseSearchParams.mockReturnValue(
         new URLSearchParams(
           'token=register-token&redirect_url=%2Fapps%3Ftag%3Dworkflow',
-        ) as unknown as ReturnType<typeof useSearchParams>,
+        ) as ReturnType<typeof useSearchParams>,
       )
       mockRegister.mockResolvedValue({ result: 'success', data: {} })
 
@@ -223,4 +207,15 @@ describe('Signup Set Password Page', () => {
       expect(Cookies.get('utm_info')).toBeUndefined()
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'emailRegister.post': (input) => mockRegister(input),
+    }),
+  }
 })

@@ -319,7 +319,7 @@ def test_dify_prepared_polling_llm_delegates_to_plugin_runtime() -> None:
     plugin_runtime = PluginModelRuntime(
         tenant_id="tenant-id",
         user_id="user-id",
-        client=Mock(spec=PluginModelClient),
+        client=PluginModelClient(),
         plugin_service=PluginService,
     )
     plugin_runtime.start_llm_polling = Mock(return_value=polling_result)  # type: ignore[method-assign]
@@ -384,7 +384,7 @@ def test_dify_prepared_polling_llm_commits_successful_reservation() -> None:
     plugin_runtime = PluginModelRuntime(
         tenant_id="tenant-id",
         user_id="user-id",
-        client=Mock(spec=PluginModelClient),
+        client=PluginModelClient(),
         plugin_service=PluginService,
     )
     plugin_runtime.start_llm_polling = Mock(return_value=running_result)  # type: ignore[method-assign]
@@ -418,7 +418,7 @@ def test_dify_prepared_polling_llm_releases_previous_reservation_on_restart() ->
     plugin_runtime = PluginModelRuntime(
         tenant_id="tenant-id",
         user_id="user-id",
-        client=Mock(spec=PluginModelClient),
+        client=PluginModelClient(),
         plugin_service=PluginService,
     )
     plugin_runtime.start_llm_polling = Mock(return_value=running_result)  # type: ignore[method-assign]
@@ -1075,16 +1075,12 @@ def test_dify_human_input_runtime_restore_submitted_data_rehydrates_files() -> N
         ),
     ]
     runtime._file_reference_factory.build_from_mapping = MagicMock(side_effect=[file_value, *file_list_value])  # type: ignore[method-assign]
-    node_data = HumanInputNodeData(
-        title="Human Input",
+
+    restored = runtime.restore_submitted_data(
         inputs=[
             FileInputConfig(output_variable_name="attachment"),
             FileListInputConfig(output_variable_name="attachments", number_limits=2),
         ],
-    )
-
-    restored = runtime.restore_submitted_data(
-        node_data=node_data,
         submitted_data={
             "attachment": {"upload_file_id": "upload-1", "type": "document", "transfer_method": "local_file"},
             "attachments": [

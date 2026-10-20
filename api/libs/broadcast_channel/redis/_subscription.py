@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import queue
 import threading
@@ -160,7 +161,7 @@ class RedisSubscriptionBase(Subscription):
                     continue
         return
 
-    def _message_iterator(self) -> Generator[bytes, None, None]:
+    def _message_iterator(self) -> Generator[bytes]:
         """Iterator for consuming messages from the subscription."""
         while not self._closed.is_set():
             try:
@@ -196,6 +197,8 @@ class RedisSubscriptionBase(Subscription):
         except queue.Empty:
             return None
 
+        if item == SIG_CLOSE:
+            raise SubscriptionClosedError(f"The Redis {self._get_subscription_type()} subscription is closed")
         return item
 
     @override
@@ -244,14 +247,10 @@ class RedisSubscriptionBase(Subscription):
         try:
             self._queue.put_nowait(SIG_CLOSE)
         except queue.Full:
-            try:
+            with contextlib.suppress(queue.Empty):
                 self._queue.get_nowait()
-            except queue.Empty:
-                pass
-            try:
+            with contextlib.suppress(queue.Full):
                 self._queue.put_nowait(SIG_CLOSE)
-            except queue.Full:
-                pass
 
     # Abstract methods to be implemented by subclasses
     def _get_subscription_type(self) -> str:

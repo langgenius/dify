@@ -22,8 +22,7 @@ import {
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { toast } from '@/app/notifications'
-import { getDocDownloadUrl } from '@/service/common'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import PremiumBadge from '../../base/premium-badge'
 import { MenuItemContent } from './menu-item-content'
@@ -117,7 +116,10 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
     mutationKey: ['downloadCompliance', docName],
     mutationFn: async () => {
       try {
-        const ret = await getDocDownloadUrl(docName)
+        const ret = await consoleClient.compliance.download.get(
+          { query: { doc_name: docName } },
+          { context: { silent: true } },
+        )
         downloadUrl({ url: ret.url })
         toast.success(t(($) => $['operation.downloadSuccess'], { ns: 'common' }))
       } catch (error) {

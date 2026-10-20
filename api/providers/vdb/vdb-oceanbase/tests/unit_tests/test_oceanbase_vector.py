@@ -1,3 +1,4 @@
+import enum
 import importlib
 import json
 import sys
@@ -19,6 +20,9 @@ def _build_fake_pyobvector_module():
     class VECTOR:
         def __init__(self, dim):
             self.dim = dim
+
+    class VecIndexType(enum.IntEnum):
+        HNSW = 0
 
     def l2_distance(*_args, **_kwargs):
         return "l2"
@@ -48,6 +52,7 @@ def _build_fake_pyobvector_module():
 
     pyobvector.VECTOR = VECTOR
     pyobvector.ObVecClient = ObVecClient
+    pyobvector.VecIndexType = VecIndexType
     pyobvector.l2_distance = l2_distance
     pyobvector.cosine_distance = cosine_distance
     pyobvector.inner_product = inner_product
@@ -163,6 +168,9 @@ def test_check_hybrid_search_support_uses_version_comment(oceanbase_module):
     assert vector._check_hybrid_search_support() is True
 
     cursor.fetchone.return_value = ("OceanBase_CE 4.3.4.0 (rxxxxxxxxx) (Built Mar 18 2025)",)
+    assert vector._check_hybrid_search_support() is False
+
+    cursor.fetchone.return_value = None
     assert vector._check_hybrid_search_support() is False
 
 
@@ -591,8 +599,8 @@ def test_oceanbase_factory_uses_existing_or_generated_collection(oceanbase_modul
     monkeypatch.setattr(oceanbase_module.dify_config, "OCEANBASE_HNSW_REFRESH_THRESHOLD", 1000)
 
     with patch.object(oceanbase_module, "OceanBaseVector", return_value="vector") as vector_cls:
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock())
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock())
+        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock(), session=None)
+        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result_1 == "vector"
     assert result_2 == "vector"

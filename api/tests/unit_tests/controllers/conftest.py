@@ -1,12 +1,14 @@
 """Application dependencies shared by controller tests."""
 
 import sys
+from collections.abc import Iterator
 from dataclasses import dataclass
+from functools import cache
 from types import SimpleNamespace
 from unittest.mock import create_autospec
 
 import pytest
-from flask import Flask
+from flask import Flask, Response, request_finished
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
@@ -14,25 +16,63 @@ from extensions.application_services.app import AppServices
 from extensions.ext_application_services import (
     _batch_get_enterprise_webapp_access_modes,
     _batch_get_enterprise_webapp_user_permissions,
-    _get_enterprise_webapp_access_mode,
-    _is_enterprise_webapp_user_allowed,
 )
-from repositories.app.console_repository import ConsoleAppRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from services.app.console_service import ConsoleAppService
+from services.app.export_service import AppExportService
 from services.app.import_service import AppImportService
-from services.app.query_service import AppQueryService
+from services.app.query_service import AppDiscoveryService
 from services.credentials.query import CredentialQuery
 from services.data_source.provider_service import DatasourceProviderService
+from services.enterprise.enterprise_service import EnterpriseService
 from services.tag_application_service import TagApplicationService
+from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService
+from services.workflow.dsl_import import DslImportService
+from tests.unit_tests.controllers.error_contract import check_response, track_external_apis
+
+track_external_apis()
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line(
+        "markers",
+        "allow_error_contract_violations: the test serves contract-violating error responses on purpose",
+    )
+
+
+@pytest.fixture(autouse=True)
+def error_response_contract(request: pytest.FixtureRequest) -> Iterator[None]:
+    """Fail a test whose served error responses contradict the documented error contract."""
+    if request.node.get_closest_marker("allow_error_contract_violations"):
+        yield
+        return
+    violations: list[str] = []
+
+    def receiver(sender: Flask, response: Response, **_: object) -> None:
+        check_response(sender, response, violations)
+
+    request_finished.connect(receiver)
+    try:
+        yield
+    finally:
+        request_finished.disconnect(receiver)
+    if violations:
+        pytest.fail("error responses contradict the documented contract:\n" + "\n".join(violations))
 
 
 @pytest.fixture(autouse=True)
 def datasource_application_dependencies(monkeypatch: pytest.MonkeyPatch) -> None:
-    registry = SimpleNamespace(
-        data_sources=SimpleNamespace(providers=create_autospec(DatasourceProviderService, instance=True, spec_set=True))
-    )
+    # Most controller tests never use these services. Build the mock on demand,
+    # with a fresh cache for each test to preserve mock isolation.
+    @cache
+    def application_services() -> SimpleNamespace:
+        return SimpleNamespace(
+            data_sources=SimpleNamespace(
+                providers=create_autospec(DatasourceProviderService, instance=True, spec_set=True)
+            )
+        )
+
     for name in (
         "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow",
         "controllers.console.datasets.rag_pipeline.datasource_content_preview",
@@ -40,7 +80,7 @@ def datasource_application_dependencies(monkeypatch: pytest.MonkeyPatch) -> None
     ):
         module = sys.modules.get(name)
         if module is not None:
-            monkeypatch.setattr(module, "application_services", lambda: registry)
+            monkeypatch.setattr(module, "application_services", application_services)
 
 
 @dataclass(frozen=True)
@@ -82,7 +122,9 @@ def pipeline_application(monkeypatch: pytest.MonkeyPatch) -> PipelineGenerator:
 class AppQueryTestServices:
     console: ConsoleAppService
     imports: AppImportService
-    queries: AppQueryService
+    exports: AppExportService
+    dsl_imports: DslImportService
+    discovery: AppDiscoveryService
 
 
 @dataclass(frozen=True)
@@ -100,19 +142,19 @@ def app_query_services(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> ControllerTestServices:
-    repository = ConsoleAppRepository(session_factory=sqlite_session_factory)
     services = ControllerTestServices(
         tags=application_tags,
         apps=AppQueryTestServices(
             console=app_services.console,
             imports=app_services.imports,
-            queries=AppQueryService(apps=repository),
+            exports=app_services.exports,
+            dsl_imports=app_services.dsl_imports,
+            discovery=app_services.discovery,
         ),
         webapp_access=WebAppAccessQueryService(
             access=WebAppAccessQueryRepository(session_factory=sqlite_session_factory),
             webapp_auth_enabled=True,
-            access_mode_for_app=_get_enterprise_webapp_access_mode,
-            is_user_allowed_for_app=_is_enterprise_webapp_user_allowed,
+            policy=EnterpriseWebAppAccessPolicyGateway(webapp_auth=EnterpriseService.WebAppAuth),
             get_access_modes=_batch_get_enterprise_webapp_access_modes,
             get_user_permissions=_batch_get_enterprise_webapp_user_permissions,
         ),

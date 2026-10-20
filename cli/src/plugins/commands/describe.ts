@@ -1,6 +1,9 @@
 import type { CommandConstructor, CommandEffect } from './command'
-import type { Example, JsonSchema } from '@/plugins/catalog'
+import type { CommandExample } from './examples'
+import type { JsonSchema } from '@/plugins/catalog'
+import { argToken } from '@/util/flag-name'
 import { BINARY } from '@/version/info'
+import { commandExamples } from './examples'
 
 export type CommandRow = {
   id: string
@@ -9,7 +12,7 @@ export type CommandRow = {
   effect?: CommandEffect
   input: JsonSchema
   positional: readonly string[]
-  examples: readonly Example[]
+  examples: readonly CommandExample[]
 }
 
 // The op side of a descriptor: present once a command wraps a catalog op instead of a
@@ -31,14 +34,15 @@ const FLAGS = '[flags]'
 
 export function commandRow(ctor: CommandConstructor, path: readonly string[]): CommandRow {
   const id = path.join(' ')
-  const args = ctor.positional.map((name) => `<${name}>`)
+  const args = ctor.positional.map(argToken)
+  const input = ctor.schema()
   const row: CommandRow = {
     id,
     usage: [BINARY, id, ...args, FLAGS].join(' '),
     summary: ctor.summary,
-    input: ctor.schema(),
+    input,
     positional: ctor.positional,
-    examples: ctor.examples,
+    examples: commandExamples({ id, input, positional: ctor.positional }, ctor.examples),
   }
   return ctor.effect === undefined ? row : { ...row, effect: ctor.effect }
 }

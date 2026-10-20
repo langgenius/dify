@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import cast
 from unittest.mock import patch
 
@@ -7,7 +8,7 @@ from services.entities.feature_entities import LimitationModel
 from services.feature_service import FeatureService
 
 
-def test_get_features_exclude_vector_space_sets_vector_space_to_none(config_overrides):
+def test_get_features_exclude_vector_space_sets_vector_space_to_none(config_overrides: Callable[..., None]) -> None:
     tenant_id = "tenant-id"
     billing_info = {
         "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "monthly", "education": False},
@@ -36,7 +37,7 @@ def test_get_features_exclude_vector_space_sets_vector_space_to_none(config_over
     get_info.assert_called_once_with(tenant_id, exclude_vector_space=True)
 
 
-def test_full_features_keep_treating_unknown_vector_usage_as_zero():
+def test_full_features_keep_treating_unknown_vector_usage_as_zero() -> None:
     vector_space = LimitationModel()
 
     FeatureService._fulfill_vector_space_from_billing_info(
