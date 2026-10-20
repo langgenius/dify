@@ -1,10 +1,12 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { PublishedWorkflow } from '../shared/utils'
+import { zAppMcpServerResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
@@ -27,37 +29,27 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/service/console', async () => {
-  const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
-    consoleQuery: {
-      apps: {
-        byAppId: {
-          server: {
-            get: consoleOperationStub('apps.byAppId.server.get'),
-            refresh: { post: consoleOperationStub('apps.byAppId.server.refresh.post') },
-            put: {
-              mutationOptions: (options = {}) => ({
-                mutationFn: mocks.updateServer,
-                ...options,
-              }),
-            },
-          },
-        },
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.server.get': () =>
+        mocks.serverDetail.isPending
+          ? new Promise(() => {})
+          : Promise.resolve(mocks.serverDetail.data ?? {}),
+      'apps.byAppId.server.put': async (input) => {
+        await mocks.updateServer(input)
+        if (mocks.serverDetail.data)
+          mocks.serverDetail.data = {
+            ...mocks.serverDetail.data,
+            status: (input as { body: { status: string } }).body.status,
+          }
       },
-    },
-  }
-})
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'apps.byAppId.server.get': () => mocks.serverDetail,
-    'apps.byAppId.server.refresh.post': () => ({
-      isPending: false,
-      mutateAsync: mocks.refreshServerCode,
+      'apps.byAppId.server.refresh.post': (input) => mocks.refreshServerCode(input),
     }),
-  })
+  }
 })
 
 vi.mock('@/app/components/tools/mcp/mcp-server-modal', () => ({
@@ -117,6 +109,21 @@ function createDeferredPromise<T>() {
 
 function renderCard(cardAppInfo: AppDetailWithSite = appInfo, workflow?: PublishedWorkflow) {
   const queryClient = createTestQueryClient()
+  if (!mocks.serverDetail.isPending)
+    queryClient.setQueryData(
+      consoleQuery.apps.byAppId.server.get.queryKey({
+        input: { params: { app_id: cardAppInfo.id } },
+      }),
+      zAppMcpServerResponse.parse({
+        id: '',
+        server_code: '',
+        name: '',
+        description: '',
+        parameters: {},
+        status: 'inactive',
+        ...mocks.serverDetail.data,
+      }),
+    )
   const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
   const view = render(
@@ -124,9 +131,8 @@ function renderCard(cardAppInfo: AppDetailWithSite = appInfo, workflow?: Publish
       <MCPAccessPointCard
         appInfo={cardAppInfo}
         canManageAccessPoint
-        triggerModeDisabled={false}
+        availability="available"
         workflow={workflow}
-        workflowLoading={false}
       />
     </QueryClientProvider>,
   )
@@ -135,7 +141,7 @@ function renderCard(cardAppInfo: AppDetailWithSite = appInfo, workflow?: Publish
 
 describe('MCPAccessPointCard', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     mocks.serverDetail.data = undefined
     mocks.serverDetail.isPending = false
     mocks.updateServer.mockResolvedValue(undefined)
@@ -259,10 +265,9 @@ describe('MCPAccessPointCard', () => {
     await waitFor(() => {
       expect(invalidateQueries).toHaveBeenCalledTimes(2)
       expect(invalidateQueries).toHaveBeenLastCalledWith({
-        queryKey: [
-          ['console', 'apps', 'byAppId', 'server', 'get'],
-          { type: 'query', input: { params: { app_id: 'app-1' } } },
-        ],
+        queryKey: consoleQuery.apps.byAppId.server.get.queryKey({
+          input: { params: { app_id: 'app-1' } },
+        }),
       })
     })
     expect(accessSwitch).toHaveAttribute('aria-checked', 'true')

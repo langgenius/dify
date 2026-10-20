@@ -4,6 +4,10 @@ import { uploadSkillFile } from '../client'
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 describe('Skill upload transport failures', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it.each([
     ['error', 'TypeError'],
     ['abort', 'AbortError'],

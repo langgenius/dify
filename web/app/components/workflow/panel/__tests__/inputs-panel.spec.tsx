@@ -9,7 +9,6 @@ import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { InputVarType, WorkflowRunningStatus } from '../../types'
 import InputsPanel from '../inputs-panel'
 
-const mockCheckInputsForm = vi.fn()
 const mockNotify = vi.fn()
 
 vi.mock('next/navigation', () => ({
@@ -24,12 +23,6 @@ vi.mock('@/app/notifications', async (importOriginal) => ({
     warning: (message: string) => mockNotify({ type: 'warning', message }),
     info: (message: string) => mockNotify({ type: 'info', message }),
   },
-}))
-
-vi.mock('@/app/components/base/chat/chat/check-input-forms-hooks', () => ({
-  useCheckInputsForms: () => ({
-    checkInputsForm: mockCheckInputsForm,
-  }),
 }))
 
 const fileSettingsWithImage = {
@@ -73,7 +66,6 @@ const renderInputsPanel = (
 describe('InputsPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockCheckInputsForm.mockReturnValue(true)
   })
 
   describe('Rendering', () => {
@@ -160,7 +152,6 @@ describe('InputsPanel', () => {
 
     it('should not start a run when input validation fails', async () => {
       const user = userEvent.setup()
-      mockCheckInputsForm.mockReturnValue(false)
       const onRun = vi.fn()
       const handleRun = vi.fn()
 
@@ -173,7 +164,6 @@ describe('InputsPanel', () => {
                 variable: 'question',
                 label: 'Question',
                 required: true,
-                default: 'default question',
               },
             ],
           },
@@ -186,13 +176,10 @@ describe('InputsPanel', () => {
 
       await user.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
 
-      expect(mockCheckInputsForm).toHaveBeenCalledWith(
-        { question: 'default question' },
-        expect.arrayContaining([
-          expect.objectContaining({ variable: 'question' }),
-          expect.objectContaining({ variable: '__image' }),
-        ]),
-      )
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'appDebug.errorMessage.valueOfVarRequired:{"key":"Question"}',
+      })
       expect(onRun).not.toHaveBeenCalled()
       expect(handleRun).not.toHaveBeenCalled()
     })
@@ -251,6 +238,38 @@ describe('InputsPanel', () => {
       })
     })
   })
+
+  it.each([false, true])(
+    'accepts a zero default or explicit numeric override (%s)',
+    async (override) => {
+      const user = userEvent.setup()
+      const handleRun = vi.fn()
+      renderInputsPanel(
+        createStartNode({
+          data: {
+            variables: [
+              {
+                type: InputVarType.number,
+                variable: 'count',
+                label: 'Count',
+                required: true,
+                default: override ? 5 : 0,
+              },
+            ],
+          },
+        }),
+        {
+          initialStoreState: { inputs: override ? { count: 0 } : {} },
+          hooksStoreProps: createHooksStoreProps({ handleRun, fileSettings: { enabled: false } }),
+        },
+      )
+
+      await user.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
+
+      expect(mockNotify).not.toHaveBeenCalled()
+      expect(handleRun).toHaveBeenCalledWith(expect.objectContaining({ inputs: { count: 0 } }))
+    },
+  )
 
   describe('Disabled States', () => {
     it('should disable the run button while a local file is still uploading', () => {
@@ -311,7 +330,7 @@ describe('InputsPanel', () => {
       await user.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
 
       expect(screen.getByRole('button', { name: 'workflow.singleRun.startRun' })).toBeDisabled()
-      expect(mockCheckInputsForm).not.toHaveBeenCalled()
+      expect(mockNotify).not.toHaveBeenCalled()
       expect(onRun).not.toHaveBeenCalled()
       expect(handleRun).not.toHaveBeenCalled()
     })

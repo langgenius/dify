@@ -57,6 +57,7 @@ describe('Marketplace catalog tab handoff', () => {
     )
 
     const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
+    await expect.element(screen.getByTestId('content-catalog-tabs')).toBeVisible()
     const header = screen.getByTestId('catalog-header').element()
     const navigation = screen.getByRole('region').element()
     const categories = screen.getByTestId('catalog-categories').element()
@@ -161,6 +162,7 @@ describe('Marketplace catalog tab handoff', () => {
     )
 
     const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
+    await expect.element(screen.getByTestId('mobile-content-tabs')).toBeVisible()
     const contentTabsSlot = screen.getByTestId('mobile-content-tabs').element().parentElement!
     const headerTabs = screen.getByTestId('mobile-header-tabs').element()
     const headerTabsSlot = headerTabs.parentElement!

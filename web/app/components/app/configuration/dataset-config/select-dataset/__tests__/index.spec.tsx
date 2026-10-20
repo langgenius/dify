@@ -1,28 +1,31 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { PermissionLevel } from '@/models/permission'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import SelectDataSet from '../index'
 
-const mockUseInfiniteScroll = vi.fn()
-vi.mock('ahooks', async (importOriginal) => {
-  const actual = await importOriginal()
+const getDatasets = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
-    ...(typeof actual === 'object' && actual !== null ? actual : {}),
-    useInfiniteScroll: (...args: any[]) => mockUseInfiniteScroll(...args),
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'datasets.get': getDatasets }),
   }
 })
-
-const { mockDatasetsInfiniteQuery } = vi.hoisted(() => ({ mockDatasetsInfiniteQuery: vi.fn() }))
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.get': mockDatasetsInfiniteQuery,
-  })
+const page = (data: DatasetDetailWithPartialMembersResponse[], page = 1, has_more = false) => ({
+  data,
+  page,
+  limit: 20,
+  total: data.length,
+  has_more,
 })
 
 let mockWorkspacePermissionKeys = ['dataset.create_and_management']
@@ -50,7 +53,7 @@ const baseProps = {
 const makeDataset = (
   overrides: Partial<DatasetDetailWithPartialMembersResponse>,
 ): DatasetDetailWithPartialMembersResponse =>
-  ({
+  createDatasetFixture({
     id: 'dataset-id',
     name: 'Dataset Name',
     provider: 'internal',
@@ -77,15 +80,21 @@ const makeDataset = (
       score_threshold: 0,
     },
     ...overrides,
-  }) as DatasetDetailWithPartialMembersResponse
+  })
 
 describe('SelectDataSet', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    getDatasets.mockReset().mockResolvedValue(page([]))
     mockWorkspacePermissionKeys = ['dataset.create_and_management']
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('renders dataset entries, allows selection, and fires onSelect', async () => {
+    const user = userEvent.setup()
     const datasetOne = makeDataset({
       id: 'set-1',
       name: 'Dataset One',
@@ -98,48 +107,28 @@ describe('SelectDataSet', () => {
       embedding_available: false,
       provider: 'external',
     })
-    mockDatasetsInfiniteQuery.mockReturnValue({
-      data: { pages: [{ data: [datasetOne, datasetTwo] }] },
-      isLoading: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
-      hasNextPage: false,
-    })
+    getDatasets.mockResolvedValue(page([datasetOne, datasetTwo]))
 
     const onSelect = vi.fn()
-    await act(async () => {
-      render(<SelectDataSet {...baseProps} onSelect={onSelect} selectedIds={[]} />)
-    })
+    render(<SelectDataSet {...baseProps} onSelect={onSelect} selectedIds={[]} />)
 
-    expect(screen.getByText('Dataset One')).toBeInTheDocument()
+    expect(await screen.findByText('Dataset One')).toBeInTheDocument()
     expect(screen.getByText('Hidden Dataset')).toBeInTheDocument()
 
-    await act(async () => {
-      fireEvent.click(screen.getByText('Dataset One'))
-    })
+    await user.click(screen.getByText('Dataset One'))
     expect(screen.getByText('1 appDebug.feature.dataSet.selected')).toBeInTheDocument()
 
     const addButton = screen.getByRole('button', { name: 'common.operation.add' })
-    await act(async () => {
-      fireEvent.click(addButton)
-    })
+    await user.click(addButton)
     expect(onSelect).toHaveBeenCalledWith([datasetOne])
   })
 
   it('shows empty state when no datasets are available and disables add', async () => {
-    mockDatasetsInfiniteQuery.mockReturnValue({
-      data: { pages: [{ data: [] }] },
-      isLoading: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
-      hasNextPage: false,
-    })
+    getDatasets.mockResolvedValue(page([]))
 
-    await act(async () => {
-      render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
-    })
+    render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
 
-    expect(screen.getByText('appDebug.feature.dataSet.noDataSet')).toBeInTheDocument()
+    expect(await screen.findByText('appDebug.feature.dataSet.noDataSet')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'appDebug.feature.dataSet.toCreate' })).toHaveAttribute(
       'href',
       '/datasets/create',
@@ -149,19 +138,11 @@ describe('SelectDataSet', () => {
 
   it('should hide the create dataset link when dataset.create_and_management is unavailable', async () => {
     mockWorkspacePermissionKeys = []
-    mockDatasetsInfiniteQuery.mockReturnValue({
-      data: { pages: [{ data: [] }] },
-      isLoading: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
-      hasNextPage: false,
-    })
+    getDatasets.mockResolvedValue(page([]))
 
-    await act(async () => {
-      render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
-    })
+    render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
 
-    expect(screen.getByText('appDebug.feature.dataSet.noDataSet')).toBeInTheDocument()
+    expect(await screen.findByText('appDebug.feature.dataSet.noDataSet')).toBeInTheDocument()
     expect(
       screen.queryByRole('link', { name: 'appDebug.feature.dataSet.toCreate' }),
     ).not.toBeInTheDocument()
@@ -169,33 +150,26 @@ describe('SelectDataSet', () => {
   })
 
   it('uses selectedIds as the initial modal selection', async () => {
+    const user = userEvent.setup()
     const datasetOne = makeDataset({
       id: 'set-1',
       name: 'Dataset One',
     })
-    mockDatasetsInfiniteQuery.mockReturnValue({
-      data: { pages: [{ data: [datasetOne] }] },
-      isLoading: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
-      hasNextPage: false,
-    })
+    getDatasets.mockResolvedValue(page([datasetOne]))
 
     const onSelect = vi.fn()
-    await act(async () => {
-      render(<SelectDataSet {...baseProps} onSelect={onSelect} selectedIds={['set-1']} />)
-    })
+    render(<SelectDataSet {...baseProps} onSelect={onSelect} selectedIds={['set-1']} />)
 
+    await screen.findByText('Dataset One')
     expect(screen.getByText('1 appDebug.feature.dataSet.selected')).toBeInTheDocument()
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    })
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
     expect(onSelect).toHaveBeenCalledWith([datasetOne])
   })
 
   it('should deselect existing selections and ignore unavailable dataset clicks', async () => {
+    const user = userEvent.setup()
     const datasetOne = makeDataset({
       id: 'set-1',
       name: 'Dataset One',
@@ -206,81 +180,53 @@ describe('SelectDataSet', () => {
       embedding_available: false,
     })
     const onSelect = vi.fn()
-    mockDatasetsInfiniteQuery.mockReturnValue({
-      data: { pages: [{ data: [datasetOne, datasetTwo] }] },
-      isLoading: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
-      hasNextPage: false,
-    })
+    getDatasets.mockResolvedValue(page([datasetOne, datasetTwo]))
 
-    await act(async () => {
-      render(<SelectDataSet {...baseProps} onSelect={onSelect} selectedIds={['set-1']} />)
-    })
+    render(<SelectDataSet {...baseProps} onSelect={onSelect} selectedIds={['set-1']} />)
 
-    await act(async () => {
-      fireEvent.click(screen.getByText('Dataset One').parentElement?.parentElement as HTMLElement)
-    })
+    await screen.findByText('Dataset One')
+    await user.click(screen.getByText('Dataset One'))
 
     await waitFor(() => {
       expect(screen.queryByText('1 appDebug.feature.dataSet.selected')).not.toBeInTheDocument()
     })
 
-    await act(async () => {
-      fireEvent.click(
-        screen.getByText('Unavailable Dataset').parentElement?.parentElement as HTMLElement,
-      )
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    })
+    await user.click(screen.getByText('Unavailable Dataset'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
     expect(onSelect).toHaveBeenCalledWith([])
   })
 
-  it('should fetch the next page when infinite scroll can continue', async () => {
-    const fetchNextPage = vi.fn()
-    mockDatasetsInfiniteQuery.mockReturnValue({
-      data: { pages: [{ data: [makeDataset({ id: 'set-1' })] }] },
-      isLoading: false,
-      isFetchingNextPage: false,
-      fetchNextPage,
-      hasNextPage: true,
-    })
-
-    await act(async () => {
-      render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
-    })
-
-    const loadMore = mockUseInfiniteScroll.mock.calls.at(-1)?.[0] as () => Promise<{
-      list: never[]
-    }>
-    await act(async () => {
-      await loadMore()
-    })
-
-    expect(fetchNextPage).toHaveBeenCalledTimes(1)
+  it('loads another page, retains the first page and does not duplicate a pending page request', async () => {
+    vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(1000)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(100)
+    const nextPage = createDeferred<ReturnType<typeof page>>()
+    getDatasets
+      .mockResolvedValueOnce(page([makeDataset({ id: 'set-1', name: 'First dataset' })], 1, true))
+      .mockReturnValueOnce(nextPage.promise)
+    render(<SelectDataSet {...baseProps} />)
+    expect(await screen.findByText('First dataset')).toBeInTheDocument()
+    await waitFor(() => expect(getDatasets).toHaveBeenCalledTimes(2))
+    expect(getDatasets).toHaveBeenLastCalledWith({ query: { page: 2 } })
+    expect(screen.getByText('First dataset')).toBeInTheDocument()
+    await act(async () =>
+      nextPage.resolve(page([makeDataset({ id: 'set-2', name: 'Second dataset' })], 2)),
+    )
+    expect(await screen.findByText('Second dataset')).toBeInTheDocument()
+    expect(screen.getByText('First dataset')).toBeInTheDocument()
+    expect(getDatasets).toHaveBeenCalledTimes(2)
   })
 
-  it('should skip infinite scroll fetches when a next page is unavailable or already loading', async () => {
-    const fetchNextPage = vi.fn()
-    mockDatasetsInfiniteQuery.mockReturnValue({
-      data: { pages: [{ data: [makeDataset({ id: 'set-1' })] }] },
-      isLoading: false,
-      isFetchingNextPage: true,
-      fetchNextPage,
-      hasNextPage: false,
-    })
+  it('does not request another page after the server reports the final page', async () => {
+    getDatasets.mockResolvedValue(page([makeDataset({ id: 'set-1', name: 'Final dataset' })]))
+    render(<SelectDataSet {...baseProps} />)
+    await screen.findByText('Final dataset')
+    expect(getDatasets).toHaveBeenCalledOnce()
+  })
 
-    await act(async () => {
-      render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
-    })
-
-    const loadMore = mockUseInfiniteScroll.mock.calls.at(-1)?.[0] as () => Promise<{
-      list: never[]
-    }>
-    await act(async () => {
-      await loadMore()
-    })
-
-    expect(fetchNextPage).not.toHaveBeenCalled()
+  it('does not request datasets while the selector is closed', async () => {
+    render(<SelectDataSet {...baseProps} isShow={false} />)
+    await act(async () => {})
+    expect(getDatasets).not.toHaveBeenCalled()
   })
 })

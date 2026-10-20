@@ -54,10 +54,6 @@ const createAgentLog = (
 })
 
 describe('useLogs', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should manage retry, iteration, and loop detail panels', () => {
     const { result } = renderHook(() => useLogs())
     const retryDetail = [createNodeTracing('retry-node')]
@@ -126,5 +122,6 @@ describe('useLogs', () => {
     })
 
     expect(result.current.agentOrToolLogItemStack).toEqual([])
+    expect(result.current.showSpecialResultPanel).toBe(false)
   })
 })

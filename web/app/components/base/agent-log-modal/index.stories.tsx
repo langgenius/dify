@@ -2,6 +2,7 @@ import type { AgentLogResponse } from '@dify/contracts/api/console/apps/types.ge
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { useEffect, useRef } from 'react'
+import { fn } from 'storybook/test'
 import { AppToastHost } from '@/app/notifications/host'
 import AgentLogModal from '.'
 
@@ -63,7 +64,7 @@ const MOCK_CHAT_ITEM: IChatItem = {
   conversationId: 'conv-123',
 }
 
-const AgentLogModalDemo = ({ width = 960 }: { width?: number }) => {
+const AgentLogModalDemo = ({ width = 960, onCancel }: { width?: number; onCancel: () => void }) => {
   const originalFetchRef = useRef<typeof globalThis.fetch>(null)
 
   useEffect(() => {
@@ -101,9 +102,7 @@ const AgentLogModalDemo = ({ width = 960 }: { width?: number }) => {
           appId="app-1"
           currentLogItem={MOCK_CHAT_ITEM}
           width={width}
-          onCancel={() => {
-            console.log('Agent log modal closed')
-          }}
+          onCancel={onCancel}
         />
       </div>
     </>
@@ -124,6 +123,7 @@ const meta = {
   },
   args: {
     width: 960,
+    onCancel: fn(),
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof AgentLogModalDemo>

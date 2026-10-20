@@ -1,7 +1,7 @@
 import json
 import pickle
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 from json import JSONDecodeError
 from typing import Any, ClassVar, TypedDict, cast, override
 from uuid import uuid4
@@ -12,9 +12,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from configs import dify_config
 from core.rag.entities import PreProcessingRuleKey
-from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from libs.datetime_utils import ensure_naive_utc
 from libs.uuid_utils import uuidv7
 from models.base import Base, TypeBase
 from models.enums import (
@@ -27,6 +28,7 @@ from models.enums import (
     DocumentCreatedFrom,
     DocumentDocType,
     IndexingStatus,
+    PermissionEnum,
     ProcessRuleMode,
     SegmentStatus,
     SegmentType,
@@ -141,13 +143,11 @@ class DocumentDict(TypedDict):
     hit_count: int | None
 
 
-from models.enums import PermissionEnum
-
 # Backward-compatible alias — new code should import PermissionEnum from models.enums
 DatasetPermissionEnum = PermissionEnum
 
 
-class Dataset(Base):
+class Dataset(TypeBase, kw_only=True):
     __tablename__ = "datasets"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_pkey"),
@@ -160,40 +160,63 @@ class Dataset(Base):
     PROVIDER_LIST = ["vendor", "external", None]
     DOC_FORM_LIST = [member.value for member in IndexStructureType]
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    tenant_id: Mapped[str] = mapped_column(StringUUID)
-    name: Mapped[str] = mapped_column(String(255))
-    description = mapped_column(LongText, nullable=True)
-    provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'"))
-    permission: Mapped[DatasetPermissionEnum] = mapped_column(
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=cast(str, None))
+    name: Mapped[str] = mapped_column(String(255), nullable=False, default=cast(str, None))
+    description: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    provider: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'vendor'"), default=cast(str, None)
+    )
+    permission: Mapped[Any] = mapped_column(
         EnumText(DatasetPermissionEnum, length=255),
         default=DatasetPermissionEnum.ONLY_ME,
     )
-    data_source_type = mapped_column(EnumText(DataSourceType, length=255))
-    indexing_technique: Mapped[IndexTechniqueType | None] = mapped_column(EnumText(IndexTechniqueType, length=255))
-    index_struct = mapped_column(LongText, nullable=True)
-    created_by = mapped_column(StringUUID, nullable=False)
-    maintainer: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    data_source_type: Mapped[Any] = mapped_column(EnumText(DataSourceType, length=255), nullable=True, default=None)
+    indexing_technique: Mapped[Any] = mapped_column(
+        EnumText(IndexTechniqueType, length=255), nullable=True, default=None
     )
-    embedding_model = mapped_column(sa.String(255), nullable=True)
-    embedding_model_provider = mapped_column(sa.String(255), nullable=True)
-    keyword_number = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"))
-    collection_binding_id = mapped_column(StringUUID, nullable=True)
-    retrieval_model = mapped_column(AdjustedJSON, nullable=True)
-    summary_index_setting = mapped_column(AdjustedJSON, nullable=True)
-    built_in_field_enabled = mapped_column(sa.Boolean, nullable=False, server_default=sa.false())
-    icon_info = mapped_column(AdjustedJSON, nullable=True)
-    runtime_mode = mapped_column(
-        EnumText(DatasetRuntimeMode, length=255), nullable=True, server_default=sa.text("'general'")
+    index_struct: Mapped[Any] = mapped_column(LongText, nullable=True, default=None)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False, default=cast(str, None))
+    maintainer: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
-    pipeline_id = mapped_column(StringUUID, nullable=True)
-    chunk_structure = mapped_column(sa.String(255), nullable=True)
-    enable_api = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
-    is_multimodal = mapped_column(sa.Boolean, default=False, nullable=False)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
+    )
+    embedding_model: Mapped[Any] = mapped_column(sa.String(255), nullable=True, default=None)
+    embedding_model_provider: Mapped[Any] = mapped_column(sa.String(255), nullable=True, default=None)
+    keyword_number: Mapped[Any] = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"), default=None)
+    collection_binding_id: Mapped[Any] = mapped_column(StringUUID, nullable=True, default=None)
+    retrieval_model: Mapped[Any] = mapped_column(AdjustedJSON, nullable=True, default=None)
+    summary_index_setting: Mapped[Any] = mapped_column(AdjustedJSON, nullable=True, default=None)
+    built_in_field_enabled: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.false(), default=cast(bool, None)
+    )
+    icon_info: Mapped[Any] = mapped_column(AdjustedJSON, nullable=True, default=None)
+    runtime_mode: Mapped[Any] = mapped_column(
+        EnumText(DatasetRuntimeMode, length=255), nullable=True, server_default=sa.text("'general'"), default=None
+    )
+    pipeline_id: Mapped[Any] = mapped_column(StringUUID, nullable=True, default=None)
+    chunk_structure: Mapped[Any] = mapped_column(sa.String(255), nullable=True, default=None)
+    enable_api: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.true(), default=cast(bool, None)
+    )
+    is_multimodal: Mapped[bool] = mapped_column(
+        sa.Boolean,
+        insert_default=False,
+        default=False,
+        nullable=False,
+    )
 
     @property
     def index_struct_dict(self):
@@ -313,6 +336,35 @@ class DatasetProcessRule(TypeBase):
             return json.loads(self.rules) if self.rules else None
         except JSONDecodeError:
             return None
+
+
+def _utc_epoch_seconds(value: datetime) -> float:
+    return ensure_naive_utc(value).replace(tzinfo=UTC).timestamp()
+
+
+def build_built_in_field_values(
+    *,
+    document_name: str,
+    uploader: str | None,
+    upload_date: datetime,
+    last_update_date: datetime,
+    data_source_type: str,
+) -> dict[str, str | float | None]:
+    """Return built-in metadata in the single format stored in ``Document.doc_metadata``.
+
+    Retrieval filters compare time fields numerically and ``source`` by exact string, so every
+    writer must store UTC epoch seconds and the ``MetadataDataSource`` label shown to users.
+    Epoch seconds keep their fractional part so strict and equality comparisons at an
+    integer-second boundary behave as they did for stored ``datetime.timestamp()`` values.
+    Naive datetimes are treated as UTC.
+    """
+    return {
+        BuiltInField.document_name: document_name,
+        BuiltInField.uploader: uploader,
+        BuiltInField.upload_date: _utc_epoch_seconds(upload_date),
+        BuiltInField.last_update_date: _utc_epoch_seconds(last_update_date),
+        BuiltInField.source: MetadataDataSource[data_source_type],
+    }
 
 
 class Document(Base):

@@ -11,7 +11,7 @@ Read this document when a change involves application hotkeys, focus, dialogs, m
 ## Keyboard Commands
 
 - Keep widget navigation, dialog dismissal, and editor commands in their local primitive or owner.
-- For Web application commands, follow [Keyboard commands] for TanStack registration, typed bindings, targets, event consumption, display, and verification. Do not recreate that policy in a wrapper or a second command framework.
+- For Web application commands, follow [Keyboard commands]. Keep registration and business behavior with the feature owner; do not introduce a second command framework.
 
 ## Secondary Surfaces
 

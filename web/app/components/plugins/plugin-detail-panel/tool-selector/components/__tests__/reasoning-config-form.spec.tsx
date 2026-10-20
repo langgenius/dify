@@ -1,87 +1,102 @@
 import type { ReasoningConfigValue } from '../reasoning-config-form'
-import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { renderWorkflowComponent as render } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { ReasoningConfigForm } from '../reasoning-config-form'
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useLanguage: () => 'en_US',
-}))
+const render = createNuqsTestRenderer((ui) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  seedAppDslVersion(queryClient)
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryKey(),
+    createFileUploadConfigFixture(),
+  )
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [
+        createCatalogModelFixture({
+          model: 'gpt-4.1',
+          label: { en_US: 'gpt-4.1' },
+          model_properties: { mode: 'chat' },
+        }),
+      ],
+    }),
+  ])
+  return renderWorkflowFlowComponent(ui, {
+    queryClient,
+    nodes: [
+      createNode({
+        id: 'node',
+        data: {
+          type: BlockEnum.Code,
+          title: 'Files source',
+          outputs: { field: { type: VarType.arrayFile } },
+        },
+      }),
+      createNode({ id: 'node-1' }),
+    ],
+    edges: [createEdge({ source: 'node', target: 'node-1' })],
+  })
+})
 
-vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector', () => ({
-  AppSelector: ({
-    onSelect,
-    scope,
-  }: {
-    onSelect: (value: AppSelectorValue) => void
-    scope?: string
-  }) => (
-    <button
-      data-testid="app-selector"
-      data-scope={scope}
-      onClick={() => onSelect({ app_id: 'app-1', inputs: { topic: 'hello' }, files: [] })}
-    >
-      Select App
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/plugin-detail-panel/model-selector', () => ({
-  default: ({ setModel }: { setModel: (value: Record<string, unknown>) => void }) => (
-    <button data-testid="model-selector" onClick={() => setModel({ model: 'gpt-4.1' })}>
-      Select Model
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/form-input-boolean', () => ({
-  default: ({ onChange }: { onChange: (value: boolean) => void }) => (
-    <button data-testid="boolean-input" onClick={() => onChange(true)}>
-      Set Boolean
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/form-input-type-switch', () => ({
-  default: ({ onChange }: { onChange: (value: VarKindType) => void }) => (
-    <button data-testid="type-switch" onClick={() => onChange(VarKindType.variable)}>
-      Switch Type
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: ({
-    onChange,
-    value,
-  }: {
-    onChange: (value: string) => void
-    value: string | string[]
-  }) => (
-    <button
-      data-testid="var-picker"
-      data-value={JSON.stringify(value)}
-      onClick={() => onChange(['node', 'field'] as unknown as string)}
-    >
-      Pick Variable
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/tool/components/mixed-variable-text-input', () => ({
-  default: ({ onChange }: { onChange: (value: string) => void }) => (
-    <button data-testid="mixed-input" onClick={() => onChange('updated-text')}>
-      Update Text
-    </button>
-  ),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.get': async () => ({
+        data: [createAppDetailFixture({ id: 'selected-app', name: 'Support Bot', mode: 'chat' })],
+        page: 1,
+        limit: 20,
+        has_more: false,
+      }),
+      'apps.byAppId.get': async () =>
+        createAppDetailFixture({
+          id: 'selected-app',
+          name: 'Support Bot',
+          mode: 'chat',
+          model_config: createAppModelConfigFixture({
+            user_input_form: [
+              { 'text-input': { variable: 'topic', label: 'Topic', required: false } },
+            ],
+          }),
+        }),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.modelProviders.byProvider.models.parameterRules.get': async () => ({
+        data: [],
+      }),
+    }),
+  }
+})
 
 const createSchema = (overrides: Partial<ToolFormSchema> = {}): ToolFormSchema => ({
   name: 'field',
@@ -207,7 +222,8 @@ describe('ReasoningConfigForm', () => {
     })
   })
 
-  it('should toggle automatic values for text fields', () => {
+  it('should toggle automatic values for text fields', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
 
     render(
@@ -226,7 +242,7 @@ describe('ReasoningConfigForm', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('switch'))
 
     expect(onChange).toHaveBeenCalledWith({
       field: {
@@ -236,7 +252,8 @@ describe('ReasoningConfigForm', () => {
     })
   })
 
-  it('should update mixed text and variable types', () => {
+  it('should update mixed text and variable types', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
 
     render(
@@ -267,20 +284,22 @@ describe('ReasoningConfigForm', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('mixed-input'))
-    fireEvent.click(screen.getByTestId('type-switch'))
+    const editor = screen.getByRole('textbox')
+    await user.click(editor)
+    await user.type(editor, 'updated-text')
+    await user.click(
+      screen.getByRole('radio', { name: 'workflow.nodes.common.typeSwitch.variable' }),
+    )
 
-    expect(onChange).toHaveBeenNthCalledWith(
-      1,
+    expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
         field: {
           auto: 0,
-          value: { type: VarKindType.mixed, value: 'updated-text' },
+          value: { type: VarKindType.mixed, value: 'helloupdated-text' },
         },
       }),
     )
-    expect(onChange).toHaveBeenNthCalledWith(
-      2,
+    expect(onChange).toHaveBeenLastCalledWith(
       expect.objectContaining({
         count: {
           auto: 0,
@@ -290,57 +309,99 @@ describe('ReasoningConfigForm', () => {
     )
   })
 
-  it('stores the selected app configuration', () => {
+  it('retains the selected app and its edited inputs across reopening', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
 
-    render(
-      <ReasoningConfigForm
-        value={{
-          app: {
-            auto: 0,
-            value: { type: VarKindType.constant, value: null },
-          },
-          config: {
-            auto: 0,
-            value: { type: VarKindType.constant, value: '{}' },
-          },
-        }}
-        onChange={onChange}
-        schemas={[
-          createSchema({
-            variable: 'config',
-            type: FormTypeEnum.object,
-            input_schema: { type: Type.object, properties: {}, additionalProperties: false },
-            label: { en_US: 'Config', zh_Hans: '配置' },
-          }),
-          createSchema({
-            variable: 'app',
-            type: FormTypeEnum.appSelector,
-            label: { en_US: 'App', zh_Hans: '应用' },
-          }),
-        ]}
-        nodeOutputVars={[]}
-        availableNodes={[]}
-        nodeId="node-1"
-      />,
-    )
+    function Owner() {
+      const [value, setValue] = useState<ReasoningConfigValue>({
+        app: {
+          auto: 0,
+          value: { type: VarKindType.constant, value: null },
+        },
+        config: {
+          auto: 0,
+          value: { type: VarKindType.constant, value: '{}' },
+        },
+      })
+      return (
+        <ReasoningConfigForm
+          value={value}
+          onChange={(next) => {
+            setValue(next)
+            onChange(next)
+          }}
+          schemas={[
+            createSchema({
+              variable: 'config',
+              type: FormTypeEnum.object,
+              input_schema: { type: Type.object, properties: {}, additionalProperties: false },
+              label: { en_US: 'Config', zh_Hans: '配置' },
+            }),
+            createSchema({
+              variable: 'app',
+              type: FormTypeEnum.appSelector,
+              label: { en_US: 'App', zh_Hans: '应用' },
+            }),
+          ]}
+          nodeOutputVars={[]}
+          availableNodes={[]}
+          nodeId="node-1"
+        />
+      )
+    }
+    render(<Owner />)
 
-    fireEvent.click(screen.getByTestId('app-selector'))
+    await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
+    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+    await user.click(await screen.findByRole('option', { name: /Support Bot/ }))
+    await user.type(await screen.findByPlaceholderText('Topic'), 'hello')
 
-    expect(onChange).toHaveBeenCalledWith(
+    expect(onChange).toHaveBeenLastCalledWith(
       expect.objectContaining({
         app: {
           auto: 0,
           value: {
             type: undefined,
-            value: { app_id: 'app-1', inputs: { topic: 'hello' }, files: [] },
+            value: { app_id: 'selected-app', inputs: { topic: 'hello' }, files: [] },
           },
         },
       }),
     )
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
+    expect(await screen.findByPlaceholderText('Topic')).toHaveValue('hello')
+    expect(screen.getByRole('combobox', { name: 'app.appSelector.label' })).toHaveTextContent(
+      'Support Bot',
+    )
   })
 
-  it('should merge model selector values into the current field value', () => {
+  it('opens app inputs saved in the legacy direct format', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(
+      <ReasoningConfigForm
+        value={{
+          app: {
+            auto: 0,
+            value: { app_id: 'selected-app', inputs: { topic: 'Saved topic' }, files: [] },
+          },
+        }}
+        onChange={onChange}
+        schemas={[createSchema({ variable: 'app', type: FormTypeEnum.appSelector })]}
+        nodeOutputVars={[]}
+        availableNodes={[]}
+        nodeId="node-1"
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
+    expect(await screen.findByPlaceholderText('Topic')).toHaveValue('Saved topic')
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('should merge model selector values into the current field value', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
 
     render(
@@ -365,7 +426,12 @@ describe('ReasoningConfigForm', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('model-selector'))
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+    await user.click(
+      within(
+        await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+      ).getByRole('button', { name: /^gpt-4.1/ }),
+    )
 
     expect(onChange).toHaveBeenCalledWith({
       model: {
@@ -373,12 +439,16 @@ describe('ReasoningConfigForm', () => {
         value: {
           provider: 'openai',
           model: 'gpt-4.1',
+          model_type: 'llm',
+          mode: 'chat',
+          completion_params: {},
         },
       },
     })
   })
 
-  it('should update file fields from the variable selector', () => {
+  it('should update file fields from the variable selector', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
 
     render(
@@ -394,16 +464,30 @@ describe('ReasoningConfigForm', () => {
           createSchema({
             variable: 'files',
             type: FormTypeEnum.files,
+            url: 'https://example.com/help',
             label: { en_US: 'Files', zh_Hans: '文件' },
           }),
         ]}
-        nodeOutputVars={[]}
-        availableNodes={[]}
+        nodeOutputVars={[
+          {
+            nodeId: 'node',
+            title: 'Files source',
+            vars: [{ variable: 'field', type: VarType.arrayFile }],
+          },
+        ]}
+        availableNodes={[
+          createNode({ id: 'node', data: { type: BlockEnum.Code, title: 'Files source' } }),
+        ]}
         nodeId="node-1"
       />,
     )
 
-    fireEvent.click(screen.getByTestId('var-picker'))
+    expect(screen.getByRole('link', { name: 'tools.howToGet' })).toHaveAttribute(
+      'href',
+      'https://example.com/help',
+    )
+    await user.click(screen.getByRole('button', { name: /workflow.common.setVar/ }))
+    await user.click(await screen.findByText('field'))
 
     expect(onChange).toHaveBeenCalledWith({
       files: {
@@ -477,8 +561,8 @@ describe('ReasoningConfigForm', () => {
     expect(screen.getByText('Pick one')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Enter count')).toBeInTheDocument()
 
-    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '7' } })
-    fireEvent.click(screen.getByTestId('boolean-input'))
+    await user.type(screen.getByRole('spinbutton'), '7')
+    await user.click(screen.getByRole('button', { name: 'True' }))
     await user.click(screen.getByRole('combobox'))
     await user.click(await screen.findByRole('option', { name: 'Beta' }))
 
@@ -570,60 +654,6 @@ describe('ReasoningConfigForm', () => {
           value: { type: VarKindType.constant, value: '{"foo":"bar"}' },
         },
       }),
-    )
-  })
-
-  it('should render json placeholders, default app scope, variable links, and helper urls', () => {
-    const onChange = vi.fn()
-
-    render(
-      <ReasoningConfigForm
-        value={{
-          config: {
-            auto: 0,
-            value: { type: VarKindType.constant, value: '' },
-          },
-          app: {
-            auto: 0,
-            value: { type: VarKindType.constant, value: null },
-          },
-          files: {
-            auto: 0,
-            value: { type: VarKindType.variable, value: '' },
-          },
-        }}
-        onChange={onChange}
-        schemas={[
-          createSchema({
-            variable: 'config',
-            type: FormTypeEnum.object,
-            input_schema: { type: Type.object, properties: {}, additionalProperties: false },
-            placeholder: { en_US: '{\n  "foo": "bar"\n}', zh_Hans: '{\n  "foo": "bar"\n}' },
-          }),
-          createSchema({
-            variable: 'app',
-            type: FormTypeEnum.appSelector,
-            scope: '' as never,
-          }),
-          createSchema({
-            variable: 'files',
-            type: FormTypeEnum.files,
-            url: 'https://example.com/help',
-          }),
-        ]}
-        nodeOutputVars={[]}
-        availableNodes={[]}
-        nodeId="node-1"
-      />,
-    )
-
-    expect(screen.getByTestId('monaco-editor')).toHaveValue('')
-    expect(screen.getByText('{ "foo": "bar" }')).toBeInTheDocument()
-    expect(screen.getByTestId('app-selector')).toHaveAttribute('data-scope', 'all')
-    expect(screen.getByTestId('var-picker')).toHaveAttribute('data-value', '[]')
-    expect(screen.getByRole('link', { name: 'tools.howToGet' })).toHaveAttribute(
-      'href',
-      'https://example.com/help',
     )
   })
 })

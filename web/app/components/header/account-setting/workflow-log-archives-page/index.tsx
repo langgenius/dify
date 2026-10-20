@@ -7,6 +7,7 @@ import type {
 } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
@@ -41,7 +42,6 @@ const byteFormatter = new Intl.NumberFormat(undefined, {
 })
 const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB']
 const DOWNLOAD_TASK_POLLING_INTERVAL = 3000
-const DELETION_RETRY_DELAY = 60_000
 const ARCHIVE_MONTH_PAGE_SIZE = 20
 
 function formatNumber(value: number) {
@@ -334,7 +334,6 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const deleteActionLabelId = useId()
   const confirmDeleteLabelId = useId()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [deletionRetryAvailable, setDeletionRetryAvailable] = useState(false)
   const [downloadTask, setDownloadTask] = useState<WorkflowRunArchiveDownloadTaskResponse | null>(
     null,
   )
@@ -345,16 +344,9 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
     }),
   )
   const isDeletionActive = isDeletingStatus(archive.deletion_status)
-  const canRetryDeletion = isDeletionActive && deletionRetryAvailable
-  const isDeleting = deleteArchiveMutation.isPending || (isDeletionActive && !canRetryDeletion)
+  const isDeleting = deleteArchiveMutation.isPending || isDeletionActive
   const isDownloadUnavailable = deleteArchiveMutation.isPending || archive.deletion_status != null
 
-  useEffect(() => {
-    if (!isDeletionActive || deleteArchiveMutation.isPending) return
-
-    const timer = setTimeout(() => setDeletionRetryAvailable(true), DELETION_RETRY_DELAY)
-    return () => clearTimeout(timer)
-  }, [isDeletionActive, deleteArchiveMutation.isPending, deleteArchiveMutation.submittedAt])
   const cachedTask = downloadTask ?? archive.download_task ?? null
   const downloadTaskId = cachedTask?.download_id
   const taskQuery = useQuery(
@@ -443,7 +435,6 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const deleteArchive = () => {
     if (!isCurrentWorkspaceOwner || isDeleting) return
 
-    setDeletionRetryAvailable(false)
     deleteArchiveMutation.mutate(
       { params: { year: archive.year, month: archive.month } },
       { onSuccess: () => setDeleteDialogOpen(false) },
@@ -518,7 +509,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                   <span id={deleteActionLabelId}>
                     {isDeleting
                       ? t(($) => $['archives.delete.deleting'], { ns: 'appLog' })
-                      : archive.deletion_status === 'failed' || canRetryDeletion
+                      : archive.deletion_status === 'failed'
                         ? t(($) => $['archives.delete.retry'], { ns: 'appLog' })
                         : t(($) => $['operation.delete'], { ns: 'common' })}
                   </span>
@@ -531,19 +522,20 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                     <AlertDialogDescription>
                       {t(($) => $['archives.delete.description'], { ns: 'appLog' })}
                     </AlertDialogDescription>
-                    {deleteArchiveMutation.isError && (
+                  </AlertDialogHeader>
+                  {deleteArchiveMutation.isError && (
+                    <AlertDialogBody>
                       <div role="alert" className="system-sm-regular text-text-destructive">
                         {t(($) => $['archives.delete.requestFailed'], { ns: 'appLog' })}
                       </div>
-                    )}
-                  </AlertDialogHeader>
+                    </AlertDialogBody>
+                  )}
                   <AlertDialogFooter>
                     <AlertDialogCancelButton disabled={deleteArchiveMutation.isPending}>
                       {t(($) => $['operation.cancel'], { ns: 'common' })}
                     </AlertDialogCancelButton>
                     <AlertDialogConfirmButton
                       loading={isDeleting}
-                      disabled={isDeletionActive && !canRetryDeletion}
                       aria-labelledby={confirmDeleteLabelId}
                       onClick={deleteArchive}
                     >

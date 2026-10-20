@@ -1,4 +1,5 @@
 import re
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -15,10 +16,10 @@ from models import UploadFile
 from models.enums import CreatorUserRole
 
 
+@dataclass(eq=False, repr=False)
 class _FakeResponse:
-    def __init__(self, status_code: int, headers: dict[str, str]):
-        self.status_code = status_code
-        self.headers = headers
+    status_code: int
+    headers: dict[str, str]
 
 
 def _mock_head(monkeypatch: pytest.MonkeyPatch, headers: dict[str, str], status_code: int = 200):

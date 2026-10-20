@@ -1,72 +1,31 @@
 import type { Features } from '../../types'
 import { screen } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createDefaultModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { FeaturesProvider } from '../../context'
 import NewFeaturePanel from '../index'
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'codeBasedExtension.get': () => ({ data: undefined }),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'codeBasedExtension.get': async () => undefined,
+    }),
+  }
 })
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/app/test-app-id/configuration',
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useDefaultModel: (type: string) => {
-    if (type === 'speech2text' || type === 'tts')
-      return { data: { provider: 'openai', model: 'whisper-1' } }
-    return { data: null }
-  },
-  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-    modelList: [
-      { provider: { provider: 'openai' }, models: [{ model: 'text-embedding-ada-002' }] },
-    ],
-    defaultModel: { provider: { provider: 'openai' }, model: 'text-embedding-ada-002' },
-    currentModel: true,
-  }),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
-  ConfigurationMethodEnum: {
-    predefinedModel: 'predefined-model',
-    customizableModel: 'customizable-model',
-    fetchFromRemote: 'fetch-from-remote',
-  },
-  ModelFeatureEnum: {
-    toolCall: 'tool-call',
-    multiToolCall: 'multi-tool-call',
-    agentThought: 'agent-thought',
-    streamToolCall: 'stream-tool-call',
-    vision: 'vision',
-    video: 'video',
-    document: 'document',
-    audio: 'audio',
-    polling: 'polling',
-    StructuredOutput: 'structured-output',
-  },
-  ModelStatusEnum: {
-    active: 'active',
-    noConfigure: 'no-configure',
-    quotaExceeded: 'quota-exceeded',
-    noPermission: 'no-permission',
-    disabled: 'disabled',
-    credentialRemoved: 'credential-removed',
-  },
-  ModelTypeEnum: {
-    speech2text: 'speech2text',
-    tts: 'tts',
-    textEmbedding: 'text-embedding',
-  },
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: () => <div data-testid="model-selector">Model Selector</div>,
 }))
 
 const defaultFeatures: Features = {
@@ -94,6 +53,23 @@ const renderPanel = (
   }> = {},
   searchParams = '',
 ) => {
+  const queryClient = createConsoleQueryClient()
+  const models = [
+    createCatalogModelFixture({ model: 'text-embedding-ada-002', model_type: 'text-embedding' }),
+    createCatalogModelFixture({ model: 'whisper-1', model_type: 'speech2text' }),
+    createCatalogModelFixture({ model: 'tts-1', model_type: 'tts' }),
+  ]
+  seedModelProviderQueries(queryClient, [createModelCatalogFixture({ models })])
+  for (const model of models) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.defaultModel.get.queryKey({
+        input: { query: { model_type: model.model_type } },
+      }),
+      {
+        data: createDefaultModelFixture({ model: model.model, model_type: model.model_type }),
+      },
+    )
+  }
   return renderWithConsoleQuery(
     <NuqsTestingAdapter searchParams={searchParams}>
       <FeaturesProvider features={defaultFeatures}>
@@ -109,6 +85,7 @@ const renderPanel = (
         />
       </FeaturesProvider>
     </NuqsTestingAdapter>,
+    { queryClient },
   )
 }
 
@@ -128,17 +105,11 @@ describe('NewFeaturePanel', () => {
 
       expect(screen.queryByText(/common\.features/)).not.toBeInTheDocument()
     })
-
-    it('should render header with title and description when show is true', () => {
-      renderPanel({ show: true })
-
-      expect(screen.getByText(/common\.featuresDescription/)).toBeInTheDocument()
-      expect(screen.getByRole('dialog', { name: 'workflow.common.features' })).toBeInTheDocument()
-    })
   })
 
   it('names each configuration feature switch from its visible title', () => {
     renderPanel({ isChatMode: true, inWorkflow: false, showFileUpload: false })
+    expect(screen.getByRole('dialog', { name: 'workflow.common.features' })).toBeInTheDocument()
 
     for (const feature of [
       'conversationOpener',
@@ -154,24 +125,6 @@ describe('NewFeaturePanel', () => {
   })
 
   describe('Chat Mode Features', () => {
-    it('should render conversation opener in chat mode', () => {
-      renderPanel({ isChatMode: true })
-
-      expect(screen.getByText(/feature\.conversationOpener\.title/)).toBeInTheDocument()
-    })
-
-    it('should render follow-up in chat mode', () => {
-      renderPanel({ isChatMode: true })
-
-      expect(screen.getByText(/feature\.suggestedQuestionsAfterAnswer\.title/)).toBeInTheDocument()
-    })
-
-    it('should render citation in chat mode', () => {
-      renderPanel({ isChatMode: true })
-
-      expect(screen.getByText(/feature\.citation\.title/)).toBeInTheDocument()
-    })
-
     it('should render speech-to-text in chat mode when model is available', () => {
       renderPanel({ isChatMode: true })
 
@@ -183,12 +136,6 @@ describe('NewFeaturePanel', () => {
 
       expect(screen.getByText(/feature\.textToSpeech\.title/)).toBeInTheDocument()
     })
-
-    it('should render moderation in chat mode', () => {
-      renderPanel({ isChatMode: true })
-
-      expect(screen.getByText(/feature\.moderation\.title/)).toBeInTheDocument()
-    })
   })
 
   describe('File Upload', () => {
@@ -196,11 +143,6 @@ describe('NewFeaturePanel', () => {
       renderPanel({ isChatMode: true, showFileUpload: true })
 
       expect(screen.getByText(/feature\.fileUpload\.title/)).toBeInTheDocument()
-    })
-
-    it('should not render image upload in chat mode', () => {
-      renderPanel({ isChatMode: true, showFileUpload: true })
-
       expect(screen.queryByText(/feature\.imageUpload\.title/)).not.toBeInTheDocument()
     })
 
@@ -240,12 +182,6 @@ describe('NewFeaturePanel', () => {
   })
 
   describe('Annotation Reply Feature', () => {
-    it('should render AnnotationReply in chat mode when not in workflow', () => {
-      renderPanel({ isChatMode: true, inWorkflow: false })
-
-      expect(screen.getByText(/feature\.annotation\.title/)).toBeInTheDocument()
-    })
-
     it('should not render AnnotationReply in workflow mode', () => {
       renderPanel({ isChatMode: true, inWorkflow: true })
 

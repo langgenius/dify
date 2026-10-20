@@ -193,7 +193,7 @@ function ParameterItem({
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
-            step={+`0.${parameterRule.precision || 0}`}
+            step={1}
             onChange={handleNumberInputChange}
             onBlur={handleNumberInputBlur}
           />

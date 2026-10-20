@@ -123,7 +123,12 @@ const ChatWrapper = () => {
         if (fileIsUploading) return
 
         const inputValue = inputsFormValue?.[variable]
-        if (inputValue === undefined || inputValue === null || inputValue === '')
+        if (
+          inputValue === undefined ||
+          inputValue === null ||
+          inputValue === '' ||
+          (Array.isArray(inputValue) && inputValue.length === 0)
+        )
           hasEmptyInput = label as string
 
         if (
@@ -154,7 +159,8 @@ const ChatWrapper = () => {
     setIsResponding(respondingState)
   }, [respondingState, setIsResponding])
 
-  // Resume paused workflows when chat history is loaded
+  // Resume once when history arrives, including histories loaded after the initial render.
+  const resumedWorkflow = useRef<string | undefined>(undefined)
   useEffect(() => {
     if (!appPrevChatList || appPrevChatList.length === 0) return
 
@@ -162,9 +168,6 @@ const ChatWrapper = () => {
     let lastPausedNode: ChatItemInTree | undefined
     const findLastPausedWorkflow = (nodes: ChatItemInTree[]) => {
       nodes.forEach((node) => {
-        // DFS: recurse to children first
-        if (node.children && node.children.length > 0) findLastPausedWorkflow(node.children)
-
         // Track the last node with humanInputFormDataList
         if (
           node.isAnswer &&
@@ -173,6 +176,8 @@ const ChatWrapper = () => {
           node.humanInputFormDataList.length > 0
         )
           lastPausedNode = node
+        // Visit children last so a paused descendant takes precedence over its parent.
+        if (node.children?.length) findLastPausedWorkflow(node.children)
       })
     }
 
@@ -180,6 +185,13 @@ const ChatWrapper = () => {
 
     // Only resume the last paused workflow
     if (lastPausedNode) {
+      const key = JSON.stringify([
+        currentConversationId,
+        lastPausedNode.id,
+        lastPausedNode.workflow_run_id,
+      ])
+      if (resumedWorkflow.current === key) return
+      resumedWorkflow.current = key
       handleSwitchSibling(lastPausedNode.id, {
         onGetSuggestedQuestions: (responseItemId) =>
           fetchSuggestedQuestions(responseItemId, appSourceType, appId),
@@ -187,7 +199,14 @@ const ChatWrapper = () => {
         isPublicAPI: appSourceType === AppSourceType.webApp,
       })
     }
-  }, [])
+  }, [
+    appPrevChatList,
+    currentConversationId,
+    handleSwitchSibling,
+    appSourceType,
+    appId,
+    handleNewConversationCompleted,
+  ])
 
   const [hasSent, setHasSent] = useState(false)
   const [prevConversationId, setPrevConversationId] = useState(currentConversationId)

@@ -301,9 +301,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "Vodnik za objavljanje predlog",
-  "upgrade.close": "Zapri",
   "upgrade.description": "Namestitev naslednjega vtičnika",
-  "upgrade.successfulTitle": "Namestitev uspešna",
   "upgrade.title": "Namestite vtičnik",
   "upgrade.upgrade": "Namestite",
   "upgrade.upgrading": "Nameščanje..."

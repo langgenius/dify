@@ -1,318 +1,282 @@
-import type { PropsWithChildren } from 'react'
-import type { Edge, Node, Viewport } from 'reactflow'
-import { cleanup, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
+import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type { EventEmitterValue } from '@/context/event-emitter'
+import type { RAGPipelineVariables } from '@/models/pipeline'
+import { act, cleanup, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { EventEmitter } from 'ahooks/lib/useEventEmitter'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import WorkflowWithDefaultContext from '@/app/components/workflow'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { DSL_EXPORT_CHECK, WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
+import codeNodeDefault from '@/app/components/workflow/nodes/code/default'
+import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import DatasetDetailContext from '@/context/dataset-detail'
+import { EventEmitterContext } from '@/context/event-emitter'
+import { PipelineInputVarType } from '@/models/pipeline'
+import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { captureDownloads } from '@/test/download'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import { DatasetACLPermission } from '@/utils/permission'
+import { createRagPipelineSliceSlice } from '../../store'
 import RagPipelineMain from '../rag-pipeline-main'
 
-const mockPermissionState = vi.hoisted(() => ({
-  permissionKeys: ['dataset.acl.edit'] as string[],
+const api = vi.hoisted(() => ({
+  saveDraft:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.rag.pipelines.byPipelineId.workflows.draft.post
+    >(),
+  exportPipeline:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.rag.pipelines.byPipelineId.exports.get
+    >(),
 }))
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    currentWorkspace: { id: 'workspace-1' },
-  }))
+beforeEach(() => {
+  api.saveDraft
+    .mockReset()
+    .mockResolvedValue({ result: 'success', hash: 'saved-hash', updated_at: 2 })
+  api.exportPipeline.mockReset().mockResolvedValue({ data: 'kind: rag_pipeline' })
+})
+afterEach(async () => {
+  await act(async () => cleanup())
+  vi.restoreAllMocks()
 })
 
-vi.mock('../../hooks/use-available-nodes-meta-data', () => ({
-  useAvailableNodesMetaData: () => ({ nodes: [], nodesMap: {} }),
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ datasetId: 'dataset-1' }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/datasets/dataset-1/pipeline',
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }))
-
-vi.mock('../../hooks/use-DSL', () => ({
-  useDSLByCanEdit: () => ({
-    exportCheck: vi.fn(),
-    handleExportDSL: vi.fn(),
-  }),
-}))
-
-vi.mock('../../hooks/use-get-run-and-trace-url', () => ({
-  useGetRunAndTraceUrl: () => ({
-    getWorkflowRunAndTraceUrl: vi.fn(),
-  }),
-}))
-
-vi.mock('../../hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({
-    doSyncWorkflowDraft: vi.fn(),
-    syncWorkflowDraftWhenPageClose: vi.fn(),
-  }),
-  useNodesSyncDraftByCanEdit: () => ({
-    doSyncWorkflowDraft: vi.fn(),
-    syncWorkflowDraftWhenPageClose: vi.fn(),
-  }),
-}))
-
-vi.mock('../../hooks/use-pipeline-refresh-draft', () => ({
-  usePipelineRefreshDraft: () => ({
-    handleRefreshWorkflowDraft: vi.fn(),
-  }),
-}))
-
-vi.mock('../../hooks/use-pipeline-run', () => ({
-  usePipelineRunByCanEdit: () => ({
-    handleBackupDraft: vi.fn(),
-    handleLoadBackupDraft: vi.fn(),
-    handleRestoreFromPublishedWorkflow: vi.fn(),
-    handleRun: vi.fn(),
-    handleStopRun: vi.fn(),
-  }),
-}))
-
-vi.mock('../../hooks/use-pipeline-start-run', () => ({
-  usePipelineStartRunByCanEdit: () => ({
-    handleStartWorkflowRun: vi.fn(),
-    handleWorkflowStartRunInWorkflow: vi.fn(),
-  }),
-}))
-
-vi.mock('../../hooks/use-file-settings', () => ({ useFileSettings: () => ({ enabled: true }) }))
-
-vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud-common', () => ({
-  useInspectVarsCrudCommon: () => ({
-    hasNodeInspectVars: vi.fn(),
-    hasSetInspectVar: vi.fn(),
-    fetchInspectVarValue: vi.fn(),
-    editInspectVarValue: vi.fn(),
-    renameInspectVarName: vi.fn(),
-    appendNodeInspectVars: vi.fn(),
-    deleteInspectVar: vi.fn(),
-    deleteNodeInspectorVars: vi.fn(),
-    deleteAllInspectorVars: vi.fn(),
-    isInspectVarEdited: vi.fn(),
-    resetToLastRunVar: vi.fn(),
-    invalidateSysVarValues: vi.fn(),
-    resetConversationVar: vi.fn(),
-    invalidateConversationVarValues: vi.fn(),
-  }),
-}))
-
-const mockSetRagPipelineVariables = vi.fn()
-const mockSetEnvironmentVariables = vi.fn()
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => ({
-      setRagPipelineVariables: mockSetRagPipelineVariables,
-      setEnvironmentVariables: mockSetEnvironmentVariables,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.publish.get': async () =>
+        createWorkflowResponseFixture(),
     }),
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () => ({
-  useSetWorkflowVarsWithValue: () => ({
-    fetchInspectVars: vi.fn(),
-  }),
-}))
-
-vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (
-    selector: (state: { dataset: { permission_keys: string[] } }) => unknown,
-  ) => selector({ dataset: { permission_keys: mockPermissionState.permissionKeys } }),
-}))
-
-vi.mock('@/app/components/workflow', () => ({
-  WorkflowWithInnerContext: ({
-    children,
-    onWorkflowDataUpdate,
-    hooksStore,
-  }: PropsWithChildren<{
-    onWorkflowDataUpdate?: (payload: unknown) => void
-    hooksStore?: { accessControl?: { canEdit?: boolean } }
-  }>) => (
-    <div data-testid="workflow-inner-context">
-      <div data-testid="can-edit">{String(hooksStore?.accessControl?.canEdit)}</div>
-      {children}
-      <button
-        data-testid="trigger-update"
-        onClick={() =>
-          onWorkflowDataUpdate?.({
-            rag_pipeline_variables: [{ id: '1', name: 'var1' }],
-            environment_variables: [{ id: '2', name: 'env1' }],
-          })
-        }
-      >
-        Trigger Update
-      </button>
-      <button
-        data-testid="trigger-update-partial"
-        onClick={() =>
-          onWorkflowDataUpdate?.({
-            rag_pipeline_variables: [{ id: '3', name: 'var2' }],
-          })
-        }
-      >
-        Trigger Partial Update
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('../rag-pipeline-children', () => ({
-  default: () => <div data-testid="rag-pipeline-children">Children</div>,
-}))
-
-afterEach(() => {
-  cleanup()
-  vi.clearAllMocks()
-})
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: [],
-  }))
-})
-
-describe('RagPipelineMain', () => {
-  const defaultProps = {
-    nodes: [] as Node[],
-    edges: [] as Edge[],
-    viewport: { x: 0, y: 0, zoom: 1 } as Viewport,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'rag.pipelines.byPipelineId.workflows.draft.post': api.saveDraft,
+      'rag.pipelines.byPipelineId.exports.get': api.exportPipeline,
+      'rag.pipelines.byPipelineId.workflows.draft.variables.get': async () => ({
+        items: [],
+        total: 0,
+      }),
+    }),
   }
+})
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockPermissionState.permissionKeys = [DatasetACLPermission.Edit]
+// These use-context-selector contexts expose Provider components, not React 19 context components.
+const DatasetDetailProvider = DatasetDetailContext.Provider
+const WorkflowEventProvider = EventEmitterContext.Provider
+
+const nodes = [
+  createNode({
+    id: 'code',
+    data: { ...codeNodeDefault.defaultValue, title: 'Transform documents' },
+  }),
+]
+const fields: RAGPipelineVariables = [
+  {
+    belong_to_node_id: 'shared',
+    type: PipelineInputVarType.textInput,
+    label: 'Source name',
+    variable: 'source_name',
+    required: true,
+  },
+]
+const environmentVariables: EnvironmentVariable[] = [
+  { id: 'env-1', name: 'SOURCE', value: 'docs', description: '', value_type: ChatVarType.String },
+]
+
+function renderMain(
+  permissionKeys: NonNullable<
+    ReturnType<typeof createDatasetFixture>['permission_keys']
+  > = Object.values(DatasetACLPermission),
+) {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedAppDslVersion(queryClient)
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
   })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
+  queryClient.setQueryData(consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }), [])
+  const eventEmitter = new EventEmitter<EventEmitterValue>()
+  const dataset = createDatasetFixture({
+    pipeline_id: 'pipeline-1',
+    permission_keys: permissionKeys,
+  })
+  const view = renderWorkflowComponent(
+    <NuqsTestingAdapter>
+      <DatasetDetailProvider value={{ dataset }}>
+        <WorkflowEventProvider value={{ eventEmitter }}>
+          <WorkflowWithDefaultContext nodes={nodes} edges={[]}>
+            <RagPipelineMain nodes={nodes} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />
+          </WorkflowWithDefaultContext>
+        </WorkflowEventProvider>
+      </DatasetDetailProvider>
+    </NuqsTestingAdapter>,
+    {
+      queryClient,
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      injectWorkflowStoreSliceFn: createRagPipelineSliceSlice as InjectWorkflowStoreSliceFn,
+      initialStoreState: { isWorkflowDataLoaded: true, knowledgeName: 'Documentation' },
+    },
+  )
+  return { ...view, eventEmitter }
+}
 
-  describe('rendering', () => {
-    it('should render RagPipelineChildren', () => {
-      render(<RagPipelineMain {...defaultProps} />)
+it.each([
+  {
+    name: 'full access',
+    permissions: Object.values(DatasetACLPermission),
+    canEdit: true,
+    canRunAndRelease: true,
+  },
+  {
+    name: 'edit only',
+    permissions: [DatasetACLPermission.Edit],
+    canEdit: true,
+    canRunAndRelease: false,
+  },
+  {
+    name: 'read only',
+    permissions: [DatasetACLPermission.Readonly],
+    canEdit: false,
+    canRunAndRelease: false,
+  },
+])(
+  'respects $name for execution, publishing and saving on exit',
+  async ({ permissions, canEdit, canRunAndRelease }) => {
+    const { unmount } = renderMain(permissions)
+    expect(screen.getByText('Transform documents')).toBeInTheDocument()
+    const publish = screen.getByRole('button', { name: 'workflow.common.publish' })
+    if (canRunAndRelease) {
+      expect(publish).toBeEnabled()
+      expect(screen.getByRole('button', { name: /pipeline.common.testRun/ })).toBeEnabled()
+    } else {
+      expect(publish).toBeDisabled()
+      expect(
+        screen.queryByRole('button', { name: /pipeline.common.testRun/ }),
+      ).not.toBeInTheDocument()
+    }
+    await act(async () => unmount())
+    if (canEdit) {
+      expect(api.saveDraft).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: { pipeline_id: 'pipeline-1' },
+          body: expect.objectContaining({
+            graph: expect.objectContaining({
+              nodes: expect.arrayContaining([expect.objectContaining({ id: 'code' })]),
+            }),
+          }),
+        }),
+        expect.anything(),
+      )
+    } else {
+      expect(api.saveDraft).not.toHaveBeenCalled()
+    }
+  },
+)
 
-      expect(screen.getByTestId('rag-pipeline-children')).toBeInTheDocument()
-    })
+it('applies graph and variables from the workflow update event to the real pipeline', async () => {
+  const user = userEvent.setup()
+  const { store, eventEmitter } = renderMain()
+  act(() =>
+    eventEmitter.emit({
+      type: WORKFLOW_DATA_UPDATE,
+      payload: {
+        nodes: [
+          createNode({
+            id: 'updated',
+            data: { ...codeNodeDefault.defaultValue, title: 'Imported pipeline' },
+          }),
+        ],
+        edges: [],
+        hash: 'imported-hash',
+        rag_pipeline_variables: fields,
+        environment_variables: environmentVariables,
+      },
+    }),
+  )
+  expect(screen.getByText('Imported pipeline')).toBeInTheDocument()
+  expect(screen.queryByText('Transform documents')).not.toBeInTheDocument()
+  expect(store.getState()).toMatchObject({
+    ragPipelineVariables: fields,
+    environmentVariables,
+    syncWorkflowDraftHash: 'imported-hash',
+  })
+  await user.click(screen.getByRole('button', { name: 'datasetPipeline.inputField' }))
+  expect(await screen.findByText('Source name')).toBeInTheDocument()
+})
 
-    it('should pass nodes to WorkflowWithInnerContext', () => {
-      const nodes = [{ id: 'node-1', type: 'custom', position: { x: 0, y: 0 }, data: {} }] as Node[]
-
-      render(<RagPipelineMain {...defaultProps} nodes={nodes} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should pass edges to WorkflowWithInnerContext', () => {
-      const edges = [{ id: 'edge-1', source: 'node-1', target: 'node-2' }] as Edge[]
-
-      render(<RagPipelineMain {...defaultProps} edges={edges} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should pass viewport to WorkflowWithInnerContext', () => {
-      const viewport = { x: 100, y: 200, zoom: 1.5 }
-
-      render(<RagPipelineMain {...defaultProps} viewport={viewport} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
+it('retains omitted variable slices and allows an explicit empty list to clear them', () => {
+  const { store, eventEmitter } = renderMain()
+  act(() => {
+    store.getState().setRagPipelineVariables?.(fields)
+    store.getState().setEnvironmentVariables(environmentVariables)
+    eventEmitter.emit({
+      type: WORKFLOW_DATA_UPDATE,
+      payload: { nodes, edges: [], rag_pipeline_variables: [] },
     })
   })
-
-  describe('handleWorkflowDataUpdate callback', () => {
-    it('should update rag_pipeline_variables when provided', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      const button = screen.getByTestId('trigger-update')
-      button.click()
-
-      expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([{ id: '1', name: 'var1' }])
-    })
-
-    it('should update environment_variables when provided', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      const button = screen.getByTestId('trigger-update')
-      button.click()
-
-      expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([{ id: '2', name: 'env1' }])
-    })
-
-    it('should only update rag_pipeline_variables when environment_variables is not provided', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      const button = screen.getByTestId('trigger-update-partial')
-      button.click()
-
-      expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([{ id: '3', name: 'var2' }])
-      expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
+  expect(store.getState()).toMatchObject({ ragPipelineVariables: [], environmentVariables })
+  act(() => {
+    store.getState().setRagPipelineVariables?.(fields)
+    eventEmitter.emit({
+      type: WORKFLOW_DATA_UPDATE,
+      payload: { nodes, edges: [], environment_variables: [] },
     })
   })
+  expect(store.getState()).toMatchObject({ ragPipelineVariables: fields, environmentVariables: [] })
+})
 
-  describe('hooks integration', () => {
-    it('should use useNodesSyncDraft hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
+it('closes the real import dialog and clears its open state', async () => {
+  const user = userEvent.setup()
+  const { store } = renderMain()
+  act(() => store.getState().setShowImportDSLModal(true))
+  expect(
+    await screen.findByRole('dialog', { name: 'workflow.common.importDSL' }),
+  ).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(store.getState().showImportDSLModal).toBe(false)
+})
 
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should use usePipelineRefreshDraft hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should use usePipelineRun hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should use usePipelineStartRun hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should use useAvailableNodesMetaData hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should use useGetRunAndTraceUrl hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should use useDSL hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should use useConfigsMap hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should use useInspectVarsCrud hook', () => {
-      render(<RagPipelineMain {...defaultProps} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-  })
-
-  describe('edge cases', () => {
-    it('should handle empty nodes array', () => {
-      render(<RagPipelineMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should handle empty edges array', () => {
-      render(<RagPipelineMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-
-    it('should handle default viewport', () => {
-      render(<RagPipelineMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-      expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    })
-  })
+it('exports the pipeline with secrets only after confirmation and downloads the response', async () => {
+  const user = userEvent.setup()
+  const downloads = captureDownloads()
+  const { eventEmitter } = renderMain()
+  act(() =>
+    eventEmitter.emit({
+      type: DSL_EXPORT_CHECK,
+      payload: { data: [{ name: 'API_KEY', value: 'masked' }] },
+    }),
+  )
+  expect(screen.getByRole('alertdialog')).toHaveTextContent('API_KEY')
+  expect(api.exportPipeline).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('checkbox'))
+  await user.click(screen.getByRole('button', { name: 'workflow.env.export.export' }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(api.exportPipeline).toHaveBeenCalledExactlyOnceWith(
+    { params: { pipeline_id: 'pipeline-1' }, query: { include_secret: 'true' } },
+    { context: { silent: true } },
+  )
+  expect(downloads).toHaveLength(1)
+  expect(downloads[0]!.filename).toBe('Documentation.pipeline')
+  expect(await downloads[0]!.blob.text()).toBe('kind: rag_pipeline')
 })

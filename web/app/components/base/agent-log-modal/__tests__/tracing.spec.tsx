@@ -1,11 +1,8 @@
 import type { AgentIterationLogResponse } from '@dify/contracts/api/console/apps/types.gen'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import TracingPanel from '../tracing'
-
-vi.mock('@/app/components/workflow/block-icon', () => ({
-  default: () => <div data-testid="block-icon" />,
-}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
@@ -43,15 +40,28 @@ const mockList: AgentIterationLogResponse[] = [
 ]
 
 describe('TracingPanel', () => {
-  it('should render all iterations in the list', () => {
+  it('keeps iterations in order and identifies only the last thought as the final answer', async () => {
+    const user = userEvent.setup()
     render(<TracingPanel list={mockList} />)
 
+    expect(screen.getAllByText(/ITERATION/i).map((element) => element.textContent)).toEqual([
+      'APPLOG.AGENTLOGDETAIL.ITERATION 1',
+      'APPLOG.AGENTLOGDETAIL.ITERATION 2',
+    ])
     expect(screen.getByText(/finalProcessing/i)).toBeInTheDocument()
-    expect(screen.getAllByText(/ITERATION/i).length).toBe(2)
-  })
 
-  it('should render empty list correctly', () => {
-    const { container } = render(<TracingPanel list={[]} />)
-    expect(container.querySelector('.bg-background-section')?.children.length).toBe(0)
+    for (const llm of screen.getAllByText('LLM')) await user.click(llm)
+
+    const editors = screen
+      .getAllByTestId('code-editor')
+      .filter((editor) => /Thought \d/.test(editor.textContent ?? ''))
+    expect(editors.map((editor) => editor.textContent)).toEqual([
+      'THOUGHTThought 1',
+      'THOUGHTThought 2',
+      'FINAL ANSWERThought 3',
+    ])
+    expect(within(editors[2]!).getByText('FINAL ANSWER')).toBeInTheDocument()
+    expect(screen.getAllByText('THOUGHT')).toHaveLength(2)
+    expect(screen.getByText('FINAL ANSWER')).toBeInTheDocument()
   })
 })

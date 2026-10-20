@@ -1,97 +1,28 @@
-import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { render, screen } from '@testing-library/react'
-import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { ChunkingMode, DataSourceType } from '@/models/datasets'
-import { PermissionLevel } from '@/models/permission'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
-import { RETRIEVE_METHOD } from '@/types/app'
 import DatasetCardHeader from '../dataset-card-header'
-
-vi.mock('@/hooks/use-knowledge', () => ({
-  useKnowledge: () => ({
-    formatIndexingTechniqueAndMethod: () => 'High Quality',
-  }),
-}))
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return {
-    useTranslation: () => ({
-      t: withSelectorKey((key: string, options?: { ns?: string }) =>
-        options?.ns ? `${options.ns}.${key}` : key,
-      ),
-    }),
-  }
-})
-
-const createDataset = (
-  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
-): DatasetDetailWithPartialMembersResponse => ({
-  ...createDatasetFixture(),
-  id: 'dataset-1',
-  name: 'Test Dataset',
-  description: 'Test description',
-  provider: 'vendor',
-  permission: PermissionLevel.allTeamMembers,
-  data_source_type: DataSourceType.FILE,
-  indexing_technique: IndexingType.QUALIFIED,
-  embedding_available: true,
-  app_count: 5,
-  document_count: 10,
-  word_count: 1000,
-  updated_at: 1609545600,
-  updated_by: 'user-1',
-  tags: [],
-  embedding_model: 'text-embedding-ada-002',
-  embedding_model_provider: 'openai',
-  created_by: 'user-1',
-  doc_form: ChunkingMode.text,
-  runtime_mode: 'general',
-  is_published: true,
-  enable_api: true,
-  is_multimodal: false,
-  built_in_field_enabled: false,
-  icon_info: {
-    icon: '📙',
-    icon_type: 'emoji' as const,
-    icon_background: '#FFF4ED',
-    icon_url: '',
-  },
-  retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-  } as DatasetDetailWithPartialMembersResponse['retrieval_model_dict'],
-  external_knowledge_info: {
-    external_knowledge_id: '',
-    external_knowledge_api_id: '',
-    external_knowledge_api_name: '',
-    external_knowledge_api_endpoint: '',
-  },
-  external_retrieval_model: {
-    top_k: 3,
-    score_threshold: 0.5,
-    score_threshold_enabled: false,
-  },
-  author_name: 'Test User',
-  ...overrides,
-})
 
 describe('DatasetCardHeader', () => {
   it('shows the dataset name and indexing mode', () => {
-    render(<DatasetCardHeader dataset={createDataset({ name: 'Product docs' })} />)
+    render(<DatasetCardHeader dataset={createDatasetFixture({ name: 'Product docs' })} />)
 
     expect(screen.getByText('Product docs')).toBeInTheDocument()
     expect(screen.getByText('dataset.chunkingMode.general')).toBeInTheDocument()
-    expect(screen.getByText('High Quality')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'dataset.indexingTechnique.high_quality · dataset.indexingMethod.semantic_search',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('identifies an external knowledge base', () => {
-    render(<DatasetCardHeader dataset={createDataset({ provider: 'external' })} />)
+    render(<DatasetCardHeader dataset={createDatasetFixture({ provider: 'external' })} />)
 
     expect(screen.getByText('dataset.externalKnowledgeBase')).toBeInTheDocument()
   })
 
   it('identifies a multimodal dataset', () => {
-    render(<DatasetCardHeader dataset={createDataset({ is_multimodal: true })} />)
+    render(<DatasetCardHeader dataset={createDatasetFixture({ is_multimodal: true })} />)
 
     expect(screen.getByText('dataset.multimodal')).toBeInTheDocument()
   })
@@ -99,7 +30,7 @@ describe('DatasetCardHeader', () => {
   it('hides indexing details for an unpublished pipeline', () => {
     render(
       <DatasetCardHeader
-        dataset={createDataset({
+        dataset={createDatasetFixture({
           runtime_mode: 'rag_pipeline',
           is_published: false,
         })}
@@ -107,6 +38,10 @@ describe('DatasetCardHeader', () => {
     )
 
     expect(screen.getByText('dataset.cornerLabel.pipeline')).toBeInTheDocument()
-    expect(screen.queryByText('High Quality')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(
+        'dataset.indexingTechnique.high_quality · dataset.indexingMethod.semantic_search',
+      ),
+    ).not.toBeInTheDocument()
   })
 })

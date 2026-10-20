@@ -98,7 +98,7 @@ class TestGitHubOAuth(BaseOAuthTest):
         mock_post.return_value = httpx.Response(200, json=response_data)
 
         if should_raise:
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(ValueError, match="Error in GitHub OAuth: \\{\\}") as exc_info:
                 oauth.get_access_token("test_code")
             assert "Error in GitHub OAuth" in str(exc_info.value)
         else:
@@ -301,7 +301,7 @@ class TestGoogleOAuth(BaseOAuthTest):
         mock_post.return_value = httpx.Response(200, json=response_data)
 
         if should_raise:
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(ValueError, match="Error in Google OAuth: \\{\\}") as exc_info:
                 oauth.get_access_token("test_code")
             assert "Error in Google OAuth" in str(exc_info.value)
         else:

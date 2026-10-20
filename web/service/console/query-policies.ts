@@ -11,6 +11,11 @@ import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
+import {
+  legacyWorkflowVersionHistoryKey,
+  syncAppWorkflowVersionCaches,
+  syncWorkflowDeploymentCaches,
+} from './workflow-version-cache'
 
 export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
@@ -80,7 +85,142 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           datasource: {
             list: { get: { queryOptions: { retry: false } } },
             defaultList: { get: { queryOptions: { retry: false } } },
-            byProviderId: { get: { queryOptions: { retry: false } } },
+            byProviderId: {
+              post: {
+                mutationOptions: {
+                  onSuccess: (_data, variables, _result, context) =>
+                    Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.auth.plugin.datasource.byProviderId.get.key({
+                          input: { params: { provider_id: variables.params.provider_id } },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.auth.plugin.datasource.list.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.auth.plugin.datasource.defaultList.get.key(),
+                      }),
+                    ]),
+                },
+              },
+              update: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, variables, _result, context) =>
+                      Promise.all([
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.auth.plugin.datasource.byProviderId.get.key({
+                            input: { params: { provider_id: variables.params.provider_id } },
+                          }),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.auth.plugin.datasource.list.get.key(),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.auth.plugin.datasource.defaultList.get.key(),
+                        }),
+                      ]),
+                  },
+                },
+              },
+              customClient: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, variables, _result, context) =>
+                      Promise.all([
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.auth.plugin.datasource.byProviderId.get.key({
+                            input: { params: { provider_id: variables.params.provider_id } },
+                          }),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.auth.plugin.datasource.list.get.key(),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.auth.plugin.datasource.defaultList.get.key(),
+                        }),
+                      ]),
+                  },
+                },
+                delete: {
+                  mutationOptions: {
+                    onSuccess: (_data, variables, _result, context) =>
+                      Promise.all([
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.auth.plugin.datasource.byProviderId.get.key({
+                            input: { params: { provider_id: variables.params.provider_id } },
+                          }),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.auth.plugin.datasource.list.get.key(),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.auth.plugin.datasource.defaultList.get.key(),
+                        }),
+                      ]),
+                  },
+                },
+              },
+              get: { queryOptions: { retry: false } },
+              default: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, variables, _result, context) =>
+                      Promise.all([
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.auth.plugin.datasource.byProviderId.get.key({
+                            input: { params: { provider_id: variables.params.provider_id } },
+                          }),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.auth.plugin.datasource.list.get.key(),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.auth.plugin.datasource.defaultList.get.key(),
+                        }),
+                      ]),
+                  },
+                },
+              },
+              delete: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, variables, _result, context) =>
+                      Promise.all([
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.auth.plugin.datasource.byProviderId.get.key({
+                            input: { params: { provider_id: variables.params.provider_id } },
+                          }),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.auth.plugin.datasource.list.get.key(),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.auth.plugin.datasource.defaultList.get.key(),
+                        }),
+                      ]),
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      notion: {
+        pages: {
+          byPageId: {
+            byPageType: {
+              preview: {
+                get: {
+                  queryOptions: {
+                    context: { silent: true },
+                    retry: false,
+                    staleTime: 0,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -104,7 +244,81 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             },
           },
           byPipelineId: {
+            workflowRuns: {
+              tasks: {
+                byTaskId: {
+                  stop: {
+                    post: {
+                      mutationOptions: {
+                        // A failed response can still follow an accepted stop request.
+                        onSettled: (_data, _error, variables, _result, context) => {
+                          return context.client.invalidateQueries({
+                            queryKey: consoleQuery.rag.pipelines.byPipelineId.workflowRuns.key({
+                              input: { params: { pipeline_id: variables.params.pipeline_id } },
+                            }),
+                          })
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
             workflows: {
+              publish: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, variables, _result, context) =>
+                      Promise.all([
+                        context.client.invalidateQueries({
+                          queryKey:
+                            consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.key({
+                              input: { params: variables.params },
+                            }),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
+                            input: { params: variables.params },
+                          }),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: legacyWorkflowVersionHistoryKey,
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.datasets.get.key(),
+                        }),
+                      ]),
+                  },
+                },
+              },
+              byWorkflowId: {
+                patch: {
+                  mutationOptions: {
+                    onSuccess: (_data, variables, _result, context) => {
+                      return Promise.all([
+                        context.client.invalidateQueries({
+                          queryKey: legacyWorkflowVersionHistoryKey,
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
+                            input: { params: { pipeline_id: variables.params.pipeline_id } },
+                          }),
+                        }),
+                      ])
+                    },
+                  },
+                },
+                delete: {
+                  mutationOptions: {
+                    onSuccess: (_data, variables, _result, context) =>
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
+                          input: { params: { pipeline_id: variables.params.pipeline_id } },
+                        }),
+                      }),
+                  },
+                },
+              },
               draft: {
                 processing: { parameters: { get: { queryOptions: { staleTime: 0 } } } },
                 preProcessing: { parameters: { get: { queryOptions: { staleTime: 0 } } } },
@@ -119,6 +333,178 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       },
       workspaces: {
         current: {
+          toolProvider: {
+            builtin: {
+              byProvider: {
+                add: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, variables, _result, context) =>
+                        Promise.all([
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.info.get.key(
+                                { input: { params: { provider: variables.params.provider } } },
+                              ),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credentials.get.key(
+                                { input: { params: { provider: variables.params.provider } } },
+                              ),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.workspaces.current.tools.builtin.get.key(),
+                          }),
+                        ]),
+                    },
+                  },
+                },
+                update: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, variables, _result, context) =>
+                        Promise.all([
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.info.get.key(
+                                { input: { params: { provider: variables.params.provider } } },
+                              ),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credentials.get.key(
+                                { input: { params: { provider: variables.params.provider } } },
+                              ),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.workspaces.current.tools.builtin.get.key(),
+                          }),
+                        ]),
+                    },
+                  },
+                },
+                oauth: {
+                  customClient: {
+                    post: {
+                      mutationOptions: {
+                        onSuccess: (_data, variables, _result, context) =>
+                          Promise.all([
+                            context.client.invalidateQueries({
+                              queryKey:
+                                consoleQuery.workspaces.current.toolProvider.builtin.byProvider.oauth.clientSchema.get.key(
+                                  { input: { params: { provider: variables.params.provider } } },
+                                ),
+                            }),
+                            context.client.invalidateQueries({
+                              queryKey:
+                                consoleQuery.workspaces.current.toolProvider.builtin.byProvider.oauth.customClient.get.key(
+                                  { input: { params: { provider: variables.params.provider } } },
+                                ),
+                            }),
+                          ]),
+                      },
+                    },
+                    delete: {
+                      mutationOptions: {
+                        onSuccess: (_data, variables, _result, context) =>
+                          Promise.all([
+                            context.client.invalidateQueries({
+                              queryKey:
+                                consoleQuery.workspaces.current.toolProvider.builtin.byProvider.oauth.clientSchema.get.key(
+                                  { input: { params: { provider: variables.params.provider } } },
+                                ),
+                            }),
+                            context.client.invalidateQueries({
+                              queryKey:
+                                consoleQuery.workspaces.current.toolProvider.builtin.byProvider.oauth.customClient.get.key(
+                                  { input: { params: { provider: variables.params.provider } } },
+                                ),
+                            }),
+                          ]),
+                      },
+                    },
+                  },
+                },
+                defaultCredential: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, variables, _result, context) =>
+                        Promise.all([
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.info.get.key(
+                                { input: { params: { provider: variables.params.provider } } },
+                              ),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credentials.get.key(
+                                { input: { params: { provider: variables.params.provider } } },
+                              ),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.workspaces.current.tools.builtin.get.key(),
+                          }),
+                        ]),
+                    },
+                  },
+                },
+                delete: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, variables, _result, context) =>
+                        Promise.all([
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.info.get.key(
+                                { input: { params: { provider: variables.params.provider } } },
+                              ),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credentials.get.key(
+                                { input: { params: { provider: variables.params.provider } } },
+                              ),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.workspaces.current.tools.builtin.get.key(),
+                          }),
+                        ]),
+                    },
+                  },
+                },
+              },
+            },
+          },
+          networkAccessGroups: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, _variables, _result, context) => {
+                  if (error) return
+                  return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+                },
+              },
+            },
+            byGroupId: {
+              put: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+                  },
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+                  },
+                },
+              },
+            },
+          },
           plugin: {
             readme: {
               get: {
@@ -548,6 +934,33 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
         byAppId: {
+          workflowRuns: {
+            tasks: {
+              byTaskId: {
+                stop: {
+                  post: {
+                    mutationOptions: {
+                      // A failed response can still follow an accepted stop request.
+                      onSettled: (_data, _error, variables, _result, context) => {
+                        return Promise.all([
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.apps.byAppId.workflowRuns.key({
+                              input: { params: { app_id: variables.params.app_id } },
+                            }),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.apps.byAppId.advancedChat.workflowRuns.key({
+                              input: { params: { app_id: variables.params.app_id } },
+                            }),
+                          }),
+                        ])
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           trace: {
             post: {
               mutationOptions: {
@@ -610,6 +1023,16 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             },
           },
           // Shared invalidation uses onSettled so feature-owned onSuccess callbacks can coexist.
+          networkAccessGroup: {
+            put: {
+              mutationOptions: {
+                onSettled: (_data, error, _variables, _result, context) => {
+                  if (error) return
+                  return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+                },
+              },
+            },
+          },
           apiEnable: {
             post: {
               mutationOptions: {
@@ -803,6 +1226,79 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             },
           },
           workflows: {
+            publish: {
+              post: {
+                mutationOptions: {
+                  onSuccess: (_data, variables, _result, context) =>
+                    Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.apps.byAppId.workflows.publish.get.key({
+                          input: { params: variables.params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.apps.byAppId.workflows.get.key({
+                          input: { params: variables.params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: legacyWorkflowVersionHistoryKey,
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.apps.byAppId.get.key({
+                          input: { params: variables.params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.apps.byAppId.triggers.get.key({
+                          input: { params: variables.params },
+                        }),
+                      }),
+                    ]),
+                },
+              },
+            },
+            byWorkflowId: {
+              patch: {
+                mutationOptions: {
+                  onSuccess: (data, variables, _result, context) => {
+                    syncAppWorkflowVersionCaches(
+                      context.client,
+                      consoleQuery,
+                      variables.params.app_id,
+                      data,
+                    )
+                    const deploymentsKey = syncWorkflowDeploymentCaches(
+                      context.client,
+                      consoleQuery,
+                      variables.params.app_id,
+                      data,
+                    )
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: legacyWorkflowVersionHistoryKey,
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.apps.byAppId.workflows.get.key({
+                          input: { params: { app_id: variables.params.app_id } },
+                        }),
+                      }),
+                      context.client.invalidateQueries({ queryKey: deploymentsKey }),
+                    ])
+                  },
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSuccess: (_data, variables, _result, context) =>
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.workflows.get.key({
+                        input: { params: { app_id: variables.params.app_id } },
+                      }),
+                    }),
+                },
+              },
+            },
             draft: {
               nodes: {
                 byNodeId: {
@@ -1073,7 +1569,55 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       },
       snippets: {
         bySnippetId: {
+          workflowRuns: {
+            tasks: {
+              byTaskId: {
+                stop: {
+                  post: {
+                    mutationOptions: {
+                      // A failed response can still follow an accepted stop request.
+                      onSettled: (_data, _error, variables, _result, context) => {
+                        return context.client.invalidateQueries({
+                          queryKey: consoleQuery.snippets.bySnippetId.workflowRuns.key({
+                            input: { params: { snippet_id: variables.params.snippet_id } },
+                          }),
+                        })
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           workflows: {
+            byWorkflowId: {
+              patch: {
+                mutationOptions: {
+                  onSuccess: (_data, variables, _result, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: legacyWorkflowVersionHistoryKey,
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.snippets.bySnippetId.workflows.get.key({
+                          input: { params: { snippet_id: variables.params.snippet_id } },
+                        }),
+                      }),
+                    ])
+                  },
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSuccess: (_data, variables, _result, context) =>
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.snippets.bySnippetId.workflows.get.key({
+                        input: { params: { snippet_id: variables.params.snippet_id } },
+                      }),
+                    }),
+                },
+              },
+            },
             draft: {
               nodes: {
                 byNodeId: {
@@ -1884,6 +2428,17 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
 
 function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })))
+}
+
+function invalidateNetworkAccessGroupQueries(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+) {
+  return invalidateQueryKeys(client, [
+    query.workspaces.current.networkAccessGroups.get.key(),
+    query.workspaces.current.networkAccessGroups.byGroupId.key(),
+    query.apps.byAppId.networkAccessGroup.key(),
+  ])
 }
 
 function invalidateAccessPolicyQueries(query: RouterUtils<ConsoleClient>, client: QueryClient) {

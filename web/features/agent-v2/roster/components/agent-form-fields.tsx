@@ -1,6 +1,7 @@
 import type { Ref } from 'react'
 import type { AgentFormValues, AgentIconSelection } from './agent-form'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
+import { DialogBody } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -31,7 +32,7 @@ export function AgentFormFields({
   const { t: tCommon } = useTranslation(['common'])
 
   return (
-    <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-6 py-3">
+    <DialogBody className="space-y-5">
       <div className="flex items-start gap-4">
         <IconPicker value={icon} onValueChange={onIconChange}>
           <IconPickerTrigger aria-label={iconAriaLabel} className="shrink-0 rounded-full">
@@ -99,6 +100,6 @@ export function AgentFormFields({
           })}
         />
       </Field>
-    </div>
+    </DialogBody>
   )
 }
