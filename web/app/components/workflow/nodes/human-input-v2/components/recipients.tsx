@@ -1,5 +1,6 @@
 'use client'
 
+import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type { ContactRecipientOption, ContactRecipientOptionProvider } from '../contact-provider'
 import type { HumanInputV2RecipientType } from '../recipient-utils'
 import type { HumanInputV2Recipient } from '../types'
@@ -66,6 +67,10 @@ const recipientTypes: HumanInputV2RecipientType[] = [
 
 const contactSourceFilters: ContactSourceFilter[] = ['all', 'workspace', 'organization', 'external']
 
+const selectIMBindingCentrallyManaged = (features: GetFeaturesResponse) =>
+  // Older feature contracts omit this capability; only an explicit backend true enables it.
+  'im_binding_centrally_managed' in features && features.im_binding_centrally_managed === true
+
 const cloneRecipient = (recipient: HumanInputV2Recipient): HumanInputV2Recipient => {
   if (recipient.type === 'dynamic_email') return { ...recipient, selector: [...recipient.selector] }
   return { ...recipient }
@@ -86,6 +91,18 @@ const RecipientsContent = ({
   const [query, setQuery] = useState('')
   const [options, setOptions] = useState<ContactRecipientOption[]>([])
   const [sourceFilter, setSourceFilter] = useState<ContactSourceFilter>('all')
+  const centrallyManagedQuery = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: selectIMBindingCentrallyManaged,
+      retry: false,
+    }),
+  )
+  const centrallyManaged = centrallyManagedQuery.isSuccess && centrallyManagedQuery.data === true
+  const availableSourceFilters = contactSourceFilters.filter(
+    (filter) => filter !== 'organization' || centrallyManaged,
+  )
+  const activeSourceFilter =
+    sourceFilter === 'organization' && !centrallyManaged ? 'all' : sourceFilter
   const [resolvedOptions, setResolvedOptions] = useState<ContactRecipientOption[]>([])
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState(false)
@@ -112,8 +129,10 @@ const RecipientsContent = ({
   )
   const visibleOptions = useMemo(
     () =>
-      sourceFilter === 'all' ? options : options.filter((option) => option.source === sourceFilter),
-    [options, sourceFilter],
+      activeSourceFilter === 'all'
+        ? options
+        : options.filter((option) => option.source === activeSourceFilter),
+    [options, activeSourceFilter],
   )
   const recipientRows = useMemo(() => {
     const occurrences = new Map<string, number>()
@@ -204,7 +223,7 @@ const RecipientsContent = ({
     // selected source has a result, or the server confirms that no later page exists.
     if (
       !open ||
-      sourceFilter === 'all' ||
+      activeSourceFilter === 'all' ||
       visibleOptions.length > 0 ||
       !hasMore ||
       loading ||
@@ -222,7 +241,7 @@ const RecipientsContent = ({
     loadingMore,
     open,
     searchPage,
-    sourceFilter,
+    activeSourceFilter,
     visibleOptions.length,
   ])
 
@@ -742,15 +761,16 @@ const RecipientsContent = ({
                     ns: 'workflow',
                   })}
                 >
-                  {contactSourceFilters.map((filter) => (
+                  {availableSourceFilters.map((filter) => (
                     <button
                       key={filter}
                       type="button"
                       role="tab"
-                      aria-selected={sourceFilter === filter}
+                      aria-selected={activeSourceFilter === filter}
                       className={cn(
                         'shrink-0 rounded-md border-0 bg-transparent px-2 py-1 system-xs-medium text-text-tertiary focus-visible:ring-1 focus-visible:ring-state-accent-solid',
-                        sourceFilter === filter && 'bg-state-base-hover-alt text-text-primary',
+                        activeSourceFilter === filter &&
+                          'bg-state-base-hover-alt text-text-primary',
                       )}
                       onClick={() => setSourceFilter(filter)}
                     >
@@ -865,10 +885,10 @@ const RecipientsContent = ({
                       {t(($) => $['common.loadMore'], { ns: 'workflow' })}
                     </Button>
                   )}
-                  {(sourceFilter === 'all' || sourceFilter === 'workspace') && (
+                  {(activeSourceFilter === 'all' || activeSourceFilter === 'workspace') && (
                     <div className="my-1 h-px bg-divider-subtle" />
                   )}
-                  {sourceFilter === 'all' && (
+                  {activeSourceFilter === 'all' && (
                     <button
                       type="button"
                       aria-label={t(($) => $['nodes.humanInputV2.recipients.type.initiator'], {
@@ -895,7 +915,7 @@ const RecipientsContent = ({
                       </span>
                     </button>
                   )}
-                  {(sourceFilter === 'all' || sourceFilter === 'workspace') && (
+                  {(activeSourceFilter === 'all' || activeSourceFilter === 'workspace') && (
                     <button
                       type="button"
                       aria-label={t(

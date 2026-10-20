@@ -1,24 +1,35 @@
+import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type {
   CurrentWorkspaceSummaryResponse,
   ListContactOptionsResponse,
   ListContactsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import type { ContactRecipientOption, ContactRecipientOptionProvider } from '../contact-provider'
 import type { HumanInputV2Recipient } from '../types'
 import type { Node } from '@/app/components/workflow/types'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render as renderComponent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useState } from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
+import { createTestQueryClient } from '@/test/query-client'
 import Recipients from '../components/recipients'
 
 const runtimeApi = vi.hoisted(() => ({
+  features: vi.fn<() => Promise<GetFeaturesResponse>>(),
   summary: vi.fn<() => Promise<CurrentWorkspaceSummaryResponse>>(),
   contacts:
     vi.fn<
@@ -33,6 +44,7 @@ vi.mock('@/service/console', async () => {
   const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
   return {
     consoleQuery: createTanstackQueryUtils({
+      features: { get: runtimeApi.features },
       workspaces: {
         current: {
           summary: { get: runtimeApi.summary },
@@ -73,6 +85,18 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
     )
   },
 }))
+
+const createFeaturesFixture = (centrallyManaged?: boolean): GetFeaturesResponse => ({
+  ...zGetFeaturesResponse.parse({}),
+  ...(centrallyManaged === undefined ? {} : { im_binding_centrally_managed: centrallyManaged }),
+})
+
+const render = (ui: ReactElement, queryClient = createTestQueryClient()) =>
+  renderComponent(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  })
 
 const contact: ContactRecipientOption = {
   id: 'contact-evan',
@@ -128,8 +152,171 @@ const Harness = ({
 describe('Human Input v2 Recipients', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    runtimeApi.features.mockReset().mockResolvedValue(createFeaturesFixture(true))
     runtimeApi.contacts.mockResolvedValue({ data: [], total: 7, page: 1, limit: 1 })
     runtimeApi.options.mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 })
+  })
+
+  it('shows the enterprise platform tab when workspace features explicitly enable centrally managed IM bindings', async () => {
+    const user = userEvent.setup()
+    render(<Harness />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+
+    expect(await screen.findByRole('tab', { name: 'contacts.type.platform' })).toBeInTheDocument()
+    expect(runtimeApi.features).toHaveBeenCalledOnce()
+  })
+
+  it.each([false, undefined])(
+    'hides the enterprise platform tab when centrally managed IM bindings are %s and keeps the other sources usable',
+    async (centrallyManaged) => {
+      const user = userEvent.setup()
+      runtimeApi.features.mockResolvedValue(createFeaturesFixture(centrallyManaged))
+      const externalContact: ContactRecipientOption = {
+        id: 'external-contact',
+        name: 'External Reviewer',
+        email: 'external@example.com',
+        source: 'external',
+      }
+      render(
+        <Harness
+          optionProvider={provider({
+            search: vi.fn(async () => [contact, organizationContact, externalContact]),
+          })}
+        />,
+      )
+
+      await user.click(
+        screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+      )
+      await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+      expect(screen.queryByRole('tab', { name: 'contacts.type.platform' })).not.toBeInTheDocument()
+      expect(screen.getAllByRole('tab')).toHaveLength(3)
+      expect(
+        screen.getByRole('tab', {
+          name: 'workflow.nodes.humanInputV2.recipients.contactSource.all',
+        }),
+      ).toHaveAttribute('aria-selected', 'true')
+
+      await user.click(
+        screen.getByRole('tab', {
+          name: 'workflow.nodes.humanInputV2.recipients.contactSource.workspace',
+        }),
+      )
+      expect(
+        screen.getByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'External Reviewer · external@example.com' }),
+      ).not.toBeInTheDocument()
+      await user.click(
+        screen.getByRole('tab', {
+          name: 'workflow.nodes.humanInputV2.recipients.contactSource.external',
+        }),
+      )
+      expect(
+        screen.getByRole('button', { name: 'External Reviewer · external@example.com' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+      ).not.toBeInTheDocument()
+    },
+  )
+
+  it('keeps the enterprise platform tab hidden until the workspace feature request succeeds', async () => {
+    const user = userEvent.setup()
+    let finishFeatures: (features: GetFeaturesResponse) => void = () => undefined
+    runtimeApi.features.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishFeatures = resolve
+        }),
+    )
+    render(<Harness />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+    expect(screen.queryByRole('tab', { name: 'contacts.type.platform' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('tab')).toHaveLength(3)
+
+    await act(async () => {
+      finishFeatures(createFeaturesFixture(true))
+    })
+    expect(await screen.findByRole('tab', { name: 'contacts.type.platform' })).toBeInTheDocument()
+  })
+
+  it('keeps the enterprise platform tab hidden when the workspace feature request fails', async () => {
+    const user = userEvent.setup()
+    const queryClient = createTestQueryClient()
+    runtimeApi.features.mockRejectedValue(new Error('Features unavailable'))
+    render(<Harness />, queryClient)
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    await waitFor(() =>
+      expect(queryClient.getQueryState(consoleQuery.features.get.queryKey())?.status).toBe('error'),
+    )
+
+    expect(screen.queryByRole('tab', { name: 'contacts.type.platform' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('tab')).toHaveLength(3)
+    expect(
+      await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).toBeInTheDocument()
+  })
+
+  it('returns to all sources when centrally managed IM bindings are disabled without changing recipients', async () => {
+    const user = userEvent.setup()
+    const queryClient = createTestQueryClient()
+    const observe = vi.fn()
+    render(
+      <Harness
+        initial={[{ type: 'contact', contact_id: organizationContact.id }]}
+        observe={observe}
+        optionProvider={provider({
+          search: vi.fn(async () => [contact, organizationContact]),
+          resolve: vi.fn(async () => [organizationContact]),
+        })}
+      />,
+      queryClient,
+    )
+    const recipientLabel = await screen.findByRole('button', {
+      name: 'Amanda Lin · amanda@example.com',
+    })
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    await user.click(await screen.findByRole('tab', { name: 'contacts.type.platform' }))
+    expect(screen.getByRole('tab', { name: 'contacts.type.platform' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(
+      screen.queryByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).not.toBeInTheDocument()
+
+    runtimeApi.features.mockResolvedValue(createFeaturesFixture(false))
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
+    })
+
+    await waitFor(() =>
+      expect(screen.queryByRole('tab', { name: 'contacts.type.platform' })).not.toBeInTheDocument(),
+    )
+    expect(
+      screen.getByRole('tab', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSource.all',
+      }),
+    ).toHaveAttribute('aria-selected', 'true')
+    expect(
+      screen.getByRole('button', { name: 'Evan Zhang · evan@example.com' }),
+    ).toBeInTheDocument()
+    expect(recipientLabel).toBeInTheDocument()
+    expect(observe).not.toHaveBeenCalled()
   })
 
   it('searches and selects real contacts directly from the main recipient input', async () => {
