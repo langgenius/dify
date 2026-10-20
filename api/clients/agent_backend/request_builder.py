@@ -138,7 +138,8 @@ _AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS = (
     "frequency_penalty",
     "max_tokens",
 )
-_AGENT_MODEL_SETTINGS_KNOWN_KEYS = frozenset({*_AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS, "stop", "response_format"})
+# response_format uses extra_body so both plugin strings and saved native objects reach the plugin unchanged.
+_AGENT_MODEL_SETTINGS_KNOWN_KEYS = frozenset({*_AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS, "stop"})
 
 
 def _agent_model_settings(settings: Mapping[str, JsonValue]) -> dict[str, JsonValue] | None:
