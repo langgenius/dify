@@ -30,9 +30,14 @@ class AppApiKeyNotReadyError(Exception):
 
 
 class AppApiKeyService:
-    def __init__(self, *, keys: AppApiKeyStore, cache: ApiKeyCache) -> None:
+    def __init__(self, *, keys: AppApiKeyStore, cache: ApiKeyCache, max_keys: int) -> None:
         self._keys = keys
         self._cache = cache
+        self._max_keys = max_keys
+
+    @property
+    def max_keys(self) -> int:
+        return self._max_keys
 
     def list_keys(self, context: RequestContext, app_id: str) -> tuple[ApiKeyRecord, ...]:
         return self._keys.list_keys(context.active_workspace_id, app_id)
@@ -41,7 +46,7 @@ class AppApiKeyService:
         access = self._keys.get_access_state(context.active_workspace_id, app_id)
         if access.is_agent_app and not access.has_published_snapshot:
             raise AppApiKeyNotReadyError
-        return self._keys.create_key(context.active_workspace_id, app_id, max_keys=10, prefix="app-")
+        return self._keys.create_key(context.active_workspace_id, app_id, max_keys=self.max_keys, prefix="app-")
 
     def delete_key(self, context: RequestContext, app_id: str, key_id: str) -> None:
         key = self._keys.delete_key(context.active_workspace_id, app_id, key_id)

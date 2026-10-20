@@ -23,7 +23,7 @@ export function seedAccessPointQueries(
     consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
       input: { params: { resource_id: appId } },
     }),
-    { data: [] },
+    { data: [], max_keys: 10 },
   )
   for (const environmentId of environments) {
     const input = { params: { ...params, environment_id: environmentId } }

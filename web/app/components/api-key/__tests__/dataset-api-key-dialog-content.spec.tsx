@@ -21,7 +21,7 @@ vi.mock('@/service/console/browser', () => ({
     call: async (path: string[], input: unknown) => {
       switch (path.join('.')) {
         case 'datasets.apiKeys.get':
-          return { data: apiMocks.datasetKeys }
+          return { data: apiMocks.datasetKeys, max_keys: 10 }
         case 'datasets.apiKeys.post':
           apiMocks.createDataset(input)
           return { id: 'new-key', token: 'new-dataset-token-123', type: 'dataset', created_at: 2 }

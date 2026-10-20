@@ -161,3 +161,63 @@ def test_rbac_admitted_request_uses_rbac_instead_of_community_acl(
     config_overrides(RBAC_ENABLED=True)
     key = service.create_key(RequestContext("request", None, "rbac-actor", "tenant"), "dataset")
     assert key.dataset_ids == ("dataset",)
+
+
+@pytest.mark.usefixtures("service")
+@pytest.mark.parametrize("limit", [3, 1000])
+def test_dataset_entrypoint_thresholds_share_count(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+    limit: int,
+) -> None:
+    from services.auth.api_key_contracts import ApiKeyLimitExceededError
+
+    config_overrides(DATASET_API_KEY_MAX_KEYS_PER_WORKSPACE=limit)
+    access = build_dataset_dependencies(
+        database_client=sqlite_session_factory,
+        workspace_roles=WorkspaceRepository(session_factory=sqlite_session_factory),
+    ).access
+    configured = build_dataset_api_key_service(database_client=sqlite_session_factory, dataset_access=access)
+    sqlite_session.add(Dataset(id="second", tenant_id="tenant", name="Second", created_by="actor"))
+    sqlite_session.commit()
+    context = RequestContext("request", None, "actor", "tenant")
+    for ids in ((), ("dataset",), ("dataset", "second")):
+        configured.create_workspace_key(context, ids)
+    assert len(configured.list_workspace_keys(context)) == 3
+    if limit == 3:
+        with pytest.raises(ApiKeyLimitExceededError):
+            configured.create_workspace_key(context, ())
+    for _ in range(7):
+        configured.create_key(context, "dataset")
+    with pytest.raises(ApiKeyLimitExceededError):
+        configured.create_key(context, "dataset")
+    if limit == 1000:
+        configured.create_workspace_key(context, ())
+        assert len(configured.list_workspace_keys(context)) == 11
+
+
+def test_lowered_workspace_limit_preserves_keys_until_deleted(
+    service: DatasetApiKeyService,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from services.auth.api_key_contracts import ApiKeyLimitExceededError
+
+    context = RequestContext("request", None, "actor", "tenant")
+    keys = [service.create_workspace_key(context, ()) for _ in range(3)]
+    config_overrides(DATASET_API_KEY_MAX_KEYS_PER_WORKSPACE=2)
+    access = build_dataset_dependencies(
+        database_client=sqlite_session_factory,
+        workspace_roles=WorkspaceRepository(session_factory=sqlite_session_factory),
+    ).access
+    lowered = build_dataset_api_key_service(database_client=sqlite_session_factory, dataset_access=access)
+    assert set(lowered.list_workspace_keys(context)) == set(keys)
+    with pytest.raises(ApiKeyLimitExceededError):
+        lowered.create_workspace_key(context, ())
+    monkeypatch.setattr(ApiTokenCache, "delete", lambda *_args: True)
+    for key in keys[:2]:
+        lowered.delete_workspace_key(context, key.id)
+    lowered.create_workspace_key(context, ())
+    assert len(lowered.list_workspace_keys(context)) == 2

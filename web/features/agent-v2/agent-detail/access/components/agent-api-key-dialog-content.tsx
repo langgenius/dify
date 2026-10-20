@@ -1,9 +1,8 @@
 'use client'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  API_KEY_LIMIT,
   ApiKeyCreateAction,
   ApiKeyDialogContent,
 } from '@/app/components/api-key/api-key-dialog-content'
@@ -23,10 +22,18 @@ type AgentApiKeyDialogContentProps = {
 
 export function AgentApiKeyDialogContent(props: AgentApiKeyDialogContentProps) {
   const { t } = useTranslation(['appApi'])
+  const keys = useQuery(
+    consoleQuery.agent.byAgentId.apiKeys.get.queryOptions({
+      input: { params: { agent_id: props.agentId } },
+      enabled: false,
+    }),
+  )
   return (
     <ApiKeyDialogContent
       closeDisabled={props.isCreating || props.isDeleting}
-      limitDescription={t(($) => $['apiKeyModal.keyLimit'], { limit: API_KEY_LIMIT })}
+      limitDescription={
+        keys.data && t(($) => $['apiKeyModal.keyLimit'], { limit: keys.data.max_keys })
+      }
     >
       <AgentApiKeys {...props} />
     </ApiKeyDialogContent>
@@ -45,11 +52,12 @@ function AgentApiKeys({
   const keys = useSuspenseQuery(
     consoleQuery.agent.byAgentId.apiKeys.get.queryOptions({
       input: { params: { agent_id: agentId } },
+      refetchOnMount: 'always',
     }),
   )
   const [createdOpen, setCreatedOpen] = useState(false)
   const createButtonRef = useRef<HTMLButtonElement>(null)
-  const atLimit = keys.data.data.length >= API_KEY_LIMIT
+  const atLimit = keys.data.data.length >= keys.data.max_keys
   return (
     <ApiKeyListContent
       apiKeys={keys.data.data}
@@ -67,7 +75,7 @@ function AgentApiKeys({
       <ApiKeyCreateAction
         ref={createButtonRef}
         atLimit={atLimit}
-        disabled={!canManage}
+        disabled={!canManage || keys.isError}
         focusableWhenDisabled={canManage}
         loading={isCreating}
         onClick={() => onCreate(() => setCreatedOpen(true))}

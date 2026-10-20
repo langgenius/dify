@@ -99,3 +99,11 @@ PLUGIN_REMOTE_INSTALL_PORT=${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
 SENTRY_DSN=${API_SENTRY_DSN:-}
 SENTRY_PROFILES_SAMPLE_RATE=${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
 SENTRY_TRACES_SAMPLE_RATE=${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
+
+# API key limits. Restart the API service after changing these positive integers.
+# Each App has its own count; Agent keys share their corresponding App's count.
+# APP_API_KEY_MAX_KEYS_PER_APP=10
+# Workspace creation checks all dataset keys in that workspace, counting each key once.
+# The legacy per-dataset creation endpoint still checks the workspace total against 10,
+# so it may exceed a configured workspace threshold below 10.
+# DATASET_API_KEY_MAX_KEYS_PER_WORKSPACE=10
