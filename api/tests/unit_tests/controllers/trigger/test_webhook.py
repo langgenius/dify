@@ -182,12 +182,12 @@ class TestHandleWebhook:
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=Exception("boom"))
     def test_internal_error(self, mock_get):
-        response, status = module.handle_webhook("wh-1")
+        with patch.object(module.logger, "exception") as mock_log:
+            response, status = module.handle_webhook("wh-1")
 
         assert status == 500
-        assert response["error"] == "Internal server error"
-        assert response["message"] == "An internal error has occurred."
-        assert "boom" not in response["message"]
+        assert response == {"error": "Internal server error", "message": "An internal error has occurred."}
+        mock_log.assert_called_once()
 
 
 class TestHandleWebhookDebug:
