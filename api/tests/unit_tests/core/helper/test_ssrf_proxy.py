@@ -2,7 +2,7 @@ import gzip
 from collections.abc import Callable, Iterator
 from contextlib import ExitStack
 from typing import TypedDict, Unpack
-from unittest.mock import ANY, call, patch
+from unittest.mock import ANY, Mock, call, patch
 
 import httpx
 import pytest
@@ -151,6 +151,48 @@ def test_retry_exceed_max_retries(mock_get_client, client_factory, monkeypatch: 
     assert str(e.value) == f"Reached maximum retries ({SSRF_DEFAULT_MAX_RETRIES - 1}) for URL http://example.com"
     assert len(send_calls) == SSRF_DEFAULT_MAX_RETRIES
     assert sleep_calls == [BACKOFF_FACTOR * 2**attempt for attempt in range(SSRF_DEFAULT_MAX_RETRIES - 1)]
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_retry_exhaustion_keeps_the_last_status(mock_get_client, client_factory, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("core.helper.ssrf_proxy.time.sleep", lambda _seconds: None)
+    mock_response = httpx.Response(503)
+    mock_client, send_calls = client_factory(mock_response)
+    mock_get_client.return_value = mock_client
+
+    with pytest.raises(max_retries_exceeded_error) as exc_info:
+        make_request("GET", "http://example.com", max_retries=2)
+
+    assert exc_info.value.status_code == 503
+    assert len(send_calls) == 3
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_retry_exhaustion_without_a_response_keeps_no_status(mock_get_client, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("core.helper.ssrf_proxy.time.sleep", lambda _seconds: None)
+    mock_client = Mock()
+    mock_client.send.side_effect = httpx.ConnectError("connection refused")
+    mock_get_client.return_value = mock_client
+
+    with pytest.raises(max_retries_exceeded_error) as exc_info:
+        make_request("GET", "http://example.com", max_retries=2)
+
+    assert exc_info.value.status_code is None
+    assert mock_client.send.call_count == 3
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_retry_then_success_returns_the_later_response(mock_get_client, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("core.helper.ssrf_proxy.time.sleep", lambda _seconds: None)
+    mock_client = Mock()
+    mock_client.send.side_effect = [httpx.Response(503), httpx.Response(200, content=b"ok")]
+    mock_get_client.return_value = mock_client
+
+    response = make_request("GET", "http://example.com", max_retries=2)
+
+    assert response.status_code == 200
+    assert response.content == b"ok"
+    assert mock_client.send.call_count == 2
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
