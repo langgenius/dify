@@ -156,6 +156,41 @@ Explain the concrete reason after `--`: which external contract, lifecycle, or r
 
 `reportUnusedDisableDirectives` runs at `error` repository-wide. Remove an exception when the finding no longer exists. Keep both checks active: a described disable may still be unused, and a used disable may still lack a reason.
 
+### Handwritten HTTP Calls
+
+Web uses native Oxlint rules to discourage deprecated APIs and new handwritten requests:
+
+- `typescript/no-deprecated` rejects references to deprecated APIs. Legacy base/fetch
+  transport entry points carry `@deprecated`; generated `consoleClient`, `consoleQuery`,
+  and marketplace clients remain allowed, including direct calls from UI components.
+- `no-restricted-globals` and `no-restricted-properties` reject direct global
+  `fetch` / `XMLHttpRequest` references, including `window`, `globalThis`, `global`,
+  and `self` property access.
+- `no-restricted-imports` rejects new value imports from common HTTP packages
+  (including Ky, Axios, Undici and Node http/https). Type-only imports remain allowed.
+  Existing legacy-service and localStorage import/access restrictions remain active.
+
+`typescript/no-deprecated` applies throughout Web, including tests, mocks, stories,
+test infrastructure, and maintenance scripts. The raw transport and HTTP-client import
+restrictions apply only to production code. Repository-wide generated/vendor and
+declaration-file ignores still apply. There is no custom API rule or data-flow tracker.
+
+Existing findings are recorded in `oxlint-suppressions.json`. These are counts of
+references/imports, not endpoints awaiting migration: they include transport internals,
+assets, special transports, and unrelated deprecated APIs reported by `no-deprecated`.
+Prune counts when removing existing findings; do not raise them for new work.
+For a necessary new special transport, use a scoped `oxlint-disable-next-line`
+for the applicable native rule with a concrete contract reason.
+
+The simpler native checks intentionally accept gaps: for a deprecated arrow-function
+helper, current Oxlint reports `const saved = get` at assignment but does not propagate
+deprecation to later `saved()` calls. Adding calls through an existing alias,
+HTTP-client import, or XHR instance may therefore pass its existing baseline.
+Dynamic property access and indirect loading also require review. A per-file count
+cannot detect replacing one old use with another at the same count. Do not treat
+passing lint as proof that all requests use generated contracts. This rule set
+does not enforce Query ownership.
+
 ### Translation Function Types
 
 `dify/require-i18n-namespace` requires translation hook calls to use non-empty

@@ -19,7 +19,10 @@ let mockUserProfile: GetAccountProfileResponse
 
 vi.mock('@/service/base', () => ({
   get: mockGet,
-  request: mockRequest,
+  request: (url: string, init: RequestInit, options: { request: Request }) =>
+    url.endsWith('/account/profile') && options.request.method === 'GET'
+      ? mockGet(url, init, options)
+      : mockRequest(url, init, options),
   sseGeneratorPost: vi.fn(),
 }))
 

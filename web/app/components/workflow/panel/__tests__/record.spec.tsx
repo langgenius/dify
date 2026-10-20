@@ -77,7 +77,7 @@ describe('Record', () => {
         historyWorkflowData: {
           id: 'run-1',
           status: 'succeeded',
-          finished_at: 1700000000000,
+          finished_at: 1_700_000_000,
         },
       },
       hooksStoreProps: {
@@ -88,6 +88,19 @@ describe('Record', () => {
     expect(screen.getByText(/^Test Run/)).toBeInTheDocument()
     expect(screen.getByTestId('run')).toHaveAttribute('data-run-detail-url', '/runs/run-1')
     expect(screen.getByTestId('run')).toHaveAttribute('data-tracing-list-url', '/traces/run-1')
+  })
+
+  it('renders paused history without a finished timestamp', () => {
+    renderWorkflowComponent(<Record />, {
+      initialStoreState: {
+        historyWorkflowData: {
+          id: 'run-1',
+          status: 'paused',
+        },
+      },
+    })
+
+    expect(screen.getByText('Test Run (Paused)')).toBeInTheDocument()
   })
 
   it('updates the workflow canvas with a fallback viewport when the response omits one', () => {
