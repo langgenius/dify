@@ -24,6 +24,7 @@ import SuggestedQuestions from './suggested-questions'
 import WorkflowProcessItem from './workflow-process'
 
 type AnswerProps = {
+  footer?: ReactNode
   answerActionPosition?: AnswerActionPosition
   item: ChatItem
   question: string
@@ -45,6 +46,7 @@ type AnswerProps = {
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
 }
 const Answer: FC<AnswerProps> = ({
+  footer,
   answerActionPosition,
   item,
   question,
@@ -394,6 +396,7 @@ const Answer: FC<AnswerProps> = ({
           </div>
         )}
         <More more={more} />
+        {footer}
       </div>
     </div>
   )

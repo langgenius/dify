@@ -149,3 +149,22 @@ describe('ExternalTraceRow', () => {
     }
   })
 })
+
+it('uses the Agent message identity and changes destination when the message changes', async () => {
+  const { rerender, urls } = setup({ kind: 'agent', agentId: 'agent-1', messageId: 'message-1' }, [
+    accepted,
+  ])
+  expect(await screen.findByRole('link', { name: 'app.tracing.run.viewTrace' })).toHaveAttribute(
+    'href',
+    accepted.trace_url,
+  )
+  expect(urls[0]!.pathname).toMatch(/\/agent\/agent-1\/trace-runs\/message-1$/)
+  rerender(
+    <dl>
+      <ExternalTraceRow source={{ kind: 'agent', agentId: 'agent-2', messageId: 'message-2' }} />
+    </dl>,
+  )
+  await vi.waitFor(() =>
+    expect(urls.at(-1)!.pathname).toMatch(/\/agent\/agent-2\/trace-runs\/message-2$/),
+  )
+})
