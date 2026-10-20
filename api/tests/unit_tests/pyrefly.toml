@@ -319,7 +319,6 @@ project-excludes = [
   "core/rag/extractor/test_html_extractor.py",
   "core/rag/extractor/test_markdown_extractor.py",
   "core/rag/extractor/test_word_extractor.py",
-  "core/rag/extractor/unstructured/test_unstructured_extractors.py",
   "core/rag/extractor/watercrawl/test_watercrawl.py",
   "core/rag/indexing/processor/test_paragraph_index_processor.py",
   "core/rag/indexing/processor/test_qa_index_processor.py",
