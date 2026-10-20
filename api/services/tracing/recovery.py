@@ -21,7 +21,7 @@ from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.application_trace import ApplicationTraceInvocation, ApplicationTraceRun
 from models.enums import MessageStatus
-from models.model import App, Conversation, Message, MessageDict
+from models.model import App, AppMode, Conversation, Message, MessageDict
 from models.workflow import WorkflowRun
 from repositories.application_trace_repository import ApplicationTraceRepository, TraceCollectionError
 
@@ -39,6 +39,15 @@ class RecoveryTarget(Protocol):
     repository: ApplicationTraceRepository
 
     def capture_terminal(self, info: BaseTraceInfo) -> bool: ...
+
+
+def agent_stop_requested(message: Message) -> bool:
+    """Read the consumer's stop intent without inferring cancellation success."""
+    try:
+        metadata = json.loads(message.message_metadata) if message.message_metadata else {}
+    except (ValueError, TypeError):
+        return False
+    return isinstance(metadata, dict) and metadata.get("agent_stop_requested") is True
 
 
 def _complete_message_metadata(message: Message) -> bool:
@@ -65,8 +74,8 @@ def _complete_message_metadata(message: Message) -> bool:
 
 def _message_task(repository: ApplicationTraceRepository, run: ApplicationTraceRun, now: datetime) -> TraceTask | None:
     with repository.sessions() as session:
-        message = session.scalar(
-            select(Message)
+        source = session.execute(
+            select(Message, App.mode)
             .join(App, App.id == Message.app_id)
             .join(Conversation, Conversation.id == Message.conversation_id)
             .where(
@@ -75,26 +84,34 @@ def _message_task(repository: ApplicationTraceRepository, run: ApplicationTraceR
                 App.tenant_id == run.tenant_id,
                 Conversation.app_id == run.app_id,
             )
-        )
-        if message is None:
+        ).one_or_none()
+        if source is None:
             raise TraceCollectionError("tracing_source_not_found", 404)
-        if message.status is MessageStatus.PAUSED:
+        message, app_mode = source
+        pending_agent_stop = app_mode == AppMode.AGENT and agent_stop_requested(message)
+        if message.status is MessageStatus.PAUSED and not pending_agent_stop:
             return None
         invocations = list(
             session.scalars(select(ApplicationTraceInvocation).where(ApplicationTraceInvocation.run_id == run.id))
         )
         explicit_error = message.status is MessageStatus.ERROR and bool(message.error)
         if any(not invocation.finalized or invocation.finalized_at is None for invocation in invocations):
-            if (
-                explicit_error
-                and message.updated_at + timedelta(seconds=dify_config.OPS_AGENT_TRACE_COLLECTION_TIMEOUT) < now
-            ):
+            if (explicit_error or pending_agent_stop) and message.updated_at + timedelta(
+                seconds=dify_config.OPS_AGENT_TRACE_COLLECTION_TIMEOUT
+            ) < now:
                 raise TraceCollectionError("agent_trace_collection_incomplete")
-            return None
-        if run.capture_agent and not invocations:
             return None
         finalized = [invocation.finalized_at for invocation in invocations if invocation.finalized_at is not None]
         anchor = max([message.updated_at, *finalized])
+        if pending_agent_stop:
+            # Even a fully saved partial answer/usage cannot establish which
+            # runtime terminal won the stop race. Wait for the existing worker
+            # handoff, or converge to incomplete delivery after its deadline.
+            if anchor + timedelta(seconds=dify_config.OPS_AGENT_TRACE_COLLECTION_TIMEOUT) < now:
+                raise TraceCollectionError("business_terminal_not_persisted")
+            return None
+        if run.capture_agent and not invocations:
+            return None
         if anchor + timedelta(seconds=_SETTLE_SECONDS) > now:
             return None
         complete = explicit_error or (

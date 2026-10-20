@@ -393,6 +393,18 @@ class ApplicationTracingService:
                 return True
         if run.state in {"not_collected", "failed", "uncertain", "accepted", "exporting"}:
             return True
+        if (
+            app.mode == AppMode.AGENT
+            and message is not None
+            and info.metadata.get("message_execution_state") not in ("succeeded", "failed", "cancelled")
+        ):
+            from services.tracing.recovery import agent_stop_requested
+
+            if agent_stop_requested(message):
+                # An already queued consumer notification may arrive after a
+                # stop. Its ordinary Message snapshot cannot own the runtime
+                # outcome, even if span finalization has already completed.
+                return True
         loader = RepositoryWorkflowExecutionLoader(lambda requested_app: self._service_account(run, requested_app))
         trace = CanonicalTraceBuilder(loader).build(info)
         if trace is None:
