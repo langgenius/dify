@@ -15,6 +15,7 @@ from models import Account, Tenant, TenantAccountJoin
 from models.enums import EndUserType
 from models.model import App, AppMode, AppModelConfig, EndUser
 from models.workflow import Workflow
+from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.model_factories import make_app, make_end_user, make_workflow
 
 
@@ -177,6 +178,7 @@ class TestPluginAppBackwardsInvocation:
         route = mocker.patch.object(PluginAppBackwardsInvocation, route_method, return_value={"routed": True})
 
         result = PluginAppBackwardsInvocation.invoke_app(
+            execution_driver=WorkflowRunAgg.run,
             app_id="app",
             user_id="user",
             tenant_id="tenant",
@@ -202,6 +204,7 @@ class TestPluginAppBackwardsInvocation:
         route = mocker.patch.object(PluginAppBackwardsInvocation, "invoke_workflow_app", return_value={"ok": True})
 
         result = PluginAppBackwardsInvocation.invoke_app(
+            execution_driver=WorkflowRunAgg.run,
             app_id="app",
             user_id="",
             tenant_id="tenant",
@@ -225,6 +228,7 @@ class TestPluginAppBackwardsInvocation:
 
         with pytest.raises(ValueError, match="missing query"):
             PluginAppBackwardsInvocation.invoke_app(
+                execution_driver=WorkflowRunAgg.run,
                 app_id="app",
                 user_id="user",
                 tenant_id="tenant",
@@ -247,6 +251,7 @@ class TestPluginAppBackwardsInvocation:
 
         with pytest.raises(ValueError, match="unexpected app type"):
             PluginAppBackwardsInvocation.invoke_app(
+                execution_driver=WorkflowRunAgg.run,
                 app_id="app",
                 user_id="user",
                 tenant_id="tenant",
@@ -271,6 +276,7 @@ class TestPluginAppBackwardsInvocation:
         spy = mocker.patch(generator_path, return_value={"result": "ok"})
 
         result = PluginAppBackwardsInvocation.invoke_chat_app(
+            execution_driver=WorkflowRunAgg.run,
             app=app,
             user=_end_user(),
             conversation_id="conv-1",
@@ -302,6 +308,7 @@ class TestPluginAppBackwardsInvocation:
         session = self.session
 
         result = PluginAppBackwardsInvocation.invoke_chat_app(
+            execution_driver=WorkflowRunAgg.run,
             app=app,
             user=_end_user(),
             conversation_id="conv-1",
@@ -324,6 +331,7 @@ class TestPluginAppBackwardsInvocation:
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_workflow", return_value=None)
         with pytest.raises(ValueError, match="unexpected app type"):
             PluginAppBackwardsInvocation.invoke_chat_app(
+                execution_driver=WorkflowRunAgg.run,
                 app=app,
                 user=_end_user(),
                 conversation_id="conv-1",
@@ -338,6 +346,7 @@ class TestPluginAppBackwardsInvocation:
         app = _app(mode=cast(AppMode, "invalid"))
         with pytest.raises(ValueError, match="unexpected app type"):
             PluginAppBackwardsInvocation.invoke_chat_app(
+                execution_driver=WorkflowRunAgg.run,
                 app=app,
                 user=_end_user(),
                 conversation_id="conv-1",
@@ -364,6 +373,7 @@ class TestPluginAppBackwardsInvocation:
         )
 
         result = PluginAppBackwardsInvocation.invoke_workflow_app(
+            execution_driver=WorkflowRunAgg.run,
             app=app,
             workflow=workflow,
             user=_end_user(),
@@ -385,6 +395,7 @@ class TestPluginAppBackwardsInvocation:
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_workflow", return_value=None)
         with pytest.raises(ValueError, match="unexpected app type"):
             PluginAppBackwardsInvocation.invoke_app(
+                execution_driver=WorkflowRunAgg.run,
                 app_id="app",
                 user_id="user",
                 tenant_id="tenant",
@@ -535,6 +546,7 @@ class TestPluginAppBackwardsInvocation:
         route = mocker.patch.object(PluginAppBackwardsInvocation, "invoke_workflow_app", return_value={"ok": True})
 
         result = PluginAppBackwardsInvocation.invoke_app(
+            execution_driver=WorkflowRunAgg.run,
             app_id="app",
             user_id="wecom-sender-1",
             tenant_id="tenant",
