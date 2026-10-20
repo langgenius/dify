@@ -460,9 +460,8 @@ class TriggerProviderService:
             redirect_uri = (
                 f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{subscription.provider_id}/trigger/callback"
             )
+            plugin_unique_identifier = provider_controller.plugin_unique_identifier
             system_credentials = cls.get_oauth_client(tenant_id, provider_id, provider_controller=provider_controller)
-            if system_credentials is None:
-                raise ValueError("OAuth client is not configured for this trigger provider")
 
             # Refresh token
             oauth_handler = OAuthHandler()
@@ -472,8 +471,12 @@ class TriggerProviderService:
                 plugin_id=provider_id.plugin_id,
                 provider=provider_id.provider_name,
                 redirect_uri=redirect_uri,
-                system_credentials=dict(system_credentials.credentials),
-                plugin_unique_identifier=system_credentials.plugin_unique_identifier,
+                system_credentials=dict(system_credentials.credentials) if system_credentials is not None else {},
+                plugin_unique_identifier=(
+                    system_credentials.plugin_unique_identifier
+                    if system_credentials is not None
+                    else plugin_unique_identifier
+                ),
                 credentials=current_credentials,
             )
 

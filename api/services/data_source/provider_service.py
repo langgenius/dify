@@ -110,6 +110,7 @@ class DatasourceProviderService:
         provider_declaration = self.provider_manager.fetch_datasource_provider(
             tenant_id=tenant_id, provider_id=str(datasource_provider_id)
         )
+        plugin_unique_identifier = provider_declaration.plugin_unique_identifier
         credential_id = getattr(datasource_provider, "id", None)
         credential_name = getattr(datasource_provider, "name", None)
         logger.info(
@@ -140,7 +141,7 @@ class DatasourceProviderService:
                 workspace_id=tenant_id,
                 actor_id=current_user.id,
                 provider_id=datasource_provider_id,
-                system_credentials=system_credentials,
+                system_credentials=system_credentials or PluginOAuthClientConfig(plugin_unique_identifier, {}),
                 credentials=decrypted_credentials,
             )
         except Exception as exc:
@@ -526,7 +527,7 @@ class DatasourceProviderService:
         datasource_provider_id: DatasourceProviderID,
         *,
         provider_declaration: PluginDatasourceProviderEntity | None = None,
-    ) -> PluginOAuthClientConfig:
+    ) -> PluginOAuthClientConfig | None:
         """
         get oauth client
         """

@@ -465,8 +465,9 @@ def test_delete_subscription_uses_real_caller_transaction(
         unsubscribe.assert_called_once()
 
 
+@pytest.mark.parametrize("client_credentials", [None, {}, {"client": "system"}])
 def test_refresh_oauth_token_persists_credentials_after_commit(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
+    mocker, trigger_db: TriggerDatabase, provider_controller: Mock, client_credentials: dict[str, str] | None
 ) -> None:
     subscription = trigger_db.add_subscription(credential_type=CredentialType.OAUTH2)
     _patch_provider(mocker, provider_controller)
@@ -475,7 +476,11 @@ def test_refresh_oauth_token_persists_credentials_after_commit(
     mocker.patch.object(
         TriggerProviderService,
         "get_oauth_client",
-        return_value=PluginOAuthClientConfig(provider_controller.plugin_unique_identifier, {"client": "system"}),
+        return_value=(
+            PluginOAuthClientConfig(provider_controller.plugin_unique_identifier, client_credentials)
+            if client_credentials is not None
+            else None
+        ),
     )
     handler = Mock()
     handler.refresh_credentials.return_value = SimpleNamespace(credentials={"access": "plain"}, expires_at=1234)
@@ -489,6 +494,11 @@ def test_refresh_oauth_token_persists_credentials_after_commit(
     assert persisted.credentials == {"access": "new"}  # type: ignore[union-attr]
     assert persisted.credential_expires_at == 1234  # type: ignore[union-attr]
     clear_cache.assert_called_once()
+    handler.refresh_credentials.assert_called_once()
+    assert handler.refresh_credentials.call_args.kwargs["system_credentials"] == (client_credentials or {})
+    assert handler.refresh_credentials.call_args.kwargs["plugin_unique_identifier"] == (
+        provider_controller.plugin_unique_identifier
+    )
 
 
 def test_refresh_oauth_rejects_missing_and_non_oauth(trigger_db: TriggerDatabase) -> None:

@@ -309,6 +309,11 @@ class ToolManager:
                     tool_provider = ToolProviderID(provider_id)
                     provider_name = tool_provider.provider_name
                     redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback"
+                    plugin_unique_identifier = (
+                        provider_controller.plugin_unique_identifier
+                        if isinstance(provider_controller, PluginToolProviderController)
+                        else None
+                    )
                     system_credentials = BuiltinToolManageService.get_oauth_client(
                         tenant_id,
                         provider_id,
@@ -318,8 +323,8 @@ class ToolManager:
                             else None
                         ),
                     )
-                    if system_credentials is None:
-                        raise ToolProviderCredentialValidationError("OAuth client is not configured")
+                    if system_credentials is not None:
+                        plugin_unique_identifier = system_credentials.plugin_unique_identifier
 
                     oauth_handler = OAuthHandler()
                     try:
@@ -329,8 +334,10 @@ class ToolManager:
                             plugin_id=tool_provider.plugin_id,
                             provider=provider_name,
                             redirect_uri=redirect_uri,
-                            system_credentials=dict(system_credentials.credentials),
-                            plugin_unique_identifier=system_credentials.plugin_unique_identifier,
+                            system_credentials=(
+                                dict(system_credentials.credentials) if system_credentials is not None else {}
+                            ),
+                            plugin_unique_identifier=plugin_unique_identifier,
                             credentials=decrypted_credentials,
                         )
                     except Exception as exc:
