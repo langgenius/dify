@@ -1,1113 +1,961 @@
-import type { ReactNode } from 'react'
-import type { WorkflowProps } from '@/app/components/workflow'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
+import type { InjectWorkflowStoreSliceFn, Shape } from '@/app/components/workflow/store'
+import type { Node } from '@/app/components/workflow/types'
+import type { EventEmitterValue } from '@/context/event-emitter'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { EventEmitter } from 'ahooks/lib/useEventEmitter'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { FeaturesContext } from '@/app/components/base/features/context'
+import { createFeaturesStore } from '@/app/components/base/features/store'
+import { CollectionType } from '@/app/components/tools/types'
+import WorkflowWithDefaultContext from '@/app/components/workflow'
+import { createNode, createStartNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
-import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { EventEmitterContext } from '@/context/event-emitter'
+import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import {
+  createConsoleQueryWrapper,
+  seedAppDetail,
+  seedAppDslVersion,
+} from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { createDeferred } from '@/test/deferred'
+import { captureDownloads } from '@/test/download'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import { AppACLPermission } from '@/utils/permission'
+import { createWorkflowSlice } from '../../store/workflow/workflow-slice'
 import WorkflowMain from '../workflow-main'
 
-const mockSetFeatures = vi.fn()
-const mockSetConversationVariables = vi.fn()
-const mockSetEnvironmentVariables = vi.fn()
-const mockSetEnvSecrets = vi.fn()
-const mockSetSyncWorkflowDraftHash = vi.fn()
-const mockSetDraftUpdatedAt = vi.fn()
-let draftStore: ReturnType<typeof createWorkflowStore>
-const mockHandleUpdateWorkflowCanvas = vi.hoisted(() => vi.fn())
-const mockFetchWorkflowDraft = vi.hoisted(() => vi.fn())
-const mockOnVarsAndFeaturesUpdate = vi.hoisted(() => vi.fn())
-const mockOnWorkflowUpdate = vi.hoisted(() => vi.fn())
-const mockOnSyncRequest = vi.hoisted(() => vi.fn())
-const mockGetIsLeader = vi.hoisted(() => vi.fn(() => true))
-const mockOnGraphReloadRequired = vi.hoisted(() => vi.fn())
-const mockOnGraphReadyChange = vi.hoisted(() => vi.fn())
-const mockRefreshGraphSynchronously = vi.hoisted(() => vi.fn())
-const mockReplaceGraphFromReactFlow = vi.hoisted(() => vi.fn())
-const mockCanPersistLocalGraph = vi.hoisted(() => vi.fn())
-const mockIsGraphReloadCurrent = vi.hoisted(() => vi.fn())
-const mockRetryGraphReload = vi.hoisted(() => vi.fn())
-const mockEmitWorkflowUpdate = vi.hoisted(() => vi.fn())
-const mockUseCollaboration = vi.hoisted(() => vi.fn())
-const mockSetCanvasReadOnly = vi.hoisted(() => vi.fn())
-const mockSetShowDifyBuilderPanel = vi.hoisted(() => vi.fn())
-const mockDifyBuilderProvider = vi.hoisted(() => ({
-  callbacks: null as null | {
-    onRefreshCanvas: (shouldApply: () => boolean) => Promise<boolean>
-  },
-  identity: null as null | { appId?: string; tenantId?: string; userId?: string },
+const api = vi.hoisted(() => ({
+  exportDSL: vi.fn(),
+  importDSL: vi.fn(),
+  webhook: vi.fn(),
+  fetchDraft: vi.fn<typeof import('@/service/workflow').fetchWorkflowDraft>(),
+  saveDraft:
+    vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.post>(),
 }))
-
-const hookFns = {
-  doSyncWorkflowDraft: vi.fn(),
-  syncWorkflowDraftWhenPageClose: vi.fn(),
-  handleRefreshWorkflowDraft: vi.fn(),
-  handleBackupDraft: vi.fn(),
-  handleLoadBackupDraft: vi.fn(),
-  handleRestoreFromPublishedWorkflow: vi.fn(),
-  handleRun: vi.fn(),
-  handleStopRun: vi.fn(),
-  handleStartWorkflowRun: vi.fn(),
-  handleWorkflowStartRunInChatflow: vi.fn(),
-  handleWorkflowStartRunInWorkflow: vi.fn(),
-  handleWorkflowTriggerScheduleRunInWorkflow: vi.fn(),
-  handleWorkflowTriggerWebhookRunInWorkflow: vi.fn(),
-  handleWorkflowTriggerPluginRunInWorkflow: vi.fn(),
-  handleWorkflowRunAllTriggersInWorkflow: vi.fn(),
-  getWorkflowRunAndTraceUrl: vi.fn(),
-  exportCheck: vi.fn(),
-  handleExportDSL: vi.fn(),
-  fetchInspectVars: vi.fn(),
-  hasNodeInspectVars: vi.fn(),
-  hasSetInspectVar: vi.fn(),
-  fetchInspectVarValue: vi.fn(),
-  editInspectVarValue: vi.fn(),
-  renameInspectVarName: vi.fn(),
-  appendNodeInspectVars: vi.fn(),
-  deleteInspectVar: vi.fn(),
-  deleteNodeInspectorVars: vi.fn(),
-  deleteAllInspectorVars: vi.fn(),
-  isInspectVarEdited: vi.fn(),
-  resetToLastRunVar: vi.fn(),
-  invalidateSysVarValues: vi.fn(),
-  resetConversationVar: vi.fn(),
-  invalidateConversationVarValues: vi.fn(),
-}
-
-const collaborationRuntime = vi.hoisted(() => ({
-  startCursorTracking: vi.fn(),
-  stopCursorTracking: vi.fn(),
-  onlineUsers: [] as Array<{ user_id: string; username: string; avatar: string; sid: string }>,
-  isConnected: false,
-  isEnabled: false,
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/app/app-1/workflow',
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }))
-
-const collaborationListeners = vi.hoisted(() => ({
-  varsAndFeaturesUpdate: null as null | ((update: unknown) => void | Promise<void>),
-  workflowUpdate: null as null | (() => void | Promise<void>),
-  syncRequest: null as
-    | null
-    | ((request: {
-        requestId: string
-        acknowledge: (result: { success: boolean; hash?: string; updatedAt?: number }) => void
-      }) => void),
-  graphReloadRequired: null as
-    | null
-    | ((request: { generation: number; token: number; attempt: number }) => void | Promise<void>),
-  graphReadyChange: null as null | ((isReady: boolean) => void),
-  serverDraftApplied: null as null | ((update: { hash: string; updated_at: number }) => void),
+vi.mock('@/service/workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/workflow')>()),
+  fetchWorkflowDraft: api.fetchDraft,
 }))
-
-let capturedContextProps: Record<string, unknown> | null = null
-let hasWorkflowDraftConflict = false
-
-type MockWorkflowWithInnerContextProps = Pick<
-  WorkflowProps,
-  'nodes' | 'edges' | 'viewport' | 'onWorkflowDataUpdate' | 'myUserId' | 'onlineUsers'
-> & {
-  hooksStore?: Record<string, unknown>
-  children?: ReactNode
-}
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    currentWorkspace: { id: 'workspace-1' },
-  }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.imports.post': api.importDSL,
+      'apps.imports.byAppId.checkDependencies.get': async () => ({ leaked_dependencies: [] }),
+      'apps.byAppId.export.get': api.exportDSL,
+      'apps.byAppId.workflows.triggers.webhook.get': api.webhook,
+      'apps.byAppId.workflows.draft.environmentVariables.get': async () => ({ items: [] }),
+      'apps.byAppId.workflows.draft.conversationVariables.get': async () => ({ items: [] }),
+      'apps.byAppId.workflows.draft.systemVariables.get': async () => ({ items: [] }),
+      'apps.byAppId.workflows.publish.get': async () => createWorkflowResponseFixture(),
+      'enterprise.appDeploy.deploymentService.listAppEnvironments': async () => ({ data: [] }),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': async () => [],
+      'apps.byAppId.workflows.draft.post': api.saveDraft,
+      'apps.byAppId.workflows.draft.variables.get': async () => ({ items: [], total: 0 }),
+      'apps.byAppId.workflow.comments.get': async () => ({ data: [] }),
+    }),
+  }
 })
 
-vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeaturesStore: () => ({
-    getState: () => ({
-      setFeatures: mockSetFeatures,
-    }),
-  }),
-}))
+type Manager = typeof collaborationManager
+const events = {
+  vars: new Set<Parameters<Manager['onVarsAndFeaturesUpdate']>[0]>(),
+  workflow: new Set<Parameters<Manager['onWorkflowUpdate']>[0]>(),
+  sync: new Set<Parameters<Manager['onSyncRequest']>[0]>(),
+  reload: new Set<Parameters<Manager['onGraphReloadRequired']>[0]>(),
+  users: new Set<Parameters<Manager['onOnlineUsersUpdate']>[0]>(),
+  cursors: new Set<Parameters<Manager['onCursorUpdate']>[0]>(),
+  ready: new Set<Parameters<Manager['onGraphReadyChange']>[0]>(),
+  applied: new Set<Parameters<Manager['onServerDraftApplied']>[0]>(),
+}
+const initialNodes = [
+  createStartNode({ id: 'start', data: { title: 'Workflow entry', variables: [] } }),
+]
+const draft = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse => ({
+  ...createWorkflowResponseFixture(),
+  conversation_variables: [],
+  environment_variables: [],
+  rag_pipeline_variables: [],
+  created_by: { id: 'user-1', name: 'Alice', email: 'alice@example.com' },
+  updated_by: { id: 'user-1', name: 'Alice', email: 'alice@example.com' },
+  graph: { nodes: initialNodes, edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+  ...overrides,
+})
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: <T,>(
-    selector: (state: {
-      appId: string
-      setCanvasReadOnly: typeof mockSetCanvasReadOnly
-      setShowDifyBuilderPanel: typeof mockSetShowDifyBuilderPanel
-      showDifyBuilderPanel: boolean
-      hasWorkflowDraftConflict: boolean
-    }) => T,
-  ) =>
-    selector({
-      appId: 'app-1',
-      setCanvasReadOnly: mockSetCanvasReadOnly,
-      setShowDifyBuilderPanel: mockSetShowDifyBuilderPanel,
-      showDifyBuilderPanel: false,
-      hasWorkflowDraftConflict,
-    }),
-  useWorkflowStore: () => ({
-    getState: () => ({
-      ...draftStore.getState(),
-      hasWorkflowDraftConflict,
-      envSecrets: {},
-      setConversationVariables: mockSetConversationVariables,
-      setEnvironmentVariables: mockSetEnvironmentVariables,
-      setEnvSecrets: mockSetEnvSecrets,
-      setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
-      setDraftUpdatedAt: mockSetDraftUpdatedAt,
-    }),
-  }),
-}))
-
-vi.mock('reactflow', () => ({
-  useReactFlow: () => ({
-    getNodes: () => [],
-    setNodes: vi.fn(),
-    getEdges: () => [],
-    setEdges: vi.fn(),
-  }),
-}))
-
-vi.mock('../dify-builder/provider', () => ({
-  DifyBuilderProvider: ({
-    appId,
-    children,
-    onRefreshCanvas,
-    tenantId,
-    userId,
-  }: {
-    appId?: string
-    children: ReactNode
-    onRefreshCanvas: (shouldApply: () => boolean) => Promise<boolean>
-    tenantId?: string
-    userId?: string
-  }) => {
-    mockDifyBuilderProvider.callbacks = { onRefreshCanvas }
-    mockDifyBuilderProvider.identity = { appId, tenantId, userId }
-    return children
-  },
-}))
-
-vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () => ({
-  useCollaboration: (...args: unknown[]) => {
-    mockUseCollaboration(...args)
-    return collaborationRuntime
-  },
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
-  useWorkflowUpdate: () => ({
-    handleUpdateWorkflowCanvas: mockHandleUpdateWorkflowCanvas,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
-  collaborationManager: {
-    onServerDraftRequest: vi.fn(() => vi.fn()),
-    onServerDraftApplied: vi.fn((handler: typeof collaborationListeners.serverDraftApplied) => {
-      collaborationListeners.serverDraftApplied = handler
-      return vi.fn()
-    }),
-    onVarsAndFeaturesUpdate: mockOnVarsAndFeaturesUpdate.mockImplementation(
-      (handler: (update: unknown) => void | Promise<void>) => {
-        collaborationListeners.varsAndFeaturesUpdate = handler
-        return vi.fn()
-      },
-    ),
-    onWorkflowUpdate: mockOnWorkflowUpdate.mockImplementation(
-      (handler: () => void | Promise<void>) => {
-        collaborationListeners.workflowUpdate = handler
-        return vi.fn()
-      },
-    ),
-    onSyncRequest: mockOnSyncRequest.mockImplementation(
-      (handler: typeof collaborationListeners.syncRequest) => {
-        collaborationListeners.syncRequest = handler
-        return vi.fn()
-      },
-    ),
-    onGraphReloadRequired: mockOnGraphReloadRequired.mockImplementation(
-      (handler: typeof collaborationListeners.graphReloadRequired) => {
-        collaborationListeners.graphReloadRequired = handler
-        return vi.fn()
-      },
-    ),
-    onGraphReadyChange: mockOnGraphReadyChange.mockImplementation(
-      (handler: typeof collaborationListeners.graphReadyChange) => {
-        collaborationListeners.graphReadyChange = handler
-        handler?.(true)
-        return vi.fn()
-      },
-    ),
-    refreshGraphSynchronously: mockRefreshGraphSynchronously,
-    replaceGraphFromReactFlow: mockReplaceGraphFromReactFlow,
-    canPersistLocalGraph: mockCanPersistLocalGraph,
-    isGraphReloadCurrent: mockIsGraphReloadCurrent,
-    retryGraphReload: mockRetryGraphReload,
-    emitWorkflowUpdate: mockEmitWorkflowUpdate,
-    getIsLeader: mockGetIsLeader,
-  },
-}))
-
-vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
-}))
-
-vi.mock('@/app/components/workflow', () => ({
-  WorkflowWithInnerContext: ({
-    nodes,
-    edges,
-    viewport,
-    onWorkflowDataUpdate,
-    hooksStore,
-    myUserId,
-    onlineUsers,
-    children,
-  }: MockWorkflowWithInnerContextProps) => {
-    capturedContextProps = {
-      nodes,
-      edges,
-      viewport,
-      hooksStore,
-      myUserId,
-      onlineUsers,
+beforeEach(() => {
+  for (const listeners of Object.values(events)) listeners.clear()
+  vi.spyOn(collaborationManager, 'connect').mockResolvedValue('connection-1')
+  vi.spyOn(collaborationManager, 'disconnect').mockImplementation(() => {})
+  vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(true)
+  vi.spyOn(collaborationManager, 'getIsLeader').mockReturnValue(true)
+  let acceptedGraph = draft().graph
+  vi.spyOn(collaborationManager, 'requestServerDraftSync').mockImplementation(async () => {
+    const response = await api.fetchDraft.mock.results.at(-1)!.value
+    acceptedGraph = response.graph.nodes.length
+      ? response.graph
+      : {
+          ...response.graph,
+          nodes: [
+            createNode({
+              id: 'start-placeholder',
+              data: {
+                type: BlockEnum.StartPlaceholder,
+                title: 'workflow.blocks.start-placeholder',
+                selected: true,
+              },
+            }),
+          ],
+        }
+    return {
+      revision: 'revision-1',
+      hash: response.hash,
+      updated_at: response.updated_at,
+      update: new Uint8Array(),
     }
-    return (
-      <div data-testid="workflow-inner-context">
-        <button
-          type="button"
-          onClick={() =>
-            onWorkflowDataUpdate?.({
-              nodes: [],
-              edges: [],
-              features: { file_upload: { enabled: true } },
-              conversation_variables: [
-                {
-                  id: 'conversation-1',
-                  name: 'conversation-1',
-                  value_type: ChatVarType.String,
-                  value: '',
-                  description: '',
-                },
-              ],
-              environment_variables: [
-                {
-                  id: 'env-1',
-                  name: 'env-1',
-                  value: '********************',
-                  value_type: 'secret',
-                  description: '',
-                },
-              ],
-            })
-          }
-        >
-          update-workflow-data
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            onWorkflowDataUpdate?.({
-              nodes: [],
-              edges: [],
-              conversation_variables: [
-                {
-                  id: 'conversation-only',
-                  name: 'conversation-only',
-                  value_type: ChatVarType.String,
-                  value: '',
-                  description: '',
-                },
-              ],
-            })
-          }
-        >
-          update-conversation-only
-        </button>
-        <button type="button" onClick={() => onWorkflowDataUpdate?.({ nodes: [], edges: [] })}>
-          update-empty-payload
-        </button>
-        {children}
-      </div>
-    )
-  },
-}))
-
-vi.mock('../../hooks/use-available-nodes-meta-data', () => ({
-  useAvailableNodesMetaData: () => ({
-    nodes: [{ id: 'start' }],
-    nodesMap: { start: { id: 'start' } },
-  }),
-}))
-
-vi.mock('../../hooks/use-configs-map', () => ({
-  useConfigsMap: () => ({ flowId: 'app-1', flowType: 'app-flow', fileSettings: { enabled: true } }),
-}))
-
-vi.mock('../../hooks/use-DSL', () => ({
-  useDSL: () => ({ exportCheck: hookFns.exportCheck, handleExportDSL: hookFns.handleExportDSL }),
-  useDSLByCanEdit: () => ({
-    exportCheck: hookFns.exportCheck,
-    handleExportDSL: hookFns.handleExportDSL,
-  }),
-}))
-
-vi.mock('../../hooks/use-get-run-and-trace-url', () => ({
-  useGetRunAndTraceUrl: () => ({ getWorkflowRunAndTraceUrl: hookFns.getWorkflowRunAndTraceUrl }),
-}))
-
-vi.mock('../../hooks/use-inspect-vars-crud', () => ({
-  useInspectVarsCrud: () => ({
-    hasNodeInspectVars: hookFns.hasNodeInspectVars,
-    hasSetInspectVar: hookFns.hasSetInspectVar,
-    fetchInspectVarValue: hookFns.fetchInspectVarValue,
-    editInspectVarValue: hookFns.editInspectVarValue,
-    renameInspectVarName: hookFns.renameInspectVarName,
-    appendNodeInspectVars: hookFns.appendNodeInspectVars,
-    deleteInspectVar: hookFns.deleteInspectVar,
-    deleteNodeInspectorVars: hookFns.deleteNodeInspectorVars,
-    deleteAllInspectorVars: hookFns.deleteAllInspectorVars,
-    isInspectVarEdited: hookFns.isInspectVarEdited,
-    resetToLastRunVar: hookFns.resetToLastRunVar,
-    invalidateSysVarValues: hookFns.invalidateSysVarValues,
-    resetConversationVar: hookFns.resetConversationVar,
-    invalidateConversationVarValues: hookFns.invalidateConversationVarValues,
-  }),
-}))
-
-vi.mock('../../hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({
-    doSyncWorkflowDraft: hookFns.doSyncWorkflowDraft,
-    syncWorkflowDraftWhenPageClose: hookFns.syncWorkflowDraftWhenPageClose,
-  }),
-  useNodesSyncDraftByCanEdit: () => ({
-    doSyncWorkflowDraft: hookFns.doSyncWorkflowDraft,
-    syncWorkflowDraftWhenPageClose: hookFns.syncWorkflowDraftWhenPageClose,
-  }),
-}))
-
-vi.mock('../../hooks/use-workflow-refresh-draft', () => ({
-  useWorkflowRefreshDraft: () => ({
-    handleRefreshWorkflowDraft: hookFns.handleRefreshWorkflowDraft,
-  }),
-}))
-
-vi.mock('../../hooks/use-workflow-run', () => ({
-  useWorkflowRun: () => ({
-    handleBackupDraft: hookFns.handleBackupDraft,
-    handleLoadBackupDraft: hookFns.handleLoadBackupDraft,
-    handleRestoreFromPublishedWorkflow: hookFns.handleRestoreFromPublishedWorkflow,
-    handleRun: hookFns.handleRun,
-    handleStopRun: hookFns.handleStopRun,
-  }),
-  useWorkflowRunByCanEdit: () => ({
-    handleBackupDraft: hookFns.handleBackupDraft,
-    handleLoadBackupDraft: hookFns.handleLoadBackupDraft,
-    handleRestoreFromPublishedWorkflow: hookFns.handleRestoreFromPublishedWorkflow,
-    handleRun: hookFns.handleRun,
-    handleStopRun: hookFns.handleStopRun,
-  }),
-}))
-
-vi.mock('../../hooks/use-workflow-start-run', () => ({
-  useWorkflowStartRun: () => ({
-    handleStartWorkflowRun: hookFns.handleStartWorkflowRun,
-    handleWorkflowStartRunInChatflow: hookFns.handleWorkflowStartRunInChatflow,
-    handleWorkflowStartRunInWorkflow: hookFns.handleWorkflowStartRunInWorkflow,
-    handleWorkflowTriggerScheduleRunInWorkflow: hookFns.handleWorkflowTriggerScheduleRunInWorkflow,
-    handleWorkflowTriggerWebhookRunInWorkflow: hookFns.handleWorkflowTriggerWebhookRunInWorkflow,
-    handleWorkflowTriggerPluginRunInWorkflow: hookFns.handleWorkflowTriggerPluginRunInWorkflow,
-    handleWorkflowRunAllTriggersInWorkflow: hookFns.handleWorkflowRunAllTriggersInWorkflow,
-  }),
-  useWorkflowStartRunByCanEdit: () => ({
-    handleStartWorkflowRun: hookFns.handleStartWorkflowRun,
-    handleWorkflowStartRunInChatflow: hookFns.handleWorkflowStartRunInChatflow,
-    handleWorkflowStartRunInWorkflow: hookFns.handleWorkflowStartRunInWorkflow,
-    handleWorkflowTriggerScheduleRunInWorkflow: hookFns.handleWorkflowTriggerScheduleRunInWorkflow,
-    handleWorkflowTriggerWebhookRunInWorkflow: hookFns.handleWorkflowTriggerWebhookRunInWorkflow,
-    handleWorkflowTriggerPluginRunInWorkflow: hookFns.handleWorkflowTriggerPluginRunInWorkflow,
-    handleWorkflowRunAllTriggersInWorkflow: hookFns.handleWorkflowRunAllTriggersInWorkflow,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () => ({
-  useSetWorkflowVarsWithValue: () => ({
-    fetchInspectVars: hookFns.fetchInspectVars,
-  }),
-}))
-
-vi.mock('../../hooks/use-workflow-draft-graph-for-canvas', () => ({
-  useWorkflowDraftGraphForCanvas: () => ({
-    getWorkflowDraftGraphForCanvas: (graph?: {
-      nodes?: unknown[]
-      edges?: unknown[]
-      viewport?: unknown
-    }) => ({
-      nodes: graph?.nodes?.length
-        ? graph.nodes
-        : [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
-      edges: graph?.edges || [],
-      viewport: graph?.viewport || { x: 0, y: 0, zoom: 1 },
-    }),
-  }),
-}))
-
-vi.mock('../../hooks/use-workflow-draft-graph-for-canvas', () => ({
-  useWorkflowDraftGraphForCanvas: () => ({
-    getWorkflowDraftGraphForCanvas: (graph?: {
-      nodes?: unknown[]
-      edges?: unknown[]
-      viewport?: unknown
-    }) => ({
-      nodes: graph?.nodes?.length
-        ? graph.nodes
-        : [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
-      edges: graph?.edges || [],
-      viewport: graph?.viewport || { x: 0, y: 0, zoom: 1 },
-    }),
-  }),
-}))
-
-vi.mock('../workflow-children', () => ({
-  default: () => <div data-testid="workflow-children">workflow-children</div>,
-}))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: [],
-  }))
+  })
+  vi.spyOn(collaborationManager, 'getNodes').mockImplementation(() => acceptedGraph.nodes)
+  vi.spyOn(collaborationManager, 'getEdges').mockImplementation(() => acceptedGraph.edges)
+  vi.spyOn(collaborationManager, 'onServerDraftApplied').mockImplementation((handler) => {
+    events.applied.add(handler)
+    return () => {
+      events.applied.delete(handler)
+    }
+  })
+  vi.spyOn(collaborationManager, 'canPersistLocalGraph').mockReturnValue(true)
+  vi.spyOn(collaborationManager, 'refreshGraphSynchronously').mockImplementation(() => {})
+  vi.spyOn(collaborationManager, 'replaceGraphFromReactFlow').mockReturnValue(true)
+  vi.spyOn(collaborationManager, 'isGraphReloadCurrent').mockReturnValue(true)
+  vi.spyOn(collaborationManager, 'retryGraphReload').mockImplementation(() => {})
+  vi.spyOn(collaborationManager, 'onVarsAndFeaturesUpdate').mockImplementation((handler) => {
+    events.vars.add(handler)
+    return () => {
+      events.vars.delete(handler)
+    }
+  })
+  vi.spyOn(collaborationManager, 'onWorkflowUpdate').mockImplementation((handler) => {
+    events.workflow.add(handler)
+    return () => {
+      events.workflow.delete(handler)
+    }
+  })
+  vi.spyOn(collaborationManager, 'onSyncRequest').mockImplementation((handler) => {
+    events.sync.add(handler)
+    return () => {
+      events.sync.delete(handler)
+    }
+  })
+  vi.spyOn(collaborationManager, 'onGraphReloadRequired').mockImplementation((handler) => {
+    events.reload.add(handler)
+    return () => {
+      events.reload.delete(handler)
+    }
+  })
+  vi.spyOn(collaborationManager, 'onOnlineUsersUpdate').mockImplementation((handler) => {
+    events.users.add(handler)
+    return () => {
+      events.users.delete(handler)
+    }
+  })
+  vi.spyOn(collaborationManager, 'onCursorUpdate').mockImplementation((handler) => {
+    events.cursors.add(handler)
+    return () => {
+      events.cursors.delete(handler)
+    }
+  })
+  vi.spyOn(collaborationManager, 'onGraphReadyChange').mockImplementation((handler) => {
+    events.ready.add(handler)
+    handler(true)
+    return () => {
+      events.ready.delete(handler)
+    }
+  })
+  api.fetchDraft.mockReset().mockResolvedValue(draft())
+  api.exportDSL.mockReset().mockResolvedValue({ data: 'kind: app' })
+  api.importDSL
+    .mockReset()
+    .mockResolvedValue({ id: 'import-1', status: 'completed', app_id: 'app-1' })
+  api.webhook.mockReset().mockResolvedValue({
+    webhook_url: 'https://example.com/live',
+    webhook_debug_url: 'https://example.com/debug',
+  })
+  api.saveDraft
+    .mockReset()
+    .mockResolvedValue({ result: 'success', hash: 'saved-hash', updated_at: 2 })
+})
+afterEach(async () => {
+  // Unmount while the collaboration transport spies still represent this session.
+  await act(async () => cleanup())
+  vi.restoreAllMocks()
 })
 
-describe('WorkflowMain', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    draftStore = createWorkflowStore({})
-    capturedContextProps = null
-    hasWorkflowDraftConflict = false
-    mockDifyBuilderProvider.callbacks = null
-    mockDifyBuilderProvider.identity = null
-    collaborationRuntime.startCursorTracking.mockReset()
-    collaborationRuntime.stopCursorTracking.mockReset()
-    collaborationRuntime.onlineUsers = []
-    collaborationRuntime.isConnected = false
-    collaborationRuntime.isEnabled = false
-    collaborationListeners.varsAndFeaturesUpdate = null
-    collaborationListeners.workflowUpdate = null
-    collaborationListeners.syncRequest = null
-    collaborationListeners.graphReloadRequired = null
-    collaborationListeners.graphReadyChange = null
-    collaborationListeners.serverDraftApplied = null
-    mockFetchWorkflowDraft.mockReset()
-    hookFns.doSyncWorkflowDraft.mockReset()
-    mockGetIsLeader.mockReturnValue(true)
-    mockCanPersistLocalGraph.mockReturnValue(true)
-    mockIsGraphReloadCurrent.mockReturnValue(true)
-    mockReplaceGraphFromReactFlow.mockReturnValue(true)
-    hookFns.doSyncWorkflowDraft.mockResolvedValue({ hash: 'saved-hash', updatedAt: 2 })
-    hookFns.handleRefreshWorkflowDraft.mockResolvedValue(true)
-    useAppStore.setState({ appDetail: undefined })
+const WorkflowEventProvider = EventEmitterContext.Provider
+
+async function renderMain({
+  collaboration = true,
+  permission_keys,
+  nodes = initialNodes,
+  initialStoreState,
+  triggers = [],
+}: {
+  collaboration?: boolean
+  permission_keys?: AppDetailWithSite['permission_keys']
+  nodes?: Node[]
+  initialStoreState?: Partial<Shape>
+  triggers?: TriggerWithProvider[]
+} = {}) {
+  const { queryClient } = createConsoleQueryWrapper({
+    features: { dify_builder_enabled: false },
+    systemFeatures: { enable_collaboration_mode: collaboration, enable_marketplace: false },
   })
-
-  it('should render the inner workflow context with children and forwarded graph props', () => {
-    const nodes = [{ id: 'node-1' }]
-    const edges = [{ id: 'edge-1' }]
-    const viewport = { x: 1, y: 2, zoom: 1.5 }
-
-    render(<WorkflowMain nodes={nodes as never} edges={edges as never} viewport={viewport} />)
-
-    expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
-    expect(screen.getByTestId('workflow-children')).toBeInTheDocument()
-    expect(capturedContextProps).toMatchObject({
-      nodes,
-      edges,
-      viewport,
-    })
-    expect(mockDifyBuilderProvider.identity).toEqual({
-      appId: 'app-1',
-      tenantId: 'workspace-1',
-      userId: 'user-1',
-    })
+  seedAppDslVersion(queryClient)
+  seedAppDetail(
+    queryClient,
+    createAppDetailFixture({
+      id: 'app-1',
+      name: 'Workflow app',
+      mode: 'workflow',
+      permission_keys: permission_keys ?? Object.values(AppACLPermission),
+    }),
+  )
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
   })
-
-  it('should update features and workflow variables when workflow data changes', () => {
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    fireEvent.click(screen.getByRole('button', { name: /update-workflow-data/i }))
-
-    expect(mockSetFeatures).toHaveBeenCalledWith(
-      expect.objectContaining({
-        file: expect.objectContaining({ enabled: true }),
-      }),
-    )
-    expect(mockSetConversationVariables).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 'conversation-1' }),
-    ])
-    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 'env-1' }),
-    ])
-  })
-
-  it('should only update the workflow store slices present in the payload', () => {
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    fireEvent.click(screen.getByRole('button', { name: /update-conversation-only/i }))
-
-    expect(mockSetConversationVariables).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 'conversation-only' }),
-    ])
-    expect(mockSetFeatures).not.toHaveBeenCalled()
-    expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
-  })
-
-  it('normalizes secret masks from collaboration refreshes', () => {
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    fireEvent.click(screen.getByRole('button', { name: /update-workflow-data/i }))
-
-    expect(mockSetEnvSecrets).toHaveBeenCalledWith({ 'env-1': '********************' })
-    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 'env-1', value: '[__HIDDEN__]' }),
-    ])
-  })
-
-  it('should ignore empty workflow data updates', () => {
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    fireEvent.click(screen.getByRole('button', { name: /update-empty-payload/i }))
-
-    expect(mockSetFeatures).not.toHaveBeenCalled()
-    expect(mockSetConversationVariables).not.toHaveBeenCalled()
-    expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
-  })
-
-  it('should expose the composed workflow action hooks through hooksStore', () => {
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    expect(capturedContextProps?.hooksStore).toMatchObject({
-      syncWorkflowDraftWhenPageClose: hookFns.syncWorkflowDraftWhenPageClose,
-      doSyncWorkflowDraft: hookFns.doSyncWorkflowDraft,
-      handleRefreshWorkflowDraft: hookFns.handleRefreshWorkflowDraft,
-      handleBackupDraft: hookFns.handleBackupDraft,
-      handleLoadBackupDraft: hookFns.handleLoadBackupDraft,
-      handleRestoreFromPublishedWorkflow: hookFns.handleRestoreFromPublishedWorkflow,
-      handleRun: hookFns.handleRun,
-      handleStopRun: hookFns.handleStopRun,
-      handleStartWorkflowRun: hookFns.handleStartWorkflowRun,
-      handleWorkflowStartRunInChatflow: hookFns.handleWorkflowStartRunInChatflow,
-      handleWorkflowStartRunInWorkflow: hookFns.handleWorkflowStartRunInWorkflow,
-      handleWorkflowTriggerScheduleRunInWorkflow:
-        hookFns.handleWorkflowTriggerScheduleRunInWorkflow,
-      handleWorkflowTriggerWebhookRunInWorkflow: hookFns.handleWorkflowTriggerWebhookRunInWorkflow,
-      handleWorkflowTriggerPluginRunInWorkflow: hookFns.handleWorkflowTriggerPluginRunInWorkflow,
-      handleWorkflowRunAllTriggersInWorkflow: hookFns.handleWorkflowRunAllTriggersInWorkflow,
-      availableNodesMetaData: { nodes: [{ id: 'start' }], nodesMap: { start: { id: 'start' } } },
-      getWorkflowRunAndTraceUrl: hookFns.getWorkflowRunAndTraceUrl,
-      exportCheck: hookFns.exportCheck,
-      handleExportDSL: hookFns.handleExportDSL,
-      fetchInspectVars: hookFns.fetchInspectVars,
-      configsMap: { flowId: 'app-1', flowType: 'app-flow', fileSettings: { enabled: true } },
-    })
-  })
-
-  it('returns the workflow draft refresh result to Dify Builder', async () => {
-    hookFns.handleRefreshWorkflowDraft.mockResolvedValueOnce(false)
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-    const callbacks = mockDifyBuilderProvider.callbacks
-    if (!callbacks) throw new Error('Dify Builder provider callbacks were not registered')
-
-    await expect(callbacks.onRefreshCanvas(() => true)).resolves.toBe(false)
-    expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
-  })
-
-  it('passes collaboration identity and tracks the local cursor when enabled', () => {
-    collaborationRuntime.isEnabled = true
-    collaborationRuntime.isConnected = true
-    collaborationRuntime.onlineUsers = [
-      { user_id: 'u-1', username: 'Alice', avatar: '', sid: 'sid-1' },
-    ]
-    const { unmount } = render(
-      <WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />,
-    )
-
-    expect(collaborationRuntime.startCursorTracking).toHaveBeenCalled()
-    expect(capturedContextProps).toMatchObject({
-      myUserId: 'current-user',
-      onlineUsers: [{ user_id: 'u-1' }],
-    })
-
-    unmount()
-    expect(collaborationRuntime.stopCursorTracking).toHaveBeenCalled()
-  })
-
-  it('blocks canvas input until the collaborative graph is ready', () => {
-    collaborationRuntime.isEnabled = true
-
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    expect(screen.queryByTestId('collaboration-graph-loading')).not.toBeInTheDocument()
-
-    act(() => collaborationListeners.graphReadyChange?.(false))
-    expect(screen.getByRole('status')).toHaveTextContent('workflow.common.syncingData')
-
-    act(() => collaborationListeners.graphReadyChange?.(true))
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
-  })
-
-  it('saves local canvas edits after an accepted Builder draft replaces the pending save', () => {
-    collaborationRuntime.isEnabled = true
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    draftStore.getState().markWorkflowDraftDirty()
-    draftStore.getState().debouncedSyncWorkflowDraft(hookFns.doSyncWorkflowDraft)
-    act(() => collaborationListeners.serverDraftApplied?.({ hash: 'builder-hash', updated_at: 3 }))
-    draftStore.getState().flushPendingSync()
-
-    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledOnce()
-    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('builder-hash')
-    expect(draftStore.getState().workflowDraftLocalRevision).toBeGreaterThan(
-      draftStore.getState().workflowDraftSavedRevision,
-    )
-  })
-
-  it('does not resave an accepted Builder draft when there are no local canvas edits', () => {
-    collaborationRuntime.isEnabled = true
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    act(() => collaborationListeners.serverDraftApplied?.({ hash: 'builder-hash', updated_at: 3 }))
-    draftStore.getState().flushPendingSync()
-
-    expect(hookFns.doSyncWorkflowDraft).not.toHaveBeenCalled()
-  })
-
-  it('disables collaboration for view-only apps', () => {
-    useAppStore.setState({
-      appDetail: { permission_keys: [AppACLPermission.ViewLayout] } as never,
-    })
-
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    expect(mockUseCollaboration).toHaveBeenCalledWith('app-1', false, expect.any(Object))
-  })
-
-  it('subscribes collaboration listeners and handles sync/workflow update callbacks', async () => {
-    collaborationRuntime.isEnabled = true
-    mockFetchWorkflowDraft.mockResolvedValue({
-      hash: 'imported-hash',
-      features: {
-        file_upload: { enabled: true },
-        opening_statement: 'hello',
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
+  queryClient.setQueryData(
+    [...consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} })],
+    triggers,
+  )
+  for (const trigger of triggers) {
+    queryClient.setQueryData(
+      [
+        ...consoleQuery.workspaces.current.triggerProvider.byProvider.info.get.queryKey({
+          input: { params: { provider: trigger.name } },
+        }),
+      ],
+      {
+        author: trigger.author,
+        name: trigger.name,
+        label: trigger.label,
+        description: trigger.description,
+        tags: [],
+        plugin_id: trigger.plugin_id,
+        plugin_unique_identifier: trigger.plugin_unique_identifier,
+        supported_creation_methods: [],
+        subscription_schema: [],
+        events: [],
       },
-      conversation_variables: [],
-      environment_variables: [],
+    )
+  }
+  const features = createFeaturesStore({})
+  const eventEmitter = new EventEmitter<EventEmitterValue>()
+  const view = await act(async () =>
+    renderWorkflowComponent(
+      <NuqsTestingAdapter>
+        <WorkflowEventProvider value={{ eventEmitter }}>
+          <FeaturesContext value={features}>
+            <WorkflowWithDefaultContext nodes={nodes} edges={[]}>
+              <WorkflowMain nodes={nodes} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />
+            </WorkflowWithDefaultContext>
+          </FeaturesContext>
+        </WorkflowEventProvider>
+      </NuqsTestingAdapter>,
+      {
+        queryClient,
+        initialStoreState: { isWorkflowDataLoaded: true, ...initialStoreState },
+        injectWorkflowStoreSliceFn: createWorkflowSlice as InjectWorkflowStoreSliceFn,
+      },
+    ),
+  )
+  return { ...view, queryClient, features, eventEmitter }
+}
+
+it('shows synchronization status until the collaborative graph is ready', async () => {
+  await renderMain()
+  expect(screen.queryByText('workflow.common.syncingData')).not.toBeInTheDocument()
+  await act(async () => {
+    events.ready.forEach((handler) => handler(false))
+  })
+  expect(screen.getByText('workflow.common.syncingData')).toBeVisible()
+  await act(async () => {
+    events.ready.forEach((handler) => handler(true))
+  })
+  expect(screen.queryByText('workflow.common.syncingData')).not.toBeInTheDocument()
+})
+
+// These are incoming collaboration-service events, not callbacks captured from UI components.
+function updateVars(syncWorkflowDraft = false) {
+  return Promise.all(
+    [...events.vars].map((handler) =>
+      handler({
+        type: 'vars_and_features_update',
+        userId: 'peer',
+        timestamp: 1,
+        data: { syncWorkflowDraft },
+      }),
+    ),
+  )
+}
+function updateWorkflow() {
+  return Promise.all(
+    [...events.workflow].map((handler) => handler({ appId: 'app-1', timestamp: 1 })),
+  )
+}
+const modelSnapshot = (name: string) =>
+  draft({
+    features: { opening_statement: name },
+    environment_variables: [
+      {
+        id: 'model',
+        name: 'shared_model',
+        value_type: 'llm',
+        value: { provider: 'openai', name, mode: 'chat' },
+        description: '',
+      },
+    ],
+  })
+const graphRequest = { generation: 2, token: 1, attempt: 0 }
+function reloadGraph() {
+  return Promise.all([...events.reload].map((handler) => handler(graphRequest)))
+}
+
+it('does not connect collaboration for a view-only app', async () => {
+  await renderMain({ permission_keys: [AppACLPermission.ViewLayout] })
+  expect(collaborationManager.connect).not.toHaveBeenCalled()
+  expect(screen.getByRole('button', { name: 'workflow.env.envPanelTitle' })).toBeDisabled()
+})
+
+it('applies remote features and variables, retains omitted slices, and normalizes secret masks', async () => {
+  const { store, features } = await renderMain()
+  api.fetchDraft.mockResolvedValueOnce(
+    draft({
+      features: { file_upload: { enabled: true } },
+      conversation_variables: [
+        {
+          id: 'conversation-1',
+          name: 'topic',
+          value_type: ChatVarType.String,
+          value: 'Research',
+          description: '',
+        },
+      ],
+      environment_variables: [
+        {
+          id: 'secret-1',
+          name: 'TOKEN',
+          value: '********************',
+          value_type: 'secret',
+          description: '',
+        },
+      ],
+    }),
+  )
+  await act(async () => {
+    await updateVars()
+  })
+  expect(features.getState().features.file?.enabled).toBe(true)
+  expect(store.getState().conversationVariables).toMatchObject([
+    { id: 'conversation-1', value: 'Research' },
+  ])
+  expect(store.getState().environmentVariables).toMatchObject([
+    { id: 'secret-1', value: '[__HIDDEN__]' },
+  ])
+  expect(store.getState().envSecrets).toEqual({ 'secret-1': '********************' })
+  api.fetchDraft.mockResolvedValueOnce(
+    draft({ features: undefined, environment_variables: undefined, conversation_variables: [] }),
+  )
+  await act(async () => {
+    await updateVars()
+  })
+  expect(store.getState().conversationVariables).toEqual([])
+  expect(features.getState().features.file?.enabled).toBe(true)
+  expect(store.getState().environmentVariables).toMatchObject([
+    { id: 'secret-1', value: '[__HIDDEN__]' },
+  ])
+})
+
+it('saves the trusted graph on a directed request and acknowledges the persisted revision', async () => {
+  await renderMain()
+  const acknowledge = vi.fn()
+  act(() => {
+    events.sync.forEach((handler) => handler({ requestId: 'save-1', acknowledge }))
+  })
+  await waitFor(() =>
+    expect(acknowledge).toHaveBeenCalledWith({ success: true, hash: 'saved-hash', updatedAt: 2 }),
+  )
+  expect(api.saveDraft).toHaveBeenCalledWith(
+    expect.objectContaining({
+      params: { app_id: 'app-1' },
+      body: expect.objectContaining({
+        graph: expect.objectContaining({ nodes: [expect.objectContaining({ id: 'start' })] }),
+      }),
+    }),
+    expect.anything(),
+  )
+  expect(collaborationManager.refreshGraphSynchronously).toHaveBeenCalled()
+})
+
+it('replaces the canvas from a workflow update and records its revision', async () => {
+  const { store } = await renderMain()
+  api.fetchDraft.mockResolvedValue(
+    draft({
+      hash: 'remote-hash',
       graph: {
-        nodes: [{ id: 'n-1' }],
-        edges: [{ id: 'e-1' }],
+        nodes: [
+          createStartNode({ id: 'remote-start', data: { title: 'Remote entry', variables: [] } }),
+        ],
+        edges: [],
         viewport: { x: 3, y: 4, zoom: 1.2 },
       },
-    })
-
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    expect(mockOnVarsAndFeaturesUpdate).toHaveBeenCalled()
-    expect(mockOnWorkflowUpdate).toHaveBeenCalled()
-    expect(mockOnSyncRequest).toHaveBeenCalled()
-
-    const acknowledge = vi.fn()
-    collaborationListeners.syncRequest?.({ requestId: 'request-1', acknowledge })
-    expect(mockRefreshGraphSynchronously).toHaveBeenCalled()
-    await waitFor(() => {
-      expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledWith(false, undefined, {
-        forceLocal: true,
-      })
-      expect(acknowledge).toHaveBeenCalledWith({
-        success: true,
-        hash: 'saved-hash',
-        updatedAt: 2,
-      })
-    })
-
-    await collaborationListeners.varsAndFeaturesUpdate?.({})
-    await collaborationListeners.workflowUpdate?.()
-
-    await waitFor(() => {
-      expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
-      expect(mockSetFeatures).toHaveBeenCalled()
-      expect(hookFns.handleRefreshWorkflowDraft).toHaveBeenCalledWith(false, {
-        shouldApply: expect.any(Function),
-      })
-    })
-  })
-
-  it('syncs the leader only after applying a follower environment update', async () => {
-    collaborationRuntime.isEnabled = true
-    mockFetchWorkflowDraft.mockResolvedValue({
-      features: {},
-      conversation_variables: [],
-      environment_variables: [
-        {
-          id: 'env-model',
-          name: 'shared_model',
-          value_type: 'llm',
-          value: { provider: 'openai', name: 'gpt-4o', mode: 'chat' },
-          description: '',
-        },
-      ],
-    })
-
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-    hookFns.doSyncWorkflowDraft.mockClear()
-
-    await collaborationListeners.varsAndFeaturesUpdate?.({
-      data: { syncWorkflowDraft: true },
-    })
-
-    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 'env-model' }),
-    ])
-    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-    expect(mockSetEnvironmentVariables.mock.invocationCallOrder[0]).toBeLessThan(
-      hookFns.doSyncWorkflowDraft.mock.invocationCallOrder[0]!,
-    )
-  })
-
-  it.each([false, true])(
-    'reports a draft conflict to the requester (already paused: %s)',
-    async (alreadyPaused) => {
-      collaborationRuntime.isEnabled = true
-      hasWorkflowDraftConflict = alreadyPaused
-      hookFns.doSyncWorkflowDraft.mockImplementationOnce(async () => {
-        hasWorkflowDraftConflict = true
-        return null
-      })
-      render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-      const acknowledge = vi.fn()
-
-      collaborationListeners.syncRequest?.({ requestId: 'request-conflict', acknowledge })
-
-      await waitFor(() =>
-        expect(acknowledge).toHaveBeenCalledWith({
-          success: false,
-          error: 'draft_workflow_not_sync',
-        }),
-      )
-      expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(alreadyPaused ? 0 : 1)
-      expect(mockRefreshGraphSynchronously).toHaveBeenCalledTimes(alreadyPaused ? 0 : 1)
-    },
+    }),
   )
-
-  it('ignores an older environment refresh that resolves after the latest update', async () => {
-    collaborationRuntime.isEnabled = true
-    let resolveFirst!: (value: Record<string, unknown>) => void
-    let resolveSecond!: (value: Record<string, unknown>) => void
-    mockFetchWorkflowDraft
-      .mockReturnValueOnce(
-        new Promise((resolve) => {
-          resolveFirst = resolve
-        }),
-      )
-      .mockReturnValueOnce(
-        new Promise((resolve) => {
-          resolveSecond = resolve
-        }),
-      )
-
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-    const firstUpdate = collaborationListeners.varsAndFeaturesUpdate?.({
-      data: { syncWorkflowDraft: true },
-    })
-    const secondUpdate = collaborationListeners.varsAndFeaturesUpdate?.({})
-
-    resolveSecond({
-      features: {},
-      conversation_variables: [],
-      environment_variables: [
-        {
-          id: 'env-model',
-          name: 'shared_model',
-          value_type: 'llm',
-          value: { provider: 'openai', name: 'gpt-latest', mode: 'chat' },
-          description: '',
-        },
-      ],
-    })
-    await secondUpdate
-
-    expect(mockSetEnvironmentVariables).toHaveBeenLastCalledWith([
-      expect.objectContaining({ value: expect.objectContaining({ name: 'gpt-latest' }) }),
-    ])
-    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-
-    resolveFirst({
-      features: {},
-      conversation_variables: [],
-      environment_variables: [
-        {
-          id: 'env-model',
-          name: 'shared_model',
-          value_type: 'llm',
-          value: { provider: 'openai', name: 'gpt-stale', mode: 'chat' },
-          description: '',
-        },
-      ],
-    })
-    await firstUpdate
-
-    expect(mockSetEnvironmentVariables).toHaveBeenCalledTimes(1)
-    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+  await act(async () => {
+    await updateWorkflow()
   })
+  // happy-dom does not measure ReactFlow nodes; verify content in the real renderer.
+  expect(await screen.findByText('Remote entry')).toBeInTheDocument()
+  expect(store.getState().syncWorkflowDraftHash).toBe('remote-hash')
+})
 
-  it('applies the latest successful refresh when a newer refresh fails', async () => {
-    collaborationRuntime.isEnabled = true
-    let resolveFirst!: (value: Record<string, unknown>) => void
-    let rejectSecond!: (reason: Error) => void
-    mockFetchWorkflowDraft
-      .mockReturnValueOnce(
-        new Promise((resolve) => {
-          resolveFirst = resolve
-        }),
-      )
-      .mockReturnValueOnce(
-        new Promise((_resolve, reject) => {
-          rejectSecond = reject
-        }),
-      )
-
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-    const firstUpdate = collaborationListeners.varsAndFeaturesUpdate?.({
-      data: { syncWorkflowDraft: true },
-    })
-    const secondUpdate = collaborationListeners.varsAndFeaturesUpdate?.({})
-
-    resolveFirst({
-      features: {},
-      conversation_variables: [],
-      environment_variables: [
-        {
-          id: 'env-model',
-          name: 'shared_model',
-          value_type: 'llm',
-          value: { provider: 'openai', name: 'gpt-recovered', mode: 'chat' },
-          description: '',
-        },
-      ],
-    })
-    await firstUpdate
-    expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
-
-    rejectSecond(new Error('refresh failed'))
-    await secondUpdate
-
-    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
-      expect.objectContaining({ value: expect.objectContaining({ name: 'gpt-recovered' }) }),
-    ])
-    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+it('saves newly applied features when a follower requests synchronization', async () => {
+  const { store } = await renderMain()
+  api.fetchDraft.mockResolvedValue(modelSnapshot('latest-model'))
+  await act(async () => {
+    await updateVars(true)
   })
+  expect(store.getState().environmentVariables).toMatchObject([{ value: { name: 'latest-model' } }])
+  expect(api.saveDraft).toHaveBeenCalledWith(
+    expect.objectContaining({
+      body: expect.objectContaining({
+        features: expect.objectContaining({ opening_statement: 'latest-model' }),
+      }),
+    }),
+    expect.anything(),
+  )
+})
 
-  it('applies a slow successful refresh after all newer refresh attempts fail', async () => {
-    collaborationRuntime.isEnabled = true
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    let resolveFirst!: (value: Record<string, unknown>) => void
-    mockFetchWorkflowDraft
-      .mockReturnValueOnce(
-        new Promise((resolve) => {
-          resolveFirst = resolve
-        }),
-      )
-      .mockRejectedValueOnce(new Error('refresh failed'))
-      .mockRejectedValueOnce(new Error('retry failed'))
-
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-    const firstUpdate = collaborationListeners.varsAndFeaturesUpdate?.({
-      data: { syncWorkflowDraft: true },
-    })
-    const secondUpdate = collaborationListeners.varsAndFeaturesUpdate?.({})
-
-    await secondUpdate
-    expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
-
-    resolveFirst({
-      features: {},
-      conversation_variables: [],
-      environment_variables: [
-        {
-          id: 'env-model',
-          name: 'shared_model',
-          value_type: 'llm',
-          value: { provider: 'openai', name: 'gpt-slow-success', mode: 'chat' },
-          description: '',
-        },
-      ],
-    })
-    await firstUpdate
-
-    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
-      expect.objectContaining({ value: expect.objectContaining({ name: 'gpt-slow-success' }) }),
-    ])
-    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-    consoleError.mockRestore()
+it('ignores an older environment refresh that resolves after the latest update', async () => {
+  const first = createDeferred<FetchWorkflowDraftResponse>()
+  const second = createDeferred<FetchWorkflowDraftResponse>()
+  api.fetchDraft.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+  const { store } = await renderMain()
+  const older = updateVars(true)
+  const newer = updateVars()
+  await act(async () => {
+    second.resolve(modelSnapshot('latest-model'))
+    await newer
   })
-
-  it('applies a slow retry after all newer refresh attempts fail', async () => {
-    collaborationRuntime.isEnabled = true
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    mockFetchWorkflowDraft.mockResolvedValueOnce({
-      features: {},
-      conversation_variables: [],
-      environment_variables: [],
-    })
-
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-    await collaborationListeners.varsAndFeaturesUpdate?.({})
-    mockFetchWorkflowDraft.mockReset()
-    mockSetEnvironmentVariables.mockClear()
-    hookFns.doSyncWorkflowDraft.mockClear()
-
-    let resolveSlowRetry!: (value: Record<string, unknown>) => void
-    mockFetchWorkflowDraft
-      .mockRejectedValueOnce(new Error('older refresh failed'))
-      .mockReturnValueOnce(
-        new Promise((resolve) => {
-          resolveSlowRetry = resolve
-        }),
-      )
-      .mockRejectedValueOnce(new Error('newer refresh failed'))
-      .mockRejectedValueOnce(new Error('newer retry failed'))
-
-    const olderUpdate = collaborationListeners.varsAndFeaturesUpdate?.({
-      data: { syncWorkflowDraft: true },
-    })
-    await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(2))
-    const newerUpdate = collaborationListeners.varsAndFeaturesUpdate?.({})
-
-    await newerUpdate
-    expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
-
-    resolveSlowRetry({
-      features: {},
-      conversation_variables: [],
-      environment_variables: [
-        {
-          id: 'env-model',
-          name: 'shared_model',
-          value_type: 'llm',
-          value: { provider: 'openai', name: 'gpt-slow-retry', mode: 'chat' },
-          description: '',
-        },
-      ],
-    })
-    await olderUpdate
-
-    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
-      expect.objectContaining({ value: expect.objectContaining({ name: 'gpt-slow-retry' }) }),
-    ])
-    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-    consoleError.mockRestore()
+  expect(store.getState().environmentVariables).toMatchObject([{ value: { name: 'latest-model' } }])
+  expect(api.saveDraft).toHaveBeenCalledOnce()
+  await act(async () => {
+    first.resolve(modelSnapshot('stale-model'))
+    await older
   })
+  expect(store.getState().environmentVariables).toMatchObject([{ value: { name: 'latest-model' } }])
+  expect(api.saveDraft).toHaveBeenCalledOnce()
+})
 
-  it('retries a pending follower sync request after the first leader sync fails', async () => {
-    collaborationRuntime.isEnabled = true
-    mockFetchWorkflowDraft.mockResolvedValue({
-      features: {},
-      conversation_variables: [],
-      environment_variables: [],
-    })
-    hookFns.doSyncWorkflowDraft
-      .mockImplementationOnce(async (_notRefresh, callback) => {
-        callback?.onError?.()
+it.each(['before', 'after'] as const)(
+  'recovers the latest successful snapshot when it resolves %s a newer refresh fails',
+  async (order) => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const first = createDeferred<FetchWorkflowDraftResponse>()
+    const second = createDeferred<FetchWorkflowDraftResponse>()
+    api.fetchDraft
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise)
+      .mockRejectedValueOnce(new Error('Retry failed'))
+    const { store } = await renderMain()
+    const older = updateVars(true)
+    const newer = updateVars()
+    if (order === 'before') {
+      await act(async () => {
+        first.resolve(modelSnapshot('recovered-model'))
+        await older
       })
-      .mockImplementationOnce(async (_notRefresh, callback) => {
-        callback?.onSuccess?.()
-      })
-
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    await collaborationListeners.varsAndFeaturesUpdate?.({
-      data: { syncWorkflowDraft: true },
-    })
-    await collaborationListeners.varsAndFeaturesUpdate?.({})
-
-    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(2)
-  })
-
-  it('reloads the HTTP draft before trusting a reconnected leader document', async () => {
-    collaborationRuntime.isEnabled = true
-    const request = { generation: 2, token: 1, attempt: 0 }
-
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    await collaborationListeners.graphReloadRequired?.(request)
-
-    expect(hookFns.handleRefreshWorkflowDraft).toHaveBeenCalledWith(false, {
-      shouldApply: expect.any(Function),
-      syncToCollaboration: false,
-      preserveViewport: true,
-    })
-    expect(mockReplaceGraphFromReactFlow).toHaveBeenCalledWith(request)
-  })
-
-  it('rejects a directed save without importing an untrusted CRDT graph', () => {
-    collaborationRuntime.isEnabled = true
-    mockCanPersistLocalGraph.mockReturnValue(false)
-
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-
-    const acknowledge = vi.fn()
-    collaborationListeners.syncRequest?.({ requestId: 'request-untrusted', acknowledge })
-
-    expect(acknowledge).toHaveBeenCalledWith({
-      success: false,
-      error: 'Collaborative graph is not ready to save.',
-    })
-    expect(mockRefreshGraphSynchronously).not.toHaveBeenCalled()
-    expect(hookFns.doSyncWorkflowDraft).not.toHaveBeenCalled()
-  })
-
-  it('retries an authoritative graph reload after a transient fetch failure', async () => {
-    vi.useFakeTimers()
-    try {
-      collaborationRuntime.isEnabled = true
-      hookFns.handleRefreshWorkflowDraft.mockResolvedValue(false)
-      const request = { generation: 2, token: 1, attempt: 0 }
-
-      render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-      await collaborationListeners.graphReloadRequired?.(request)
-
-      expect(mockRetryGraphReload).not.toHaveBeenCalled()
-      vi.advanceTimersByTime(1000)
-      expect(mockRetryGraphReload).toHaveBeenCalledWith(request)
-    } finally {
-      vi.useRealTimers()
+      expect(store.getState().environmentVariables).toEqual([])
     }
+    await act(async () => {
+      second.reject(new Error('Latest refresh failed'))
+      await newer
+    })
+    if (order === 'after')
+      await act(async () => {
+        first.resolve(modelSnapshot('recovered-model'))
+        await older
+      })
+    expect(store.getState().environmentVariables).toMatchObject([
+      { value: { name: 'recovered-model' } },
+    ])
+    expect(api.saveDraft).toHaveBeenCalledOnce()
+  },
+)
+
+it('applies an older slow retry after newer refresh attempts fail', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const { store } = await renderMain()
+  await act(async () => {
+    await updateVars()
   })
-
-  it('stops applying collaboration workflow updates after the editor unmounts', async () => {
-    collaborationRuntime.isEnabled = true
-
-    const { unmount } = render(
-      <WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />,
-    )
-
-    await collaborationListeners.workflowUpdate?.()
-    const shouldApply = hookFns.handleRefreshWorkflowDraft.mock.calls[0]![1].shouldApply
-    expect(shouldApply()).toBe(true)
-    unmount()
-    expect(shouldApply()).toBe(false)
-    expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
+  const retry = createDeferred<FetchWorkflowDraftResponse>()
+  api.fetchDraft
+    .mockReset()
+    .mockRejectedValueOnce(new Error('Older refresh failed'))
+    .mockReturnValueOnce(retry.promise)
+    .mockRejectedValueOnce(new Error('Newer refresh failed'))
+    .mockRejectedValueOnce(new Error('Newer retry failed'))
+  const older = updateVars(true)
+  await waitFor(() => expect(api.fetchDraft).toHaveBeenCalledTimes(2))
+  await act(async () => {
+    await updateVars()
   })
+  expect(store.getState().environmentVariables).toEqual([])
+  await act(async () => {
+    retry.resolve(modelSnapshot('slow-retry'))
+    await older
+  })
+  expect(store.getState().environmentVariables).toMatchObject([{ value: { name: 'slow-retry' } }])
+  expect(api.saveDraft).toHaveBeenCalledOnce()
+})
 
-  it('completes a Builder refresh without issuing another graph notification', async () => {
-    collaborationRuntime.isEnabled = true
-    let resolveRefresh!: (value: boolean) => void
-    hookFns.handleRefreshWorkflowDraft.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveRefresh = resolve
+it('retries an outstanding follower save on the next update after persistence fails', async () => {
+  await renderMain()
+  api.fetchDraft.mockResolvedValue(modelSnapshot('latest-model'))
+  api.saveDraft.mockRejectedValueOnce(new Error('Save failed'))
+  await act(async () => {
+    await updateVars(true)
+  })
+  expect(api.saveDraft).toHaveBeenCalledOnce()
+  await act(async () => {
+    await updateVars()
+  })
+  expect(api.saveDraft).toHaveBeenCalledTimes(2)
+})
+
+it('reloads the authoritative HTTP graph before replacing the reconnected document', async () => {
+  await renderMain()
+  const response = createDeferred<FetchWorkflowDraftResponse>()
+  api.fetchDraft.mockReturnValueOnce(response.promise)
+  let reload: ReturnType<typeof reloadGraph>
+  act(() => {
+    reload = reloadGraph()
+  })
+  expect(collaborationManager.replaceGraphFromReactFlow).not.toHaveBeenCalled()
+  await act(async () => {
+    response.resolve(
+      draft({
+        graph: {
+          nodes: [createStartNode({ data: { title: 'Reloaded entry', variables: [] } })],
+          edges: [],
+        },
       }),
     )
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-    const refresh = mockDifyBuilderProvider.callbacks!.onRefreshCanvas(() => true)
-    expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
-    resolveRefresh(true)
-    expect(await refresh).toBe(true)
-    expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
+    await reload
   })
+  expect(await screen.findByText('Reloaded entry')).toBeInTheDocument()
+  expect(collaborationManager.replaceGraphFromReactFlow).toHaveBeenCalledExactlyOnceWith(
+    graphRequest,
+  )
+})
+
+it('rejects a directed save while the collaborative graph is untrusted', async () => {
+  vi.mocked(collaborationManager.canPersistLocalGraph).mockReturnValue(false)
+  await renderMain()
+  const acknowledge = vi.fn()
+  act(() => {
+    events.sync.forEach((handler) => handler({ requestId: 'untrusted', acknowledge }))
+  })
+  expect(acknowledge).toHaveBeenCalledWith({
+    success: false,
+    error: 'Collaborative graph is not ready to save.',
+  })
+  expect(collaborationManager.refreshGraphSynchronously).not.toHaveBeenCalled()
+  expect(api.saveDraft).not.toHaveBeenCalled()
+})
+
+it('retries a graph reload after a transient HTTP failure', async () => {
+  await renderMain()
+  api.fetchDraft.mockRejectedValueOnce(new Error('Fetch failed'))
+  vi.useFakeTimers()
+  try {
+    await act(async () => {
+      await reloadGraph()
+    })
+    expect(collaborationManager.retryGraphReload).not.toHaveBeenCalled()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+    expect(collaborationManager.retryGraphReload).toHaveBeenCalledExactlyOnceWith(graphRequest)
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('restores a local start placeholder when a remote workflow graph is empty', async () => {
+  const { store } = await renderMain()
+  api.fetchDraft.mockResolvedValue(draft({ graph: { nodes: [], edges: [] } }))
+  await act(async () => {
+    await updateWorkflow()
+  })
+  await waitFor(() =>
+    expect(store.getState().nodes).toEqual([
+      expect.objectContaining({
+        data: expect.objectContaining({ type: BlockEnum.StartPlaceholder }),
+      }),
+    ]),
+  )
+  expect(await screen.findByText('workflow.blocks.start-placeholder')).toBeInTheDocument()
+})
+
+it('renders the collaborator roster and remote cursor, then disconnects on unmount', async () => {
+  const { unmount } = await renderMain()
+  await waitFor(() => expect(collaborationManager.connect).toHaveBeenCalled())
+  act(() => {
+    events.users.forEach((handler) =>
+      handler([
+        { user_id: 'current-user', username: 'My cursor', avatar: '', sid: 'self' },
+        { user_id: 'peer', username: 'Alice', avatar: '', sid: 'other' },
+      ]),
+    )
+    events.cursors.forEach((handler) =>
+      handler({
+        'current-user': { x: 1, y: 2, userId: 'current-user', timestamp: 1 },
+        peer: { x: 20, y: 30, userId: 'peer', timestamp: 2 },
+      }),
+    )
+  })
+  expect(await screen.findByRole('button', { name: 'Alice' })).toBeVisible()
+  expect(screen.getByText('Alice')).toBeInTheDocument()
+  expect(screen.queryByText('My cursor')).not.toBeInTheDocument()
+  unmount()
+  expect(collaborationManager.disconnect).toHaveBeenCalledWith('connection-1')
+})
+
+it('dismisses onboarding without creating a start node', async () => {
+  const user = userEvent.setup()
+  const { store } = await renderMain({
+    collaboration: false,
+    nodes: [],
+    initialStoreState: { showOnboarding: true },
+  })
+  const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', { name: 'workflow.onboarding.title' }),
+    ).not.toBeInTheDocument(),
+  )
+  expect(store.getState()).toMatchObject({
+    showOnboarding: false,
+    hasShownOnboarding: true,
+    shouldAutoOpenStartNodeSelector: false,
+  })
+  expect(api.saveDraft).not.toHaveBeenCalled()
+})
+
+it('keeps onboarding and import actions unavailable to a view-only user', async () => {
+  await renderMain({
+    collaboration: false,
+    permission_keys: [AppACLPermission.ViewLayout],
+    initialStoreState: { showOnboarding: true, showImportDSLModal: true },
+  })
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(api.saveDraft).not.toHaveBeenCalled()
+})
+
+it('creates and saves the user-input entry selected in onboarding', async () => {
+  const user = userEvent.setup()
+  await renderMain({ collaboration: false, nodes: [], initialStoreState: { showOnboarding: true } })
+  const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
+  await user.click(
+    within(dialog).getByRole('button', { name: /workflow.onboarding.userInputFull/ }),
+  )
+  await waitFor(() => expect(api.saveDraft).toHaveBeenCalled())
+  expect(api.saveDraft.mock.lastCall?.[0].body.graph).toMatchObject({
+    nodes: [{ data: { type: BlockEnum.Start, variables: [] } }],
+    edges: [],
+  })
+  expect(
+    screen.queryByRole('dialog', { name: 'workflow.onboarding.title' }),
+  ).not.toBeInTheDocument()
+  expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
+  expect(api.webhook).not.toHaveBeenCalled()
+})
+
+it('generates webhook URLs only after saving the trigger chosen in onboarding', async () => {
+  const user = userEvent.setup()
+  const save = createDeferred<Awaited<ReturnType<typeof api.saveDraft>>>()
+  api.saveDraft.mockReturnValueOnce(save.promise)
+  await renderMain({ collaboration: false, nodes: [], initialStoreState: { showOnboarding: true } })
+  const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
+  await user.click(
+    within(dialog).getByRole('button', {
+      name: /workflow.onboarding.trigger workflow.onboarding.triggerDescription/,
+    }),
+  )
+  await user.click(await screen.findByRole('button', { name: /workflow.blocks.trigger-webhook/ }))
+  await waitFor(() => expect(api.saveDraft).toHaveBeenCalled())
+  expect(api.saveDraft.mock.lastCall?.[0].body.graph).toMatchObject({
+    nodes: [{ data: { type: BlockEnum.TriggerWebhook } }],
+    edges: [],
+  })
+  expect(api.webhook).not.toHaveBeenCalled()
+  await act(async () => save.resolve({ result: 'success', hash: 'saved-hash', updated_at: 2 }))
+  await waitFor(() => expect(api.webhook).toHaveBeenCalled())
+})
+
+it('backs up the current draft from the import dialog and closes it', async () => {
+  const user = userEvent.setup()
+  const downloads = captureDownloads()
+  await renderMain({ collaboration: false, initialStoreState: { showImportDSLModal: true } })
+  const dialog = await screen.findByRole('dialog', { name: 'app.importApp' })
+  await user.click(
+    within(dialog).getByRole('button', { name: /workflow.common.backupCurrentDraft/ }),
+  )
+  await waitFor(() => expect(downloads).toHaveLength(1))
+  expect(await downloads[0]!.blob.text()).toBe('kind: app')
+  expect(downloads[0]!.filename).toBe('Workflow app.yml')
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+})
+
+it('exports secrets only after confirmation through the real export dialog', async () => {
+  const user = userEvent.setup()
+  const downloads = captureDownloads()
+  const { eventEmitter } = await renderMain({ collaboration: false })
+  act(() =>
+    eventEmitter.emit({
+      type: 'UNRELATED_EVENT',
+      payload: { data: [{ name: 'IGNORED', value: 'secret' }] },
+    }),
+  )
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  act(() =>
+    eventEmitter.emit({
+      type: DSL_EXPORT_CHECK,
+      payload: { data: [{ name: 'API_KEY', value: 'masked' }] },
+    }),
+  )
+  const dialog = await screen.findByRole('alertdialog')
+  expect(dialog).toHaveTextContent('API_KEY')
+  expect(api.exportDSL).not.toHaveBeenCalled()
+  await user.click(within(dialog).getByRole('checkbox'))
+  await user.click(within(dialog).getByRole('button', { name: 'app.exportSecret.title' }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(api.exportDSL).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-1' },
+    query: { include_secret: true },
+  })
+  expect(downloads).toHaveLength(1)
+})
+
+it('creates a plugin trigger from the real provider event and saves its schema and parameters', async () => {
+  const user = userEvent.setup()
+  const trigger: TriggerWithProvider = {
+    id: 'plugin-1',
+    name: 'event-provider',
+    author: 'Dify',
+    label: { en_US: 'Event provider', zh_Hans: '事件提供商' },
+    description: { en_US: 'Events', zh_Hans: '事件' },
+    icon: '',
+    type: CollectionType.trigger,
+    team_credentials: {},
+    is_team_authorization: false,
+    allow_delete: false,
+    labels: [],
+    plugin_id: 'plugin-1',
+    plugin_unique_identifier: 'plugin-1:1.0',
+    meta: { version: '1.0' },
+    supported_creation_methods: [],
+    subscription_schema: [],
+    events: [
+      {
+        name: 'created',
+        author: 'Dify',
+        label: { en_US: 'Item created', zh_Hans: '项目已创建' },
+        description: { en_US: 'When an item is created', zh_Hans: '创建项目时' },
+        parameters: [
+          {
+            name: 'source',
+            label: { en_US: 'Source', zh_Hans: '来源' },
+            human_description: { en_US: 'Event source', zh_Hans: '事件来源' },
+            type: 'string',
+            form: 'form',
+            llm_description: '',
+            required: false,
+            multiple: false,
+            default: '',
+          },
+        ],
+        labels: [],
+        output_schema: { type: 'object', properties: { item_id: { type: 'string' } } },
+      },
+    ],
+  }
+  await renderMain({
+    collaboration: false,
+    nodes: [],
+    initialStoreState: { showOnboarding: true },
+    triggers: [trigger],
+  })
+  const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
+  await user.click(
+    within(dialog).getByRole('button', {
+      name: /workflow.onboarding.trigger workflow.onboarding.triggerDescription/,
+    }),
+  )
+  await user.click(await screen.findByRole('button', { name: /Event provider/ }))
+  await user.click(await screen.findByRole('button', { name: 'Item created' }))
+  await waitFor(() => expect(api.saveDraft).toHaveBeenCalled())
+  expect(api.saveDraft.mock.lastCall?.[0].body.graph).toMatchObject({
+    nodes: [
+      {
+        data: {
+          type: BlockEnum.TriggerPlugin,
+          title: 'Item created',
+          desc: 'When an item is created',
+          provider_id: 'event-provider',
+          provider_type: CollectionType.trigger,
+          provider_name: 'event-provider',
+          plugin_id: 'plugin-1',
+          plugin_unique_identifier: 'plugin-1:1.0',
+          event_name: 'created',
+          parameters_schema: trigger.events[0]!.parameters,
+          config: { source: '' },
+          output_schema: trigger.events[0]!.output_schema,
+        },
+      },
+    ],
+    edges: [],
+  })
+  expect(
+    screen.queryByRole('dialog', { name: 'workflow.onboarding.title' }),
+  ).not.toBeInTheDocument()
+})
+
+it('imports a DSL file and replaces the graph through the real update event', async () => {
+  const user = userEvent.setup()
+  vi.mocked(collaborationManager.isConnected).mockReturnValue(false)
+  api.fetchDraft.mockResolvedValue(
+    draft({
+      graph: {
+        nodes: [createStartNode({ data: { title: 'Imported entry', variables: [] } })],
+        edges: [],
+      },
+      hash: 'imported-hash',
+    }),
+  )
+  const { store } = await renderMain({
+    collaboration: false,
+    initialStoreState: { showImportDSLModal: true },
+  })
+  const dialog = await screen.findByRole('dialog', { name: 'app.importApp' })
+  // The native file picker is hidden behind the uploader's Browse action.
+  const input = dialog.querySelector<HTMLInputElement>('input[type="file"]')!
+  const yaml = 'workflow: { graph: { nodes: [] } }'
+  await user.upload(input, new File([yaml], 'workflow.yml', { type: 'text/yaml' }))
+  await user.click(
+    within(dialog).getByRole('button', { name: 'workflow.common.overwriteAndImport' }),
+  )
+  expect(await screen.findByText('Imported entry')).toBeInTheDocument()
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(store.getState().syncWorkflowDraftHash).toBe('imported-hash')
+  expect(api.importDSL).toHaveBeenCalledExactlyOnceWith({
+    body: { mode: 'yaml-content', yaml_content: yaml, app_id: 'app-1' },
+  })
+})
+
+it.each([false, true])(
+  'acknowledges a draft conflict to the requester (already paused: %s)',
+  async (alreadyPaused) => {
+    const { store } = await renderMain()
+    if (alreadyPaused) store.getState().setWorkflowDraftConflict(true)
+    else
+      api.saveDraft.mockImplementationOnce(async () => {
+        store.getState().setWorkflowDraftConflict(true)
+        throw new Error('draft_workflow_not_sync')
+      })
+    const acknowledge = vi.fn()
+    act(() => events.sync.forEach((handler) => handler({ requestId: 'conflict', acknowledge })))
+    await waitFor(() =>
+      expect(acknowledge).toHaveBeenCalledWith({
+        success: false,
+        error: 'draft_workflow_not_sync',
+      }),
+    )
+    expect(api.saveDraft).toHaveBeenCalledTimes(alreadyPaused ? 0 : 1)
+  },
+)
+
+it.each([false, true])(
+  'resaves an accepted server draft only when local edits remain (dirty: %s)',
+  async (dirty) => {
+    const { store } = await renderMain()
+    if (dirty) store.getState().markWorkflowDraftDirty()
+    act(() =>
+      events.applied.forEach((handler) =>
+        handler({
+          revision: 'revision-1',
+          hash: 'builder-hash',
+          updated_at: 3,
+          update: new Uint8Array(),
+        }),
+      ),
+    )
+    await act(async () => {
+      store.getState().flushPendingSync()
+    })
+    await waitFor(() => expect(api.saveDraft).toHaveBeenCalledTimes(dirty ? 1 : 0))
+    if (dirty)
+      expect(api.saveDraft).toHaveBeenCalledWith(
+        expect.objectContaining({ body: expect.objectContaining({ hash: 'builder-hash' }) }),
+        expect.anything(),
+      )
+    else expect(store.getState().syncWorkflowDraftHash).toBe('builder-hash')
+  },
+)
+
+it('does not apply an incoming workflow reload after the editor unmounts', async () => {
+  const pending = createDeferred<FetchWorkflowDraftResponse>()
+  const { store, unmount } = await renderMain()
+  const originalHash = store.getState().syncWorkflowDraftHash
+  api.fetchDraft.mockReturnValueOnce(pending.promise)
+  const refresh = updateWorkflow()
+  await waitFor(() => expect(api.fetchDraft).toHaveBeenCalledOnce())
+  unmount()
+  await act(async () => {
+    pending.resolve(draft({ hash: 'late-hash' }))
+    await refresh
+  })
+  expect(store.getState().syncWorkflowDraftHash).toBe(originalHash)
+  expect(collaborationManager.requestServerDraftSync).not.toHaveBeenCalled()
 })

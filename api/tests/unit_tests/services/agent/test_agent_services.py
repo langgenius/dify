@@ -587,7 +587,7 @@ def test_save_workflow_composer_rejects_agent_app_variant(sqlite_session: Sessio
         }
     )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Workflow composer endpoint only accepts workflow variant"):
         AgentComposerService.save_workflow_composer(
             session=session,
             tenant_id="tenant-1",
@@ -3537,7 +3537,7 @@ def test_composer_version_helpers_and_lookup_errors(monkeypatch: pytest.MonkeyPa
     )
     workflow = AgentComposerService._get_draft_workflow(session=session, tenant_id="tenant-1", app_id="app-1")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Draft workflow not found"):
         AgentComposerService._get_draft_workflow(session=session, tenant_id="tenant-1", app_id="missing")
     assert (
         AgentComposerService._require_agent(session=session, tenant_id="tenant-1", agent_id="agent-1").id == "agent-1"
@@ -3607,9 +3607,9 @@ def test_composer_current_version_and_error_paths(monkeypatch: pytest.MonkeyPatc
     created_version = session.get(AgentConfigSnapshot, result.current_snapshot_id)
     assert created_version is not None
     assert created_version.home_snapshot_id == "home-1"
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Workflow agent binding not found"):
         AgentComposerService._require_binding(None)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="agent_soul is required"):
         AgentComposerService._save_as_new_agent(
             session=session,
             tenant_id="tenant-1",

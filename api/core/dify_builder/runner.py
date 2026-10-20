@@ -452,10 +452,9 @@ class Runner:
             self._commit(s, s.current_state, fc, [], settled=True)
             return s
         if action_kind in ("check_recovery", "recovery_continue", "recovery_restart"):
-            next_state, items, followup = recovery.prepare_recovery_step(self._env.dify, turn, s, fc)
+            next_state, items, followup, settled = recovery.prepare_recovery_step(self._env.dify, turn, s, fc)
             # Drive working entry states and any input-backed re-entry before
             # settling at the next user gate.
-            settled = (is_waiting(next_state) or is_terminal(next_state)) and followup.action is None
             self._commit(s, next_state, fc, items, settled=settled)
             if settled:
                 return s

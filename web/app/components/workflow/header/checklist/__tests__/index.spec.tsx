@@ -1,12 +1,16 @@
 import type { ChecklistItem } from '../../../hooks/use-checklist'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
 import { difyBuilderSessionBusyAtom } from '@/app/components/workflow-app/components/dify-builder/session/state'
 import {
   difyBuilderChecklistErrorsAtom,
   difyBuilderRuntimeAtom,
 } from '@/app/components/workflow-app/components/dify-builder/store'
+import { createConsoleQueryClient } from '@/test/console/query-data'
+import { createDifyBuilderRuntime } from '@/test/fixtures/dify-builder'
+import { renderWorkflowFlowComponent as render } from '../../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../../types'
 import WorkflowChecklist from '../index'
 
@@ -30,16 +34,32 @@ let mockChecklistItems: ChecklistItem[] = [
 ]
 
 const mockHandleNodeSelect = vi.fn()
-const mockSetOpenInlineAgentPanelNodeId = vi.fn()
 const mockStartChecklistFix = vi.fn(async () => true)
 
-vi.mock('reactflow', () => ({
-  useEdges: () => [],
-}))
-
-vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
-  default: () => [],
-}))
+const renderChecklist = (
+  props: React.ComponentProps<typeof WorkflowChecklist>,
+  { busy = false, canEdit = true, enabled = true } = {},
+) => {
+  const store = createStore()
+  store.set(queryClientAtom, createConsoleQueryClient())
+  store.set(
+    difyBuilderRuntimeAtom,
+    createDifyBuilderRuntime({
+      canEdit,
+      enabled,
+      session: { startChecklistFix: mockStartChecklistFix },
+    }),
+  )
+  store.set(difyBuilderSessionBusyAtom, busy)
+  return {
+    ...render(
+      <Provider store={store}>
+        <WorkflowChecklist {...props} />
+      </Provider>,
+    ),
+    builderStore: store,
+  }
+}
 
 vi.mock('../../../hooks/use-checklist', () => ({
   useChecklist: () => mockChecklistItems,
@@ -50,92 +70,6 @@ vi.mock('../../../hooks/use-nodes-interactions', () => ({
     handleNodeSelect: mockHandleNodeSelect,
   }),
 }))
-
-vi.mock('../../../store', () => ({
-  useStore: (
-    selector: (state: {
-      setOpenInlineAgentPanelNodeId: typeof mockSetOpenInlineAgentPanelNodeId
-    }) => unknown,
-  ) =>
-    selector({
-      setOpenInlineAgentPanelNodeId: mockSetOpenInlineAgentPanelNodeId,
-    }),
-}))
-
-vi.mock('../../../hooks-store/store', () => ({
-  useHooksStore: (selector: (state: { configsMap: { flowType: string } }) => unknown) =>
-    selector({
-      configsMap: {
-        flowType: 'workflow',
-      },
-    }),
-}))
-
-vi.mock('../plugin-group', () => ({
-  ChecklistPluginGroup: ({ items }: { items: Array<{ title: string }> }) => (
-    <div data-testid="plugin-group">{items.map((item) => item.title).join(',')}</div>
-  ),
-}))
-
-vi.mock('../node-group', () => ({
-  ChecklistNodeGroup: ({
-    item,
-    onItemClick,
-  }: {
-    item: { title: string }
-    onItemClick: (item: { title: string }) => void
-  }) => (
-    <button data-testid={`node-group-${item.title}`} onClick={() => onItemClick(item)}>
-      {item.title}
-    </button>
-  ),
-}))
-
-const renderChecklist = (
-  props: React.ComponentProps<typeof WorkflowChecklist>,
-  {
-    busy = false,
-    canEdit = true,
-    enabled = true,
-  }: {
-    busy?: boolean
-    canEdit?: boolean
-    enabled?: boolean
-  } = {},
-) => {
-  const store = createStore()
-  store.set(difyBuilderRuntimeAtom, {
-    appId: 'app-1',
-    canEdit,
-    enabled,
-    getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
-    session: {
-      onCanvasRefreshed: vi.fn(),
-      getTrace: vi.fn(() => ({ entries: [], truncated: false })),
-      loadOlderConversation: vi.fn(async () => true),
-      refresh: vi.fn(async () => true),
-      restore: vi.fn(async () => true),
-      reset: vi.fn(),
-      runAction: vi.fn(async () => true),
-      sendMessage: vi.fn(async () => true),
-      startBuild: vi.fn(async () => true),
-      startChecklistFix: mockStartChecklistFix,
-      startEdit: vi.fn(async () => true),
-      startFix: vi.fn(async () => true),
-      updateModel: vi.fn(async () => true),
-    },
-    setShowPanel: vi.fn(),
-  })
-  store.set(difyBuilderSessionBusyAtom, busy)
-  return {
-    store,
-    ...render(
-      <Provider store={store}>
-        <WorkflowChecklist {...props} />
-      </Provider>,
-    ),
-  }
-}
 
 describe('WorkflowChecklist', () => {
   beforeEach(() => {
@@ -162,24 +96,27 @@ describe('WorkflowChecklist', () => {
 
   it('should split checklist items into plugin and node groups and delegate clicks to node selection by default', async () => {
     const user = userEvent.setup()
-    renderChecklist({ disabled: false })
+    render(<WorkflowChecklist disabled={false} />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     expect(screen.getByText('2')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
-    expect(screen.getByTestId('plugin-group')).toHaveTextContent('Missing Plugin')
-    await user.click(screen.getByTestId('node-group-Broken Node'))
+    expect(screen.getByText('Missing Plugin')).toHaveTextContent('Missing Plugin')
+    await user.click(screen.getByRole('button', { name: /Needs configuration/ }))
 
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1')
-    expect(mockSetOpenInlineAgentPanelNodeId).not.toHaveBeenCalled()
   })
 
   it('should use the custom item click handler when provided', async () => {
     const user = userEvent.setup()
     const onItemClick = vi.fn()
-    renderChecklist({ disabled: false, onItemClick })
+    render(<WorkflowChecklist disabled={false} onItemClick={onItemClick} />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
-    await user.click(screen.getByTestId('node-group-Broken Node'))
+    await user.click(screen.getByRole('button', { name: /Needs configuration/ }))
 
     expect(onItemClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'node-1' }))
     expect(mockHandleNodeSelect).not.toHaveBeenCalled()
@@ -187,7 +124,9 @@ describe('WorkflowChecklist', () => {
 
   it('should show the tooltip without replacing the warning count in the accessible name', async () => {
     const user = userEvent.setup()
-    render(<WorkflowChecklist disabled={false} />)
+    render(<WorkflowChecklist disabled={false} />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     const trigger = screen.getByRole('button', { name: 'workflow.panel.checklist 2' })
     await user.hover(trigger)
@@ -195,7 +134,7 @@ describe('WorkflowChecklist', () => {
     expect(await screen.findByText('workflow.panel.checklist', { selector: 'div' })).toBeVisible()
     expect(trigger).toHaveAccessibleName('workflow.panel.checklist 2')
     await user.click(trigger)
-    expect(screen.getByTestId('plugin-group')).toBeInTheDocument()
+    expect(screen.getByText('Missing Plugin')).toBeInTheDocument()
   })
 
   it('should open the inline agent editor after selecting an inline agent reference warning', async () => {
@@ -206,34 +145,40 @@ describe('WorkflowChecklist', () => {
       title: 'Inline Agent',
       openInlineAgentPanel: true,
     }
-    renderChecklist({ disabled: false })
+    const { store } = render(<WorkflowChecklist disabled={false} />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
-    await user.click(screen.getByTestId('node-group-Inline Agent'))
+    await user.click(screen.getByRole('button', { name: /Needs configuration/ }))
 
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1')
-    expect(mockSetOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('node-1')
+    expect(store.getState().openInlineAgentPanelNodeId).toBe('node-1')
   })
 
   it('should render the resolved state when there are no checklist warnings', async () => {
     const user = userEvent.setup()
     mockChecklistItems = []
 
-    renderChecklist({ disabled: false })
+    render(<WorkflowChecklist disabled={false} />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
     expect(screen.getByText(/checklistResolved/i)).toBeInTheDocument()
   })
 
   it('should ignore popover open changes when the checklist is disabled', () => {
-    renderChecklist({ disabled: true })
+    render(<WorkflowChecklist disabled={true} />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     expect(screen.getByText('2').closest('button')).toBeDisabled()
   })
 
   it('should start a checklist fix from the entry at the bottom of the list', async () => {
     const user = userEvent.setup()
-    const { store } = renderChecklist({ disabled: false })
+    const { builderStore: store } = renderChecklist({ disabled: false })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
     await user.click(screen.getByRole('button', { name: 'difyBuilder.fixRun' }))

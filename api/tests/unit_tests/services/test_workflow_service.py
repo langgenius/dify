@@ -11,7 +11,7 @@ This test suite covers:
 
 import json
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import Any, cast
@@ -24,8 +24,18 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
+from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
+from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
+from core.workflow.system_variables import SystemVariableKey, get_system_text
 from enums import DeploymentEdition
+from extensions.ext_database import db
+from extensions.logstore.repositories.logstore_workflow_node_execution_repository import (
+    LogstoreWorkflowNodeExecutionRepository,
+)
+from graphon.engine_events import NodeEvent, NodeRunFailedEvent, NodeRunStartedEvent, NodeRunSucceededEvent
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -33,10 +43,10 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.errors import WorkflowNodeRunFailedError
-from graphon.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.node_events import NodeRunResult
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables import StringVariable
 from graphon.variables.input_entities import VariableEntityType
 from libs.datetime_utils import naive_utc_now
@@ -55,17 +65,20 @@ from models.agent_config_entities import AgentSoulConfig
 from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import BuiltinToolProvider, WorkflowToolProvider
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import (
     WorkflowService,
+    _merge_environment_variable_patch,
     _rebuild_file_for_user_inputs_in_start_node,
     _rebuild_single_file,
     _setup_variable_pool,
 )
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class TestWorkflowAssociatedDataFactory:
@@ -1490,9 +1503,9 @@ class TestWorkflowService:
         sqlite_session.commit()
 
         with (
-            patch("services.workflow_service.BillingService") as MockBillingService,
+            patch("services.workflow_service.BillingService") as mock_billing_service,
         ):
-            MockBillingService.get_info.return_value = {"subscription": {"plan": "sandbox"}}
+            mock_billing_service.get_info.return_value = {"subscription": {"plan": "sandbox"}}
 
             with pytest.raises(TriggerNodeLimitExceededError):
                 workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
@@ -1563,6 +1576,39 @@ class TestWorkflowService:
         )
 
         assert [workflow.id for workflow in workflows] == ["workflow-draft", "workflow-3"]
+
+    def test_get_all_published_workflow_excludes_draft_when_requested(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ):
+        """`include_draft=False` filters the draft out at query level so callers that
+        only understand published versions (e.g. the openapi version-list op, where the
+        draft breaks restore and ordering) get an exact page.
+        """
+        app = TestWorkflowAssociatedDataFactory.create_app(workflow_id="workflow-3")
+        app_created_at = datetime(2026, 1, 1)
+
+        sqlite_session.add(
+            TestWorkflowAssociatedDataFactory.create_workflow(
+                workflow_id="workflow-draft",
+                version=Workflow.VERSION_DRAFT,
+                created_at=app_created_at,
+            )
+        )
+        sqlite_session.add(
+            TestWorkflowAssociatedDataFactory.create_workflow(
+                workflow_id="workflow-3",
+                version="2026-02-01 00:00:00",
+                created_at=app_created_at + timedelta(days=1),
+            )
+        )
+        sqlite_session.commit()
+
+        workflows, has_more = workflow_service.get_all_published_workflow(
+            session=sqlite_session, app_model=app, page=1, limit=10, user_id=None, include_draft=False
+        )
+
+        assert [workflow.id for workflow in workflows] == ["workflow-3"]
+        assert has_more is False
 
     def test_get_all_published_workflow_has_more(self, workflow_service: WorkflowService, sqlite_session: Session):
         """
@@ -2075,8 +2121,8 @@ class TestWorkflowService:
             "icon_background": "#FFEAD5",
         }
 
-        with patch("services.workflow_service.WorkflowConverter") as MockConverter:
-            mock_converter = MockConverter.return_value
+        with patch("services.workflow_service.WorkflowConverter") as mock_converter_type:
+            mock_converter = mock_converter_type.return_value
             mock_new_app = TestWorkflowAssociatedDataFactory.create_app(mode=AppMode.WORKFLOW)
             mock_converter.convert_to_workflow.return_value = mock_new_app
 
@@ -2097,8 +2143,8 @@ class TestWorkflowService:
         account = TestWorkflowAssociatedDataFactory.create_account()
         args = {"name": "Converted Workflow"}
 
-        with patch("services.workflow_service.WorkflowConverter") as MockConverter:
-            mock_converter = MockConverter.return_value
+        with patch("services.workflow_service.WorkflowConverter") as mock_converter_type:
+            mock_converter = mock_converter_type.return_value
             mock_new_app = TestWorkflowAssociatedDataFactory.create_app(mode=AppMode.WORKFLOW)
             mock_converter.convert_to_workflow.return_value = mock_new_app
 
@@ -2571,28 +2617,25 @@ class TestWorkflowServiceCredentialValidation:
     ) -> None:
         """Missing provider or model in node_data should be a no-op."""
         # Arrange
-        workflow = self._make_workflow([])
         node_data: dict[str, Any] = {}  # no model key
 
         # Act + Assert (no error expected)
-        service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
+        service._validate_load_balancing_credentials("tenant-1", node_data, "node-1", session=sqlite_session)
 
     def test_validate_load_balancing_credentials_should_skip_when_lb_not_enabled(
         self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         # Arrange
-        workflow = self._make_workflow([])
         node_data = {"model": {"provider": "openai", "name": "gpt-4"}}
 
         # Act + Assert (no error expected)
         with patch.object(service, "_is_load_balancing_enabled", return_value=False):
-            service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
+            service._validate_load_balancing_credentials("tenant-1", node_data, "node-1", session=sqlite_session)
 
     def test_validate_load_balancing_credentials_should_raise_when_compliance_fails(
         self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         # Arrange
-        workflow = self._make_workflow([])
         node_data = {"model": {"provider": "openai", "name": "gpt-4"}}
         lb_configs = [{"credential_id": "cred-lb-1"}]
 
@@ -2606,7 +2649,7 @@ class TestWorkflowServiceCredentialValidation:
             ),
         ):
             with pytest.raises(ValueError, match="Invalid load balancing credentials"):
-                service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
+                service._validate_load_balancing_credentials("tenant-1", node_data, "node-1", session=sqlite_session)
 
 
 # ===========================================================================
@@ -2927,7 +2970,7 @@ class TestSetupVariablePool:
 
         # Act
         with (
-            patch("services.workflow_service.VariablePool") as MockPool,
+            patch("services.workflow_service.VariablePool") as mock_pool,
             patch("services.workflow_service.build_system_variables") as mock_build_system_variables,
             patch("services.workflow_service.build_bootstrap_variables") as mock_build_bootstrap_variables,
             patch("services.workflow_service.add_variables_to_pool") as mock_add_variables_to_pool,
@@ -2946,14 +2989,14 @@ class TestSetupVariablePool:
             )
 
         # Assert — start nodes should build bootstrap variables and attach node inputs.
-        MockPool.assert_called_once_with()
+        mock_pool.assert_called_once_with()
         mock_build_system_variables.assert_called_once()
         mock_add_variables_to_pool.assert_called_once_with(
-            MockPool.return_value,
+            mock_pool.return_value,
             mock_build_bootstrap_variables.return_value,
         )
         mock_add_node_inputs_to_pool.assert_called_once_with(
-            MockPool.return_value,
+            mock_pool.return_value,
             node_id="start-node",
             inputs={"k": "v"},
         )
@@ -2966,7 +3009,7 @@ class TestSetupVariablePool:
 
         # Act
         with (
-            patch("services.workflow_service.VariablePool") as MockPool,
+            patch("services.workflow_service.VariablePool") as mock_pool,
             patch("services.workflow_service.default_system_variables") as mock_default_system_variables,
             patch("services.workflow_service.build_bootstrap_variables") as mock_build_bootstrap_variables,
             patch("services.workflow_service.add_variables_to_pool") as mock_add_variables_to_pool,
@@ -2986,9 +3029,9 @@ class TestSetupVariablePool:
 
         # Assert — default system variables should be used and node inputs should not be added.
         mock_default_system_variables.assert_called_once()
-        MockPool.assert_called_once_with()
+        mock_pool.assert_called_once_with()
         mock_add_variables_to_pool.assert_called_once_with(
-            MockPool.return_value,
+            mock_pool.return_value,
             mock_build_bootstrap_variables.return_value,
         )
         mock_add_node_inputs_to_pool.assert_not_called()
@@ -3004,7 +3047,7 @@ class TestSetupVariablePool:
 
         # Act
         with (
-            patch("services.workflow_service.VariablePool") as MockPool,
+            patch("services.workflow_service.VariablePool") as mock_pool,
             patch("services.workflow_service.build_system_variables") as mock_build_system_variables,
             patch("services.workflow_service.build_bootstrap_variables"),
             patch("services.workflow_service.add_variables_to_pool"),
@@ -3023,7 +3066,7 @@ class TestSetupVariablePool:
             )
 
         # Assert — chatflow system variables should include query, conversation_id and dialogue_count.
-        MockPool.assert_called_once_with()
+        mock_pool.assert_called_once_with()
         system_variable_values = mock_build_system_variables.call_args.args[0]
         assert system_variable_values["query"] == "what is AI?"
         assert system_variable_values["conversation_id"] == "conv-abc"
@@ -3258,7 +3301,7 @@ class TestWorkflowServiceDraftExecution:
         with (
             patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
             patch("services.workflow_service.WorkflowDraftVariableService"),
-            patch("services.workflow_service.StartNodeData") as mock_start_data,
+            patch("services.workflow_service.StartNodeData"),
             patch(
                 "services.workflow_service._rebuild_file_for_user_inputs_in_start_node",
                 side_effect=lambda **kwargs: kwargs["user_inputs"],
@@ -3309,7 +3352,7 @@ class TestWorkflowServiceDraftExecution:
             # Assert
             assert result is not None
             mock_run.assert_called_once()
-            mock_repo.save.assert_called_once()
+            mock_repo.save_synchronously.assert_called_once()
             mock_saver_cls.return_value.save.assert_called_once()
 
     def test_run_draft_workflow_node_should_execute_non_start_node_successfully(
@@ -3342,7 +3385,7 @@ class TestWorkflowServiceDraftExecution:
             patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
             patch("services.workflow_service.WorkflowDraftVariableService"),
             patch("services.workflow_service.VariablePool") as mock_pool_cls,
-            patch("services.workflow_service.default_system_variables") as mock_default_system_variables,
+            patch("services.workflow_service.build_system_variables") as mock_build_system_variables,
             patch("services.workflow_service.build_bootstrap_variables") as mock_build_bootstrap_variables,
             patch("services.workflow_service.add_variables_to_pool") as mock_add_variables_to_pool,
             patch("services.workflow_service.DraftVarLoader"),
@@ -3387,14 +3430,192 @@ class TestWorkflowServiceDraftExecution:
             # Assert
             # For non-start nodes, bootstrap variables should be loaded into an empty pool.
             mock_pool_cls.assert_called_once_with()
-            mock_default_system_variables.assert_called_once()
+            mock_build_system_variables.assert_called_once_with()
             mock_build_bootstrap_variables.assert_called_once_with(
-                system_variables=mock_default_system_variables.return_value,
+                system_variables=mock_build_system_variables.return_value,
                 environment_variables=draft_workflow.environment_variables,
             )
             mock_add_variables_to_pool.assert_called_once_with(
                 mock_pool_cls.return_value, mock_build_bootstrap_variables.return_value
             )
+
+    @pytest.mark.parametrize(
+        "repository_type",
+        [
+            SQLAlchemyWorkflowNodeExecutionRepository,
+            CeleryWorkflowNodeExecutionRepository,
+            LogstoreWorkflowNodeExecutionRepository,
+        ],
+    )
+    @pytest.mark.parametrize("status", [WorkflowNodeExecutionStatus.SUCCEEDED, WorkflowNodeExecutionStatus.FAILED])
+    def test_single_step_persists_caller_before_body_and_keeps_workspace_on_completion(
+        self,
+        service: WorkflowService,
+        sqlite_engine: Engine,
+        config_overrides: Callable[..., None],
+        repository_type: type[SQLAlchemyWorkflowNodeExecutionRepository]
+        | type[CeleryWorkflowNodeExecutionRepository]
+        | type[LogstoreWorkflowNodeExecutionRepository],
+        status: WorkflowNodeExecutionStatus,
+    ) -> None:
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        node_id = "agent-node"
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow(
+            graph={
+                "nodes": [{"id": node_id, "data": {"type": "agent", "version": "2", "title": "Agent"}}],
+                "edges": [],
+            }
+        )
+        execution_id = str(uuid.uuid4())
+        workspace_binding_id = str(uuid.uuid4())
+        workflow_binding_id = str(uuid.uuid4())
+        started_at = naive_utc_now()
+        config_overrides(AGENT_BACKEND_USE_FAKE=True)
+        node = DifyNodeFactory(
+            init_params=build_test_graph_init_params(
+                workflow_id=workflow.id,
+                graph_config=workflow.graph_dict,
+                tenant_id=app.tenant_id,
+                app_id=app.id,
+                user_id=account.id,
+            ),
+            runtime_state=RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0),
+        ).create_node(
+            {
+                "id": node_id,
+                "data": {"type": "agent", "version": "2", "title": "Agent", "agent_node_kind": "dify_agent"},
+            }
+        )
+        config_overrides(LOGSTORE_DUAL_WRITE_ENABLED=False)
+        logstore_records: list[dict[str, str]] = []
+        logstore = MagicMock()
+        logstore.put_log.side_effect = lambda _name, record: logstore_records.append(dict(record))
+        logstore.execute_sql.side_effect = lambda **_kwargs: logstore_records[-1:]
+        with (
+            patch(
+                "extensions.logstore.repositories.logstore_workflow_node_execution_repository.AliyunLogStore",
+                return_value=logstore,
+            ),
+            patch(
+                "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore",
+                return_value=logstore,
+            ),
+        ):
+            repository = repository_type(
+                session_factory=sqlite_engine,
+                tenant_id=app.tenant_id,
+                user=account,
+                app_id=app.id,
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            )
+            if repository_type is LogstoreWorkflowNodeExecutionRepository:
+                config_overrides(
+                    API_WORKFLOW_NODE_EXECUTION_REPOSITORY=(
+                        "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository."
+                        "LogstoreAPIWorkflowNodeExecutionRepository"
+                    )
+                )
+                service._node_execution_service_repo = (
+                    DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+                        session_maker=sessionmaker(sqlite_engine)
+                    )
+                )
+
+        def node_events(variable_pool: VariablePool) -> Generator[NodeEvent]:
+            yield NodeRunStartedEvent(
+                id=execution_id,
+                node_id=node_id,
+                node_type=BuiltinNodeTypes.AGENT,
+                node_version="2",
+                node_title="Agent",
+                start_at=started_at,
+            )
+            with Session(sqlite_engine) as session:
+                execution = WorkflowAgentWorkspaceStore._load_execution_by_identity(
+                    session=session,
+                    tenant_id=app.tenant_id,
+                    app_id=app.id,
+                    workflow_id=workflow.id,
+                    workflow_run_id=get_system_text(variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID),
+                    node_id=node_id,
+                    node_execution_id=execution_id,
+                )
+                assert execution.status == WorkflowNodeExecutionStatus.RUNNING
+                assert execution.node_execution_id == execution_id
+                assert execution.triggered_from == WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
+                assert execution.finished_at is None
+                execution.agent_workspace_binding_id = workspace_binding_id
+                execution.process_data = json.dumps({"workflow_agent_binding_id": workflow_binding_id})
+                session.commit()
+
+            result = NodeRunResult(
+                status=status,
+                outputs={"text": "done"} if status == WorkflowNodeExecutionStatus.SUCCEEDED else {},
+                process_data={"step": "completed"},
+                error="runtime failure" if status == WorkflowNodeExecutionStatus.FAILED else "",
+            )
+            event_kwargs = {
+                "id": execution_id,
+                "node_id": node_id,
+                "node_type": BuiltinNodeTypes.AGENT,
+                "node_run_result": result,
+                "start_at": started_at,
+            }
+            if status == WorkflowNodeExecutionStatus.FAILED:
+                yield NodeRunFailedEvent(**event_kwargs, error="runtime failure")
+            else:
+                yield NodeRunSucceededEvent(**event_kwargs)
+
+        with (
+            patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
+            patch("services.workflow_service.WorkflowDraftVariableService"),
+            patch("services.workflow_service.DraftVarLoader"),
+            patch(
+                "services.workflow_service.WorkflowEntry.single_step_run",
+                side_effect=lambda **kwargs: (node, node_events(kwargs["variable_pool"])),
+            ),
+            patch(
+                "services.workflow_service.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                return_value=repository,
+            ),
+            patch("services.workflow_service.DraftVariableSaver"),
+            patch("services.workflow_service.enqueue_draft_node_execution_trace"),
+            patch(
+                "core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task.delay"
+            ) as async_save,
+        ):
+            result = service.run_draft_workflow_node(
+                app_model=app, draft_workflow=workflow, node_id=node_id, user_inputs={}, account=account
+            )
+
+        assert result.id == execution_id
+        assert result.node_execution_id == execution_id
+        assert result.status == status
+        assert result.created_at == started_at
+        assert result.finished_at is not None
+        if status == WorkflowNodeExecutionStatus.SUCCEEDED:
+            assert result.outputs_dict == {"text": "done"}
+            assert result.process_data_dict is not None
+            assert result.process_data_dict["step"] == "completed"
+        else:
+            assert result.error == "runtime failure"
+        with Session(sqlite_engine) as session:
+            assert list(session.scalars(select(WorkflowNodeExecutionModel.id))) == [execution_id]
+            persisted = session.get(WorkflowNodeExecutionModel, execution_id)
+            assert persisted is not None
+            assert persisted.status == status
+            assert persisted.agent_workspace_binding_id == workspace_binding_id
+            assert persisted.process_data_dict is not None
+            assert persisted.process_data_dict["workflow_agent_binding_id"] == workflow_binding_id
+        if repository_type is CeleryWorkflowNodeExecutionRepository:
+            async_save.assert_called_once()
+            assert async_save.call_args.kwargs["execution_data"]["status"] == status
+        else:
+            async_save.assert_not_called()
+        if repository_type is LogstoreWorkflowNodeExecutionRepository:
+            assert len(logstore_records) == 1
+            assert logstore_records[0]["status"] == status
 
 
 # ===========================================================================
@@ -3573,28 +3794,54 @@ class TestWorkflowServiceHumanInputOperations:
 
         assert result == []
 
-    def test_build_human_input_variable_pool(self, service: WorkflowService, sqlite_engine: Engine) -> None:
-        workflow = TestWorkflowAssociatedDataFactory.create_workflow()
-        node_data = MagicMock()
-        node_data.extract_variable_selector_to_variable_mapping.return_value = {}
+    def test_form_preview_resolves_nested_inputs_without_loading_email_dependencies(
+        self, service: WorkflowService, sqlite_engine: Engine, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow(
+            graph={
+                "nodes": [
+                    {
+                        "id": "human",
+                        "data": {
+                            "type": "human-input",
+                            "title": "Human",
+                            "form_content": "Hello {{#source.object.name#}}",
+                            "inputs": [
+                                {
+                                    "type": "paragraph",
+                                    "output_variable_name": "comment",
+                                    "default": {"type": "variable", "selector": ["source", "object", "default"]},
+                                }
+                            ],
+                            "delivery_methods": [
+                                {
+                                    "type": "email",
+                                    "enabled": True,
+                                    "config": {
+                                        "recipients": {"items": []},
+                                        "subject": "Review",
+                                        "body": "{{#email.missing#}} {{#url#}}",
+                                    },
+                                }
+                            ],
+                        },
+                    }
+                ],
+                "edges": [],
+            }
+        )
+        monkeypatch.setattr(service, "get_draft_workflow", lambda **_: workflow)
+        monkeypatch.setattr(type(db), "engine", property(lambda _: sqlite_engine))
+        result = service.get_human_input_form_preview(
+            app_model=TestWorkflowAssociatedDataFactory.create_app(),
+            account=TestWorkflowAssociatedDataFactory.create_account(),
+            node_id="human",
+            inputs={"#source.object.name#": "Alice", "#source.object.default#": "Approved"},
+            session=sqlite_session,
+        )
 
-        with (
-            patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
-            patch("services.workflow_service.WorkflowDraftVariableService"),
-            patch("services.workflow_service.VariablePool") as mock_pool_cls,
-            patch("services.workflow_service.DraftVarLoader"),
-            patch("services.workflow_service.HumanInputNodeData.model_validate", return_value=node_data),
-            patch("services.workflow_service.load_into_variable_pool"),
-            patch("services.workflow_service.WorkflowEntry.mapping_user_inputs_to_variable_pool"),
-        ):
-            service._build_human_input_variable_pool(
-                app_model=TestWorkflowAssociatedDataFactory.create_app(),
-                workflow=workflow,
-                node_config={"id": "node-1", "data": {}},
-                manual_inputs={},
-                user_id="user-1",
-            )
-            mock_pool_cls.assert_called_once()
+        assert result["form_content"] == "Hello Alice"
+        assert result["resolved_default_values"] == {"comment": "Approved"}
 
 
 # ===========================================================================
@@ -3674,3 +3921,18 @@ class TestWorkflowServiceFreeNodeExecution:
             assert node.title == "Human Input"
             assert node.node_data is node_data
             assert node.variable_pool is variable_pool
+
+
+def _env(variable_id: str, name: str) -> StringVariable:
+    return StringVariable(id=variable_id, name=name, value="v", selector=["env", name])
+
+
+@pytest.mark.parametrize(
+    "upsert",
+    [_env("new-id", "TAKEN"), _env("other-id", "TAKEN")],
+    ids=["new id reuses a name", "rename onto another variable's name"],
+)
+def test_environment_patch_rejects_a_name_another_id_uses(upsert: StringVariable) -> None:
+    current = [_env("taken-id", "TAKEN"), _env("other-id", "OTHER")]
+    with pytest.raises(ValueError, match="Environment variable names must be unique"):
+        _merge_environment_variable_patch(current, [upsert], [])

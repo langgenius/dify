@@ -152,11 +152,13 @@ export function CreateAppCreationFlow({ children, onCreateTemplate }: CreateAppC
         />
       )}
       <Dialog open={showQuota} onOpenChange={setShowQuota}>
-        <DialogContent className="pt-12">
+        <DialogContent>
           <DialogTitle className="sr-only">
             {t(($) => $['apps.fullTip1'], { ns: 'billing' })}
           </DialogTitle>
-          <AppsFull loc="app-create" />
+          <div className="pt-12">
+            <AppsFull loc="app-create" />
+          </div>
           <DialogClose
             render={
               <IconButton

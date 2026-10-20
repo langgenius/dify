@@ -1,5 +1,6 @@
 """Engine wiring: detect language before progress; preserve input and native streams."""
 
+from collections.abc import Callable
 from datetime import datetime
 
 import pytest
@@ -10,24 +11,35 @@ from core.dify_builder.handlers_edit import edit_registry
 from core.dify_builder.handlers_fix import fix_registry
 from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, MutationIntent, Session, Turn
 from core.dify_builder.placeholder_agent import PlaceholderAgent
-from core.dify_builder.runner import Env, Runner
+from core.dify_builder.runner import Runner
 from core.dify_builder.state import PcState
 from services.dify_builder.copy_ids import BuilderCopyId
 from services.dify_builder.presentation import copy_text
-from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
+from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, FixtureEnv, InMemoryRepository
 
 
-def _env(**overrides):
+def _env(
+    *,
+    detect_language: Callable[[str], str] | None = None,
+    emit_progress: Callable[[ProgressEventData], None] | None = None,
+) -> tuple[FixtureEnv, InMemoryRepository]:
     repo = InMemoryRepository()
-    env = Env(dify=FakeDifyPort(), agent=PlaceholderAgent(), repo=repo, now=lambda: datetime.min, **overrides)
+    env = FixtureEnv(
+        dify=FakeDifyPort(),
+        agent=PlaceholderAgent(),
+        repo=repo,
+        now=lambda: datetime.min,
+        detect_language=detect_language,
+        emit_progress=emit_progress,
+    )
     return env, repo
 
 
-def test_context_has_reply_language_default():
+def test_context_has_reply_language_default() -> None:
     assert DifyBuilderContext().reply_language == ""
 
 
-def test_user_input_is_never_rewritten_by_presentation():
+def test_user_input_is_never_rewritten_by_presentation() -> None:
     env, repo = _env()
     runner = Runner(env, {})
     session = Session(
@@ -51,10 +63,10 @@ def test_user_input_is_never_rewritten_by_presentation():
     assert assistant.payload["reply_mode"] == "stream"
 
 
-def test_detect_language_sets_reply_language_from_message_text():
+def test_detect_language_sets_reply_language_from_message_text() -> None:
     detected = []
 
-    def detect(text):
+    def detect(text: str) -> str:
         detected.append(text)
         return "ja"
 
@@ -84,7 +96,7 @@ def test_detect_language_sets_reply_language_from_message_text():
     ("goal", "language"),
     [("构建翻译流程", "zh-Hans"), ("翻訳ワークフローを作成", "ja"), ("Build a translator", "en")],
 )
-def test_initial_build_detects_language_before_first_progress(goal: str, language: str):
+def test_initial_build_detects_language_before_first_progress(goal: str, language: str) -> None:
     calls: list[str] = []
     progress: list[ProgressEventData] = []
 
@@ -135,10 +147,10 @@ def test_initial_build_detects_language_before_first_progress(goal: str, languag
 )
 def test_progress_keeps_session_language_across_build_edit_and_fix_branches(
     state: PcState, action_kind: str, payload: dict[str, object]
-):
+) -> None:
     progress: list[ProgressEventData] = []
     env, _repo = _env(emit_progress=progress.append)
-    env.dify.graph = {"nodes": [{"id": "code", "data": {"type": "code", "code": "original"}}], "edges": []}
+    env.fake_dify.graph = {"nodes": [{"id": "code", "data": {"type": "code", "code": "original"}}], "edges": []}
     context = DifyBuilderContext(
         reply_language="fr",
         goal_text="Goal / Yes / {{name}} / <tag>",

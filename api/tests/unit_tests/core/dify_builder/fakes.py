@@ -30,24 +30,33 @@ Deltas from the Go source:
   types these as plain tuples/values, never ``| None``).
 """
 
+from __future__ import annotations
+
 import copy
 import threading
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import replace
+from datetime import datetime
+from typing import Unpack, override
+
+from typing_extensions import TypedDict
 
 from core.dify_builder import node_defaults
-from core.dify_builder.contract import ConversationPage
+from core.dify_builder.contract import ConversationPage, ResourceOption
 from core.dify_builder.errors import ConflictError, NotFoundError
 from core.dify_builder.execution_policy import BuilderExecutionPolicyError, HttpFixtureSetV1, HttpResponseFixtureV1
 from core.dify_builder.models import (
     Actor,
     ApplyResult,
     BuildNodesResult,
+    ChangeSet,
     ChecklistError,
     Checkpoint,
     ConversationItem,
     Diagnosis,
     DifyBuilderContext,
+    EntryMode,
     Graph,
     Inputs,
     MutationIntent,
@@ -62,6 +71,8 @@ from core.dify_builder.models import (
     StartSchema,
     TestInput,
 )
+from core.dify_builder.ports import DifyBuilderAgent, DifyPort, Repository
+from core.dify_builder.runner import Env
 from core.dify_builder.state import PcState
 from graphon.enums import BuiltinNodeTypes
 from services.dify_builder.graph_ops import (
@@ -79,6 +90,7 @@ from services.dify_builder.graph_ops import (
 from services.dify_builder.graph_ops import (
     structural_fingerprint as _structural_fingerprint,
 )
+from services.dify_builder.plan import WorkflowPlan
 
 __all__ = ["FakeBuildDifyPort", "FakeDifyPort", "FakeEditDifyPort", "InMemoryRepository", "StubAgent"]
 
@@ -86,7 +98,7 @@ __all__ = ["FakeBuildDifyPort", "FakeDifyPort", "FakeEditDifyPort", "InMemoryRep
 # ---- in-memory Repository ----------------------------------------------
 
 
-class InMemoryRepository:
+class InMemoryRepository(Repository):
     """A thread-safe, in-process ``Repository``.
 
     ``compare_and_advance`` is the sole seq authority: appends only commit
@@ -108,6 +120,7 @@ class InMemoryRepository:
 
     # -- sessions --
 
+    @override
     def create_session(self, session: Session, initial_fc: DifyBuilderContext, items: list[ConversationItem]) -> None:
         with self._lock:
             if not session.id:
@@ -133,6 +146,7 @@ class InMemoryRepository:
             self._items[session.id] = copy.deepcopy(items)
             self._used_seqs[session.id] = seqs
 
+    @override
     def get_session(self, id: str) -> tuple[Session, DifyBuilderContext]:
         with self._lock:
             session = self._sessions.get(id)
@@ -140,6 +154,7 @@ class InMemoryRepository:
                 raise NotFoundError(f"session {id} not found")
             return copy.deepcopy(session), copy.deepcopy(self._contexts[id])
 
+    @override
     def compare_and_advance(
         self,
         session_id: str,
@@ -175,6 +190,7 @@ class InMemoryRepository:
 
     # -- checkpoints --
 
+    @override
     def create_checkpoint(self, cp: Checkpoint, snap: Snapshot) -> None:
         with self._lock:
             if not snap.id:
@@ -185,6 +201,7 @@ class InMemoryRepository:
             self._snapshots[snap.id] = copy.deepcopy(snap)
             self._checkpoints[cp.id] = copy.deepcopy(cp)
 
+    @override
     def get_checkpoint(self, id: str) -> tuple[Checkpoint, Snapshot]:
         with self._lock:
             cp = self._checkpoints.get(id)
@@ -195,8 +212,9 @@ class InMemoryRepository:
 
     # -- runs --
 
-    def save_run(self, _session_id: str, run: Run) -> None:
-        run.session_id = _session_id
+    @override
+    def save_run(self, session_id: str, run: Run) -> None:
+        run.session_id = session_id
         with self._lock:
             if not run.id:
                 run.id = str(uuid.uuid4())
@@ -205,6 +223,7 @@ class InMemoryRepository:
                 raise ValueError(f"run {run.id} is immutable")
             self._runs[run.id] = copy.deepcopy(run)
 
+    @override
     def get_run(self, id: str) -> Run:
         with self._lock:
             run = self._runs.get(id)
@@ -214,12 +233,14 @@ class InMemoryRepository:
 
     # -- test inputs --
 
+    @override
     def save_test_input(self, ti: TestInput) -> None:
         with self._lock:
             if not ti.id:
                 ti.id = str(uuid.uuid4())
             self._test_inputs[ti.id] = copy.deepcopy(ti)
 
+    @override
     def get_test_input(self, id: str) -> TestInput:
         with self._lock:
             ti = self._test_inputs.get(id)
@@ -229,10 +250,12 @@ class InMemoryRepository:
 
     # -- conversation --
 
+    @override
     def list_conversation(self, session_id: str) -> list[ConversationItem]:
         with self._lock:
             return copy.deepcopy(self._items.get(session_id, []))
 
+    @override
     def list_recent_conversation(self, session_id: str, *, limit: int) -> list[ConversationItem]:
         if limit < 1:
             raise ValueError("limit must be positive")
@@ -240,6 +263,7 @@ class InMemoryRepository:
             items = [item for item in self._items.get(session_id, []) if item.kind != "notice"]
             return copy.deepcopy(items[-limit:])
 
+    @override
     def get_conversation_turn_kinds(self, session_id: str, turn_id: str) -> frozenset[str]:
         with self._lock:
             return frozenset(
@@ -248,6 +272,7 @@ class InMemoryRepository:
                 if item.kind in {"user", "assistant_turn"} and item.payload.get("turn_id") == turn_id
             )
 
+    @override
     def list_conversation_page(
         self,
         session_id: str,
@@ -281,12 +306,14 @@ class InMemoryRepository:
             last_seq=page_items[-1].seq if page_items else None,
         )
 
+    @override
     def get_latest_conversation_item(self, session_id: str, kinds: frozenset[str]) -> ConversationItem | None:
         with self._lock:
             items = self._items.get(session_id, [])
             item = next((item for item in reversed(items) if item.kind in kinds), None)
             return copy.deepcopy(item)
 
+    @override
     def invalidate_conversation_items(self, session_id: str, from_seq: int) -> None:
         with self._lock:
             for item in self._items.get(session_id, []):
@@ -297,7 +324,7 @@ class InMemoryRepository:
 # ---- fake DifyPort -------------------------------------------------------
 
 
-class FakeDifyPort:
+class FakeDifyPort(DifyPort):
     """A canned ``DifyPort``.
 
     ``verify_pass`` is mutable so a test can seed "fails first, succeeds
@@ -320,28 +347,33 @@ class FakeDifyPort:
         self.run_outputs: Inputs = {}
         self.workflow_events: list[dict[str, object]] = []
 
-    def get_app_mode(self, _app_id: str, _actor: Actor) -> str:
+    @override
+    def get_app_mode(self, app_id: str, actor: Actor) -> str:
         return self.app_mode
 
+    @override
     def stamp_http_fixtures(
-        self, _app_id: str, _actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
+        self, app_id: str, actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
     ) -> HttpFixtureSetV1:
         if base_app_revision != self.hash:
             raise BuilderExecutionPolicyError("stale_http_fixtures")
         return HttpFixtureSetV1(execution_revision=self.hash, fixtures=fixtures)
 
-    def read_graph(self, _app_id: str, _actor: Actor) -> tuple[Graph, str]:
+    @override
+    def read_graph(self, app_id: str, actor: Actor) -> tuple[Graph, str]:
         return copy.deepcopy(self.graph), self.hash
 
-    def node_outputs(self, _app_id: str, _actor: Actor, _run_id: str) -> list[NodeOutput]:
+    @override
+    def node_outputs(self, app_id: str, actor: Actor, run_id: str) -> list[NodeOutput]:
         return [NodeOutput(node_id="output", status="failed", error="missing metrics")]
 
+    @override
     def apply_repair(
         self,
-        _app_id: str,
-        _actor: Actor,
+        app_id: str,
+        actor: Actor,
         intents: list[MutationIntent],
-        on_canvas: Callable[[dict], None] | None = None,
+        on_canvas: Callable[[dict[str, object]], None] | None = None,
         *,
         expected_revision: str = "",
         failed_run_id: str | None = None,
@@ -360,16 +392,19 @@ class FakeDifyPort:
             structure_fingerprint=_structural_fingerprint(self.graph),
         )
 
+    @override
     def run_draft(
         self,
-        _app_id: str,
-        _actor: Actor,
+        app_id: str,
+        actor: Actor,
         inputs: Inputs,
         on_event: Callable[[NodeEvent], None],
         *,
         session_id: str,
         test_input_id: str,
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
+        confirmed_consent_id: str | None = None,
+        command_id: str | None = None,
     ) -> Run:
         self.run_draft_identity = (session_id, test_input_id)
         self.run_draft_inputs = copy.deepcopy(inputs)
@@ -393,28 +428,33 @@ class FakeDifyPort:
             per_node=[NodeOutput(node_id="output", status="failed", error="still broken")],
         )
 
+    @override
     def publish(
-        self, _app_id: str, _actor: Actor, *, expected_revision: str, expected_graph_revision: str
+        self, app_id: str, actor: Actor, *, expected_revision: str, expected_graph_revision: str
     ) -> PublishResult:
         assert expected_revision == self.hash
         assert expected_graph_revision == self.graph_revision(self.graph)
         self.published = True
         return PublishResult(version_name="# 1", status="live")
 
-    def restore_graph(self, _app_id: str, _actor: Actor, graph: Graph, *, expected_revision: str = "") -> str:
+    @override
+    def restore_graph(self, app_id: str, actor: Actor, graph: Graph, *, expected_revision: str = "") -> str:
         self.expected_revision = expected_revision
         self.graph = copy.deepcopy(graph)
         self.hash = "h-restored"
         return self.hash
 
+    @override
     def graph_revision(self, graph: Graph) -> str:
         from services.dify_builder.revision import executable_graph_revision
 
         return executable_graph_revision(graph)
 
+    @override
     def structural_fingerprint(self, graph: Graph) -> str:
         return _structural_fingerprint(graph)
 
+    @override
     def graph_node_ids(self, graph: Graph) -> list[str]:
         return _graph_node_ids(graph)
 
@@ -422,7 +462,7 @@ class FakeDifyPort:
 # ---- stub DifyBuilderAgent ----------------------------------------------------
 
 
-class StubAgent:
+class StubAgent(DifyBuilderAgent):
     """A minimal canned ``DifyBuilderAgent`` for handler/runner tests.
 
     Its values are chosen to make handler tests easy to assert against; it is
@@ -431,17 +471,21 @@ class StubAgent:
 
     def __init__(self, risk_level: str = "low") -> None:
         self.risk_level = risk_level
+        self.edit_intent_calls: list[tuple[list[str], str | None]] = []
 
-    def diagnose(self, _failed_run: Run, _graph: Graph, _node_outputs: list[NodeOutput]) -> Diagnosis:
+    @override
+    def diagnose(self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> Diagnosis:
         return Diagnosis(culprit_node_id="output", root_cause="Output node requires 'metrics'", severity="high")
 
-    def diagnose_checklist(self, errors: list[ChecklistError], _graph: Graph) -> Diagnosis:
+    @override
+    def diagnose_checklist(self, errors: list[ChecklistError], graph: Graph) -> Diagnosis:
         if not errors:
             return Diagnosis()
         first = errors[0]
         return Diagnosis(culprit_node_id=first.node_id, root_cause="Checklist error", severity="high")
 
-    def propose_repair(self, diagnosis: Diagnosis, _graph: Graph) -> tuple[list[MutationIntent], Risk]:
+    @override
+    def propose_repair(self, diagnosis: Diagnosis, graph: Graph) -> tuple[list[MutationIntent], Risk]:
         intents = [
             MutationIntent(
                 op="set_node_config",
@@ -450,52 +494,88 @@ class StubAgent:
         ]
         return intents, Risk(level=self.risk_level, reason="config-only fix", has_external_side_effect=False)
 
-    def generate_mock_inputs(self, _schema: StartSchema, _prior_failed: Inputs) -> Inputs:
+    @override
+    def generate_mock_inputs(self, schema: StartSchema, prior_failed: Inputs) -> Inputs:
         return {"report_pdf": "mock.pdf"}
 
-    def analyze_goal(self, _goal_text, *, reply_language=None):  # noqa: ARG002
+    @override
+    def analyze_goal(self, goal_text: str, *, reply_language: str | None = None) -> dict[str, object]:
         return {}
 
-    def propose_app_name(self, _goal_text, _requirements):
+    @override
+    def propose_app_name(self, goal_text: str, requirements: dict[str, object]) -> str:
         return ""
 
-    def propose_plan_v1(self, _requirements, *, goal_text):  # noqa: ARG002
+    @override
+    def propose_plan_v1(self, requirements: dict[str, object], *, goal_text: str) -> WorkflowPlan | None:
+        return None
+
+    @override
+    def discover_resources(
+        self, plan_items: list[str], *, goal_text: str, requirements: dict[str, object]
+    ) -> list[ResourceOption]:
         return []
 
-    def discover_resources(self, _plan_items, *, goal_text, requirements):  # noqa: ARG002
-        return []
-
-    def assess_capability_gap(self, _plan_items, _options, *, goal_text, requirements):  # noqa: ARG002
+    @override
+    def assess_capability_gap(
+        self, plan_items: list[str], options: list[ResourceOption], *, goal_text: str, requirements: dict[str, object]
+    ) -> str:
         return ""
 
-    def bind_resources(self, _plan_items, _resource_ids):
+    @override
+    def bind_resources(self, plan_items: list[str], resource_ids: list[str]) -> list[str]:
         return []
 
-    def build_nodes(self, _plan_items, _resource_ids=None, *, trusted_text=""):  # noqa: ARG002
+    @override
+    def build_nodes(
+        self, plan_items: list[str], resource_ids: list[str] | None = None, *, trusted_text: str = ""
+    ) -> BuildNodesResult:
         return BuildNodesResult(intents=[])
 
-    def learn_from_build(self, _goal_text, _requirements, _plan_items, _built_node_ids):
+    @override
+    def learn_from_build(
+        self, goal_text: str, requirements: dict[str, object], plan_items: list[str], built_node_ids: list[str]
+    ) -> str:
         self.learn_calls = getattr(self, "learn_calls", 0) + 1
         return "stub-skill"
 
-    def analyze_impact(self, _goal_text, _graph):
+    @override
+    def analyze_impact(self, goal_text: str, graph: Graph) -> dict[str, object]:
         return {"edit_rules": {}, "target_node_ids": []}
 
-    def propose_edit_plan(self, _edit_rules, _graph):
-        return []
+    @override
+    def propose_edit_plan(self, edit_rules: dict[str, object], graph: Graph) -> WorkflowPlan | None:
+        return None
 
-    def build_edit_intents(self, _edit_rules, _graph, *, edit_target_node_ids=(), last_edit_rejection=None):
-        self.edit_intent_calls = getattr(self, "edit_intent_calls", [])
+    @override
+    def build_edit_intents(
+        self,
+        edit_rules: dict[str, object],
+        graph: Graph,
+        *,
+        edit_target_node_ids: Sequence[str] = (),
+        last_edit_rejection: str | None = None,
+    ) -> list[MutationIntent]:
         self.edit_intent_calls.append((list(edit_target_node_ids), last_edit_rejection))
         return []
 
-    def respond_to_message(self, _state, _context, history, _graph, text, on_delta=None):
+    @override
+    def respond_to_message(
+        self,
+        state: PcState,
+        context: DifyBuilderContext,
+        history: list[ConversationItem],
+        graph: Graph,
+        text: str,
+        on_delta: Callable[[str], None] | None = None,
+    ) -> str:
         reply = f"reply {len(history)}: {text}"
         if on_delta is not None:
             on_delta(reply)
         return reply
 
-    def model_or_none(self):
+    @override
+    def model_or_none(self) -> None:
         return None
 
 
@@ -517,7 +597,7 @@ _ADD_NODE_EVENTS = {
 }
 
 
-def _fake_canvas_payload(intent: MutationIntent, changed: list[str]) -> dict:
+def _fake_canvas_payload(intent: MutationIntent, changed: list[str]) -> dict[str, object]:
     """Replicate services.dify_builder.dify_port._canvas_payload without
     importing that (SQLAlchemy-heavy) module into the core test fakes."""
     if intent.op == "create_node":
@@ -535,7 +615,7 @@ def _fake_canvas_payload(intent: MutationIntent, changed: list[str]) -> dict:
     return {"event": "apply_edit_plan", "node_id": changed[0] if changed else None}
 
 
-class FakeBuildDifyPort:
+class FakeBuildDifyPort(DifyPort):
     """A ``DifyPort`` that genuinely applies Build's verbs to an accumulating
     in-memory graph via the pure ``graph_ops`` helpers and emits the same
     per-intent canvas payloads the real adapter does. Distinct from
@@ -554,28 +634,33 @@ class FakeBuildDifyPort:
         self.run_draft_inputs: Inputs = {}
         self.fail_error: str = "boom"
 
-    def get_app_mode(self, _app_id: str, _actor: Actor) -> str:
+    @override
+    def get_app_mode(self, app_id: str, actor: Actor) -> str:
         return self.app_mode
 
+    @override
     def stamp_http_fixtures(
-        self, _app_id: str, _actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
+        self, app_id: str, actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
     ) -> HttpFixtureSetV1:
         if base_app_revision != self.hash:
             raise BuilderExecutionPolicyError("stale_http_fixtures")
         return HttpFixtureSetV1(execution_revision=self.hash, fixtures=fixtures)
 
-    def read_graph(self, _app_id: str, _actor: Actor) -> tuple[Graph, str]:
+    @override
+    def read_graph(self, app_id: str, actor: Actor) -> tuple[Graph, str]:
         return copy.deepcopy(self.graph), self.hash
 
-    def node_outputs(self, _app_id: str, _actor: Actor, _run_id: str) -> list[NodeOutput]:
+    @override
+    def node_outputs(self, app_id: str, actor: Actor, run_id: str) -> list[NodeOutput]:
         return []
 
+    @override
     def apply_repair(
         self,
-        _app_id: str,
-        _actor: Actor,
+        app_id: str,
+        actor: Actor,
         intents: list[MutationIntent],
-        on_canvas: Callable[[dict], None] | None = None,
+        on_canvas: Callable[[dict[str, object]], None] | None = None,
         *,
         expected_revision: str = "",
         failed_run_id: str | None = None,
@@ -612,16 +697,19 @@ class FakeBuildDifyPort:
             structure_fingerprint=_structural_fingerprint(self.graph),
         )
 
+    @override
     def run_draft(
         self,
-        _app_id: str,
-        _actor: Actor,
+        app_id: str,
+        actor: Actor,
         inputs: Inputs,
         on_event: Callable[[NodeEvent], None],
         *,
         session_id: str,
         test_input_id: str,
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
+        confirmed_consent_id: str | None = None,
+        command_id: str | None = None,
     ) -> Run:
         self.run_draft_identity = (session_id, test_input_id)
         self.run_draft_inputs = copy.deepcopy(inputs)
@@ -645,28 +733,33 @@ class FakeBuildDifyPort:
             per_node=[NodeOutput(node_id="llm", status="failed", error=self.fail_error)],
         )
 
+    @override
     def publish(
-        self, _app_id: str, _actor: Actor, *, expected_revision: str, expected_graph_revision: str
+        self, app_id: str, actor: Actor, *, expected_revision: str, expected_graph_revision: str
     ) -> PublishResult:
         assert expected_revision == self.hash
         assert expected_graph_revision == self.graph_revision(self.graph)
         self.published = True
         return PublishResult(version_name="# 1", status="live")
 
-    def restore_graph(self, _app_id: str, _actor: Actor, graph: Graph, *, expected_revision: str = "") -> str:
+    @override
+    def restore_graph(self, app_id: str, actor: Actor, graph: Graph, *, expected_revision: str = "") -> str:
         self.expected_revision = expected_revision
         self.graph = copy.deepcopy(graph)
         self.hash = "h-restored"
         return self.hash
 
+    @override
     def graph_revision(self, graph: Graph) -> str:
         from services.dify_builder.revision import executable_graph_revision
 
         return executable_graph_revision(graph)
 
+    @override
     def structural_fingerprint(self, graph: Graph) -> str:
         return _structural_fingerprint(graph)
 
+    @override
     def graph_node_ids(self, graph: Graph) -> list[str]:
         return _graph_node_ids(graph)
 
@@ -731,7 +824,7 @@ class FakeEditDifyPort(FakeBuildDifyPort):
         self.graph = _seeded_edit_graph()
 
 
-def successful_verification(dify, *, no_output=False) -> RunVerification:
+def successful_verification(dify: FakeDifyPort | FakeBuildDifyPort, *, no_output: bool = False) -> RunVerification:
     """Unit policy fixture only; never evidence of a composed native execution."""
     from core.dify_builder.execution_policy import ExecutionEvidenceSummary
 
@@ -754,7 +847,7 @@ def successful_verification(dify, *, no_output=False) -> RunVerification:
     )
 
 
-def seed_verified_run(repo: InMemoryRepository, session: Session, dify) -> None:
+def seed_verified_run(repo: InMemoryRepository, session: Session, dify: FakeDifyPort | FakeBuildDifyPort) -> None:
     """Seed the initial persisted context of a positive publication fixture."""
     run = Run(
         id=str(uuid.uuid4()),
@@ -769,16 +862,84 @@ def seed_verified_run(repo: InMemoryRepository, session: Session, dify) -> None:
     repo._contexts[session.id].verify_run_id = run.id
 
 
-def saved_test_context(repo, session_id: str, **overrides) -> DifyBuilderContext:
+def saved_test_context(repo: Repository, session_id: str, **overrides: Unpack[ContextOverrides]) -> DifyBuilderContext:
     """Give verification-focused tests a saved input identity, including empty inputs."""
     test_input = TestInput(session_id=session_id, source="mock", inputs={})
     repo.save_test_input(test_input)
-    return DifyBuilderContext(test_input_ref=test_input.id, **overrides)
+    return replace(DifyBuilderContext(test_input_ref=test_input.id), **overrides)
 
 
-def failed_verification(dify) -> RunVerification:
+def failed_verification(dify: FakeDifyPort | FakeBuildDifyPort) -> RunVerification:
     """Complete business-failure evidence for unit routing only, not native execution proof."""
     evidence = successful_verification(dify)
     assert evidence.execution_evidence is not None
     evidence.execution_evidence = evidence.execution_evidence.model_copy(update={"safety_outcome": "native_failed"})
     return evidence
+
+
+class SessionOverrides(TypedDict, total=False, closed=True):
+    id: str
+    app_id: str
+    tenant_id: str
+    owner_account_id: str
+    entry_mode: EntryMode
+    current_state: PcState
+    version: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class ContextOverrides(TypedDict, total=False, closed=True):
+    failed_run_id: str
+    diagnosis: Diagnosis | None
+    staged_repair: list[MutationIntent]
+    repair_attempts: int
+    last_repair_error: str
+    unknown_outcome_count: int
+    risk: Risk | None
+    change_set: ChangeSet | None
+    checkpoint_id: str
+    verify_run_id: str
+    test_input_ref: str
+    last_snapshot_hash: str
+    next_seq: int
+    source: str
+    checklist_errors: list[ChecklistError]
+    goal_text: str
+    reply_language: str
+    requirements: dict[str, object]
+    plan_items: list[str]
+    plan_title: str
+    plan_input_summary: str
+    plan_output_summary: str
+    plan_version_tag: str
+    resource_selection: dict[str, object]
+    built_node_ids: list[str]
+    form_fields: list[Graph]
+    app_name: str
+    app_name_auto: bool
+    edit_rules: dict[str, object]
+    edit_target_node_ids: list[str]
+    last_edit_rejection: str
+    paused: bool
+    checkpoint_seq: int
+    last_structure_fingerprint: str
+    recovery_class: str
+    last_command_id: str
+    confirmed_consent_id: str
+    confirmed_command_id: str
+    skill_learning_policy: str
+    model_config: dict[str, object]
+
+
+class FixtureEnv(Env):
+    """Expose the in-memory port used by engine test assertions."""
+
+    @property
+    def fake_dify(self) -> FakeDifyPort | FakeBuildDifyPort:
+        assert isinstance(self.dify, (FakeDifyPort, FakeBuildDifyPort))
+        return self.dify
+
+    @fake_dify.setter
+    def fake_dify(self, value: DifyPort) -> None:
+        self.dify = value

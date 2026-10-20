@@ -1,6 +1,6 @@
 'use client'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { MouseEvent } from 'react'
-import type { Member } from '@/models/common'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,7 +10,7 @@ import MemberMenu from './member-menu'
 import RoleBadges from './role-badges'
 
 type MemberRowProps = {
-  member: Member
+  member: AccountWithRoleResponse
   roles: Array<{
     id: string
     name: string
@@ -19,7 +19,7 @@ type MemberRowProps = {
   canManage: boolean
   canTransferOwnership: boolean
   allowMultipleRoles: boolean
-  onOpenDetails: (member: Member) => void
+  onOpenDetails: (member: AccountWithRoleResponse) => void
   onTransferOwnership: () => void
 }
 

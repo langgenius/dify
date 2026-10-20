@@ -22,19 +22,28 @@ from typing import Any
 from core.model_manager import ModelInstance
 from services.dify_builder.agent import build, chat, edit, fix, mock_inputs
 from services.dify_builder.agent.model_resolver import resolve_model_instance
+from services.dify_builder.plan import WorkflowPlan
 
 logger = logging.getLogger(__name__)
 
 
 class LlmBuilderAgent:
     def __init__(
-        self, tenant_id: str, model_config: dict[str, Any] | None = None, *, account_id: str | None = None
+        self,
+        tenant_id: str,
+        model_config: dict[str, Any] | None = None,
+        *,
+        account_id: str | None = None,
+        app_mode: str = "workflow",
     ) -> None:
         """``account_id`` is the acting member, whose credential visibility
         decides which installed tools are ready; ``None`` means no member is
         known and only team-shared credentials count."""
         self._tenant_id = tenant_id
         self._account_id = account_id
+        if app_mode not in {"workflow", "advanced-chat"}:
+            raise ValueError(f"Unsupported Builder app mode: {app_mode}")
+        self._app_mode = app_mode
         self._model_config = model_config or {}
         self._model_instance: ModelInstance | None = None
         self._resolution_failed = False
@@ -134,7 +143,7 @@ class LlmBuilderAgent:
             self._reasoning_for("propose-app-name"),
         )
 
-    def propose_plan_v1(self, requirements: dict[str, Any], *, goal_text: str) -> list[str]:
+    def propose_plan_v1(self, requirements: dict[str, Any], *, goal_text: str) -> WorkflowPlan | None:
         return build.propose_plan_v1(
             self.model_or_none(),
             requirements,
@@ -143,6 +152,7 @@ class LlmBuilderAgent:
                 self._tenant_id, account_id=self._account_id, goal_text=goal_text, requirements=requirements
             ),
             goal_text=goal_text,
+            mode=self._app_mode,
         )
 
     def discover_resources(self, plan_items, *, goal_text: str, requirements: dict[str, Any]):
@@ -158,7 +168,12 @@ class LlmBuilderAgent:
 
     def assess_capability_gap(self, plan_items, options, *, goal_text: str, requirements: dict[str, Any]):
         return build.assess_capability_gap(
-            self.model_or_none(), plan_items, options, goal_text=goal_text, requirements=requirements
+            self.model_or_none(),
+            plan_items,
+            options,
+            goal_text=goal_text,
+            requirements=requirements,
+            mode=self._app_mode,
         )
 
     def bind_resources(self, plan_items, resource_ids):
@@ -174,6 +189,7 @@ class LlmBuilderAgent:
             resource_ids or (),
             trusted_text=trusted_text,
             account_id=self._account_id,
+            mode=self._app_mode,
         )
 
     def learn_from_build(self, goal_text, requirements, plan_items, built_node_ids):
@@ -195,7 +211,7 @@ class LlmBuilderAgent:
             self._reasoning_for("analyze-impact"),
         )
 
-    def propose_edit_plan(self, edit_rules, graph):
+    def propose_edit_plan(self, edit_rules, graph) -> WorkflowPlan | None:
         return edit.propose_edit_plan(
             self.model_or_none(),
             edit_rules,

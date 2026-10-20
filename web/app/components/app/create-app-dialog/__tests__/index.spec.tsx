@@ -33,4 +33,13 @@ describe('CreateAppTemplateDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Use template' }))
     expect(onClose).toHaveBeenCalledOnce()
   })
+
+  it('closes from the dialog close button', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    render(<CreateAppTemplateDialog show onClose={onClose} />)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(onClose).toHaveBeenCalledOnce()
+  })
 })

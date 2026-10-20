@@ -11,6 +11,7 @@ caller (P3b Task 4: the Flask controller + the Celery task's ``.delay``).
 import json
 import logging
 from collections.abc import Callable, Iterator
+from contextlib import suppress
 from dataclasses import asdict
 from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
@@ -60,6 +61,7 @@ from core.dify_builder.models import (
 from core.dify_builder.ports import Repository
 from core.dify_builder.state import PcState, canvas_read_only, is_terminal, is_waiting, is_working
 from core.dify_builder.verification import publication_decision
+from services.dify_builder.action_policy import requires_app_revision
 from services.dify_builder.agent.model_resolver import validate_model_config
 from services.dify_builder.copy_ids import BuilderCopyId
 from services.dify_builder.presentation import BuilderText, copy_text, stored_text, text_parts
@@ -432,18 +434,6 @@ def _actions_for(
     publication: PublicationDecision | None = None,
 ) -> list[UiAction]:
     """Return only actions legal for the projected lifecycle condition."""
-    if interrupted:
-        # Crash mid auto-advance (lock released, nothing durably failed): Retry
-        # re-runs the interrupted working handler in place; Start over resets and
-        # re-enters the flow's entry state from the current draft.
-        return [
-            UiAction(id="recovery_continue", label=copy_text(BuilderCopyId.ACTIONS_RETRY), kind=ActionKind.PRIMARY),
-            UiAction(
-                id="restart",
-                label=copy_text(BuilderCopyId.ACTIONS_RESTART_FROM_CURRENT_DRAFT),
-                kind=ActionKind.SECONDARY,
-            ),
-        ]
     if state == PcState.FAILED:
         # A durable, deterministic failure -- re-running the same handler would
         # just fail again, so only offer a restart from the current draft.
@@ -479,6 +469,18 @@ def _actions_for(
                 label=copy_text(BuilderCopyId.ACTIONS_REVIEW_DRAFT_CHANGES),
                 kind=ActionKind.PRIMARY,
             )
+        ]
+    if interrupted:
+        # Retry re-runs a working handler. Draft drift must first use the
+        # classification and explicit recovery choices above, just as at a
+        # waiting gate; only an unchanged draft can retry immediately.
+        return [
+            UiAction(id="recovery_continue", label=copy_text(BuilderCopyId.ACTIONS_RETRY), kind=ActionKind.PRIMARY),
+            UiAction(
+                id="restart",
+                label=copy_text(BuilderCopyId.ACTIONS_RESTART_FROM_CURRENT_DRAFT),
+                kind=ActionKind.SECONDARY,
+            ),
         ]
 
     actions = list(_ACTIONS_FOR.get(state, []))
@@ -848,11 +850,7 @@ def _internal_action_allowed(state: PcState, fc: DifyBuilderContext, kind: str) 
     if state == PcState.FAILED:
         # Durable, deterministic failure -- only a restart is meaningful.
         return kind == "recovery_restart"
-    # An interrupted working step may be retried or restarted. A live worker is
-    # still protected downstream by dispatch's advance-lock acquisition.
-    if is_working(state):
-        return kind in {"recovery_continue", "recovery_restart"}
-    if not is_waiting(state):
+    if not (is_waiting(state) or is_working(state)):
         return False
     if fc.paused:
         return kind == "resume"
@@ -863,6 +861,10 @@ def _internal_action_allowed(state: PcState, fc: DifyBuilderContext, kind: str) 
         if kind == "recovery_restart":
             return recovery_ref.can_restart
         return False
+    # Classifying a working-state interrupt must settle without re-running its
+    # handler. A live worker is protected by dispatch's advance lock.
+    if is_working(state):
+        return kind in {"check_recovery", "recovery_continue", "recovery_restart"}
     if kind in {"check_recovery", "message", "update_model"}:
         return True
     if kind == "stop":
@@ -1413,10 +1415,8 @@ class DifyBuilderService:
     def _publication_for_session(self, s: Session, fc: DifyBuilderContext, actor: Actor) -> PublicationDecision:
         run = None
         if fc.verify_run_id:
-            try:
+            with suppress(NotFoundError):
                 run = self._repo.get_run(fc.verify_run_id)
-            except NotFoundError:
-                pass
         revision, graph_revision = self._get_verification_identity_fn(s.app_id, actor)
         return publication_decision(
             run, session_id=s.id, current_revision=revision, current_graph_revision=graph_revision
@@ -1570,16 +1570,11 @@ class DifyBuilderService:
         app_revision_conflicted = bool(
             fc.last_snapshot_hash and current_app_revision and fc.last_snapshot_hash != current_app_revision
         )
-        # Input-only testdata keeps its revision exemption. Fixture-bearing
-        # data was already admitted against its exact submitted revision by the
-        # guarded stamp owner above. Neither graph-write gate below applies: a draft that moved while the user was
-        # typing changes nothing about the values they typed. This gate is also
-        # the one place a human types for tens of seconds -- long enough for the
-        # editor's own autosave to land right after Builder wrote the canvas,
-        # which used to refuse the submit and leave the form frozen behind a
-        # recovery prompt.
-        revision_exempt = action.kind == "provide_testdata"
-        if not revision_exempt and action.kind not in {"message", "update_model"}:
+        # Inputs survive draft drift while the user fills the form; fixtures
+        # remain bound to the exact revision stamped above. Saving either form
+        # variant never rebases a staged repair or accepts its baseline drift.
+        baseline_exempt = action.kind == "provide_testdata"
+        if requires_app_revision(action):
             if current_app_revision and not action.base_app_revision:
                 raise BadRequestError("base_app_revision is required")
             if action.base_app_revision and action.base_app_revision != current_app_revision:
@@ -1587,7 +1582,7 @@ class DifyBuilderService:
         if (
             app_revision_conflicted
             and not fc.recovery_class
-            and not revision_exempt
+            and not baseline_exempt
             and action.kind not in {"check_recovery", "recovery_restart", "resume"}
         ):
             raise ConflictError(f"draft changed outside Builder for app {s.app_id}")

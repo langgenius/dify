@@ -2,43 +2,72 @@
 
 import copy
 from datetime import datetime
+from typing import override
 
 import pytest
 
+from core.dify_builder.contract import ProgressEventData, ResourceOption
 from core.dify_builder.handlers_build import build_registry
 from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, MutationIntent, Session, Turn
-from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState
-from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
+from services.dify_builder.plan import WorkflowPlan
+from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 GOAL = "Generate a real presentation file, then POST it to the supplied endpoint. " + "保留原始目标。" * 1800
 REQUIREMENTS = {"endpoint": "https://example.test/upload", "output": {"format": "pptx", "slides": 12}}
 
 
-class RecordingAgent(PlaceholderAgent):
-    def __init__(self, plan):
-        self.plan = plan
+class RecordingAgent(StubAgent):
+    def __init__(self, plan: list[str]) -> None:
+        self.plan = (
+            WorkflowPlan(
+                title="Generate and deliver a presentation",
+                input_summary="The requested presentation content.",
+                output_summary="A presentation file delivered to the supplied endpoint.",
+                items=plan,
+            )
+            if plan
+            else None
+        )
         self.calls = []
 
-    def propose_plan_v1(self, requirements, *, goal_text):
+    @override
+    def propose_plan_v1(self, requirements: dict[str, object], *, goal_text: str) -> WorkflowPlan | None:
         self.calls.append(("plan", goal_text, copy.deepcopy(requirements)))
         return self.plan
 
-    def discover_resources(self, _plan_items, *, goal_text, requirements):
+    @override
+    def discover_resources(
+        self, plan_items: list[str], *, goal_text: str, requirements: dict[str, object]
+    ) -> list[ResourceOption]:
         self.calls.append(("resources", goal_text, copy.deepcopy(requirements)))
         return []
 
-    def assess_capability_gap(self, _plan_items, _options, *, goal_text, requirements):
+    @override
+    def assess_capability_gap(
+        self, plan_items: list[str], options: list[ResourceOption], *, goal_text: str, requirements: dict[str, object]
+    ) -> str:
         self.calls.append(("gap", goal_text, copy.deepcopy(requirements)))
         return ""
 
 
-def _advance(state, plan):
+def _advance(
+    state: PcState, plan: list[str]
+) -> tuple[
+    Session,
+    DifyBuilderContext,
+    DifyBuilderContext,
+    RecordingAgent,
+    InMemoryRepository,
+    list[dict[str, object]],
+    list[ProgressEventData],
+]:
     agent = RecordingAgent(plan)
     repo = InMemoryRepository()
-    canvas, progress = [], []
+    canvas: list[dict[str, object]] = []
+    progress: list[ProgressEventData] = []
     env = Env(
         agent=agent,
         dify=FakeDifyPort(),
@@ -55,6 +84,9 @@ def _advance(state, plan):
         requirements={**REQUIREMENTS, "currency": "USD"},
         form_fields=[{"key": "currency", "label": "Currency", "type": "text"}],
         plan_items=["Prior accepted plan"],
+        plan_title="Prior accepted title",
+        plan_input_summary="Prior accepted input",
+        plan_output_summary="Prior accepted output",
         plan_version_tag="v2",
         resource_selection={"ids": ["existing-tool"]},
         built_node_ids=["existing-node"],
@@ -87,7 +119,7 @@ def _advance(state, plan):
     "state",
     [PcState.BUILD_GOAL_ANALYSIS, PcState.BUILD_REVIEW, PcState.BUILD_REVERTED, PcState.BUILD_INITIAL_PLAN],
 )
-def test_runtime_cognition_receives_full_original_goal_and_confirmed_requirements(state):
+def test_runtime_cognition_receives_full_original_goal_and_confirmed_requirements(state: PcState) -> None:
     # Dropping/deriving the original goal, or passing stale requirements to
     # any cognitive boundary, loses an action absent from the requirements.
     out, stored, _, agent, _, _, _ = _advance(state, ["A condensed plan without source details"])
@@ -97,6 +129,10 @@ def test_runtime_cognition_receives_full_original_goal_and_confirmed_requirement
     assert agent.calls == expected_calls
     assert stored.requirements == confirmed
     assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    if state != PcState.BUILD_INITIAL_PLAN:
+        assert stored.plan_title == "Generate and deliver a presentation"
+        assert stored.plan_input_summary == "The requested presentation content."
+        assert stored.plan_output_summary == "A presentation file delivered to the supplied endpoint."
 
 
 @pytest.mark.parametrize(
@@ -107,13 +143,16 @@ def test_runtime_cognition_receives_full_original_goal_and_confirmed_requirement
         (PcState.BUILD_REVERTED, "build-restart-plan"),
     ],
 )
-def test_empty_plan_preserves_context_and_stays_at_its_waiting_gate(state, failed_step):
+def test_empty_plan_preserves_context_and_stays_at_its_waiting_gate(state: PcState, failed_step: str) -> None:
     # Accepting [] must not replace the prior plan, invalidate evidence/repair,
     # emit success cards, or begin discovery/canvas/checkpoint work.
     out, stored, before, agent, repo, canvas, progress = _advance(state, [])
     assert out.current_state == state
     for name in (
         "plan_items",
+        "plan_title",
+        "plan_input_summary",
+        "plan_output_summary",
         "plan_version_tag",
         "resource_selection",
         "built_node_ids",

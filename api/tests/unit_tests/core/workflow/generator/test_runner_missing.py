@@ -34,7 +34,7 @@ def test_declares_variable():
     # time and accepting it only let a broken graph reach the canvas silently.
     # See TestLlmNodeDeclaresTheEngineOutputs in test_runner.py for the full
     # truth table.
-    assert WorkflowGenerator._declares_variable({"data": {"type": "llm"}}, "text") == True
+    assert WorkflowGenerator._declares_variable({"data": {"type": "llm"}}, "text") is True
     llm_so = {
         "data": {
             "type": "llm",
@@ -42,42 +42,41 @@ def test_declares_variable():
             "structured_output": {"schema": {"properties": {"json_var": {}}}},
         }
     }
-    assert WorkflowGenerator._declares_variable(llm_so, "structured_output") == True
-    assert WorkflowGenerator._declares_variable(llm_so, "json_var") == False
-    assert WorkflowGenerator._declares_variable(llm_so, "other_var") == False
+    assert WorkflowGenerator._declares_variable(llm_so, "structured_output") is True
+    assert WorkflowGenerator._declares_variable(llm_so, "json_var") is False
+    assert WorkflowGenerator._declares_variable(llm_so, "other_var") is False
 
     # Code node
     assert (
         WorkflowGenerator._declares_variable({"data": {"type": "code", "outputs": {"code_var": "str"}}}, "code_var")
-        == True
+        is True
     )
 
     # Knowledge retrieval
-    assert WorkflowGenerator._declares_variable({"data": {"type": "knowledge-retrieval"}}, "result") == True
+    assert WorkflowGenerator._declares_variable({"data": {"type": "knowledge-retrieval"}}, "result") is True
 
     # Parameter extractor
     assert (
         WorkflowGenerator._declares_variable(
             {"data": {"type": "parameter-extractor", "parameters": [{"name": "param1"}]}}, "param1"
         )
-        == True
+        is True
     )
 
     # HTTP request
-    assert WorkflowGenerator._declares_variable({"data": {"type": "http-request"}}, "body") == True
+    assert WorkflowGenerator._declares_variable({"data": {"type": "http-request"}}, "body") is True
 
     # Template transform
-    assert WorkflowGenerator._declares_variable({"data": {"type": "template-transform"}}, "output") == True
+    assert WorkflowGenerator._declares_variable({"data": {"type": "template-transform"}}, "output") is True
 
     # Tool
-    assert WorkflowGenerator._declares_variable({"data": {"type": "tool"}}, "anything") == True
+    assert WorkflowGenerator._declares_variable({"data": {"type": "tool"}}, "anything") is True
 
     # Other node (default false)
-    assert WorkflowGenerator._declares_variable({"data": {"type": "unknown"}}, "anything") == False
+    assert WorkflowGenerator._declares_variable({"data": {"type": "unknown"}}, "anything") is False
 
 
 def test_collect_container_errors():
-
     # Not a container error
     nodes = [{"id": "n1", "data": {"type": "llm"}}, {"id": "n2", "data": {"type": "code", "parentId": "n1"}}]
     errors = WorkflowGenerator._collect_container_errors(nodes=nodes)
@@ -88,12 +87,10 @@ def test_collect_container_errors():
     nodes = [
         {"id": "n1", "data": {"type": "llm"}},
     ]
-    edges = []
     # Test would go here but we need to see what _validate_structure calls
 
 
 def test_collect_unknown_tools():
-
     # Missing tool/provider info
     nodes = [
         {"id": "n1", "data": {"type": "tool", "provider_id": "", "tool_name": ""}},
@@ -108,7 +105,6 @@ def test_collect_unknown_tools():
 
 
 def test_collect_unresolved_refs():
-
     # Missing node ref
     nodes = [{"id": "n1", "data": {"type": "llm", "prompt_template": [{"text": "{#unknown.var#}"}]}}]
     # To trigger the parsing we need to mock _collect_refs_in_data behavior or let it parse naturally
@@ -131,7 +127,6 @@ def test_collect_unresolved_refs():
 
 
 def test_collect_edge_cycle_errors():
-
     # Self-loop
     graph = {"nodes": [{"id": "n1"}], "edges": [{"source": "n1", "target": "n1"}]}
     errors = WorkflowGenerator._collect_edge_cycle_errors(graph=graph, known_ids={"n1"})
@@ -140,7 +135,6 @@ def test_collect_edge_cycle_errors():
 
 
 def test_collect_container_errors_empty_container():
-
     # Empty container
     nodes = [
         {"id": "n1", "data": {"type": "iteration"}},
@@ -151,7 +145,6 @@ def test_collect_container_errors_empty_container():
 
 
 def test_collect_container_errors_cycle():
-
     # Ancestor cycle
     nodes = [
         {"id": "n1", "data": {"type": "iteration", "parentId": "n2"}},
@@ -163,7 +156,6 @@ def test_collect_container_errors_cycle():
 
 
 def test_postprocess_graph_edges():
-
     # Try calling _postprocess_graph directly to trigger _sanitize_node_ids
     graph = {
         "nodes": [{"id": "sys", "data": {"type": "start"}}, {"id": "bad id", "data": {"type": "llm"}}],
@@ -190,10 +182,9 @@ def test_document_extractor_start_vars():
 
 
 def test_missing_terminal_mode_auto():
-
     # Empty graph, should get MISSING_TERMINAL
     graph = {"nodes": [{"id": "n1", "data": {"type": "start"}}], "edges": []}
 
     # Missing terminal check happens inside _validate_structure
-    errors = WorkflowGenerator._validate_structure(graph=graph, mode="workflow", installed_tools=set())
+    WorkflowGenerator._validate_structure(graph=graph, mode="workflow", installed_tools=set())
     # Mocking this deeply is hard, but we can verify it doesn't fail

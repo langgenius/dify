@@ -11,7 +11,7 @@ import re
 from collections.abc import Callable, Sequence
 from dataclasses import asdict
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlsplit
 
 import json_repair
@@ -32,6 +32,7 @@ from services.dify_builder.native_constant_output_contract import (
     native_build_capability_system_rules,
     native_constant_output_system_rules,
 )
+from services.dify_builder.plan import PLAN_PRESENTATION_INSTRUCTION, WorkflowPlan, parse_plan_response
 from services.dify_builder.presentation import copy_text
 from services.dify_builder.tool_setup import reconcile_generated_tool_setup
 from services.workflow_generator_service import WorkflowGeneratorService
@@ -127,9 +128,7 @@ def _is_invented_literal(value: Any, key: str | None, goal_text: str) -> bool:
     stripped = user_supplied.strip_auth_scheme(value)
     if (credential_key or stripped != value) and user_supplied.CREDENTIAL_PLACEHOLDER_RE.search(stripped):
         return True
-    if credential_key and not user_supplied.is_user_supplied_secret(value, goal_text):
-        return True
-    return False
+    return credential_key and not user_supplied.is_user_supplied_secret(value, goal_text)
 
 
 def _scrub_invented_defaults(values: dict[str, Any], goal_text: str) -> dict[str, Any]:
@@ -356,6 +355,15 @@ _DIFY_NODE_VOCABULARY = """\
 - "assigner"            — update an existing conversation or loop variable."""
 
 
+def _node_vocabulary(mode: str) -> str:
+    if mode == "advanced-chat":
+        return _DIFY_NODE_VOCABULARY.replace(
+            '- "end"                 — workflow exit. Returns the result.',
+            '- "answer"              — Chatflow reply. Returns text to the user.',
+        )
+    return _DIFY_NODE_VOCABULARY
+
+
 # How many ready tools the Builder's planner is shown. The ESQ1-302 tenant had
 # 35; a cap keeps the prompt bounded on tenants with hundreds. Tools are ranked
 # by relevance to the request first, so a matching tool is never hidden behind
@@ -452,25 +460,6 @@ def _cognition_source(goal_text: str, requirements: dict[str, Any] | None) -> st
     )
 
 
-def _plan_schema_error(data: Any) -> str:
-    """Describe shape errors without quoting source or model-generated content."""
-    if not isinstance(data, dict):
-        return f"The response must be an object, received {type(data).__name__}."
-    if "plan" not in data:
-        return "The required plan field is missing."
-    plan = data["plan"]
-    if not isinstance(plan, list):
-        return f"The plan field must be a nonempty list of strings, received {type(plan).__name__}."
-    if not plan:
-        return "The plan field must contain at least one nonblank string."
-    for index, item in enumerate(plan):
-        if not isinstance(item, str):
-            return f"The plan[{index}] field must be a nonblank string, received {type(item).__name__}."
-        if not item.strip():
-            return f"The plan[{index}] field is blank; every item must be a nonblank string."
-    return ""
-
-
 def propose_plan_v1(
     model,
     requirements: dict[str, Any],
@@ -478,22 +467,23 @@ def propose_plan_v1(
     *,
     tools: Sequence[ResourceRef] = (),
     goal_text: str = "",
-) -> list[str]:
-    """Return an intact plan or [], with at most one schema correction.
+    mode: str = "workflow",
+) -> WorkflowPlan | None:
+    """Return an intact plan or None, with at most one schema correction.
 
     The service-only source default supports direct callers during sequential
     adapter migration; runtime adapters must pass the original goal explicitly.
     Structural validity alone does not prove the plan covers the source.
     """
     if model is None:
-        return []
+        return None
     system = (
         "You are a Dify workflow planner. Given the original goal and confirmed requirements, "
         "propose an ordered list of concise build steps. Preserve requested actions and outputs; "
         "requirements may refine the goal, but do not silently resolve conflicting instructions.\n\n"
         "Every step MUST be implementable by exactly one of these Dify node types, and you "
         "may plan ONLY in these terms:\n\n"
-        f"{_DIFY_NODE_VOCABULARY}\n\n"
+        f"{_node_vocabulary(mode)}\n\n"
         "Write each step as the work that node does, naming the node type. Good: "
         '"llm node drafts a reply from the ticket text". Bad: "Notify the team on Feishu" '
         "-- that names a product, not a node.\n\n"
@@ -508,10 +498,11 @@ def propose_plan_v1(
         "schema; do not invent any of them. Resource mentions, including optional or negative "
         "mentions, do not alone require using a resource."
         f"{_planner_tool_section(tools)}\n\n"
-        'Reply with ONLY JSON: {"plan": ["step", ...]}.'
+        f"{PLAN_PRESENTATION_INSTRUCTION}"
     )
+    system = _topology_directive(mode) + "\n\n" + system
     system += "\n\n" + native_constant_output_system_rules()
-    system += llm.json_language_instruction("plan steps")
+    system += llm.json_language_instruction("the plan title, input and output summaries, and plan steps")
     source = _cognition_source(goal_text, requirements)
     user = source
     for attempt in range(2):
@@ -520,17 +511,18 @@ def propose_plan_v1(
             # so parsing and schema correction share the same two-call budget.
             text = llm.invoke_text(model, system=system, user=user, on_reasoning=on_reasoning)
         except Exception:
-            return []
+            return None
         try:
             data = json_repair.loads(text)
         except Exception:
             data = None
-        issue = _plan_schema_error(data)
-        if not issue:
-            return data["plan"]
+        try:
+            return parse_plan_response(data)
+        except ValueError as exc:
+            issue = str(exc)
         if attempt == 0:
             user = f"{source}\n\nSCHEMA CORRECTION:\n{issue} Reply with ONLY the complete corrected JSON object."
-    return []
+    return None
 
 
 def discover_resources(
@@ -627,6 +619,7 @@ def assess_capability_gap(
     *,
     goal_text: str = "",
     requirements: dict[str, Any] | None = None,
+    mode: str = "workflow",
 ) -> str:
     """One sentence naming an uncovered draft capability or named requirement.
 
@@ -647,7 +640,7 @@ def assess_capability_gap(
             system=(
                 _GAP_SYSTEM
                 + "\n\n# Native workflow build vocabulary\n\n"
-                + _DIFY_NODE_VOCABULARY
+                + _node_vocabulary(mode)
                 + "\n\n"
                 + native_constant_output_system_rules()
                 + "\n\n"
@@ -851,16 +844,8 @@ def _selected_workflow_model(tenant_id: str, resource_ids: Sequence[str]) -> Mod
     return ModelConfig.model_validate({"provider": provider, "name": name, "mode": "chat", "completion_params": {}})
 
 
-# Prepended to the generator instruction so the LLM emits a WORKFLOW-shaped graph
-# (start + end node) even when the plan reads like a chatbot. Without this the model
-# often produces a chatflow graph (answer node / no end node) that the generator
-# rejects as MISSING_TERMINAL -- and the generator does NOT retry that class of
-# failure -- so the build silently yields no nodes.
-_WORKFLOW_TOPOLOGY_DIRECTIVE = (
-    "Build a Dify WORKFLOW graph (this is NOT a chat app): it MUST begin with exactly one "
-    "'start' node and terminate in at least one 'end' node that returns the result. Do NOT use "
-    "'answer' nodes -- those exist only in chat / advanced-chat apps and are invalid in a workflow."
-    "\n\n"
+# Node-usage rules shared by Workflow and Chatflow generation.
+_NODE_USAGE_DIRECTIVE = (
     # Node-usage guidance (meeting item 9). Builder-only: this string is
     # prepended to the instruction at build.py:377 and cmd+K never sees it.
     # Only rules that earned their place by breaking a real build belong here --
@@ -881,6 +866,26 @@ _WORKFLOW_TOPOLOGY_DIRECTIVE = (
     "it from a start-node variable. Expose an http-request's changing inputs as start-node "
     "variables rather than hardcoding them."
 )
+
+
+_WORKFLOW_TOPOLOGY_DIRECTIVE = (
+    "Build a Dify WORKFLOW graph (this is NOT a chat app): it MUST begin with exactly one "
+    "'start' node and terminate in at least one 'end' node that returns the result. Do NOT use "
+    "'answer' nodes -- those exist only in chat / advanced-chat apps and are invalid in a workflow."
+    "\n\n" + _NODE_USAGE_DIRECTIVE
+)
+
+
+def _topology_directive(mode: str) -> str:
+    if mode == "advanced-chat":
+        return (
+            "Build a Dify CHATFLOW graph (advanced-chat): it MUST begin with exactly one "
+            "'start' node and reply through at least one 'answer' node. Do NOT use 'end' nodes. "
+            "Use sys.query for the user's message and preserve conversational memory on LLM nodes."
+            "\n\n" + _NODE_USAGE_DIRECTIVE
+        )
+    return _WORKFLOW_TOPOLOGY_DIRECTIVE
+
 
 # Total generation attempts build_nodes will make for one build: the first
 # attempt plus at most two corrective retries, stopping at the first success.
@@ -923,7 +928,7 @@ def _format_generator_error(error: dict[str, Any]) -> str:
     return f"- {label}{node_part}"
 
 
-def _terminal_retry_instruction(base_instruction: str, result: dict[str, Any]) -> str:
+def _terminal_retry_instruction(base_instruction: str, result: dict[str, Any], *, mode: str = "workflow") -> str:
     """Corrective instruction for a generation retry after a validation failure --
     feeds back EVERY structured error (``result["errors"]``: code, detail, node id)
     rather than only the first, adds UNRESOLVED_REFERENCE-specific guidance when
@@ -941,8 +946,7 @@ def _terminal_retry_instruction(base_instruction: str, result: dict[str, Any]) -
 
     return (
         f"Your previous attempt was rejected:\n{error_text}{guidance}\n\n"
-        "Regenerate the COMPLETE workflow graph with exactly one 'start' node and at least one "
-        "'end' node wired from the final step. Do NOT use 'answer' nodes.\n\n"
+        f"Regenerate the COMPLETE graph. {_topology_directive(mode)}\n\n"
         f"{base_instruction}"
     )
 
@@ -996,6 +1000,8 @@ def _prepare_build_candidate(
     graph: dict[str, Any],
     grounding_mc: ModelConfig,
     trusted_text: str,
+    *,
+    mode: Literal["workflow", "advanced-chat"],
 ) -> preflight.VettedIntents:
     """Translate, ground, and vet the complete candidate as the write guard does.
 
@@ -1013,10 +1019,9 @@ def _prepare_build_candidate(
             "Dify Builder: http-request %s had a placeholder credential; now read from a start variable", node_id
         )
     candidate = preflight.vet_intents({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
-    # build_nodes requests a full workflow with current_graph=None. Generic
-    # preflight deliberately permits authored partial drafts; complete generated
-    # builds must also have execution paths through their planned nodes to End.
-    completeness = generated_build_completeness_problems(candidate.applicable, mode="workflow", current_graph=None)
+    # Generic preflight permits authored partial drafts. A full generated build
+    # must have execution paths through its nodes to the mode's terminal type.
+    completeness = generated_build_completeness_problems(candidate.applicable, mode=mode, current_graph=None)
     return preflight.VettedIntents(
         candidate.applicable,
         [*candidate.rejections, *completeness],
@@ -1067,6 +1072,7 @@ def build_nodes(
     *,
     trusted_text: str = "",
     account_id: str | None = None,
+    mode: str = "workflow",
 ) -> BuildNodesResult:
     """Generate installed Tool schemas with delayed setup and no credential borrowing.
 
@@ -1082,7 +1088,8 @@ def build_nodes(
         mc = _generator_model_config(tenant_id, model_config)
         tool_refs = _installed_tool_refs(tenant_id, account_id)
         ready_tool_keys = frozenset(tool_refs)
-        base_instruction = f"{_WORKFLOW_TOPOLOGY_DIRECTIVE}\n\nAPPROVED PLAN:\n" + "\n".join(plan_items)
+        graph_mode: Literal["workflow", "advanced-chat"] = "advanced-chat" if mode == "advanced-chat" else "workflow"
+        base_instruction = f"{_topology_directive(graph_mode)}\n\nAPPROVED PLAN:\n" + "\n".join(plan_items)
         if trusted_text:
             base_instruction += (
                 "\n\nORIGINAL USER REQUEST AND CONFIRMED REQUIREMENTS (authoritative):\n"
@@ -1093,19 +1100,20 @@ def build_nodes(
             )
 
         def _generate(instruction: str) -> dict[str, Any]:
-            return WorkflowGeneratorService.generate_workflow_graph(
-                tenant_id=tenant_id,
-                mode="workflow",
-                instruction=instruction,
-                model_config=mc,
-                current_graph=None,
-                ready_tool_keys=ready_tool_keys,
+            return dict(
+                WorkflowGeneratorService.generate_workflow_graph(
+                    tenant_id=tenant_id,
+                    mode=graph_mode,
+                    instruction=instruction,
+                    model_config=mc,
+                    current_graph=None,
+                    ready_tool_keys=ready_tool_keys,
+                )
             )
 
-        instruction = base_instruction
+        result = _generate(base_instruction)
         grounding_mc: ModelConfig | None = None
         for attempt in range(1, _MAX_GENERATION_ATTEMPTS + 1):
-            result = _generate(instruction)
             graph = result.get("graph") or {}
             source = "workflow-generator"
             if not result.get("error") and graph.get("nodes"):
@@ -1119,23 +1127,21 @@ def build_nodes(
                     graph=graph,
                     tools=tool_refs,
                 )
-                candidate = _prepare_build_candidate(graph, grounding_mc, trusted_text)
+                candidate = _prepare_build_candidate(graph, grounding_mc, trusted_text, mode=graph_mode)
                 rejections = [*_uninstalled_tool_refusals(graph, ready_tool_keys), *candidate.rejections]
                 if not rejections and candidate.applicable:
                     return BuildNodesResult(intents=candidate.applicable, diagnostics=diagnostics)
                 # vet_intents supplies credential-safe node/field refusals from
                 # the real engine. Never embed the raw candidate config here.
                 source = "build_nodes"
-                result = {
-                    "error": "the generated graph had no applicable node intents",
-                    "errors": [{"code": "CANDIDATE_VALIDATION", "detail": reason} for reason in rejections],
-                }
+                result["error"] = "the generated graph had no applicable node intents"
+                result["errors"] = [{"code": "CANDIDATE_VALIDATION", "detail": reason} for reason in rejections]
 
             diagnostic = _generation_diagnostic(result, attempt=attempt)
             diagnostic["source"] = source
             diagnostics.append(diagnostic)
             if attempt < _MAX_GENERATION_ATTEMPTS:
-                instruction = _terminal_retry_instruction(base_instruction, result)
+                result = _generate(_terminal_retry_instruction(base_instruction, result, mode=graph_mode))
 
         error = _generation_error_text(result)
         logger.warning(

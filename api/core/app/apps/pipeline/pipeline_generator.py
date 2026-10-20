@@ -7,7 +7,7 @@ import threading
 import time
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, cast, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -56,11 +56,21 @@ from services.data_source.provider_service import DatasourceProviderService
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+
 logger = logging.getLogger(__name__)
 
 
 class PipelineGenerator(BaseAppGenerator):
-    def __init__(self, *, documents: PipelineDocumentStore, datasource_providers: DatasourceProviderService) -> None:
+    def __init__(
+        self,
+        *,
+        execution_driver: "WorkflowRunDriver",
+        documents: PipelineDocumentStore,
+        datasource_providers: DatasourceProviderService,
+    ) -> None:
+        self._execution_driver = execution_driver
         self._documents = documents
         self._datasource_providers = datasource_providers
 
@@ -200,7 +210,7 @@ class PipelineGenerator(BaseAppGenerator):
                     user_inputs=inputs,
                     variables=pipeline_config.rag_pipeline_variables,
                     tenant_id=pipeline.tenant_id,
-                    strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
+                    strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
                 ),
                 files=[],
                 user_id=user.id,
@@ -631,18 +641,19 @@ class PipelineGenerator(BaseAppGenerator):
                         system_user_id = application_generate_entity.user_id
                     # workflow app
                     runner = PipelineRunner(
+                        execution_driver=self._execution_driver,
                         application_generate_entity=application_generate_entity,
                         queue_manager=queue_manager,
                         workflow_thread_pool_id=workflow_thread_pool_id,
                         variable_loader=variable_loader,
                         workflow=workflow,
                         system_user_id=system_user_id,
-                        workflow_execution_repository=workflow_execution_repository,
-                        workflow_node_execution_repository=workflow_node_execution_repository,
                         documents=self._documents,
                     )
 
-                    runner.run()
+                    self._execution_driver(
+                        runner, None, workflow_execution_repository, workflow_node_execution_repository
+                    )
             except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:
@@ -692,7 +703,7 @@ class PipelineGenerator(BaseAppGenerator):
             return generate_task_pipeline.process()
         except ValueError as e:
             if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
-                raise GenerateTaskStoppedError()
+                raise GenerateTaskStoppedError() from e
             else:
                 logger.exception(
                     "Fails to process generate task pipeline, task_id: %r",

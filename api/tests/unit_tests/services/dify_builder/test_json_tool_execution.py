@@ -1,13 +1,18 @@
 """Pure admission for the single qualified native JSON Parse graph."""
 
 import json
+from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
+from typing import Never, override
+from unittest.mock import Mock
 
 import pytest
-from pydantic import ValidationError
+from pydantic import Field, ValidationError
 
 from core.dify_builder.execution_policy import BuilderExecutionPolicyError, RestrictedAdmissionSnapshot
+from core.dify_builder.models import Graph
+from graphon.runtime import VariablePool
 from services.dify_builder.json_tool_execution import (
     QualifiedJsonToolBinding,
     admit_json_workflow,
@@ -19,11 +24,11 @@ _GRAPH = Path(__file__).resolve().parents[3] / "fixtures/workflow/builder_restri
 
 
 @pytest.fixture
-def json_graph():
+def json_graph() -> Graph:
     return json.loads(_GRAPH.read_text())
 
 
-def snapshot_for(graph):
+def snapshot_for(graph: Graph) -> RestrictedAdmissionSnapshot:
     return RestrictedAdmissionSnapshot(
         app_mode="workflow",
         workflow_kind="standard",
@@ -36,15 +41,15 @@ def snapshot_for(graph):
     )
 
 
-def _inputs():
+def _inputs() -> dict[str, str]:
     return {"payload": '{"customer":{"name":"Ada"}}', "json_path": "$.customer.name"}
 
 
-def _tool(graph):
+def _tool(graph: Graph) -> Graph:
     return graph["nodes"][1]["data"]
 
 
-def add_native_editor_metadata(graph):
+def add_native_editor_metadata(graph: Graph) -> Graph:
     """Mirror the inert fields emitted by the native Tool and End editors."""
     _tool(graph).update(
         {
@@ -58,7 +63,7 @@ def add_native_editor_metadata(graph):
     return graph
 
 
-def test_reviewed_pure_mixed_graph_admits_exact_native_chain(json_graph):
+def test_reviewed_pure_mixed_graph_admits_exact_native_chain(json_graph: Graph) -> None:
     admitted = admit_json_workflow(snapshot_for(json_graph))
     assert (admitted.start_node_id, admitted.tool_node_id, admitted.end_node_id) == ("node1", "node2", "node3")
     assert [node.node_id for node in admitted.nodes] == ["node1", "node2", "node3"]
@@ -70,7 +75,7 @@ def test_reviewed_pure_mixed_graph_admits_exact_native_chain(json_graph):
 
 
 @pytest.mark.parametrize("variant", ["native-editor", "bounded-display"], ids=["native-editor", "bounded-display"])
-def test_native_editor_metadata_admits_without_changing_graph_or_parameters(json_graph, variant):
+def test_native_editor_metadata_admits_without_changing_graph_or_parameters(json_graph: Graph, variant: str) -> None:
     graph = add_native_editor_metadata(json_graph)
     if variant == "bounded-display":
         _tool(graph)["is_team_authorization"] = False
@@ -107,7 +112,9 @@ def test_native_editor_metadata_admits_without_changing_graph_or_parameters(json
         pytest.param("credential_name", "selected", id="credential-name-still-refused"),
     ],
 )
-def test_native_editor_tool_metadata_refuses_bad_types_bounds_and_unknown_fields(json_graph, field, value):
+def test_native_editor_tool_metadata_refuses_bad_types_bounds_and_unknown_fields(
+    json_graph: Graph, field: str, value: Graph | None | int | list[str] | str
+) -> None:
     graph = add_native_editor_metadata(json_graph)
     _tool(graph)[field] = value
     with pytest.raises(BuilderExecutionPolicyError):
@@ -125,7 +132,9 @@ def test_native_editor_tool_metadata_refuses_bad_types_bounds_and_unknown_fields
         pytest.param("value_selector", ["node1", "payload"], id="non-tool-selector"),
     ],
 )
-def test_native_editor_end_metadata_keeps_exact_text_tool_selector(json_graph, field, value):
+def test_native_editor_end_metadata_keeps_exact_text_tool_selector(
+    json_graph: Graph, field: str, value: None | int | list[str] | str
+) -> None:
     graph = add_native_editor_metadata(json_graph)
     graph["nodes"][2]["data"]["outputs"][0][field] = value
     with pytest.raises(BuilderExecutionPolicyError):
@@ -134,7 +143,7 @@ def test_native_editor_end_metadata_keeps_exact_text_tool_selector(json_graph, f
 
 @pytest.mark.parametrize("source_kind", ["constant", "variable", "mixed"])
 @pytest.mark.parametrize("parameter", ["content", "json_filter"])
-def test_string_source_variants(json_graph, source_kind, parameter):
+def test_string_source_variants(json_graph: Graph, source_kind: str, parameter: str) -> None:
     expected = _inputs()["payload" if parameter == "content" else "json_path"]
     name = "payload" if parameter == "content" else "json_path"
     if source_kind == "constant":
@@ -146,7 +155,7 @@ def test_string_source_variants(json_graph, source_kind, parameter):
     assert resolve_json_parameters(snapshot_for(json_graph), _inputs())[parameter] == expected
 
 
-def test_constant_json_parameters_need_no_start_declarations_or_inputs(json_graph):
+def test_constant_json_parameters_need_no_start_declarations_or_inputs(json_graph: Graph) -> None:
     json_graph["nodes"][0]["data"]["variables"] = []
     _tool(json_graph)["tool_parameters"] = {
         "content": {"type": "constant", "value": '{"x":1}'},
@@ -159,7 +168,7 @@ def test_constant_json_parameters_need_no_start_declarations_or_inputs(json_grap
     }
 
 
-def test_empty_start_declarations_still_refuse_variable_selector(json_graph):
+def test_empty_start_declarations_still_refuse_variable_selector(json_graph: Graph) -> None:
     json_graph["nodes"][0]["data"]["variables"] = []
     _tool(json_graph)["tool_parameters"]["content"] = {"type": "variable", "value": ["node1", "payload"]}
     with pytest.raises(BuilderExecutionPolicyError):
@@ -168,7 +177,7 @@ def test_empty_start_declarations_still_refuse_variable_selector(json_graph):
 
 @pytest.mark.parametrize("ascii_value", [True, False], ids=["true", "false"])
 @pytest.mark.parametrize("wrapped", [True, False], ids=["wrapped", "raw"])
-def test_final_parameters_keep_native_boolean(json_graph, ascii_value, wrapped):
+def test_final_parameters_keep_native_boolean(json_graph: Graph, ascii_value: bool, wrapped: bool) -> None:
     _tool(json_graph)["tool_configurations"]["ensure_ascii"] = (
         {"type": "constant", "value": ascii_value} if wrapped else ascii_value
     )
@@ -192,7 +201,7 @@ def test_final_parameters_keep_native_boolean(json_graph, ascii_value, wrapped):
         {"type": "constant", "value": False, "extra": 1},
     ],
 )
-def test_non_boolean_ensure_ascii_refuses_before_coercion(json_graph, invalid):
+def test_non_boolean_ensure_ascii_refuses_before_coercion(json_graph: Graph, invalid: Graph | None | int | str) -> None:
     _tool(json_graph)["tool_configurations"]["ensure_ascii"] = invalid
     with pytest.raises(BuilderExecutionPolicyError):
         admit_json_workflow(snapshot_for(json_graph))
@@ -232,7 +241,7 @@ def test_non_boolean_ensure_ascii_refuses_before_coercion(json_graph, invalid):
         "dollar_node",
     ],
 )
-def test_exact_graph_and_static_tool_shape_refuse_mutations(json_graph, mutation):
+def test_exact_graph_and_static_tool_shape_refuse_mutations(json_graph: Graph, mutation: str) -> None:
     graph = json_graph
     tool = _tool(graph)
     if mutation == "provider":
@@ -297,17 +306,19 @@ def test_exact_graph_and_static_tool_shape_refuse_mutations(json_graph, mutation
         admit_json_workflow(snapshot_for(graph))
 
 
-def test_wrong_resolved_tool_class_refuses_before_class_validation(json_graph, monkeypatch):
+def test_wrong_resolved_tool_class_refuses_before_class_validation(
+    json_graph: Graph, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from core.workflow import node_factory
 
     original = node_factory.resolve_workflow_node_class
 
     class Unreviewed:
         @staticmethod
-        def validate_node_data(_data):
+        def validate_node_data(_data: object) -> Never:
             pytest.fail("unreviewed Tool class validated")
 
-    def swapped(*, node_type, node_version, node_data):
+    def swapped(*, node_type: str, node_version: str, node_data: Graph) -> type[object]:
         if node_type == "tool":
             return Unreviewed
         return original(node_type=node_type, node_version=node_version, node_data=node_data)
@@ -320,7 +331,9 @@ def test_wrong_resolved_tool_class_refuses_before_class_validation(json_graph, m
 @pytest.mark.parametrize(
     ("start_length", "name_length", "admitted"), [(50, 30, True), (51, 30, False), (50, 31, False)]
 )
-def test_pure_mixed_native_marker_source_limits(json_graph, start_length, name_length, admitted):
+def test_pure_mixed_native_marker_source_limits(
+    json_graph: Graph, start_length: int, name_length: int, admitted: bool
+) -> None:
     start_id = "n" * start_length
     name = "p" * name_length
     json_graph["nodes"][0]["id"] = start_id
@@ -335,7 +348,7 @@ def test_pure_mixed_native_marker_source_limits(json_graph, start_length, name_l
             admit_json_workflow(snapshot_for(json_graph))
 
 
-def test_direct_variable_retains_general_name_limit(json_graph):
+def test_direct_variable_retains_general_name_limit(json_graph: Graph) -> None:
     name = "p" * 64
     json_graph["nodes"][0]["data"]["variables"][0]["variable"] = name
     _tool(json_graph)["tool_parameters"]["content"] = {"type": "variable", "value": ["node1", name]}
@@ -345,7 +358,7 @@ def test_direct_variable_retains_general_name_limit(json_graph):
 
 @pytest.mark.parametrize("owner", ["sys", "env", "conversation"])
 @pytest.mark.parametrize("node_kind", ["start", "tool", "end"])
-def test_reserved_native_owner_refuses_for_every_node(json_graph, owner, node_kind):
+def test_reserved_native_owner_refuses_for_every_node(json_graph: Graph, owner: str, node_kind: str) -> None:
     index = {"start": 0, "tool": 1, "end": 2}[node_kind]
     original_id = json_graph["nodes"][index]["id"]
     json_graph["nodes"][index]["id"] = owner
@@ -362,13 +375,17 @@ def test_reserved_native_owner_refuses_for_every_node(json_graph, owner, node_ki
         admit_json_workflow(snapshot_for(json_graph))
 
 
-def test_optional_start_user_id_cannot_collide_with_native_system_owner(json_graph, monkeypatch):
+def test_optional_start_user_id_cannot_collide_with_native_system_owner(
+    json_graph: Graph, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from graphon.nodes.start.start_node import StartNode
     from graphon.runtime.variable_pool import VariablePool
 
     pool = VariablePool()
     pool.add(["sys", "user_id"], "private-system-user")
-    assert pool.get(["sys", "user_id"]).value == "private-system-user"
+    system_user = pool.get(["sys", "user_id"])
+    assert system_user is not None
+    assert system_user.value == "private-system-user"
     json_graph["nodes"][0]["id"] = "sys"
     json_graph["edges"][0]["source"] = "sys"
     json_graph["nodes"][0]["data"]["variables"].append(
@@ -378,7 +395,7 @@ def test_optional_start_user_id_cannot_collide_with_native_system_owner(json_gra
     for parameter, name in (("content", "payload"), ("json_filter", "json_path")):
         _tool(json_graph)["tool_parameters"][parameter] = {"type": "mixed", "value": f"{{{{#sys.{name}#}}}}"}
 
-    def forbidden(*_args, **_kwargs):
+    def forbidden(*_args: object, **_kwargs: object) -> Never:
         pytest.fail("reserved owner reached native class validation or pool lookup")
 
     monkeypatch.setattr(StartNode, "validate_node_data", forbidden)
@@ -387,7 +404,7 @@ def test_optional_start_user_id_cannot_collide_with_native_system_owner(json_gra
         admit_json_workflow(snapshot_for(json_graph))
 
 
-def test_missing_or_duplicated_ensure_ascii_refuses(json_graph):
+def test_missing_or_duplicated_ensure_ascii_refuses(json_graph: Graph) -> None:
     missing = deepcopy(json_graph)
     del _tool(missing)["tool_configurations"]["ensure_ascii"]
     duplicate = deepcopy(json_graph)
@@ -414,7 +431,7 @@ def test_missing_or_duplicated_ensure_ascii_refuses(json_graph):
         "{{#node1.payload#}} {{#node1.json_path#}}",
     ],
 )
-def test_non_pure_mixed_refuses_before_resolution(json_graph, value):
+def test_non_pure_mixed_refuses_before_resolution(json_graph: Graph, value: str) -> None:
     _tool(json_graph)["tool_parameters"]["content"] = {"type": "mixed", "value": value}
     with pytest.raises(BuilderExecutionPolicyError):
         admit_json_workflow(snapshot_for(json_graph))
@@ -437,13 +454,13 @@ def test_non_pure_mixed_refuses_before_resolution(json_graph, value):
         "\ud800",
     ],
 )
-def test_content_constant_lookup_hazards_refuse(json_graph, value):
+def test_content_constant_lookup_hazards_refuse(json_graph: Graph, value: str) -> None:
     _tool(json_graph)["tool_parameters"]["content"] = {"type": "constant", "value": value}
     with pytest.raises(BuilderExecutionPolicyError):
         admit_json_workflow(snapshot_for(json_graph))
 
 
-def test_direct_start_text_keeps_literal_markers_and_dots(json_graph):
+def test_direct_start_text_keeps_literal_markers_and_dots(json_graph: Graph) -> None:
     _tool(json_graph)["tool_parameters"]["content"] = {"type": "variable", "value": ["node1", "payload"]}
     value = r'{"x":"sys.user_id {{#env.secret#}} \\u002e"}'
     actual = resolve_json_parameters(snapshot_for(json_graph), {**_inputs(), "payload": value})
@@ -451,7 +468,7 @@ def test_direct_start_text_keeps_literal_markers_and_dots(json_graph):
 
 
 @pytest.mark.parametrize("source_kind", ["mixed", "variable"])
-def test_native_generation_and_log_read_only_declared_start_values(json_graph, source_kind):
+def test_native_generation_and_log_read_only_declared_start_values(json_graph: Graph, source_kind: str) -> None:
     from graphon.nodes.tool.tool_node import ToolNode
     from graphon.nodes.tool_runtime_entities import ToolRuntimeParameter
     from graphon.variables.segments import StringSegment
@@ -463,11 +480,15 @@ def test_native_generation_and_log_read_only_declared_start_values(json_graph, s
     expected = {"content": content, "json_filter": "$.message"}
     values = {("node1", "payload"): content, ("node1", "json_path"): "$.message"}
 
-    class Pool:
-        def __init__(self):
-            self.reads = []
+    class Pool(VariablePool):
+        reads: list[tuple[str, ...]] = Field(default_factory=list)
 
-        def get(self, selector):
+        def __init__(self) -> None:
+            super().__init__()
+            self.reads: list[tuple[str, ...]] = []
+
+        @override
+        def get(self, selector: Sequence[str]) -> StringSegment:
             key = tuple(selector)
             self.reads.append(key)
             assert key in values
@@ -478,13 +499,13 @@ def test_native_generation_and_log_read_only_declared_start_values(json_graph, s
     parameters = (ToolRuntimeParameter("content", required=True), ToolRuntimeParameter("json_filter", required=True))
     for for_log in (False, True):
         generated = ToolNode._generate_parameters(
-            None, tool_parameters=parameters, variable_pool=pool, node_data=native_data, for_log=for_log
+            Mock(spec=ToolNode), tool_parameters=parameters, variable_pool=pool, node_data=native_data, for_log=for_log
         )
         assert generated == expected
     assert pool.reads == [("node1", "payload"), ("node1", "json_path")] * 2
 
 
-def test_native_jsonpath_constant_cannot_read_non_start_value(json_graph):
+def test_native_jsonpath_constant_cannot_read_non_start_value(json_graph: Graph) -> None:
     from graphon.nodes.tool.tool_node import ToolNode
     from graphon.nodes.tool_runtime_entities import ToolRuntimeParameter
     from graphon.variables.segments import StringSegment
@@ -493,8 +514,9 @@ def test_native_jsonpath_constant_cannot_read_non_start_value(json_graph):
     _tool(json_graph)["tool_parameters"]["content"] = {"type": "variable", "value": ["node1", "payload"]}
     reads = []
 
-    class Pool:
-        def get(self, selector):
+    class Pool(VariablePool):
+        @override
+        def get(self, selector: Sequence[str]) -> StringSegment | None:
             key = tuple(selector)
             reads.append(key)
             if key == ("node1", "payload"):
@@ -505,7 +527,7 @@ def test_native_jsonpath_constant_cannot_read_non_start_value(json_graph):
     assert admit_json_workflow(snapshot_for(json_graph)).tool_node_id == "node2"
     native_data = ToolNode.validate_node_data(_tool(json_graph))
     generated = ToolNode._generate_parameters(
-        None,
+        Mock(spec=ToolNode),
         tool_parameters=(
             ToolRuntimeParameter("content", required=True),
             ToolRuntimeParameter("json_filter", required=True),
@@ -528,7 +550,7 @@ def test_native_jsonpath_constant_cannot_read_non_start_value(json_graph):
         "$." + ".".join(f"n{i}" for i in range(16)),
     ],
 )
-def test_admitted_jsonpath_grammar(json_graph, path):
+def test_admitted_jsonpath_grammar(json_graph: Graph, path: str) -> None:
     _tool(json_graph)["tool_parameters"]["json_filter"] = {"type": "constant", "value": path}
     assert resolve_json_parameters(snapshot_for(json_graph), _inputs())["json_filter"] == path
 
@@ -542,7 +564,7 @@ def test_admitted_jsonpath_grammar(json_graph, path):
     ],
     ids=["identifier-64", "index-five-digits", "filter-1024-bounded-segments"],
 )
-def test_jsonpath_detailed_grammar_boundaries_admit(json_graph, path):
+def test_jsonpath_detailed_grammar_boundaries_admit(json_graph: Graph, path: str) -> None:
     _tool(json_graph)["tool_parameters"]["json_filter"] = {"type": "constant", "value": path}
     assert resolve_json_parameters(snapshot_for(json_graph), _inputs())["json_filter"] == path
 
@@ -558,7 +580,7 @@ def test_jsonpath_detailed_grammar_boundaries_admit(json_graph, path):
     ids=["identifier-65", "index-six-digits", "dot-wildcard", "filter-1025-bounded-segments"],
 )
 @pytest.mark.parametrize("source_kind", ["constant", "variable"])
-def test_jsonpath_detailed_grammar_boundaries_refuse(json_graph, path, source_kind):
+def test_jsonpath_detailed_grammar_boundaries_refuse(json_graph: Graph, path: str, source_kind: str) -> None:
     inputs = _inputs()
     if source_kind == "constant":
         _tool(json_graph)["tool_parameters"]["json_filter"] = {"type": "constant", "value": path}
@@ -588,7 +610,7 @@ def test_jsonpath_detailed_grammar_boundaries_refuse(json_graph, path, source_ki
     ],
 )
 @pytest.mark.parametrize("source_kind", ["constant", "variable"])
-def test_jsonpath_grammar_refuses_constant_and_resolved_values(json_graph, path, source_kind):
+def test_jsonpath_grammar_refuses_constant_and_resolved_values(json_graph: Graph, path: str, source_kind: str) -> None:
     inputs = _inputs()
     if source_kind == "constant":
         _tool(json_graph)["tool_parameters"]["json_filter"] = {"type": "constant", "value": path}
@@ -599,7 +621,7 @@ def test_jsonpath_grammar_refuses_constant_and_resolved_values(json_graph, path,
 
 
 @pytest.mark.parametrize(("size", "valid"), [(65536, True), (65537, False), (32768, True), (32769, False)])
-def test_content_utf8_byte_boundary(json_graph, size, valid):
+def test_content_utf8_byte_boundary(json_graph: Graph, size: int, valid: bool) -> None:
     content = "a" * size if size > 32769 else "é" * size
     inputs = {**_inputs(), "payload": content}
     if valid:
@@ -609,15 +631,15 @@ def test_content_utf8_byte_boundary(json_graph, size, valid):
             resolve_json_parameters(snapshot_for(json_graph), inputs)
 
 
-def test_parameter_validator_requires_exact_final_types_and_keys():
-    valid = {"content": "{}", "json_filter": "$.x", "ensure_ascii": False}
+def test_parameter_validator_requires_exact_final_types_and_keys() -> None:
+    valid: dict[str, object] = {"content": "{}", "json_filter": "$.x", "ensure_ascii": False}
     validate_json_parameters(valid)
     for invalid in ({**valid, "ensure_ascii": 0}, {**valid, "content": None}, {**valid, "extra": "x"}):
         with pytest.raises(BuilderExecutionPolicyError):
             validate_json_parameters(invalid)
 
 
-def test_qualified_binding_is_frozen_and_strict():
+def test_qualified_binding_is_frozen_and_strict() -> None:
     values = dict.fromkeys(
         ("checksum", "provider_schema_digest", "tool_schema_digest", "qualification_digest", "final_parameters_digest"),
         "a" * 64,
@@ -633,9 +655,9 @@ def test_qualified_binding_is_frozen_and_strict():
         version="0.0.8",
         runtime_type="local",
     )
-    binding = QualifiedJsonToolBinding(**values)
+    binding = QualifiedJsonToolBinding.model_validate(values)
     with pytest.raises(ValidationError):
-        binding.tenant_id = "other"
+        binding.__setattr__("tenant_id", "other")
     for unsupported in ("", "Local", "SERVERLESS", "unknown"):
         with pytest.raises(ValidationError):
-            QualifiedJsonToolBinding(**{**values, "runtime_type": unsupported})
+            QualifiedJsonToolBinding.model_validate({**values, "runtime_type": unsupported})

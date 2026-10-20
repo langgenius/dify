@@ -10,7 +10,12 @@ export type RuleGeneratePayload = {
   no_variable?: boolean
 }
 
-export type GeneratorResponse = unknown
+export type RuleGenerateResponse = {
+  error: string
+  opening_statement: string
+  prompt: string
+  variables: Array<string>
+}
 
 export type CompletionRequestError = ErrorResponse & {
   code: 'completion_request_error'
@@ -73,7 +78,7 @@ export type PostRuleGenerateErrors = {
 export type PostRuleGenerateError = PostRuleGenerateErrors[keyof PostRuleGenerateErrors]
 
 export type PostRuleGenerateResponses = {
-  200: GeneratorResponse
+  200: RuleGenerateResponse
 }
 
 export type PostRuleGenerateResponse = PostRuleGenerateResponses[keyof PostRuleGenerateResponses]

@@ -5,15 +5,15 @@ from itertools import starmap
 
 import pytest
 
-from core.dify_builder.models import MutationIntent, Risk
+from core.dify_builder.models import Graph, MutationIntent, Risk
 from services.dify_builder.agent import fix
 
 
-def _graph(node_type, **config):
+def _graph(node_type: str, **config: object) -> Graph:
     return {"nodes": [{"id": "n1", "data": {"type": node_type, **config}}], "edges": []}
 
 
-def _set(path, value):
+def _set(path: str, value: object) -> MutationIntent:
     return MutationIntent(op="set_node_config", args={"node_id": "n1", "path": path, "value": value})
 
 
@@ -66,7 +66,9 @@ def _set(path, value):
         "dataset",
     ],
 )
-def test_sensitive_changes_require_approval_despite_low_model_verdict(graph, path, value):
+def test_sensitive_changes_require_approval_despite_low_model_verdict(
+    graph: Graph, path: str, value: Graph | bool | int | list[str] | str
+) -> None:
     risk = fix._shape_risk([_set(path, value)], graph, Risk(level="low", reason="safe config repair"))
 
     assert risk.level == "high"
@@ -75,7 +77,7 @@ def test_sensitive_changes_require_approval_despite_low_model_verdict(graph, pat
 
 
 @pytest.mark.parametrize("replace_all_config", [False, True])
-def test_prompt_repair_with_unchanged_model_remains_low_risk(replace_all_config):
+def test_prompt_repair_with_unchanged_model_remains_low_risk(replace_all_config: bool) -> None:
     graph = _graph(
         "llm",
         model={"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
@@ -112,11 +114,13 @@ def test_prompt_repair_with_unchanged_model_remains_low_risk(replace_all_config)
     ],
     ids=["model-object", "credential-removal", "nested-resource", "variable-binding", "prompt-data-binding"],
 )
-def test_parent_replacements_and_nested_bindings_cannot_bypass_approval(config, path, value):
+def test_parent_replacements_and_nested_bindings_cannot_bypass_approval(
+    config: Graph, path: str, value: Graph | list[Graph] | str
+) -> None:
     assert fix._shape_risk([_set(path, value)], _graph("llm", **config), Risk(level="low")).level == "high"
 
 
-def test_policy_compares_final_batch_effect_and_preserves_evidence():
+def test_policy_compares_final_batch_effect_and_preserves_evidence() -> None:
     from services.dify_builder.mutation_policy import sensitive_change_reasons
 
     graph = _graph("llm", model={"provider": "a", "name": "one"}, prompt_template=[{"text": "old"}])
@@ -137,13 +141,15 @@ def test_policy_compares_final_batch_effect_and_preserves_evidence():
     ],
     ids=["tool-resource", "tool-credential", "http-target", "http-auth"],
 )
-def test_policy_detects_sensitive_external_changes_independently_of_external_guard(graph, intent):
+def test_policy_detects_sensitive_external_changes_independently_of_external_guard(
+    graph: Graph, intent: MutationIntent
+) -> None:
     from services.dify_builder.mutation_policy import sensitive_change_reasons
 
     assert sensitive_change_reasons(graph, [intent])
 
 
-def test_identical_resource_model_and_data_access_fields_do_not_escalate_title_repair():
+def test_identical_resource_model_and_data_access_fields_do_not_escalate_title_repair() -> None:
     from services.dify_builder.mutation_policy import sensitive_change_reasons
 
     graph = _graph(
@@ -159,7 +165,7 @@ def test_identical_resource_model_and_data_access_fields_do_not_escalate_title_r
     assert fix._shape_risk(intents, graph, Risk(level="low")).level == "low"
 
 
-def test_changing_node_type_cannot_bypass_existing_external_guard():
+def test_changing_node_type_cannot_bypass_existing_external_guard() -> None:
     graph = _graph("code", type_marker="compute")
 
     assert fix._shape_risk([_set("type", "http-request")], graph, Risk(level="low")).level == "high"
@@ -167,7 +173,9 @@ def test_changing_node_type_cannot_bypass_existing_external_guard():
 
 @pytest.mark.parametrize("grouped", [False, True], ids=["ordinary", "grouped"])
 @pytest.mark.parametrize("effect", ["switch", "identical", "reverted"])
-def test_native_aggregator_selector_changes_require_approval_only_when_final_access_changes(grouped, effect):
+def test_native_aggregator_selector_changes_require_approval_only_when_final_access_changes(
+    grouped: bool, effect: str
+) -> None:
     """Missing aggregator projection would auto-approve an upstream data-source switch."""
     from services.dify_builder.mutation_policy import sensitive_change_reasons
 
@@ -234,8 +242,8 @@ def test_native_aggregator_selector_changes_require_approval_only_when_final_acc
 )
 @pytest.mark.parametrize("effect", ["switch", "identical", "reverted"])
 def test_native_data_access_requires_approval_for_final_selector_or_activation_changes(
-    graph, path, original, replacement, effect
-):
+    graph: Graph, path: str, original: list[str] | str, replacement: list[str] | str, effect: str
+) -> None:
     """Native selector fields and Agent binding modes must override a low model verdict."""
     from services.dify_builder.mutation_policy import sensitive_change_reasons
 
@@ -272,8 +280,8 @@ def test_native_data_access_requires_approval_for_final_selector_or_activation_c
     ],
 )
 def test_agent_literal_inputs_preserve_static_repairs_and_protect_actual_template_access(
-    input_type, original, replacement, sensitive
-):
+    input_type: str, original: list[str] | str, replacement: list[str] | str, sensitive: bool
+) -> None:
     graph = _graph("agent", agent_parameters={"query": {"type": input_type, "value": original}})
 
     risk = fix._shape_risk([_set("agent_parameters.query.value", replacement)], graph, Risk(level="low"))
@@ -281,14 +289,14 @@ def test_agent_literal_inputs_preserve_static_repairs_and_protect_actual_templat
     assert risk.level == ("high" if sensitive else "low")
 
 
-def test_agent_constant_to_mixed_with_static_value_does_not_activate_selector_access():
+def test_agent_constant_to_mixed_with_static_value_does_not_activate_selector_access() -> None:
     graph = _graph("agent", agent_parameters={"query": {"type": "constant", "value": ["s", "public_items"]}})
 
     assert fix._shape_risk([_set("agent_parameters.query.type", "mixed")], graph, Risk(level="low")).level == "low"
 
 
 @pytest.mark.parametrize("effect", ["switch", "identical", "reverted"])
-def test_agent_native_memory_access_is_reviewed_by_final_effect(effect):
+def test_agent_native_memory_access_is_reviewed_by_final_effect(effect: str) -> None:
     graph = _graph("agent", memory=None)
     memory = {"window": {"enabled": False, "size": 10}}  # runtime reads history when memory is present
     intents = [_set("memory", None if effect == "identical" else memory)]
@@ -324,8 +332,15 @@ def test_agent_native_memory_access_is_reviewed_by_final_effect(effect):
 )
 @pytest.mark.parametrize("effect", ["switch", "identical", "reverted"])
 def test_agent_native_tool_access_metadata_controls_selector_projection(
-    enabled, auto, input_type, path, original, replacement, sensitive, effect
-):
+    enabled: bool,
+    auto: int,
+    input_type: str,
+    path: str,
+    original: bool | int | list[str] | str,
+    replacement: bool | int | list[str] | str,
+    sensitive: bool,
+    effect: str,
+) -> None:
     tool = {
         "enabled": enabled,
         "provider_name": "provider-a",
@@ -346,7 +361,7 @@ def test_agent_native_tool_access_metadata_controls_selector_projection(
     assert (graph, intents) == before
 
 
-def test_list_filter_enabled_metadata_is_an_ordinary_configuration_repair():
+def test_list_filter_enabled_metadata_is_an_ordinary_configuration_repair() -> None:
     graph = _graph("list-operator", variable=["s", "public_items"], filter_by={"enabled": False})
 
     assert fix._shape_risk([_set("filter_by.enabled", True)], graph, Risk(level="low")).level == "low"
@@ -361,7 +376,9 @@ def test_list_filter_enabled_metadata_is_an_ordinary_configuration_repair():
     ],
 )
 @pytest.mark.parametrize("effect", ["switch", "identical", "reverted"])
-def test_agent_model_selector_under_dynamic_parameter_name_requires_review(path, original, replacement, effect):
+def test_agent_model_selector_under_dynamic_parameter_name_requires_review(
+    path: str, original: int | str, replacement: int | str, effect: str
+) -> None:
     graph = _graph(
         "agent",
         agent_parameters={
@@ -433,8 +450,13 @@ def test_agent_model_selector_under_dynamic_parameter_name_requires_review(path,
 )
 @pytest.mark.parametrize("effect", ["switch", "identical", "reverted"])
 def test_native_model_and_index_access_requires_review_of_final_effect(
-    node_type, config, path, original, replacement, effect
-):
+    node_type: str,
+    config: Graph,
+    path: str,
+    original: None | bool | int | list[str],
+    replacement: Graph | bool | int | list[str],
+    effect: str,
+) -> None:
     from services.dify_builder.mutation_policy import sensitive_change_reasons
 
     graph = _graph(node_type, instruction="old prompt", **config)
@@ -450,8 +472,8 @@ def test_native_model_and_index_access_requires_review_of_final_effect(
 
 
 @pytest.mark.parametrize("node_type", ["parameter-extractor", "question-classifier"])
-def test_native_model_instruction_repair_preserves_unchanged_access_configuration(node_type):
-    config = {
+def test_native_model_instruction_repair_preserves_unchanged_access_configuration(node_type: str) -> None:
+    config: Graph = {
         "model": {"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
         "query" if node_type == "parameter-extractor" else "query_variable_selector": ["s", "public_items"],
         "memory": {"window": {"enabled": False, "size": 10}},
@@ -485,8 +507,8 @@ def test_native_model_instruction_repair_preserves_unchanged_access_configuratio
 )
 @pytest.mark.parametrize("effect", ["switch", "identical", "reverted"])
 def test_native_loop_typed_inputs_project_active_access_only(
-    input_type, path, original, replacement, sensitive, effect
-):
+    input_type: str, path: str, original: list[str] | str, replacement: list[str] | str, sensitive: bool, effect: str
+) -> None:
     from services.dify_builder.mutation_policy import sensitive_change_reasons
 
     graph = _graph(
@@ -525,8 +547,8 @@ def test_native_loop_typed_inputs_project_active_access_only(
 )
 @pytest.mark.parametrize("effect", ["switch", "identical", "reverted"])
 def test_historical_v2_agent_task_preserves_native_workflow_binding_projection(
-    original, replacement, sensitive, effect
-):
+    original: str, replacement: str, sensitive: bool, effect: str
+) -> None:
     from services.agent.prompt_mentions import extract_workflow_node_output_selectors
     from services.dify_builder.mutation_policy import sensitive_change_reasons
 

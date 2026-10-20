@@ -3,26 +3,41 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from contextlib import nullcontext
 from datetime import datetime
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 from pydantic import BaseModel
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.layers.pause_state_persist_layer import (
+    WorkflowResumptionContext,
+    _AdvancedChatAppGenerateEntityWrapper,
+    _WorkflowGenerateEntityWrapper,
+)
+from core.tools.errors import ToolProviderCredentialValidationError
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
+from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account
 from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, Message
-from models.workflow import Workflow, WorkflowRun, WorkflowType
-from repositories.sqlalchemy_api_workflow_run_repository import _WorkflowRunError
+from models.workflow import Workflow, WorkflowPause, WorkflowRun, WorkflowType
+from repositories.entities.workflow_pause import WorkflowPauseEntity
+from repositories.sqlalchemy_api_workflow_run_repository import (
+    DifyAPISQLAlchemyWorkflowRunRepository,
+    WorkflowRunNotPausedError,
+    _WorkflowRunError,
+)
+from tasks import async_workflow_tasks
 from tasks.app_generate import workflow_execute_task as workflow_execute_task_module
 from tasks.app_generate.workflow_execute_task import (
     AppExecutionParams,
@@ -216,6 +231,7 @@ def _persist_resumption_models(
     )
     workflow_run = WorkflowRun(
         id=workflow_run_id,
+        task_id="task-id",
         tenant_id="tenant-id",
         app_id=app.id,
         workflow_id=workflow.id,
@@ -858,7 +874,7 @@ def test_resume_app_execution_queries_message_by_conversation_and_workflow_run(
         lambda *_args, **_kwargs: resumption_context,
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot",
+        "tasks.app_generate.workflow_execute_task.RuntimeState.from_snapshot",
         lambda *_args, **_kwargs: MagicMock(),
     )
 
@@ -871,7 +887,7 @@ def test_resume_app_execution_queries_message_by_conversation_and_workflow_run(
 
     _resume_app_execution({"workflow_run_id": workflow_run_id})
 
-    workflow_run_repo.resume_workflow_pause.assert_called_once_with(workflow_run_id, pause_entity)
+    workflow_run_repo.resume_workflow_pause.assert_called_once_with(workflow_run_id, pause_entity, before_resume=ANY)
     resume_advanced_chat.assert_called_once()
     assert resume_advanced_chat.call_args.kwargs["conversation"].id == conversation_id
     assert resume_advanced_chat.call_args.kwargs["message"].id == "expected-message-id"
@@ -906,7 +922,7 @@ def test_resume_app_execution_returns_early_when_advanced_chat_missing_conversat
         lambda *_args, **_kwargs: resumption_context,
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot",
+        "tasks.app_generate.workflow_execute_task.RuntimeState.from_snapshot",
         lambda *_args, **_kwargs: MagicMock(),
     )
 
@@ -957,7 +973,7 @@ def test_resume_app_execution_clears_stale_cancellation_signals_before_resuming(
         lambda *_args, **_kwargs: resumption_context,
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot",
+        "tasks.app_generate.workflow_execute_task.RuntimeState.from_snapshot",
         lambda *_args, **_kwargs: MagicMock(),
     )
     monkeypatch.setattr(
@@ -966,6 +982,7 @@ def test_resume_app_execution_clears_stale_cancellation_signals_before_resuming(
 
     calls: list[str] = []
     clear_signals = MagicMock(side_effect=lambda task_id: calls.append(f"clear:{task_id}"))
+    workflow_run_repo.resume_workflow_pause.side_effect = lambda *_, before_resume: before_resume()
     resume_workflow = MagicMock(side_effect=lambda **_kwargs: calls.append("resume"))
     monkeypatch.setattr("tasks.app_generate.workflow_execute_task.clear_app_task_cancellation_signals", clear_signals)
     monkeypatch.setattr("tasks.app_generate.workflow_execute_task._resume_workflow", resume_workflow)
@@ -1008,7 +1025,7 @@ def test_resume_app_execution_keeps_cancellation_signals_when_resume_is_abandone
         lambda *_args, **_kwargs: resumption_context,
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot",
+        "tasks.app_generate.workflow_execute_task.RuntimeState.from_snapshot",
         lambda *_args, **_kwargs: MagicMock(),
     )
     monkeypatch.setattr(
@@ -1022,6 +1039,193 @@ def test_resume_app_execution_keeps_cancellation_signals_when_resume_is_abandone
     _resume_app_execution({"workflow_run_id": workflow_run_id})
 
     clear_signals.assert_not_called()
+
+
+@pytest.mark.parametrize("entry_point", ["workflow", "chat", "async"])
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        "valid",
+        "canonical-task",
+        "already-indexed-uppercase",
+        "concurrent-index",
+        "concurrent-stop",
+        "task_id",
+        "run_id",
+        "tenant_id",
+        "app_id",
+        "user_id",
+    ],
+)
+def test_resume_recovers_legacy_task_before_claiming_pause(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+    entry_point: str,
+    scenario: str,
+) -> None:
+    workflow_run_id = str(uuid.uuid4())
+    task_id = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+    app_mode = AppMode.ADVANCED_CHAT if entry_point == "chat" else AppMode.WORKFLOW
+    _persist_resumption_models(
+        sqlite_session_factory,
+        workflow_run_id=workflow_run_id,
+        conversation_id="conversation-id" if entry_point == "chat" else None,
+    )
+    with sqlite_session_factory.begin() as session:
+        run = session.get(WorkflowRun, workflow_run_id)
+        assert run is not None
+        app = session.get(App, run.app_id)
+        workflow = session.get(Workflow, run.workflow_id)
+        assert app is not None
+        assert workflow is not None
+        app.mode = app_mode
+        workflow.type = WorkflowType.CHAT if entry_point == "chat" else WorkflowType.WORKFLOW
+        run.type = workflow.type
+        graph = {
+            "nodes": [
+                {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+                {
+                    "id": "terminal",
+                    "data": (
+                        {"type": "answer", "title": "Answer", "answer": "Resumed"}
+                        if entry_point == "chat"
+                        else {"type": "end", "title": "End", "outputs": []}
+                    ),
+                },
+            ],
+            "edges": [{"id": "start-terminal", "source": "start", "target": "terminal"}],
+        }
+        workflow.graph = json.dumps(graph)
+        run.graph = workflow.graph
+        run.task_id = task_id if scenario == "already-indexed-uppercase" else None
+        run.status = WorkflowExecutionStatus.PAUSED
+        pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="legacy-pause")
+        session.add(pause)
+
+    config = WorkflowUIBasedAppConfig(tenant_id="tenant-id", app_id="app-id", app_mode=app_mode, workflow_id="wf-id")
+    if entry_point == "chat":
+        generate_entity = _build_advanced_chat_generate_entity("conversation-id")
+        generate_entity.workflow_run_id = workflow_run_id
+    else:
+        generate_entity = _build_workflow_generate_entity(stream=False)
+        generate_entity.workflow_execution_id = workflow_run_id
+    generate_entity.app_config = config
+    generate_entity.task_id = task_id
+    generate_entity.user_id = "account-id"
+    generate_entity.invoke_from = InvokeFrom.DEBUGGER
+    wrapper = (
+        _AdvancedChatAppGenerateEntityWrapper(entity=generate_entity)
+        if isinstance(generate_entity, AdvancedChatAppGenerateEntity)
+        else _WorkflowGenerateEntityWrapper(entity=generate_entity)
+    )
+    runtime_state = RuntimeState(workflow_id="wf-id", variable_pool=VariablePool(), start_at=0.0)
+    context = WorkflowResumptionContext(generate_entity=wrapper, serialized_graph_runtime_state=runtime_state.dumps())
+    state = json.loads(context.dumps())
+    saved_entity = state["generate_entity"]["entity"]
+    if scenario in {"canonical-task", "already-indexed-uppercase"}:
+        saved_entity["task_id"] = task_id.upper()
+    elif scenario in {"tenant_id", "app_id"}:
+        saved_entity["app_config"][scenario] = "other-owner"
+    elif scenario == "run_id":
+        saved_entity["workflow_run_id" if entry_point == "chat" else "workflow_execution_id"] = str(uuid.uuid4())
+    elif scenario in {"task_id", "user_id"}:
+        saved_entity[scenario] = "invalid-task-or-owner"
+    monkeypatch.setattr(
+        "repositories.sqlalchemy_api_workflow_run_repository.storage.load", lambda _: json.dumps(state).encode()
+    )
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.delete", lambda _: None)
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
+    module = async_workflow_tasks if entry_point == "async" else workflow_execute_task_module
+    monkeypatch.setattr(type(module.db), "engine", property(lambda _: sqlite_engine))
+    monkeypatch.setattr(
+        module.DifyAPIRepositoryFactory, "create_api_workflow_run_repository", lambda *_args, **_kwargs: repository
+    )
+    monkeypatch.setattr(
+        module, "_get_user" if entry_point == "async" else "_resolve_user_for_run", lambda *_args: _make_account()
+    )
+    resumed_entities: list[AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity] = []
+
+    def record_app_resume(
+        *, generate_entity: AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity, **_kwargs: object
+    ) -> None:
+        resumed_entities.append(generate_entity)
+
+    def record_workflow_resume(
+        _self: WorkflowAppGenerator, *, application_generate_entity: WorkflowAppGenerateEntity, **_kwargs: object
+    ) -> dict[str, object]:
+        resumed_entities.append(application_generate_entity)
+        return {}
+
+    if entry_point == "async":
+        monkeypatch.setattr(module, "_query_trigger_log_info", lambda *_args: None)
+        monkeypatch.setattr(WorkflowAppGenerator, "resume", record_workflow_resume)
+    else:
+        monkeypatch.setattr(module, "clear_app_task_cancellation_signals", lambda _: None)
+        monkeypatch.setattr(
+            module, "_resume_advanced_chat" if entry_point == "chat" else "_resume_workflow", record_app_resume
+        )
+
+    if scenario in {"concurrent-index", "concurrent-stop"}:
+        index_pause = repository.backfill_workflow_pause_task_id
+
+        def concurrent_index(**kwargs: str) -> bool:
+            assert index_pause(**kwargs)
+            if scenario == "concurrent-stop":
+                with sqlite_session_factory.begin() as session:
+                    run = session.get(WorkflowRun, workflow_run_id)
+                    assert run is not None
+                    run.status = WorkflowExecutionStatus.STOPPED
+                    run.stop_requested_at = datetime(2026, 10, 19)
+            return index_pause(**kwargs)
+
+        monkeypatch.setattr(repository, "backfill_workflow_pause_task_id", concurrent_index)
+
+    resume_pause = repository.resume_workflow_pause
+    resumed_pause_runs: list[str] = []
+
+    def record_resume_pause(
+        workflow_run_id: str, pause_entity: WorkflowPauseEntity, *, before_resume: Callable[[], None] | None = None
+    ) -> WorkflowPauseEntity:
+        resumed_pause_runs.append(workflow_run_id)
+        return resume_pause(workflow_run_id, pause_entity, before_resume=before_resume)
+
+    monkeypatch.setattr(repository, "resume_workflow_pause", record_resume_pause)
+    invoke = async_workflow_tasks.resume_workflow_execution.run if entry_point == "async" else _resume_app_execution
+    if entry_point == "async" and scenario == "concurrent-stop":
+        with pytest.raises(WorkflowRunNotPausedError):
+            invoke({"workflow_run_id": workflow_run_id})
+    elif entry_point != "async" and scenario in {"run_id", "tenant_id", "app_id", "user_id"}:
+        with pytest.raises(
+            ToolProviderCredentialValidationError,
+            match="Saved draft execution does not match its acting account and app",
+        ):
+            invoke({"workflow_run_id": workflow_run_id})
+    else:
+        invoke({"workflow_run_id": workflow_run_id})
+
+    with sqlite_session_factory() as session:
+        persisted = session.get(WorkflowRun, workflow_run_id)
+        assert persisted is not None
+        if scenario in {"valid", "canonical-task", "already-indexed-uppercase", "concurrent-index"}:
+            assert persisted.task_id == task_id
+            assert persisted.status == WorkflowExecutionStatus.RUNNING
+            assert resumed_pause_runs == [workflow_run_id]
+            assert len(resumed_entities) == 1
+            assert resumed_entities[0].task_id == task_id
+        elif scenario == "concurrent-stop":
+            assert persisted.task_id == task_id
+            assert persisted.status == WorkflowExecutionStatus.STOPPED
+            assert resumed_pause_runs == [workflow_run_id]
+            assert resumed_entities == []
+        else:
+            assert persisted.task_id is None
+            assert persisted.status == WorkflowExecutionStatus.PAUSED
+            persisted_pause = session.get(WorkflowPause, pause.id)
+            assert persisted_pause is not None
+            assert persisted_pause.resumed_at is None
+            assert resumed_pause_runs == []
+            assert resumed_entities == []
 
 
 def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(
@@ -1038,7 +1242,7 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(
     generator_instance.resume.return_value = response_stream
     monkeypatch.setattr(
         "tasks.app_generate.workflow_execute_task.AdvancedChatAppGenerator",
-        lambda: generator_instance,
+        lambda *, execution_driver: generator_instance,
     )
 
     publish_streaming_response = MagicMock()
@@ -1094,7 +1298,7 @@ def test_resume_workflow_publishes_events_for_originally_blocking_runs(
     generator_instance.resume.return_value = response_stream
     monkeypatch.setattr(
         "tasks.app_generate.workflow_execute_task.WorkflowAppGenerator",
-        lambda: generator_instance,
+        lambda *, execution_driver: generator_instance,
     )
 
     publish_streaming_response = MagicMock()
@@ -1152,7 +1356,7 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(
     generator_instance.resume.return_value = response_stream
     monkeypatch.setattr(
         "tasks.app_generate.workflow_execute_task.WorkflowAppGenerator",
-        lambda: generator_instance,
+        lambda *, execution_driver: generator_instance,
     )
 
     publish_streaming_response = MagicMock()

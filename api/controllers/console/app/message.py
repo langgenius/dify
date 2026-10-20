@@ -45,6 +45,7 @@ from fields.conversation_fields import (
     MessageDetail as BaseMessageDetailResponse,
 )
 from fields.conversation_fields import MessageResponseSource
+from fields.message_fields import SuggestedQuestionsResponse
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
@@ -87,7 +88,7 @@ class ChatMessagesQuery(BaseModel):
         return uuid_value(value)
 
 
-class MessageFeedbackPayload(_MessageFeedbackPayloadBase):
+class AppMessageFeedbackPayload(_MessageFeedbackPayloadBase):
     message_id: str = Field(..., description="Message ID")
 
     @field_validator("message_id")
@@ -98,10 +99,6 @@ class MessageFeedbackPayload(_MessageFeedbackPayloadBase):
 
 class AnnotationCountResponse(ResponseModel):
     count: int = Field(description="Number of annotations")
-
-
-class SuggestedQuestionsResponse(ResponseModel):
-    data: list[str] = Field(description="Suggested question")
 
 
 class MessageDetailResponse(BaseMessageDetailResponse):
@@ -117,7 +114,7 @@ class MessageInfiniteScrollPaginationResponse(ResponseModel):
 register_schema_models(
     console_ns,
     ChatMessagesQuery,
-    MessageFeedbackPayload,
+    AppMessageFeedbackPayload,
 )
 register_response_schema_models(
     console_ns,
@@ -198,7 +195,7 @@ class MessageFeedbackApi(Resource):
     @console_ns.doc("create_message_feedback")
     @console_ns.doc(description="Create or update message feedback (like/dislike)")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
+    @console_ns.expect(console_ns.models[AppMessageFeedbackPayload.__name__])
     @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(404, "Message not found")
     @setup_required
@@ -207,8 +204,8 @@ class MessageFeedbackApi(Resource):
     @with_current_user
     @with_session
     @get_app_model
-    @model_validate(MessageFeedbackPayload)
-    def post(self, req_data: MessageFeedbackPayload, session: Session, current_user: Account, app_model: App):
+    @model_validate(AppMessageFeedbackPayload)
+    def post(self, req_data: AppMessageFeedbackPayload, session: Session, current_user: Account, app_model: App):
         return _update_message_feedback(
             args=req_data,
             session=session,
@@ -223,7 +220,7 @@ class AgentMessageFeedbackApi(Resource):
     @console_ns.doc("create_agent_message_feedback")
     @console_ns.doc(description="Create or update Agent App message feedback")
     @console_ns.doc(params={"agent_id": "Agent ID"})
-    @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
+    @console_ns.expect(console_ns.models[AppMessageFeedbackPayload.__name__])
     @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(404, "Agent or message not found")
     @setup_required
@@ -233,10 +230,10 @@ class AgentMessageFeedbackApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @with_session
-    @model_validate(MessageFeedbackPayload)
+    @model_validate(AppMessageFeedbackPayload)
     def post(
         self,
-        req_data: MessageFeedbackPayload,
+        req_data: AppMessageFeedbackPayload,
         session: Session,
         current_tenant_id: str,
         current_user: Account,
@@ -406,8 +403,8 @@ def _list_chat_messages(
                 user=current_user,
                 session=session,
             )
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
     else:
         conversation = session.scalar(
             select(Conversation)
@@ -476,7 +473,7 @@ def _list_chat_messages(
 
 def _update_message_feedback(
     *,
-    args: MessageFeedbackPayload,
+    args: AppMessageFeedbackPayload,
     session: Session,
     current_user: Account,
     app_model: App,
@@ -520,7 +517,6 @@ def _update_message_feedback(
 def _get_message_suggested_questions(
     *, context: RequestContext, app_id: str, app_mode: str, message_id: UUID
 ) -> dict[str, object]:
-
     try:
         questions = application_services().message_suggested_questions.get_suggested_questions(
             app_id=app_id,
@@ -533,25 +529,25 @@ def _get_message_suggested_questions(
         raise AppUnavailableError() from exc
     except SuggestedQuestionsActorNotFoundError as exc:
         raise Unauthorized("Account no longer exists") from exc
-    except MessageNotExistsError:
-        raise NotFound("Message not found")
-    except ConversationNotExistsError:
-        raise NotFound("Conversation not found")
+    except MessageNotExistsError as caught_error:
+        raise NotFound("Message not found") from caught_error
+    except ConversationNotExistsError as caught_error:
+        raise NotFound("Conversation not found") from caught_error
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
-    except QuotaExceededError:
-        raise ProviderQuotaExceededError()
-    except ModelCurrentlyNotSupportError:
-        raise ProviderModelCurrentlyNotSupportError()
+        raise ProviderNotInitializeError(ex.description) from ex
+    except QuotaExceededError as caught_error:
+        raise ProviderQuotaExceededError() from caught_error
+    except ModelCurrentlyNotSupportError as caught_error:
+        raise ProviderModelCurrentlyNotSupportError() from caught_error
     except InvokeError as e:
-        raise CompletionRequestError(e.description)
-    except SuggestedQuestionsAfterAnswerDisabledError:
-        raise AppSuggestedQuestionsAfterAnswerDisabledError()
+        raise CompletionRequestError(e.description) from e
+    except SuggestedQuestionsAfterAnswerDisabledError as caught_error:
+        raise AppSuggestedQuestionsAfterAnswerDisabledError() from caught_error
     except HTTPException:
         raise
-    except Exception:
+    except Exception as caught_error:
         logger.exception("internal server error.")
-        raise InternalServerError()
+        raise InternalServerError() from caught_error
 
     return dump_response(SuggestedQuestionsResponse, {"data": questions})
 

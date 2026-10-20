@@ -1,8 +1,11 @@
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useStore as useAtomStore, useAtomValue } from 'jotai'
 import { useCallback } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
 
@@ -15,10 +18,14 @@ type RefreshWorkflowDraftOptions = {
 }
 
 export const useWorkflowRefreshDraft = () => {
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const workflowStore = useWorkflowStore()
+  const atomStore = useAtomStore()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
-  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail?.mode)
+  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
 
   const handleRefreshWorkflowDraft = useCallback(
     (notUpdateCanvas?: boolean, options?: RefreshWorkflowDraftOptions) => {
@@ -33,7 +40,6 @@ export const useWorkflowRefreshDraft = () => {
         return Promise.resolve(false)
 
       const {
-        appId,
         setSyncWorkflowDraftHash,
         setDraftUpdatedAt,
         setWorkflowDraftConflict,
@@ -49,7 +55,7 @@ export const useWorkflowRefreshDraft = () => {
       const isCurrent = () => {
         const state = workflowStore.getState()
         return (
-          state.appId === appId &&
+          atomStore.get(workflowAppIdentityAtom).appId === appId &&
           state.workflowDraftGeneration === generation &&
           (options?.shouldApply?.() ?? true)
         )
@@ -122,7 +128,7 @@ export const useWorkflowRefreshDraft = () => {
         }
       })
     },
-    [getWorkflowDraftGraphForCanvas, handleUpdateWorkflowCanvas, workflowStore],
+    [appId, atomStore, getWorkflowDraftGraphForCanvas, handleUpdateWorkflowCanvas, workflowStore],
   )
 
   return {

@@ -9,6 +9,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
+import { consoleQuery } from '@/service/console'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import ResourceAccessTokenPage from '../index'
 
@@ -21,104 +22,22 @@ const mocks = vi.hoisted(() => ({
   updateResourceAccessToken: vi.fn(),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    account: {
-      profile: {
-        get: {
-          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
-        },
-      },
-    },
-    apps: {
-      get: {
-        queryOptions: (options?: unknown) => ({
-          enabled: (options as { enabled?: boolean } | undefined)?.enabled,
-          queryFn: mocks.listApps,
-          queryKey: ['apps'],
-        }),
-        infiniteOptions: (options: unknown) => {
-          const query = options as {
-            enabled?: boolean
-            getNextPageParam: (page: { has_more: boolean; page: number }) => number | undefined
-            initialPageParam: number
-            input: (page: number) => unknown
-          }
-          return {
-            enabled: query.enabled,
-            getNextPageParam: query.getNextPageParam,
-            initialPageParam: query.initialPageParam,
-            queryFn: ({ pageParam }: { pageParam: number }) =>
-              mocks.listApps(query.input(pageParam)),
-            queryKey: ['apps', query.input(query.initialPageParam)],
-          }
-        },
-      },
-    },
-    datasets: {
-      get: {
-        queryOptions: (options?: unknown) => ({
-          enabled: (options as { enabled?: boolean } | undefined)?.enabled,
-          queryFn: mocks.listDatasets,
-          queryKey: ['datasets'],
-        }),
-        infiniteOptions: (options: unknown) => {
-          const query = options as {
-            enabled?: boolean
-            getNextPageParam: (page: { has_more: boolean; page: number }) => number | undefined
-            initialPageParam: number
-            input: (page: number) => unknown
-          }
-          return {
-            enabled: query.enabled,
-            getNextPageParam: query.getNextPageParam,
-            initialPageParam: query.initialPageParam,
-            queryFn: ({ pageParam }: { pageParam: number }) =>
-              mocks.listDatasets(query.input(pageParam)),
-            queryKey: ['datasets', query.input(query.initialPageParam)],
-          }
-        },
-      },
-    },
-    resourceAccessTokens: {
-      get: {
-        key: () => ['resource-access-tokens'],
-        queryOptions: (options?: {
-          input: Pick<GetResourceAccessTokensData, 'query'>
-          placeholderData?: (
-            previousData: ResourceAccessTokenListResponse | undefined,
-          ) => ResourceAccessTokenListResponse | undefined
-        }) => ({
-          placeholderData: options?.placeholderData,
-          queryFn: () => mocks.listResourceAccessTokens(options),
-          queryKey: ['resource-access-tokens', options?.input],
-        }),
-      },
-      post: {
-        mutationOptions: () => ({
-          mutationFn: mocks.createResourceAccessToken,
-        }),
-      },
-      byTokenId: {
-        patch: {
-          mutationOptions: () => ({
-            mutationFn: mocks.updateResourceAccessToken,
-          }),
-        },
-        relations: {
-          byRelationId: {
-            delete: {
-              mutationOptions: (options?: object) => ({
-                ...options,
-                mutationFn: mocks.deleteResourceAccessTokenRelation,
-              }),
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.get': (input) => mocks.listApps(input),
+      'datasets.get': (input) => mocks.listDatasets(input),
+      'resourceAccessTokens.get': (input) => mocks.listResourceAccessTokens(input),
+      'resourceAccessTokens.post': (input) => mocks.createResourceAccessToken(input),
+      'resourceAccessTokens.byTokenId.patch': (input) => mocks.updateResourceAccessToken(input),
+      'resourceAccessTokens.byTokenId.relations.byRelationId.delete': (input) =>
+        mocks.deleteResourceAccessTokenRelation(input),
+    }),
+  }
+})
 
 vi.mock('react-i18next', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-i18next')>()
@@ -344,8 +263,8 @@ describe('ResourceAccessTokenPage', () => {
       }),
     ]
     mocks.listResourceAccessTokens.mockImplementation(
-      ({ input }: { input: Pick<GetResourceAccessTokensData, 'query'> }) => {
-        const keyword = input.query?.keyword?.toLowerCase() ?? ''
+      ({ query }: Pick<GetResourceAccessTokensData, 'query'>) => {
+        const keyword = query?.keyword?.toLowerCase() ?? ''
         const data = rows.filter((row) => row.resource_name.toLowerCase().includes(keyword))
         return Promise.resolve({
           data,
@@ -364,7 +283,7 @@ describe('ResourceAccessTokenPage', () => {
     await waitFor(() => {
       expect(mocks.listResourceAccessTokens).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          input: { query: expect.objectContaining({ keyword: 'help' }) },
+          query: expect.objectContaining({ keyword: 'help' }),
         }),
       )
     })
@@ -387,12 +306,11 @@ describe('ResourceAccessTokenPage', () => {
       }),
     )
     mocks.listResourceAccessTokens.mockImplementation(
-      ({ input }: { input: Pick<GetResourceAccessTokensData, 'query'> }) => {
-        const page = input.query?.page ?? 1
-        const total = input.query?.keyword ? 1 : 21
+      ({ query }: Pick<GetResourceAccessTokensData, 'query'>) => {
+        const page = query?.page ?? 1
+        const total = query?.keyword ? 1 : 21
         return Promise.resolve({
-          data:
-            input.query?.keyword === completeToken || page === 2 ? [createTokenRow()] : firstPage,
+          data: query?.keyword === completeToken || page === 2 ? [createTokenRow()] : firstPage,
           has_more: page * 20 < total,
           limit: 20,
           page,
@@ -419,7 +337,7 @@ describe('ResourceAccessTokenPage', () => {
     await waitFor(() => {
       expect(mocks.listResourceAccessTokens).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          input: { query: { keyword: completeToken, limit: 20, page: 1 } },
+          query: { keyword: completeToken, limit: 20, page: 1 },
         }),
       )
     })
@@ -446,8 +364,8 @@ describe('ResourceAccessTokenPage', () => {
       resolveSearch = resolve
     })
     mocks.listResourceAccessTokens.mockImplementation(
-      ({ input }: { input: Pick<GetResourceAccessTokensData, 'query'> }) =>
-        input.query?.keyword
+      ({ query }: Pick<GetResourceAccessTokensData, 'query'>) =>
+        query?.keyword
           ? searchRequest
           : Promise.resolve({
               data: [createTokenRow()],
@@ -464,7 +382,7 @@ describe('ResourceAccessTokenPage', () => {
     await waitFor(() => {
       expect(mocks.listResourceAccessTokens).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          input: { query: { keyword: 'automation', limit: 20, page: 1 } },
+          query: { keyword: 'automation', limit: 20, page: 1 },
         }),
       )
     })
@@ -502,7 +420,7 @@ describe('ResourceAccessTokenPage', () => {
   it('keeps the table visible when clearing an empty search until the list reloads', async () => {
     const user = userEvent.setup()
     const queryClient = createAccountProfileQueryClient()
-    queryClient.setQueryDefaults(['resource-access-tokens'], { gcTime: 0 })
+    queryClient.setQueryDefaults(consoleQuery.resourceAccessTokens.get.key(), { gcTime: 0 })
     const listResponse = {
       data: [createTokenRow()],
       has_more: false,
@@ -516,10 +434,8 @@ describe('ResourceAccessTokenPage', () => {
     })
     mocks.listResourceAccessTokens
       .mockResolvedValueOnce(listResponse)
-      .mockImplementation(({ input }: { input: Pick<GetResourceAccessTokensData, 'query'> }) =>
-        input.query?.keyword
-          ? Promise.resolve({ ...listResponse, data: [], total: 0 })
-          : reloadRequest,
+      .mockImplementation(({ query }: Pick<GetResourceAccessTokensData, 'query'>) =>
+        query?.keyword ? Promise.resolve({ ...listResponse, data: [], total: 0 }) : reloadRequest,
       )
     render(
       <QueryClientProvider client={queryClient}>
@@ -541,7 +457,7 @@ describe('ResourceAccessTokenPage', () => {
     await waitFor(() => {
       expect(mocks.listResourceAccessTokens).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          input: { query: { keyword: undefined, limit: 20, page: 1 } },
+          query: { keyword: undefined, limit: 20, page: 1 },
         }),
       )
     })
@@ -627,18 +543,15 @@ describe('ResourceAccessTokenPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
     await waitFor(() => {
-      expect(mocks.createResourceAccessToken).toHaveBeenCalledWith(
-        {
-          body: {
-            name: 'Partners',
-            resources: [
-              { id: 'app-2', type: 'app' },
-              { id: 'dataset-2', type: 'knowledge' },
-            ],
-          },
+      expect(mocks.createResourceAccessToken).toHaveBeenCalledWith({
+        body: {
+          name: 'Partners',
+          resources: [
+            { id: 'app-2', type: 'app' },
+            { id: 'dataset-2', type: 'knowledge' },
+          ],
         },
-        expect.anything(),
-      )
+      })
     })
     expect(await within(dialog).findByText('sk-new-token')).toBeInTheDocument()
     expect(
@@ -737,7 +650,6 @@ describe('ResourceAccessTokenPage', () => {
           expect.objectContaining({
             body: expect.objectContaining({ resources: expect.arrayContaining(resources) }),
           }),
-          expect.anything(),
         )
       })
     },
@@ -782,10 +694,9 @@ describe('ResourceAccessTokenPage', () => {
     await user.click(createButton)
 
     await waitFor(() => {
-      expect(mocks.createResourceAccessToken).toHaveBeenCalledWith(
-        { body: { name: 'Partners', resources: [{ id: 'app-2', type: 'app' }] } },
-        expect.anything(),
-      )
+      expect(mocks.createResourceAccessToken).toHaveBeenCalledWith({
+        body: { name: 'Partners', resources: [{ id: 'app-2', type: 'app' }] },
+      })
     })
   })
 
@@ -857,12 +768,21 @@ describe('ResourceAccessTokenPage', () => {
 
   it('edits the token name and selected resources for the selected row', async () => {
     const user = userEvent.setup()
-    mocks.updateResourceAccessToken.mockResolvedValue({
-      data: [],
-      has_more: false,
-      limit: 1,
-      page: 1,
-      total: 1,
+    mocks.updateResourceAccessToken.mockImplementation(async () => {
+      mocks.listResourceAccessTokens.mockResolvedValue({
+        data: [createTokenRow({ name: 'Renamed' })],
+        has_more: false,
+        limit: 20,
+        page: 1,
+        total: 1,
+      })
+      return {
+        data: [],
+        has_more: false,
+        limit: 1,
+        page: 1,
+        total: 1,
+      }
     })
     renderWithQueryClient(<ResourceAccessTokenPage />)
 
@@ -884,43 +804,20 @@ describe('ResourceAccessTokenPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => {
-      expect(mocks.updateResourceAccessToken).toHaveBeenCalledWith(
-        {
-          body: {
-            name: 'Renamed',
-            resources: [
-              { id: 'app-1', type: 'app' },
-              { id: 'app-2', type: 'app' },
-            ],
-          },
-          params: { token_id: 'token-1' },
+      expect(mocks.updateResourceAccessToken).toHaveBeenCalledWith({
+        body: {
+          name: 'Renamed',
+          resources: [
+            { id: 'app-1', type: 'app' },
+            { id: 'app-2', type: 'app' },
+          ],
         },
-        expect.anything(),
-      )
+        params: { token_id: 'token-1' },
+      })
     })
-  })
-
-  it('deletes the selected token', async () => {
-    const user = userEvent.setup()
-    mocks.deleteResourceAccessTokenRelation.mockResolvedValue(undefined)
-    renderWithQueryClient(<ResourceAccessTokenPage />)
-
-    await screen.findByText('Production clients')
-    await user.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[0]!)
-    const dialog = screen.getByRole('alertdialog')
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
-
-    await waitFor(() => {
-      expect(mocks.deleteResourceAccessTokenRelation).toHaveBeenCalledWith(
-        {
-          params: {
-            relation_id: 'relation-1',
-            token_id: 'token-1',
-          },
-        },
-        expect.anything(),
-      )
-    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(await screen.findByRole('row', { name: /Renamed/ })).toBeInTheDocument()
+    expect(screen.queryByText('Production clients')).not.toBeInTheDocument()
   })
 
   it('keeps the delete confirmation open until the request settles', async () => {
@@ -944,10 +841,23 @@ describe('ResourceAccessTokenPage', () => {
     await user.keyboard('{Escape}')
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
 
-    settleDelete()
+    expect(mocks.deleteResourceAccessTokenRelation).toHaveBeenCalledExactlyOnceWith({
+      params: { relation_id: 'relation-1', token_id: 'token-1' },
+    })
+    mocks.listResourceAccessTokens.mockResolvedValue({
+      data: [],
+      has_more: false,
+      limit: 20,
+      page: 1,
+      total: 0,
+    })
+    await act(async () => settleDelete())
 
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     })
+    expect(
+      await screen.findByText('accountSettings.resourceAccessToken.emptyDescription'),
+    ).toBeInTheDocument()
   })
 })

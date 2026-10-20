@@ -20,6 +20,7 @@ from datetime import timedelta
 import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session as SQLSession
 from sqlalchemy.orm import sessionmaker
 
 import schedule.dify_builder_reconcile_task as mod
@@ -55,12 +56,12 @@ def engine() -> Iterator[Engine]:
 
 
 @pytest.fixture
-def factory(engine: Engine) -> sessionmaker:
+def factory(engine: Engine) -> sessionmaker[SQLSession]:
     return sessionmaker(bind=engine, expire_on_commit=False)
 
 
 @pytest.fixture
-def repo(factory: sessionmaker) -> SqlDifyBuilderRepository:
+def repo(factory: sessionmaker[SQLSession]) -> SqlDifyBuilderRepository:
     return SqlDifyBuilderRepository(factory)
 
 
@@ -77,7 +78,7 @@ def _seed(repo: SqlDifyBuilderRepository, state: PcState) -> Session:
 
 
 def test_reconcile_flags_stale_working_session_with_no_live_lock(
-    monkeypatch, repo: SqlDifyBuilderRepository, factory: sessionmaker
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, factory: sessionmaker[SQLSession]
 ) -> None:
     a = _seed(repo, PcState.FIX_VERIFY)  # working, no lock -> flagged
     b = _seed(repo, PcState.FIX_VERIFY)  # working, live lock -> skipped
@@ -92,7 +93,7 @@ def test_reconcile_flags_stale_working_session_with_no_live_lock(
     )
     monkeypatch.setattr(mod.session_lock, "exists", lambda sid: sid == b.id)
 
-    published: list[tuple[str, dict]] = []
+    published: list[tuple[str, dict[str, object]]] = []
     monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, ev: published.append((sid, ev)))
 
     count = mod.reconcile_interrupted_sessions()
@@ -103,14 +104,14 @@ def test_reconcile_flags_stale_working_session_with_no_live_lock(
 
 
 def test_reconcile_empty_sweep_when_nothing_stale(
-    monkeypatch, repo: SqlDifyBuilderRepository, factory: sessionmaker
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, factory: sessionmaker[SQLSession]
 ) -> None:
     _seed(repo, PcState.FIX_VERIFY)  # working, freshly seeded -> not stale
 
     monkeypatch.setattr(mod, "_session_factory", lambda: factory)
     monkeypatch.setattr(mod.session_lock, "exists", lambda _sid: False)
 
-    published: list[tuple[str, dict]] = []
+    published: list[tuple[str, dict[str, object]]] = []
     monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, ev: published.append((sid, ev)))
 
     count = mod.reconcile_interrupted_sessions()

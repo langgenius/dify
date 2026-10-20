@@ -1,9 +1,12 @@
 import { act, waitFor } from '@testing-library/react'
+import { createNodeTracing } from '../../../__tests__/fixtures'
 import { baseRunningData } from '../../../__tests__/workflow-test-env'
 import { NodeRunningStatus } from '../../../types'
+import { useWorkflowNodeFinished } from '../use-workflow-node-finished'
 import { useWorkflowNodeStarted } from '../use-workflow-node-started'
 import {
   containerParams,
+  createNodeFinishedResponse,
   createNodeStartedResponse,
   getEdgeRuntimeState,
   getNodeRuntimeState,
@@ -11,6 +14,42 @@ import {
 } from './test-helpers'
 
 describe('useWorkflowNodeStarted', () => {
+  it('keeps one completed trace with execution data when the first node is replayed', () => {
+    const { result, store } = renderViewportHook(
+      () => ({ ...useWorkflowNodeStarted(), ...useWorkflowNodeFinished() }),
+      { initialStoreState: { workflowRunningData: baseRunningData() } },
+    )
+    const started = createNodeStartedResponse()
+    started.data = {
+      ...started.data,
+      id: 'trace-1',
+      index: 1,
+      title: 'Request',
+      inputs: { request: 'Review this request' },
+      extras: { icon: { content: '👤', background: '#ffffff' } },
+    }
+    const finished = createNodeFinishedResponse({
+      data: {
+        ...started.data,
+        status: NodeRunningStatus.Succeeded,
+        process_data: { decision: 'approve' },
+        outputs: { text: 'Approved' },
+      },
+    })
+    delete finished.data.extras
+
+    for (const event of [started, { ...started, data: { ...started.data, extras: {} } }]) {
+      act(() => {
+        result.current.handleWorkflowNodeStarted(event, containerParams)
+        result.current.handleWorkflowNodeFinished(finished)
+      })
+    }
+
+    expect(store.getState().workflowRunningData!.tracing).toEqual([
+      { ...finished.data, extras: started.data.extras },
+    ])
+  })
+
   it.each([
     { builderActive: false, manuallyChanged: true, x: 200, y: 310 },
     { builderActive: true, manuallyChanged: false, x: 200, y: 310 },
@@ -80,8 +119,8 @@ describe('useWorkflowNodeStarted', () => {
       initialStoreState: {
         workflowRunningData: baseRunningData({
           tracing: [
-            { node_id: 'n0', status: NodeRunningStatus.Succeeded } as never,
-            { node_id: 'n1', status: NodeRunningStatus.Succeeded } as never,
+            createNodeTracing({ node_id: 'n0', status: NodeRunningStatus.Succeeded }),
+            createNodeTracing({ node_id: 'n1', status: NodeRunningStatus.Succeeded }),
           ],
         }),
       },
@@ -93,6 +132,7 @@ describe('useWorkflowNodeStarted', () => {
 
     const tracing = store.getState().workflowRunningData!.tracing!
     expect(tracing).toHaveLength(2)
-    expect(tracing[1]!.status).toBe(NodeRunningStatus.Running)
+    expect(tracing[0]).toMatchObject({ node_id: 'n0', status: NodeRunningStatus.Succeeded })
+    expect(tracing[1]).toMatchObject({ node_id: 'n1', status: NodeRunningStatus.Running })
   })
 })

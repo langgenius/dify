@@ -119,6 +119,7 @@ class PollingLLMRuntimeProtocol(Protocol):
 
 
 if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
     from core.tools.__base.tool import Tool
     from core.tools.entities.tool_entities import ToolInvokeMessage as CoreToolInvokeMessage
     from graphon.nodes.llm.file_saver import LLMFileSaver
@@ -534,6 +535,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         workflow_id: str | None = None,
         confirmed_guard: ConfirmedToolGuard | None = None,
         confirmed_guard_factory: Callable[[str, str], ConfirmedToolGuard] | None = None,
+        execution_driver: WorkflowRunDriver | None = None,
     ) -> None:
         """Both confirmed arguments are ``None`` for every ordinary run; at most one may be set.
 
@@ -555,6 +557,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
         self._workflow_id = workflow_id
         self._session_maker = session_maker
+        self._execution_driver = execution_driver
         self._confirmed_guard = confirmed_guard
         self._confirmed_guard_factory = confirmed_guard_factory
         self._confirmed_guard_factory_called = False
@@ -593,7 +596,8 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                     self._run_context.user_id,
                     self._run_context.invoke_from,
                     variable_pool,
-                    **({"draft_tool_workflow_id": self._workflow_id} if self._workflow_id is not None else {}),
+                    execution_driver=self._execution_driver,
+                    draft_tool_workflow_id=self._workflow_id,
                 )
             else:
                 self._require_confirmed_node(
@@ -745,7 +749,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         callback: DifyWorkflowCallbackHandler,
         conversation_id: str | None,
         provider_name: str,
-    ) -> Generator[ToolRuntimeMessage, None, None]:
+    ) -> Generator[ToolRuntimeMessage]:
         """Consume one consented native Tool call through the same native owners.
 
         Unlike the ordinary ``begin()`` branch the session never starts a
@@ -1106,11 +1110,11 @@ class DifyHumanInputNodeRuntime:
     def restore_submitted_data(
         self,
         *,
-        node_data: HumanInputNodeData,
+        inputs: Sequence[FormInputConfig],
         submitted_data: Mapping[str, Any],
     ) -> Mapping[str, Any]:
         restored_data: dict[str, Any] = dict(submitted_data)
-        for input_config in node_data.inputs:
+        for input_config in inputs:
             output_variable_name = input_config.output_variable_name
             if output_variable_name not in submitted_data:
                 continue

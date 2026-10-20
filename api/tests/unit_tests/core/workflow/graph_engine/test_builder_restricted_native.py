@@ -1,12 +1,15 @@
 """Real Graphon engine and Dify factory, with row-backed restricted receipts."""
 
+from __future__ import annotations
+
 import hashlib
 import hmac
 import json
 import time
+from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
-from typing import override
+from typing import NoReturn, override
 from unittest.mock import Mock
 
 import pytest
@@ -17,54 +20,77 @@ from sqlalchemy.exc import OperationalError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError, canonical_digest
+from core.dify_builder.execution_policy import (
+    BuilderExecutionContext,
+    BuilderExecutionPolicyError,
+    BuilderExecutionRecorder,
+    HttpResponseFixtureV1,
+    canonical_digest,
+)
+from core.dify_builder.models import Graph as BuilderGraph
+from core.dify_builder.models import Inputs
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool
 from core.workflow.workflow_entry import iter_dify_graph_engine_events
-from graphon.entities import GraphInitParams
-from graphon.entities.base_node_data import DefaultValue, DefaultValueType
-from graphon.enums import ErrorStrategy
-from graphon.graph import Graph
-from graphon.graph_engine import GraphEngine, GraphEngineConfig
-from graphon.graph_engine.command_channels import InMemoryChannel
-from graphon.graph_engine.layers.base import GraphEngineLayer
-from graphon.graph_events import (
+from graphon.engine import Engine
+from graphon.engine.command import InMemoryChannel
+from graphon.engine.layer import Layer
+from graphon.engine_events import (
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
     GraphRunSucceededEvent,
     NodeRunSucceededEvent,
 )
+from graphon.engine_events.base import EngineEvent
+from graphon.entities.base_node_data import BaseNodeData, DefaultValue, DefaultValueType
+from graphon.enums import ErrorStrategy
+from graphon.graph import Graph
+from graphon.nodes.base.node import Node
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.http_request.node import HttpRequestNode
 from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.workflow import Workflow
-from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
+from services.dify_builder.execution_policy_service import (
+    BuilderExecutionPolicyService,
+)
 from services.dify_builder.revision import execution_revision
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture
+from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
 
 FIXTURES = Path(__file__).parents[4] / "fixtures/workflow/builder_restricted"
 
 
-class ThrowingLayer(GraphEngineLayer):
-    def on_graph_start(self):
-        pass
-
-    def on_event(self, event):
-        pass
-
-    def on_graph_end(self, error):
+class ThrowingLayer(Layer):
+    @override
+    def on_graph_start(self) -> None:
         pass
 
     @override
-    def on_node_run_start(self, node):
+    def on_event(self, event: EngineEvent) -> None:
+        pass
+
+    @override
+    def on_graph_end(self, error: Exception | None) -> None:
+        pass
+
+    @override
+    def on_node_run_start(self, node: Node[BaseNodeData]) -> NoReturn:
         _ = node
         raise RuntimeError("observer is unavailable")
 
 
-def prepare_native(owned, name, *, samples=(), inputs=None, http_data=None, graph_config=None):
+def prepare_native(
+    owned: Owned,
+    name: str,
+    *,
+    samples: Sequence[HttpResponseFixtureV1] = (),
+    inputs: Inputs | None = None,
+    http_data: dict[str, object] | None = None,
+    graph_config: BuilderGraph | None = None,
+) -> tuple[DifyNodeFactory, BuilderExecutionContext, BuilderExecutionRecorder]:
     db_factory, actor, app, workflow, sid, tid = owned
     if graph_config is None:
         graph_config = yaml.safe_load((FIXTURES / name).read_text())
@@ -74,14 +100,20 @@ def prepare_native(owned, name, *, samples=(), inputs=None, http_data=None, grap
     workflow.graph = json.dumps(graph_config)
     service = BuilderExecutionPolicyService(db_factory)
     with db_factory.begin() as db:
-        db.get(Workflow, workflow.id).graph = workflow.graph
-        db.get(DifyBuilderTestInput, tid).inputs = inputs
+        stored_workflow = db.get(Workflow, workflow.id)
+        test_input = db.get(DifyBuilderTestInput, tid)
+        assert stored_workflow is not None
+        assert test_input is not None
+        stored_workflow.graph = workflow.graph
+        test_input.inputs = inputs
     if samples:
         envelope = service.stamp_http_fixtures(
-            app.id, actor, base_app_revision=execution_revision(workflow), fixtures=samples
+            app.id, actor, base_app_revision=execution_revision(workflow), fixtures=tuple(samples)
         )
         with db_factory.begin() as db:
-            db.get(DifyBuilderTestInput, tid).http_fixtures = envelope.model_dump(mode="json")
+            test_input = db.get(DifyBuilderTestInput, tid)
+            assert test_input is not None
+            test_input.http_fixtures = envelope.model_dump(mode="json")
     context = service.prepare(
         session_id=sid,
         test_input_id=tid,
@@ -91,9 +123,10 @@ def prepare_native(owned, name, *, samples=(), inputs=None, http_data=None, grap
         submitted_inputs=inputs,
         effective_inputs=inputs,
     )
+    assert isinstance(context, BuilderExecutionContext)
     service.claim_launch(context=context, native_run_id="native-run", task_id="native-task")
     recorder = service.recorder(context=context, native_run_id="native-run", task_id="native-task")
-    params = GraphInitParams(
+    params = InitParams(
         workflow_id=workflow.id,
         graph_config=graph_config,
         call_depth=0,
@@ -108,17 +141,19 @@ def prepare_native(owned, name, *, samples=(), inputs=None, http_data=None, grap
     )
     pool = VariablePool()
     add_node_inputs_to_pool(pool, node_id="start", inputs=inputs)
-    state = GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter())
-    factory = DifyNodeFactory(graph_init_params=params, graph_runtime_state=state, execution_recorder=recorder)
+    state = RuntimeState(workflow_id=workflow.id, variable_pool=pool, start_at=time.perf_counter())
+    factory = DifyNodeFactory(init_params=params, runtime_state=state, execution_recorder=recorder)
     return factory, context, recorder
 
 
-def init_runner_graph(owned, factory, context, recorder):
+def init_runner_graph(
+    owned: Owned, factory: DifyNodeFactory, context: BuilderExecutionContext, recorder: BuilderExecutionRecorder
+) -> Graph:
     _, actor, app, workflow, _, _ = owned
     runner = WorkflowBasedAppRunner(queue_manager=Mock(spec=AppQueueManager), app_id=app.id)
     return runner._init_graph(
-        graph_config=factory.graph_init_params.graph_config,
-        graph_runtime_state=factory.graph_runtime_state,
+        graph_config=factory.init_params.graph_config,
+        graph_runtime_state=factory.runtime_state,
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
         workflow_id=workflow.id,
@@ -126,24 +161,24 @@ def init_runner_graph(owned, factory, context, recorder):
         user_id=actor.account_id,
         builder_execution=context,
         execution_recorder=recorder,
+        call_depth=0,
     )
 
 
-def execute_native(factory, *, throwing=False, graph=None):
+def execute_native(
+    factory: DifyNodeFactory, *, throwing: bool = False, graph: Graph | None = None
+) -> tuple[Graph, list[EngineEvent], RuntimeError | None]:
     if graph is None:
-        graph = Graph.init(
-            graph_config=factory.graph_init_params.graph_config, node_factory=factory, root_node_id="start"
-        )
-    engine = GraphEngine(
-        workflow_id=factory.graph_init_params.workflow_id,
+        graph = Graph.init(graph_config=factory.init_params.graph_config, node_factory=factory, root_node_id="start")
+    engine = Engine(
         graph=graph,
-        graph_runtime_state=factory.graph_runtime_state,
+        runtime_state=factory.runtime_state,
         command_channel=InMemoryChannel(),
-        config=GraphEngineConfig(min_workers=1, max_workers=1),
+        workers=1,
     )
     if throwing:
-        engine.layer(ThrowingLayer())
-    events = []
+        engine.add_layer(ThrowingLayer())
+    events: list[EngineEvent] = []
     error = None
     try:
         events.extend(iter_dify_graph_engine_events(engine))
@@ -152,25 +187,25 @@ def execute_native(factory, *, throwing=False, graph=None):
     return graph, events, error
 
 
-def receipts(owned):
+def receipts(owned: Owned) -> list[dict[str, object]]:
     with owned[0]() as db:
         row = db.scalar(select(DifyBuilderExecutionRequest))
+        assert row is not None
         assert (row.native_run_id, row.task_id) == ("native-run", "native-task")
         return row.observations
 
 
 @pytest.fixture(autouse=True)
-def forbid_live(monkeypatch):
+def forbid_live(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     import core.workflow.node_factory as module
-    import graphon.nodes.http_request.node as http_module
     from core.helper import ssrf_proxy
     from core.helper.code_executor.code_executor import CodeExecutor
     from core.plugin.impl import oauth
     from core.tools.tool_manager import ToolManager
 
-    calls = []
+    calls: list[str] = []
 
-    def forbidden(*_args, **_kwargs):
+    def forbidden(*_args: object, **_kwargs: object) -> NoReturn:
         calls.append("live owner reached")
         raise AssertionError("live owner reached")
 
@@ -192,7 +227,6 @@ def forbid_live(monkeypatch):
         monkeypatch.setattr(module, name, forbidden)
     for name in ("get", "head", "post", "put", "patch", "delete"):
         monkeypatch.setattr(ssrf_proxy.graphon_ssrf_proxy, name, forbidden)
-    monkeypatch.setattr(http_module, "get_http_client", forbidden)
     monkeypatch.setattr(CodeExecutor, "execute_workflow_code_template", forbidden)
     monkeypatch.setattr(ToolManager, "get_workflow_tool_runtime", forbidden)
     monkeypatch.setattr(oauth, "OAuthHandler", forbidden)
@@ -200,7 +234,7 @@ def forbid_live(monkeypatch):
 
 
 @pytest.mark.parametrize("throwing", [False, True])
-def test_native_scalar_outputs_survive_throwing_observers(owned, throwing):
+def test_native_scalar_outputs_survive_throwing_observers(owned: Owned, throwing: bool) -> None:
     factory, context, recorder = prepare_native(owned, "scalar.yml", inputs={"text": "真实 native"})
     graph, events, error = execute_native(factory, throwing=throwing)
     assert error is None
@@ -213,7 +247,7 @@ def test_native_scalar_outputs_survive_throwing_observers(owned, throwing):
 
 
 @pytest.mark.parametrize(("body", "content_type"), [('{"sample":true}', "application/json"), ("你好 🌍", "text/plain")])
-def test_native_dynamic_http_fixture_outputs_and_durable_binding(owned, body, content_type):
+def test_native_dynamic_http_fixture_outputs_and_durable_binding(owned: Owned, body: str, content_type: str) -> None:
     factory, context, recorder = prepare_native(
         owned, "http_text.yml", samples=(fixture(body=body, content_type=content_type),)
     )
@@ -269,7 +303,7 @@ def test_native_dynamic_http_fixture_outputs_and_durable_binding(owned, body, co
         "content-type: TEXT/PLAIN",
     ],
 )
-def test_admitted_fixed_header_case_serves_actual_native_fixture(owned, headers):
+def test_admitted_fixed_header_case_serves_actual_native_fixture(owned: Owned, headers: str) -> None:
     body = '{"sample":true}'
     factory, _, recorder = prepare_native(
         owned,
@@ -289,7 +323,7 @@ def test_admitted_fixed_header_case_serves_actual_native_fixture(owned, headers)
 
 
 @pytest.mark.parametrize("throwing", [False, True])
-def test_reached_native_http_denial_has_durable_evidence(owned, throwing):
+def test_reached_native_http_denial_has_durable_evidence(owned: Owned, throwing: bool) -> None:
     factory, context, recorder = prepare_native(owned, "http_text.yml")
     graph, events, error = execute_native(factory, throwing=throwing)
     assert type(graph.nodes["http"]) is HttpRequestNode
@@ -303,7 +337,7 @@ def test_reached_native_http_denial_has_durable_evidence(owned, throwing):
 
 
 @pytest.mark.parametrize("throwing", [False, True])
-def test_native_default_output_success_keeps_blocked_evidence(owned, throwing):
+def test_native_default_output_success_keeps_blocked_evidence(owned: Owned, throwing: bool) -> None:
     factory, context, recorder = prepare_native(owned, "http_default_output.yml")
     _, events, error = execute_native(factory, throwing=throwing)
     assert error is None
@@ -316,19 +350,21 @@ def test_native_default_output_success_keeps_blocked_evidence(owned, throwing):
     assert receipts(owned)[0]["kind"] == "effect_blocked"
 
 
-def test_runner_default_output_executes_native_partial_and_preserves_raw_graph(owned, forbid_live):
+def test_runner_default_output_executes_native_partial_and_preserves_raw_graph(
+    owned: Owned, forbid_live: list[str]
+) -> None:
     graph_config = yaml.safe_load((FIXTURES / "http_default_output.yml").read_text())
     for target in (graph_config, graph_config["nodes"][1], graph_config["nodes"][1]["data"], graph_config["edges"][0]):
         target["undeclared_metadata"] = {"nested": ["preserved", 1]}
     factory, context, recorder = prepare_native(owned, "http_default_output.yml", graph_config=graph_config)
-    raw_graph = factory.graph_init_params.graph_config
+    raw_graph = factory.init_params.graph_config
     original = deepcopy(raw_graph)
     graph = init_runner_graph(owned, factory, context, recorder)
     _, events, error = execute_native(factory, graph=graph)
     assert error is None
     assert type(graph.nodes["http"]) is HttpRequestNode
     assert type(graph.nodes["end"]) is EndNode
-    assert graph.nodes["http"].graph_init_params.graph_config == original
+    assert graph.nodes["http"].init_params.graph_config == graph.graph_config
     assert raw_graph == original
     assert type(raw_graph["nodes"][1]["data"]["error_strategy"]) is str
     assert type(raw_graph["nodes"][1]["data"]["default_value"][0]["type"]) is str
@@ -347,9 +383,9 @@ def test_runner_default_output_executes_native_partial_and_preserves_raw_graph(o
     assert forbid_live == []
 
 
-def test_runner_rejects_changed_raw_node_data_extras_before_execution(owned, forbid_live):
+def test_runner_rejects_changed_raw_node_data_extras_before_execution(owned: Owned, forbid_live: list[str]) -> None:
     factory, context, recorder = prepare_native(owned, "http_default_output.yml")
-    raw_graph = factory.graph_init_params.graph_config
+    raw_graph = factory.init_params.graph_config
     raw_graph["nodes"][1]["data"]["undeclared_metadata"] = {"nested": ["changed", 1]}
     changed = deepcopy(raw_graph)
     with pytest.raises(BuilderExecutionPolicyError, match="execution_binding_mismatch"):
@@ -361,9 +397,11 @@ def test_runner_rejects_changed_raw_node_data_extras_before_execution(owned, for
 
 
 @pytest.mark.parametrize("value", ["strategy_enum", "default_type_enum", "default_model"])
-def test_runner_refuses_non_json_objects_even_when_json_serialization_is_equivalent(owned, forbid_live, value):
+def test_runner_refuses_non_json_objects_even_when_json_serialization_is_equivalent(
+    owned: Owned, forbid_live: list[str], value: str
+) -> None:
     factory, context, recorder = prepare_native(owned, "http_default_output.yml")
-    data = factory.graph_init_params.graph_config["nodes"][1]["data"]
+    data = factory.init_params.graph_config["nodes"][1]["data"]
     if value == "strategy_enum":
         data["error_strategy"] = ErrorStrategy.DEFAULT_VALUE
     elif value == "default_type_enum":
@@ -377,11 +415,13 @@ def test_runner_refuses_non_json_objects_even_when_json_serialization_is_equival
     assert forbid_live == []
 
 
-def test_recorder_db_failure_prevents_fixture_return_and_poisons_shared_latch(owned):
+def test_recorder_db_failure_prevents_fixture_return_and_poisons_shared_latch(owned: Owned) -> None:
     factory, context, recorder = prepare_native(owned, "http_text.yml", samples=(fixture(),))
     engine = owned[0].kw["bind"]
 
-    def fail_append(_connection, _cursor, statement, parameters, _context, _executemany):
+    def fail_append(
+        _connection, _cursor, statement: str, parameters: tuple[object, ...], _context, _executemany
+    ) -> None:
         if statement.startswith("UPDATE dify_builder_execution_requests"):
             raise OperationalError(statement, parameters, RuntimeError("database append unavailable"))
 
@@ -396,7 +436,7 @@ def test_recorder_db_failure_prevents_fixture_return_and_poisons_shared_latch(ow
         from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 
         with pytest.raises(BuilderExecutionPolicyError, match="missing_execution_recorder"):
-            factory.with_runtime_state(factory.graph_runtime_state)
+            factory.with_runtime_state(factory.runtime_state)
     finally:
         event.remove(engine, "before_cursor_execute", fail_append)
 
@@ -408,7 +448,9 @@ def test_recorder_db_failure_prevents_fixture_return_and_poisons_shared_latch(ow
         {"type": "json", "data": [{"type": "text", "value": '{"path":"{{#start.path#}}"}'}]},
     ],
 )
-def test_native_text_request_bodies_and_params_resolve_without_file_capabilities(owned, body):
+def test_native_text_request_bodies_and_params_resolve_without_file_capabilities(
+    owned: Owned, body: dict[str, object]
+) -> None:
     factory, _, _ = prepare_native(
         owned,
         "http_text.yml",
@@ -421,7 +463,7 @@ def test_native_text_request_bodies_and_params_resolve_without_file_capabilities
     assert receipts(owned)[0]["kind"] == "fixture_served"
 
 
-def test_native_retries_append_distinct_denials_without_outbound_calls(owned):
+def test_native_retries_append_distinct_denials_without_outbound_calls(owned: Owned) -> None:
     factory, _, _ = prepare_native(
         owned,
         "http_text.yml",

@@ -3,10 +3,11 @@
 from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.entities import task_entities as events
+from core.dify_builder.models import Graph
 
 
 def _native_responses() -> list[events.StreamResponse]:
-    data = {
+    data: Graph = {
         "id": "execution-1",
         "workflow_id": "workflow-1",
         "workflow_run_id": "run-1",
@@ -71,11 +72,11 @@ def _native_responses() -> list[events.StreamResponse]:
         events.MessageAudioStreamResponse,
         events.MessageAudioEndStreamResponse,
     ]
-    responses = []
+    responses: list[events.StreamResponse] = []
     for model in models:
         event_data = dict(data)
         if model is events.HumanInputRequiredResponse:
-            event_data["inputs"] = []
+            event_data["inputs"] = list[object]()
         if model is events.WorkflowPauseStreamResponse:
             event_data["status"] = "paused"
         response = model.model_validate(
@@ -86,7 +87,7 @@ def _native_responses() -> list[events.StreamResponse]:
     return responses
 
 
-def native_workflow_payloads() -> list[dict]:
+def native_workflow_payloads() -> list[Graph]:
     converted = WorkflowAppGenerateResponseConverter.convert_stream_full_response(
         events.WorkflowAppStreamResponse(stream_response=response, workflow_run_id="run-1")
         for response in _native_responses()
@@ -94,7 +95,7 @@ def native_workflow_payloads() -> list[dict]:
     return [payload for payload in converted if isinstance(payload, dict)]
 
 
-def native_chatflow_payloads() -> list[dict]:
+def native_chatflow_payloads() -> list[Graph]:
     responses = [
         *_native_responses(),
         events.MessageStreamResponse(

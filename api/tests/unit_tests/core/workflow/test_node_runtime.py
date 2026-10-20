@@ -1086,16 +1086,12 @@ def test_dify_human_input_runtime_restore_submitted_data_rehydrates_files() -> N
         ),
     ]
     runtime._file_reference_factory.build_from_mapping = MagicMock(side_effect=[file_value, *file_list_value])  # type: ignore[method-assign]
-    node_data = HumanInputNodeData(
-        title="Human Input",
+
+    restored = runtime.restore_submitted_data(
         inputs=[
             FileInputConfig(output_variable_name="attachment"),
             FileListInputConfig(output_variable_name="attachments", number_limits=2),
         ],
-    )
-
-    restored = runtime.restore_submitted_data(
-        node_data=node_data,
         submitted_data={
             "attachment": {"upload_file_id": "upload-1", "type": "document", "transfer_method": "local_file"},
             "attachments": [
@@ -1268,11 +1264,11 @@ class _ConfirmedTransport:
         self.observed: list[bool] = []
         self.calls = 0
 
-    def __call__(self, *_args: object, **_kwargs: object) -> Generator[ToolInvokeMessage, None, None]:
+    def __call__(self, *_args: object, **_kwargs: object) -> Generator[ToolInvokeMessage]:
         self.calls += 1
         self.observed.append(self.sessions[-1].in_transaction())
 
-        def stream() -> Generator[ToolInvokeMessage, None, None]:
+        def stream() -> Generator[ToolInvokeMessage]:
             messages = [
                 ToolInvokeMessage(
                     type=ToolInvokeMessage.MessageType.TEXT, message=ToolInvokeMessage.TextMessage(text="ok")
@@ -1303,7 +1299,7 @@ def _recording_session_maker(engine: Engine) -> tuple[Mock, list[Session]]:
         return session
 
     @contextmanager
-    def begin() -> Generator[Session, None, None]:
+    def begin() -> Generator[Session]:
         with factory.begin() as session:
             sessions.append(session)
             yield session
@@ -1313,7 +1309,7 @@ def _recording_session_maker(engine: Engine) -> tuple[Mock, list[Session]]:
     return maker, sessions
 
 
-def _confirmed_invoke(runtime: DifyToolNodeRuntime, guard: Mock) -> Generator[ToolRuntimeMessage, None, None]:
+def _confirmed_invoke(runtime: DifyToolNodeRuntime, guard: Mock) -> Generator[ToolRuntimeMessage]:
     return runtime.invoke(
         tool_runtime=ToolRuntimeHandle(raw=_confirmed_plugin_tool(guard)),
         tool_parameters=dict(_CONFIRMED_PARAMETERS),

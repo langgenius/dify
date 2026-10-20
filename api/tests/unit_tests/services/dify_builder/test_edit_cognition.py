@@ -1,12 +1,13 @@
 import copy
 import json
-from typing import get_args
+from typing import Never, get_args
+from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
 
 from core.dify_builder.errors import ProposalWouldRunWrongError
-from core.dify_builder.models import MutationIntent
+from core.dify_builder.models import Graph, MutationIntent
 from graphon.utils.condition.entities import Condition, SupportedComparisonOperator
 from services.dify_builder import credentials, graph_ops
 from services.dify_builder.agent import edit, graph_prompt
@@ -14,51 +15,53 @@ from services.dify_builder.preflight import new_preflight_problems, preflight_er
 
 
 class _Msg:
-    def __init__(self, text):
+    def __init__(self, text: str) -> None:
         self._t = text
 
-    def get_text_content(self):
+    def get_text_content(self) -> str:
         return self._t
 
 
 class _Result:
-    def __init__(self, text):
+    def __init__(self, text: str) -> None:
         self.message = _Msg(text)
 
 
-class _FakeInstance:
-    def __init__(self, replies):
+class _FakeInstance(MagicMock):
+    def __init__(self, replies: list[str]) -> None:
+        super().__init__()
         self._replies = list(replies)
 
-    def invoke_llm(self, **_kwargs):
+    def invoke_llm(self, **_kwargs: object) -> _Result:
         return _Result(self._replies.pop(0))
 
 
-class _BoomInstance:
-    def invoke_llm(self, **_kwargs):
+class _BoomInstance(MagicMock):
+    def invoke_llm(self, **_kwargs: object) -> Never:
         raise RuntimeError("provider down")
 
 
-class _RecordingInstance:
+class _RecordingInstance(MagicMock):
     """Like ``_FakeInstance`` but keeps every ``invoke_llm`` call's kwargs, so a
     test can assert how many round-trips happened (e.g. "exactly one retry")."""
 
-    def __init__(self, replies):
+    def __init__(self, replies: list[str]) -> None:
+        super().__init__()
         self._replies = list(replies)
-        self.calls: list[dict] = []
+        self.calls: list[Graph] = []
 
-    def invoke_llm(self, **kwargs):
+    def invoke_llm(self, **kwargs: object) -> _Result:
         self.calls.append(kwargs)
         return _Result(self._replies.pop(0))
 
 
-_GRAPH = {"nodes": [{"id": "llm", "data": {"type": "llm", "title": "LLM"}}], "edges": []}
+_GRAPH: Graph = {"nodes": [{"id": "llm", "data": {"type": "llm", "title": "LLM"}}], "edges": []}
 
 # A branch node (if-else) plus a plain node to connect to it, for the
 # source_handle retry tests: connecting "branch" -> "a" with no source_handle
 # defaults to "source", which apply_connect now rejects (branch declares only
 # "true"/"false").
-_BRANCH_GRAPH = {
+_BRANCH_GRAPH: Graph = {
     "nodes": [
         {"id": "llm", "data": {"type": "llm", "title": "LLM"}},
         {"id": "branch", "data": {"type": "if-else", "cases": [{"case_id": "true", "conditions": []}]}},
@@ -68,7 +71,7 @@ _BRANCH_GRAPH = {
 }
 
 
-def test_analyze_impact_returns_fields_values_targets():
+def test_analyze_impact_returns_fields_values_targets() -> None:
     m = _FakeInstance(
         [
             json.dumps(
@@ -85,7 +88,7 @@ def test_analyze_impact_returns_fields_values_targets():
     assert out["target_node_ids"] == ["llm"]  # unknown id dropped
 
 
-def test_analyze_impact_reconciles_boolean_value_with_field_type():
+def test_analyze_impact_reconciles_boolean_value_with_field_type() -> None:
     m = _FakeInstance(
         [
             json.dumps(
@@ -104,21 +107,21 @@ def test_analyze_impact_reconciles_boolean_value_with_field_type():
     assert out["values"]["confirm_clear"] is True
 
 
-def test_analyze_impact_none_model_degrades():
+def test_analyze_impact_none_model_degrades() -> None:
     out = edit.analyze_impact(None, "make formal", _GRAPH)
     assert out["fields"]
     assert out["values"] == {"change": "make formal"}
     assert out["target_node_ids"] == []
 
 
-def test_analyze_impact_provider_error_degrades():
+def test_analyze_impact_provider_error_degrades() -> None:
     out = edit.analyze_impact(_BoomInstance(), "make formal", _GRAPH)
     assert out["fields"]
     assert out["values"] == {"change": "make formal"}
     assert out["target_node_ids"] == []
 
 
-def test_analyze_impact_non_list_target_node_ids_degrades_without_raising():
+def test_analyze_impact_non_list_target_node_ids_degrades_without_raising() -> None:
     m = _FakeInstance(
         [
             json.dumps(
@@ -134,27 +137,87 @@ def test_analyze_impact_non_list_target_node_ids_degrades_without_raising():
     assert out["target_node_ids"] == []
 
 
-def test_propose_edit_plan_bullets():
-    m = _FakeInstance([json.dumps({"plan": ["Tighten prompt"]})])
-    assert edit.propose_edit_plan(m, {"tone": "formal"}, _GRAPH) == ["Tighten prompt"]
-
-
-def test_propose_edit_plan_none_model_degrades():
-    assert edit.propose_edit_plan(None, {"tone": "formal"}, _GRAPH) == ["Apply the requested edit"]
-
-
-def test_propose_edit_plan_provider_error_degrades():
-    out = edit.propose_edit_plan(_BoomInstance(), {"tone": "formal"}, _GRAPH)
-    assert out == ["Apply the requested edit"]
-
-
-def test_propose_edit_plan_non_list_plan_degrades():
-    m = _FakeInstance([json.dumps({"plan": "not-a-list"})])
+def test_propose_edit_plan_bullets() -> None:
+    m = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "title": "Make support replies formal",
+                    "input_summary": "A support question.",
+                    "output_summary": "A formal reply to the question.",
+                    "plan": ["Tighten prompt"],
+                }
+            )
+        ]
+    )
     out = edit.propose_edit_plan(m, {"tone": "formal"}, _GRAPH)
-    assert out == ["Apply the requested edit"]
+    assert out is not None
+    assert out.items == ["Tighten prompt"]
+    assert out.title == "Make support replies formal"
+    assert out.input_summary == "A support question."
+    assert out.output_summary == "A formal reply to the question."
 
 
-def test_build_edit_intents_validates_and_drops_bad():
+def test_propose_edit_plan_none_model_returns_no_approvable_plan() -> None:
+    assert edit.propose_edit_plan(None, {"tone": "formal"}, _GRAPH) is None
+
+
+def test_propose_edit_plan_provider_error_returns_no_approvable_plan() -> None:
+    out = edit.propose_edit_plan(_BoomInstance(), {"tone": "formal"}, _GRAPH)
+    assert out is None
+
+
+def test_propose_edit_plan_non_list_plan_returns_no_approvable_plan() -> None:
+    m = _FakeInstance([json.dumps({"plan": "not-a-list"})] * 2)
+    out = edit.propose_edit_plan(m, {"tone": "formal"}, _GRAPH)
+    assert out is None
+
+
+def test_edit_plan_sees_existing_workflow_inputs_and_outputs() -> None:
+    graph = {
+        "nodes": [
+            {
+                "id": "start",
+                "data": {
+                    "type": "start",
+                    "variables": [{"variable": "question", "label": "Support question", "type": "text-input"}],
+                },
+            },
+            {"id": "llm", "data": {"type": "llm", "title": "Answer the question"}},
+            {
+                "id": "end",
+                "data": {"type": "end", "outputs": [{"variable": "answer", "value_selector": ["llm", "text"]}]},
+            },
+        ],
+        "edges": [{"source": "start", "target": "llm"}, {"source": "llm", "target": "end"}],
+    }
+    model = _RecordingInstance(
+        [
+            json.dumps(
+                {
+                    "title": "Make support replies formal",
+                    "input_summary": "A support question.",
+                    "output_summary": "A formal answer to the support question.",
+                    "plan": ["Use a formal tone in the answer"],
+                }
+            )
+        ]
+    )
+
+    plan = edit.propose_edit_plan(model, {"tone": "formal"}, graph)
+
+    assert plan is not None
+    assert plan.input_summary == "A support question."
+    assert plan.output_summary == "A formal answer to the support question."
+    assert len(model.calls) == 1
+    system, user = model.calls[0]["prompt_messages"]
+    assert "entire resulting workflow" in system.content
+    assert "remain unchanged" in system.content
+    assert "Support question" in user.content
+    assert '"value_selector": ["llm", "text"]' in user.content
+
+
+def test_build_edit_intents_validates_and_drops_bad() -> None:
     m = _FakeInstance(
         [
             json.dumps(
@@ -171,16 +234,16 @@ def test_build_edit_intents_validates_and_drops_bad():
     assert [i.args["node_id"] for i in out] == ["llm"]  # bad node dropped by filter_applicable
 
 
-def test_build_edit_intents_degrades_to_empty_on_none():
+def test_build_edit_intents_degrades_to_empty_on_none() -> None:
     assert edit.build_edit_intents(None, {}, _GRAPH) == []
 
 
-def test_build_edit_intents_provider_error_degrades_to_empty():
+def test_build_edit_intents_provider_error_degrades_to_empty() -> None:
     out = edit.build_edit_intents(_BoomInstance(), {"tone": "formal"}, _GRAPH)
     assert out == []
 
 
-def test_build_edit_intents_total_reject_reprompts_then_recovers():
+def test_build_edit_intents_total_reject_reprompts_then_recovers() -> None:
     bad = json.dumps({"intents": [{"op": "set_node_config", "args": {"node_id": "ghost", "path": "x", "value": 1}}]})
     good = json.dumps(
         {"intents": [{"op": "set_node_config", "args": {"node_id": "llm", "path": "title", "value": "Formal LLM"}}]}
@@ -189,13 +252,13 @@ def test_build_edit_intents_total_reject_reprompts_then_recovers():
     assert [i.args["node_id"] for i in out] == ["llm"]
 
 
-def test_build_edit_intents_total_reject_twice_returns_empty():
+def test_build_edit_intents_total_reject_twice_returns_empty() -> None:
     bad = json.dumps({"intents": [{"op": "set_node_config", "args": {"node_id": "ghost", "path": "x", "value": 1}}]})
     out = edit.build_edit_intents(_FakeInstance([bad, bad]), {"tone": "formal"}, _GRAPH)
     assert out == []
 
 
-def test_build_edit_intents_non_list_intents_degrades_to_empty():
+def test_build_edit_intents_non_list_intents_degrades_to_empty() -> None:
     m = _FakeInstance([json.dumps({"intents": "oops"})])
     out = edit.build_edit_intents(m, {"tone": "formal"}, _GRAPH)
     assert out == []
@@ -204,13 +267,13 @@ def test_build_edit_intents_non_list_intents_degrades_to_empty():
 # ---- source_handle: branch-handle grounding + partial-reject retry (review round 1) ----
 
 
-def test_op_schema_mentions_source_handle_for_branch_connects():
+def test_op_schema_mentions_source_handle_for_branch_connects() -> None:
     assert "source_handle" in edit._OP_SCHEMA
     assert "if-else" in edit._OP_SCHEMA
 
 
-def test_graph_context_lists_branch_handles_and_a_named_edge_handle():
-    graph = {
+def test_graph_context_lists_branch_handles_and_a_named_edge_handle() -> None:
+    graph: Graph = {
         "nodes": [
             {"id": "branch", "data": {"type": "if-else", "cases": [{"case_id": "true", "conditions": []}]}},
             {"id": "a", "data": {"type": "llm"}},
@@ -224,7 +287,7 @@ def test_graph_context_lists_branch_handles_and_a_named_edge_handle():
     assert "branch -[true]-> a" in context
 
 
-def test_graph_context_plain_edge_has_no_handle_suffix():
+def test_graph_context_plain_edge_has_no_handle_suffix() -> None:
     graph = {
         "nodes": [{"id": "a", "data": {"type": "llm"}}, {"id": "b", "data": {"type": "llm"}}],
         "edges": [{"source": "a", "target": "b", "sourceHandle": "source"}],
@@ -236,7 +299,7 @@ def test_graph_context_plain_edge_has_no_handle_suffix():
     assert "-[" not in context
 
 
-def test_build_edit_intents_partial_reject_retries_once_then_recovers_both():
+def test_build_edit_intents_partial_reject_retries_once_then_recovers_both() -> None:
     first = json.dumps(
         {
             "intents": [
@@ -262,7 +325,7 @@ def test_build_edit_intents_partial_reject_retries_once_then_recovers_both():
     assert kinds == {("set_node_config", "llm"), ("connect", "branch")}
 
 
-def test_build_edit_intents_partial_reject_keeps_first_attempt_when_retry_still_fails():
+def test_build_edit_intents_partial_reject_keeps_first_attempt_when_retry_still_fails() -> None:
     first = json.dumps(
         {
             "intents": [
@@ -308,7 +371,7 @@ _AGGREGATOR_VARIABLES = [["node3", "output"], ["node4", "output"]]
 
 # start -> node2 (if-else) -> node3/node4 (template-transform) -> node5
 # (variable-aggregator) -> end.
-_TARGET_GRAPH = {
+_TARGET_GRAPH: Graph = {
     "nodes": [
         {"id": "start", "data": {"type": "start", "title": "Start", "variables": [{"variable": "score"}]}},
         {"id": "node2", "data": {"type": "if-else", "title": "Check score", "cases": _IF_ELSE_CASES}},
@@ -336,13 +399,13 @@ _TARGET_GRAPH = {
 }
 
 
-def test_graph_context_inlines_the_target_nodes_cases_verbatim():
+def test_graph_context_inlines_the_target_nodes_cases_verbatim() -> None:
     context = edit._graph_context(_TARGET_GRAPH, ["node2"])
 
     assert json.dumps(_IF_ELSE_CASES, ensure_ascii=False) in context
 
 
-def test_graph_context_reaches_the_aggregator_two_hops_past_a_branch_target():
+def test_graph_context_reaches_the_aggregator_two_hops_past_a_branch_target() -> None:
     """The live S6 shape: the if-else ALONE is the target.
 
     node5 is two hops down (node2 -> node3/node4 -> node5). Its ``variables``
@@ -355,13 +418,13 @@ def test_graph_context_reaches_the_aggregator_two_hops_past_a_branch_target():
     assert json.dumps(_AGGREGATOR_VARIABLES, ensure_ascii=False) in context
 
 
-def test_graph_context_does_not_take_the_extra_hop_past_a_plain_target():
+def test_graph_context_does_not_take_the_extra_hop_past_a_plain_target() -> None:
     # node3 is a template-transform, not a branch: its neighbours are in, but
     # nothing beyond them, so a long linear chain cannot drag in the whole graph.
     assert edit._detailed_ids(_TARGET_GRAPH, ["node3"]) == {"node2", "node3", "node5"}
 
 
-def test_graph_context_leaves_a_non_target_non_neighbour_as_one_line():
+def test_graph_context_leaves_a_non_target_non_neighbour_as_one_line() -> None:
     # ``end`` is three hops from the branch target -- past even the extra hop --
     # so it keeps today's summary line and nothing more.
     context = edit._graph_context(_TARGET_GRAPH, ["node2"])
@@ -372,7 +435,7 @@ def test_graph_context_leaves_a_non_target_non_neighbour_as_one_line():
     assert '"result"' not in context
 
 
-def test_graph_context_omits_keys_still_at_their_type_default():
+def test_graph_context_omits_keys_still_at_their_type_default() -> None:
     # ``output_type: "any"`` is node_defaults' value for a variable-aggregator,
     # so it is scaffolding; ``variables`` is the author's and stays.
     context = edit._graph_context(_TARGET_GRAPH, ["node5"])
@@ -381,8 +444,8 @@ def test_graph_context_omits_keys_still_at_their_type_default():
     assert json.dumps(_AGGREGATOR_VARIABLES, ensure_ascii=False) in context
 
 
-def test_graph_context_omits_the_two_dozen_default_keys_of_an_http_node():
-    graph = {
+def test_graph_context_omits_the_two_dozen_default_keys_of_an_http_node() -> None:
+    graph: Graph = {
         "nodes": [
             {
                 "id": "http",
@@ -409,8 +472,8 @@ def test_graph_context_omits_the_two_dozen_default_keys_of_an_http_node():
         assert scaffolding not in context
 
 
-def test_graph_context_marks_an_oversized_node_config_as_truncated():
-    graph = {
+def test_graph_context_marks_an_oversized_node_config_as_truncated() -> None:
+    graph: Graph = {
         "nodes": [{"id": "big", "data": {"type": "template-transform", "title": "Big", "template": "x" * 4000}}],
         "edges": [],
     }
@@ -421,14 +484,14 @@ def test_graph_context_marks_an_oversized_node_config_as_truncated():
     assert len(context) < 4000
 
 
-def test_graph_context_without_targets_keeps_todays_one_line_form():
+def test_graph_context_without_targets_keeps_todays_one_line_form() -> None:
     context = edit._graph_context(_TARGET_GRAPH)
 
     assert "config:" not in context
     assert "  node2 (if-else): Check score handles=['true', 'false']" in context
 
 
-def test_build_edit_intents_puts_the_target_config_in_the_prompt():
+def test_build_edit_intents_puts_the_target_config_in_the_prompt() -> None:
     m = _RecordingInstance([json.dumps({"intents": []})])
 
     edit.build_edit_intents(m, {"tone": "formal"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
@@ -437,7 +500,7 @@ def test_build_edit_intents_puts_the_target_config_in_the_prompt():
     assert json.dumps(_IF_ELSE_CASES, ensure_ascii=False) in user
 
 
-def test_build_edit_intents_with_no_targets_falls_back_to_the_plain_context():
+def test_build_edit_intents_with_no_targets_falls_back_to_the_plain_context() -> None:
     m = _RecordingInstance([json.dumps({"intents": []})])
 
     out = edit.build_edit_intents(m, {"tone": "formal"}, _TARGET_GRAPH)
@@ -454,14 +517,14 @@ def test_build_edit_intents_with_no_targets_falls_back_to_the_plain_context():
 # write is the only input that can make the second attempt differ from the first.
 
 
-def _with_operator(operator: str) -> dict:
+def _with_operator(operator: str) -> Graph:
     """``_TARGET_GRAPH`` with node2's one condition using ``operator``."""
     graph = copy.deepcopy(_TARGET_GRAPH)
     graph["nodes"][1]["data"]["cases"][0]["conditions"][0]["comparison_operator"] = operator
     return graph
 
 
-def test_build_edit_intents_quotes_the_engines_refusal_of_the_previous_attempt():
+def test_build_edit_intents_quotes_the_engines_refusal_of_the_previous_attempt() -> None:
     m = _RecordingInstance([json.dumps({"intents": []})])
     rejection = "the draft would not start: node 'node2' (if-else): 1 validation error for IfElseNodeData"
 
@@ -471,7 +534,7 @@ def test_build_edit_intents_quotes_the_engines_refusal_of_the_previous_attempt()
     assert f"PREVIOUS ATTEMPT REJECTED BY THE ENGINE:\n{rejection}\nDo not repeat it." in user
 
 
-def test_no_previous_refusal_leaves_the_prompt_exactly_as_it_was():
+def test_no_previous_refusal_leaves_the_prompt_exactly_as_it_was() -> None:
     m = _RecordingInstance([json.dumps({"intents": []})])
 
     edit.build_edit_intents(m, {"tone": "formal"}, _TARGET_GRAPH)
@@ -479,7 +542,7 @@ def test_no_previous_refusal_leaves_the_prompt_exactly_as_it_was():
     assert "PREVIOUS ATTEMPT REJECTED" not in m.calls[0]["prompt_messages"][1].content
 
 
-def test_the_engines_text_separates_two_refusals_the_preflight_key_cannot():
+def test_the_engines_text_separates_two_refusals_the_preflight_key_cannot() -> None:
     """The hole the port-rejection feedback exists to cover.
 
     ``new_preflight_problems`` is keyed on pydantic error LOCATIONS, so a second
@@ -513,7 +576,7 @@ def test_the_engines_text_separates_two_refusals_the_preflight_key_cannot():
     assert "input_value='klingon'" not in prompts[1]
 
 
-def test_the_previous_refusal_stays_in_front_of_the_model_through_the_retry():
+def test_the_previous_refusal_stays_in_front_of_the_model_through_the_retry() -> None:
     """The corrective re-prompt is built on top of the same user turn, so a
     model that burns its one retry still has the engine's earlier refusal in
     view rather than only this attempt's."""
@@ -532,7 +595,7 @@ def test_the_previous_refusal_stays_in_front_of_the_model_through_the_retry():
 
 # ---- credentials: withheld from the prompt, and un-writable back into the draft ----
 
-_SECRET_HTTP_GRAPH = {
+_SECRET_HTTP_GRAPH: Graph = {
     "nodes": [
         {
             "id": "http",
@@ -554,7 +617,7 @@ _SECRET_HTTP_GRAPH = {
 }
 
 
-def test_graph_context_withholds_an_api_key_behind_the_sentinel():
+def test_graph_context_withholds_an_api_key_behind_the_sentinel() -> None:
     context = edit._graph_context(_SECRET_HTTP_GRAPH, ["http"])
 
     assert "sk-live-9f3c-SECRET" not in context
@@ -564,7 +627,7 @@ def test_graph_context_withholds_an_api_key_behind_the_sentinel():
     assert '"X-Auth"' in context
 
 
-def test_graph_context_withholds_header_and_param_values_but_keeps_their_names():
+def test_graph_context_withholds_header_and_param_values_but_keeps_their_names() -> None:
     context = edit._graph_context(_SECRET_HTTP_GRAPH, ["http"])
 
     assert "tok-999-SECRET" not in context
@@ -574,13 +637,13 @@ def test_graph_context_withholds_header_and_param_values_but_keeps_their_names()
     assert "application/json" not in context  # every non-empty value goes, not just the obvious ones
 
 
-def test_graph_context_legend_warns_the_model_off_writing_the_sentinel_back():
+def test_graph_context_legend_warns_the_model_off_writing_the_sentinel_back() -> None:
     context = edit._graph_context(_SECRET_HTTP_GRAPH, ["http"])
 
     assert "never write" in context
 
 
-def test_redaction_does_not_mutate_the_live_graph():
+def test_redaction_does_not_mutate_the_live_graph() -> None:
     edit._graph_context(_SECRET_HTTP_GRAPH, ["http"])
 
     data = _SECRET_HTTP_GRAPH["nodes"][0]["data"]
@@ -588,7 +651,7 @@ def test_redaction_does_not_mutate_the_live_graph():
     assert "tok-999-SECRET" in data["headers"]
 
 
-def test_a_write_carrying_the_sentinel_leaves_the_stored_credential_intact():
+def test_a_write_carrying_the_sentinel_leaves_the_stored_credential_intact() -> None:
     """The other half of the guard.
 
     Redaction alone is worse than the leak: the model reads the placeholder,
@@ -612,7 +675,7 @@ def test_a_write_carrying_the_sentinel_leaves_the_stored_credential_intact():
     assert "tok-999-SECRET" in _SECRET_HTTP_GRAPH["nodes"][0]["data"]["headers"]
 
 
-def test_a_nested_sentinel_in_a_create_node_config_is_refused_too():
+def test_a_nested_sentinel_in_a_create_node_config_is_refused_too() -> None:
     intent = MutationIntent(
         op="create_node",
         args={
@@ -626,7 +689,7 @@ def test_a_nested_sentinel_in_a_create_node_config_is_refused_too():
     assert len(rejected) == 1
 
 
-def test_a_real_value_for_the_same_field_is_still_writable():
+def test_a_real_value_for_the_same_field_is_still_writable() -> None:
     intent = MutationIntent(
         op="set_node_config",
         args={"node_id": "http", "path": "headers", "value": "Authorization: Bearer tok-new"},
@@ -641,8 +704,8 @@ def test_a_real_value_for_the_same_field_is_still_writable():
 # ---- rendering minors ----
 
 
-def test_graph_context_skips_a_config_line_that_would_only_repeat_the_summary():
-    graph = {"nodes": [{"id": "a", "data": {"type": "llm", "title": "Only a title"}}], "edges": []}
+def test_graph_context_skips_a_config_line_that_would_only_repeat_the_summary() -> None:
+    graph: Graph = {"nodes": [{"id": "a", "data": {"type": "llm", "title": "Only a title"}}], "edges": []}
 
     context = edit._graph_context(graph, ["a"])
 
@@ -650,8 +713,8 @@ def test_graph_context_skips_a_config_line_that_would_only_repeat_the_summary():
     assert "(config =" not in context  # and the legend is gated on a block actually rendering
 
 
-def test_truncation_names_the_keys_it_dropped():
-    graph = {
+def test_truncation_names_the_keys_it_dropped() -> None:
+    graph: Graph = {
         "nodes": [
             {
                 "id": "big",
@@ -686,7 +749,7 @@ def _schema_operators(text: str) -> tuple[str, ...]:
     return tuple(out)
 
 
-def test_op_schema_teaches_the_array_and_operator_rules_the_engine_enforces():
+def test_op_schema_teaches_the_array_and_operator_rules_the_engine_enforces() -> None:
     """ONE test for four clauses, deliberately -- not four substring assertions.
 
     ``assert "<phrase>" in _OP_SCHEMA`` asserts nothing about behaviour: it pins
@@ -700,7 +763,7 @@ def test_op_schema_teaches_the_array_and_operator_rules_the_engine_enforces():
     mutation looks like.
     """
     schema = edit._OP_SCHEMA
-    graph = {
+    graph: Graph = {
         "nodes": [
             {
                 "id": "branch",
@@ -761,7 +824,9 @@ def test_op_schema_teaches_the_array_and_operator_rules_the_engine_enforces():
     # ambiguous, deliberately unhealed, and this prose is all that stops them.
     for ascii_form in (">=", "<=", "!="):
         with pytest.raises(ValidationError):
-            Condition(variable_selector=["start", "score"], comparison_operator=ascii_form, value="90")
+            Condition.model_validate(
+                {"variable_selector": ["start", "score"], "comparison_operator": ascii_form, "value": "90"}
+            )
     for engine_form in ("≥", "≤", "≠"):
         assert (
             Condition(
@@ -814,7 +879,7 @@ def _operator_intents(operator: str) -> str:
     return '{"intents": [' + _SET_EQ % ("comparison_operator", operator) + "]}"
 
 
-def test_build_edit_intents_reprompts_on_a_node_the_engine_would_refuse_and_recovers():
+def test_build_edit_intents_reprompts_on_a_node_the_engine_would_refuse_and_recovers() -> None:
     m = _RecordingInstance([_operator_intents("=="), _operator_intents("≥")])
 
     out = edit.build_edit_intents(m, {"threshold": "90"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
@@ -823,7 +888,7 @@ def test_build_edit_intents_reprompts_on_a_node_the_engine_would_refuse_and_reco
     assert [i.args["value"] for i in out] == ["≥"]
 
 
-def test_the_corrective_reprompt_quotes_the_engines_own_words():
+def test_the_corrective_reprompt_quotes_the_engines_own_words() -> None:
     m = _RecordingInstance([_operator_intents("=="), _operator_intents("≥")])
 
     edit.build_edit_intents(m, {"threshold": "90"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
@@ -836,7 +901,7 @@ def test_the_corrective_reprompt_quotes_the_engines_own_words():
     assert "Input should be" in retry_prompt
 
 
-def test_a_batch_the_engine_accepts_never_spends_the_reprompt():
+def test_a_batch_the_engine_accepts_never_spends_the_reprompt() -> None:
     m = _RecordingInstance([_operator_intents("≥")])
 
     out = edit.build_edit_intents(m, {"threshold": "90"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
@@ -845,7 +910,7 @@ def test_a_batch_the_engine_accepts_never_spends_the_reprompt():
     assert len(out) == 1
 
 
-def test_the_drafts_pre_existing_problems_do_not_spend_the_reprompt():
+def test_the_drafts_pre_existing_problems_do_not_spend_the_reprompt() -> None:
     """``_TARGET_GRAPH``'s start and end nodes are already invalid -- the user's
     own half-finished draft. New problems only: the edit is unrelated to them and
     must go through in one call."""
@@ -858,7 +923,7 @@ def test_the_drafts_pre_existing_problems_do_not_spend_the_reprompt():
     assert [i.args["value"] for i in out] == ["90"]
 
 
-def test_a_batch_refused_twice_still_goes_to_the_gate_where_the_write_refuses_it_loudly():
+def test_a_batch_refused_twice_still_goes_to_the_gate_where_the_write_refuses_it_loudly() -> None:
     """The budget is ONE corrective re-prompt. A model that writes the same
     unhealable operator twice has spent it: the batch is returned, ``apply_repair``
     refuses it by name, and the handler parks the session with the engine's reason
@@ -871,7 +936,7 @@ def test_a_batch_refused_twice_still_goes_to_the_gate_where_the_write_refuses_it
     assert [i.args["value"] for i in out] == ["=="]
 
 
-def test_a_retry_that_returns_nothing_usable_falls_back_to_the_first_attempt():
+def test_a_retry_that_returns_nothing_usable_falls_back_to_the_first_attempt() -> None:
     first = (
         '{"intents": ['
         + _SET_EQ % ("value", "90")
@@ -939,7 +1004,7 @@ _S6_BATCH_REJOINED = json.dumps(
 )
 
 
-def test_a_model_that_ignores_the_guidance_twice_surfaces_instead_of_writing():
+def test_a_model_that_ignores_the_guidance_twice_surfaces_instead_of_writing() -> None:
     """Both attempts wire a new arm into ``node5`` without extending its
     ``variables``. The old fallback returned the first attempt's applicable
     intents, so the guard fired and the known-bad batch was written anyway --
@@ -956,7 +1021,7 @@ def test_a_model_that_ignores_the_guidance_twice_surfaces_instead_of_writing():
     assert "node7" in str(raised.value)
 
 
-def test_a_model_that_takes_the_guidance_on_the_retry_is_written_as_normal():
+def test_a_model_that_takes_the_guidance_on_the_retry_is_written_as_normal() -> None:
     """The other half: the corrective re-prompt is what this is for, and a
     second attempt that extends the aggregator goes through untouched."""
     m = _RecordingInstance([_S6_BATCH, _S6_BATCH_REJOINED])
@@ -968,7 +1033,7 @@ def test_a_model_that_takes_the_guidance_on_the_retry_is_written_as_normal():
     assert [i.op for i in out][-1] == "set_node_config"
 
 
-def test_a_purely_structural_rejection_still_falls_back_to_the_first_attempt():
+def test_a_purely_structural_rejection_still_falls_back_to_the_first_attempt() -> None:
     """The distinction that keeps this from being a blanket "any rejection
     surfaces". A structural refusal DROPS the offending intent, so what is left
     is a batch nobody has judged wrong -- and Task 5 chose deliberately to keep
@@ -988,7 +1053,7 @@ def test_a_purely_structural_rejection_still_falls_back_to_the_first_attempt():
     assert [i.args["node_id"] for i in out] == ["node2"]
 
 
-def test_a_first_attempt_the_guards_condemn_surfaces_even_when_the_retry_is_unusable():
+def test_a_first_attempt_the_guards_condemn_surfaces_even_when_the_retry_is_unusable() -> None:
     """The other route into the fallback: the retry comes back unparseable, so
     there is nothing to judge but the first attempt -- which the guards already
     condemned. It must not be written either."""

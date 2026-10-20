@@ -6,11 +6,13 @@ from unittest.mock import MagicMock, call, patch
 from uuid import uuid4
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import tasks.remove_app_and_related_data_task as remove_app_task_module
 from enums import DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorageNotConfiguredError
 from models import AppStar
@@ -18,6 +20,7 @@ from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderRealCallConsent
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowArchiveLog
+from services.network_access_group_service import NetworkAccessGroupUpstreamError
 from tasks.remove_app_and_related_data_task import (
     _delete_app_stars,
     _delete_app_workflow_archive_logs,
@@ -210,6 +213,140 @@ def test_builder_real_call_consent_cleanup_is_scoped_idempotent_and_batched(sqli
     remove_app_task_module._delete_builder_real_call_consents(tenants["tenant-1"], apps["app-1"])
     sqlite_session.expire_all()
     assert set(sqlite_session.scalars(select(DifyBuilderRealCallConsent.id))) == kept_ids
+
+
+def test_cloud_app_cleanup_schedules_independent_binding_cleanup(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
+) -> None:
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    apply_async = mocker.patch.object(
+        remove_app_task_module.cleanup_app_network_access_group_binding_task,
+        "apply_async",
+    )
+
+    remove_app_task_module._schedule_app_network_access_group_binding_cleanup("tenant-1", "app-1")
+
+    apply_async.assert_called_once_with(
+        kwargs={"tenant_id": "tenant-1", "app_id": "app-1"},
+        countdown=10,
+    )
+
+
+def test_community_app_cleanup_does_not_schedule_binding_cleanup(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
+) -> None:
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    apply_async = mocker.patch.object(
+        remove_app_task_module.cleanup_app_network_access_group_binding_task,
+        "apply_async",
+    )
+
+    remove_app_task_module._schedule_app_network_access_group_binding_cleanup("tenant-1", "app-1")
+
+    apply_async.assert_not_called()
+
+
+def test_independent_binding_cleanup_task_succeeds(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, account_application_services: ApplicationServices
+) -> None:
+    cleanup_binding = mocker.patch.object(
+        account_application_services.network_access_groups, "cleanup_app_binding", return_value=True
+    )
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+
+    with patch(
+        "extensions.ext_application_services.application_services",
+        return_value=account_application_services,
+    ):
+        remove_app_task_module.cleanup_app_network_access_group_binding_task.run(
+            tenant_id="tenant-1",
+            app_id="app-1",
+        )
+
+    cleanup_binding.assert_called_once_with(workspace_id="tenant-1", app_id="app-1")
+    assert remove_app_task_module.cleanup_app_network_access_group_binding_task.max_retries == 24
+
+
+def test_independent_binding_cleanup_task_retries_with_exponential_backoff(
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    account_application_services: ApplicationServices,
+) -> None:
+    upstream_error = NetworkAccessGroupUpstreamError(409, "NETWORK_ACCESS_APP_STILL_EXISTS")
+    retry_error = RuntimeError("retry scheduled")
+    mocker.patch.object(
+        account_application_services.network_access_groups, "cleanup_app_binding", side_effect=upstream_error
+    )
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    retry = mocker.patch.object(
+        remove_app_task_module.cleanup_app_network_access_group_binding_task, "retry", side_effect=retry_error
+    )
+
+    with (
+        patch(
+            "extensions.ext_application_services.application_services",
+            return_value=account_application_services,
+        ),
+        pytest.raises(RuntimeError, match="retry scheduled"),
+    ):
+        remove_app_task_module.cleanup_app_network_access_group_binding_task.run(
+            tenant_id="tenant-1",
+            app_id="app-1",
+        )
+
+    retry.assert_called_once_with(exc=upstream_error, countdown=15)
+    assert remove_app_task_module._network_access_binding_cleanup_retry_delay(5) == 480
+    assert remove_app_task_module._network_access_binding_cleanup_retry_delay(6) == 600
+    assert remove_app_task_module._network_access_binding_cleanup_retry_delay(24) == 600
+
+
+def test_parent_local_cleanup_failure_happens_after_binding_cleanup_is_scheduled(
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+) -> None:
+    local_error = RuntimeError("local cleanup failed")
+    retry_error = RuntimeError("parent retry scheduled")
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    apply_async = mocker.patch.object(
+        remove_app_task_module.cleanup_app_network_access_group_binding_task,
+        "apply_async",
+    )
+    mocker.patch.object(remove_app_task_module, "_delete_app_model_configs", side_effect=local_error)
+    retry = mocker.patch.object(
+        remove_app_task_module.remove_app_and_related_data_task, "retry", side_effect=retry_error
+    )
+
+    with pytest.raises(RuntimeError, match="parent retry scheduled"):
+        remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
+
+    apply_async.assert_called_once_with(
+        kwargs={"tenant_id": "tenant-1", "app_id": "app-1"},
+        countdown=10,
+    )
+    retry.assert_called_once_with(exc=local_error, countdown=60)
+
+
+def test_parent_retries_before_local_cleanup_when_binding_schedule_fails(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
+) -> None:
+    broker_error = RuntimeError("broker unavailable")
+    retry_error = RuntimeError("parent retry scheduled")
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    mocker.patch.object(
+        remove_app_task_module.cleanup_app_network_access_group_binding_task,
+        "apply_async",
+        side_effect=broker_error,
+    )
+    first_local_cleanup = mocker.patch.object(remove_app_task_module, "_delete_app_model_configs")
+    retry = mocker.patch.object(
+        remove_app_task_module.remove_app_and_related_data_task, "retry", side_effect=retry_error
+    )
+
+    with pytest.raises(RuntimeError, match="parent retry scheduled"):
+        remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
+
+    retry.assert_called_once_with(exc=broker_error, countdown=60)
+    first_local_cleanup.assert_not_called()
 
 
 class TestDeleteDraftVariablesBatch:

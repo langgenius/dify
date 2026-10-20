@@ -8,7 +8,7 @@ the native adapter repeats inspection and bounds all selected values and output.
 import math
 import re
 from collections.abc import Iterator, Mapping
-from typing import Any, NoReturn, override
+from typing import Any, NoReturn, cast, override
 
 from jinja2 import Environment, nodes
 
@@ -114,20 +114,20 @@ def _children(node: nodes.Node, declared: frozenset[str]) -> Iterator[nodes.Node
     kind = type(node)
     if kind not in _FIELDS or node.fields != _FIELDS[kind]:
         _refuse()
-    if kind is nodes.Name:
+    if type(node) is nodes.Name:
         if node.ctx != "load" or node.name not in declared:
             _refuse()
         return
-    if kind is nodes.Const:
+    if type(node) is nodes.Const:
         try:
             _scalar(node.value)
         except BuilderExecutionPolicyError:
             _refuse()
         return
-    if kind is nodes.TemplateData:
+    if type(node) is nodes.TemplateData:
         _text_bytes(node.data, MAX_SOURCE_BYTES)
         return
-    if kind is nodes.Filter:
+    if type(node) is nodes.Filter:
         if node.name != "trim" or node.args or node.kwargs or node.dyn_args is not None or node.dyn_kwargs is not None:
             _refuse()
         if node.node is None:
@@ -210,7 +210,7 @@ def validate_template_configuration(data: Mapping[str, Any]) -> None:
         ):
             _refuse("unsupported_template_selector")
         names.append(variable["variable"])
-    inspect_template(template, _names(names))
+    inspect_template(cast(str, template), _names(names))
 
 
 class _Evaluation:
@@ -229,38 +229,36 @@ class _Evaluation:
 
     def expression(self, node: nodes.Node) -> Scalar:
         self._visit()
-        kind = type(node)
-        if kind is nodes.Name:
+        if type(node) is nodes.Name:
             return self.values[node.name]
-        if kind is nodes.Const:
+        if type(node) is nodes.Const:
             return node.value
-        if kind is nodes.TemplateData:
+        if type(node) is nodes.TemplateData:
             return node.data
-        if kind is nodes.Filter:
-            return _scalar_text(self.expression(node.node)).strip()
-        if kind is nodes.Not:
+        if type(node) is nodes.Filter:
+            return _scalar_text(self.expression(cast(nodes.Expr, node.node))).strip()
+        if type(node) is nodes.Not:
             return not self.expression(node.node)
-        if kind is nodes.And:
+        if type(node) is nodes.And:
             left = self.expression(node.left)
             return self.expression(node.right) if left else left
-        if kind is nodes.Or:
+        if type(node) is nodes.Or:
             left = self.expression(node.left)
             return left or self.expression(node.right)
         _refuse()
 
     def statement(self, node: nodes.Node) -> None:
         self._visit()
-        kind = type(node)
-        if kind is nodes.Template:
+        if type(node) is nodes.Template:
             for child in node.body:
                 self.statement(child)
-        elif kind is nodes.Output:
+        elif type(node) is nodes.Output:
             for expression in node.nodes:
                 text = _scalar_text(self.expression(expression))
                 size = _text_bytes(text, MAX_OUTPUT_BYTES - self.output_bytes)
                 self.output_bytes += size
                 self.fragments.append(text)
-        elif kind is nodes.If:
+        elif type(node) is nodes.If:
             branch = node.else_
             if self.expression(node.test):
                 branch = node.body

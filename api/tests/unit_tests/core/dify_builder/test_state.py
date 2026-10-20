@@ -31,7 +31,7 @@ ALL_STATES = [
 ]
 
 
-def test_state_classification():
+def test_state_classification() -> None:
     assert is_working(PcState.FIX_DIAGNOSE)
     assert is_working(PcState.FIX_APPLY)
     assert is_working(PcState.FIX_VERIFY)
@@ -63,12 +63,12 @@ def test_state_classification():
         assert n == 1, f"state {s} must be exactly one of working/waiting/terminal"
 
 
-def test_canvas_read_only_matches_is_working():
+def test_canvas_read_only_matches_is_working() -> None:
     for s in ALL_STATES:
         assert canvas_read_only(s) == is_working(s)
 
 
-def test_state_values_are_verbatim_go_strings():
+def test_state_values_are_verbatim_go_strings() -> None:
     assert PcState.FIX_DIAGNOSE == "fix.diagnose"
     assert PcState.FIX_PROPOSE == "fix.propose"
     assert PcState.FIX_AWAIT_APPROVAL == "fix.await_approval"
@@ -85,7 +85,7 @@ def test_state_values_are_verbatim_go_strings():
     assert PcState.FAILED == "failed"
 
 
-def test_edit_publish_is_working_and_edit_complete_is_terminal():
+def test_edit_publish_is_working_and_edit_complete_is_terminal() -> None:
     assert PcState.EDIT_PUBLISH == "edit.publish"
     assert is_working(PcState.EDIT_PUBLISH) is True
     assert is_terminal(PcState.EDIT_PUBLISH) is False
@@ -93,7 +93,7 @@ def test_edit_publish_is_working_and_edit_complete_is_terminal():
     assert is_terminal(PcState.EDIT_COMPLETE) is True
 
 
-def test_build_initial_plan_is_working_not_waiting():
+def test_build_initial_plan_is_working_not_waiting() -> None:
     """build.initial_plan is reachable only via the continue_adjusting/
     retry_after_revert loop-back, where it runs resource discovery
     unconditionally and falls straight through to
@@ -109,7 +109,7 @@ def test_build_initial_plan_is_working_not_waiting():
     assert canvas_read_only(PcState.BUILD_INITIAL_PLAN) is True
 
 
-def test_build_capability_check_is_an_automatic_working_state():
+def test_build_capability_check_is_an_automatic_working_state() -> None:
     assert is_working(PcState.BUILD_CAPABILITY_CHECK) is True
     assert is_waiting(PcState.BUILD_CAPABILITY_CHECK) is False
     assert is_terminal(PcState.BUILD_CAPABILITY_CHECK) is False

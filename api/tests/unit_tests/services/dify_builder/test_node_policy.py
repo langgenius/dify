@@ -4,11 +4,11 @@ import copy
 
 import pytest
 
-from core.dify_builder.models import MutationIntent
+from core.dify_builder.models import Graph, MutationIntent
 from services.dify_builder.node_policy import proposal_policy_rejections
 
 
-def _historical_graph():
+def _historical_graph() -> Graph:
     return {
         "nodes": [
             {"id": "s", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}},
@@ -35,7 +35,7 @@ def _historical_graph():
 
 
 @pytest.mark.parametrize("node_id", ["s", "a", "h", "v2"])
-def test_historical_nodes_allow_otherwise_permitted_repairs_without_mutating_source(node_id):
+def test_historical_nodes_allow_otherwise_permitted_repairs_without_mutating_source(node_id: str) -> None:
     graph = _historical_graph()
     intent = MutationIntent(op="set_node_config", args={"node_id": node_id, "path": "title", "value": "Repaired"})
     original = copy.deepcopy(graph)
@@ -45,7 +45,7 @@ def test_historical_nodes_allow_otherwise_permitted_repairs_without_mutating_sou
 
 
 @pytest.mark.parametrize("node_type", ["knowledge-retrieval", "human-input", "agent"])
-def test_existing_create_replay_is_still_a_noop(node_type):
+def test_existing_create_replay_is_still_a_noop(node_type: str) -> None:
     graph = _historical_graph()
     node_id = {"knowledge-retrieval": "r", "human-input": "h", "agent": "a"}[node_type]
     intent = MutationIntent(op="create_node", args={"node_id": node_id, "node_type": node_type, "config": {}})
@@ -53,7 +53,7 @@ def test_existing_create_replay_is_still_a_noop(node_type):
     assert proposal_policy_rejections(graph, [intent]) == []
 
 
-def test_delete_then_recreate_existing_forbidden_id_is_a_new_addition():
+def test_delete_then_recreate_existing_forbidden_id_is_a_new_addition() -> None:
     graph = _historical_graph()
     intents = [
         MutationIntent(op="delete_node", args={"node_id": "a"}),
@@ -63,7 +63,7 @@ def test_delete_then_recreate_existing_forbidden_id_is_a_new_addition():
     assert proposal_policy_rejections(graph, intents)
 
 
-def test_retrieval_unchanged_binding_and_agent_discriminator_fields_are_permitted():
+def test_retrieval_unchanged_binding_and_agent_discriminator_fields_are_permitted() -> None:
     graph = _historical_graph()
     intents = [
         MutationIntent(op="set_node_config", args={"node_id": "r", "path": "dataset_ids", "value": ["kb-1"]}),
@@ -74,7 +74,7 @@ def test_retrieval_unchanged_binding_and_agent_discriminator_fields_are_permitte
     assert proposal_policy_rejections(graph, intents) == []
 
 
-def test_malformed_proposals_leave_rejection_to_existing_native_validation():
+def test_malformed_proposals_leave_rejection_to_existing_native_validation() -> None:
     graph = _historical_graph()
     malformed = [
         MutationIntent(op="set_node_config", args={"node_id": "r", "path": "dataset_ids"}),
@@ -85,7 +85,7 @@ def test_malformed_proposals_leave_rejection_to_existing_native_validation():
     assert proposal_policy_rejections(graph, malformed) == []
 
 
-def test_rejections_identify_operation_without_echoing_config_values():
+def test_rejections_identify_operation_without_echoing_config_values() -> None:
     intents = [MutationIntent(op="create_node", args={"node_type": "agent", "config": {"api_key": "live-secret"}})]
 
     reasons = proposal_policy_rejections({"nodes": [], "edges": []}, intents)
@@ -97,7 +97,7 @@ def test_rejections_identify_operation_without_echoing_config_values():
 
 
 @pytest.mark.parametrize("value", [["agent"], {"type": "agent"}])
-def test_non_string_type_conversion_remains_a_native_validation_problem(value):
+def test_non_string_type_conversion_remains_a_native_validation_problem(value: object) -> None:
     intent = MutationIntent(op="set_node_config", args={"node_id": "s", "path": "type", "value": value})
 
     assert proposal_policy_rejections(_historical_graph(), [intent]) == []

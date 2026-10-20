@@ -172,9 +172,7 @@ class Transport:
         self.closed = False
         self.yielded = 0
 
-    def __call__(
-        self, method: str, path: str, _type: type, **kwargs: object
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    def __call__(self, method: str, path: str, _type: type, **kwargs: object) -> Generator[ToolInvokeMessage]:
         assert method == "POST"
         headers, data = kwargs["headers"], kwargs["data"]
         assert isinstance(headers, dict)
@@ -184,7 +182,7 @@ class Transport:
         self.calls.append(Call(path=path, headers=dict(headers), payload=dict(payload)))
         return self._stream()
 
-    def _stream(self) -> Generator[ToolInvokeMessage, None, None]:
+    def _stream(self) -> Generator[ToolInvokeMessage]:
         try:
             for index, message in enumerate(self.messages):
                 if self.fail_after is not None and index == self.fail_after:

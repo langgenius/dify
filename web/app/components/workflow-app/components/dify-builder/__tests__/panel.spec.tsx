@@ -141,7 +141,7 @@ const renderPanel = (
     appId: 'app-1',
     canEdit: true,
     enabled: true,
-    getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
+    getCanvasSnapshot: () => ({ nodes: [], edges: [], isChatflow: false }),
     session: {
       onCanvasRefreshed: vi.fn(),
       refresh: vi.fn(async () => true),

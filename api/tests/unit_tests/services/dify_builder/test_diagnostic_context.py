@@ -2,13 +2,13 @@ from copy import deepcopy
 
 import pytest
 
-from core.dify_builder.models import NodeOutput, Run
+from core.dify_builder.models import Graph, NodeOutput, Run
 from services.dify_builder.credentials import REDACTED
 from services.dify_builder.diagnostic_context import redact_run_context
 
 
 @pytest.mark.parametrize("field", ["api_key", "apiKey", "X-Api-Key", "access_token", "client_secret", "password"])
-def test_nested_sensitive_fields_are_redacted_without_hiding_ordinary_key(field):
+def test_nested_sensitive_fields_are_redacted_without_hiding_ordinary_key(field: str) -> None:
     output = NodeOutput(inputs={"items": [{field: "runtime-private", "key": "lookup", "count": 0, "enabled": False}]})
     run = Run(per_node=[output], immutable=True)
     before = deepcopy((run, output))
@@ -40,7 +40,9 @@ def test_nested_sensitive_fields_are_redacted_without_hiding_ordinary_key(field)
         ("api_key", "graph-private"),
     ],
 )
-def test_graph_credentials_repeated_in_run_and_output_text_are_removed(field, value):
+def test_graph_credentials_repeated_in_run_and_output_text_are_removed(
+    field: str, value: Graph | list[Graph] | str
+) -> None:
     graph = {"nodes": [{"id": "http1", "data": {field: value}}]}
     output = NodeOutput(
         error="connection refused: graph-private", outputs={"body": "graph-private rejected", "status": 401}
@@ -56,7 +58,7 @@ def test_graph_credentials_repeated_in_run_and_output_text_are_removed(field, va
     assert (run, graph, output) == before
 
 
-def test_authorization_scheme_is_removed_when_only_the_token_repeats_in_error():
+def test_authorization_scheme_is_removed_when_only_the_token_repeats_in_error() -> None:
     graph = {"nodes": [{"data": {"headers": "Authorization: Bearer auth-private"}}]}
 
     safe_run, _ = redact_run_context(Run(error="connection refused: auth-private"), graph, [])
@@ -64,7 +66,7 @@ def test_authorization_scheme_is_removed_when_only_the_token_repeats_in_error():
     assert safe_run.error == f"connection refused: {REDACTED}"
 
 
-def test_falsey_diagnostic_values_are_preserved_in_independent_copies():
+def test_falsey_diagnostic_values_are_preserved_in_independent_copies() -> None:
     output = NodeOutput(inputs={"empty": "", "null": None, "zero": 0, "false": False, "list": [], "dict": {}})
 
     safe_run, safe_outputs = redact_run_context(Run(per_node=[output]), {}, [output])
@@ -74,7 +76,7 @@ def test_falsey_diagnostic_values_are_preserved_in_independent_copies():
     assert safe_run.per_node[0] is not output
 
 
-def test_overlapping_credentials_do_not_leave_a_suffix_in_free_text():
+def test_overlapping_credentials_do_not_leave_a_suffix_in_free_text() -> None:
     graph = {"nodes": [{"data": {"api_key": "private", "password": "private-long"}}]}
 
     safe_run, _ = redact_run_context(Run(error="private-long refused private"), graph, [])
@@ -82,7 +84,7 @@ def test_overlapping_credentials_do_not_leave_a_suffix_in_free_text():
     assert safe_run.error == f"{REDACTED} refused {REDACTED}"
 
 
-def test_short_graph_credential_does_not_corrupt_an_inserted_sentinel():
+def test_short_graph_credential_does_not_corrupt_an_inserted_sentinel() -> None:
     graph = {"nodes": [{"data": {"api_key": "private-long", "password": "DIFY"}}]}
 
     safe_run, _ = redact_run_context(Run(error="private-long refused DIFY"), graph, [])
@@ -90,7 +92,7 @@ def test_short_graph_credential_does_not_corrupt_an_inserted_sentinel():
     assert safe_run.error == f"{REDACTED} refused {REDACTED}"
 
 
-def test_structured_redaction_preserves_exact_sentinels_when_a_credential_matches_part_of_them():
+def test_structured_redaction_preserves_exact_sentinels_when_a_credential_matches_part_of_them() -> None:
     output = NodeOutput(
         inputs={"api_key": "DIFY", "nested": [{"password": "DIFY"}]},
         outputs={"headers": "Authorization: DIFY", "body": f"existing {REDACTED}; rejected DIFY"},

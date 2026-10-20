@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from inspect import unwrap
 from pathlib import Path
 from types import FunctionType, SimpleNamespace
-from typing import Annotated, NamedTuple, TypedDict, cast, get_args, override
+from typing import Annotated, NamedTuple, NoReturn, TypedDict, cast, get_args, override
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -95,11 +95,11 @@ def _actor() -> Actor:
     return mod._actor(_account(), "ten-1")
 
 
-def _frames():
+def _frames() -> Iterator[str]:
     yield f"event: message\ndata: {json.dumps({'event': 'command_started', 'data': {'session_id': 's1'}})}\n\n"
 
 
-def _assert_event_stream(result) -> Response:
+def _assert_event_stream(result: object) -> Response:
     assert isinstance(result, Response)
     assert result.mimetype == "text/event-stream"
     assert result.headers["Cache-Control"] == "no-cache"
@@ -107,12 +107,12 @@ def _assert_event_stream(result) -> Response:
     return result
 
 
-def test_actor_builds_from_current_user_and_tenant():
+def test_actor_builds_from_current_user_and_tenant() -> None:
     actor = mod._actor(_account("acc-1"), "ten-1")
     assert actor == Actor(account_id="acc-1", tenant_id="ten-1")
 
 
-def test_session_get_returns_json_state(monkeypatch):
+def test_session_get_returns_json_state(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
     view = _session_view()
     view.reply_language = "ja"
@@ -128,7 +128,7 @@ def test_session_get_returns_json_state(monkeypatch):
     service.get_session_view.assert_called_once_with("s1", Actor(account_id="acc-1", tenant_id="ten-1"))
 
 
-def test_session_get_and_command_finished_schema_keep_reply_language():
+def test_session_get_and_command_finished_schema_keep_reply_language() -> None:
     view = wiring.session_view_to_dict(_session_view())
     view["reply_language"] = "zh-Hans"
 
@@ -141,7 +141,7 @@ def test_session_get_and_command_finished_schema_keep_reply_language():
     assert finished_payload["reply_language"] == "zh-Hans"
 
 
-def test_session_stream_delegates_to_reconnect_stream(monkeypatch):
+def test_session_stream_delegates_to_reconnect_stream(monkeypatch: pytest.MonkeyPatch) -> None:
     stream = MagicMock(return_value=Response(_frames(), mimetype="text/event-stream", headers=mod._SSE_HEADERS))
     monkeypatch.setattr(mod, "_stream", stream)
 
@@ -151,7 +151,7 @@ def test_session_stream_delegates_to_reconnect_stream(monkeypatch):
     stream.assert_called_once_with("s1", Actor(account_id="acc-1", tenant_id="ten-1"))
 
 
-def test_conversation_get_validates_query_and_returns_json_page(monkeypatch):
+def test_conversation_get_validates_query_and_returns_json_page(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
     service.get_conversation_page.return_value = ConversationPage(
         data=[ConversationItem(seq=2, kind="notice", payload={"text": "hi"}, at_version=2)],
@@ -185,7 +185,7 @@ def test_conversation_get_validates_query_and_returns_json_page(monkeypatch):
     )
 
 
-def test_conversation_get_rejects_competing_cursors(monkeypatch):
+def test_conversation_get_rejects_competing_cursors(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
@@ -252,7 +252,9 @@ def test_conversation_get_rejects_competing_cursors(monkeypatch):
         ),
     ],
 )
-def test_create_always_calls_streaming_service(monkeypatch, payload, method_name, expected_kwargs):
+def test_create_always_calls_streaming_service(
+    monkeypatch: pytest.MonkeyPatch, payload: object, method_name: str, expected_kwargs: dict[str, object]
+) -> None:
     service = MagicMock()
     getattr(service, method_name).return_value = _frames()
     monkeypatch.setattr(mod, "build_service", lambda: service)
@@ -268,7 +270,7 @@ def test_create_always_calls_streaming_service(monkeypatch, payload, method_name
     service.create_fix_session.assert_not_called()
 
 
-def test_create_serializes_model_config_for_service(monkeypatch):
+def test_create_serializes_model_config_for_service(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
     service.create_build_session_stream.return_value = _frames()
     monkeypatch.setattr(mod, "build_service", lambda: service)
@@ -316,7 +318,9 @@ def test_create_serializes_model_config_for_service(monkeypatch):
         },
     ],
 )
-def test_create_rejects_malformed_or_legacy_payload_before_service(monkeypatch, payload):
+def test_create_rejects_malformed_or_legacy_payload_before_service(
+    monkeypatch: pytest.MonkeyPatch, payload: object
+) -> None:
     service = MagicMock()
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
@@ -324,7 +328,7 @@ def test_create_rejects_malformed_or_legacy_payload_before_service(monkeypatch, 
     assert not service.mock_calls
 
 
-def test_create_maps_pre_stream_error(monkeypatch):
+def test_create_maps_pre_stream_error(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
     service.create_fix_session_stream.side_effect = ConflictError("stale")
     monkeypatch.setattr(mod, "build_service", lambda: service)
@@ -334,7 +338,7 @@ def test_create_maps_pre_stream_error(monkeypatch):
     assert result == ({"code": "conflict"}, 409)
 
 
-def test_create_returns_recoverable_model_error_before_starting_stream(monkeypatch):
+def test_create_returns_recoverable_model_error_before_starting_stream(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
     service.create_build_session_stream.side_effect = ModelUnavailableError("provider credential detail")
     monkeypatch.setattr(mod, "build_service", lambda: service)
@@ -347,7 +351,7 @@ def test_create_returns_recoverable_model_error_before_starting_stream(monkeypat
     )
 
 
-def test_action_always_returns_event_stream_and_resolves_action_id(monkeypatch):
+def test_action_always_returns_event_stream_and_resolves_action_id(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
     service.submit_action_stream.return_value = _frames()
     monkeypatch.setattr(mod, "build_service", lambda: service)
@@ -433,7 +437,9 @@ def test_action_keeps_receipt_snapshot_separate_from_raw_submission(monkeypatch:
         },
     ],
 )
-def test_action_rejects_malformed_or_legacy_payload_before_service(monkeypatch, payload):
+def test_action_rejects_malformed_or_legacy_payload_before_service(
+    monkeypatch: pytest.MonkeyPatch, payload: object
+) -> None:
     service = MagicMock()
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
@@ -441,7 +447,7 @@ def test_action_rejects_malformed_or_legacy_payload_before_service(monkeypatch, 
     assert not service.mock_calls
 
 
-def test_action_maps_pre_stream_conflict(monkeypatch):
+def test_action_maps_pre_stream_conflict(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
     service.submit_action_stream.side_effect = ConflictError("stale")
     monkeypatch.setattr(mod, "build_service", lambda: service)
@@ -460,7 +466,7 @@ def test_action_maps_pre_stream_conflict(monkeypatch):
     assert result == ({"code": "conflict"}, 409)
 
 
-def test_message_always_returns_event_stream(monkeypatch):
+def test_message_always_returns_event_stream(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
     service.submit_message_stream.return_value = _frames()
     monkeypatch.setattr(mod, "build_service", lambda: service)
@@ -493,7 +499,9 @@ def test_message_always_returns_event_stream(monkeypatch):
         },
     ],
 )
-def test_message_rejects_malformed_or_legacy_payload_before_service(monkeypatch, payload):
+def test_message_rejects_malformed_or_legacy_payload_before_service(
+    monkeypatch: pytest.MonkeyPatch, payload: object
+) -> None:
     service = MagicMock()
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
@@ -501,7 +509,7 @@ def test_message_rejects_malformed_or_legacy_payload_before_service(monkeypatch,
     assert not service.mock_calls
 
 
-def test_stream_authorizes_then_subscribes_before_reading_state(monkeypatch):
+def test_stream_authorizes_then_subscribes_before_reading_state(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
     subscription = MagicMock()
     service = MagicMock()
@@ -509,11 +517,11 @@ def test_stream_authorizes_then_subscribes_before_reading_state(monkeypatch):
     service.authorize_session.side_effect = lambda *_args: calls.append("authorize")
     service.get_session_view.side_effect = lambda *_args: (calls.append("view"), _session_view())[1]
 
-    def read_snapshot(*, tenant_id: str, session_id: str):
+    def read_snapshot(*, tenant_id: str, session_id: str) -> None:
         assert (tenant_id, session_id) == ("ten-1", "s1")
         calls.append("snapshot")
 
-    def subscribe(_session_id: str):
+    def subscribe(_session_id: str) -> MagicMock:
         calls.append("subscribe")
         return subscription
 
@@ -534,7 +542,7 @@ def test_stream_authorizes_then_subscribes_before_reading_state(monkeypatch):
     assert stream.call_args.kwargs["command_id"] == ""
 
 
-def test_stream_settled_state_does_not_watch_for_progress(monkeypatch):
+def test_stream_settled_state_does_not_watch_for_progress(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
     service.get_session_view.return_value = _session_view(run_status=RunStatus.COMPLETE)
     subscription = MagicMock()
@@ -552,7 +560,7 @@ def test_stream_settled_state_does_not_watch_for_progress(monkeypatch):
     assert stream.call_args.kwargs["emit_command_finished_when_settled"] is True
 
 
-def test_reconnect_heartbeat_recovers_without_retaining_the_request_context(monkeypatch):
+def test_reconnect_heartbeat_recovers_without_retaining_the_request_context(monkeypatch: pytest.MonkeyPatch) -> None:
     app = Flask(__name__)
     processing = _session_view()
     settled = _session_view(run_status=RunStatus.WAITING_INPUT)
@@ -586,7 +594,7 @@ def test_reconnect_heartbeat_recovers_without_retaining_the_request_context(monk
     subscription.close.assert_called_once_with()
 
 
-def test_stream_closes_subscription_when_state_is_unavailable(monkeypatch):
+def test_stream_closes_subscription_when_state_is_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     subscription = MagicMock()
     service = MagicMock()
     service.get_session_view.side_effect = NotFoundError("missing")
@@ -599,7 +607,7 @@ def test_stream_closes_subscription_when_state_is_unavailable(monkeypatch):
     subscription.close.assert_called_once_with()
 
 
-def test_stream_authorizes_before_opening_subscription(monkeypatch):
+def test_stream_authorizes_before_opening_subscription(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
     service.authorize_session.side_effect = NotFoundError("missing")
     subscribe = MagicMock()
@@ -610,27 +618,27 @@ def test_stream_authorizes_before_opening_subscription(monkeypatch):
     subscribe.assert_not_called()
 
 
-def test_stream_response_returns_event_stream_on_success():
+def test_stream_response_returns_event_stream_on_success() -> None:
     response = _assert_event_stream(mod._stream_response(_frames))
     assert b'"event": "command_started"' in response.get_data()
 
 
-def test_stream_response_maps_known_error_to_http_tuple():
-    def make_generator():
+def test_stream_response_maps_known_error_to_http_tuple() -> None:
+    def make_generator() -> NoReturn:
         raise ConflictError("stale")
 
     assert mod._stream_response(make_generator) == ({"code": "conflict"}, 409)
 
 
-def test_stream_response_reraises_unmapped_exception():
-    def make_generator():
+def test_stream_response_reraises_unmapped_exception() -> None:
+    def make_generator() -> NoReturn:
         raise RuntimeError("boom")
 
     with pytest.raises(RuntimeError):
         mod._stream_response(make_generator)
 
 
-def test_dify_builder_required_blocks_when_feature_disabled(monkeypatch):
+def test_dify_builder_required_blocks_when_feature_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
     wrapped = mod.dify_builder_required(lambda *_args, **_kwargs: ({"ok": True}, 200))
     features = MagicMock(dify_builder_enabled=False)
     monkeypatch.setattr(mod.FeatureService, "get_features", lambda _tenant_id: features)
@@ -638,8 +646,8 @@ def test_dify_builder_required_blocks_when_feature_disabled(monkeypatch):
     assert wrapped(object(), "t") == ({"code": "feature_unavailable"}, 403)
 
 
-def test_dify_builder_required_passes_through_when_enabled(monkeypatch):
-    def view(_self, current_tenant_id, *_args, **_kwargs):
+def test_dify_builder_required_passes_through_when_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    def view(_self: object, current_tenant_id: str, *_args: object, **_kwargs: object) -> tuple[dict[str, object], int]:
         return {"current_tenant_id": current_tenant_id}, 200
 
     features = MagicMock(dify_builder_enabled=True)
@@ -648,7 +656,7 @@ def test_dify_builder_required_passes_through_when_enabled(monkeypatch):
     assert mod.dify_builder_required(view)(object(), "t") == ({"current_tenant_id": "t"}, 200)
 
 
-def test_decorator_stack_injects_positionally_in_method_order(monkeypatch):
+def test_decorator_stack_injects_positionally_in_method_order(monkeypatch: pytest.MonkeyPatch) -> None:
     account = _account()
     monkeypatch.setattr(wraps_mod, "current_account_with_tenant", lambda: (account, "ten-9"))
     monkeypatch.setattr(
@@ -658,7 +666,9 @@ def test_decorator_stack_injects_positionally_in_method_order(monkeypatch):
     )
     captured = {}
 
-    def view(self, current_tenant_id, current_user, **kwargs):
+    def view(
+        self: object, current_tenant_id: str, current_user: Account, **kwargs: object
+    ) -> tuple[dict[str, bool], int]:
         captured.update(self=self, tenant=current_tenant_id, user=current_user, kwargs=kwargs)
         return {"ok": True}, 200
 
@@ -669,7 +679,7 @@ def test_decorator_stack_injects_positionally_in_method_order(monkeypatch):
     assert captured == {"self": sentinel, "tenant": "ten-9", "user": account, "kwargs": {"session_id": "s1"}}
 
 
-def test_decorator_stack_gate_blocks_when_feature_off(monkeypatch):
+def test_decorator_stack_gate_blocks_when_feature_off(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(wraps_mod, "current_account_with_tenant", lambda: (_account(), "ten-9"))
     monkeypatch.setattr(
         mod.FeatureService,
@@ -677,7 +687,7 @@ def test_decorator_stack_gate_blocks_when_feature_off(monkeypatch):
         lambda _tenant_id: MagicMock(dify_builder_enabled=False),
     )
 
-    def view(*_args, **_kwargs):
+    def view(*_args: object, **_kwargs: object) -> NoReturn:
         raise AssertionError("view must not run when the feature is off")
 
     composed = wraps_mod.with_current_user(wraps_mod.with_current_tenant_id(mod.dify_builder_required(view)))
@@ -699,12 +709,12 @@ def test_decorator_stack_gate_blocks_when_feature_off(monkeypatch):
         mod.DifyBuilderRealCallConsentExecuteApi.post,
     ],
 )
-def test_session_routes_require_legacy_edit_permission(method):
+def test_session_routes_require_legacy_edit_permission(method: Callable[..., object]) -> None:
     gate = unwrap(method, stop=lambda wrapper: "edit_permission_required" in wrapper.__code__.co_qualname)
     assert "edit_permission_required" in gate.__code__.co_qualname
 
 
-def test_create_build_defaults_to_not_renaming_the_app(monkeypatch):
+def test_create_build_defaults_to_not_renaming_the_app(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
     service.create_build_session_stream.return_value = _frames()
     monkeypatch.setattr(mod, "build_service", lambda: service)
@@ -714,7 +724,7 @@ def test_create_build_defaults_to_not_renaming_the_app(monkeypatch):
     assert service.create_build_session_stream.call_args.kwargs["derive_app_name"] is False
 
 
-def test_create_build_forwards_the_rename_opt_in(monkeypatch):
+def test_create_build_forwards_the_rename_opt_in(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
     service.create_build_session_stream.return_value = _frames()
     monkeypatch.setattr(mod, "build_service", lambda: service)
@@ -727,7 +737,7 @@ def test_create_build_forwards_the_rename_opt_in(monkeypatch):
     assert service.create_build_session_stream.call_args.kwargs["derive_app_name"] is True
 
 
-def test_action_resolves_confirm_through_the_option_the_client_chose(monkeypatch):
+def test_action_resolves_confirm_through_the_option_the_client_chose(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
     service.submit_action_stream.return_value = _frames()
     monkeypatch.setattr(mod, "build_service", lambda: service)
@@ -751,7 +761,7 @@ def test_action_resolves_confirm_through_the_option_the_client_chose(monkeypatch
     assert action.payload == {"option_id": "run_validation", "free_text": ""}
 
 
-def test_action_still_accepts_a_client_posting_the_bare_action_id(monkeypatch):
+def test_action_still_accepts_a_client_posting_the_bare_action_id(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
     service.submit_action_stream.return_value = _frames()
     monkeypatch.setattr(mod, "build_service", lambda: service)
@@ -768,7 +778,9 @@ def test_action_still_accepts_a_client_posting_the_bare_action_id(monkeypatch):
 @pytest.mark.parametrize(
     "evidence", [None, {}, {"null": None, "false": False, "zero": 0, "empty": "", "list": [], "map": {}}]
 )
-def test_conversation_result_preserves_terminal_evidence_through_derived_json(monkeypatch, evidence):
+def test_conversation_result_preserves_terminal_evidence_through_derived_json(
+    monkeypatch: pytest.MonkeyPatch, evidence: dict[str, object] | None
+) -> None:
     service = MagicMock()
     service.get_conversation_page.return_value = ConversationPage(
         data=[
@@ -800,7 +812,7 @@ def test_conversation_result_preserves_terminal_evidence_through_derived_json(mo
     assert payload["review_note"] == "Review outputs"
 
 
-def test_conversation_historical_result_keeps_missing_evidence_unavailable(monkeypatch):
+def test_conversation_historical_result_keeps_missing_evidence_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     service = MagicMock()
     service.get_conversation_page.return_value = ConversationPage(
         data=[ConversationItem(seq=0, kind="test_result", at_version=1, payload={"status": "succeeded"})],
@@ -809,12 +821,14 @@ def test_conversation_historical_result_keeps_missing_evidence_unavailable(monke
         last_seq=0,
     )
     monkeypatch.setattr(mod, "build_service", lambda: service)
-    payload = mod._conversation("s1", {}, _actor())["data"][0]["payload"]
+    response = mod._conversation("s1", {}, _actor())
+    assert isinstance(response, dict)
+    payload = response["data"][0]["payload"]
     assert payload["terminal_outputs"] is None
     assert payload["outcome"] is None
 
 
-def test_conversation_schema_derives_optional_nullable_terminal_evidence():
+def test_conversation_schema_derives_optional_nullable_terminal_evidence() -> None:
     from controllers.console.dify_builder_fields import DifyBuilderConversationPageResponse
 
     schema = DifyBuilderConversationPageResponse.model_json_schema(mode="serialization")

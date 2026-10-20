@@ -1,7 +1,7 @@
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { ClipboardEvent } from 'react'
 import type { FileEntity } from './types'
 import type { FileUpload } from '@/app/components/base/features/types'
-import type { FileUploadConfigResponse } from '@/models/common'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useState } from 'react'
@@ -17,11 +17,13 @@ import {
 } from '@/app/components/base/file-uploader/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { isAppAccessError } from '@/features/app-access-error/state'
 import { useParams, usePathname } from '@/next/navigation'
 import { uploadRemoteFileInfo } from '@/service/common'
 import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } from '@/service/share'
 import { TransferMethod } from '@/types/app'
 import { formatFileSize } from '@/utils/format'
+import { isAbortError } from '@/utils/is-abort-error'
 import { useFileStore } from './store'
 import { useFileUploadContext } from './upload-context'
 import {
@@ -31,7 +33,7 @@ import {
   isAllowedFileExtension,
 } from './utils'
 
-export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) => {
+export const getFileSizeLimit = (fileUploadConfig?: UploadConfig) => {
   const imgSizeLimit =
     Number(fileUploadConfig?.image_file_size_limit) * 1024 * 1024 || IMG_SIZE_LIMIT
   const docSizeLimit = Number(fileUploadConfig?.file_size_limit) * 1024 * 1024 || FILE_SIZE_LIMIT
@@ -60,7 +62,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const params = useParams()
   const pathname = usePathname()
   const { localUploadUrl, remoteUploadUrl } = useFileUploadContext()
-  const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit(
+  const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = getFileSizeLimit(
     fileConfig.fileUploadConfig,
   )
   const formToken = typeof params.token === 'string' ? params.token : undefined
@@ -191,7 +193,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
               t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
               t,
             )
-            toast.error(errorMessage)
+            if (!isAppAccessError(error) && !isAbortError(error)) toast.error(errorMessage)
             handleUpdateFile({ ...uploadingFile, progress: -1 })
           },
         }
@@ -278,8 +280,9 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             handleRemoveFile(uploadingFile.id)
           else handleUpdateFile(newFile)
         })
-        .catch(() => {
-          toast.error(t(($) => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' }))
+        .catch((error: unknown) => {
+          if (!isAppAccessError(error) && !isAbortError(error))
+            toast.error(t(($) => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' }))
           handleRemoveFile(uploadingFile.id)
         })
     },
@@ -372,7 +375,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
                 t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
                 t,
               )
-              toast.error(errorMessage)
+              if (!isAppAccessError(error) && !isAbortError(error)) toast.error(errorMessage)
               handleUpdateFile({ ...uploadingFile, progress: -1 })
             },
           }

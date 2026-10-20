@@ -34,6 +34,8 @@ jobs:
         with:
           cancel_others: 'true'
           concurrent_skipping: same_content_newer
+          # Coverage checks must be generated for each new commit, even with an unchanged tree.
+          skip_after_successful_duplicate: 'false'
 
   # Check which paths were changed to determine which tests to run
   check-changes:
@@ -64,6 +66,8 @@ jobs:
               - 'scripts/ast_grep_guard.py'
               - 'scripts/check_no_new_getattr.py'
               - 'scripts/check_no_spec_mock.py'
+              - 'scripts/check_no_new_base_model.py'
+              - 'scripts/ast_grep_rules/no_new_base_model.yml'
               - 'scripts/check_no_new_test_doubles.py'
               - 'scripts/check_no_new_controller_sqlalchemy.py'
               - 'scripts/lint_controller_sqlalchemy.py'
@@ -91,7 +95,7 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
-              - 'lint.config.ts'
+              - 'packages/tooling/**'
               - '.npmrc'
               - '.github/workflows/cli-tests.yml'
               - '.github/actions/setup-web/**'
@@ -167,6 +171,8 @@ jobs:
               - 'scripts/ast_grep_guard.py'
               - 'scripts/check_no_new_getattr.py'
               - 'scripts/check_no_spec_mock.py'
+              - 'scripts/check_no_new_base_model.py'
+              - 'scripts/ast_grep_rules/no_new_base_model.yml'
               - 'scripts/check_no_new_test_doubles.py'
               - 'scripts/check_no_new_controller_sqlalchemy.py'
               - 'scripts/check_no_new_session_mock.py'
@@ -192,7 +198,6 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'knip.config.ts'
-              - 'scripts/check-web-production-unused-after-knip-fix.mjs'
               - '.npmrc'
               - '.github/workflows/main-ci.yml'
               - '.github/workflows/web-bundle-size.yml'
@@ -210,10 +215,8 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'tsconfig.json'
               - 'vite.config.ts'
-              - 'lint.config.ts'
               - 'eslint.config.mjs'
               - 'knip.config.ts'
-              - 'scripts/check-web-production-unused-after-knip-fix.mjs'
               - 'oxlint-suppressions.json'
               - 'eslint-suppressions.json'
               - '.vscode/**'

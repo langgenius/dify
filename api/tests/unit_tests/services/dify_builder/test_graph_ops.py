@@ -11,7 +11,7 @@ import copy
 
 import pytest
 
-from core.dify_builder.models import MutationIntent
+from core.dify_builder.models import Graph, MutationIntent
 from core.workflow.graph_normalizers import heal_nodes_for_preflight
 from services.dify_builder import credentials, graph_ops
 from services.dify_builder.graph_ops import (
@@ -39,7 +39,7 @@ from services.dify_builder.preflight import preflight_errors
         ("insert_between", {"edge": {"source": "n1", "target": "n2"}, "node_type": "llm", "config": {}}),
     ],
 )
-def test_validate_intent_args_accepts_each_op_with_its_required_keys(op, args):
+def test_validate_intent_args_accepts_each_op_with_its_required_keys(op: str, args: Graph) -> None:
     validate_intent_args(MutationIntent(op=op, args=args))  # must not raise
 
 
@@ -53,17 +53,17 @@ def test_validate_intent_args_accepts_each_op_with_its_required_keys(op, args):
         ("insert_between", {"node_type": "llm", "config": {}}, "edge"),
     ],
 )
-def test_validate_intent_args_raises_on_missing_required_key(op, args, missing_key):
+def test_validate_intent_args_raises_on_missing_required_key(op: str, args: Graph, missing_key: str) -> None:
     with pytest.raises(ValueError, match=missing_key):
         validate_intent_args(MutationIntent(op=op, args=args))
 
 
-def test_validate_intent_args_raises_on_unknown_op():
+def test_validate_intent_args_raises_on_unknown_op() -> None:
     with pytest.raises(ValueError, match="unknown mutation op"):
         validate_intent_args(MutationIntent(op="not_a_real_verb", args={}))
 
 
-def test_mutation_arg_keys_covers_all_five_verbs():
+def test_mutation_arg_keys_covers_all_five_verbs() -> None:
     assert set(MUTATION_ARG_KEYS) == {
         "set_node_config",
         "create_node",
@@ -73,7 +73,7 @@ def test_mutation_arg_keys_covers_all_five_verbs():
     }
 
 
-def _two_node_graph() -> dict:
+def _two_node_graph() -> Graph:
     return {
         "nodes": [
             {"id": "node-1", "data": {"code": "old code", "title": "Code"}},
@@ -83,7 +83,7 @@ def _two_node_graph() -> dict:
     }
 
 
-def test_sets_target_node_data_path_and_reports_changed_node():
+def test_sets_target_node_data_path_and_reports_changed_node() -> None:
     graph = _two_node_graph()
 
     new_graph, changed = apply_set_node_config(graph, "node-1", "code", "new code")
@@ -93,7 +93,7 @@ def test_sets_target_node_data_path_and_reports_changed_node():
     assert target["data"]["code"] == "new code"
 
 
-def test_only_target_node_changes_other_nodes_untouched():
+def test_only_target_node_changes_other_nodes_untouched() -> None:
     graph = _two_node_graph()
 
     new_graph, _changed = apply_set_node_config(graph, "node-1", "code", "new code")
@@ -103,7 +103,7 @@ def test_only_target_node_changes_other_nodes_untouched():
     assert other["data"]["title"] == "Other"
 
 
-def test_original_graph_object_is_untouched_proves_deep_copy():
+def test_original_graph_object_is_untouched_proves_deep_copy() -> None:
     graph = _two_node_graph()
 
     apply_set_node_config(graph, "node-1", "code", "new code")
@@ -111,18 +111,18 @@ def test_original_graph_object_is_untouched_proves_deep_copy():
     assert graph["nodes"][0]["data"]["code"] == "old code"
 
 
-def test_missing_node_id_raises_value_error():
+def test_missing_node_id_raises_value_error() -> None:
     graph = _two_node_graph()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="node not found: does-not-exist"):
         apply_set_node_config(graph, "does-not-exist", "code", "new code")
 
 
 # ---- apply_create_node ------------------------------------------------------
 
 
-def test_apply_create_node_appends_a_graph_node_dict_shaped_node():
-    graph = {"nodes": [], "edges": []}
+def test_apply_create_node_appends_a_graph_node_dict_shaped_node() -> None:
+    graph: Graph = {"nodes": [], "edges": []}
 
     new_graph, changed = apply_create_node(graph, "start", {"variables": []})
 
@@ -139,8 +139,8 @@ def test_apply_create_node_appends_a_graph_node_dict_shaped_node():
     assert "y" in node["position"]
 
 
-def test_apply_create_node_generates_id_from_node_type_with_collision_suffix():
-    graph = {"nodes": [{"id": "llm", "data": {"type": "llm"}}], "edges": []}
+def test_apply_create_node_generates_id_from_node_type_with_collision_suffix() -> None:
+    graph: Graph = {"nodes": [{"id": "llm", "data": {"type": "llm"}}], "edges": []}
 
     new_graph, changed = apply_create_node(graph, "llm", {})
 
@@ -148,8 +148,8 @@ def test_apply_create_node_generates_id_from_node_type_with_collision_suffix():
     assert new_graph["nodes"][-1]["id"] == "llm_2"
 
 
-def test_apply_create_node_honors_explicit_node_id():
-    graph = {"nodes": [], "edges": []}
+def test_apply_create_node_honors_explicit_node_id() -> None:
+    graph: Graph = {"nodes": [], "edges": []}
 
     new_graph, changed = apply_create_node(graph, "llm", {}, node_id="my-llm")
 
@@ -157,47 +157,47 @@ def test_apply_create_node_honors_explicit_node_id():
     assert new_graph["nodes"][0]["id"] == "my-llm"
 
 
-def test_apply_create_node_raises_on_duplicate_explicit_node_id():
-    graph = {"nodes": [{"id": "my-llm", "data": {}}], "edges": []}
+def test_apply_create_node_raises_on_duplicate_explicit_node_id() -> None:
+    graph: Graph = {"nodes": [{"id": "my-llm", "data": {}}], "edges": []}
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="node id already exists: my-llm"):
         apply_create_node(graph, "llm", {}, node_id="my-llm")
 
 
-def test_apply_create_node_uses_given_position_when_supplied():
-    graph = {"nodes": [], "edges": []}
+def test_apply_create_node_uses_given_position_when_supplied() -> None:
+    graph: Graph = {"nodes": [], "edges": []}
 
     new_graph, _changed = apply_create_node(graph, "llm", {}, position={"x": 42.0, "y": 7.0})
 
     assert new_graph["nodes"][0]["position"] == {"x": 42.0, "y": 7.0}
 
 
-def test_apply_create_node_default_position_is_right_of_existing_nodes():
-    graph = {"nodes": [{"id": "a", "position": {"x": 100.0, "y": 100.0}}], "edges": []}
+def test_apply_create_node_default_position_is_right_of_existing_nodes() -> None:
+    graph: Graph = {"nodes": [{"id": "a", "position": {"x": 100.0, "y": 100.0}}], "edges": []}
 
     new_graph, _changed = apply_create_node(graph, "llm", {})
 
     assert new_graph["nodes"][-1]["position"]["x"] > 100.0
 
 
-def test_apply_create_node_original_graph_untouched():
-    graph = {"nodes": [], "edges": []}
+def test_apply_create_node_original_graph_untouched() -> None:
+    graph: Graph = {"nodes": [], "edges": []}
 
     apply_create_node(graph, "llm", {})
 
     assert graph["nodes"] == []
 
 
-def test_apply_create_node_explicit_empty_position_is_kept_not_defaulted():
-    graph = {"nodes": [], "edges": []}
+def test_apply_create_node_explicit_empty_position_is_kept_not_defaulted() -> None:
+    graph: Graph = {"nodes": [], "edges": []}
 
     new_graph, _changed = apply_create_node(graph, "llm", {}, position={})
 
     assert new_graph["nodes"][0]["position"] == {}
 
 
-def test_create_node_nests_a_child_under_its_parent():
-    graph = {"nodes": [{"id": "iter1", "type": "custom", "data": {"type": "iteration"}}], "edges": []}
+def test_create_node_nests_a_child_under_its_parent() -> None:
+    graph: Graph = {"nodes": [{"id": "iter1", "type": "custom", "data": {"type": "iteration"}}], "edges": []}
     out, changed = apply_create_node(
         graph,
         "llm",
@@ -214,8 +214,8 @@ def test_create_node_nests_a_child_under_its_parent():
     assert child["position"] == {"x": 300, "y": 220}
 
 
-def test_create_node_without_a_parent_carries_no_wrapper_keys():
-    graph = {"nodes": [], "edges": []}
+def test_create_node_without_a_parent_carries_no_wrapper_keys() -> None:
+    graph: Graph = {"nodes": [], "edges": []}
     out, _changed = apply_create_node(graph, "llm", {"title": "Top level"}, node_id="n1")
     node = out["nodes"][0]
     assert "parentId" not in node
@@ -223,16 +223,16 @@ def test_create_node_without_a_parent_carries_no_wrapper_keys():
     assert "zIndex" not in node
 
 
-def test_create_node_defaults_the_reactflow_type_to_custom():
-    graph = {"nodes": [], "edges": []}
+def test_create_node_defaults_the_reactflow_type_to_custom() -> None:
+    graph: Graph = {"nodes": [], "edges": []}
     out, _changed = apply_create_node(graph, "llm", {"title": "LLM"}, node_id="n1")
     assert out["nodes"][0]["type"] == "custom"
 
 
-def test_create_node_carries_a_container_start_markers_reactflow_type():
+def test_create_node_carries_a_container_start_markers_reactflow_type() -> None:
     """The canvas resolves its component from the NODE-level type. A marker
     persisted as "custom" has no component and crashes it (ESQ1-288)."""
-    graph = {"nodes": [], "edges": []}
+    graph: Graph = {"nodes": [], "edges": []}
     out, _changed = apply_create_node(
         graph,
         "iteration-start",
@@ -250,11 +250,11 @@ def test_create_node_carries_a_container_start_markers_reactflow_type():
 # ---- node-type defaults at the create chokepoint ----------------------------
 
 
-def test_create_node_fills_a_required_field_the_caller_left_out():
+def test_create_node_fills_a_required_field_the_caller_left_out() -> None:
     """An LLM writes only the fields it was thinking about.
     ``TemplateTransformNodeData.variables`` is required with no default, so the
     draft preflight refused the WHOLE repair batch that created this node."""
-    graph = {"nodes": [], "edges": []}
+    graph: Graph = {"nodes": [], "edges": []}
 
     out, _changed = apply_create_node(
         graph, "template-transform", {"title": "Excellent", "template": "excellent"}, node_id="n1"
@@ -266,10 +266,10 @@ def test_create_node_fills_a_required_field_the_caller_left_out():
     assert data["title"] == "Excellent"
 
 
-def test_create_node_never_overwrites_a_value_the_caller_supplied():
+def test_create_node_never_overwrites_a_value_the_caller_supplied() -> None:
     """Defaults merge UNDER the config: the caller's value always wins."""
     supplied = [{"variable": "score", "value_selector": ["node1", "score"]}]
-    graph = {"nodes": [], "edges": []}
+    graph: Graph = {"nodes": [], "edges": []}
 
     out, _changed = apply_create_node(
         graph, "template-transform", {"template": "{{ score }}", "variables": supplied}, node_id="n1"
@@ -278,9 +278,9 @@ def test_create_node_never_overwrites_a_value_the_caller_supplied():
     assert out["nodes"][0]["data"]["variables"] == supplied
 
 
-def test_create_node_defaults_do_not_alias_the_registry():
+def test_create_node_defaults_do_not_alias_the_registry() -> None:
     """Two nodes created from the same default must not share one list."""
-    graph = {"nodes": [], "edges": []}
+    graph: Graph = {"nodes": [], "edges": []}
 
     graph, _ = apply_create_node(graph, "template-transform", {"template": "a"}, node_id="n1")
     graph, _ = apply_create_node(graph, "template-transform", {"template": "b"}, node_id="n2")
@@ -289,7 +289,7 @@ def test_create_node_defaults_do_not_alias_the_registry():
     assert graph["nodes"][1]["data"]["variables"] == []
 
 
-def test_create_node_leaves_a_generator_shaped_config_untouched():
+def test_create_node_leaves_a_generator_shaped_config_untouched() -> None:
     """Build's configs come from the generator and already spell every field
     out. Filling missing keys must not perturb one of them."""
     generator_config = {
@@ -306,7 +306,7 @@ def test_create_node_leaves_a_generator_shaped_config_untouched():
         "context": {"enabled": True, "variable_selector": ["node1", "text"]},
         "vision": {"enabled": True, "configs": {"detail": "high"}},
     }
-    graph = {"nodes": [], "edges": []}
+    graph: Graph = {"nodes": [], "edges": []}
 
     out, _changed = apply_create_node(graph, "llm", copy.deepcopy(generator_config), node_id="n1")
 
@@ -315,9 +315,9 @@ def test_create_node_leaves_a_generator_shaped_config_untouched():
     assert data["type"] == "llm"
 
 
-def test_create_node_adds_nothing_for_a_node_type_with_no_registered_defaults():
+def test_create_node_adds_nothing_for_a_node_type_with_no_registered_defaults() -> None:
     """An unregistered type must contribute no defaults, not abort the edit."""
-    graph = {"nodes": [], "edges": []}
+    graph: Graph = {"nodes": [], "edges": []}
 
     out, _changed = apply_create_node(graph, "iteration", {"title": "Loop over"}, node_id="n1")
 
@@ -329,7 +329,7 @@ def test_create_node_adds_nothing_for_a_node_type_with_no_registered_defaults():
     }
 
 
-def test_insert_between_fills_required_fields_too():
+def test_insert_between_fills_required_fields_too() -> None:
     """``insert_between`` builds its node through the same chokepoint."""
     graph = {
         "nodes": [{"id": "a", "data": {"type": "start"}}, {"id": "b", "data": {"type": "end"}}],
@@ -348,7 +348,7 @@ def test_insert_between_fills_required_fields_too():
     assert data["code"] == "print(1)"
 
 
-def test_filter_applicable_routes_a_create_through_the_apply_fn_that_fills_defaults():
+def test_filter_applicable_routes_a_create_through_the_apply_fn_that_fills_defaults() -> None:
     """The dry run dispatches through ``APPLY_FNS``, whose ``create_node`` entry
     is the very function that merges the type defaults in -- so the graph it
     returns carries them, and a config that omits one is still applicable."""
@@ -370,8 +370,8 @@ def test_filter_applicable_routes_a_create_through_the_apply_fn_that_fills_defau
 # ---- apply_delete_node ------------------------------------------------------
 
 
-def test_apply_delete_node_removes_node_and_its_edges():
-    graph = {
+def test_apply_delete_node_removes_node_and_its_edges() -> None:
+    graph: Graph = {
         "nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}],
         "edges": [{"id": "e1", "source": "a", "target": "b", "type": "custom"}],
     }
@@ -383,8 +383,8 @@ def test_apply_delete_node_removes_node_and_its_edges():
     assert new_graph["edges"] == []
 
 
-def test_apply_delete_node_leaves_unrelated_edges():
-    graph = {
+def test_apply_delete_node_leaves_unrelated_edges() -> None:
+    graph: Graph = {
         "nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}, {"id": "c", "data": {}}],
         "edges": [{"id": "e1", "source": "b", "target": "c", "type": "custom"}],
     }
@@ -394,15 +394,15 @@ def test_apply_delete_node_leaves_unrelated_edges():
     assert len(new_graph["edges"]) == 1
 
 
-def test_apply_delete_node_missing_id_raises_value_error():
-    graph = {"nodes": [{"id": "a", "data": {}}], "edges": []}
+def test_apply_delete_node_missing_id_raises_value_error() -> None:
+    graph: Graph = {"nodes": [{"id": "a", "data": {}}], "edges": []}
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="node not found: does-not-exist"):
         apply_delete_node(graph, "does-not-exist")
 
 
-def test_apply_delete_node_original_graph_untouched():
-    graph = {"nodes": [{"id": "a", "data": {}}], "edges": []}
+def test_apply_delete_node_original_graph_untouched() -> None:
+    graph: Graph = {"nodes": [{"id": "a", "data": {}}], "edges": []}
 
     apply_delete_node(graph, "a")
 
@@ -412,8 +412,8 @@ def test_apply_delete_node_original_graph_untouched():
 # ---- apply_connect -----------------------------------------------------------
 
 
-def test_apply_connect_adds_a_graph_edge_dict_shaped_edge_with_default_handles():
-    graph = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
+def test_apply_connect_adds_a_graph_edge_dict_shaped_edge_with_default_handles() -> None:
+    graph: Graph = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
 
     new_graph, changed = apply_connect(graph, "a", "b")
 
@@ -428,30 +428,30 @@ def test_apply_connect_adds_a_graph_edge_dict_shaped_edge_with_default_handles()
     assert edge["id"]
 
 
-def test_apply_connect_honors_explicit_handles():
-    graph = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
+def test_apply_connect_honors_explicit_handles() -> None:
+    graph: Graph = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
 
     new_graph, _changed = apply_connect(graph, "a", "b", source_handle="true", target_handle="target")
 
     assert new_graph["edges"][0]["sourceHandle"] == "true"
 
 
-def test_apply_connect_raises_on_dangling_from_node():
-    graph = {"nodes": [{"id": "b", "data": {}}], "edges": []}
+def test_apply_connect_raises_on_dangling_from_node() -> None:
+    graph: Graph = {"nodes": [{"id": "b", "data": {}}], "edges": []}
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="node not found: does-not-exist"):
         apply_connect(graph, "does-not-exist", "b")
 
 
-def test_apply_connect_raises_on_dangling_to_node():
-    graph = {"nodes": [{"id": "a", "data": {}}], "edges": []}
+def test_apply_connect_raises_on_dangling_to_node() -> None:
+    graph: Graph = {"nodes": [{"id": "a", "data": {}}], "edges": []}
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="node not found: does-not-exist"):
         apply_connect(graph, "a", "does-not-exist")
 
 
-def test_apply_connect_original_graph_untouched():
-    graph = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
+def test_apply_connect_original_graph_untouched() -> None:
+    graph: Graph = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
 
     apply_connect(graph, "a", "b")
 
@@ -466,30 +466,30 @@ _IF_ELSE = {"id": "branch", "data": {"type": "if-else", "cases": [{"case_id": "t
 _TARGET = {"id": "a", "data": {"type": "llm"}}
 
 
-def test_apply_connect_accepts_a_declared_branch_handle():
-    graph = {"nodes": [_IF_ELSE, _TARGET], "edges": []}
+def test_apply_connect_accepts_a_declared_branch_handle() -> None:
+    graph: Graph = {"nodes": [_IF_ELSE, _TARGET], "edges": []}
 
     new_graph, _ = apply_connect(graph, "branch", "a", source_handle="false")
 
     assert new_graph["edges"][0]["sourceHandle"] == "false"
 
 
-def test_apply_connect_rejects_an_undeclared_branch_handle_and_names_the_declared_ones():
-    graph = {"nodes": [_IF_ELSE, _TARGET], "edges": []}
+def test_apply_connect_rejects_an_undeclared_branch_handle_and_names_the_declared_ones() -> None:
+    graph: Graph = {"nodes": [_IF_ELSE, _TARGET], "edges": []}
 
     with pytest.raises(ValueError, match=r"branch node 'branch' has no handle 'else'.*\['true', 'false'\]"):
         apply_connect(graph, "branch", "a", source_handle="else")
 
 
-def test_apply_connect_rejects_the_default_handle_on_a_branch_node():
-    graph = {"nodes": [_IF_ELSE, _TARGET], "edges": []}
+def test_apply_connect_rejects_the_default_handle_on_a_branch_node() -> None:
+    graph: Graph = {"nodes": [_IF_ELSE, _TARGET], "edges": []}
 
     with pytest.raises(ValueError, match="has no handle 'source'"):
         apply_connect(graph, "branch", "a")
 
 
-def test_apply_connect_still_defaults_the_handle_on_a_plain_node():
-    graph = {"nodes": [{"id": "llm", "data": {"type": "llm"}}, _TARGET], "edges": []}
+def test_apply_connect_still_defaults_the_handle_on_a_plain_node() -> None:
+    graph: Graph = {"nodes": [{"id": "llm", "data": {"type": "llm"}}, _TARGET], "edges": []}
 
     new_graph, _ = apply_connect(graph, "llm", "a")
 
@@ -509,55 +509,55 @@ _HUMAN_INPUT = {
 }
 
 
-def test_apply_connect_accepts_the_source_handle_on_a_fail_branch_node():
-    graph = {"nodes": [_FAIL_BRANCH_HTTP, _TARGET], "edges": []}
+def test_apply_connect_accepts_the_source_handle_on_a_fail_branch_node() -> None:
+    graph: Graph = {"nodes": [_FAIL_BRANCH_HTTP, _TARGET], "edges": []}
 
     new_graph, _ = apply_connect(graph, "http1", "a", source_handle="source")
 
     assert new_graph["edges"][0]["sourceHandle"] == "source"
 
 
-def test_apply_connect_accepts_the_default_handle_on_a_fail_branch_node():
-    graph = {"nodes": [_FAIL_BRANCH_HTTP, _TARGET], "edges": []}
+def test_apply_connect_accepts_the_default_handle_on_a_fail_branch_node() -> None:
+    graph: Graph = {"nodes": [_FAIL_BRANCH_HTTP, _TARGET], "edges": []}
 
     new_graph, _ = apply_connect(graph, "http1", "a")
 
     assert new_graph["edges"][0]["sourceHandle"] == "source"
 
 
-def test_apply_connect_accepts_the_fail_branch_handle_on_a_fail_branch_node():
-    graph = {"nodes": [_FAIL_BRANCH_HTTP, _TARGET], "edges": []}
+def test_apply_connect_accepts_the_fail_branch_handle_on_a_fail_branch_node() -> None:
+    graph: Graph = {"nodes": [_FAIL_BRANCH_HTTP, _TARGET], "edges": []}
 
     new_graph, _ = apply_connect(graph, "http1", "a", source_handle="fail-branch")
 
     assert new_graph["edges"][0]["sourceHandle"] == "fail-branch"
 
 
-def test_apply_connect_accepts_the_timeout_handle_on_a_human_input_node():
-    graph = {"nodes": [_HUMAN_INPUT, _TARGET], "edges": []}
+def test_apply_connect_accepts_the_timeout_handle_on_a_human_input_node() -> None:
+    graph: Graph = {"nodes": [_HUMAN_INPUT, _TARGET], "edges": []}
 
     new_graph, _ = apply_connect(graph, "human1", "a", source_handle="__timeout")
 
     assert new_graph["edges"][0]["sourceHandle"] == "__timeout"
 
 
-def test_apply_connect_accepts_true_on_a_legacy_if_else_without_cases():
+def test_apply_connect_accepts_true_on_a_legacy_if_else_without_cases() -> None:
     # A pre-``cases`` if-else (top-level ``conditions``) routes its IF arm on
     # "true" (graphon IfElseNodeData.iter_cases); it must not be refused.
     legacy = {
         "id": "legacy",
         "data": {"type": "if-else", "logical_operator": "and", "conditions": []},
     }
-    graph = {"nodes": [legacy, _TARGET], "edges": []}
+    graph: Graph = {"nodes": [legacy, _TARGET], "edges": []}
 
     new_graph, _ = apply_connect(graph, "legacy", "a", source_handle="true")
 
     assert new_graph["edges"][0]["sourceHandle"] == "true"
 
 
-def test_apply_connect_still_accepts_any_handle_on_a_plain_node_type():
+def test_apply_connect_still_accepts_any_handle_on_a_plain_node_type() -> None:
     plain = {"id": "llm1", "data": {"type": "llm"}}
-    graph = {"nodes": [plain, _TARGET], "edges": []}
+    graph: Graph = {"nodes": [plain, _TARGET], "edges": []}
 
     new_graph, _ = apply_connect(graph, "llm1", "a", source_handle="whatever")
 
@@ -567,8 +567,8 @@ def test_apply_connect_still_accepts_any_handle_on_a_plain_node_type():
 # ---- apply_insert_between -------------------------------------------------------
 
 
-def test_apply_insert_between_splits_the_matched_edge_around_a_new_node():
-    graph = {
+def test_apply_insert_between_splits_the_matched_edge_around_a_new_node() -> None:
+    graph: Graph = {
         "nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}],
         "edges": [
             {
@@ -593,8 +593,8 @@ def test_apply_insert_between_splits_the_matched_edge_around_a_new_node():
     assert len(new_graph["edges"]) == 2
 
 
-def test_apply_insert_between_preserves_original_edge_handles_at_the_ends():
-    graph = {
+def test_apply_insert_between_preserves_original_edge_handles_at_the_ends() -> None:
+    graph: Graph = {
         "nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}],
         "edges": [
             {
@@ -617,15 +617,15 @@ def test_apply_insert_between_preserves_original_edge_handles_at_the_ends():
     assert outgoing["targetHandle"] == "target"
 
 
-def test_apply_insert_between_raises_when_edge_not_found():
-    graph = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
+def test_apply_insert_between_raises_when_edge_not_found() -> None:
+    graph: Graph = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="edge not found: a -> b"):
         apply_insert_between(graph, {"source": "a", "target": "b"}, "llm", {})
 
 
-def test_apply_insert_between_honors_explicit_node_id_and_position():
-    graph = {
+def test_apply_insert_between_honors_explicit_node_id_and_position() -> None:
+    graph: Graph = {
         "nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}],
         "edges": [{"id": "e1", "source": "a", "target": "b", "type": "custom"}],
     }
@@ -639,8 +639,8 @@ def test_apply_insert_between_honors_explicit_node_id_and_position():
     assert new_node["position"] == {"x": 1.0, "y": 2.0}
 
 
-def test_apply_insert_between_original_graph_untouched():
-    graph = {
+def test_apply_insert_between_original_graph_untouched() -> None:
+    graph: Graph = {
         "nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}],
         "edges": [{"id": "e1", "source": "a", "target": "b", "type": "custom"}],
     }
@@ -654,9 +654,9 @@ def test_apply_insert_between_original_graph_untouched():
 # ---- diff_graphs -------------------------------------------------------
 
 
-def test_diff_graphs_added_node_and_edge_is_structure_scope():
-    before = {"nodes": [{"id": "a", "data": {}}], "edges": []}
-    after = {
+def test_diff_graphs_added_node_and_edge_is_structure_scope() -> None:
+    before: Graph = {"nodes": [{"id": "a", "data": {}}], "edges": []}
+    after: Graph = {
         "nodes": [{"id": "a", "data": {}}, {"id": "knowledge-1", "data": {}}],
         "edges": [{"source": "knowledge-1", "target": "a", "sourceHandle": "source", "targetHandle": "target"}],
     }
@@ -668,9 +668,9 @@ def test_diff_graphs_added_node_and_edge_is_structure_scope():
     assert "added knowledge-1 → a" in changes
 
 
-def test_diff_graphs_removed_node_is_structure_scope():
-    before = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
-    after = {"nodes": [{"id": "b", "data": {}}], "edges": []}
+def test_diff_graphs_removed_node_is_structure_scope() -> None:
+    before: Graph = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
+    after: Graph = {"nodes": [{"id": "b", "data": {}}], "edges": []}
 
     changes, scope = diff_graphs(before, after)
 
@@ -678,9 +678,9 @@ def test_diff_graphs_removed_node_is_structure_scope():
     assert changes == ["removed node a"]
 
 
-def test_diff_graphs_config_only_change_is_configuration_scope():
-    before = {"nodes": [{"id": "llm-1", "data": {"prompt_template": "old"}}], "edges": []}
-    after = {"nodes": [{"id": "llm-1", "data": {"prompt_template": "new"}}], "edges": []}
+def test_diff_graphs_config_only_change_is_configuration_scope() -> None:
+    before: Graph = {"nodes": [{"id": "llm-1", "data": {"prompt_template": "old"}}], "edges": []}
+    after: Graph = {"nodes": [{"id": "llm-1", "data": {"prompt_template": "new"}}], "edges": []}
 
     changes, scope = diff_graphs(before, after)
 
@@ -688,8 +688,8 @@ def test_diff_graphs_config_only_change_is_configuration_scope():
     assert changes == ["llm-1: prompt_template updated"]
 
 
-def test_diff_graphs_no_changes_is_configuration_scope_with_empty_changes():
-    graph = {"nodes": [{"id": "a", "data": {"x": 1}}], "edges": []}
+def test_diff_graphs_no_changes_is_configuration_scope_with_empty_changes() -> None:
+    graph: Graph = {"nodes": [{"id": "a", "data": {"x": 1}}], "edges": []}
 
     changes, scope = diff_graphs(graph, copy.deepcopy(graph))
 
@@ -700,14 +700,14 @@ def test_diff_graphs_no_changes_is_configuration_scope_with_empty_changes():
 # ---- structural_fingerprint -------------------------------------------------------
 
 
-def test_structural_fingerprint_is_config_insensitive():
+def test_structural_fingerprint_is_config_insensitive() -> None:
     from services.dify_builder.graph_ops import structural_fingerprint
 
-    g1 = {
+    g1: Graph = {
         "nodes": [{"id": "a", "type": "custom", "data": {"type": "llm", "model": "gpt-4"}}],
         "edges": [],
     }
-    g2 = {
+    g2: Graph = {
         "nodes": [{"id": "a", "type": "custom", "data": {"type": "llm", "model": "claude"}}],
         "edges": [],
     }
@@ -715,11 +715,11 @@ def test_structural_fingerprint_is_config_insensitive():
     assert structural_fingerprint(g1) == structural_fingerprint(g2)
 
 
-def test_structural_fingerprint_changes_on_structure():
+def test_structural_fingerprint_changes_on_structure() -> None:
     from services.dify_builder.graph_ops import structural_fingerprint
 
-    base = {"nodes": [{"id": "a", "data": {"type": "llm"}}], "edges": []}
-    add_node = {
+    base: Graph = {"nodes": [{"id": "a", "data": {"type": "llm"}}], "edges": []}
+    add_node: Graph = {
         "nodes": [{"id": "a", "data": {"type": "llm"}}, {"id": "b", "data": {"type": "end"}}],
         "edges": [],
     }
@@ -731,15 +731,15 @@ def test_structural_fingerprint_changes_on_structure():
     assert structural_fingerprint(add_node) != structural_fingerprint(add_edge)
 
 
-def test_structural_fingerprint_is_order_independent():
+def test_structural_fingerprint_is_order_independent() -> None:
     from services.dify_builder.graph_ops import structural_fingerprint
 
-    g1 = {"nodes": [{"id": "a", "data": {"type": "llm"}}, {"id": "b", "data": {"type": "end"}}], "edges": []}
-    g2 = {"nodes": [{"id": "b", "data": {"type": "end"}}, {"id": "a", "data": {"type": "llm"}}], "edges": []}
+    g1: Graph = {"nodes": [{"id": "a", "data": {"type": "llm"}}, {"id": "b", "data": {"type": "end"}}], "edges": []}
+    g2: Graph = {"nodes": [{"id": "b", "data": {"type": "end"}}, {"id": "a", "data": {"type": "llm"}}], "edges": []}
     assert structural_fingerprint(g1) == structural_fingerprint(g2)
 
 
-def test_structural_fingerprint_handles_empty_and_missing_keys():
+def test_structural_fingerprint_handles_empty_and_missing_keys() -> None:
     from services.dify_builder.graph_ops import structural_fingerprint
 
     assert isinstance(structural_fingerprint({}), str)
@@ -749,10 +749,10 @@ def test_structural_fingerprint_handles_empty_and_missing_keys():
 # ---- node_ids -------------------------------------------------------
 
 
-def test_node_ids():
+def test_node_ids() -> None:
     from services.dify_builder.graph_ops import node_ids
 
-    g = {"nodes": [{"id": "a", "data": {"type": "llm"}}, {"id": "b", "data": {"type": "end"}}], "edges": []}
+    g: Graph = {"nodes": [{"id": "a", "data": {"type": "llm"}}, {"id": "b", "data": {"type": "end"}}], "edges": []}
     assert node_ids(g) == ["a", "b"]
     assert node_ids({}) == []
 
@@ -769,49 +769,49 @@ _G = {
 }
 
 
-def test_filter_applicable_all_valid():
+def test_filter_applicable_all_valid() -> None:
     intents = [MutationIntent(op="set_node_config", args={"node_id": "a", "path": "code", "value": "x"})]
     ok, bad, _dry, _changed = graph_ops.filter_applicable(_G, intents)
     assert ok == intents
     assert bad == []
 
 
-def test_filter_rejects_unknown_op():
+def test_filter_rejects_unknown_op() -> None:
     intents = [MutationIntent(op="frobnicate", args={})]
     ok, bad, _dry, _changed = graph_ops.filter_applicable(_G, intents)
     assert ok == []
     assert "unknown mutation op" in bad[0][1]
 
 
-def test_filter_rejects_missing_required_arg():
+def test_filter_rejects_missing_required_arg() -> None:
     intents = [MutationIntent(op="set_node_config", args={"node_id": "a"})]
     ok, bad, _dry, _changed = graph_ops.filter_applicable(_G, intents)
     assert ok == []
     assert "missing required arg" in bad[0][1]
 
 
-def test_filter_rejects_extra_arg_key():
+def test_filter_rejects_extra_arg_key() -> None:
     intents = [MutationIntent(op="delete_node", args={"node_id": "a", "bogus": 1})]
     ok, bad, _dry, _changed = graph_ops.filter_applicable(_G, intents)
     assert ok == []
     assert "bogus" in bad[0][1]
 
 
-def test_filter_rejects_dangling_ref():
+def test_filter_rejects_dangling_ref() -> None:
     intents = [MutationIntent(op="connect", args={"from_node": "a", "to_node": "zzz"})]
     ok, bad, _dry, _changed = graph_ops.filter_applicable(_G, intents)
     assert ok == []
     assert "node not found" in bad[0][1]
 
 
-def test_filter_rejects_unknown_node_type():
+def test_filter_rejects_unknown_node_type() -> None:
     intents = [MutationIntent(op="create_node", args={"node_type": "made-up", "config": {}})]
     ok, bad, _dry, _changed = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
     assert ok == []
     assert "node_type not allowed" in bad[0][1]
 
 
-def test_filter_create_then_connect_ordering():
+def test_filter_create_then_connect_ordering() -> None:
     intents = [
         MutationIntent(op="create_node", args={"node_type": "llm", "config": {}, "node_id": "c"}),
         MutationIntent(op="connect", args={"from_node": "c", "to_node": "b"}),
@@ -821,7 +821,7 @@ def test_filter_create_then_connect_ordering():
     assert bad == []
 
 
-def test_filter_treats_a_recreate_of_a_present_id_as_the_no_op_the_port_treats_it_as():
+def test_filter_treats_a_recreate_of_a_present_id_as_the_no_op_the_port_treats_it_as() -> None:
     """An interrupted step's Retry re-sends the batch against an already-mutated
     draft. ``apply_repair`` drops such a ``create_node`` before it applies
     anything, so the dry run must not reject it: rejecting would burn the one
@@ -836,7 +836,7 @@ def test_filter_treats_a_recreate_of_a_present_id_as_the_no_op_the_port_treats_i
     assert graph_ops.already_present_predicate(_G, intents)(intents[0]) is True
 
 
-def test_filter_still_rejects_an_in_batch_duplicate_of_a_new_id():
+def test_filter_still_rejects_an_in_batch_duplicate_of_a_new_id() -> None:
     """The already-present rule is keyed on the ORIGINAL graph, so two creates of
     the same NEW id in one batch are still a real error -- exactly as they are at
     the port, which also filters against the pre-batch draft."""
@@ -851,7 +851,7 @@ def test_filter_still_rejects_an_in_batch_duplicate_of_a_new_id():
     assert "already exists" in bad[0][1]
 
 
-def test_filter_does_not_treat_a_recreate_of_a_deleted_id_as_present():
+def test_filter_does_not_treat_a_recreate_of_a_deleted_id_as_present() -> None:
     """handlers_build's M2 guard: a from-scratch build sends delete_node(x) +
     create_node(x) in one batch. Counting x as present would drop the create
     while the delete still ran."""
@@ -867,7 +867,7 @@ def test_filter_does_not_treat_a_recreate_of_a_deleted_id_as_present():
     assert next(n for n in dry["nodes"] if n["id"] == "a")["data"]["type"] == "llm"
 
 
-def test_filter_rejects_insert_between_with_non_dict_edge():
+def test_filter_rejects_insert_between_with_non_dict_edge() -> None:
     # A hallucinated insert_between with a string edge (not a {source,target} dict)
     # must be REJECTED gracefully, never raise (it would crash the advance).
     intents = [MutationIntent(op="insert_between", args={"edge": "a-b", "node_type": "llm", "config": {}})]
@@ -876,7 +876,7 @@ def test_filter_rejects_insert_between_with_non_dict_edge():
     assert len(bad) == 1  # rejected with a reason, not raised
 
 
-def test_filter_applicable_returns_the_dry_run_graph_and_leaves_the_input_alone():
+def test_filter_applicable_returns_the_dry_run_graph_and_leaves_the_input_alone() -> None:
     """The third member is the graph the applicable intents produced -- what
     ``apply_repair`` would be about to write. The input graph is untouched."""
     before = copy.deepcopy(_G)
@@ -897,7 +897,7 @@ def test_filter_applicable_returns_the_dry_run_graph_and_leaves_the_input_alone(
     assert before == _G
 
 
-def test_a_connect_writes_an_edge_and_so_reports_no_node_as_written():
+def test_a_connect_writes_an_edge_and_so_reports_no_node_as_written() -> None:
     """``changed_nodes`` feeds ``preflight.new_preflight_problems``'s ``touched``,
     where a node loses its pre-existing-defect exemption entirely. An edge
     cannot change either endpoint's node-data verdict, so a connect must not put
@@ -915,11 +915,11 @@ def test_a_connect_writes_an_edge_and_so_reports_no_node_as_written():
     assert dry_run.changed_nodes == ["b"]  # ...but only the config write counts as written
 
 
-def test_filter_applicable_heals_its_dry_run_graph_the_way_the_write_chokepoint_will():
+def test_filter_applicable_heals_its_dry_run_graph_the_way_the_write_chokepoint_will() -> None:
     """R4: the dry run must see what the port will actually write. ``>=`` reaches
     ``apply_repair`` and is healed to ``≥`` there before the preflight, so a dry
     run that did not heal would report a defect the write was going to fix."""
-    graph = {
+    graph: Graph = {
         "nodes": [
             {
                 "id": "branch",
@@ -944,7 +944,7 @@ def test_filter_applicable_heals_its_dry_run_graph_the_way_the_write_chokepoint_
     assert graph_ops.heal_nodes_for_preflight is heal_nodes_for_preflight
 
 
-def _ifelse_graph():
+def _ifelse_graph() -> Graph:
     return {
         "nodes": [
             {
@@ -968,7 +968,7 @@ def _ifelse_graph():
     }
 
 
-def test_set_node_config_writes_through_a_dotted_path():
+def test_set_node_config_writes_through_a_dotted_path() -> None:
     graph = _ifelse_graph()
     out, changed = apply_set_node_config(graph, "node5", "cases.0.conditions.1.comparison_operator", "contains")
     assert changed == ["node5"]
@@ -980,45 +980,45 @@ def test_set_node_config_writes_through_a_dotted_path():
     assert "cases.0.conditions.1.comparison_operator" not in out["nodes"][0]["data"]
 
 
-def test_set_node_config_still_writes_a_top_level_key():
-    graph = {"nodes": [{"id": "n1", "data": {"type": "code"}}], "edges": []}
+def test_set_node_config_still_writes_a_top_level_key() -> None:
+    graph: Graph = {"nodes": [{"id": "n1", "data": {"type": "code"}}], "edges": []}
     out, changed = apply_set_node_config(graph, "n1", "code", "print(1)")
     assert changed == ["n1"]
     assert out["nodes"][0]["data"]["code"] == "print(1)"
 
 
-def test_set_node_config_creates_a_missing_top_level_key():
+def test_set_node_config_creates_a_missing_top_level_key() -> None:
     """Unchanged behaviour: the LAST segment may be new -- that is the write."""
-    graph = {"nodes": [{"id": "n1", "data": {"type": "code"}}], "edges": []}
+    graph: Graph = {"nodes": [{"id": "n1", "data": {"type": "code"}}], "edges": []}
     out, _changed = apply_set_node_config(graph, "n1", "outputs", {"result": {"type": "string"}})
     assert out["nodes"][0]["data"]["outputs"] == {"result": {"type": "string"}}
 
 
-def test_set_node_config_rejects_a_missing_intermediate_key():
-    graph = {"nodes": [{"id": "n1", "data": {"type": "code"}}], "edges": []}
+def test_set_node_config_rejects_a_missing_intermediate_key() -> None:
+    graph: Graph = {"nodes": [{"id": "n1", "data": {"type": "code"}}], "edges": []}
     with pytest.raises(ValueError, match="no key 'cases'"):
         apply_set_node_config(graph, "n1", "cases.0.value", "x")
 
 
-def test_set_node_config_rejects_an_out_of_range_index():
+def test_set_node_config_rejects_an_out_of_range_index() -> None:
     graph = _ifelse_graph()
     with pytest.raises(ValueError, match="out of range"):
         apply_set_node_config(graph, "node5", "cases.0.conditions.7.value", "x")
 
 
-def test_set_node_config_rejects_an_index_into_a_mapping():
+def test_set_node_config_rejects_an_index_into_a_mapping() -> None:
     graph = _ifelse_graph()
     with pytest.raises(ValueError, match="not a list"):
         apply_set_node_config(graph, "node5", "cases.0.0", "x")
 
 
-def test_set_node_config_rejects_an_empty_segment():
+def test_set_node_config_rejects_an_empty_segment() -> None:
     graph = _ifelse_graph()
     with pytest.raises(ValueError, match="empty segment"):
         apply_set_node_config(graph, "node5", "cases..0", "x")
 
 
-def test_filter_applicable_rejects_a_bad_path_with_a_reason():
+def test_filter_applicable_rejects_a_bad_path_with_a_reason() -> None:
     """The whole point of raising: the repair agent gets corrective feedback."""
     from services.dify_builder.graph_ops import filter_applicable
 
@@ -1042,18 +1042,18 @@ def test_filter_applicable_rejects_a_bad_path_with_a_reason():
         ("connect", {"from_node": None, "to_node": "n2"}),
     ],
 )
-def test_validate_intent_args_rejects_a_non_string_node_id(op, args):
+def test_validate_intent_args_rejects_a_non_string_node_id(op: str, args: Graph) -> None:
     with pytest.raises(ValueError, match="must be a non-empty string"):
         validate_intent_args(MutationIntent(op=op, args=args))
 
 
-def test_validate_intent_args_still_accepts_string_node_ids():
+def test_validate_intent_args_still_accepts_string_node_ids() -> None:
     validate_intent_args(MutationIntent(op="connect", args={"from_node": "n1", "to_node": "n2"}))
     validate_intent_args(MutationIntent(op="delete_node", args={"node_id": "n1"}))
 
 
 @pytest.mark.parametrize("bad_path", [5, "", None, ["cases", 0]])
-def test_validate_intent_args_rejects_a_non_string_path(bad_path):
+def test_validate_intent_args_rejects_a_non_string_path(bad_path: None | int | list[int | str] | str) -> None:
     with pytest.raises(ValueError, match="must be a non-empty string"):
         validate_intent_args(
             MutationIntent(op="set_node_config", args={"node_id": "n1", "path": bad_path, "value": "x"})
@@ -1097,12 +1097,12 @@ def test_validate_intent_args_rejects_a_non_string_path(bad_path):
         ),
     ],
 )
-def test_validate_intent_args_refuses_a_value_carrying_the_redaction_sentinel(op, args):
+def test_validate_intent_args_refuses_a_value_carrying_the_redaction_sentinel(op: str, args: Graph) -> None:
     with pytest.raises(ValueError, match="redaction placeholder"):
         validate_intent_args(MutationIntent(op=op, args=args))
 
 
-def test_validate_intent_args_still_accepts_a_real_secret_value():
+def test_validate_intent_args_still_accepts_a_real_secret_value() -> None:
     validate_intent_args(
         MutationIntent(
             op="set_node_config",
@@ -1111,12 +1111,12 @@ def test_validate_intent_args_still_accepts_a_real_secret_value():
     )
 
 
-def test_filter_applicable_does_not_rewrite_the_callers_intent_args():
+def test_filter_applicable_does_not_rewrite_the_callers_intent_args() -> None:
     """The dry-run graph is healed in place, and ``set_node_config`` used to put
     the caller's ``value`` object INTO that graph by reference -- so the heal
     rewrote the intent the caller had just handed over (``">="`` -> ``"≥"``,
     ``60`` -> ``"60"``). A dry run must judge a batch, never edit it."""
-    graph = {
+    graph: Graph = {
         "nodes": [
             {
                 "id": "branch",
@@ -1137,7 +1137,7 @@ def test_filter_applicable_does_not_rewrite_the_callers_intent_args():
     assert intents[0].args["value"] is cases
 
 
-def test_filter_applicable_survives_a_graph_whose_nodes_key_is_null():
+def test_filter_applicable_survives_a_graph_whose_nodes_key_is_null() -> None:
     """``{"nodes": None}`` reaches here from a draft row that was never
     populated. It must come back empty, not raise out of the heal set."""
     dry = graph_ops.filter_applicable({"nodes": None, "edges": None}, [])
@@ -1147,7 +1147,7 @@ def test_filter_applicable_survives_a_graph_whose_nodes_key_is_null():
     assert dry.graph == {"nodes": None, "edges": None}
 
 
-def test_value_at_path_reports_an_absent_slot_instead_of_raising():
+def test_value_at_path_reports_an_absent_slot_instead_of_raising() -> None:
     """The read half of ``apply_set_node_config``. ``_resolve_path`` hands back
     the PARENT for a final segment that does not exist yet -- that is the key a
     write would create -- so a read of it has to report absence rather than
@@ -1162,14 +1162,14 @@ def test_value_at_path_reports_an_absent_slot_instead_of_raising():
     assert graph_ops.value_at_path(data, "title.nested") == (False, None)  # walks into a string
 
 
-def test_a_reroute_that_changes_only_the_source_handle_is_not_already_present():
+def test_a_reroute_that_changes_only_the_source_handle_is_not_already_present() -> None:
     """The idempotent-re-entry rule keys a connect on the edge it would create,
     HANDLE INCLUDED. Keyed on the pair alone, moving an arm of a branch from one
     handle to another matched the edge that is already there and was dropped as
     a no-op -- in the dry run and at the write chokepoint alike -- so a
     legitimate repair was silently discarded on a branch whose whole theme is
     the opposite."""
-    graph = {
+    graph: Graph = {
         "nodes": [
             {"id": "branch", "data": {"type": "if-else", "cases": [{"case_id": "true", "conditions": []}]}},
             {"id": "next", "data": {"type": "end"}},
@@ -1185,7 +1185,7 @@ def test_a_reroute_that_changes_only_the_source_handle_is_not_already_present():
     assert already_present(same) is True  # ...and a true re-send is still a no-op
 
 
-def test_a_connect_with_no_handle_matches_an_edge_on_the_default_handle():
+def test_a_connect_with_no_handle_matches_an_edge_on_the_default_handle() -> None:
     """graphon reads a missing ``sourceHandle`` as ``"source"``, so an intent
     that omits it and an edge persisted with it are the same edge."""
     graph = {
@@ -1197,13 +1197,13 @@ def test_a_connect_with_no_handle_matches_an_edge_on_the_default_handle():
     assert graph_ops.already_present_predicate(graph, [intent])(intent) is True
 
 
-def test_a_partial_model_keeps_the_rest_of_the_default_model_block():
+def test_a_partial_model_keeps_the_rest_of_the_default_model_block() -> None:
     """The defaults merge goes one level into a dict-valued default key. An LLM
     writes the two fields it was thinking about (``provider``, ``name``); a
     shallow merge dropped ``mode`` and ``completion_params`` with them, and the
     engine refused the node for ``model.mode`` -- spending the one corrective
     re-prompt on a field the default was already carrying."""
-    graph: dict = {"nodes": [], "edges": []}
+    graph: Graph = {"nodes": [], "edges": []}
     config = {"model": {"provider": "openai", "name": "gpt-4o"}, "prompt_template": [{"role": "user", "text": "hi"}]}
 
     new_graph, _ = graph_ops.apply_create_node(graph, "llm", config, node_id="llm1")
@@ -1216,17 +1216,17 @@ def test_a_partial_model_keeps_the_rest_of_the_default_model_block():
     assert preflight_errors(new_graph) == []
 
 
-def test_a_caller_that_replaces_a_dict_default_with_a_scalar_still_wins():
+def test_a_caller_that_replaces_a_dict_default_with_a_scalar_still_wins() -> None:
     """One level deeper, not a recursive merge of everything: a caller value
     that is NOT a dict replaces the default outright, exactly as before."""
-    graph: dict = {"nodes": [], "edges": []}
+    graph: Graph = {"nodes": [], "edges": []}
 
     new_graph, _ = graph_ops.apply_create_node(graph, "llm", {"context": None}, node_id="llm1")
 
     assert new_graph["nodes"][0]["data"]["context"] is None
 
 
-def test_a_partial_authorization_is_not_completed_from_the_default():
+def test_a_partial_authorization_is_not_completed_from_the_default() -> None:
     """The exclusion that keeps the deeper merge from inventing a purpose. The
     http default is ``{"type": "no-auth", "config": None}``; an LLM writing only
     ``config`` means "use this credential". Merging the default's ``type`` in
@@ -1234,7 +1234,7 @@ def test_a_partial_authorization_is_not_completed_from_the_default():
     silence -- so a block whose ``type`` the caller did not write keeps the
     shallow behaviour, and the chokepoint normalizer infers the type from the
     config that IS there."""
-    graph: dict = {"nodes": [], "edges": []}
+    graph: Graph = {"nodes": [], "edges": []}
     config = {
         "method": "get",
         "url": "https://example.test",
@@ -1248,11 +1248,11 @@ def test_a_partial_authorization_is_not_completed_from_the_default():
     assert authorization["config"]["api_key"] == "{{#start.key#}}"
 
 
-def test_an_authorization_that_does_write_its_type_still_gains_the_defaults_siblings():
+def test_an_authorization_that_does_write_its_type_still_gains_the_defaults_siblings() -> None:
     """The other half: once the caller has written the ``type``, nothing is
     being reinterpreted and the deeper merge applies as it does everywhere
     else."""
-    graph: dict = {"nodes": [], "edges": []}
+    graph: Graph = {"nodes": [], "edges": []}
     default_config = graph_ops.default_config_or_empty("http-request")["authorization"]
     assert set(default_config) == {"type", "config"}
 
@@ -1268,7 +1268,9 @@ def test_an_authorization_that_does_write_its_type_still_gains_the_defaults_sibl
     [("iteration-start", "custom-iteration-start"), ("loop-start", "custom-loop-start")],
 )
 @pytest.mark.parametrize("flow_type", [None, "custom", "custom-iteration-start", "custom-loop-start"])
-def test_create_marker_canonicalizes_wrapper_without_changing_existing_entry(marker_type, expected_wrapper, flow_type):
+def test_create_marker_canonicalizes_wrapper_without_changing_existing_entry(
+    marker_type: str, expected_wrapper: str, flow_type: None | str
+) -> None:
     graph = {
         "nodes": [{"id": "container", "data": {"type": "loop"}}],
         "edges": [{"source": "containerstart", "target": "child"}],
@@ -1295,6 +1297,6 @@ def test_create_marker_canonicalizes_wrapper_without_changing_existing_entry(mar
     assert graph == original
 
 
-def test_create_ordinary_node_preserves_caller_flow_type():
+def test_create_ordinary_node_preserves_caller_flow_type() -> None:
     out, _ = apply_create_node({"nodes": [], "edges": []}, "llm", {}, node_id="child", flow_type="caller-wrapper")
     assert out["nodes"][0]["type"] == "caller-wrapper"

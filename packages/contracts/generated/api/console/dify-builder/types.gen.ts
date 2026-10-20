@@ -88,39 +88,17 @@ export type DifyBuilderSubmitActionPayload = {
 
 export type DifyBuilderConversationPageResponse = {
   data: Array<
-    | ({
-        kind: 'user'
-      } & DifyBuilderUserConversationItemResponse)
-    | ({
-        kind: 'decision'
-      } & DifyBuilderDecisionConversationItemResponse)
-    | ({
-        kind: 'interaction_response'
-      } & DifyBuilderInteractionResponseConversationItemResponse)
-    | ({
-        kind: 'notice'
-      } & DifyBuilderNoticeConversationItemResponse)
-    | ({
-        kind: 'run_context'
-      } & DifyBuilderRunContextConversationItemResponse)
-    | ({
-        kind: 'preflight_context'
-      } & DifyBuilderPreflightContextConversationItemResponse)
-    | ({
-        kind: 'assistant_turn'
-      } & DifyBuilderAssistantTurnConversationItemResponse)
-    | ({
-        kind: 'plan'
-      } & DifyBuilderPlanConversationItemResponse)
-    | ({
-        kind: 'form'
-      } & DifyBuilderFormConversationItemResponse)
-    | ({
-        kind: 'resource_select'
-      } & DifyBuilderResourceSelectConversationItemResponse)
-    | ({
-        kind: 'test_result'
-      } & DifyBuilderTestResultConversationItemResponse)
+    | DifyBuilderUserConversationItemResponse
+    | DifyBuilderDecisionConversationItemResponse
+    | DifyBuilderInteractionResponseConversationItemResponse
+    | DifyBuilderNoticeConversationItemResponse
+    | DifyBuilderRunContextConversationItemResponse
+    | DifyBuilderPreflightContextConversationItemResponse
+    | DifyBuilderAssistantTurnConversationItemResponse
+    | DifyBuilderPlanConversationItemResponse
+    | DifyBuilderFormConversationItemResponse
+    | DifyBuilderResourceSelectConversationItemResponse
+    | DifyBuilderTestResultConversationItemResponse
   >
   first_seq: number | null
   has_more: boolean
@@ -827,7 +805,9 @@ export type AssistantTurnItem = {
 }
 
 export type PlanCard = {
+  input_summary: string
   items?: Array<string>
+  output_summary: string
   reply_language?: string
   title: string | BuilderCopy | BuilderTextParts
 }
@@ -890,133 +870,133 @@ export type TestResultCard = {
 }
 
 export type WorkflowStreamEventLiteralWorkflowStartedData = {
-  data: CoreAppEntitiesTaskEntitiesWorkflowStartStreamResponseData
+  data: WorkflowStartStreamResponseData
   event: 'workflow_started'
   task_id: string
   workflow_run_id: string
 }
 
 export type WorkflowStreamEventLiteralWorkflowFinishedData = {
-  data: CoreAppEntitiesTaskEntitiesWorkflowFinishStreamResponseData
+  data: WorkflowFinishStreamResponseData
   event: 'workflow_finished'
   task_id: string
   workflow_run_id: string
 }
 
 export type WorkflowStreamEventLiteralWorkflowPausedData = {
-  data: CoreAppEntitiesTaskEntitiesWorkflowPauseStreamResponseData
+  data: WorkflowPauseStreamResponseData
   event: 'workflow_paused'
   task_id: string
   workflow_run_id: string
 }
 
 export type WorkflowStreamEventLiteralNodeStartedData = {
-  data: CoreAppEntitiesTaskEntitiesNodeStartStreamResponseData
+  data: NodeStartStreamResponseData
   event: 'node_started'
   task_id: string
   workflow_run_id: string
 }
 
 export type WorkflowStreamEventLiteralNodeFinishedData = {
-  data: CoreAppEntitiesTaskEntitiesNodeFinishStreamResponseData
+  data: NodeFinishStreamResponseData
   event: 'node_finished'
   task_id: string
   workflow_run_id: string
 }
 
 export type WorkflowStreamEventLiteralNodeRetryData = {
-  data: CoreAppEntitiesTaskEntitiesNodeRetryStreamResponseData
+  data: NodeRetryStreamResponseData
   event: 'node_retry'
   task_id: string
   workflow_run_id: string
 }
 
 export type WorkflowStreamEventLiteralIterationStartedData = {
-  data: CoreAppEntitiesTaskEntitiesIterationNodeStartStreamResponseData
+  data: IterationNodeStartStreamResponseData
   event: 'iteration_started'
   task_id: string
   workflow_run_id: string
 }
 
 export type WorkflowStreamEventLiteralIterationNextData = {
-  data: CoreAppEntitiesTaskEntitiesIterationNodeNextStreamResponseData
+  data: IterationNodeNextStreamResponseData
   event: 'iteration_next'
   task_id: string
   workflow_run_id: string
 }
 
 export type WorkflowStreamEventLiteralIterationCompletedData = {
-  data: CoreAppEntitiesTaskEntitiesIterationNodeCompletedStreamResponseData
+  data: IterationNodeCompletedStreamResponseData
   event: 'iteration_completed'
   task_id: string
   workflow_run_id: string
 }
 
 export type WorkflowStreamEventLiteralLoopStartedData = {
-  data: CoreAppEntitiesTaskEntitiesLoopNodeStartStreamResponseData
+  data: LoopNodeStartStreamResponseData
   event: 'loop_started'
   task_id: string
   workflow_run_id: string
 }
 
 export type WorkflowStreamEventLiteralLoopNextData = {
-  data: CoreAppEntitiesTaskEntitiesLoopNodeNextStreamResponseData
+  data: LoopNodeNextStreamResponseData
   event: 'loop_next'
   task_id: string
   workflow_run_id: string
 }
 
 export type WorkflowStreamEventLiteralLoopCompletedData = {
-  data: CoreAppEntitiesTaskEntitiesLoopNodeCompletedStreamResponseData
+  data: LoopNodeCompletedStreamResponseData
   event: 'loop_completed'
   task_id: string
   workflow_run_id: string
 }
 
 export type WorkflowStreamDataEventLiteralTextChunkData = {
-  data: CoreAppEntitiesTaskEntitiesTextChunkStreamResponseData
+  data: TextChunkStreamResponseData
   event: 'text_chunk'
   task_id: string
   workflow_run_id?: string | null
 }
 
 export type WorkflowStreamDataEventLiteralTextReplaceData = {
-  data: CoreAppEntitiesTaskEntitiesTextReplaceStreamResponseData
+  data: TextReplaceStreamResponseData
   event: 'text_replace'
   task_id: string
   workflow_run_id?: string | null
 }
 
 export type WorkflowStreamDataEventLiteralReasoningChunkData = {
-  data: CoreAppEntitiesTaskEntitiesReasoningChunkStreamResponseData
+  data: ReasoningChunkStreamResponseData
   event: 'reasoning_chunk'
   task_id: string
   workflow_run_id?: string | null
 }
 
 export type WorkflowStreamDataEventLiteralAgentLogData = {
-  data: CoreAppEntitiesTaskEntitiesAgentLogStreamResponseData
+  data: AgentLogStreamResponseData
   event: 'agent_log'
   task_id: string
   workflow_run_id?: string | null
 }
 
 export type WorkflowStreamEventLiteralHumanInputRequiredData = {
-  data: CoreAppEntitiesTaskEntitiesHumanInputRequiredResponseData
+  data: HumanInputRequiredResponseData
   event: 'human_input_required'
   task_id: string
   workflow_run_id: string
 }
 
 export type WorkflowStreamEventLiteralHumanInputFormFilledData = {
-  data: CoreAppEntitiesTaskEntitiesHumanInputFormFilledResponseData
+  data: HumanInputFormFilledResponseData
   event: 'human_input_form_filled'
   task_id: string
   workflow_run_id: string
 }
 
 export type WorkflowStreamEventLiteralHumanInputFormTimeoutData = {
-  data: CoreAppEntitiesTaskEntitiesHumanInputFormTimeoutResponseData
+  data: HumanInputFormTimeoutResponseData
   event: 'human_input_form_timeout'
   task_id: string
   workflow_run_id: string
@@ -1376,7 +1356,7 @@ export type ResourceOption = {
   readiness: string
 }
 
-export type CoreAppEntitiesTaskEntitiesWorkflowStartStreamResponseData = {
+export type WorkflowStartStreamResponseData = {
   created_at: number
   id: string
   inputs: {
@@ -1386,7 +1366,7 @@ export type CoreAppEntitiesTaskEntitiesWorkflowStartStreamResponseData = {
   workflow_id: string
 }
 
-export type CoreAppEntitiesTaskEntitiesWorkflowFinishStreamResponseData = {
+export type WorkflowFinishStreamResponseData = {
   created_at: number
   created_by?: {
     [key: string]: unknown
@@ -1408,7 +1388,7 @@ export type CoreAppEntitiesTaskEntitiesWorkflowFinishStreamResponseData = {
   workflow_id: string
 }
 
-export type CoreAppEntitiesTaskEntitiesWorkflowPauseStreamResponseData = {
+export type WorkflowPauseStreamResponseData = {
   created_at: number
   elapsed_time: number
   outputs?: {
@@ -1424,7 +1404,7 @@ export type CoreAppEntitiesTaskEntitiesWorkflowPauseStreamResponseData = {
   workflow_run_id: string
 }
 
-export type CoreAppEntitiesTaskEntitiesNodeStartStreamResponseData = {
+export type NodeStartStreamResponseData = {
   agent_strategy?: AgentStrategyInfo | null
   created_at: number
   extras?: {
@@ -1444,7 +1424,7 @@ export type CoreAppEntitiesTaskEntitiesNodeStartStreamResponseData = {
   title: string
 }
 
-export type CoreAppEntitiesTaskEntitiesNodeFinishStreamResponseData = {
+export type NodeFinishStreamResponseData = {
   created_at: number
   elapsed_time: number
   error?: string | null
@@ -1480,7 +1460,7 @@ export type CoreAppEntitiesTaskEntitiesNodeFinishStreamResponseData = {
   title: string
 }
 
-export type CoreAppEntitiesTaskEntitiesNodeRetryStreamResponseData = {
+export type NodeRetryStreamResponseData = {
   created_at: number
   elapsed_time: number
   error?: string | null
@@ -1517,7 +1497,7 @@ export type CoreAppEntitiesTaskEntitiesNodeRetryStreamResponseData = {
   title: string
 }
 
-export type CoreAppEntitiesTaskEntitiesIterationNodeStartStreamResponseData = {
+export type IterationNodeStartStreamResponseData = {
   created_at: number
   extras?: {
     [key: string]: unknown
@@ -1535,7 +1515,7 @@ export type CoreAppEntitiesTaskEntitiesIterationNodeStartStreamResponseData = {
   title: string
 }
 
-export type CoreAppEntitiesTaskEntitiesIterationNodeNextStreamResponseData = {
+export type IterationNodeNextStreamResponseData = {
   created_at: number
   extras?: {
     [key: string]: unknown
@@ -1547,7 +1527,7 @@ export type CoreAppEntitiesTaskEntitiesIterationNodeNextStreamResponseData = {
   title: string
 }
 
-export type CoreAppEntitiesTaskEntitiesIterationNodeCompletedStreamResponseData = {
+export type IterationNodeCompletedStreamResponseData = {
   created_at: number
   elapsed_time: number
   error?: string | null
@@ -1575,7 +1555,7 @@ export type CoreAppEntitiesTaskEntitiesIterationNodeCompletedStreamResponseData 
   total_tokens: number
 }
 
-export type CoreAppEntitiesTaskEntitiesLoopNodeStartStreamResponseData = {
+export type LoopNodeStartStreamResponseData = {
   created_at: number
   extras?: {
     [key: string]: unknown
@@ -1593,7 +1573,7 @@ export type CoreAppEntitiesTaskEntitiesLoopNodeStartStreamResponseData = {
   title: string
 }
 
-export type CoreAppEntitiesTaskEntitiesLoopNodeNextStreamResponseData = {
+export type LoopNodeNextStreamResponseData = {
   created_at: number
   extras?: {
     [key: string]: unknown
@@ -1606,7 +1586,7 @@ export type CoreAppEntitiesTaskEntitiesLoopNodeNextStreamResponseData = {
   title: string
 }
 
-export type CoreAppEntitiesTaskEntitiesLoopNodeCompletedStreamResponseData = {
+export type LoopNodeCompletedStreamResponseData = {
   created_at: number
   elapsed_time: number
   error?: string | null
@@ -1634,23 +1614,23 @@ export type CoreAppEntitiesTaskEntitiesLoopNodeCompletedStreamResponseData = {
   total_tokens: number
 }
 
-export type CoreAppEntitiesTaskEntitiesTextChunkStreamResponseData = {
+export type TextChunkStreamResponseData = {
   from_variable_selector?: Array<string> | null
   text: string
 }
 
-export type CoreAppEntitiesTaskEntitiesTextReplaceStreamResponseData = {
+export type TextReplaceStreamResponseData = {
   text: string
 }
 
-export type CoreAppEntitiesTaskEntitiesReasoningChunkStreamResponseData = {
+export type ReasoningChunkStreamResponseData = {
   is_final?: boolean
   message_id?: string | null
   node_id?: string | null
   reasoning: string
 }
 
-export type CoreAppEntitiesTaskEntitiesAgentLogStreamResponseData = {
+export type AgentLogStreamResponseData = {
   data: {
     [key: string]: unknown
   }
@@ -1666,7 +1646,7 @@ export type CoreAppEntitiesTaskEntitiesAgentLogStreamResponseData = {
   status: string
 }
 
-export type CoreAppEntitiesTaskEntitiesHumanInputRequiredResponseData = {
+export type HumanInputRequiredResponseData = {
   actions?: Array<UserActionConfig>
   approval_channels?: Array<string>
   display_in_ui?: boolean
@@ -1682,9 +1662,10 @@ export type CoreAppEntitiesTaskEntitiesHumanInputRequiredResponseData = {
   }
 }
 
-export type CoreAppEntitiesTaskEntitiesHumanInputFormFilledResponseData = {
+export type HumanInputFormFilledResponseData = {
   action_id: string
   action_text: string
+  form_id: string
   node_id: string
   node_title: string
   rendered_content: string
@@ -1693,8 +1674,9 @@ export type CoreAppEntitiesTaskEntitiesHumanInputFormFilledResponseData = {
   } | null
 }
 
-export type CoreAppEntitiesTaskEntitiesHumanInputFormTimeoutResponseData = {
+export type HumanInputFormTimeoutResponseData = {
   expiration_time: number
+  form_id: string
   node_id: string
   node_title: string
 }

@@ -12,6 +12,18 @@ from controllers.common.errors import NotFoundError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console import console_ns
+from controllers.console.wraps import (
+    RBACPermission,
+    account_initialization_required,
+    edit_permission_required,
+    is_admin_or_owner_required,
+    model_validate,
+    rbac_permission_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
@@ -33,19 +45,6 @@ from services.plugin.oauth_service import OAuthProxyService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
-
-from .. import console_ns
-from ..wraps import (
-    RBACPermission,
-    account_initialization_required,
-    edit_permission_required,
-    is_admin_or_owner_required,
-    model_validate,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -512,7 +511,7 @@ class TriggerSubscriptionUpdateApi(Resource):
             )
             return SimpleResultResponse(result="success").model_dump(mode="json")
         except ValueError as e:
-            raise BadRequest(str(e))
+            raise BadRequest(str(e)) from e
         except Exception as e:
             logger.exception("Error updating subscription", exc_info=e)
             raise
@@ -548,7 +547,7 @@ class TriggerSubscriptionDeleteApi(Resource):
                 )
             return SimpleResultResponse(result="success").model_dump(mode="json")
         except ValueError as e:
-            raise BadRequest(str(e))
+            raise BadRequest(str(e)) from e
         except Exception as e:
             logger.exception("Error deleting provider credential", exc_info=e)
             raise
@@ -783,7 +782,7 @@ class TriggerOAuthClientManageApi(Resource):
             return dump_response(SimpleResultResponse, result)
 
         except ValueError as e:
-            raise BadRequest(str(e))
+            raise BadRequest(str(e)) from e
         except Exception as e:
             logger.exception("Error configuring OAuth client", exc_info=e)
             raise
@@ -809,7 +808,7 @@ class TriggerOAuthClientManageApi(Resource):
             )
             return dump_response(SimpleResultResponse, result)
         except ValueError as e:
-            raise BadRequest(str(e))
+            raise BadRequest(str(e)) from e
         except Exception as e:
             logger.exception("Error removing OAuth client", exc_info=e)
             raise

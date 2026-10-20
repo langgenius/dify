@@ -1,5 +1,5 @@
 import type { CursorPosition, NodePanelPresenceMap, OnlineUser } from '../../types/collaboration'
-import { waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useCollaboration } from '../use-collaboration'
 
@@ -17,11 +17,13 @@ const mockGetLeaderId = vi.hoisted(() => vi.fn(() => 'leader-1'))
 let onStateChangeCallback:
   | ((state: { isConnected?: boolean; disconnectReason?: string; error?: string }) => void)
   | null = null
+let onCursorCallback: ((cursors: Record<string, CursorPosition>) => void) | null = null
 let onUsersCallback: ((users: OnlineUser[]) => void) | null = null
 let onPresenceCallback: ((presence: NodePanelPresenceMap) => void) | null = null
 let onLeaderCallback: ((isLeader: boolean) => void) | null = null
 
 const unsubscribeState = vi.hoisted(() => vi.fn())
+const unsubscribeCursor = vi.hoisted(() => vi.fn())
 const unsubscribeUsers = vi.hoisted(() => vi.fn())
 const unsubscribePresence = vi.hoisted(() => vi.fn())
 const unsubscribeLeader = vi.hoisted(() => vi.fn())
@@ -30,11 +32,6 @@ let isCollaborationEnabled = true
 
 const mockStartTracking = vi.hoisted(() => vi.fn())
 const mockStopTracking = vi.hoisted(() => vi.fn())
-const cursorServiceInstances: Array<{
-  startTracking: typeof mockStartTracking
-  stopTracking: typeof mockStopTracking
-}> = []
-
 vi.mock('../../core/collaboration-manager', () => ({
   collaborationManager: {
     connect: (...args: unknown[]) => mockConnect(...args),
@@ -51,6 +48,10 @@ vi.mock('../../core/collaboration-manager', () => ({
     ) => {
       onStateChangeCallback = callback
       return unsubscribeState
+    },
+    onCursorUpdate: (callback: (cursors: Record<string, CursorPosition>) => void) => {
+      onCursorCallback = callback
+      return unsubscribeCursor
     },
     onOnlineUsersUpdate: (callback: (users: OnlineUser[]) => void) => {
       onUsersCallback = callback
@@ -71,12 +72,6 @@ vi.mock('../../services/cursor-service', () => ({
   CursorService: class {
     startTracking = mockStartTracking
     stopTracking = mockStopTracking
-    constructor() {
-      cursorServiceInstances.push({
-        startTracking: this.startTracking,
-        stopTracking: this.stopTracking,
-      })
-    }
   },
 }))
 
@@ -84,11 +79,11 @@ describe('useCollaboration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     onStateChangeCallback = null
+    onCursorCallback = null
     onUsersCallback = null
     onPresenceCallback = null
     onLeaderCallback = null
     isCollaborationEnabled = true
-    cursorServiceInstances.length = 0
     mockConnect.mockResolvedValue('conn-1')
     mockIsConnected.mockReturnValue(true)
   })
@@ -108,17 +103,21 @@ describe('useCollaboration', () => {
       expect(mockConnect).toHaveBeenCalledWith('app-1', reactFlowStore)
     })
 
-    onStateChangeCallback?.({ isConnected: true })
-    onUsersCallback?.([{ user_id: 'u1', username: 'U1', avatar: '', sid: 'sid-1' } as OnlineUser])
-    onPresenceCallback?.({
-      nodeA: { sid1: { userId: 'u1', username: 'U1', clientId: 'sid1', timestamp: 1 } },
+    act(() => {
+      onStateChangeCallback?.({ isConnected: true })
+      onUsersCallback?.([{ user_id: 'u1', username: 'U1', avatar: '', sid: 'sid-1' } as OnlineUser])
+      onCursorCallback?.({ u1: { x: 10, y: 20, userId: 'u1', timestamp: 1 } })
+      onPresenceCallback?.({
+        nodeA: { sid1: { userId: 'u1', username: 'U1', clientId: 'sid1', timestamp: 1 } },
+      })
+      onLeaderCallback?.(true)
     })
-    onLeaderCallback?.(true)
 
     await waitFor(() => {
       expect(result.current.isConnected).toBe(true)
-      expect(result.current.onlineUsers).toHaveLength(1)
-      expect(result.current.nodePanelPresence.nodeA).toBeDefined()
+      expect(result.current.onlineUsers).toEqual([
+        { user_id: 'u1', username: 'U1', avatar: '', sid: 'sid-1' },
+      ])
       expect(result.current.isLeader).toBe(true)
       expect(result.current.leaderId).toBe('leader-1')
     })
@@ -140,7 +139,6 @@ describe('useCollaboration', () => {
     unmount()
     expect(unsubscribeState).toHaveBeenCalled()
     expect(unsubscribeUsers).toHaveBeenCalled()
-    expect(unsubscribePresence).toHaveBeenCalled()
     expect(unsubscribeLeader).toHaveBeenCalled()
     expect(mockDisconnect).toHaveBeenCalledWith('conn-1')
   })

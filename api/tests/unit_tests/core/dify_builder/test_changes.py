@@ -2,7 +2,7 @@ from core.dify_builder.changes import describe_changed_nodes, describe_proposed_
 from core.dify_builder.models import ChangedNode, MutationIntent
 
 
-def test_changed_nodes_preserve_deleted_names_and_deduplicate_in_order():
+def test_changed_nodes_preserve_deleted_names_and_deduplicate_in_order() -> None:
     before = {
         "nodes": [{"id": "removed", "data": {"title": "Old answer"}}, {"id": "renamed", "data": {"title": "Old"}}]
     }
@@ -15,7 +15,7 @@ def test_changed_nodes_preserve_deleted_names_and_deduplicate_in_order():
     ]
 
 
-def test_proposed_nodes_include_connection_endpoints_and_explicit_new_nodes():
+def test_proposed_nodes_include_connection_endpoints_and_explicit_new_nodes() -> None:
     graph = {"nodes": [{"id": "source", "data": {"title": "Start"}}, {"id": "target", "data": {"title": "Answer"}}]}
     intents = [
         MutationIntent(op="set_node_config", args={"node_id": "source", "path": "title", "value": "Start"}),

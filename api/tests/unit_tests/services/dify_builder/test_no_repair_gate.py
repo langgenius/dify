@@ -1,7 +1,7 @@
 """No proposed fix must offer usable retry and finish paths without rejection text."""
 
 from datetime import datetime
-from typing import cast, override
+from typing import override
 
 import pytest
 
@@ -22,7 +22,6 @@ from core.dify_builder.models import (
     Session,
     Turn,
 )
-from core.dify_builder.ports import DifyBuilderAgent, DifyPort, Repository
 from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState
 from services.dify_builder.service import DifyBuilderService, resolve_submitted_action
@@ -44,19 +43,19 @@ class RetryingAgent(StubAgent):
         self.proposal_contexts: list[tuple[Diagnosis, Graph]] = []
 
     @override
-    def diagnose(self, _failed_run: Run, _graph: Graph, _node_outputs: list[NodeOutput]) -> Diagnosis:
+    def diagnose(self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> Diagnosis:
         self.run_diagnoses += 1
-        return super().diagnose(_failed_run, _graph, _node_outputs)
+        return super().diagnose(failed_run, graph, node_outputs)
 
     @override
-    def diagnose_checklist(self, errors: list[ChecklistError], _graph: Graph) -> Diagnosis:
+    def diagnose_checklist(self, errors: list[ChecklistError], graph: Graph) -> Diagnosis:
         self.checklist_diagnoses += 1
-        return super().diagnose_checklist(errors, _graph)
+        return super().diagnose_checklist(errors, graph)
 
     @override
-    def propose_repair(self, diagnosis: Diagnosis, _graph: Graph) -> tuple[list[MutationIntent], Risk]:
+    def propose_repair(self, diagnosis: Diagnosis, graph: Graph) -> tuple[list[MutationIntent], Risk]:
         self.proposals += 1
-        self.proposal_contexts.append((diagnosis, _graph))
+        self.proposal_contexts.append((diagnosis, graph))
         if self.empty_risk_level is not None:
             return [], Risk(level=self.empty_risk_level, reason="No usable repair")
         return [REPAIR], Risk(level="high")
@@ -90,15 +89,12 @@ def _gate(
     if source == "run":
         repo.save_run(session.id, Run(id="failed", dify_run_id="native-failed", status="failed", immutable=True))
     lock = FakeSessionLock()
-    # Shared fakes implement positional port calls with underscore-prefixed parameter names.
-    service = DifyBuilderService(
-        cast(Repository, repo), lock, lambda *_: None, get_app_revision_fn=lambda *_: dify.hash
-    )
+    service = DifyBuilderService(repo, lock, lambda *_: None, get_app_revision_fn=lambda *_: dify.hash)
     runner = Runner(
         Env(
-            repo=cast(Repository, repo),
-            dify=cast(DifyPort, dify),
-            agent=cast(DifyBuilderAgent, agent),
+            repo=repo,
+            dify=dify,
+            agent=agent,
             now=lambda: datetime.min,
         ),
         fix_registry(),
@@ -224,9 +220,9 @@ def test_empty_proposal_always_waits_for_retry_or_finish(risk_level: str) -> Non
     agent.empty_risk_level = risk_level
     _, context = repo.get_session(session.id)
     env = Env(
-        repo=cast(Repository, repo),
-        dify=cast(DifyPort, dify),
-        agent=cast(DifyBuilderAgent, agent),
+        repo=repo,
+        dify=dify,
+        agent=agent,
         now=lambda: datetime.min,
     )
 

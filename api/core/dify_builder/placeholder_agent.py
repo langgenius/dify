@@ -28,6 +28,7 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.state import PcState
 from graphon.enums import BuiltinNodeTypes
+from services.dify_builder.plan import WorkflowPlan
 
 __all__ = [
     "BUILD_END_ID",
@@ -108,13 +109,18 @@ class PlaceholderAgent:
         # of the prompt. Returning "" leaves that derived name in place.
         return ""
 
-    def propose_plan_v1(self, requirements: dict[str, Any], *, goal_text: str) -> list[str]:
-        return [
-            "Ingest source documents",
-            "Retrieve relevant knowledge",
-            "Summarize with an LLM",
-            "Emit the final report",
-        ]
+    def propose_plan_v1(self, requirements: dict[str, Any], *, goal_text: str) -> WorkflowPlan:
+        return WorkflowPlan(
+            title="Build a document summary workflow",
+            input_summary="Source documents to summarize.",
+            output_summary="A summary report based on the relevant knowledge.",
+            items=[
+                "Ingest source documents",
+                "Retrieve relevant knowledge",
+                "Summarize with an LLM",
+                "Emit the final report",
+            ],
+        )
 
     def discover_resources(
         self, plan_items: list[str], *, goal_text: str, requirements: dict[str, Any]
@@ -240,13 +246,18 @@ class PlaceholderAgent:
             "target_node_ids": targets,
         }
 
-    def propose_edit_plan(self, edit_rules: dict[str, Any], graph: Graph) -> list[str]:
-        return [
-            "Tighten the LLM risk threshold",
-            "Route high-risk output to the review team",
-            "Apply the timeout behavior",
-            "Preserve the existing summary contract",
-        ]
+    def propose_edit_plan(self, edit_rules: dict[str, Any], graph: Graph) -> WorkflowPlan:
+        return WorkflowPlan(
+            title="Update the report review rules",
+            input_summary="Source documents to summarize and review.",
+            output_summary="A summary report with high-risk output routed for review.",
+            items=[
+                "Tighten the LLM risk threshold",
+                "Route high-risk output to the review team",
+                "Apply the timeout behavior",
+                "Preserve the existing summary contract",
+            ],
+        )
 
     def build_edit_intents(
         self,

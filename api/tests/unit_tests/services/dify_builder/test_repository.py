@@ -9,11 +9,15 @@ list_conversation) are Task 5 and are not exercised here.
 """
 
 from collections.abc import Iterator
+from dataclasses import replace
+from datetime import datetime
+from typing import Unpack
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
+from typing_extensions import TypedDict
 
 from core.dify_builder.errors import ConflictError, NotFoundError
 from core.dify_builder.models import (
@@ -53,16 +57,27 @@ def repo(engine: Engine) -> SqlDifyBuilderRepository:
     return SqlDifyBuilderRepository(factory)
 
 
-def _make_domain_session(**overrides) -> DomainSession:
-    kwargs = {
-        "app_id": APP_ID,
-        "tenant_id": TENANT_ID,
-        "owner_account_id": ACCOUNT_ID,
-        "entry_mode": EntryMode.FIX,
-        "current_state": PcState.FIX_DIAGNOSE,
-    }
-    kwargs.update(overrides)
-    return DomainSession(**kwargs)
+class _SessionOverrides(TypedDict, total=False, closed=True):
+    id: str
+    app_id: str
+    tenant_id: str
+    owner_account_id: str
+    entry_mode: EntryMode
+    current_state: PcState
+    version: int
+    created_at: datetime
+    updated_at: datetime
+
+
+def _make_domain_session(**overrides: Unpack[_SessionOverrides]) -> DomainSession:
+    session = DomainSession(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_DIAGNOSE,
+    )
+    return replace(session, **overrides)
 
 
 def test_create_session_then_get_session_round_trips(repo: SqlDifyBuilderRepository) -> None:
@@ -444,7 +459,7 @@ def test_save_run_persists_error_field(repo: SqlDifyBuilderRepository) -> None:
     assert loaded.error == "query is required in input form"
 
 
-def test_verification_roundtrip_and_legacy(repo):
+def test_verification_roundtrip_and_legacy(repo: SqlDifyBuilderRepository) -> None:
     from core.dify_builder.models import OutputFinding, RunVerification
 
     s = _make_domain_session()
@@ -471,7 +486,7 @@ def test_verification_roundtrip_and_legacy(repo):
     assert repo.get_run(legacy.id).verification is None
 
 
-def test_fixture_lineage_roundtrip_and_legacy_absence(repo):
+def test_fixture_lineage_roundtrip_and_legacy_absence(repo: SqlDifyBuilderRepository) -> None:
     from core.dify_builder.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
     from services.dify_builder.serde import test_input_from_dict
 

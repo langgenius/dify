@@ -6,18 +6,27 @@ the setup description cannot supply permission; setting up the same row can.
 """
 
 import json
+from collections.abc import Callable, Iterator, Sequence
 from datetime import datetime
 from types import SimpleNamespace
+from typing import Never, Self
 
+import httpx
 import pytest
 from sqlalchemy import select, text
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.engine import Connection
+from sqlalchemy.orm import ORMExecuteState, Session, SessionTransaction, sessionmaker
 
 import services.app_generate_service as generate_module
 import services.workflow_service as workflow_module
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.dify_builder.models import Graph
 from core.plugin.impl.oauth import OAuthHandler
+from core.tools.__base.tool import Tool
+from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.tool_manager import ToolManager
+from graphon.nodes.tool.tool_node import ToolNode
+from graphon.runtime import VariablePool
 from models.account import Account
 from models.credential_permission import CredentialPermission, CredentialType
 from models.enums import EndUserType, PermissionEnum
@@ -30,6 +39,7 @@ from tests.unit_tests.services.dify_builder.draft_tool_inventory import (
     AUTH_PROVIDER,
     DRAFT_ID,
     FREE_PROVIDER,
+    DraftToolInventory,
 )
 from tests.unit_tests.services.dify_builder.draft_tool_inventory import (
     draft_tools as installed_draft_tools,
@@ -54,32 +64,37 @@ class NativeDispatchReachedError(AssertionError):
     """Baseline behavioral RED: native dispatch occurred before setup admission."""
 
 
-def dispatch(*args, **kwargs):  # noqa: ARG001
+def dispatch(*args: object, **kwargs: object) -> Never:  # noqa: ARG001
     raise NativeDispatchReachedError("native generator/engine reached before draft Tool setup admission")
 
 
 class LocalRateLimit:
     """External Redis concurrency boundary only; executes the real action."""
 
-    def __init__(self, *args):
+    def __init__(self, *args: object) -> None:
         pass
 
     @staticmethod
-    def gen_request_key():
+    def gen_request_key() -> str:
         return "draft-setup-test"
 
-    def enter(self, request_id):
+    def enter(self, request_id: str) -> str:
         return request_id
 
-    def exit(self, request_id):
+    def exit(self, request_id: str) -> None:
         pass
 
-    def generate(self, generator, request_id):  # noqa: ARG002
+    def generate[T](self, generator: T, request_id: str) -> T:  # noqa: ARG002
         return generator
 
 
 @pytest.fixture
-def native_draft(draft_tools, sqlite_session, monkeypatch, config_overrides):
+def native_draft(
+    draft_tools: DraftToolInventory,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> SimpleNamespace:
     config_overrides(DEPLOYMENT_EDITION="COMMUNITY")
     monkeypatch.setattr(generate_module, "RateLimit", LocalRateLimit)
     monkeypatch.setattr(workflow_module.SystemFeatureService, "is_plugin_manager_enabled", lambda: False)
@@ -98,7 +113,7 @@ def native_draft(draft_tools, sqlite_session, monkeypatch, config_overrides):
     )
     user = Account(name="Acting member", email="actor@example.test")
     user.id = ACCOUNT_A
-    graph = {
+    graph: Graph = {
         "nodes": [
             {"id": "s", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}},
             {
@@ -139,7 +154,7 @@ def native_draft(draft_tools, sqlite_session, monkeypatch, config_overrides):
     return SimpleNamespace(app=app, user=user, workflow=workflow, tools=draft_tools)
 
 
-def set_tool(case, session, **values):
+def set_tool(case: SimpleNamespace, session: Session, **values: object) -> None:
     graph = case.workflow.graph_dict
     graph["nodes"][1]["data"].update(values)
     case.workflow.graph = json.dumps(graph)
@@ -157,13 +172,13 @@ ENTRYPOINTS = [
 ]
 
 
-def nest_tool_in_container(case, session, kind):
+def nest_tool_in_container(case: SimpleNamespace, session: Session, kind: str) -> None:
     """Use a real container id and enclosing Tool rather than a nonexistent node."""
     graph = case.workflow.graph_dict
     tool = next(node for node in graph["nodes"] if node["id"] == "t")
     tool["parentId"] = "container"
     tool["data"].update({f"isIn{kind.title()}": True, f"{kind}_id": "container"})
-    container_data = {
+    container_data: dict[str, object] = {
         "type": kind,
         "title": kind.title(),
         "start_node_id": "containerstart",
@@ -198,7 +213,14 @@ def nest_tool_in_container(case, session, kind):
     session.commit()
 
 
-def invoke(case, session, monkeypatch, entrypoint, *, invoke_from=InvokeFrom.DEBUGGER):
+def invoke(
+    case: SimpleNamespace,
+    session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    entrypoint: str,
+    *,
+    invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
+) -> object:
     """Call the real request owner through its SQL workflow lookup."""
     if entrypoint == "publish":
         return WorkflowService(sessionmaker(bind=case.tools.engine)).publish_workflow(
@@ -256,14 +278,14 @@ def invoke(case, session, monkeypatch, entrypoint, *, invoke_from=InvokeFrom.DEB
 @pytest.mark.parametrize("entrypoint", ENTRYPOINTS)
 @pytest.mark.parametrize("description", ["", "User removed or changed the reminder; ready now!"])
 def test_draft_execution_without_credentials_refuses_before_native_dispatch_even_without_note(
-    native_draft,
-    sqlite_session,
-    monkeypatch,
-    entrypoint,
-    description,
-):
+    native_draft: SimpleNamespace,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    entrypoint: str,
+    description: str,
+) -> None:
     set_tool(native_draft, sqlite_session, desc=description)
-    with pytest.raises(ValueError):
+    with pytest.raises(ToolProviderCredentialValidationError, match="Tool|Saved draft execution"):
         invoke(native_draft, sqlite_session, monkeypatch, entrypoint)
     assert native_draft.tools.forbidden == []
 
@@ -271,12 +293,12 @@ def test_draft_execution_without_credentials_refuses_before_native_dispatch_even
 @pytest.mark.parametrize("entrypoint", [*ENTRYPOINTS, "publish"])
 @pytest.mark.parametrize("hidden_selection", ["default", "oldest", "legacy-short-default"])
 def test_native_default_hidden_credential_is_not_replaced_by_some_visible_credential(
-    native_draft,
-    sqlite_session,
-    monkeypatch,
-    entrypoint,
-    hidden_selection,
-):
+    native_draft: SimpleNamespace,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    entrypoint: str,
+    hidden_selection: str,
+) -> None:
     hidden = add_credential(
         sqlite_session,
         tenant_id=TENANT_ID,
@@ -300,7 +322,7 @@ def test_native_default_hidden_credential_is_not_replaced_by_some_visible_creden
     assert native_draft.tools.queries.list_visible_tool_provider_ids(workspace_id=TENANT_ID, actor_id=ACCOUNT_A) == {
         AUTH_PROVIDER
     }
-    with pytest.raises(ValueError):
+    with pytest.raises(ToolProviderCredentialValidationError, match="Tool|Saved draft execution"):
         invoke(native_draft, sqlite_session, monkeypatch, entrypoint)
     assert hidden.id != visible.id
     assert native_draft.tools.forbidden == []
@@ -309,12 +331,12 @@ def test_native_default_hidden_credential_is_not_replaced_by_some_visible_creden
 @pytest.mark.parametrize("selection", ["hidden", "foreign", "wrong-provider", "deleted", "revoked-grant", "malformed"])
 @pytest.mark.parametrize("operation", ["workflow-full", "node", "publish"])
 def test_exact_selected_credential_requires_the_complete_actor_provider_tenant_chain(
-    native_draft,
-    sqlite_session,
-    monkeypatch,
-    selection,
-    operation,
-):
+    native_draft: SimpleNamespace,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    selection: str,
+    operation: str,
+) -> None:
     credential = add_credential(
         sqlite_session,
         tenant_id=OTHER_TENANT_ID if selection == "foreign" else TENANT_ID,
@@ -340,7 +362,7 @@ def test_exact_selected_credential_requires_the_complete_actor_provider_tenant_c
         )
         sqlite_session.commit()
     set_tool(native_draft, sqlite_session, credential_id=credential_id, desc="")
-    with pytest.raises(ValueError) as refused:
+    with pytest.raises(ToolProviderCredentialValidationError, match="Tool|Saved draft execution") as refused:
         invoke(native_draft, sqlite_session, monkeypatch, operation)
     assert SECRET_MARKER not in str(refused.value)
     assert native_draft.tools.forbidden == []
@@ -349,12 +371,12 @@ def test_exact_selected_credential_requires_the_complete_actor_provider_tenant_c
 @pytest.mark.parametrize("entrypoint", ENTRYPOINTS)
 @pytest.mark.parametrize("configured", ["explicit", "default", "credential-free"])
 def test_configured_and_credential_free_drafts_reach_native_dispatch_without_removing_the_note(
-    native_draft,
-    sqlite_session,
-    monkeypatch,
-    entrypoint,
-    configured,
-):
+    native_draft: SimpleNamespace,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    entrypoint: str,
+    configured: str,
+) -> None:
     if configured == "credential-free":
         set_tool(native_draft, sqlite_session, provider_id=FREE_PROVIDER, provider_name=FREE_PROVIDER, tool_name="echo")
     else:
@@ -385,9 +407,11 @@ def test_configured_and_credential_free_drafts_reach_native_dispatch_without_rem
     assert native_draft.tools.forbidden == []
 
 
-def test_setup_enables_the_same_stored_draft_without_regeneration(native_draft, sqlite_session, monkeypatch):
+def test_setup_enables_the_same_stored_draft_without_regeneration(
+    native_draft: SimpleNamespace, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
     graph_before = native_draft.workflow.graph
-    with pytest.raises(ValueError):
+    with pytest.raises(ToolProviderCredentialValidationError, match="Tool|Saved draft execution"):
         invoke(native_draft, sqlite_session, monkeypatch, "workflow-full")
     add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
     with pytest.raises(NativeDispatchReachedError):
@@ -402,12 +426,12 @@ def test_setup_enables_the_same_stored_draft_without_regeneration(native_draft, 
 )
 @pytest.mark.parametrize("operation", [*ENTRYPOINTS, "publish"])
 def test_fresh_query_or_installation_uncertainty_refuses_draft_admission(
-    native_draft,
-    sqlite_session,
-    monkeypatch,
-    failure,
-    operation,
-):
+    native_draft: SimpleNamespace,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+    operation: str,
+) -> None:
     add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
     if failure == "credential-query":
         with native_draft.tools.engine.begin() as connection:
@@ -422,18 +446,18 @@ def test_fresh_query_or_installation_uncertainty_refuses_draft_admission(
         set_tool(
             native_draft, sqlite_session, provider_id="foreign/huddle/huddle", provider_name="foreign/huddle/huddle"
         )
-    with pytest.raises(ValueError):
+    with pytest.raises(ToolProviderCredentialValidationError, match="Tool|Saved draft execution"):
         invoke(native_draft, sqlite_session, monkeypatch, operation)
     assert native_draft.tools.forbidden == []
 
 
 def test_publish_without_credentials_and_plugin_manager_disabled_creates_no_version_or_pointer(
-    native_draft,
+    native_draft: SimpleNamespace,
     sqlite_session: Session,
-):
+) -> None:
     service = WorkflowService(sessionmaker(bind=native_draft.tools.engine))
     before_pointer = native_draft.app.workflow_id
-    with pytest.raises(ValueError):
+    with pytest.raises(ToolProviderCredentialValidationError, match="Tool|Saved draft execution"):
         service.publish_workflow(session=sqlite_session, app_model=native_draft.app, account=native_draft.user)
     sqlite_session.flush()
     assert [row.version for row in sqlite_session.scalars(select(Workflow).where(Workflow.app_id == APP_ID))] == [
@@ -447,10 +471,10 @@ def test_publish_without_credentials_and_plugin_manager_disabled_creates_no_vers
 
 @pytest.mark.parametrize("configured", ["explicit", "default", "credential-free"])
 def test_publish_configured_or_credential_free_draft_with_plugin_manager_disabled(
-    native_draft,
-    sqlite_session,
-    configured,
-):
+    native_draft: SimpleNamespace,
+    sqlite_session: Session,
+    configured: str,
+) -> None:
     if configured == "credential-free":
         set_tool(native_draft, sqlite_session, provider_id=FREE_PROVIDER, provider_name=FREE_PROVIDER, tool_name="echo")
     else:
@@ -471,7 +495,9 @@ def test_publish_configured_or_credential_free_draft_with_plugin_manager_disable
 
 
 @pytest.mark.parametrize("invoke_from", [InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP])
-def test_published_execution_keeps_normal_credential_delegation(native_draft, sqlite_session, monkeypatch, invoke_from):
+def test_published_execution_keeps_normal_credential_delegation(
+    native_draft: SimpleNamespace, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, invoke_from: InvokeFrom
+) -> None:
     native_draft.workflow.version = "2026-10-12 12:00:00"
     native_draft.app.workflow_id = DRAFT_ID
     end_user = EndUser(
@@ -502,11 +528,11 @@ def test_published_execution_keeps_normal_credential_delegation(native_draft, sq
 
 @pytest.mark.parametrize("owner", ["console", "builder"])
 def test_native_publish_owners_read_declarations_before_writes_or_draft_locks(
-    native_draft,
-    sqlite_session,
-    monkeypatch,
-    owner,
-):
+    native_draft: SimpleNamespace,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    owner: str,
+) -> None:
     """A real locked/write publication cannot perform external schema I/O."""
     from importlib import import_module
     from inspect import unwrap
@@ -526,38 +552,53 @@ def test_native_publish_owners_read_declarations_before_writes_or_draft_locks(
     database = SimpleNamespace(engine=native_draft.tools.engine)
     monkeypatch.setattr(console_owner, "db", database)
     monkeypatch.setattr(builder_owner, "db", database)
-    guarded_sessions = set()
-    write_connections = set()
-    requests = []
+    guarded_sessions: set[Session] = set()
+    write_connections: set[Connection] = set()
+    requests: list[str] = []
     daemon_request = native_draft.tools.daemon.request
 
-    def on_orm_execute(state):
+    def on_orm_execute(state: ORMExecuteState) -> None:
         if (
             state.session.bind is native_draft.tools.engine
             and getattr(state.statement, "_for_update_arg", None) is not None
         ):
             guarded_sessions.add(state.session)
 
-    def on_flush(session, _context, _instances):
+    def on_flush(session: Session, _context: object, _instances: object) -> None:
         if session.bind is native_draft.tools.engine and (session.new or session.dirty or session.deleted):
             guarded_sessions.add(session)
 
-    def on_end(session, transaction):
+    def on_end(session: Session, transaction: SessionTransaction) -> None:
         if transaction.parent is None:
             guarded_sessions.discard(session)
 
-    def on_sql(connection, _cursor, statement, _parameters, _context, _executemany):
+    def on_sql(
+        connection: Connection,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
         if statement.lstrip().upper().startswith(("INSERT ", "UPDATE ", "DELETE ")):
             write_connections.add(connection)
 
-    def on_connection_end(connection):
+    def on_connection_end(connection: Connection) -> None:
         write_connections.discard(connection)
 
-    def metadata_request(*args, **kwargs):
+    def metadata_request(
+        *,
+        method: str,
+        url: str,
+        params: dict[str, object] | None = None,
+        content: str | bytes | None = None,
+        data: dict[str, object] | None = None,
+        **kwargs: object,
+    ) -> httpx.Response:
         assert not guarded_sessions, "external Tool declarations fetched during writes or a held draft lock"
         assert not write_connections, "external Tool declarations fetched inside an active SQL write transaction"
-        requests.append(args)
-        return daemon_request(*args, **kwargs)
+        requests.append(url)
+        return daemon_request(method=method, url=url, params=params, content=content, data=data, **kwargs)
 
     event.listen(Session, "do_orm_execute", on_orm_execute)
     event.listen(Session, "before_flush", on_flush)
@@ -583,8 +624,10 @@ def test_native_publish_owners_read_declarations_before_writes_or_draft_locks(
             )
         assert requests, "native publication never verified the actual installed Tool declaration"
         sqlite_session.expire_all()
-        assert sqlite_session.get(App, APP_ID).workflow_id != DRAFT_ID
-        assert sqlite_session.get(App, APP_ID).workflow_id is not None
+        stored_app = sqlite_session.get(App, APP_ID)
+        assert stored_app is not None
+        assert stored_app.workflow_id != DRAFT_ID
+        assert stored_app.workflow_id is not None
         assert len(list(sqlite_session.scalars(select(Workflow).where(Workflow.app_id == APP_ID)))) == 2
         assert native_draft.tools.forbidden == []
     finally:
@@ -598,11 +641,11 @@ def test_native_publish_owners_read_declarations_before_writes_or_draft_locks(
 
 @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
 def test_queued_draft_rechecks_revoked_selection_before_native_dispatch(
-    native_draft,
-    sqlite_session,
-    monkeypatch,
-    mode,
-):
+    native_draft: SimpleNamespace,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: AppMode,
+) -> None:
     """Request-time setup is not authorization after a queued credential revoke."""
     import tasks.app_generate.workflow_execute_task as worker
 
@@ -628,6 +671,7 @@ def test_queued_draft_rechecks_revoked_selection_before_native_dispatch(
     grant = sqlite_session.scalar(
         select(CredentialPermission).where(CredentialPermission.credential_id == credential.id)
     )
+    assert grant is not None
     grant.has_permission = False
     sqlite_session.commit()
     monkeypatch.setattr(worker, "db", SimpleNamespace(engine=native_draft.tools.engine))
@@ -638,13 +682,15 @@ def test_queued_draft_rechecks_revoked_selection_before_native_dispatch(
         "get_response_topic",
         lambda *_args: SimpleNamespace(publish=lambda _value: None),
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(ToolProviderCredentialValidationError, match="Tool|Saved draft execution"):
         worker.workflow_based_app_execution_task.run(payload)
     assert native_draft.tools.forbidden == []
 
 
 @pytest.mark.parametrize("default", [True, False])
-def test_ambiguous_native_default_cannot_mask_hidden_credential(native_draft, sqlite_session, monkeypatch, default):
+def test_ambiguous_native_default_cannot_mask_hidden_credential(
+    native_draft: SimpleNamespace, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, default: bool
+) -> None:
     visible = add_credential(
         sqlite_session,
         tenant_id=TENANT_ID,
@@ -664,7 +710,7 @@ def test_ambiguous_native_default_cannot_mask_hidden_credential(native_draft, sq
     visible.is_default = hidden.is_default = default
     visible.created_at = hidden.created_at = datetime(2026, 1, 1)
     sqlite_session.commit()
-    with pytest.raises(ValueError):
+    with pytest.raises(ToolProviderCredentialValidationError, match="Tool|Saved draft execution"):
         invoke(native_draft, sqlite_session, monkeypatch, "workflow-full")
     # An explicit authorized choice removes the native ambiguity on this same node.
     set_tool(native_draft, sqlite_session, credential_id=visible.id)
@@ -673,11 +719,11 @@ def test_ambiguous_native_default_cannot_mask_hidden_credential(native_draft, sq
     assert native_draft.tools.forbidden == []
 
 
-def native_tool_node(case, *, workflow_id=None):
+def native_tool_node(case: SimpleNamespace, *, workflow_id: str | None = None) -> tuple[ToolNode, VariablePool]:
     """Construct the real Tool through the production native factory and scope."""
     from core.app.entities.app_invoke_entities import UserFrom, build_dify_run_context
     from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory
-    from graphon.runtime import GraphRuntimeState, VariablePool
+    from graphon.runtime import RuntimeState, VariablePool
 
     pool = VariablePool()
     factory = DifyNodeFactory.from_graph_init_context(
@@ -693,13 +739,17 @@ def native_tool_node(case, *, workflow_id=None):
             ),
             call_depth=0,
         ),
-        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=0.0),
+        runtime_state=RuntimeState(variable_pool=pool, start_at=0.0, workflow_id=workflow_id or case.workflow.id),
     )
-    return factory.create_node(case.workflow.get_node_config_by_id("t")), pool
+    node = factory.create_node(case.workflow.get_node_config_by_id("t"))
+    assert isinstance(node, ToolNode)
+    return node, pool
 
 
 @pytest.mark.parametrize("change", ["revoked", "hidden-default", "wrong-provider", "after-metadata"])
-def test_native_tool_rechecks_selection_after_run_admission(native_draft, sqlite_session, monkeypatch, change):
+def test_native_tool_rechecks_selection_after_run_admission(
+    native_draft: SimpleNamespace, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
     """A native node cannot decrypt a selection whose access changed since admission."""
     from sqlalchemy import event
 
@@ -725,6 +775,7 @@ def test_native_tool_rechecks_selection_after_run_admission(native_draft, sqlite
         select(CredentialPermission).where(CredentialPermission.credential_id == credential.id)
     )
     if change == "revoked":
+        assert grant is not None
         grant.has_permission = False
     elif change == "hidden-default":
         credential.is_default = False
@@ -741,13 +792,14 @@ def test_native_tool_rechecks_selection_after_run_admission(native_draft, sqlite
     sqlite_session.commit()
     monkeypatch.setattr(ToolManager, "get_tool_runtime", classmethod(_NATIVE_TOOL_RUNTIME))
     node, pool = native_tool_node(native_draft)
-    revoked_between_reads = []
+    revoked_between_reads: list[bool] = []
 
-    def revoke_before_native_value_read(state):
+    def revoke_before_native_value_read(state: ORMExecuteState) -> None:
         if change == "after-metadata" and not revoked_between_reads:
             descriptions = getattr(state.statement, "column_descriptions", ())
             if descriptions and descriptions[0].get("expr") is BuiltinToolProvider:
                 revoked_between_reads.append(True)
+                assert grant is not None
                 grant.has_permission = False
                 sqlite_session.commit()
 
@@ -761,7 +813,9 @@ def test_native_tool_rechecks_selection_after_run_admission(native_draft, sqlite
         event.remove(Session, "do_orm_execute", revoke_before_native_value_read)
 
 
-def test_published_child_inherited_debugger_keeps_native_tool_delegation(native_draft, sqlite_session, monkeypatch):
+def test_published_child_inherited_debugger_keeps_native_tool_delegation(
+    native_draft: SimpleNamespace, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Actual published child scope preserves delegation even with inherited DEBUGGER."""
     from graphon.nodes.tool.exc import ToolRuntimeResolutionError
 
@@ -804,7 +858,9 @@ def test_published_child_inherited_debugger_keeps_native_tool_delegation(native_
 
 
 @pytest.mark.parametrize("scope", ["deleted", "foreign"])
-def test_native_tool_unknown_workflow_scope_refuses_before_crypto(native_draft, sqlite_session, monkeypatch, scope):
+def test_native_tool_unknown_workflow_scope_refuses_before_crypto(
+    native_draft: SimpleNamespace, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, scope: str
+) -> None:
     from graphon.nodes.tool.exc import ToolRuntimeResolutionError
 
     add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
@@ -822,10 +878,10 @@ def test_native_tool_unknown_workflow_scope_refuses_before_crypto(native_draft, 
 
 @pytest.fixture
 def native_draft_oauth(
-    native_draft,
-    sqlite_session,
-    monkeypatch,
-):
+    native_draft: SimpleNamespace,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Iterator[SimpleNamespace]:
     """Authorized synthetic OAuth effects through real native/SQL ownership.
 
     Actual stored draft ownership, installed declaration, credential visibility,
@@ -846,7 +902,7 @@ def native_draft_oauth(
     # Earlier direct native calls can populate the implicit counter-zero cache.
     # The first recycle increment merely initializes zero; explicitly start a
     # fresh native request cache, as the existing native fixtures do.
-    def reset_native_provider_cache():
+    def reset_native_provider_cache() -> None:
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(Lock())
 
@@ -902,14 +958,14 @@ def native_draft_oauth(
         monkeypatch.setattr(client_module, "db", native_database)
         monkeypatch.setattr(ToolManager, "get_tool_runtime", classmethod(_NATIVE_TOOL_RUNTIME))
         monkeypatch.setattr(OAuthHandler, "refresh_credentials", _NATIVE_OAUTH_REFRESH)
-        crypto_calls = []
-        refresh_calls = []
-        cache_deletions = []
+        crypto_calls: list[str] = []
+        refresh_calls: list[str] = []
+        cache_deletions: list[str] = []
         refresh_boundary = SimpleNamespace(action=None, credential_owner=ACCOUNT_A)
 
         class SyntheticCrypto:
             @staticmethod
-            def decrypt(values):
+            def decrypt(values: dict[str, object]) -> dict[str, str]:
                 crypto_calls.append("decrypt")
                 if values == {"client_id": "synthetic-client", "client_secret": "cipher:client-secret"}:
                     return {"client_id": "synthetic-client", "client_secret": "synthetic-client-secret"}
@@ -919,28 +975,39 @@ def native_draft_oauth(
                 return {"access_token": "synthetic-old-access", "refresh_token": "synthetic-old-refresh"}
 
             @staticmethod
-            def encrypt(values):
+            def encrypt(values: dict[str, object]) -> dict[str, str]:
                 crypto_calls.append("encrypt")
                 assert values == {"access_token": "synthetic-new-access", "refresh_token": "synthetic-new-refresh"}
                 return {"access_token": "cipher:new-access", "refresh_token": "cipher:new-refresh"}
 
-        def crypto_factory(*, tenant_id, config, cache):
+        def crypto_factory(
+            *, tenant_id: str, config: Sequence[object], cache: object
+        ) -> tuple[SyntheticCrypto, object]:
             assert tenant_id == TENANT_ID
             assert len(config) == 2
             return SyntheticCrypto(), cache
 
-        def refresh_stream(_self, method, path, response_type, **kwargs):
+        def refresh_stream(
+            _self: object,
+            method: str,
+            path: str,
+            response_type: type[PluginOAuthCredentialsResponse],
+            *,
+            headers: dict[str, str],
+            data: Graph,
+            **_kwargs: object,
+        ) -> Iterator[PluginOAuthCredentialsResponse]:
             assert method == "POST"
             assert path == "plugin/aaaaaaaa-0000-4000-8000-000000000001/dispatch/oauth/refresh_credentials"
             assert response_type is PluginOAuthCredentialsResponse
-            assert kwargs["headers"] == {"X-Plugin-ID": "acme/huddle", "Content-Type": "application/json"}
-            assert kwargs["data"]["user_id"] == refresh_boundary.credential_owner
-            assert kwargs["data"]["data"]["provider"] == "huddle"
-            assert kwargs["data"]["data"]["credentials"] == {
+            assert headers == {"X-Plugin-ID": "acme/huddle", "Content-Type": "application/json"}
+            assert data["user_id"] == refresh_boundary.credential_owner
+            assert data["data"]["provider"] == "huddle"
+            assert data["data"]["credentials"] == {
                 "access_token": "synthetic-old-access",
                 "refresh_token": "synthetic-old-refresh",
             }
-            assert kwargs["data"]["data"]["system_credentials"] == {
+            assert data["data"]["system_credentials"] == {
                 "client_id": "synthetic-client",
                 "client_secret": "synthetic-client-secret",
             }
@@ -958,7 +1025,7 @@ def native_draft_oauth(
 
         class RedisBoundary:
             @staticmethod
-            def delete(key):
+            def delete(key: str) -> int:
                 cache_deletions.append(key)
                 return 1
 
@@ -967,7 +1034,7 @@ def native_draft_oauth(
         monkeypatch.setattr(OAuthHandler, "_request_with_plugin_daemon_response_stream", refresh_stream)
         monkeypatch.setattr(provider_cache, "redis_client", RedisBoundary())
 
-        def resolve_runtime():
+        def resolve_runtime() -> Tool:
             return ToolManager.get_tool_runtime(
                 provider_type=ToolProviderType.BUILT_IN,
                 provider_id=AUTH_PROVIDER,
@@ -995,7 +1062,9 @@ def native_draft_oauth(
         reset_native_provider_cache()
 
 
-def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_expiry(native_draft_oauth):
+def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_expiry(
+    native_draft_oauth: SimpleNamespace,
+) -> None:
     """Native rotation survives fresh SQL and a second resolution without refresh."""
     from models.tools import BuiltinToolProvider
 
@@ -1034,7 +1103,9 @@ def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_
 
 
 @pytest.mark.parametrize("change", ["revoked", "rotated"])
-def test_native_draft_oauth_refresh_refuses_concurrent_selection_change(native_draft_oauth, change):
+def test_native_draft_oauth_refresh_refuses_concurrent_selection_change(
+    native_draft_oauth: SimpleNamespace, change: str
+) -> None:
     """Real current permission/token updates cannot be overwritten after OAuth I/O."""
     from core.tools.errors import ToolProviderCredentialValidationError
     from models.tools import BuiltinToolProvider
@@ -1053,6 +1124,7 @@ def test_native_draft_oauth_refresh_refuses_concurrent_selection_change(native_d
                     BuiltinToolProvider.provider == AUTH_PROVIDER,
                 )
             )
+            assert credential is not None
             credential.user_id = ACCOUNT_B
             credential.visibility = PermissionEnum.PARTIAL_TEAM
             session.add(
@@ -1066,7 +1138,7 @@ def test_native_draft_oauth_refresh_refuses_concurrent_selection_change(native_d
             )
         boundary.refresh_boundary.credential_owner = ACCOUNT_B
 
-    def concurrent_change():
+    def concurrent_change() -> None:
         with Session(boundary.engine) as session, session.begin():
             if change == "revoked":
                 grant = session.scalar(
@@ -1077,6 +1149,7 @@ def test_native_draft_oauth_refresh_refuses_concurrent_selection_change(native_d
                         CredentialPermission.account_id == ACCOUNT_A,
                     )
                 )
+                assert grant is not None
                 grant.has_permission = False
             else:
                 credential = session.scalar(
@@ -1086,6 +1159,7 @@ def test_native_draft_oauth_refresh_refuses_concurrent_selection_change(native_d
                         BuiltinToolProvider.id == boundary.credential_id,
                     )
                 )
+                assert credential is not None
                 credential.encrypted_credentials = json.dumps(
                     {
                         "access_token": "cipher:concurrent-access",
@@ -1120,6 +1194,7 @@ def test_native_draft_oauth_refresh_refuses_concurrent_selection_change(native_d
                     CredentialPermission.credential_type == CredentialType.BUILTIN_TOOL_PROVIDER,
                 )
             )
+            assert grant is not None
             assert grant.has_permission is False
         else:
             assert json.loads(encrypted) == {
@@ -1130,7 +1205,9 @@ def test_native_draft_oauth_refresh_refuses_concurrent_selection_change(native_d
 
 
 @pytest.fixture
-def paused_native_draft(native_draft, sqlite_session, monkeypatch):
+def paused_native_draft(
+    native_draft: SimpleNamespace, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[SimpleNamespace]:
     """Real saved run/pause/context; only blob, Redis and final resume effects are external."""
     from decimal import Decimal
 
@@ -1144,7 +1221,7 @@ def paused_native_draft(native_draft, sqlite_session, monkeypatch):
     from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
     from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
     from graphon.enums import WorkflowExecutionStatus
-    from graphon.runtime import GraphRuntimeState, VariablePool
+    from graphon.runtime import RuntimeState, VariablePool
     from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTriggeredFrom
     from models.model import Conversation, Message
     from models.workflow import WorkflowPause, WorkflowRun
@@ -1167,55 +1244,55 @@ def paused_native_draft(native_draft, sqlite_session, monkeypatch):
 
     class BlobBoundary:
         @staticmethod
-        def load(key):
+        def load(key: str) -> bytes:
             assert key == state_key
             state.storage_loads.append(key)
             return state.saved_blob
 
     class RedisBoundary:
-        def __init__(self):
-            self.values = {
+        def __init__(self) -> None:
+            self.values: dict[str, bytes | list[bytes]] = {
                 "generate_task_stopped:eeeeeeee-0000-4000-8000-000000000003": b"1",
                 "workflow:eeeeeeee-0000-4000-8000-000000000003:commands:pending": b"1",
                 "workflow:eeeeeeee-0000-4000-8000-000000000003:commands": [],
             }
 
-        def delete(self, key):
+        def delete(self, key: str) -> int:
             state.redis_calls.append(("delete", key))
             return int(self.values.pop(key, None) is not None)
 
-        def get(self, key):
+        def get(self, key: str) -> bytes | list[bytes] | None:
             state.redis_calls.append(("get", key))
             return self.values.get(key)
 
-        def pipeline(self):
+        def pipeline(self) -> "RedisPipeline":
             state.redis_calls.append(("pipeline",))
             return RedisPipeline(self)
 
     class RedisPipeline:
-        def __init__(self, redis):
+        def __init__(self, redis: RedisBoundary) -> None:
             self.redis = redis
-            self.operations = []
+            self.operations: list[tuple[str, str]] = []
 
-        def __enter__(self):
+        def __enter__(self) -> Self:
             return self
 
-        def __exit__(self, *_args):
+        def __exit__(self, *_args: object) -> bool:
             return False
 
-        def get(self, key):
+        def get(self, key: str) -> Self:
             self.operations.append(("get", key))
             return self
 
-        def delete(self, key):
+        def delete(self, key: str) -> Self:
             self.operations.append(("delete", key))
             return self
 
-        def lrange(self, key, _start, _end):
+        def lrange(self, key: str, _start: int, _end: int) -> Self:
             self.operations.append(("lrange", key))
             return self
 
-        def execute(self):
+        def execute(self) -> list[object]:
             return [
                 self.redis.values.get(key, []) if operation == "lrange" else getattr(self.redis, operation)(key)
                 for operation, key in self.operations
@@ -1226,12 +1303,20 @@ def paused_native_draft(native_draft, sqlite_session, monkeypatch):
     monkeypatch.setattr(pause_owner, "storage", BlobBoundary())
     monkeypatch.setattr(worker, "db", SimpleNamespace(engine=native_draft.tools.engine))
 
-    def observe_pause_write(_connection, _cursor, statement, _params, _context, _many):
+    def observe_pause_write(
+        _connection: Connection, _cursor: object, statement: str, _params: object, _context: object, _many: bool
+    ) -> None:
         if statement.lstrip().lower().startswith(("update workflow_pauses ", "update workflow_runs ")):
             state.pause_writes.append(statement)
 
-    def resume_boundary(_self, **kwargs):
-        entity = kwargs["application_generate_entity"]
+    def resume_boundary(
+        _self: object,
+        *,
+        application_generate_entity: WorkflowAppGenerateEntity | AdvancedChatAppGenerateEntity,
+        workflow: Workflow,
+        **_kwargs: object,
+    ) -> Never:
+        entity = application_generate_entity
         execution_id = (
             entity.workflow_execution_id if isinstance(entity, WorkflowAppGenerateEntity) else entity.workflow_run_id
         )
@@ -1241,23 +1326,25 @@ def paused_native_draft(native_draft, sqlite_session, monkeypatch):
         with Session(native_draft.tools.engine) as session:
             BaseAppGenerator._restore_workflow_run_graph(
                 session=session,
-                workflow=kwargs["workflow"],
+                workflow=workflow,
                 workflow_run_id=execution_id,
             )
-        state.executed_graph = kwargs["workflow"].graph_dict
+        state.executed_graph = workflow.graph_dict
         raise NativeDispatchReachedError("normal native resume reached before saved graph admission")
 
     monkeypatch.setattr(worker.WorkflowAppGenerator, "resume", resume_boundary)
     monkeypatch.setattr(worker.AdvancedChatAppGenerator, "resume", resume_boundary)
 
-    def save_context():
+    def save_context() -> None:
         context = WorkflowResumptionContext(
             generate_entity={"type": state.mode, "entity": state.entity},
-            serialized_graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0).dumps(),
+            serialized_graph_runtime_state=RuntimeState(
+                variable_pool=VariablePool(), start_at=0.0, workflow_id=DRAFT_ID
+            ).dumps(),
         )
         state.saved_blob = context.dumps().encode()
 
-    def store(mode, saved_graph):
+    def store(mode: AppMode, saved_graph: Graph | str | None) -> None:
         state.mode = AppMode(mode)
         native_draft.app.mode = state.mode
         native_draft.workflow.type = WorkflowType.CHAT if state.mode == AppMode.ADVANCED_CHAT else WorkflowType.WORKFLOW
@@ -1334,20 +1421,22 @@ def paused_native_draft(native_draft, sqlite_session, monkeypatch):
         state.run = run
         save_context()
 
-    def assert_not_resumed():
+    def assert_not_resumed() -> None:
         assert state.storage_loads == ["resume-draft-tool-state.json"]
         assert state.redis_calls == []
         assert redis.values["generate_task_stopped:eeeeeeee-0000-4000-8000-000000000003"] == b"1"
         assert state.pause_writes == []
         assert state.native_calls == []
         with Session(native_draft.tools.engine) as session:
-            assert session.get(WorkflowRun, run_id).status == WorkflowExecutionStatus.PAUSED
-            assert (
-                session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == run_id)).resumed_at is None
-            )
+            saved_run = session.get(WorkflowRun, run_id)
+            assert saved_run is not None
+            assert saved_run.status == WorkflowExecutionStatus.PAUSED
+            saved_pause = session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == run_id))
+            assert saved_pause is not None
+            assert saved_pause.resumed_at is None
         assert native_draft.tools.forbidden == []
 
-    def resume():
+    def resume() -> None:
         # Tests deliberately commit saved-run edits before resuming. Measure
         # only the actual resume attempt, retaining every SQL write it makes.
         state.pause_writes.clear()
@@ -1368,12 +1457,12 @@ def paused_native_draft(native_draft, sqlite_session, monkeypatch):
 @pytest.mark.parametrize("mode", ["workflow", "advanced-chat"])
 @pytest.mark.parametrize("draft_edit", ["removed-tool", "changed-credential"])
 def test_resume_refuses_saved_revoked_tool_before_any_resume_effect(
-    paused_native_draft,
-    native_draft,
-    sqlite_session,
-    mode,
-    draft_edit,
-):
+    paused_native_draft: SimpleNamespace,
+    native_draft: SimpleNamespace,
+    sqlite_session: Session,
+    mode: AppMode,
+    draft_edit: str,
+) -> None:
     owner = Account(name="Saved Tool credential owner", email="saved-tool-owner@example.test")
     owner.id = ACCOUNT_B
     sqlite_session.add(owner)
@@ -1390,6 +1479,7 @@ def test_resume_refuses_saved_revoked_tool_before_any_resume_effect(
     set_tool(native_draft, sqlite_session, credential_id=selected.id)
     paused_native_draft.store(mode, native_draft.workflow.graph_dict)
     grant = sqlite_session.scalar(select(CredentialPermission).where(CredentialPermission.credential_id == selected.id))
+    assert grant is not None
     grant.has_permission = False
     if draft_edit == "removed-tool":
         graph = native_draft.workflow.graph_dict
@@ -1406,18 +1496,18 @@ def test_resume_refuses_saved_revoked_tool_before_any_resume_effect(
             name="Current draft accessible alternative",
         )
         set_tool(native_draft, sqlite_session, credential_id=alternative.id)
-    with pytest.raises(ValueError):
+    with pytest.raises(ToolProviderCredentialValidationError, match="Tool|Saved draft execution"):
         paused_native_draft.resume()
     paused_native_draft.assert_not_resumed()
 
 
 @pytest.mark.parametrize("mode", ["workflow", "advanced-chat"])
 def test_resume_configured_saved_graph_ignores_later_unconfigured_draft_tool(
-    paused_native_draft,
-    native_draft,
-    sqlite_session,
-    mode,
-):
+    paused_native_draft: SimpleNamespace,
+    native_draft: SimpleNamespace,
+    sqlite_session: Session,
+    mode: AppMode,
+) -> None:
     from tests.unit_tests.services.dify_builder.installed_tool_inventory import FakeTool, provider_payload
 
     selected = add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
@@ -1456,18 +1546,18 @@ def test_resume_configured_saved_graph_ignores_later_unconfigured_draft_tool(
     "saved_graph", [None, "not JSON", "[]", "{}"], ids=["absent", "malformed", "array", "missing-nodes"]
 )
 def test_resume_unverifiable_saved_graph_refuses_before_resume_effects(
-    paused_native_draft,
-    native_draft,
-    sqlite_session,
-    mode,
-    saved_graph,
-):
+    paused_native_draft: SimpleNamespace,
+    native_draft: SimpleNamespace,
+    sqlite_session: Session,
+    mode: AppMode,
+    saved_graph: Graph | str | None,
+) -> None:
     selected = add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
     set_tool(native_draft, sqlite_session, credential_id=selected.id)
     paused_native_draft.store(mode, native_draft.workflow.graph_dict)
     paused_native_draft.run.graph = saved_graph
     sqlite_session.commit()
-    with pytest.raises(ValueError):
+    with pytest.raises(ToolProviderCredentialValidationError, match="Tool|Saved draft execution"):
         paused_native_draft.resume()
     paused_native_draft.assert_not_resumed()
 
@@ -1475,12 +1565,12 @@ def test_resume_unverifiable_saved_graph_refuses_before_resume_effects(
 @pytest.mark.parametrize("mode", ["workflow", "advanced-chat"])
 @pytest.mark.parametrize("scope", ["run-tenant", "context-actor", "context-workflow", "context-run"])
 def test_resume_saved_graph_requires_actual_run_and_invocation_owners(
-    paused_native_draft,
-    native_draft,
-    sqlite_session,
-    mode,
-    scope,
-):
+    paused_native_draft: SimpleNamespace,
+    native_draft: SimpleNamespace,
+    sqlite_session: Session,
+    mode: AppMode,
+    scope: str,
+) -> None:
     selected = add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
     set_tool(native_draft, sqlite_session, credential_id=selected.id)
     paused_native_draft.store(mode, native_draft.workflow.graph_dict)
@@ -1496,6 +1586,6 @@ def test_resume_saved_graph_requires_actual_run_and_invocation_owners(
     else:
         paused_native_draft.entity.workflow_run_id = "eeeeeeee-0000-4000-8000-000000000099"
     paused_native_draft.save_context()
-    with pytest.raises(ValueError):
+    with pytest.raises(ToolProviderCredentialValidationError, match="Tool|Saved draft execution"):
         paused_native_draft.resume()
     paused_native_draft.assert_not_resumed()

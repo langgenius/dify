@@ -9,23 +9,42 @@ no behavior of their own, so this file only asserts the typing seam and the
 value-type defaults.
 """
 
+from collections.abc import Callable, Mapping, Sequence
+from typing import override
+
+from core.dify_builder.contract import ConversationPage, ResourceOption
 from core.dify_builder.errors import BusyError, ConflictError, NotFoundError
+from core.dify_builder.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
 from core.dify_builder.models import (
     Actor,
     ApplyResult,
+    BuildNodesResult,
     ChangeSet,
+    ChecklistError,
+    Checkpoint,
+    ConversationItem,
     Diagnosis,
     DifyBuilderContext,
+    EntryMode,
+    Graph,
+    Inputs,
     MutationIntent,
     NodeEvent,
+    NodeOutput,
+    PublishResult,
     Risk,
     Run,
+    Session,
+    Snapshot,
+    StartSchema,
+    TestInput,
 )
 from core.dify_builder.ports import DifyBuilderAgent, DifyPort, Repository
 from core.dify_builder.state import PcState
+from services.dify_builder.plan import WorkflowPlan
 
 
-def test_diagnosis_defaults_and_construction():
+def test_diagnosis_defaults_and_construction() -> None:
     d = Diagnosis()
     assert d.culprit_node_id == ""
     assert d.root_cause == ""
@@ -36,7 +55,7 @@ def test_diagnosis_defaults_and_construction():
     assert d2.severity == "high"
 
 
-def test_risk_defaults_and_construction():
+def test_risk_defaults_and_construction() -> None:
     r = Risk()
     assert r.level == ""
     assert r.reason == ""
@@ -47,7 +66,7 @@ def test_risk_defaults_and_construction():
     assert r2.has_external_side_effect is False
 
 
-def test_mutation_intent_defaults_and_args_not_shared():
+def test_mutation_intent_defaults_and_args_not_shared() -> None:
     m1 = MutationIntent(op="set_node_config")
     m2 = MutationIntent(op="set_node_config")
     assert m1.args == {}
@@ -55,7 +74,7 @@ def test_mutation_intent_defaults_and_args_not_shared():
     assert m2.args == {}
 
 
-def test_change_set_defaults_and_changed_nodes_not_shared():
+def test_change_set_defaults_and_changed_nodes_not_shared() -> None:
     c1 = ChangeSet()
     c2 = ChangeSet()
     assert c1.changed_nodes == []
@@ -64,7 +83,7 @@ def test_change_set_defaults_and_changed_nodes_not_shared():
     assert c2.changed_nodes == []
 
 
-def test_node_event_defaults_and_construction():
+def test_node_event_defaults_and_construction() -> None:
     e = NodeEvent()
     assert e.node_id == ""
     assert e.title == ""
@@ -76,7 +95,7 @@ def test_node_event_defaults_and_construction():
     assert e2.error == "missing metrics"
 
 
-def test_apply_result_defaults_and_changed_nodes_not_shared():
+def test_apply_result_defaults_and_changed_nodes_not_shared() -> None:
     a1 = ApplyResult()
     a2 = ApplyResult()
     assert a1.changed_nodes == []
@@ -85,7 +104,7 @@ def test_apply_result_defaults_and_changed_nodes_not_shared():
     assert a2.changed_nodes == []
 
 
-def test_fix_context_embeds_the_tightened_value_types():
+def test_fix_context_embeds_the_tightened_value_types() -> None:
     fc = DifyBuilderContext(
         diagnosis=Diagnosis(culprit_node_id="n1"),
         staged_repair=[MutationIntent(op="set_node_config")],
@@ -98,197 +117,294 @@ def test_fix_context_embeds_the_tightened_value_types():
     assert isinstance(fc.change_set, ChangeSet)
 
 
-class _StubAgent:
+class _StubAgent(DifyBuilderAgent):
     """A trivial conforming DifyBuilderAgent, in the spirit of seam_test.go's NoopAgent."""
 
-    def diagnose(self, _failed_run, _graph, _node_outputs):
+    @override
+    def diagnose(self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> Diagnosis:
         return Diagnosis(culprit_node_id="output", root_cause="n/a", severity="low")
 
-    def diagnose_checklist(self, _errors, _graph):
+    @override
+    def diagnose_checklist(self, errors: list[ChecklistError], graph: Graph) -> Diagnosis:
         return Diagnosis(culprit_node_id="output", root_cause="n/a", severity="low")
 
-    def propose_repair(self, _diagnosis, _graph):
+    @override
+    def propose_repair(self, diagnosis: Diagnosis, graph: Graph) -> tuple[list[MutationIntent], Risk]:
         return [MutationIntent(op="set_node_config", args={"node_id": "output"})], Risk(level="low")
 
-    def generate_mock_inputs(self, _schema, _prior_failed):
+    @override
+    def generate_mock_inputs(self, schema: StartSchema, prior_failed: Inputs) -> Inputs:
         return {}
 
-    def analyze_goal(self, _goal_text, *, reply_language=None):  # noqa: ARG002
+    @override
+    def analyze_goal(self, goal_text: str, *, reply_language: str | None = None) -> dict[str, object]:
         return {}
 
-    def propose_app_name(self, _goal_text, _requirements):
+    @override
+    def propose_app_name(self, goal_text: str, requirements: dict[str, object]) -> str:
         return ""
 
-    def propose_plan_v1(self, _requirements, *, goal_text):  # noqa: ARG002
+    @override
+    def propose_plan_v1(self, requirements: dict[str, object], *, goal_text: str) -> WorkflowPlan | None:
+        return None
+
+    @override
+    def discover_resources(
+        self, plan_items: list[str], *, goal_text: str, requirements: dict[str, object]
+    ) -> list[ResourceOption]:
         return []
 
-    def discover_resources(self, _plan_items, *, goal_text, requirements):  # noqa: ARG002
-        return []
-
-    def assess_capability_gap(self, _plan_items, _options, *, goal_text, requirements):  # noqa: ARG002
+    @override
+    def assess_capability_gap(
+        self, plan_items: list[str], options: list[ResourceOption], *, goal_text: str, requirements: dict[str, object]
+    ) -> str:
         return ""
 
-    def bind_resources(self, _plan_items, _resource_ids):
+    @override
+    def bind_resources(self, plan_items: list[str], resource_ids: list[str]) -> list[str]:
         return []
 
-    def build_nodes(self, _plan_items, _resource_ids=None):
-        return []
+    @override
+    def build_nodes(
+        self, plan_items: list[str], resource_ids: list[str] | None = None, *, trusted_text: str = ""
+    ) -> BuildNodesResult:
+        return BuildNodesResult(intents=[])
 
-    def learn_from_build(self, _goal_text, _requirements, _plan_items, _built_node_ids):
+    @override
+    def learn_from_build(
+        self, goal_text: str, requirements: dict[str, object], plan_items: list[str], built_node_ids: list[str]
+    ) -> str:
         return "stub"
 
-    def analyze_impact(self, _goal_text, _graph):
+    @override
+    def analyze_impact(self, goal_text: str, graph: Graph) -> dict[str, object]:
         return {"edit_rules": {}, "target_node_ids": []}
 
-    def propose_edit_plan(self, _edit_rules, _graph):
-        return []
+    @override
+    def propose_edit_plan(self, edit_rules: dict[str, object], graph: Graph) -> WorkflowPlan | None:
+        return None
 
+    @override
     def build_edit_intents(
         self,
-        _edit_rules,
-        _graph,
+        edit_rules: dict[str, object],
+        graph: Graph,
         *,
-        edit_target_node_ids=(),  # noqa: ARG002
-        last_edit_rejection=None,  # noqa: ARG002
-    ):
+        edit_target_node_ids: Sequence[str] = (),
+        last_edit_rejection: str | None = None,
+    ) -> list[MutationIntent]:
         return []
 
-    def respond_to_message(self, _state, _context, _history, _graph, text, on_delta=None):
+    @override
+    def respond_to_message(
+        self,
+        state: PcState,
+        context: DifyBuilderContext,
+        history: list[ConversationItem],
+        graph: Graph,
+        text: str,
+        on_delta: Callable[[str], None] | None = None,
+    ) -> str:
         reply = f"reply: {text}"
         if on_delta is not None:
             on_delta(reply)
         return reply
 
-    def model_or_none(self):
+    @override
+    def model_or_none(self) -> object | None:
         return None
 
 
-class _StubDifyPort:
+class _StubDifyPort(DifyPort):
     """A trivial conforming DifyPort. Takes `actor`, never ForwardAuth."""
 
-    def get_app_mode(self, _app_id, _actor):
+    @override
+    def get_app_mode(self, app_id: str, actor: Actor) -> str:
         return "workflow"
 
-    def stamp_http_fixtures(self, _app_id, _actor, *, base_app_revision, fixtures):
+    @override
+    def stamp_http_fixtures(
+        self, app_id: str, actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
+    ) -> HttpFixtureSetV1:
         raise NotImplementedError
 
-    def read_graph(self, _app_id, _actor):
+    @override
+    def read_graph(self, app_id: str, actor: Actor) -> tuple[Graph, str]:
         return {}, "hash-1"
 
-    def node_outputs(self, _app_id, _actor, _run_id):
+    @override
+    def node_outputs(self, app_id: str, actor: Actor, run_id: str) -> list[NodeOutput]:
         return []
 
-    def apply_repair(self, _app_id, _actor, _intents, _on_canvas=None):
+    @override
+    def apply_repair(
+        self,
+        app_id: str,
+        actor: Actor,
+        intents: list[MutationIntent],
+        on_canvas: Callable[[dict[str, object]], None] | None = None,
+        *,
+        expected_revision: str,
+        failed_run_id: str | None = None,
+    ) -> ApplyResult:
         return ApplyResult(changed_nodes=[], new_hash="hash-2")
 
-    def run_draft(self, _app_id, _actor, _inputs, _on_event):
+    @override
+    def run_draft(
+        self,
+        app_id: str,
+        actor: Actor,
+        inputs: Inputs,
+        on_event: Callable[[NodeEvent], None],
+        *,
+        session_id: str,
+        test_input_id: str,
+        on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
+        confirmed_consent_id: str | None = None,
+        command_id: str | None = None,
+    ) -> Run:
         return Run()
 
-    def publish(self, _app_id, _actor):
-        return None
+    @override
+    def publish(
+        self, app_id: str, actor: Actor, *, expected_revision: str, expected_graph_revision: str
+    ) -> PublishResult:
+        return PublishResult()
 
-    def restore_graph(self, _app_id, _actor, _graph):
+    @override
+    def restore_graph(self, app_id: str, actor: Actor, graph: Graph, *, expected_revision: str) -> str:
         return "hash-restored"
 
-    def graph_revision(self, _graph):
+    @override
+    def graph_revision(self, graph: Graph) -> str:
         return "graph"
 
-    def structural_fingerprint(self, _graph):
+    @override
+    def structural_fingerprint(self, graph: Graph) -> str:
         return "fp-stub"
 
-    def graph_node_ids(self, _graph):
+    @override
+    def graph_node_ids(self, graph: Graph) -> list[str]:
         return []
 
 
-class _StubRepository:
+class _StubRepository(Repository):
     """A trivial conforming Repository."""
 
-    def create_session(self, _session, _initial_fc, _items):
+    @override
+    def create_session(self, session: Session, initial_fc: DifyBuilderContext, items: list[ConversationItem]) -> None:
         return None
 
-    def get_session(self, _id):
-        # Protocol conformance is structural (method names/arity only); the
-        # return value's shape doesn't matter for the isinstance check below.
-        return None
+    @override
+    def get_session(self, id: str) -> tuple[Session, DifyBuilderContext]:
+        # Return a minimal value; these seam tests inspect structural conformance.
+        return (Session(entry_mode=EntryMode.FIX, current_state=PcState.FIX_DIAGNOSE), DifyBuilderContext())
 
-    def compare_and_advance(self, _session_id, base_version, _next, _fc, _items):
+    @override
+    def compare_and_advance(
+        self, session_id: str, base_version: int, next: PcState, fc: DifyBuilderContext, items: list[ConversationItem]
+    ) -> int:
         return base_version + 1
 
-    def create_checkpoint(self, _cp, _snap):
+    @override
+    def create_checkpoint(self, cp: Checkpoint, snap: Snapshot) -> None:
         return None
 
-    def get_checkpoint(self, _id):
+    @override
+    def get_checkpoint(self, id: str) -> tuple[Checkpoint, Snapshot]:
+        return (Checkpoint(state=PcState.FIX_APPLY), Snapshot())
+
+    @override
+    def save_run(self, session_id: str, run: Run) -> None:
         return None
 
-    def save_run(self, _session_id, _run):
-        return None
-
-    def get_run(self, _id):
+    @override
+    def get_run(self, id: str) -> Run:
         return Run()
 
-    def save_test_input(self, _ti):
+    @override
+    def save_test_input(self, ti: TestInput) -> None:
         return None
 
-    def get_test_input(self, _id):
-        return None
+    @override
+    def get_test_input(self, id: str) -> TestInput:
+        return TestInput()
 
-    def list_conversation(self, _session_id):
+    @override
+    def list_conversation(self, session_id: str) -> list[ConversationItem]:
         return []
 
-    def list_recent_conversation(self, _session_id, *, limit):
+    @override
+    def list_recent_conversation(self, session_id: str, *, limit: int) -> list[ConversationItem]:
         _ = limit
         return []
 
-    def get_conversation_turn_kinds(self, _session_id, _turn_id):
+    @override
+    def get_conversation_turn_kinds(self, session_id: str, turn_id: str) -> frozenset[str]:
         return frozenset()
 
-    def list_conversation_page(self, _session_id, *, limit, before_seq=None, after_seq=None):
+    @override
+    def list_conversation_page(
+        self, session_id: str, *, limit: int, before_seq: int | None = None, after_seq: int | None = None
+    ) -> ConversationPage:
         _ = (limit, before_seq, after_seq)
+        return ConversationPage(data=[], has_more=False, first_seq=None, last_seq=None)
 
-    def get_latest_conversation_item(self, _session_id, _kinds):
+    @override
+    def get_latest_conversation_item(self, session_id: str, kinds: frozenset[str]) -> ConversationItem | None:
         return None
 
-    def invalidate_conversation_items(self, _session_id, _from_seq):
+    @override
+    def invalidate_conversation_items(self, session_id: str, from_seq: int) -> None:
         return None
 
 
-def test_stub_agent_satisfies_dify_builder_agent_protocol():
+def test_stub_agent_satisfies_dify_builder_agent_protocol() -> None:
     assert isinstance(_StubAgent(), DifyBuilderAgent)
 
 
-def test_stub_dify_port_satisfies_dify_port_protocol():
+def test_stub_dify_port_satisfies_dify_port_protocol() -> None:
     assert isinstance(_StubDifyPort(), DifyPort)
 
 
-def test_dify_port_has_graph_primitive_methods():
+def test_dify_port_has_graph_primitive_methods() -> None:
     # Protocol conformance: a stub missing these two methods is NOT a DifyPort.
     class _MissingPrimitives:
-        def read_graph(self, _a, _b):
+        def read_graph(self, app_id: str, actor: Actor) -> tuple[Graph, str]:
+            _ = app_id, actor
             return {}, "h"
 
-        def node_outputs(self, _a, _b, _c):
+        def node_outputs(self, app_id: str, actor: Actor, run_id: str) -> list[NodeOutput]:
+            _ = app_id, actor, run_id
             return []
 
-        def apply_repair(self, _a, _b, _c, _d=None):
-            return None
+        def apply_repair(
+            self,
+            app_id: str,
+            actor: Actor,
+            intents: list[MutationIntent],
+            on_canvas: Callable[[dict[str, object]], None] | None = None,
+        ) -> None:
+            _ = app_id, actor, intents, on_canvas
 
-        def run_draft(self, _a, _b, _c, _d):
-            return None
+        def run_draft(self, app_id: str, actor: Actor, inputs: Inputs, on_event: Callable[[NodeEvent], None]) -> None:
+            _ = app_id, actor, inputs, on_event
 
-        def publish(self, _a, _b):
-            return None
+        def publish(self, app_id: str, actor: Actor) -> None:
+            _ = app_id, actor
 
-        def restore_graph(self, _a, _b, _c):
+        def restore_graph(self, app_id: str, actor: Actor, graph: Graph) -> str:
+            _ = app_id, actor, graph
             return "h"
 
     assert not isinstance(_MissingPrimitives(), DifyPort)
 
 
-def test_stub_repository_satisfies_repository_protocol():
+def test_stub_repository_satisfies_repository_protocol() -> None:
     assert isinstance(_StubRepository(), Repository)
 
 
-def test_actor_replaces_forward_auth_on_dify_port_methods():
+def test_actor_replaces_forward_auth_on_dify_port_methods() -> None:
     # Structural check: DifyPort methods take `actor`, not a ForwardAuth
     # token — exercised end-to-end via the stub above; here we just confirm
     # Actor itself carries no auth-shaped fields (mirrors test_models.py).
@@ -297,7 +413,7 @@ def test_actor_replaces_forward_auth_on_dify_port_methods():
     assert not hasattr(actor, "bearer")
 
 
-def test_errors_are_exception_subclasses():
+def test_errors_are_exception_subclasses() -> None:
     assert issubclass(ConflictError, Exception)
     assert issubclass(NotFoundError, Exception)
     assert issubclass(BusyError, Exception)
@@ -307,28 +423,28 @@ def test_errors_are_exception_subclasses():
         assert str(with_message) == "boom"
 
 
-def test_pcstate_is_the_state_module_type_used_by_compare_and_advance():
+def test_pcstate_is_the_state_module_type_used_by_compare_and_advance() -> None:
     # compare_and_advance's `next` parameter is typed PcState; sanity-check
     # the import path ports.py takes matches state.py's canonical enum.
     assert PcState.FIX_DIAGNOSE == "fix.diagnose"
 
 
-def test_agent_missing_learn_from_build_is_not_a_dify_builder_agent():
+def test_agent_missing_learn_from_build_is_not_a_dify_builder_agent() -> None:
     from core.dify_builder.ports import DifyBuilderAgent
 
     class _Missing:  # a former-complete agent lacking only learn_from_build
-        def diagnose(self, *a): ...
-        def diagnose_checklist(self, *a): ...
-        def propose_repair(self, *a): ...
-        def generate_mock_inputs(self, *a): ...
-        def analyze_goal(self, *a): ...
-        def propose_plan_v1(self, *a): ...
-        def discover_resources(self, *a): ...
-        def bind_resources(self, *a): ...
-        def build_nodes(self, *a): ...
-        def analyze_impact(self, *a): ...
-        def propose_edit_plan(self, *a): ...
-        def build_edit_intents(self, *a): ...
-        def respond_to_message(self, *a): ...
+        def diagnose(self, *a: object) -> None: ...
+        def diagnose_checklist(self, *a: object) -> None: ...
+        def propose_repair(self, *a: object) -> None: ...
+        def generate_mock_inputs(self, *a: object) -> None: ...
+        def analyze_goal(self, *a: object) -> None: ...
+        def propose_plan_v1(self, *a: object) -> None: ...
+        def discover_resources(self, *a: object) -> None: ...
+        def bind_resources(self, *a: object) -> None: ...
+        def build_nodes(self, *a: object) -> None: ...
+        def analyze_impact(self, *a: object) -> None: ...
+        def propose_edit_plan(self, *a: object) -> None: ...
+        def build_edit_intents(self, *a: object) -> None: ...
+        def respond_to_message(self, *a: object) -> None: ...
 
     assert not isinstance(_Missing(), DifyBuilderAgent)

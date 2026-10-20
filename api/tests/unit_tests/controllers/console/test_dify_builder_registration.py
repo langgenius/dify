@@ -12,7 +12,7 @@ import controllers.console as c
 from controllers.console import console_ns
 
 
-def test_importing_console_package_registers_dify_builder_module():
+def test_importing_console_package_registers_dify_builder_module() -> None:
     # Importing controllers.console (already done at module load time, above)
     # must not raise, and must bind `dify_builder` as a package attribute.
     # `from . import dify_builder` (in controllers/console/__init__.py)
@@ -27,7 +27,7 @@ def test_importing_console_package_registers_dify_builder_module():
     )
 
 
-def test_dify_builder_resource_classes_exist():
+def test_dify_builder_resource_classes_exist() -> None:
     mod = c.dify_builder
     for name in (
         "DifyBuilderSessionsApi",
@@ -44,7 +44,7 @@ def test_dify_builder_resource_classes_exist():
         assert hasattr(mod, name), f"{name} missing from controllers.console.dify_builder"
 
 
-def test_dify_builder_paths_registered_on_console_ns():
+def test_dify_builder_paths_registered_on_console_ns() -> None:
     # console_ns.resources holds flask_restx.namespace.ResourceRoute namedtuples:
     # ResourceRoute(resource=<Resource class>, urls=(str, ...), route_doc={}, kwargs={}).
     # Verified by inspection: `console_ns.resources[0]` ->

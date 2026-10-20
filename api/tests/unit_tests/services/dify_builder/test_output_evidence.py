@@ -2,11 +2,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from core.dify_builder.models import NodeOutput
+from core.dify_builder.models import Graph, NodeOutput
 from services.dify_builder import run_mapping
 
 
-def graph(selector=None):
+def graph(selector: list[str] | None = None) -> Graph:
     return {
         "nodes": [
             {"id": "tool", "data": {"type": "tool"}},
@@ -23,17 +23,19 @@ def graph(selector=None):
 
 
 @pytest.mark.parametrize("outputs", [{"result": None}, {}, {"zero": 0, "false": False, "empty": []}, None])
-def test_verification_terminal_outputs(outputs):
+def test_verification_terminal_outputs(outputs: dict[str, object] | None) -> None:
     run = run_mapping.map_run_result({"id": "native", "status": "succeeded", "outputs": outputs}, [])
+    assert run.verification is not None
     assert run.verification.terminal_outputs == outputs
 
 
-def test_verification_node_availability_and_inputs():
+def test_verification_node_availability_and_inputs() -> None:
+    output_values: list[dict[str, object] | None] = [{}, None, {"text": None}]
     rows = [
         SimpleNamespace(
             node_id="tool", title="", status="succeeded", error=None, inputs_dict={"x": 0}, outputs_dict=outputs
         )
-        for outputs in [{}, None, {"text": None}]
+        for outputs in output_values
     ]
     run = run_mapping.map_run_result({"id": "native", "status": "succeeded"}, rows)
     assert [n.outputs_available for n in run.per_node] == [True, False, True]
@@ -54,7 +56,9 @@ def test_verification_node_availability_and_inputs():
         ({}, True, ["tool"], 1, "unresolved"),
     ],
 )
-def test_output_evidence(outputs, available, selector, count, expected):
+def test_output_evidence(
+    outputs: dict[str, object], available: bool, selector: list[str] | None, count: int, expected: str
+) -> None:
     from services.dify_builder.output_evidence import collect_output_findings
 
     rows = [
@@ -65,24 +69,25 @@ def test_output_evidence(outputs, available, selector, count, expected):
     assert collect_output_findings(graph(selector), rows)[0].state == expected
 
 
-def test_output_evidence_container_and_retry_unknown():
+def test_output_evidence_container_and_retry_unknown() -> None:
     from services.dify_builder.output_evidence import collect_output_findings
 
     rows = [
         NodeOutput(node_id="tool", status="succeeded", outputs_available=True),
         NodeOutput(node_id="end", status="succeeded"),
     ]
-    for extra in [
+    extras: list[Graph] = [
         {"parentId": "iteration"},
         {"data": {"type": "tool", "isInIteration": True}},
         {"data": {"type": "tool", "retry_config": {"retry_enabled": True}}},
-    ]:
+    ]
+    for extra in extras:
         g = graph()
         g["nodes"][0].update(extra)
         assert collect_output_findings(g, rows)[0].state == "unknown"
 
 
-def test_verification_offloaded_outputs_are_not_complete():
+def test_verification_offloaded_outputs_are_not_complete() -> None:
     row = SimpleNamespace(
         node_id="tool",
         title="",
@@ -96,17 +101,17 @@ def test_verification_offloaded_outputs_are_not_complete():
     assert run.per_node[0].outputs_available is False
 
 
-def test_verification_native_missing_outputs_stays_unavailable():
+def test_verification_native_missing_outputs_stays_unavailable() -> None:
     row = SimpleNamespace(id="native", status="succeeded", outputs=None, outputs_dict={})
     assert run_mapping.run_result_data_from_run_row(row)["outputs"] is None
 
 
-def test_output_evidence_wfs_reported_tool_reference():
+def test_output_evidence_wfs_reported_tool_reference() -> None:
     # ENG-1128 authoritative WFS stored rows: tool exports text/files/json,
     # while the executed End selects node2.result. Values here are synthetic.
     from services.dify_builder.output_evidence import collect_output_findings
 
-    g = {
+    g: Graph = {
         "nodes": [
             {"id": "node1", "data": {"type": "start"}},
             {"id": "node2", "data": {"type": "tool"}},

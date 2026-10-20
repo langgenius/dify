@@ -1,14 +1,18 @@
 """Guarded JSON Tool with real native casting, FORM conversion and message adaptation."""
 
 import json
+from collections.abc import Callable, Generator, Mapping
 from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Never, cast
 
 import pytest
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.dify_builder.models import Graph
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.helper.provider_encryption import ProviderConfigEncrypter
 from core.plugin.entities.oauth import OAuthSchema
@@ -27,10 +31,12 @@ from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.human_input_adapter import adapt_node_data_for_graph
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool.exc import ToolRuntimeInvocationError, ToolRuntimeResolutionError
+from graphon.nodes.tool_runtime_entities import ToolRuntimeMessage
 from graphon.runtime import VariablePool
 from services.dify_builder import json_tool_metadata as metadata
 from services.dify_builder.execution_contracts import (
     AdmittedNodeBinding,
+    BuilderExecutionObservation,
     JsonToolExecutionContext,
     QualifiedJsonToolBinding,
     canonical_digest,
@@ -112,11 +118,11 @@ def _context(installation: InstalledJsonParse, expected: dict[str, str | bool]) 
 class Recorder:
     healthy = True
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.receipts = []
         self.fail = False
 
-    def record(self, observation):
+    def record(self, observation: BuilderExecutionObservation) -> None:
         if self.fail:
             raise RuntimeError("private recorder error")
         self.receipts.append(observation)
@@ -140,17 +146,24 @@ def _native() -> PluginTool:
     )
 
 
+def _text_message(message: ToolInvokeMessage | ToolRuntimeMessage) -> str:
+    assert isinstance(message.message, (ToolInvokeMessage.TextMessage, ToolRuntimeMessage.TextMessage))
+    return message.message.text
+
+
 def _message(text: str) -> ToolInvokeMessage:
     return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.TEXT, message=ToolInvokeMessage.TextMessage(text=text))
 
 
 @pytest.mark.parametrize("ascii_value", [True, False], ids=["true", "false"])
-def test_native_plugin_casts_final_boolean_and_preserves_unicode(monkeypatch, sqlite_engine, ascii_value):
+def test_native_plugin_casts_final_boolean_and_preserves_unicode(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, ascii_value: bool
+) -> None:
     expected = {**EXPECTED, "ensure_ascii": ascii_value}
     seen = []
 
     class Manager:
-        def invoke(self, **kwargs):
+        def invoke(self, **kwargs: object) -> Generator[ToolInvokeMessage]:
             seen.append(kwargs["tool_parameters"])
             yield _message("你好")
 
@@ -158,30 +171,34 @@ def test_native_plugin_casts_final_boolean_and_preserves_unicode(monkeypatch, sq
     guarded = _GuardedJsonPluginTool(_native(), expected)
     with Session(sqlite_engine) as session:
         messages = list(guarded.invoke(session, "user", dict(expected)))
-    assert [message.message.text for message in messages] == ["你好"]
+    assert [_text_message(message) for message in messages] == ["你好"]
     assert seen == [expected]
     assert guarded.complete
     assert guarded.text_bytes == len("你好".encode())
 
 
 @pytest.mark.parametrize("text", ["", "你好", "error: invalid JSON", "[1, 2]"])
-def test_exact_native_text_is_data_not_status(monkeypatch, sqlite_engine, text):
+def test_exact_native_text_is_data_not_status(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, text: str
+) -> None:
     class Manager:
-        def invoke(self, **_kwargs):
+        def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             yield _message(text)
 
     monkeypatch.setattr(plugin_tool_module, "PluginToolManager", Manager)
     guarded = _GuardedJsonPluginTool(_native(), EXPECTED)
     with Session(sqlite_engine) as session:
-        assert [item.message.text for item in guarded.invoke(session, "user", dict(EXPECTED))] == [text]
+        assert [_text_message(item) for item in guarded.invoke(session, "user", dict(EXPECTED))] == [text]
     assert guarded.text_output == text
 
 
-def test_forbidden_message_closes_transport_before_file_transform(monkeypatch, sqlite_engine):
+def test_forbidden_message_closes_transport_before_file_transform(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
     closed = []
 
     class Manager:
-        def invoke(self, **_kwargs):
+        def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             try:
                 yield ToolInvokeMessage(
                     type=ToolInvokeMessage.MessageType.JSON,
@@ -198,11 +215,13 @@ def test_forbidden_message_closes_transport_before_file_transform(monkeypatch, s
 
 
 @pytest.mark.parametrize("texts", [["a" * 65537], ["x"] * 9])
-def test_text_byte_and_count_limits_close_transport(monkeypatch, sqlite_engine, texts):
+def test_text_byte_and_count_limits_close_transport(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, texts: list[str]
+) -> None:
     closed = []
 
     class Manager:
-        def invoke(self, **_kwargs):
+        def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             try:
                 for text in texts:
                     yield _message(text)
@@ -222,11 +241,13 @@ def test_text_byte_and_count_limits_close_transport(monkeypatch, sqlite_engine, 
     [(["a" * 65534, "é"], True), (["a" * 65535, "é"], False)],
     ids=["exact-65536-utf8-bytes", "aggregate-65537-utf8-bytes"],
 )
-def test_aggregate_multibyte_text_limit_is_exact(monkeypatch, sqlite_engine, texts, accepted):
+def test_aggregate_multibyte_text_limit_is_exact(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, texts: list[str], accepted: bool
+) -> None:
     closed = []
 
     class Manager:
-        def invoke(self, **_kwargs):
+        def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             try:
                 for value in texts:
                     yield _message(value)
@@ -237,7 +258,7 @@ def test_aggregate_multibyte_text_limit_is_exact(monkeypatch, sqlite_engine, tex
     guarded = _GuardedJsonPluginTool(_native(), EXPECTED)
     with Session(sqlite_engine) as session:
         if accepted:
-            assert [item.message.text for item in guarded.invoke(session, "user", dict(EXPECTED))] == texts
+            assert [_text_message(item) for item in guarded.invoke(session, "user", dict(EXPECTED))] == texts
             assert guarded.text_bytes == 65536
             assert guarded.complete
         else:
@@ -247,7 +268,9 @@ def test_aggregate_multibyte_text_limit_is_exact(monkeypatch, sqlite_engine, tex
     assert closed == [True]
 
 
-def test_invalid_unicode_text_refuses_and_closes_transport(monkeypatch, sqlite_engine):
+def test_invalid_unicode_text_refuses_and_closes_transport(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
     closed = []
     invalid = ToolInvokeMessage.model_construct(
         type=ToolInvokeMessage.MessageType.TEXT,
@@ -255,7 +278,7 @@ def test_invalid_unicode_text_refuses_and_closes_transport(monkeypatch, sqlite_e
     )
 
     class Manager:
-        def invoke(self, **_kwargs):
+        def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             try:
                 yield invalid
             finally:
@@ -269,9 +292,11 @@ def test_invalid_unicode_text_refuses_and_closes_transport(monkeypatch, sqlite_e
     assert not guarded.complete
 
 
-def test_final_envelope_mismatch_prevents_native_dispatch(monkeypatch, sqlite_engine):
+def test_final_envelope_mismatch_prevents_native_dispatch(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
     class Manager:
-        def invoke(self, **_kwargs):
+        def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             pytest.fail("native transport reached")
             yield _message("never")
 
@@ -282,8 +307,15 @@ def test_final_envelope_mismatch_prevents_native_dispatch(monkeypatch, sqlite_en
 
 
 def _runtime(
-    monkeypatch, sqlite_engine, *, expected=None, metadata_reader=None, recorder=None, controller=None, maker=None
-):
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+    *,
+    expected: Mapping[str, str | bool] | None = None,
+    metadata_reader: Callable[[str], InstalledJsonParse] | None = None,
+    recorder: Recorder | None = None,
+    controller: PluginToolProviderController | SimpleNamespace | None = None,
+    maker: sessionmaker[Session] | None = None,
+) -> tuple[QualifiedJsonToolNodeRuntime, Recorder]:
     expected = dict(EXPECTED if expected is None else expected)
     installed = _installation()
     recorder = recorder or Recorder()
@@ -316,7 +348,9 @@ def _runtime(
 
 @pytest.mark.parametrize("ascii_value", [True, False], ids=["true", "false"])
 @pytest.mark.parametrize("wrapped", [True, False], ids=["wrapped", "raw"])
-def test_native_form_conversion_keeps_explicit_boolean(monkeypatch, sqlite_engine, ascii_value, wrapped):
+def test_native_form_conversion_keeps_explicit_boolean(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, ascii_value: bool, wrapped: bool
+) -> None:
     expected = {**EXPECTED, "ensure_ascii": ascii_value}
     runtime, _ = _runtime(monkeypatch, sqlite_engine, expected=expected)
     handle = runtime.get_runtime(
@@ -337,7 +371,9 @@ def test_native_form_conversion_keeps_explicit_boolean(monkeypatch, sqlite_engin
         )
 
 
-def test_actual_controller_drift_refuses_before_credentials(monkeypatch, sqlite_engine):
+def test_actual_controller_drift_refuses_before_credentials(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
     controller = PluginToolProviderController(
         entity=_provider().declaration,
         plugin_id=metadata.PLUGIN_ID,
@@ -364,11 +400,11 @@ def test_actual_controller_drift_refuses_before_credentials(monkeypatch, sqlite_
         )
 
 
-def _forbid_credential_and_dynamic_owners(monkeypatch):
+def _forbid_credential_and_dynamic_owners(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     calls = []
 
-    def fail(owner):
-        def spy(*_args, **_kwargs):
+    def fail(owner: str) -> Callable[..., Never]:
+        def spy(*_args: object, **_kwargs: object) -> Never:
             calls.append(owner)
             pytest.fail(f"{owner} reached")
 
@@ -388,8 +424,8 @@ def _forbid_credential_and_dynamic_owners(monkeypatch):
 
 @pytest.mark.parametrize("drift", ["credentials", "oauth"], ids=["api-key-schema", "oauth-schema"])
 def test_current_native_controller_credential_drift_refuses_before_all_credential_owners(
-    monkeypatch, sqlite_engine, drift
-):
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, drift: str
+) -> None:
     declaration = _provider().declaration
     secret = ProviderConfig(type=ProviderConfigType.SECRET_INPUT, name="access_token")
     if drift == "credentials":
@@ -416,7 +452,9 @@ def test_current_native_controller_credential_drift_refuses_before_all_credentia
     assert recorder.receipts == []
 
 
-def test_actual_parse_schema_drift_refuses_before_dynamic_fetch(monkeypatch, sqlite_engine):
+def test_actual_parse_schema_drift_refuses_before_dynamic_fetch(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
     provider = _provider().declaration
     provider.tools[0].has_runtime_parameters = True
     controller = PluginToolProviderController(
@@ -440,7 +478,9 @@ def test_actual_parse_schema_drift_refuses_before_dynamic_fetch(monkeypatch, sql
         )
 
 
-def test_hardcoded_fallback_refuses_before_credential_branch(monkeypatch, sqlite_engine):
+def test_hardcoded_fallback_refuses_before_credential_branch(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
     fallback = SimpleNamespace(get_tool=lambda _name: _native())
     runtime, _ = _runtime(monkeypatch, sqlite_engine, controller=fallback)
     with pytest.raises(ToolRuntimeResolutionError):
@@ -452,7 +492,9 @@ def test_hardcoded_fallback_refuses_before_credential_branch(monkeypatch, sqlite
         )
 
 
-def test_static_resolution_never_reads_dynamic_or_decrypts(monkeypatch, sqlite_engine):
+def test_static_resolution_never_reads_dynamic_or_decrypts(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
     calls = _forbid_credential_and_dynamic_owners(monkeypatch)
     runtime, _ = _runtime(monkeypatch, sqlite_engine)
     handle = runtime.get_runtime(
@@ -474,7 +516,9 @@ def test_static_resolution_never_reads_dynamic_or_decrypts(monkeypatch, sqlite_e
         {"confirmed_guard": object()},
     ],
 )
-def test_json_native_getter_rejects_incompatible_guard_arguments(monkeypatch, incompatible):
+def test_json_native_getter_rejects_incompatible_guard_arguments(
+    monkeypatch: pytest.MonkeyPatch, incompatible: Graph
+) -> None:
     monkeypatch.setattr(
         ToolManager,
         "get_builtin_provider",
@@ -491,11 +535,11 @@ def test_json_native_getter_rejects_incompatible_guard_arguments(monkeypatch, in
         )
 
 
-def test_full_native_text_path_receipt_and_replay(monkeypatch, sqlite_engine):
+def test_full_native_text_path_receipt_and_replay(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
     calls = []
 
     class Manager:
-        def invoke(self, **kwargs):
+        def invoke(self, **kwargs: object) -> Generator[ToolInvokeMessage]:
             calls.append(kwargs)
             yield _message("你好")
 
@@ -515,7 +559,7 @@ def test_full_native_text_path_receipt_and_replay(monkeypatch, sqlite_engine):
             provider_name=metadata.PROVIDER_ID,
         )
     )
-    assert [message.message.text for message in messages] == ["你好"]
+    assert [_text_message(message) for message in messages] == ["你好"]
     assert len(calls) == len(recorder.receipts) == 1
     receipt = recorder.receipts[0]
     assert receipt.text_bytes == 6
@@ -532,7 +576,9 @@ def test_full_native_text_path_receipt_and_replay(monkeypatch, sqlite_engine):
         )
 
 
-def test_prior_handle_and_recorder_failure_never_emit_receipt(monkeypatch, sqlite_engine):
+def test_prior_handle_and_recorder_failure_never_emit_receipt(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
     runtime, recorder = _runtime(monkeypatch, sqlite_engine)
     handle = runtime.get_runtime(
         node_id="node2",
@@ -546,7 +592,7 @@ def test_prior_handle_and_recorder_failure_never_emit_receipt(monkeypatch, sqlit
     recorder.fail = True
 
     class Manager:
-        def invoke(self, **_kwargs):
+        def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             yield _message("ok")
 
     monkeypatch.setattr(plugin_tool_module, "PluginToolManager", Manager)
@@ -556,11 +602,11 @@ def test_prior_handle_and_recorder_failure_never_emit_receipt(monkeypatch, sqlit
     assert not runtime._healthy
 
 
-def test_post_dispatch_metadata_change_prevents_receipt(monkeypatch, sqlite_engine):
+def test_post_dispatch_metadata_change_prevents_receipt(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
     reads = []
     installed = _installation()
 
-    def metadata_reader(_tenant):
+    def metadata_reader(_tenant) -> InstalledJsonParse:
         reads.append(True)
         if len(reads) == 1:
             return installed
@@ -570,7 +616,7 @@ def test_post_dispatch_metadata_change_prevents_receipt(monkeypatch, sqlite_engi
         )
 
     class Manager:
-        def invoke(self, **_kwargs):
+        def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             yield _message("native text")
 
     monkeypatch.setattr(plugin_tool_module, "PluginToolManager", Manager)
@@ -587,11 +633,13 @@ def test_post_dispatch_metadata_change_prevents_receipt(monkeypatch, sqlite_engi
     assert recorder.receipts == []
 
 
-def test_post_dispatch_runtime_variant_change_prevents_receipt(monkeypatch, sqlite_engine):
+def test_post_dispatch_runtime_variant_change_prevents_receipt(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
     reads = []
     installed = _installation()
 
-    def metadata_reader(_tenant):
+    def metadata_reader(_tenant) -> InstalledJsonParse:
         reads.append(True)
         if len(reads) == 1:
             return installed
@@ -602,7 +650,7 @@ def test_post_dispatch_runtime_variant_change_prevents_receipt(monkeypatch, sqli
         )
 
     class Manager:
-        def invoke(self, **_kwargs):
+        def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             yield _message("native text")
 
     monkeypatch.setattr(plugin_tool_module, "PluginToolManager", Manager)
@@ -614,18 +662,18 @@ def test_post_dispatch_runtime_variant_change_prevents_receipt(monkeypatch, sqli
         node_execution_id="node-execution",
     )
     with pytest.raises(ToolRuntimeInvocationError):
-        list(
-            runtime.invoke(tool_runtime=handle, tool_parameters=EXPECTED, workflow_call_depth=0, provider_name="json")
-        )
+        list(runtime.invoke(tool_runtime=handle, tool_parameters=EXPECTED, workflow_call_depth=0, provider_name="json"))
     assert len(reads) == 2
     assert recorder.receipts == []
 
 
-def test_interrupted_stream_closes_native_generator_without_receipt(monkeypatch, sqlite_engine):
+def test_interrupted_stream_closes_native_generator_without_receipt(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
     closed = []
 
     class Manager:
-        def invoke(self, **_kwargs):
+        def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             try:
                 yield _message("first")
                 yield _message("second")
@@ -641,14 +689,16 @@ def test_interrupted_stream_closes_native_generator_without_receipt(monkeypatch,
         node_execution_id="node-execution",
     )
     stream = runtime.invoke(tool_runtime=handle, tool_parameters=EXPECTED, workflow_call_depth=0, provider_name="json")
-    assert next(stream).message.text == "first"
+    assert _text_message(next(stream)) == "first"
     stream.close()
     assert closed == [True]
     assert recorder.receipts == []
     assert not runtime._healthy
 
 
-def test_non_text_is_refused_before_native_file_transform(monkeypatch, sqlite_engine):
+def test_non_text_is_refused_before_native_file_transform(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
     monkeypatch.setattr(
         ToolFileManager,
         "create_file_by_url",
@@ -657,15 +707,17 @@ def test_non_text_is_refused_before_native_file_transform(monkeypatch, sqlite_en
     original = ToolFileMessageTransformer.transform_tool_invoke_messages
     transformed = []
 
-    def observing_transform(*args, **kwargs):
-        for message in original(*args, **kwargs):
+    def observing_transform(
+        messages: Generator[ToolInvokeMessage], user_id: str, tenant_id: str, conversation_id: str | None = None
+    ) -> Generator[ToolInvokeMessage]:
+        for message in original(messages, user_id, tenant_id, conversation_id):
             transformed.append(message)
             yield message
 
     monkeypatch.setattr(ToolFileMessageTransformer, "transform_tool_invoke_messages", observing_transform)
 
     class Manager:
-        def invoke(self, **_kwargs):
+        def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             yield ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.JSON,
                 message=ToolInvokeMessage.JsonMessage(json_object={"private": "data"}),
@@ -686,13 +738,15 @@ def test_non_text_is_refused_before_native_file_transform(monkeypatch, sqlite_en
 
 
 @pytest.mark.parametrize("file_output", ["image", "blob"])
-def test_file_producing_output_refuses_before_all_file_owners(monkeypatch, sqlite_engine, file_output):
+def test_file_producing_output_refuses_before_all_file_owners(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, file_output: str
+) -> None:
     calls = []
     closed = []
     transformed = []
 
-    def fail(owner):
-        def spy(*_args, **_kwargs):
+    def fail(owner: str) -> Callable[..., Never]:
+        def spy(*_args: object, **_kwargs: object) -> Never:
             calls.append(owner)
             pytest.fail(f"{owner} reached")
 
@@ -705,15 +759,17 @@ def test_file_producing_output_refuses_before_all_file_owners(monkeypatch, sqlit
     monkeypatch.setattr(file_manager_module, "storage", SimpleNamespace(save=fail("file-storage")))
     original = ToolFileMessageTransformer.transform_tool_invoke_messages
 
-    def observing_transform(*args, **kwargs):
-        for message in original(*args, **kwargs):
+    def observing_transform(
+        messages: Generator[ToolInvokeMessage], user_id: str, tenant_id: str, conversation_id: str | None = None
+    ) -> Generator[ToolInvokeMessage]:
+        for message in original(messages, user_id, tenant_id, conversation_id):
             transformed.append(message)
             yield message
 
     monkeypatch.setattr(ToolFileMessageTransformer, "transform_tool_invoke_messages", observing_transform)
 
     class Manager:
-        def invoke(self, **_kwargs):
+        def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             try:
                 if file_output == "image":
                     yield ToolInvokeMessage(
@@ -745,28 +801,34 @@ def test_file_producing_output_refuses_before_all_file_owners(monkeypatch, sqlit
     assert recorder.receipts == []
 
 
-def test_metadata_and_native_dispatch_have_no_active_own_transaction(monkeypatch, sqlite_engine):
+def test_metadata_and_native_dispatch_have_no_active_own_transaction(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
     sessions = []
 
     class TrackedSession(Session):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
+        def __init__(
+            self, bind: Engine | None = None, *, autoflush: bool = True, expire_on_commit: bool = True
+        ) -> None:
+            super().__init__(bind=bind, autoflush=autoflush, expire_on_commit=expire_on_commit)
             sessions.append(self)
 
     maker = sessionmaker(sqlite_engine, class_=TrackedSession)
     transaction_states = []
 
-    def metadata_reader(_tenant):
+    def metadata_reader(_tenant) -> InstalledJsonParse:
         transaction_states.append(sessions[-1].in_transaction())
         return _installation()
 
     class Manager:
-        def invoke(self, **_kwargs):
+        def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             transaction_states.append(sessions[-1].in_transaction())
             yield _message("ok")
 
     monkeypatch.setattr(plugin_tool_module, "PluginToolManager", Manager)
-    runtime, recorder = _runtime(monkeypatch, sqlite_engine, metadata_reader=metadata_reader, maker=maker)
+    runtime, recorder = _runtime(
+        monkeypatch, sqlite_engine, metadata_reader=metadata_reader, maker=cast(sessionmaker[Session], maker)
+    )
     handle = runtime.get_runtime(
         node_id="node2",
         node_data=_node_data(ascii_value=False, wrapped=False),

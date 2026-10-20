@@ -2,7 +2,7 @@ import logging
 import threading
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import AbstractContextManager, nullcontext
-from typing import TYPE_CHECKING, Any, Union, final
+from typing import TYPE_CHECKING, Any, final, overload
 
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import set_committed_value
@@ -250,8 +250,10 @@ class BaseAppGenerator:
                             return float(value)
                         else:
                             return int(value)
-                    except ValueError:
-                        raise ValueError(f"{variable_entity.variable} in input form must be a valid number")
+                    except ValueError as caught_error:
+                        raise ValueError(
+                            f"{variable_entity.variable} in input form must be a valid number"
+                        ) from caught_error
                 case _:
                     raise TypeError(f"expected value type int, float or str, got {type(value)}, value: {value}")
 
@@ -309,21 +311,34 @@ class BaseAppGenerator:
             return value.replace("\x00", "")
         return value
 
+    @overload
     @classmethod
-    def convert_to_event_stream(cls, generator: Union[Mapping, Generator[Mapping | str]]):
+    def convert_to_event_stream[MappingT: Mapping[str, object]](cls, generator: MappingT) -> MappingT: ...
+
+    @overload
+    @classmethod
+    def convert_to_event_stream(cls, generator: Generator[Mapping[str, object] | str]) -> Generator[str]: ...
+
+    @classmethod
+    def convert_to_event_stream(
+        cls, generator: Mapping[str, object] | Generator[Mapping[str, object] | str]
+    ) -> Mapping[str, object] | Generator[str]:
         """
-        Convert messages into event stream
+        Convert messages into an event stream and retain ownership of its cleanup.
         """
-        if isinstance(generator, dict):
+        if isinstance(generator, Mapping):
             return generator
         else:
 
-            def gen():
-                for message in generator:
-                    if isinstance(message, Mapping | dict):
-                        yield f"data: {orjson_dumps(message)}\n\n"
-                    else:
-                        yield f"event: {message}\n\n"
+            def gen() -> Generator[str]:
+                try:
+                    for message in generator:
+                        if isinstance(message, Mapping):
+                            yield f"data: {orjson_dumps(message)}\n\n"
+                        else:
+                            yield f"event: {message}\n\n"
+                finally:
+                    generator.close()
 
             return gen()
 

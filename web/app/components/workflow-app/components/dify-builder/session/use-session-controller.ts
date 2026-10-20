@@ -18,7 +18,6 @@ import { queryClientAtom } from 'jotai-tanstack-query'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { difyBuilderCanvasReadyAtom } from '../store'
 import {
   createBuildSession,
@@ -761,7 +760,9 @@ export function useDifyBuilderSessionController(
         if (code === 'model_unavailable') {
           const queryClient = store.get(queryClientAtom)
           void queryClient.invalidateQueries({
-            queryKey: commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration),
+            queryKey: consoleQuery.workspaces.current.defaultModel.get.queryKey({
+              input: { query: { model_type: ModelTypeEnum.textGeneration } },
+            }),
           })
           void queryClient.invalidateQueries({
             queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({

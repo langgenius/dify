@@ -197,7 +197,7 @@ class TestFetchToolProvidersPagination:
     def test_a_failed_later_page_fails_the_fetch_instead_of_returning_a_partial_inventory(self, monkeypatch):
         _daemon(monkeypatch, providers_by_tenant={"tenant-1": _providers(300)}, fail_on_page=2)
 
-        with pytest.raises(Exception):  # noqa: B017 -- any daemon failure, never a silent first page
+        with pytest.raises(PluginDaemonError, match="500|page failed"):
             PluginToolManager().fetch_tool_providers("tenant-1")
 
     def test_duplicate_identities_across_pages_are_deduplicated(self, monkeypatch):
@@ -214,14 +214,14 @@ class TestFetchToolProvidersPagination:
     def test_a_daemon_that_repeats_the_same_full_page_fails_explicitly(self, monkeypatch):
         daemon = _daemon(monkeypatch, providers_by_tenant={"tenant-1": _providers(300)}, ignore_page=True)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="repeated tool provider page"):
             PluginToolManager().fetch_tool_providers("tenant-1")
         assert len(daemon.list_tools_requests()) == 2
 
     def test_paging_is_bounded_and_fails_explicitly_rather_than_claiming_completeness(self, monkeypatch):
         daemon = _daemon(monkeypatch, endless_unique_pages=True, max_requests=200)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="full tool provider pages"):
             PluginToolManager().fetch_tool_providers("tenant-1")
         assert 2 <= len(daemon.list_tools_requests()) < 200
 
@@ -461,7 +461,7 @@ class TestFetchToolProvidersAuthoritativeInventory:
             installed_ids_by_tenant={"tenant-1": [str(row["plugin_id"]) for row in rows[:4]]},
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="is not installed"):
             PluginToolManager().fetch_tool_providers("tenant-1")
 
     def test_an_installed_set_that_changes_during_the_fetch_fails(self, monkeypatch):
@@ -473,14 +473,14 @@ class TestFetchToolProvidersAuthoritativeInventory:
             installed_ids_sequence=[list(ids), ids[:4]],
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="installed tool plugins changed"):
             PluginToolManager().fetch_tool_providers("tenant-1")
 
     def test_an_installed_id_list_beyond_the_inventory_bound_fails_before_recovery(self, monkeypatch):
         oversized = [f"aaa/bulk_{index:05d}" for index in range(256 * 40 + 1)]
         daemon = _daemon(monkeypatch, providers_by_tenant={}, installed_ids_by_tenant={"tenant-1": oversized})
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="inventory bound exceeded"):
             PluginToolManager().fetch_tool_providers("tenant-1")
         assert _batch_ids(daemon) == []
         assert _single_ids(daemon) == []
@@ -536,7 +536,7 @@ class TestFetchToolProviderMetadataConsistency:
         upgraded = {**rows[2], "plugin_unique_identifier": _foreign_unique_identifier("aaa/p_002", "0.0.2")}
         _daemon(monkeypatch, providers_by_tenant={"tenant-1": rows}, list_tools_pages={1: [*rows, upgraded]})
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="conflicting metadata"):
             PluginToolManager().fetch_tool_providers("tenant-1")
 
     def test_a_recovered_provider_whose_raw_provider_field_disagrees_fails(self, monkeypatch):
@@ -548,7 +548,7 @@ class TestFetchToolProviderMetadataConsistency:
             single_payload_hook=lambda payload: {**payload, "provider": "other"},
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="disagrees with its plugin id"):
             PluginToolManager().fetch_tool_providers("tenant-1")
 
     def test_a_bulk_unique_identifier_of_another_plugin_fails(self, monkeypatch):
@@ -560,7 +560,7 @@ class TestFetchToolProviderMetadataConsistency:
             list_tools_pages={1: [rows[0], foreign, *rows[2:]]},
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="another plugin"):
             PluginToolManager().fetch_tool_providers("tenant-1")
 
     def test_installation_and_recovered_provider_agreeing_on_a_foreign_unique_identifier_fail(self, monkeypatch):
@@ -576,5 +576,5 @@ class TestFetchToolProviderMetadataConsistency:
             single_payload_hook=lambda payload: {**payload, "plugin_unique_identifier": foreign},
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="another plugin|metadata disagrees"):
             PluginToolManager().fetch_tool_providers("tenant-1")

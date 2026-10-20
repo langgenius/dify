@@ -30,6 +30,7 @@ from core.dify_builder.models import (
     ConversationItem,
     DifyBuilderContext,
     EntryMode,
+    Graph,
     Run,
     Session,
     Turn,
@@ -74,8 +75,8 @@ def _new_env(repo: SqlDifyBuilderRepository) -> tuple[Env, FakeDifyPort]:
     return env, dify
 
 
-def _fix_session(**overrides) -> Session:
-    fields: dict = {
+def _fix_session(**overrides: object) -> Session:
+    fields: Graph = {
         "app_id": APP_ID,
         "tenant_id": TENANT_ID,
         "owner_account_id": ACCOUNT_ID,
@@ -297,7 +298,7 @@ def test_checklist_entry_flow_wires_diagnose_through_await_recheck_to_decision_o
     assert stored.version == out.version
 
 
-def test_execution_evidence_round_trips_without_historical_backfill(repo):
+def test_execution_evidence_round_trips_without_historical_backfill(repo: SqlDifyBuilderRepository) -> None:
     from core.dify_builder.execution_policy import ExecutionEvidenceSummary
     from core.dify_builder.models import RunVerification
 
@@ -330,6 +331,7 @@ def test_execution_evidence_round_trips_without_historical_backfill(repo):
     )
     repo.save_run("session", run)
     restored = repo.get_run("receipt-run")
+    assert restored.verification is not None
     assert restored.verification.execution_evidence == evidence.execution_evidence
     assert restored.status == "succeeded"
     assert restored.dify_run_id == "native"
@@ -349,4 +351,6 @@ def test_execution_evidence_round_trips_without_historical_backfill(repo):
         ),
     )
     repo.save_run("session", historical)
-    assert repo.get_run("historical").verification.execution_evidence is None
+    historical_run = repo.get_run("historical")
+    assert historical_run.verification is not None
+    assert historical_run.verification.execution_evidence is None

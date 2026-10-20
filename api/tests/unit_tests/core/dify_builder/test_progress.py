@@ -28,9 +28,13 @@ def test_progress_reporter_reveals_only_started_activities_with_monotonic_revisi
     final_execution = reporter.finish()
 
     assert [event.revision for event in events] == [1, 2, 3, 4]
+    assert events[0].activity is not None
     assert (events[0].activity.id, events[0].activity.state) == ("review", "active")
+    assert events[1].activity is not None
     assert (events[1].activity.id, events[1].activity.state) == ("review", "done")
+    assert events[2].activity is not None
     assert (events[2].activity.id, events[2].activity.state) == ("draft", "active")
+    assert events[3].activity is not None
     assert (events[3].activity.id, events[3].activity.state) == ("draft", "done")
     assert [(item.id, item.state) for item in final_execution.activities] == [
         ("review", "done"),

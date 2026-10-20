@@ -9,6 +9,9 @@ hiding a bug. This suite asserts the added real uniqueness guard as a
 first-class behavior, not an afterthought.
 """
 
+from dataclasses import replace
+from typing import Unpack
+
 import pytest
 
 from core.dify_builder.errors import ConflictError, NotFoundError
@@ -27,29 +30,30 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.ports import DifyBuilderAgent, DifyPort, Repository
 from core.dify_builder.state import PcState
-from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
+from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, SessionOverrides, StubAgent
 
 
 def _actor() -> Actor:
     return Actor(account_id="acc-1", tenant_id="tenant-1")
 
 
-def _session(**overrides) -> Session:
-    fields: dict = {
-        "app_id": "app",
-        "tenant_id": "t",
-        "owner_account_id": "u",
-        "entry_mode": EntryMode.FIX,
-        "current_state": PcState.FIX_DIAGNOSE,
-    }
-    fields.update(overrides)
-    return Session(**fields)
+def _session(**overrides: Unpack[SessionOverrides]) -> Session:
+    return replace(
+        Session(
+            app_id="app",
+            tenant_id="t",
+            owner_account_id="u",
+            entry_mode=EntryMode.FIX,
+            current_state=PcState.FIX_DIAGNOSE,
+        ),
+        **overrides,
+    )
 
 
 # ---- Protocol conformance -------------------------------------------------
 
 
-def test_fakes_satisfy_their_protocols():
+def test_fakes_satisfy_their_protocols() -> None:
     assert isinstance(InMemoryRepository(), Repository)
     assert isinstance(FakeDifyPort(), DifyPort)
     assert isinstance(StubAgent(), DifyBuilderAgent)
@@ -58,7 +62,7 @@ def test_fakes_satisfy_their_protocols():
 # ---- InMemoryRepository.create_session ------------------------------------
 
 
-def test_create_session_assigns_id_and_starts_at_version_1():
+def test_create_session_assigns_id_and_starts_at_version_1() -> None:
     repo = InMemoryRepository()
     s = _session()
 
@@ -72,7 +76,7 @@ def test_create_session_assigns_id_and_starts_at_version_1():
     assert stored_fc.next_seq == 0
 
 
-def test_create_session_sets_next_seq_to_seed_item_count():
+def test_create_session_sets_next_seq_to_seed_item_count() -> None:
     repo = InMemoryRepository()
     s = _session()
     fc = DifyBuilderContext()
@@ -90,7 +94,7 @@ def test_create_session_sets_next_seq_to_seed_item_count():
     assert [item.kind for item in repo.list_conversation(s.id)] == ["run-context", "user"]
 
 
-def test_create_session_does_not_downgrade_an_already_larger_next_seq():
+def test_create_session_does_not_downgrade_an_already_larger_next_seq() -> None:
     repo = InMemoryRepository()
     s = _session()
     fc = DifyBuilderContext(next_seq=5)
@@ -100,7 +104,7 @@ def test_create_session_does_not_downgrade_an_already_larger_next_seq():
     assert fc.next_seq == 5
 
 
-def test_create_session_rejects_duplicate_seq_within_seed_items():
+def test_create_session_rejects_duplicate_seq_within_seed_items() -> None:
     repo = InMemoryRepository()
     s = _session()
     items = [
@@ -115,7 +119,7 @@ def test_create_session_rejects_duplicate_seq_within_seed_items():
 # ---- compare_and_advance: version CAS -------------------------------------
 
 
-def test_compare_and_advance_rejects_stale_base_version():
+def test_compare_and_advance_rejects_stale_base_version() -> None:
     repo = InMemoryRepository()
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [])
@@ -129,7 +133,7 @@ def test_compare_and_advance_rejects_stale_base_version():
     assert stored.current_state == PcState.FIX_DIAGNOSE
 
 
-def test_compare_and_advance_accepts_current_version_and_bumps_it():
+def test_compare_and_advance_accepts_current_version_and_bumps_it() -> None:
     repo = InMemoryRepository()
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [])
@@ -150,14 +154,14 @@ def test_compare_and_advance_accepts_current_version_and_bumps_it():
     assert stored_fc.diagnosis.culprit_node_id == "n1"
 
 
-def test_compare_and_advance_on_unknown_session_raises_not_found():
+def test_compare_and_advance_on_unknown_session_raises_not_found() -> None:
     repo = InMemoryRepository()
 
     with pytest.raises(NotFoundError):
         repo.compare_and_advance("nope", 1, PcState.FIX_PROPOSE, DifyBuilderContext(), [])
 
 
-def test_compare_and_advance_deep_copies_the_stored_context():
+def test_compare_and_advance_deep_copies_the_stored_context() -> None:
     repo = InMemoryRepository()
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [])
@@ -176,7 +180,7 @@ def test_compare_and_advance_deep_copies_the_stored_context():
 # this, so a duplicate/out-of-order append silently "succeeded".
 
 
-def test_compare_and_advance_rejects_duplicate_seq_within_one_batch():
+def test_compare_and_advance_rejects_duplicate_seq_within_one_batch() -> None:
     repo = InMemoryRepository()
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [])
@@ -195,7 +199,7 @@ def test_compare_and_advance_rejects_duplicate_seq_within_one_batch():
     assert repo.list_conversation(s.id) == []
 
 
-def test_compare_and_advance_rejects_seq_reused_from_a_previous_commit():
+def test_compare_and_advance_rejects_seq_reused_from_a_previous_commit() -> None:
     repo = InMemoryRepository()
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [ConversationItem(seq=0, kind="run-context", at_version=1)])
@@ -214,7 +218,7 @@ def test_compare_and_advance_rejects_seq_reused_from_a_previous_commit():
     assert len(repo.list_conversation(s.id)) == 1
 
 
-def test_compare_and_advance_accepts_the_next_seq_in_order():
+def test_compare_and_advance_accepts_the_next_seq_in_order() -> None:
     repo = InMemoryRepository()
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [ConversationItem(seq=0, kind="run-context", at_version=1)])
@@ -234,25 +238,25 @@ def test_compare_and_advance_accepts_the_next_seq_in_order():
 # ---- getters raise NotFoundError, never None ------------------------------
 
 
-def test_get_session_raises_not_found_when_absent():
+def test_get_session_raises_not_found_when_absent() -> None:
     repo = InMemoryRepository()
     with pytest.raises(NotFoundError):
         repo.get_session("nope")
 
 
-def test_get_checkpoint_raises_not_found_when_absent():
+def test_get_checkpoint_raises_not_found_when_absent() -> None:
     repo = InMemoryRepository()
     with pytest.raises(NotFoundError):
         repo.get_checkpoint("nope")
 
 
-def test_get_run_raises_not_found_when_absent():
+def test_get_run_raises_not_found_when_absent() -> None:
     repo = InMemoryRepository()
     with pytest.raises(NotFoundError):
         repo.get_run("nope")
 
 
-def test_get_test_input_raises_not_found_when_absent():
+def test_get_test_input_raises_not_found_when_absent() -> None:
     repo = InMemoryRepository()
     with pytest.raises(NotFoundError):
         repo.get_test_input("nope")
@@ -261,7 +265,7 @@ def test_get_test_input_raises_not_found_when_absent():
 # ---- checkpoints: create/get + deep-copy round trip -----------------------
 
 
-def test_create_and_get_checkpoint_round_trips_and_deep_copies_the_graph():
+def test_create_and_get_checkpoint_round_trips_and_deep_copies_the_graph() -> None:
     repo = InMemoryRepository()
     graph = {"nodes": [{"id": "n1"}]}
     snap = Snapshot(session_id="sess-1", hash="h1", graph=graph)
@@ -290,7 +294,7 @@ def test_create_and_get_checkpoint_round_trips_and_deep_copies_the_graph():
 # ---- runs: save/get round trip + immutability ------------------------------
 
 
-def test_save_and_get_run_round_trips_and_assigns_id():
+def test_save_and_get_run_round_trips_and_assigns_id() -> None:
     repo = InMemoryRepository()
     r = Run(kind="verify", status="succeeded", immutable=True)
 
@@ -302,19 +306,19 @@ def test_save_and_get_run_round_trips_and_assigns_id():
     assert got.immutable is True
 
 
-def test_save_run_rejects_overwriting_an_immutable_run():
+def test_save_run_rejects_overwriting_an_immutable_run() -> None:
     repo = InMemoryRepository()
     r = Run(id="TR-1", kind="original-failed", status="failed", immutable=True)
     repo.save_run("sess-1", r)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="immutable"):
         repo.save_run("sess-1", Run(id="TR-1", status="succeeded"))
 
 
 # ---- test inputs: save/get round trip --------------------------------------
 
 
-def test_save_and_get_test_input_round_trips_and_assigns_id():
+def test_save_and_get_test_input_round_trips_and_assigns_id() -> None:
     repo = InMemoryRepository()
     ti = TestInput(session_id="sess-1", source="mock", inputs={"query": "x"})
 
@@ -328,7 +332,7 @@ def test_save_and_get_test_input_round_trips_and_assigns_id():
 # ---- list_conversation ------------------------------------------------------
 
 
-def test_list_conversation_returns_empty_list_for_unknown_session():
+def test_list_conversation_returns_empty_list_for_unknown_session() -> None:
     repo = InMemoryRepository()
     assert repo.list_conversation("nope") == []
 
@@ -336,7 +340,7 @@ def test_list_conversation_returns_empty_list_for_unknown_session():
 # ---- FakeDifyPort ------------------------------------------------------------
 
 
-def test_fake_dify_port_read_graph_returns_canned_graph_and_hash_and_deep_copies():
+def test_fake_dify_port_read_graph_returns_canned_graph_and_hash_and_deep_copies() -> None:
     port = FakeDifyPort()
 
     graph, h = port.read_graph("app-1", _actor())
@@ -347,7 +351,7 @@ def test_fake_dify_port_read_graph_returns_canned_graph_and_hash_and_deep_copies
     assert graph2 == {"nodes": []}
 
 
-def test_fake_dify_port_node_outputs_returns_a_canned_failed_output():
+def test_fake_dify_port_node_outputs_returns_a_canned_failed_output() -> None:
     port = FakeDifyPort()
 
     outs = port.node_outputs("app-1", _actor(), "run-1")
@@ -356,7 +360,7 @@ def test_fake_dify_port_node_outputs_returns_a_canned_failed_output():
     assert outs[0].status == "failed"
 
 
-def test_fake_dify_port_apply_repair_records_intents_and_returns_result():
+def test_fake_dify_port_apply_repair_records_intents_and_returns_result() -> None:
     port = FakeDifyPort()
     intents = [MutationIntent(op="set_node_config", args={"node_id": "n1", "field": "metrics", "value": "[]"})]
 
@@ -367,7 +371,7 @@ def test_fake_dify_port_apply_repair_records_intents_and_returns_result():
     assert result.new_hash == port.hash
 
 
-def test_fake_dify_port_run_draft_emits_events_and_returns_configured_status():
+def test_fake_dify_port_run_draft_emits_events_and_returns_configured_status() -> None:
     port = FakeDifyPort()
     events = []
 
@@ -390,10 +394,10 @@ def test_fake_dify_port_run_draft_emits_events_and_returns_configured_status():
     assert len(events) == 2
 
 
-def test_fake_dify_port_publish_marks_published():
+def test_fake_dify_port_publish_marks_published() -> None:
     port = FakeDifyPort()
-    assert port.published is False
-
+    initially_published = port.published
+    assert initially_published is False
     port.publish("app-1", _actor(), expected_revision="h0", expected_graph_revision=port.graph_revision(port.graph))
 
     assert port.published is True
@@ -402,7 +406,7 @@ def test_fake_dify_port_publish_marks_published():
 # ---- StubAgent ----------------------------------------------------------------
 
 
-def test_stub_agent_diagnose_returns_a_canned_culprit():
+def test_stub_agent_diagnose_returns_a_canned_culprit() -> None:
     agent = StubAgent()
 
     d = agent.diagnose(Run(), {}, [])
@@ -411,13 +415,13 @@ def test_stub_agent_diagnose_returns_a_canned_culprit():
     assert d.severity == "high"
 
 
-def test_stub_agent_diagnose_checklist_empty_returns_empty_diagnosis():
+def test_stub_agent_diagnose_checklist_empty_returns_empty_diagnosis() -> None:
     agent = StubAgent()
 
     assert agent.diagnose_checklist([], {}) == Diagnosis()
 
 
-def test_stub_agent_propose_repair_uses_the_diagnosis_culprit_and_configured_risk():
+def test_stub_agent_propose_repair_uses_the_diagnosis_culprit_and_configured_risk() -> None:
     agent = StubAgent(risk_level="high")
     diagnosis = Diagnosis(culprit_node_id="n1")
 
@@ -427,7 +431,7 @@ def test_stub_agent_propose_repair_uses_the_diagnosis_culprit_and_configured_ris
     assert risk.level == "high"
 
 
-def test_stub_agent_generate_mock_inputs_returns_canned_inputs():
+def test_stub_agent_generate_mock_inputs_returns_canned_inputs() -> None:
     agent = StubAgent()
 
     assert agent.generate_mock_inputs({}, {}) == {"report_pdf": "mock.pdf"}
@@ -436,7 +440,7 @@ def test_stub_agent_generate_mock_inputs_returns_canned_inputs():
 # ---- graph primitives (C-1 structural fingerprint) -------------------------
 
 
-def test_fake_dify_port_exposes_graph_primitives():
+def test_fake_dify_port_exposes_graph_primitives() -> None:
     from services.dify_builder.graph_ops import node_ids, structural_fingerprint
 
     port = FakeDifyPort()
@@ -445,7 +449,7 @@ def test_fake_dify_port_exposes_graph_primitives():
     assert port.graph_node_ids(port.graph) == node_ids(port.graph)
 
 
-def test_fake_build_dify_port_apply_repair_sets_structure_fingerprint():
+def test_fake_build_dify_port_apply_repair_sets_structure_fingerprint() -> None:
     from core.dify_builder import node_defaults
     from services.dify_builder.graph_ops import structural_fingerprint
     from tests.unit_tests.core.dify_builder.fakes import BuiltinNodeTypes, FakeBuildDifyPort
@@ -465,7 +469,7 @@ def test_fake_build_dify_port_apply_repair_sets_structure_fingerprint():
     assert result.structure_fingerprint != ""
 
 
-def test_fake_build_dify_port_run_draft_pass_and_fail():
+def test_fake_build_dify_port_run_draft_pass_and_fail() -> None:
     from core.dify_builder.models import NodeEvent
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 

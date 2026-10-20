@@ -57,6 +57,7 @@ from uuid import uuid4
 import pytest
 from flask import Flask, has_app_context
 from flask.testing import FlaskClient
+from httpx._models import Response
 from pydantic import TypeAdapter
 from sqlalchemy import Engine, event, func, select, text, update
 from sqlalchemy.engine.interfaces import DBAPIConnection
@@ -135,6 +136,7 @@ from models.model import App, AppMode, DifySetup
 from models.tools import BuiltinToolProvider, ToolOAuthTenantClient
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, WorkflowRun
 from schedule.dify_builder_reconcile_task import reconcile_interrupted_sessions
+from services.app_generate_service import AppGenerateService
 from services.dify_builder import real_call_consent_service, real_call_metadata, session_lock, wiring
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 from services.dify_builder.agent_factory import set_dify_builder_agent_factory
@@ -1229,12 +1231,20 @@ def gmail(
     metadata_daemon = install_fake_daemon(monkeypatch, FakeToolDaemon())
     metadata_request = metadata_daemon.request
 
-    def public_metadata_request(**kwargs: object):
+    def public_metadata_request(
+        *,
+        method: str,
+        url: str,
+        params: dict[str, object] | None = None,
+        content: str | bytes | None = None,
+        data: dict[str, object] | None = None,
+        **kwargs: object,
+    ) -> Response:
         boundary.mark("draft_schema")
         payload = boundary.declaration.model_dump(mode="json")
         payload["declaration"]["identity"]["name"] = boundary.declaration.provider
         metadata_daemon.providers_by_tenant = {actor.tenant_id: [payload]}
-        return metadata_request(**kwargs)
+        return metadata_request(method=method, url=url, params=params, content=content, data=data, **kwargs)
 
     monkeypatch.setattr(metadata_daemon, "request", public_metadata_request)
 
@@ -1689,13 +1699,14 @@ def test_restricted_default_run_has_zero_decrypt_refresh_or_invoke(gmail: Gmail)
 def test_ordinary_native_gmail_workflow_stays_ordinary(gmail: Gmail) -> None:
     """Without Builder consent the native Tool path is unchanged: no guard, headers, consent or sidecar."""
     from core.app.entities.app_invoke_entities import InvokeFrom
-    from services.app_generate_service import AppGenerateService
     from services.dify_builder.run_mapping import run_id_from_stream_chunk, stream_chunk_as_mapping
 
     drafts_before = gmail.draft_variables()
     with gmail.factory() as session:
         account = session.get(Account, gmail.actor.account_id)
+        assert account is not None
         native_app = session.get(App, gmail.app_id)
+        assert native_app is not None
         assert account is not None
         assert native_app is not None
         response = AppGenerateService.generate(
@@ -1747,7 +1758,6 @@ def test_published_native_gmail_workflow_runs_the_published_graph(gmail: Gmail) 
     from core.app.entities.app_invoke_entities import InvokeFrom
     from extensions.ext_application_services import application_services
     from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-    from services.app_generate_service import AppGenerateService
     from services.workflow_service import WorkflowService
 
     with gmail.factory.begin() as session:
@@ -1758,7 +1768,9 @@ def test_published_native_gmail_workflow_runs_the_published_graph(gmail: Gmail) 
         native_app.enable_api = True
     with gmail.factory.begin() as session:
         account = session.get(Account, gmail.actor.account_id)
+        assert account is not None
         native_app = session.get(App, gmail.app_id)
+        assert native_app is not None
         assert account is not None
         assert native_app is not None
         published = WorkflowService().publish_workflow(

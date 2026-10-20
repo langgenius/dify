@@ -382,10 +382,7 @@ def http_request_body_errors(nodes: list[Any]) -> list[tuple[str, str]]:
         items = body.get("data")
         if body_type not in _SINGLE_ITEM_BODY_TYPES:
             continue
-        if isinstance(items, str):
-            count = 1 if items else 0
-        else:
-            count = len(items) if isinstance(items, list) else 0
+        count = (1 if items else 0) if isinstance(items, str) else len(items) if isinstance(items, list) else 0
         if count != 1:
             errors.append(
                 (
@@ -787,7 +784,7 @@ def repair_branch_edge_handles(nodes: list[Any], edges: list[Any]) -> list[dict[
                 edge["sourceHandle"] = unused[0]
             continue
         if defaulted and not named and len(defaulted) <= len(unused):
-            for edge, handle in zip(defaulted, unused):
+            for edge, handle in zip(defaulted, unused, strict=False):
                 edge["sourceHandle"] = handle
             continue
         for edge in unknown:

@@ -7,6 +7,7 @@ rewritten into a different Tool or parameter representation.
 
 import json
 from pathlib import Path
+from typing import Never
 
 import pytest
 
@@ -15,6 +16,8 @@ from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInpu
 from models.workflow import Workflow
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
+from services.dify_builder.json_tool_metadata import InstalledJsonParse
+from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
 
 GRAPH_FIXTURE = Path(__file__).parents[3] / "fixtures/workflow/builder_restricted/json_parse_owned_graph.json"
@@ -26,7 +29,7 @@ GRAPH_FIXTURE = Path(__file__).parents[3] / "fixtures/workflow/builder_restricte
     ids=["raw-true", "raw-false", "constant-true", "constant-false"],
 )
 def test_owned_json_parse_prepare_persists_restricted_request(
-    owned, monkeypatch, ensure_ascii: bool, wrapped: bool
+    owned: Owned, monkeypatch: pytest.MonkeyPatch, ensure_ascii: bool, wrapped: bool
 ) -> None:
     from tests.unit_tests.services.dify_builder.test_json_tool_metadata import _installation, _owners
 
@@ -40,8 +43,12 @@ def test_owned_json_parse_prepare_persists_restricted_request(
     submitted = {"payload": '{"greeting":"café"}', "json_path": "$.greeting"}
     workflow.graph = graph_json
     with factory.begin() as db:
-        db.get(Workflow, workflow.id).graph = graph_json
-        db.get(DifyBuilderTestInput, test_input_id).inputs = submitted
+        saved_workflow = db.get(Workflow, workflow.id)
+        assert saved_workflow is not None
+        saved_workflow.graph = graph_json
+        saved_input = db.get(DifyBuilderTestInput, test_input_id)
+        assert saved_input is not None
+        saved_input.inputs = submitted
 
     context = BuilderExecutionPolicyService(factory).prepare(
         session_id=session_id,
@@ -79,10 +86,12 @@ def test_owned_json_parse_prepare_persists_restricted_request(
         assert request.test_input_id == test_input_id
         assert request.context == context.model_dump(mode="json")
         assert request.context_digest == context.context_digest
-        assert db.get(DifyBuilderTestInput, test_input_id).inputs == submitted
+        saved_input = db.get(DifyBuilderTestInput, test_input_id)
+        assert saved_input is not None
+        assert saved_input.inputs == submitted
 
 
-def test_json_prepare_reloads_owner_and_inputs_after_metadata(owned, monkeypatch) -> None:
+def test_json_prepare_reloads_owner_and_inputs_after_metadata(owned: Owned, monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder import execution_policy_service as service_module
     from tests.unit_tests.services.dify_builder.test_json_tool_metadata import _installation, _owners
 
@@ -92,13 +101,19 @@ def test_json_prepare_reloads_owner_and_inputs_after_metadata(owned, monkeypatch
     submitted = {"payload": '{"x":"y"}', "json_path": "$.x"}
     workflow.graph = graph_json
     with factory.begin() as db:
-        db.get(Workflow, workflow.id).graph = graph_json
-        db.get(DifyBuilderTestInput, test_input_id).inputs = submitted
+        saved_workflow = db.get(Workflow, workflow.id)
+        assert saved_workflow is not None
+        saved_workflow.graph = graph_json
+        saved_input = db.get(DifyBuilderTestInput, test_input_id)
+        assert saved_input is not None
+        saved_input.inputs = submitted
     original = service_module.resolve_installed_json_parse
 
-    def change_saved_input(*, tenant_id):
+    def change_saved_input(*, tenant_id: str) -> InstalledJsonParse:
         with factory.begin() as db:
-            db.get(DifyBuilderTestInput, test_input_id).inputs = {**submitted, "payload": "{}"}
+            saved_input = db.get(DifyBuilderTestInput, test_input_id)
+            assert saved_input is not None
+            saved_input.inputs = {**submitted, "payload": "{}"}
         return original(tenant_id=tenant_id)
 
     monkeypatch.setattr(service_module, "resolve_installed_json_parse", change_saved_input)
@@ -116,11 +131,11 @@ def test_json_prepare_reloads_owner_and_inputs_after_metadata(owned, monkeypatch
         assert db.query(DifyBuilderExecutionRequest).count() == 0
 
 
-def test_existing_restricted_policies_skip_json_metadata(owned, monkeypatch) -> None:
+def test_existing_restricted_policies_skip_json_metadata(owned: Owned, monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder import execution_policy_service as service_module
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import prepare_inputs
 
-    def forbidden(*, tenant_id):
+    def forbidden(*, tenant_id: str) -> Never:
         raise AssertionError(f"unexpected JSON metadata read for {tenant_id}")
 
     monkeypatch.setattr(service_module, "resolve_installed_json_parse", forbidden)

@@ -302,10 +302,10 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
           }
         }
         if (item.checkbox) {
-          const preset = initInputs[item.checkbox.variable] === true
+          const preset = initInputs[item.checkbox.variable]
           return {
             ...item.checkbox,
-            default: preset || item.default || item.checkbox.default,
+            default: typeof preset === 'boolean' ? preset : (item.default ?? item.checkbox.default),
             type: 'checkbox',
           }
         }
@@ -439,7 +439,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
           if (hasEmptyInput) return
           if (fileIsUploading) return
           const inputValue = newConversationInputsRef.current[variable]
-          if ((inputValue === undefined || inputValue === null || inputValue === '') && !silent)
+          if (
+            (inputValue === undefined ||
+              inputValue === null ||
+              inputValue === '' ||
+              (Array.isArray(inputValue) && inputValue.length === 0)) &&
+            !silent
+          )
             hasEmptyInput = label as string
           if (
             (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
@@ -472,7 +478,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     [inputsForms, t, allInputsHidden],
   )
   const handleStartChat = useCallback(
-    (callback: any) => {
+    (callback?: () => void) => {
       if (checkInputsRequired()) {
         setShowNewConversationItemInList(true)
         callback?.()

@@ -1,7 +1,7 @@
 """Slice 4 session-lifecycle-core tests: restore_graph, invalidation, revert,
 checkpoint surfacing, pause/resume."""
 
-from core.dify_builder.models import Actor
+from core.dify_builder.models import Actor, Graph
 from core.dify_builder.ports import DifyPort
 from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, FakeDifyPort
 
@@ -10,7 +10,7 @@ def _actor() -> Actor:
     return Actor(account_id="a", tenant_id="t")
 
 
-def test_fake_dify_port_restore_graph_swaps_graph_and_returns_hash():
+def test_fake_dify_port_restore_graph_swaps_graph_and_returns_hash() -> None:
     dify = FakeDifyPort()
     dify.graph = {"nodes": [{"id": "x"}]}
     snapshot = {"nodes": [{"id": "start"}, {"id": "end"}]}
@@ -25,20 +25,20 @@ def test_fake_dify_port_restore_graph_swaps_graph_and_returns_hash():
     assert len(dify.read_graph("app", _actor())[0]["nodes"]) == 2
 
 
-def test_fake_build_dify_port_restore_graph_swaps_graph():
+def test_fake_build_dify_port_restore_graph_swaps_graph() -> None:
     dify = FakeBuildDifyPort()
     dify.graph = {"nodes": [{"id": "a"}], "edges": []}
-    snapshot = {"nodes": [], "edges": []}
+    snapshot: Graph = {"nodes": [], "edges": []}
     dify.restore_graph("app", _actor(), snapshot)
     assert dify.read_graph("app", _actor())[0] == {"nodes": [], "edges": []}
 
 
-def test_fake_dify_ports_still_satisfy_dify_port_protocol():
+def test_fake_dify_ports_still_satisfy_dify_port_protocol() -> None:
     assert isinstance(FakeDifyPort(), DifyPort)
     assert isinstance(FakeBuildDifyPort(), DifyPort)
 
 
-def test_in_memory_invalidate_flips_assistant_turns_from_seq():
+def test_in_memory_invalidate_flips_assistant_turns_from_seq() -> None:
     from core.dify_builder.models import ConversationItem, DifyBuilderContext, EntryMode, Session
     from core.dify_builder.state import PcState
     from tests.unit_tests.core.dify_builder.fakes import InMemoryRepository
@@ -68,7 +68,7 @@ def test_in_memory_invalidate_flips_assistant_turns_from_seq():
     assert by_seq[3].payload["card_state"] == "invalidated"
 
 
-def test_fix_await_decision_undo_restores_draft_and_invalidates():
+def test_fix_await_decision_undo_restores_draft_and_invalidates() -> None:
     from datetime import datetime
 
     from core.dify_builder.handlers_fix import handle_await_decision
@@ -80,7 +80,7 @@ def test_fix_await_decision_undo_restores_draft_and_invalidates():
 
     repo = InMemoryRepository()
     dify = FakeDifyPort()
-    events: list[dict] = []
+    events: list[dict[str, object]] = []
     env = Env(dify=dify, agent=PlaceholderAgent(), repo=repo, now=lambda: datetime.min, emit_canvas=events.append)
 
     # seed a session at await_decision with a minted checkpoint (pre-fix snapshot)
@@ -113,6 +113,7 @@ def test_fix_await_decision_undo_restores_draft_and_invalidates():
     # draft restored to the checkpoint snapshot
     assert dify.read_graph("app", _actor())[0] == {"nodes": [{"id": "start"}]}
     # active restore point cleared
+    assert res.context is not None
     assert res.context.checkpoint_id == ""
     # revert_checkpoint canvas emitted
     assert {"event": "revert_checkpoint"} in events
@@ -121,7 +122,7 @@ def test_fix_await_decision_undo_restores_draft_and_invalidates():
     assert by_seq[2].payload["card_state"] == "invalidated"
 
 
-def test_perform_revert_without_checkpoint_is_graceful_noop():
+def test_perform_revert_without_checkpoint_is_graceful_noop() -> None:
     from datetime import datetime
 
     from core.dify_builder.handlers_fix import perform_revert
@@ -133,7 +134,7 @@ def test_perform_revert_without_checkpoint_is_graceful_noop():
 
     dify = FakeDifyPort()
     dify.graph = {"nodes": [{"id": "keep"}]}
-    events: list[dict] = []
+    events: list[dict[str, object]] = []
     env = Env(
         dify=dify,
         agent=PlaceholderAgent(),
@@ -156,7 +157,7 @@ def test_perform_revert_without_checkpoint_is_graceful_noop():
     assert dify.read_graph("app", _actor())[0] == {"nodes": [{"id": "keep"}]}  # no restore
 
 
-def test_build_review_undo_restores_pre_build_graph():
+def test_build_review_undo_restores_pre_build_graph() -> None:
     from datetime import datetime
 
     from core.dify_builder.handlers_build import handle_review
@@ -177,7 +178,7 @@ def test_build_review_undo_restores_pre_build_graph():
 
     repo = InMemoryRepository()
     dify = FakeBuildDifyPort()
-    events: list[dict] = []
+    events: list[dict[str, object]] = []
     env = Env(dify=dify, agent=PlaceholderAgent(), repo=repo, now=lambda: datetime.min, emit_canvas=events.append)
 
     s = Session(
@@ -202,13 +203,14 @@ def test_build_review_undo_restores_pre_build_graph():
 
     assert res.next == PcState.BUILD_REVERTED
     assert dify.read_graph("app", _actor())[0] == {"nodes": [], "edges": []}  # pre-build graph restored
+    assert res.context is not None
     assert res.context.checkpoint_id == ""
     assert {"event": "revert_checkpoint"} in events
     by_seq = {i.seq: i for i in repo.list_conversation(s.id)}
     assert by_seq[0].payload["card_state"] == "invalidated"
 
 
-def test_edit_apply_changes_undo_restores_pre_edit_graph():
+def test_edit_apply_changes_undo_restores_pre_edit_graph() -> None:
     from datetime import datetime
 
     from core.dify_builder.handlers_edit import handle_apply_changes
@@ -229,7 +231,7 @@ def test_edit_apply_changes_undo_restores_pre_edit_graph():
 
     repo = InMemoryRepository()
     dify = FakeEditDifyPort()
-    events: list[dict] = []
+    events: list[dict[str, object]] = []
     env = Env(dify=dify, agent=PlaceholderAgent(), repo=repo, now=lambda: datetime.min, emit_canvas=events.append)
 
     s = Session(
@@ -241,7 +243,7 @@ def test_edit_apply_changes_undo_restores_pre_edit_graph():
     )
     fc = DifyBuilderContext(checkpoint_seq=0, edit_target_node_ids=["llm"])
     repo.create_session(s, fc, [ConversationItem(seq=0, kind="assistant_turn", payload={"turn_id": "approve"})])
-    pre_edit = {"nodes": [{"id": "llm", "data": {}}], "edges": []}
+    pre_edit: Graph = {"nodes": [{"id": "llm", "data": {}}], "edges": []}
     cp = Checkpoint(session_id=s.id, state=PcState.EDIT_PLAN_APPROVAL)
     repo.create_checkpoint(cp, Snapshot(session_id=s.id, hash="h0", graph=pre_edit))
     _s, fc = repo.get_session(s.id)
@@ -252,13 +254,14 @@ def test_edit_apply_changes_undo_restores_pre_edit_graph():
 
     assert res.next == PcState.EDIT_REVERTED
     assert dify.read_graph("app", _actor())[0] == pre_edit  # config edit undone
+    assert res.context is not None
     assert res.context.checkpoint_id == ""
     assert {"event": "revert_checkpoint"} in events
     by_seq = {i.seq: i for i in repo.list_conversation(s.id)}
     assert by_seq[0].payload["card_state"] == "invalidated"
 
 
-def test_runner_stop_sets_paused_same_state_and_bumps_version():
+def test_runner_stop_sets_paused_same_state_and_bumps_version() -> None:
     from datetime import datetime
 
     from core.dify_builder.models import Action, ConversationItem, DifyBuilderContext, EntryMode, Session, Turn
@@ -291,7 +294,7 @@ def test_runner_stop_sets_paused_same_state_and_bumps_version():
     assert fc.paused is False
 
 
-def test_run_status_paused_when_flag_set():
+def test_run_status_paused_when_flag_set() -> None:
     from core.dify_builder.contract import RunStatus
     from core.dify_builder.state import PcState
     from services.dify_builder.service import _run_status

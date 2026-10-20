@@ -1,37 +1,38 @@
 import json
+from collections.abc import Iterable
 
 import pytest
 
 from core.dify_builder.contract import ExecutionActivity, ExecutionProgress
-from core.dify_builder.models import ConversationItem
+from core.dify_builder.models import ConversationItem, Graph
 from services.dify_builder import wiring
 from services.dify_builder.progress_snapshot import ProgressSnapshot
 from tests.unit_tests.services.dify_builder.workflow_stream_fixtures import native_workflow_payloads
 
 
 class _FakeSubscription:
-    def __init__(self, items):
+    def __init__(self, items: Iterable[bytes | None]) -> None:
         self._items = list(items)
         self.closed = False
         self.timeouts: list[float | None] = []
 
-    def receive(self, timeout=None):
+    def receive(self, timeout: float | None = None) -> bytes | None:
         self.timeouts.append(timeout)
         if not self._items:
             raise AssertionError("test subscription ran out of events before a terminal frame")
         return self._items.pop(0)
 
-    def close(self):
+    def close(self) -> None:
         self.closed = True
 
 
-def _event(frame: str) -> dict:
+def _event(frame: str) -> Graph:
     lines = frame.strip().splitlines()
     assert lines[0] == "event: message"
     return json.loads(lines[1].removeprefix("data: "))
 
 
-def _view(**overrides) -> dict:
+def _view(**overrides: object) -> Graph:
     return {
         "session_id": "s1",
         "reply_language": "",
@@ -46,11 +47,11 @@ def _view(**overrides) -> dict:
     }
 
 
-def _workflow_payload(event: str) -> dict:
+def _workflow_payload(event: str) -> Graph:
     return next(payload for payload in native_workflow_payloads() if payload["event"] == event)
 
 
-def _internal_workflow(event: str, revision: int = 1) -> dict:
+def _internal_workflow(event: str, revision: int = 1) -> Graph:
     return {
         "kind": "workflow",
         "session_id": "s1",
@@ -62,7 +63,7 @@ def _internal_workflow(event: str, revision: int = 1) -> dict:
     }
 
 
-def _internal_finished(**overrides) -> dict:
+def _internal_finished(**overrides: object) -> Graph:
     return {
         "kind": "command_finished",
         **_view(version=2, run_status="waiting_input"),
@@ -71,16 +72,17 @@ def _internal_finished(**overrides) -> dict:
     }
 
 
-def test_stream_advance_frames_closes_subscription_when_never_iterated():
+def test_stream_advance_frames_closes_subscription_when_never_iterated() -> None:
     subscription = _FakeSubscription([json.dumps(_internal_finished()).encode()])
     stream = wiring.stream_advance_frames(_view(), subscription, expect_advance=True)
 
+    assert isinstance(stream, wiring._ClosingFrameStream)
     stream.close()
 
     assert subscription.closed is True
 
 
-def test_stream_advance_frames_relays_typed_envelopes_until_command_finished():
+def test_stream_advance_frames_relays_typed_envelopes_until_command_finished() -> None:
     node = _internal_workflow("node_started")
     finished = _internal_finished()
     extra = _internal_workflow("node_started", revision=2)
@@ -128,7 +130,7 @@ def test_stream_advance_frames_relays_typed_envelopes_until_command_finished():
         json.dumps({"kind": "notice", "text": "unsupported"}).encode(),
     ],
 )
-def test_stream_advance_frames_turns_invalid_progress_into_typed_terminal_error(raw):
+def test_stream_advance_frames_turns_invalid_progress_into_typed_terminal_error(raw: bytes) -> None:
     subscription = _FakeSubscription([raw])
 
     frames = list(wiring.stream_advance_frames(_view(), subscription, expect_advance=True))
@@ -140,7 +142,7 @@ def test_stream_advance_frames_turns_invalid_progress_into_typed_terminal_error(
     assert subscription.closed is True
 
 
-def test_stream_advance_frames_normalizes_internal_error_event():
+def test_stream_advance_frames_normalizes_internal_error_event() -> None:
     error = {
         "kind": "error",
         "code": "command_finished_unavailable",
@@ -167,7 +169,7 @@ def test_stream_advance_frames_normalizes_internal_error_event():
 
 
 @pytest.mark.parametrize("event", ["workflow_finished", "workflow_paused", "error"])
-def test_native_workflow_terminal_event_does_not_end_the_builder_command(event):
+def test_native_workflow_terminal_event_does_not_end_the_builder_command(event: str) -> None:
     workflow = _internal_workflow(event)
     finished = _internal_finished()
     subscription = _FakeSubscription([json.dumps(item).encode() for item in (workflow, finished)])
@@ -182,7 +184,7 @@ def test_native_workflow_terminal_event_does_not_end_the_builder_command(event):
     assert _event(frames[1])["data"]["payload"]["event"] == event
 
 
-def test_ignored_workflow_event_is_not_sent_to_the_browser():
+def test_ignored_workflow_event_is_not_sent_to_the_browser() -> None:
     workflow = {
         "kind": "workflow",
         "session_id": "s1",
@@ -199,7 +201,7 @@ def test_ignored_workflow_event_is_not_sent_to_the_browser():
     assert [_event(frame)["event"] for frame in frames] == ["command_started", "command_finished"]
 
 
-def test_stream_advance_frames_settled_call_yields_minimal_command_handshake_only():
+def test_stream_advance_frames_settled_call_yields_minimal_command_handshake_only() -> None:
     frames = list(
         wiring.stream_advance_frames(
             _view(state="edit.capability_check"),
@@ -223,7 +225,7 @@ def test_stream_advance_frames_settled_call_yields_minimal_command_handshake_onl
     ]
 
 
-def test_stream_advance_frames_can_emit_public_command_finished_for_settled_message():
+def test_stream_advance_frames_can_emit_public_command_finished_for_settled_message() -> None:
     view = _view(version=2, run_status="waiting_input", state="success", app_id="private")
 
     frames = list(
@@ -257,7 +259,7 @@ def test_stream_advance_frames_can_emit_public_command_finished_for_settled_mess
     ]
 
 
-def test_reconnect_stream_skips_handshake_and_emits_settled_state():
+def test_reconnect_stream_skips_handshake_and_emits_settled_state() -> None:
     frames = list(
         wiring.stream_advance_frames(
             _view(version=3, run_status="waiting_confirmation"),
@@ -288,7 +290,7 @@ def test_reconnect_stream_skips_handshake_and_emits_settled_state():
         _view(version=1, interrupted=True, last_command_id="command-2"),
     ],
 )
-def test_reconnect_recovers_settled_state_when_terminal_notification_is_missing(settled):
+def test_reconnect_recovers_settled_state_when_terminal_notification_is_missing(settled: dict[str, object]) -> None:
     subscription = _FakeSubscription([None])
 
     frames = list(
@@ -312,7 +314,7 @@ def test_reconnect_recovers_settled_state_when_terminal_notification_is_missing(
     assert subscription.closed is True
 
 
-def test_reconnect_keeps_watching_while_the_worker_is_active():
+def test_reconnect_keeps_watching_while_the_worker_is_active() -> None:
     subscription = _FakeSubscription([None, json.dumps(_internal_finished()).encode()])
 
     frames = list(
@@ -330,7 +332,7 @@ def test_reconnect_keeps_watching_while_the_worker_is_active():
     assert subscription.closed is True
 
 
-def test_stream_advance_frames_emits_synchronously_persisted_items_individually():
+def test_stream_advance_frames_emits_synchronously_persisted_items_individually() -> None:
     items = [
         ConversationItem(seq=0, at_version=1, kind="user", payload={"text": "Build it"}),
         ConversationItem(seq=1, at_version=2, kind="form", payload={"variant": "build_requirements"}),
@@ -363,8 +365,8 @@ def test_stream_advance_frames_emits_synchronously_persisted_items_individually(
     [(2, ["progress_snapshot", "command_finished"]), (1, ["command_finished"])],
 )
 def test_reconnect_restores_progress_before_live_events_without_replaying_committed_progress(
-    at_version, expected_events
-):
+    at_version: int, expected_events: list[str]
+) -> None:
     snapshot = ProgressSnapshot(
         session_id="s1",
         operation_id="operation-1",

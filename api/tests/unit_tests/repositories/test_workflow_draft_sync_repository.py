@@ -8,7 +8,9 @@ from repositories.workflow_draft_sync_repository import ServerDraftChange, Workf
 
 
 @pytest.mark.parametrize("previous", [None, {"nodes": [], "edges": []}])
-def test_graphs_stay_opaque_to_lua_and_round_trip_without_changing_values(previous, monkeypatch: pytest.MonkeyPatch):
+def test_graphs_stay_opaque_to_lua_and_round_trip_without_changing_values(
+    previous: dict[str, object] | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
     redis = Mock()
     redis.eval.return_value = 1
     monkeypatch.setattr(repo_module, "redis_client", redis)

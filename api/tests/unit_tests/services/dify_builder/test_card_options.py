@@ -4,10 +4,12 @@ The action bar used to change shape per gate -- four buttons at review, one at
 plan approval. These project the same choice into the fixed interaction dock.
 """
 
+from typing import cast
+
 import pytest
 
-from core.dify_builder.contract import CONFIRM_ACTION_ID, ActionKind
-from core.dify_builder.models import DifyBuilderContext, MutationIntent, Run
+from core.dify_builder.contract import CONFIRM_ACTION_ID, ActionKind, Decision
+from core.dify_builder.models import DifyBuilderContext, Graph, MutationIntent, Run
 from core.dify_builder.state import PcState
 from core.dify_builder.verification import publication_decision
 from services.dify_builder.copy_ids import BuilderCopyId
@@ -21,7 +23,7 @@ from services.dify_builder.service import (
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, successful_verification
 
 
-def _decision(state: PcState, *, verified: bool = False):
+def _decision(state: PcState, *, verified: bool = False) -> Decision | None:
     port = FakeDifyPort()
     run = (
         Run(
@@ -42,9 +44,10 @@ def _decision(state: PcState, *, verified: bool = False):
 
 
 @pytest.mark.parametrize("verified", [True, False])
-def test_a_gate_offers_its_actions_as_options_not_buttons(verified: bool):
+def test_a_gate_offers_its_actions_as_options_not_buttons(verified: bool) -> None:
     decision = _decision(PcState.BUILD_REVIEW, verified=verified)
 
+    assert decision is not None
     assert [o.id for o in decision.options] == [
         "publish_workflow" if verified else "run_test",
         "keep_draft",
@@ -57,41 +60,45 @@ def test_a_gate_offers_its_actions_as_options_not_buttons(verified: bool):
 
 
 @pytest.mark.parametrize("verified", [True, False])
-def test_exactly_one_option_carries_the_default_badge(verified: bool):
+def test_exactly_one_option_carries_the_default_badge(verified: bool) -> None:
     decision = _decision(PcState.BUILD_REVIEW, verified=verified)
 
+    assert decision is not None
     defaults = [o.id for o in decision.options if o.is_default]
     expected_default = "publish_workflow" if verified else "run_test"
     assert defaults == [expected_default]
     assert decision.default_option_id == expected_default
 
 
-def test_a_destructive_action_keeps_its_tone_as_an_option():
+def test_a_destructive_action_keeps_its_tone_as_an_option() -> None:
     decision = _decision(PcState.BUILD_REVIEW)
 
+    assert decision is not None
     tones = {o.id: o.tone for o in decision.options}
     assert tones["revert"] == "destructive"
     assert tones["keep_draft"] == "neutral"
 
 
 @pytest.mark.parametrize("verified", [True, False])
-def test_an_option_carries_the_state_map_hints_its_action_had(verified: bool):
+def test_an_option_carries_the_state_map_hints_its_action_had(verified: bool) -> None:
     decision = _decision(PcState.BUILD_REVIEW, verified=verified)
 
     option_id = "publish_workflow" if verified else "run_test"
+    assert decision is not None
     option = next(o for o in decision.options if o.id == option_id)
     assert option.next_state == ("build.publish" if verified else None)
     assert option.canvas_event == ("publish_workflow" if verified else None)
 
 
-def test_a_single_action_gate_still_becomes_an_option():
+def test_a_single_action_gate_still_becomes_an_option() -> None:
     decision = _decision(PcState.BUILD_PLAN_APPROVAL)
 
+    assert decision is not None
     assert [o.id for o in decision.options] == ["approve_plan"]
     assert decision.options[0].is_default is True
 
 
-def test_a_gate_offering_nothing_has_no_decision():
+def test_a_gate_offering_nothing_has_no_decision() -> None:
     # Nothing to choose means no card options and no button -- not an empty dock.
     assert _decision_for(PcState.BUILD_REVIEW, []) is None
 
@@ -107,23 +114,24 @@ def test_a_gate_offering_nothing_has_no_decision():
         PcState.EDIT_AWAIT_TESTDATA,
     ],
 )
-def test_form_and_resource_gates_do_not_also_project_a_choice(state: PcState):
+def test_form_and_resource_gates_do_not_also_project_a_choice(state: PcState) -> None:
     assert _decision(state) is None
 
 
 @pytest.mark.parametrize("option_id", ["approve_plan", "reject_repair"])
-def test_repair_options_do_not_ask_for_free_text(option_id: str):
+def test_repair_options_do_not_ask_for_free_text(option_id: str) -> None:
     state = PcState.FIX_AWAIT_APPROVAL
     context = DifyBuilderContext(
         staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "title", "value": "Fixed"})]
     )
     decision = _decision_for(state, _actions_for(state, context))
 
+    assert decision is not None
     option = next(o for o in decision.options if o.id == option_id)
     assert option.input is None
 
 
-def test_an_automatic_action_is_never_offered_as_an_option():
+def test_an_automatic_action_is_never_offered_as_an_option() -> None:
     from core.dify_builder.contract import Action as UiAction
 
     decision = _decision_for(
@@ -134,10 +142,11 @@ def test_an_automatic_action_is_never_offered_as_an_option():
         ],
     )
 
+    assert decision is not None
     assert [o.id for o in decision.options] == ["visible"]
 
 
-def test_only_the_first_primary_is_the_default():
+def test_only_the_first_primary_is_the_default() -> None:
     from core.dify_builder.contract import Action as UiAction
 
     decision = _decision_for(
@@ -148,29 +157,30 @@ def test_only_the_first_primary_is_the_default():
         ],
     )
 
+    assert decision is not None
     # Two recommendations is no recommendation.
     assert [o.id for o in decision.options if o.is_default] == ["first"]
 
 
 class TestResolvingWhatTheClientPosted:
-    def test_confirm_resolves_through_the_named_option(self):
+    def test_confirm_resolves_through_the_named_option(self) -> None:
         # "publish_fix" is renamed to the handler kind "publish"; the option id
         # goes through exactly the map the button id used to.
         assert resolve_submitted_action(CONFIRM_ACTION_ID, {"option_id": "publish_fix"}) == "publish"
 
-    def test_an_option_id_that_is_already_a_kind_passes_through(self):
+    def test_an_option_id_that_is_already_a_kind_passes_through(self) -> None:
         assert resolve_submitted_action(CONFIRM_ACTION_ID, {"option_id": "publish_workflow"}) == "publish_workflow"
 
-    def test_a_legacy_client_posting_the_action_id_still_resolves(self):
+    def test_a_legacy_client_posting_the_action_id_still_resolves(self) -> None:
         assert resolve_submitted_action("publish_fix", {}) == "publish"
 
-    def test_both_contracts_land_on_the_same_kind(self):
+    def test_both_contracts_land_on_the_same_kind(self) -> None:
         for action_id in ("publish_fix", "run_validation", "revert", "restart"):
             assert resolve_submitted_action(CONFIRM_ACTION_ID, {"option_id": action_id}) == resolve_action_kind(
                 action_id
             )
 
     @pytest.mark.parametrize("payload", [{}, None, {"option_id": ""}, {"option_id": None}, "not-a-dict"])
-    def test_confirm_naming_no_option_resolves_to_nothing(self, payload):
+    def test_confirm_naming_no_option_resolves_to_nothing(self, payload: Graph | None | str) -> None:
         # "" is not legal in any state, so the existing per-state check rejects it.
-        assert resolve_submitted_action(CONFIRM_ACTION_ID, payload) == ""
+        assert resolve_submitted_action(CONFIRM_ACTION_ID, cast(Graph | None, payload)) == ""

@@ -45,7 +45,7 @@ def load_balancing_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     monkeypatch.setattr(wraps, "setup_required", _noop)
     monkeypatch.setattr(wraps, "account_initialization_required", _noop)
 
-    def _noop_route[**P](*args: P.args, **kwargs: P.kwargs):  # type: ignore[override]
+    def _noop_route(*_args: object, **_kwargs: object):  # type: ignore[override]
         def _decorator(cls: type) -> type:
             return cls
 

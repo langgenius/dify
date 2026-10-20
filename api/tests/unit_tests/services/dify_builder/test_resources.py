@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Sequence
+from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
@@ -31,9 +32,9 @@ from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
 def test_list_tenant_resources_normalizes_all_three_kinds() -> None:
     from services.dify_builder.agent import resources
 
+    @dataclass
     class _Model:
-        def __init__(self, m: str) -> None:
-            self.model = m
+        model: str
 
     class _ProvResp:
         def __init__(self, p: str, ms: list[str]) -> None:
@@ -230,9 +231,9 @@ def test_authorization_lookup_failure_is_never_reported_ready(caplog: pytest.Log
 def test_list_tenant_resources_logs_when_a_source_fails(caplog: pytest.LogCaptureFixture) -> None:
     from services.dify_builder.agent import resources
 
+    @dataclass
     class _Model:
-        def __init__(self, m: str) -> None:
-            self.model = m
+        model: str
 
     class _ProvResp:
         def __init__(self, p: str, ms: list[str]) -> None:
@@ -535,9 +536,9 @@ def test_a_plugin_daemon_outage_keeps_hardcoded_tools_in_the_inventory(
 def test_models_and_datasets_keep_their_semantics_for_an_actor(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.agent import resources
 
+    @dataclass
     class _Model:
-        def __init__(self, m: str) -> None:
-            self.model = m
+        model: str
 
     class _ProvResp:
         def __init__(self, p: str, ms: list[str]) -> None:

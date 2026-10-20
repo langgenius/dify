@@ -284,12 +284,12 @@ def world(consent_owner: Owner, monkeypatch: pytest.MonkeyPatch) -> Iterator[Wor
 
     def invoke_stream(
         _self: PluginToolManager, method: str, path: str, _type: type, **kwargs: object
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         state.mark("invoke_transport")
         assert method == "POST"
         state.invoke_calls.append(_call(path, kwargs))
 
-        def stream() -> Generator[ToolInvokeMessage, None, None]:
+        def stream() -> Generator[ToolInvokeMessage]:
             messages = [
                 ToolInvokeMessage(
                     type=ToolInvokeMessage.MessageType.TEXT, message=ToolInvokeMessage.TextMessage(text="ok")

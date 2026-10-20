@@ -60,7 +60,7 @@ def _full_fix_context() -> DifyBuilderContext:
     )
 
 
-def test_fully_populated_fix_context_round_trips():
+def test_fully_populated_fix_context_round_trips() -> None:
     fc = _full_fix_context()
 
     result = context_from_dict(context_to_dict(fc))
@@ -68,7 +68,7 @@ def test_fully_populated_fix_context_round_trips():
     assert result == fc
 
 
-def test_empty_fix_context_round_trips():
+def test_empty_fix_context_round_trips() -> None:
     fc = DifyBuilderContext()
 
     result = context_from_dict(context_to_dict(fc))
@@ -76,7 +76,7 @@ def test_empty_fix_context_round_trips():
     assert result == fc
 
 
-def test_to_dict_output_is_json_serializable():
+def test_to_dict_output_is_json_serializable() -> None:
     fc = _full_fix_context()
 
     d = context_to_dict(fc)
@@ -85,7 +85,7 @@ def test_to_dict_output_is_json_serializable():
     json.dumps(d)
 
 
-def test_from_dict_tolerates_missing_optional_keys():
+def test_from_dict_tolerates_missing_optional_keys() -> None:
     # An older/partial persisted dict -- only a subset of keys present.
     d = {"failed_run_id": "TR-9"}
 
@@ -94,7 +94,7 @@ def test_from_dict_tolerates_missing_optional_keys():
     assert fc == DifyBuilderContext(failed_run_id="TR-9")
 
 
-def test_context_round_trips_build_fields():
+def test_context_round_trips_build_fields() -> None:
     from core.dify_builder.models import DifyBuilderContext
     from services.dify_builder.serde import context_from_dict, context_to_dict
 
@@ -110,7 +110,7 @@ def test_context_round_trips_build_fields():
     assert out == fc
 
 
-def test_context_from_dict_defaults_build_fields_when_absent():
+def test_context_from_dict_defaults_build_fields_when_absent() -> None:
     from core.dify_builder.models import DifyBuilderContext
     from services.dify_builder.serde import context_from_dict
 
@@ -121,7 +121,7 @@ def test_context_from_dict_defaults_build_fields_when_absent():
     assert fc.plan_items == []
 
 
-def test_context_roundtrip_preserves_edit_fields():
+def test_context_roundtrip_preserves_edit_fields() -> None:
     from core.dify_builder.models import DifyBuilderContext
     from services.dify_builder.serde import context_from_dict, context_to_dict
 
@@ -138,7 +138,7 @@ def test_context_roundtrip_preserves_edit_fields():
     assert out == fc  # every edit field, last_edit_rejection included
 
 
-def test_context_from_dict_defaults_edit_fields_when_absent():
+def test_context_from_dict_defaults_edit_fields_when_absent() -> None:
     from services.dify_builder.serde import context_from_dict
 
     out = context_from_dict({})  # an older row with no edit_* keys
@@ -147,7 +147,7 @@ def test_context_from_dict_defaults_edit_fields_when_absent():
     assert out.last_edit_rejection == ""
 
 
-def test_context_roundtrip_preserves_lifecycle_fields():
+def test_context_roundtrip_preserves_lifecycle_fields() -> None:
     from core.dify_builder.models import DifyBuilderContext
     from services.dify_builder.serde import context_from_dict, context_to_dict
 
@@ -157,7 +157,7 @@ def test_context_roundtrip_preserves_lifecycle_fields():
     assert out.checkpoint_seq == 7
 
 
-def test_context_from_dict_defaults_lifecycle_fields_when_absent():
+def test_context_from_dict_defaults_lifecycle_fields_when_absent() -> None:
     from services.dify_builder.serde import context_from_dict
 
     out = context_from_dict({})  # an older row with no paused/checkpoint_seq keys
@@ -165,7 +165,7 @@ def test_context_from_dict_defaults_lifecycle_fields_when_absent():
     assert out.checkpoint_seq == 0
 
 
-def test_serde_round_trips_recovery_fields():
+def test_serde_round_trips_recovery_fields() -> None:
     from core.dify_builder.models import DifyBuilderContext
     from services.dify_builder.serde import context_from_dict, context_to_dict
 
@@ -178,7 +178,7 @@ def test_serde_round_trips_recovery_fields():
     assert back.recovery_class == "config_only"
 
 
-def test_serde_defaults_recovery_fields_for_old_rows():
+def test_serde_defaults_recovery_fields_for_old_rows() -> None:
     from services.dify_builder.serde import context_from_dict
 
     # An older persisted dict lacking the new keys still deserializes.
@@ -187,7 +187,7 @@ def test_serde_defaults_recovery_fields_for_old_rows():
     assert back.recovery_class == ""
 
 
-def test_serde_round_trips_skill_learning_policy():
+def test_serde_round_trips_skill_learning_policy() -> None:
     from core.dify_builder.models import DifyBuilderContext
     from services.dify_builder.serde import context_from_dict, context_to_dict
 
@@ -197,13 +197,13 @@ def test_serde_round_trips_skill_learning_policy():
     assert context_from_dict(d).skill_learning_policy == "automatic"
 
 
-def test_serde_defaults_skill_learning_policy_for_old_rows():
+def test_serde_defaults_skill_learning_policy_for_old_rows() -> None:
     from services.dify_builder.serde import context_from_dict
 
     assert context_from_dict({}).skill_learning_policy == "ask"
 
 
-def test_form_fields_round_trips():
+def test_form_fields_round_trips() -> None:
     from core.dify_builder.models import DifyBuilderContext
     from services.dify_builder.serde import context_from_dict, context_to_dict
 
@@ -213,23 +213,23 @@ def test_form_fields_round_trips():
     assert restored.form_fields == fc.form_fields
 
 
-def test_form_fields_defaults_empty_when_absent():
+def test_form_fields_defaults_empty_when_absent() -> None:
     from services.dify_builder.serde import context_from_dict
 
     assert context_from_dict({}).form_fields == []
 
 
-def test_reply_language_round_trips():
+def test_reply_language_round_trips() -> None:
     fc = DifyBuilderContext(reply_language="ja")
     result = context_from_dict(context_to_dict(fc))
     assert result.reply_language == "ja"
 
 
-def test_reply_language_defaults_empty_when_absent():
+def test_reply_language_defaults_empty_when_absent() -> None:
     assert context_from_dict({}).reply_language == ""
 
 
-def test_repair_loop_fields_round_trip():
+def test_repair_loop_fields_round_trip() -> None:
     # Regression: context_from_dict previously never read these two keys,
     # so a session persisted mid-repair-loop silently reset its attempt
     # count to 0 on the very next turn, making the repeated-failure guard
@@ -242,13 +242,13 @@ def test_repair_loop_fields_round_trip():
     assert result.last_repair_error == "boom"
 
 
-def test_repair_loop_fields_default_when_absent():
+def test_repair_loop_fields_default_when_absent() -> None:
     out = context_from_dict({})  # an older row with no repair_attempts/last_repair_error keys
     assert out.repair_attempts == 0
     assert out.last_repair_error == ""
 
 
-def test_unknown_outcome_count_round_trips_and_defaults_to_zero():
+def test_unknown_outcome_count_round_trips_and_defaults_to_zero() -> None:
     from core.dify_builder.models import DifyBuilderContext
     from services.dify_builder.serde import context_from_dict, context_to_dict
 
@@ -259,7 +259,7 @@ def test_unknown_outcome_count_round_trips_and_defaults_to_zero():
 
 
 @pytest.mark.parametrize("has_run_evidence", [False, True], ids=["historical-missing", "additive-simulation"])
-def test_context_roundtrip_cannot_replace_repository_owned_execution_evidence(has_run_evidence):
+def test_context_roundtrip_cannot_replace_repository_owned_execution_evidence(has_run_evidence: bool) -> None:
     # Typed unit serialization fixture, not evidence of actual native execution.
     summary = ExecutionEvidenceSummary(
         request_id="request",
@@ -271,7 +271,7 @@ def test_context_roundtrip_cannot_replace_repository_owned_execution_evidence(ha
         fixture_digest="a" * 64,
         native_run_id="native-run",
     )
-    verification = {
+    verification: dict[str, object] = {
         "execution_revision": "revision",
         "executed_graph_revision": "graph",
         "terminal_outputs": {"answer": "sample"},

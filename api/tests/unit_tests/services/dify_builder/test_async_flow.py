@@ -30,7 +30,7 @@ from sqlalchemy.orm import sessionmaker
 
 import tasks.dify_builder_advance_task as task_mod
 from core.dify_builder.errors import BadRequestError, BusyError
-from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Run, Session
+from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Graph, Run, Session
 from core.dify_builder.state import PcState
 from models.base import Base
 from services.dify_builder import service as service_mod
@@ -49,18 +49,18 @@ class _FakeRedis:
     Lua compare-del via eval."""
 
     def __init__(self) -> None:
-        self._store: dict = {}
+        self._store: dict[str, str] = {}
 
-    def set(self, name, value, nx=False, px=None, **kw):  # noqa: ARG002
+    def set(self, name: str, value: str, nx: bool = False, px: object | None = None, **kw: object) -> bool | None:  # noqa: ARG002
         if nx and name in self._store:
             return None
         self._store[name] = value
         return True
 
-    def get(self, name):
+    def get(self, name: str) -> str | None:
         return self._store.get(name)
 
-    def eval(self, script, numkeys, *args):  # noqa: ARG002
+    def eval(self, script: str, numkeys: int, *args: str) -> int:  # noqa: ARG002
         key, token = args[0], args[1]
         if self._store.get(key) == token:
             del self._store[key]
@@ -89,8 +89,8 @@ def repo(engine: Engine) -> SqlDifyBuilderRepository:
 
 
 def _wire(
-    monkeypatch, repo: SqlDifyBuilderRepository
-) -> tuple[DifyBuilderService, FakeDifyPort, list[tuple[str, dict]]]:
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository
+) -> tuple[DifyBuilderService, FakeDifyPort, list[tuple[str, Graph]]]:
     """Wire the usecase to the real task, run eagerly, over the shared repo
     and the real (faked-Redis) session_lock module."""
     monkeypatch.setattr(session_lock, "redis_client", _FakeRedis())  # real lock module, faked redis (shared)
@@ -117,10 +117,10 @@ def _wire(
         ),
     )
 
-    events: list[tuple[str, dict]] = []
+    events: list[tuple[str, Graph]] = []
     monkeypatch.setattr(task_mod.progress_bus, "publish", lambda sid, ev: events.append((sid, ev)))
 
-    def eager_enqueue(session_id, action, actor, token) -> None:
+    def eager_enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
         task_mod.advance_session(session_id, dataclasses.asdict(action), dataclasses.asdict(actor), token)
 
     def get_verification_identity(app_id: str, actor: Actor) -> tuple[str, str]:
@@ -142,7 +142,7 @@ def _wire(
 
 @pytest.mark.parametrize("draft_change", [None, "execution", "graph"])
 def test_full_fix_flow_create_to_publish_success_eager_async(
-    monkeypatch, repo: SqlDifyBuilderRepository, draft_change: str | None
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, draft_change: str | None
 ) -> None:
     # Seed the failed run BEFORE creating the session -- get_run is by id
     # with no FK, so any placeholder session_id works here.
@@ -162,12 +162,14 @@ def test_full_fix_flow_create_to_publish_success_eager_async(
 
     sid = view.session_id
 
+    assert view.app_revision is not None
     view = svc.submit_action(
         sid, _actor(), Action(kind="run_verify", base_version=view.version, base_app_revision=view.app_revision.current)
     )
     assert view.state == "fix.await_testdata"
     assert session_lock.exists(sid) is False
 
+    assert view.app_revision is not None
     view = svc.submit_action(
         sid, _actor(), Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=view.version)
     )
@@ -183,7 +185,7 @@ def test_full_fix_flow_create_to_publish_success_eager_async(
     assert verified.verification is not None
     assert verified.verification.execution_revision == "h1"
     assert verified.verification.executed_graph_revision == port.graph_revision(port.graph)
-    assert port.published is False
+    assert not port.published
 
     if draft_change is not None:
         if draft_change == "execution":
@@ -191,6 +193,7 @@ def test_full_fix_flow_create_to_publish_success_eager_async(
         else:
             port.graph["nodes"].append({"id": "new", "data": {"type": "end", "outputs": []}})
         event_count = len(events)
+        assert view.app_revision is not None
         with pytest.raises(BadRequestError, match="publication verification denied: stale_revision"):
             svc.submit_action(
                 sid,
@@ -201,16 +204,17 @@ def test_full_fix_flow_create_to_publish_success_eager_async(
         assert unchanged.current_state == PcState.FIX_AWAIT_DECISION
         assert unchanged.version == stored.version
         assert unchanged_context.verify_run_id == verified.id
-        assert port.published is False
+        assert not port.published
         assert len(events) == event_count
         assert session_lock.exists(sid) is False
         return
 
+    assert view.app_revision is not None
     view = svc.submit_action(
         sid, _actor(), Action(kind="publish", base_version=view.version, base_app_revision=view.app_revision.current)
     )
     assert view.state == "success"
-    assert port.published is True
+    assert port.published
 
     stored, _fc = repo.get_session(sid)
     assert stored.current_state == PcState.SUCCESS
@@ -228,7 +232,9 @@ def test_full_fix_flow_create_to_publish_success_eager_async(
 # ---- Test 2: busy while a lock is held --------------------------------------
 
 
-def test_submit_action_while_lock_held_raises_busy_eager_async(monkeypatch, repo: SqlDifyBuilderRepository) -> None:
+def test_submit_action_while_lock_held_raises_busy_eager_async(
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository
+) -> None:
     svc, port, _events = _wire(monkeypatch, repo)
 
     # Seed the session DIRECTLY via the repo (bypassing create_fix_session,
@@ -263,7 +269,9 @@ def test_submit_action_while_lock_held_raises_busy_eager_async(monkeypatch, repo
 # ---- Test 3: terminal state frame stays bounded ----------------------------
 
 
-def test_terminal_state_frame_excludes_conversation_history(monkeypatch, repo: SqlDifyBuilderRepository) -> None:
+def test_terminal_state_frame_excludes_conversation_history(
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository
+) -> None:
     repo.save_run(
         "00000000-0000-0000-0000-000000000000",
         Run(id="TR-1", kind="original-failed", dify_run_id="", status="failed", immutable=True),

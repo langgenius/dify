@@ -1,5 +1,7 @@
 """Unit tests for the tool catalogue helpers."""
 
+from __future__ import annotations
+
 import pytest
 
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
@@ -620,7 +622,7 @@ class TestBuildToolCatalogue:
 class TestInstalledInventoryCatalogue:
     """Real hardcoded providers + plugin providers parsed from a faked daemon."""
 
-    def test_a_plugin_daemon_failure_keeps_the_hardcoded_tools(self, monkeypatch):
+    def test_a_plugin_daemon_failure_keeps_the_hardcoded_tools(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from tests.unit_tests.services.dify_builder.installed_tool_inventory import FakeToolDaemon, install_fake_daemon
 
         install_fake_daemon(monkeypatch, FakeToolDaemon(fail_all=True))
@@ -631,7 +633,7 @@ class TestInstalledInventoryCatalogue:
         assert ("time", "current_time") in keys
         assert all(entry["plugin_id"] == "" for entry in entries)
 
-    def test_entries_carry_the_provider_capability_metadata(self, monkeypatch):
+    def test_entries_carry_the_provider_capability_metadata(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
             FakeTool,
             FakeToolDaemon,
@@ -666,7 +668,7 @@ class TestInstalledInventoryCatalogue:
         assert entry.get("provider_description") == "Notify teammates in shared chat channels."
         assert entry.get("provider_tags") == ["social", "productivity"]
 
-    def test_routing_matches_a_tool_by_its_provider_capability_metadata(self, monkeypatch):
+    def test_routing_matches_a_tool_by_its_provider_capability_metadata(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
             FakeTool,
             FakeToolDaemon,

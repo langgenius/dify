@@ -358,9 +358,9 @@ class TestReadyToolAllowlist:
 
         assert result["error"] == ""
         call = generation.generator_calls[0]
-        assert [(entry["provider_name"], entry["tool_name"]) for entry in call["tool_catalogue_entries"]] == [
-            ("time", "current_time")
-        ]
+        entries = call["tool_catalogue_entries"]
+        assert isinstance(entries, list)
+        assert [(entry["provider_name"], entry["tool_name"]) for entry in entries] == [("time", "current_time")]
         assert call["installed_tools"] == {("time", "current_time")}
 
     def test_empty_allowlist_means_no_executable_tools(self, generation: GenerationObservations) -> None:

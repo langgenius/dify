@@ -7,16 +7,33 @@ Uses a toy two-state registry rather than the real fix-flow handlers
 
 import logging
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import datetime
+from typing import NoReturn, Unpack, override
 
 import pytest
 
 from core.dify_builder.contract import AgentMessageEventData, ConversationItemAppendedEventData, ExecutionProgress
 from core.dify_builder.errors import ConflictError
-from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Session, Turn
+from core.dify_builder.models import (
+    Action,
+    Actor,
+    ConversationItem,
+    DifyBuilderContext,
+    EntryMode,
+    Graph,
+    Session,
+    Turn,
+)
 from core.dify_builder.runner import Env, Handler, Runner, StepResult
 from core.dify_builder.state import PcState
-from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
+from tests.unit_tests.core.dify_builder.fakes import (
+    FakeDifyPort,
+    FixtureEnv,
+    InMemoryRepository,
+    SessionOverrides,
+    StubAgent,
+)
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 
@@ -24,19 +41,20 @@ def _actor() -> Actor:
     return Actor(account_id="acc-1", tenant_id="tenant-1")
 
 
-def _session(**overrides) -> Session:
-    fields: dict = {
-        "app_id": "app",
-        "tenant_id": "t",
-        "owner_account_id": "u",
-        "entry_mode": EntryMode.FIX,
-        "current_state": PcState.FIX_DIAGNOSE,
-    }
-    fields.update(overrides)
-    return Session(**fields)
+def _session(**overrides: Unpack[SessionOverrides]) -> Session:
+    return replace(
+        Session(
+            app_id="app",
+            tenant_id="t",
+            owner_account_id="u",
+            entry_mode=EntryMode.FIX,
+            current_state=PcState.FIX_DIAGNOSE,
+        ),
+        **overrides,
+    )
 
 
-def _toy_registry() -> dict[PcState, object]:
+def _toy_registry() -> dict[PcState, Handler]:
     """A working -> waiting toy machine: FIX_DIAGNOSE auto-advances to
     FIX_AWAIT_APPROVAL (a waiting state), where the loop stops."""
 
@@ -46,9 +64,9 @@ def _toy_registry() -> dict[PcState, object]:
     return {PcState.FIX_DIAGNOSE: diagnose}
 
 
-def _new_env() -> tuple[Env, InMemoryRepository]:
+def _new_env() -> tuple[FixtureEnv, InMemoryRepository]:
     repo = InMemoryRepository()
-    env = Env(
+    env = FixtureEnv(
         dify=FakeDifyPort(),
         agent=StubAgent(),
         repo=repo,
@@ -57,7 +75,7 @@ def _new_env() -> tuple[Env, InMemoryRepository]:
     return env, repo
 
 
-def test_advance_commits_each_transition_and_stops_at_waiting():
+def test_advance_commits_each_transition_and_stops_at_waiting() -> None:
     env, repo = _new_env()
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [])
@@ -74,7 +92,7 @@ def test_advance_commits_each_transition_and_stops_at_waiting():
     assert stored.current_state == PcState.FIX_AWAIT_APPROVAL
 
 
-def test_first_transition_replaces_legacy_decision_with_interaction_response():
+def test_first_transition_replaces_legacy_decision_with_interaction_response() -> None:
     env, repo = _new_env()
     session = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
     repo.create_session(session, DifyBuilderContext(), [])
@@ -88,7 +106,7 @@ def test_first_transition_replaces_legacy_decision_with_interaction_response():
         context.next_seq += 1
         return StepResult(next=PcState.FIX_AWAIT_VERIFY, context=context, items=[item])
 
-    response = {
+    response: Graph = {
         "interaction_kind": "choice",
         "question": "How should Builder proceed with this fix?",
         "answer": "Approve fix",
@@ -115,7 +133,7 @@ def test_first_transition_replaces_legacy_decision_with_interaction_response():
     assert context.next_seq == 1
 
 
-def test_advance_stale_base_version_raises_conflict_with_nothing_applied():
+def test_advance_stale_base_version_raises_conflict_with_nothing_applied() -> None:
     env, repo = _new_env()
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [])
@@ -132,12 +150,12 @@ def test_advance_stale_base_version_raises_conflict_with_nothing_applied():
     assert repo.list_conversation(s.id) == []
 
 
-def test_lost_commit_cas_leaves_no_durable_transition(monkeypatch: pytest.MonkeyPatch):
+def test_lost_commit_cas_leaves_no_durable_transition(monkeypatch: pytest.MonkeyPatch) -> None:
     env, repo = _new_env()
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [])
 
-    def lose_cas(*_args, **_kwargs):
+    def lose_cas(*_args: object, **_kwargs: object) -> NoReturn:
         raise ConflictError("lost race")
 
     monkeypatch.setattr(repo, "compare_and_advance", lose_cas)
@@ -154,7 +172,7 @@ def test_lost_commit_cas_leaves_no_durable_transition(monkeypatch: pytest.Monkey
     assert repo.list_conversation(s.id) == []
 
 
-def test_advance_missing_handler_raises():
+def test_advance_missing_handler_raises() -> None:
     env, repo = _new_env()
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [])
@@ -162,11 +180,11 @@ def test_advance_missing_handler_raises():
     runner = Runner(env, {})  # empty registry: no handler for FIX_DIAGNOSE
     turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
 
-    with pytest.raises(Exception):  # noqa: B017 - exact type asserted in test below
+    with pytest.raises(Exception, match="no handler"):
         runner.advance(s.id, turn)
 
 
-def test_advance_missing_handler_error_message_names_the_state():
+def test_advance_missing_handler_error_message_names_the_state() -> None:
     env, repo = _new_env()
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [])
@@ -178,7 +196,7 @@ def test_advance_missing_handler_error_message_names_the_state():
         runner.advance(s.id, turn)
 
 
-def test_advance_waiting_state_first_turn_no_action_returns_session_unchanged():
+def test_advance_waiting_state_first_turn_no_action_returns_session_unchanged() -> None:
     env, repo = _new_env()
     s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
     repo.create_session(s, DifyBuilderContext(), [])
@@ -191,7 +209,7 @@ def test_advance_waiting_state_first_turn_no_action_returns_session_unchanged():
     assert out.version == 1
 
 
-def test_advance_terminal_state_returns_session_unchanged():
+def test_advance_terminal_state_returns_session_unchanged() -> None:
     env, repo = _new_env()
     s = _session(current_state=PcState.SUCCESS)
     repo.create_session(s, DifyBuilderContext(), [])
@@ -204,7 +222,7 @@ def test_advance_terminal_state_returns_session_unchanged():
     assert out.version == 1
 
 
-def test_message_appends_user_and_assistant_turns_without_advancing_waiting_state():
+def test_message_appends_user_and_assistant_turns_without_advancing_waiting_state() -> None:
     env, repo = _new_env()
     messages = []
     item_events = []
@@ -213,7 +231,7 @@ def test_message_appends_user_and_assistant_turns_without_advancing_waiting_stat
     s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
     repo.create_session(s, DifyBuilderContext(), [])
 
-    def must_not_run(*_args):
+    def must_not_run(*_args: object) -> NoReturn:
         raise AssertionError("message must not invoke a state handler")
 
     runner = Runner(env, {PcState.FIX_AWAIT_APPROVAL: must_not_run})
@@ -272,17 +290,17 @@ def test_message_appends_user_and_assistant_turns_without_advancing_waiting_stat
     assert [(event.item.kind, event.item.seq) for event in item_events] == [("user", 0)]
 
 
-def test_complete_assistant_reply_emits_once_only_after_commit():
+def test_complete_assistant_reply_emits_once_only_after_commit() -> None:
     env, repo = _new_env()
     session = _session()
     repo.create_session(session, DifyBuilderContext(), [])
     timeline: list[tuple[str, AgentMessageEventData | ConversationItemAppendedEventData, int]] = []
 
-    def emit_message(event):
+    def emit_message(event: AgentMessageEventData) -> None:
         stored, _context = repo.get_session(session.id)
         timeline.append(("message", event, stored.version))
 
-    def emit_item(event):
+    def emit_item(event: ConversationItemAppendedEventData) -> None:
         stored, _context = repo.get_session(session.id)
         timeline.append(("item", event, stored.version))
 
@@ -311,14 +329,17 @@ def test_complete_assistant_reply_emits_once_only_after_commit():
     )
 
     assert not any(isinstance(event, AgentMessageEventData) for _kind, event, _version in timeline)
-    assert [(event.item.kind, version) for _kind, event, version in timeline] == [("assistant_turn", 2), ("notice", 2)]
-    assert timeline[0][1].item.payload["reply_mode"] == "complete"
+    item_events = [
+        (event, version) for _kind, event, version in timeline if isinstance(event, ConversationItemAppendedEventData)
+    ]
+    assert [(event.item.kind, version) for event, version in item_events] == [("assistant_turn", 2), ("notice", 2)]
+    assert item_events[0][0].item.payload["reply_mode"] == "complete"
     items = repo.list_conversation(session.id)
     assert [item.kind for item in items] == ["assistant_turn", "notice"]
     assert english_text(items[0].payload["reply_text"]) == reply
 
 
-def test_message_streams_and_persists_reasoning_independently_from_answer():
+def test_message_streams_and_persists_reasoning_independently_from_answer() -> None:
     class ReasoningAgent(StubAgent):
         def __init__(self) -> None:
             super().__init__()
@@ -327,10 +348,19 @@ def test_message_streams_and_persists_reasoning_independently_from_answer():
         def set_reasoning_callback(self, callback: Callable[[str, str], None] | None) -> None:
             self.reasoning_callback = callback
 
-        def respond_to_message(self, *args, **kwargs):
+        @override
+        def respond_to_message(
+            self,
+            state: PcState,
+            context: DifyBuilderContext,
+            history: list[ConversationItem],
+            graph: Graph,
+            text: str,
+            on_delta: Callable[[str], None] | None = None,
+        ) -> str:
             assert self.reasoning_callback is not None
             self.reasoning_callback("respond-to-message", "Check the current approval gate.")
-            return super().respond_to_message(*args, **kwargs)
+            return super().respond_to_message(state, context, history, graph, text, on_delta)
 
     env, repo = _new_env()
     env.agent = ReasoningAgent()
@@ -359,15 +389,24 @@ def test_message_streams_and_persists_reasoning_independently_from_answer():
     assert reasoning_events[0].session_id == session.id
 
 
-def test_message_persists_the_streamed_text_without_a_second_localization():
+def test_message_persists_the_streamed_text_without_a_second_localization() -> None:
     class MismatchedAgent(StubAgent):
-        def respond_to_message(self, _state, _context, _history, _graph, _text, on_delta=None):
+        @override
+        def respond_to_message(
+            self,
+            state: PcState,
+            context: DifyBuilderContext,
+            history: list[ConversationItem],
+            graph: Graph,
+            text: str,
+            on_delta: Callable[[str], None] | None = None,
+        ) -> str:
             assert on_delta is not None
             on_delta("Streamed ")
             on_delta("answer")
             return "different returned answer"
 
-    def localize(items, _language):
+    def localize(items: list[ConversationItem], _language: object) -> list[ConversationItem]:
         for item in items:
             if item.kind == "assistant_turn":
                 item.payload["reply_text"] = "localized replacement"
@@ -400,7 +439,7 @@ def test_message_persists_the_streamed_text_without_a_second_localization():
     assert messages[-1].seq == assistant.seq
 
 
-def test_message_cognition_receives_prior_turns_and_completed_retry_is_idempotent():
+def test_message_cognition_receives_prior_turns_and_completed_retry_is_idempotent() -> None:
     env, repo = _new_env()
     s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
     repo.create_session(s, DifyBuilderContext(), [])
@@ -445,7 +484,7 @@ def test_message_cognition_receives_prior_turns_and_completed_retry_is_idempoten
     assert repo.list_conversation(s.id) == items_before_retry
 
 
-def test_message_cognition_reads_only_bounded_recent_history(monkeypatch: pytest.MonkeyPatch):
+def test_message_cognition_reads_only_bounded_recent_history(monkeypatch: pytest.MonkeyPatch) -> None:
     env, repo = _new_env()
     s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
     history = [ConversationItem(seq=seq, kind="user", payload={"text": f"History {seq}"}) for seq in range(40)]
@@ -453,11 +492,18 @@ def test_message_cognition_reads_only_bounded_recent_history(monkeypatch: pytest
     repo.create_session(s, DifyBuilderContext(next_seq=80), history)
     received_history: list[ConversationItem] = []
 
-    def respond(_state, _context, recent, _graph, _text, _on_delta=None):
+    def respond(
+        _state: object,
+        _context: object,
+        recent: list[ConversationItem],
+        _graph: object,
+        _text: object,
+        _on_delta: object = None,
+    ) -> str:
         received_history.extend(recent)
         return "Bounded reply"
 
-    def reject_full_history(_session_id: str):
+    def reject_full_history(_session_id: str) -> NoReturn:
         raise AssertionError("message handling must not load the full conversation")
 
     env.agent.respond_to_message = respond  # type: ignore[method-assign]
@@ -480,7 +526,7 @@ def test_message_cognition_reads_only_bounded_recent_history(monkeypatch: pytest
     assert not any(item.kind == "notice" for item in received_history)
 
 
-def test_message_retry_resumes_after_user_half_committed():
+def test_message_retry_resumes_after_user_half_committed() -> None:
     env, repo = _new_env()
     s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
     repo.create_session(s, DifyBuilderContext(), [])
@@ -490,7 +536,7 @@ def test_message_retry_resumes_after_user_half_committed():
         base_version=1,
     )
 
-    def fail_reply(*_args):
+    def fail_reply(*_args: object) -> NoReturn:
         raise RuntimeError("model unavailable")
 
     env.agent.respond_to_message = fail_reply  # type: ignore[method-assign]
@@ -510,7 +556,7 @@ def test_message_retry_resumes_after_user_half_committed():
     assert english_text(items[-1].payload["reply_text"]) == "Recovered reply"
 
 
-def test_message_retry_keeps_catalog_colliding_client_turn_id_and_raw_text():
+def test_message_retry_keeps_catalog_colliding_client_turn_id_and_raw_text() -> None:
     env, repo = _new_env()
     env.detect_language = lambda _text: "zh-Hans"
     session = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
@@ -521,7 +567,7 @@ def test_message_retry_keeps_catalog_colliding_client_turn_id_and_raw_text():
         base_version=1,
     )
 
-    def fail_reply(*_args):
+    def fail_reply(*_args: object) -> NoReturn:
         raise RuntimeError("model unavailable")
 
     env.agent.respond_to_message = fail_reply  # type: ignore[method-assign]
@@ -541,12 +587,12 @@ def test_message_retry_keeps_catalog_colliding_client_turn_id_and_raw_text():
     assert repo.get_conversation_turn_kinds(session.id, "Goal") == frozenset({"user", "assistant_turn"})
 
 
-def test_fail_after_message_user_half_commits_against_the_new_head():
+def test_fail_after_message_user_half_commits_against_the_new_head() -> None:
     env, repo = _new_env()
     session = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
     repo.create_session(session, DifyBuilderContext(), [])
 
-    def fail_reply(*_args):
+    def fail_reply(*_args: object) -> NoReturn:
         raise RuntimeError("model unavailable")
 
     env.agent.respond_to_message = fail_reply  # type: ignore[method-assign]
@@ -574,7 +620,7 @@ def test_fail_after_message_user_half_commits_against_the_new_head():
     ]
 
 
-def test_advance_logs_each_successful_cas_and_persists_ordered_items(caplog: pytest.LogCaptureFixture):
+def test_advance_logs_each_successful_cas_and_persists_ordered_items(caplog: pytest.LogCaptureFixture) -> None:
     env, repo = _new_env()
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [])
@@ -597,10 +643,10 @@ def test_advance_logs_each_successful_cas_and_persists_ordered_items(caplog: pyt
         )
 
     transitions = [record for record in caplog.records if record.message == "dify_builder transition committed"]
-    assert [record.version for record in transitions] == [2, 3]
-    assert [record.to_state for record in transitions] == ["fix.propose", "fix.await_approval"]
-    assert [record.settled for record in transitions] == [False, True]
-    assert [record.item_count for record in transitions] == [1, 1]
+    assert [record.__dict__["version"] for record in transitions] == [2, 3]
+    assert [record.__dict__["to_state"] for record in transitions] == ["fix.propose", "fix.await_approval"]
+    assert [record.__dict__["settled"] for record in transitions] == [False, True]
+    assert [record.__dict__["item_count"] for record in transitions] == [1, 1]
     items = repo.list_conversation(s.id)
     assert [item.seq for item in items] == [0, 1]
     assert [item.at_version for item in items] == [2, 3]
@@ -608,7 +654,7 @@ def test_advance_logs_each_successful_cas_and_persists_ordered_items(caplog: pyt
     assert context.last_command_id == "command-1"
 
 
-def test_stop_and_resume_each_persist_a_settled_transition_without_items():
+def test_stop_and_resume_each_persist_a_settled_transition_without_items() -> None:
     env, repo = _new_env()
     s = _session()
     repo.create_session(s, DifyBuilderContext(), [])
@@ -630,7 +676,7 @@ def test_stop_and_resume_each_persist_a_settled_transition_without_items():
     assert context.last_command_id == "resume-1"
 
 
-def test_fail_persists_terminal_assistant_message():
+def test_fail_persists_terminal_assistant_message() -> None:
     env, repo = _new_env()
     session = _session(current_state=PcState.FIX_PROPOSE)
     repo.create_session(session, DifyBuilderContext(), [])
@@ -645,7 +691,7 @@ def test_fail_persists_terminal_assistant_message():
     assert "Restart from the current draft" in english_text(items[0].payload["reply_text"])
 
 
-def test_fail_refuses_to_overwrite_a_newer_non_terminal_session_head():
+def test_fail_refuses_to_overwrite_a_newer_non_terminal_session_head() -> None:
     env, repo = _new_env()
     session = _session(current_state=PcState.FIX_PROPOSE)
     repo.create_session(session, DifyBuilderContext(), [])
@@ -669,12 +715,14 @@ def test_fail_refuses_to_overwrite_a_newer_non_terminal_session_head():
     assert repo.list_conversation(session.id) == []
 
 
-def test_recovery_short_path_persists_its_items(monkeypatch: pytest.MonkeyPatch):
+def test_recovery_short_path_persists_its_items(monkeypatch: pytest.MonkeyPatch) -> None:
     env, repo = _new_env()
     s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
     repo.create_session(s, DifyBuilderContext(), [])
 
-    def apply_recovery(_dify, _turn, session, fc):
+    def apply_recovery(
+        _dify: object, _turn: object, session: Session, fc: DifyBuilderContext
+    ) -> tuple[PcState, list[ConversationItem]]:
         item = ConversationItem(seq=fc.next_seq, kind="notice", payload={"text": "Recovery checked"})
         fc.next_seq += 1
         return session.current_state, [item]
@@ -716,7 +764,7 @@ def test_recovery_short_path_persists_its_items(monkeypatch: pytest.MonkeyPatch)
     ]
 
 
-def test_advance_passes_full_turn_to_first_step_and_actor_only_turn_to_subsequent_steps():
+def test_advance_passes_full_turn_to_first_step_and_actor_only_turn_to_subsequent_steps() -> None:
     """Two working states chained: FIX_DIAGNOSE -> FIX_PROPOSE -> FIX_AWAIT_APPROVAL.
     The first handler sees the real Turn (with Action); the second (auto-advanced)
     handler must see a Turn with Action consumed (None) but the same Actor."""
@@ -734,7 +782,7 @@ def test_advance_passes_full_turn_to_first_step_and_actor_only_turn_to_subsequen
         seen_turns.append(turn)
         return StepResult(next=PcState.FIX_AWAIT_APPROVAL, context=fc)
 
-    registry = {PcState.FIX_DIAGNOSE: diagnose, PcState.FIX_PROPOSE: propose}
+    registry: dict[PcState, Handler] = {PcState.FIX_DIAGNOSE: diagnose, PcState.FIX_PROPOSE: propose}
     runner = Runner(env, registry)
     actor = _actor()
     action = Action(kind="request_fix", base_version=1)

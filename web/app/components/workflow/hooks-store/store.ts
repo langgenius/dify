@@ -1,3 +1,4 @@
+import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { FileUpload } from '../../base/features/types'
 import type {
   BlockEnum,
@@ -7,9 +8,7 @@ import type {
   WorkflowPluginCatalogs,
 } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
-import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { EnvironmentVariablePatch } from '@/service/workflow'
-import type { FlowType } from '@/types/common'
 import type { VarInInspect } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
 import { use } from 'react'
@@ -83,7 +82,7 @@ type CommonHooksFnMap = {
     passInVars?: boolean
     vars?: VarInInspect[]
     passedInAllPluginInfoList?: WorkflowPluginCatalogs
-    passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]
+    passedInSchemaTypeDefinitions?: SchemaDefinitionItemResponse[]
   }) => Promise<void>
   hasNodeInspectVars: (nodeId: string) => boolean
   hasSetInspectVar: (
@@ -94,7 +93,7 @@ type CommonHooksFnMap = {
   ) => boolean
   fetchInspectVarValue: (
     selector: ValueSelector,
-    schemaTypeDefinitions: SchemaTypeDefinition[],
+    schemaTypeDefinitions: SchemaDefinitionItemResponse[],
   ) => Promise<void>
   editInspectVarValue: (nodeId: string, varId: string, value: any) => Promise<void>
   renameInspectVarName: (nodeId: string, oldName: string, newName: string) => Promise<void>
@@ -108,11 +107,7 @@ type CommonHooksFnMap = {
   resetConversationVar: (varId: string) => Promise<void>
   invalidateConversationVarValues: () => void
   accessControl: WorkflowAccessControl
-  configsMap?: {
-    flowId: string
-    flowType: FlowType
-    fileSettings: FileUpload
-  }
+  fileSettings?: FileUpload
 }
 
 export type Shape = {
@@ -160,7 +155,7 @@ export const createHooksStore = ({
   invalidateSysVarValues = noop,
   resetConversationVar = async () => noop(),
   invalidateConversationVarValues = noop,
-  configsMap,
+  fileSettings,
   accessControl = fullWorkflowAccessControl,
 }: Partial<Shape>) => {
   return createStore<Shape>((set) => ({
@@ -200,7 +195,7 @@ export const createHooksStore = ({
     invalidateSysVarValues,
     resetConversationVar,
     invalidateConversationVarValues,
-    configsMap,
+    fileSettings,
     accessControl,
   }))
 }

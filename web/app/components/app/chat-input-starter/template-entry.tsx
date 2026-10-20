@@ -60,9 +60,11 @@ function TemplatePreviewCard({ app, className }: (typeof TEMPLATE_PREVIEW_FIXTUR
         <div className="relative shrink-0">
           <AppIcon
             size="small"
-            iconType="emoji"
-            icon={app.icon ?? undefined}
-            background={app.icon_background}
+            icon={{
+              icon: app.icon,
+              icon_type: 'emoji',
+              icon_background: app.icon_background,
+            }}
             className="size-7 rounded-[7px] text-[16.8px]"
             decorative
           />

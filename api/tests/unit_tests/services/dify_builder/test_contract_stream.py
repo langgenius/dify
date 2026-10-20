@@ -2,11 +2,12 @@
 
 import json
 import operator
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 
 import pytest
 
 from controllers.console.dify_builder_fields import DifyBuilderStreamEventResponse
+from core.dify_builder.models import Graph
 from services.dify_builder import wiring
 from tests.unit_tests.services.dify_builder.workflow_stream_fixtures import (
     native_chatflow_payloads,
@@ -21,7 +22,7 @@ SUPPORTED_WORKFLOW_PAYLOADS = [
 ]
 
 
-def _view(**overrides) -> dict:
+def _view(**overrides: object) -> Graph:
     return {
         "session_id": "s1",
         "reply_language": "",
@@ -37,7 +38,7 @@ def _view(**overrides) -> dict:
 
 
 @pytest.mark.parametrize("payload", SUPPORTED_WORKFLOW_PAYLOADS, ids=operator.itemgetter("event"))
-def test_workflow_envelope_preserves_the_supported_debugger_contract(payload):
+def test_workflow_envelope_preserves_the_supported_debugger_contract(payload: Graph) -> None:
     frame = {
         "event": "workflow",
         "data": {
@@ -66,26 +67,26 @@ def test_workflow_envelope_preserves_the_supported_debugger_contract(payload):
 
 
 class _FakeSubscription:
-    def __init__(self, items):
+    def __init__(self, items: Sequence[bytes | Graph | None]) -> None:
         self._items = list(items)
         self.closed = False
 
-    def receive(self, timeout=None):  # noqa: ARG002
+    def receive(self, timeout: object | None = None) -> bytes | Graph | None:  # noqa: ARG002
         if not self._items:
             raise AssertionError("test subscription ran out of events")
         return self._items.pop(0)
 
-    def close(self):
+    def close(self) -> None:
         self.closed = True
 
 
-def _event(frame: str) -> dict:
+def _event(frame: str) -> Graph:
     lines = frame.strip().splitlines()
     assert lines[0] == "event: message"
     return json.loads(lines[1].removeprefix("data: "))
 
 
-def test_stream_projects_incremental_events_and_drops_internal_fields():
+def test_stream_projects_incremental_events_and_drops_internal_fields() -> None:
     view = _view(app_id="internal-app", state="build.execution", entry_mode="build")
     canvas = {
         "kind": "canvas",
@@ -228,7 +229,7 @@ def test_stream_projects_incremental_events_and_drops_internal_fields():
     assert subscription.closed is True
 
 
-def test_command_handshake_contains_only_live_ui_status():
+def test_command_handshake_contains_only_live_ui_status() -> None:
     view = _view(
         app_id="a1",
         state="fix.await_verify",
@@ -251,7 +252,7 @@ def test_command_handshake_contains_only_live_ui_status():
     }
 
 
-def test_stream_timeout_emits_normalized_terminal_error(monkeypatch: pytest.MonkeyPatch):
+def test_stream_timeout_emits_normalized_terminal_error(monkeypatch: pytest.MonkeyPatch) -> None:
     subscription = _FakeSubscription([None])
     monotonic: Iterator[float] = iter([0, 0, wiring._MAX_STREAM_SECONDS + 1])
     monkeypatch.setattr(wiring.time, "monotonic", lambda: next(monotonic))

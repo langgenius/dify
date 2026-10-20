@@ -112,6 +112,7 @@ describe('RunPanel', () => {
   afterAll(() => {
     if (originalClientHeightDescriptor)
       Object.defineProperty(HTMLElement.prototype, 'clientHeight', originalClientHeightDescriptor)
+    else Reflect.deleteProperty(HTMLElement.prototype, 'clientHeight')
   })
 
   it('loads run detail and tracing data on mount, then renders the result tab', async () => {
@@ -274,10 +275,25 @@ describe('RunPanel', () => {
       )
 
       await waitFor(() => expect(mockFetchTracingList).toHaveBeenCalledTimes(1))
+      mockFetchRunDetail.mockResolvedValue(createRunDetail({ outputs: 'Refreshed output' }))
+      mockFetchTracingList.mockResolvedValue({
+        data: [createTracingNode({ title: 'Refreshed trace' })],
+      })
       await user.click(screen.getByRole('tab', { name: `runLog.${activeTab.toLowerCase()}` }))
 
       await waitFor(() => expect(mockFetchTracingList).toHaveBeenCalledTimes(2))
       expect(mockFetchRunDetail).toHaveBeenCalledTimes(activeTab === 'RESULT' ? 2 : 1)
+      if (activeTab === 'RESULT') {
+        await waitFor(() =>
+          expect(screen.getByTestId<HTMLTextAreaElement>('monaco-editor').value).toContain(
+            'Refreshed output',
+          ),
+        )
+      } else {
+        if (activeTab === 'DETAIL')
+          await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
+        expect(await screen.findByText('Refreshed trace')).toBeInTheDocument()
+      }
     },
   )
   it('keeps the new record and selected tab when an old detail response arrives late', async () => {

@@ -1,7 +1,9 @@
 """Fixed presentation is model-free and raw submission values remain immutable."""
 
 import json
+from collections.abc import Sequence
 from types import SimpleNamespace
+from typing import Never
 
 import pytest
 
@@ -17,7 +19,9 @@ from services.dify_builder.service import DifyBuilderService
 from tests.unit_tests.core.dify_builder.fakes import InMemoryRepository
 
 
-def _service(state, context, items=()):
+def _service(
+    state: PcState, context: DifyBuilderContext, items: Sequence[ConversationItem] = ()
+) -> tuple[DifyBuilderService, Session]:
     repo = InMemoryRepository()
     session = Session(
         app_id="app", tenant_id="tenant", owner_account_id="account", entry_mode=EntryMode.BUILD, current_state=state
@@ -26,13 +30,13 @@ def _service(state, context, items=()):
     return DifyBuilderService(repo, SimpleNamespace(exists=lambda _: False), lambda *_: None), session
 
 
-def _actor():
+def _actor() -> Actor:
     return Actor(account_id="account", tenant_id="tenant")
 
 
 @pytest.mark.parametrize("language", ["zh-Hans", "ja", "en"])
-def test_cold_view_uses_references_without_resolving_models(monkeypatch, language):
-    def forbidden(*_args, **_kwargs):
+def test_cold_view_uses_references_without_resolving_models(monkeypatch: pytest.MonkeyPatch, language: str) -> None:
+    def forbidden(*_args: object, **_kwargs: object) -> Never:
         pytest.fail("fixed presentation attempted to invoke a model")
 
     monkeypatch.setattr("services.dify_builder.agent.llm.invoke_text", forbidden)
@@ -43,11 +47,13 @@ def test_cold_view_uses_references_without_resolving_models(monkeypatch, languag
     assert view.actions[0].label == copy_text(BuilderCopyId.ACTIONS_APPROVE_PLAN)
     assert view.actions[0].id == "approve_plan"
     assert view.actions[0].next_state == "build.execution"
+    assert view.decision is not None
     assert view.decision.options[0].id == "approve_plan"
+    assert view.decision.submit is not None
     assert view.decision.submit.id == "confirm"
 
 
-def test_context_no_longer_persists_a_translation_cache():
+def test_context_no_longer_persists_a_translation_cache() -> None:
     legacy = {"reply_language": "ja", "ui_copy_language": "ja", "ui_copy": {"Goal": "old translation"}}
     restored = context_from_dict(legacy)
     assert restored.reply_language == "ja"
@@ -55,7 +61,7 @@ def test_context_no_longer_persists_a_translation_cache():
 
 
 @pytest.mark.parametrize("text", ["Yes", "Goal {{name}} <tag> " + "字" * 20000])
-def test_frontend_snapshot_freezes_display_without_modifying_raw_values(text):
+def test_frontend_snapshot_freezes_display_without_modifying_raw_values(text: str) -> None:
     card = FormCard(
         variant="build_requirements",
         title=copy_text(BuilderCopyId.FORMS_REQUIREMENTS_TITLE),
@@ -96,6 +102,7 @@ def test_frontend_snapshot_freezes_display_without_modifying_raw_values(text):
             "receipt_snapshot": snapshot,
         }
     )
+    assert parsed.receipt_snapshot is not None
     action = Action(
         kind="submit_requirements",
         payload=parsed.payload,
@@ -104,6 +111,7 @@ def test_frontend_snapshot_freezes_display_without_modifying_raw_values(text):
     )
     service._prepare_action(session.id, _actor(), action)
     receipt = action.interaction_response
+    assert receipt is not None
     assert action.payload == raw
     assert receipt["submitted_data"] == raw
     assert receipt["fields"][0]["value"] is True
@@ -113,6 +121,7 @@ def test_frontend_snapshot_freezes_display_without_modifying_raw_values(text):
     assert receipt["reply_language"] == "ja"
     assert service._repo.list_conversation(session.id)[1].payload == history.payload
     assert json.loads(json.dumps(receipt))["fields"][1]["display_value"] == text
+    assert action.receipt_snapshot is not None
     action.receipt_snapshot["fields"][0]["key"] = "different"
     with pytest.raises(BadRequestError, match="form fields"):
         service._prepare_action(session.id, _actor(), action)

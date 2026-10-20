@@ -1,14 +1,24 @@
 from dataclasses import replace
-from typing import Literal
+from typing import Literal, Unpack
 
 import pytest
+from typing_extensions import TypedDict
 
 from core.dify_builder import models
 from core.dify_builder.execution_policy import ExecutionEvidenceSummary
+from core.dify_builder.models import Run
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 
-def verified(**changes):
+class RunChanges(TypedDict, total=False, closed=True):
+    session_id: str
+    kind: str
+    immutable: bool
+    status: str
+    verification: models.RunVerification | None
+
+
+def verified(**changes: Unpack[RunChanges]) -> Run:
     run = models.Run(
         id="r",
         dify_run_id="native",
@@ -48,7 +58,7 @@ def verified(**changes):
         ({"verification": None}, "execution_provenance_unbound"),
     ],
 )
-def test_verification_policy_denies(change, reason):
+def test_verification_policy_denies(change: RunChanges, reason: str) -> None:
     from core.dify_builder.verification import publication_decision
 
     assert (
@@ -68,7 +78,7 @@ def test_verification_policy_denies(change, reason):
         ("no_output_dead_branch", True, "dead_branch_without_output"),
     ],
 )
-def test_verification_evidence_denies(field, value, reason):
+def test_verification_evidence_denies(field: str, value: str | bool, reason: str) -> None:
     from core.dify_builder.verification import publication_decision
 
     run = verified()
@@ -80,10 +90,13 @@ def test_verification_evidence_denies(field, value, reason):
 
 
 @pytest.mark.parametrize(("state", "allowed"), [("present", True), ("unknown", True), ("unresolved", False)])
-def test_verification_present_null_and_unknown_are_reviewable(state, allowed):
+def test_verification_present_null_and_unknown_are_reviewable(
+    state: Literal["present", "unknown", "unresolved"], allowed: bool
+) -> None:
     from core.dify_builder.verification import publication_decision, result_card
 
     run = verified()
+    assert run.verification is not None
     run.verification.output_findings = [
         models.OutputFinding(
             node_id="end", output_name="result", selector=["tool", "text"], state=state, reason="key_presence"
@@ -244,7 +257,11 @@ def test_json_completion_preserves_required_output_and_revision_gates() -> None:
         ("native_failed", "failed", "execution_failed"),
     ],
 )
-def test_json_noncompletion_blocks_publication(outcome, status, expected) -> None:
+def test_json_noncompletion_blocks_publication(
+    outcome: Literal["restricted_execution_completed", "execution_evidence_unknown", "native_failed"],
+    status: str,
+    expected: str,
+) -> None:
     from core.dify_builder.verification import is_execution_policy_blocker, publication_decision, result_card
 
     run = json_run(outcome=outcome, status=status)

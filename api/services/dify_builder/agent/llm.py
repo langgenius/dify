@@ -129,7 +129,7 @@ def invoke_text_stream(
         return
 
     think_filter = ThinkStreamFilter()
-    for chunk in cast(Generator[LLMResultChunk, None, None], result):
+    for chunk in cast(Generator[LLMResultChunk], result):
         native_reasoning = next(
             (
                 reasoning

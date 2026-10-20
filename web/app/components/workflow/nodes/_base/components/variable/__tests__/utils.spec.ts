@@ -3,6 +3,7 @@ import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
+import type { ListFilterNodeType } from '@/app/components/workflow/nodes/list-operator/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { EnvironmentVariable, Node, PromptItem } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vite-plus/test'
@@ -15,8 +16,13 @@ import {
   PromptRole,
   VarType,
 } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
-import { findUsedVarNodes, getNodeUsedVars, toNodeAvailableVars, updateNodeVars } from '../utils'
+import {
+  findUsedVarNodes,
+  getNodeUsedVarPassToServerKey,
+  getNodeUsedVars,
+  toNodeAvailableVars,
+  updateNodeVars,
+} from '../utils'
 
 const createNode = <T>(data: Node<T>['data']): Node<T> => ({
   id: 'node-1',
@@ -38,7 +44,7 @@ const createLLMNodeData = (promptTemplate: PromptItem[]): LLMNodeType => ({
   model: {
     provider: 'provider',
     name: 'model',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   },
   prompt_template: promptTemplate,
@@ -73,7 +79,7 @@ describe('variable utils', () => {
 
       const availableVars = toNodeAvailableVars({
         beforeNodes: [],
-        isChatMode: false,
+        isChatflow: false,
         environmentVariables,
         filterVar: () => true,
         allPluginInfoList: {},
@@ -95,7 +101,7 @@ describe('variable utils', () => {
         })
         const availableVars = toNodeAvailableVars({
           beforeNodes: [node],
-          isChatMode: false,
+          isChatflow: false,
           filterVar: () => true,
           allPluginInfoList: {},
         })
@@ -124,7 +130,7 @@ describe('variable utils', () => {
           },
         },
       })
-      const options = { beforeNodes: [node], isChatMode: false, allPluginInfoList: {} }
+      const options = { beforeNodes: [node], isChatflow: false, allPluginInfoList: {} }
       const availableVars = toNodeAvailableVars({ ...options, filterVar: () => true })
       expect(availableVars.find((item) => item.nodeId === node.id)?.vars).toEqual(
         expect.arrayContaining([
@@ -160,7 +166,7 @@ describe('variable utils', () => {
 
       const availableVars = toNodeAvailableVars({
         beforeNodes: [node],
-        isChatMode: false,
+        isChatflow: false,
         filterVar: () => true,
         allPluginInfoList: {},
       })
@@ -173,10 +179,6 @@ describe('variable utils', () => {
           }),
         ]),
       )
-      expect(availableVars.find((item) => item.nodeId === 'node-1')?.vars).not.toContainEqual({
-        variable: 'usage',
-        type: VarType.object,
-      })
     })
 
     it('uses Agent v2 declared outputs from graph data', () => {
@@ -204,7 +206,7 @@ describe('variable utils', () => {
 
       const availableVars = toNodeAvailableVars({
         beforeNodes: [node],
-        isChatMode: false,
+        isChatflow: false,
         filterVar: () => true,
         allPluginInfoList: {},
       })
@@ -225,6 +227,79 @@ describe('variable utils', () => {
   })
 
   describe('getNodeUsedVars', () => {
+    const createListNode = (enabled: boolean) =>
+      createNode<ListFilterNodeType>({
+        type: BlockEnum.ListFilter,
+        title: 'List',
+        desc: '',
+        variable: ['source', 'items'],
+        var_type: VarType.arrayNumber,
+        item_var_type: VarType.number,
+        filter_by: {
+          enabled,
+          conditions: [{ key: '', comparison_operator: '≥', value: '{{#source.minimum#}}' }],
+        },
+        extract_by: { enabled, serial: '{{#source.serial#}}' },
+        order_by: { enabled: false, key: '', value: 'asc' },
+        limit: { enabled: false },
+      })
+
+    it('maps every active list dependency to its container debug input key', () => {
+      const node = createListNode(true)
+      const selectors = getNodeUsedVars(node, { forExecution: true })
+
+      expect(selectors).toEqual([
+        ['source', 'items'],
+        ['source', 'minimum'],
+        ['source', 'serial'],
+      ])
+      expect(selectors.map((selector) => getNodeUsedVarPassToServerKey(node, selector))).toEqual([
+        '#source.items#',
+        '#source.minimum#',
+        '#source.serial#',
+      ])
+    })
+
+    it('excludes disabled list settings from execution while retaining saved references', () => {
+      const node = createListNode(false)
+
+      expect(getNodeUsedVars(node, { forExecution: true })).toEqual([['source', 'items']])
+      expect(getNodeUsedVars(node)).toEqual([
+        ['source', 'items'],
+        ['source', 'minimum'],
+        ['source', 'serial'],
+      ])
+    })
+
+    it.each(['empty', 'not empty'] as const)(
+      'ignores hidden operands for %s during execution and keeps them for renaming',
+      (comparisonOperator) => {
+        const node = createListNode(true)
+        node.data.extract_by.enabled = false
+        node.data.filter_by.conditions = [
+          { key: '', comparison_operator: comparisonOperator, value: '{{#deleted.old#}}' },
+        ]
+
+        expect(getNodeUsedVars(node, { forExecution: true })).toEqual([['source', 'items']])
+        expect(getNodeUsedVars(node)).toContainEqual(['deleted', 'old'])
+        const renamed = updateNodeVars(node, ['deleted', 'old'], ['restored', 'value'])
+        expect(getNodeUsedVars(renamed)).toContainEqual(['restored', 'value'])
+      },
+    )
+
+    it('renames saved list filter and extraction references', () => {
+      const node = createListNode(false)
+
+      const renamedFilter = updateNodeVars(node, ['source', 'minimum'], ['renamed', 'minimum'])
+      const renamed = updateNodeVars(renamedFilter, ['source', 'serial'], ['renamed', 'serial'])
+
+      expect(getNodeUsedVars(renamed)).toEqual([
+        ['source', 'items'],
+        ['renamed', 'minimum'],
+        ['renamed', 'serial'],
+      ])
+    })
+
     it('should read variables from llm jinja prompt text', () => {
       const node = createNode<LLMNodeType>(
         createLLMNodeData([
@@ -513,7 +588,7 @@ it('keeps datasource output variables typed through the public picker projection
   })
   const options = {
     beforeNodes: [node],
-    isChatMode: false,
+    isChatflow: false,
     allPluginInfoList: { dataSourceList: [provider] },
   }
   const all = toNodeAvailableVars({ ...options, filterVar: () => true }).find(

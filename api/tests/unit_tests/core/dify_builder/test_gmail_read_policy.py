@@ -436,7 +436,10 @@ def gmail_graph(
             },
         },
     ]
-    return {"nodes": nodes, "edges": [{"source": a["id"], "target": b["id"]} for a, b in zip(nodes, nodes[1:])]}
+    return {
+        "nodes": nodes,
+        "edges": [{"source": a["id"], "target": b["id"]} for a, b in zip(nodes, nodes[1:], strict=False)],
+    }
 
 
 def snapshot(
@@ -493,7 +496,9 @@ def _four_nodes() -> Graph:
     second = copy.deepcopy(graph["nodes"][1])
     second["id"] = "tool2"
     graph["nodes"].insert(2, second)
-    graph["edges"] = [{"source": a["id"], "target": b["id"]} for a, b in zip(graph["nodes"], graph["nodes"][1:])]
+    graph["edges"] = [
+        {"source": a["id"], "target": b["id"]} for a, b in zip(graph["nodes"], graph["nodes"][1:], strict=False)
+    ]
     return graph
 
 

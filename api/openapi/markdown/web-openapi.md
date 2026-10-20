@@ -491,6 +491,8 @@ Check login status
 | ---- | ----------- | ------ |
 | 200 | Login status | **application/json**: [LoginStatusResponse](#loginstatusresponse)<br> |
 | 401 | Login status | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | Web app access service unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /logout
@@ -1016,7 +1018,13 @@ Agent has not been published. Please publish the Agent before using the web app.
 | thought | string |  | No |
 | tool | string |  | No |
 | tool_input | string |  | No |
-| tool_labels | [JSONValue](#jsonvalue) | Labels for tools used. | Yes |
+| tool_labels | [AnyJSONValue](#anyjsonvalue) | Labels for tools used. | Yes |
+
+#### AnyJSONValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AnyJSONValue |  |  |  |
 
 #### AppAccessModeQuery
 
@@ -1490,12 +1498,6 @@ Upload token is invalid or expired.
 | ---- | ---- | ----------- | -------- |
 | InvalidUploadTokenError |  | Upload token is invalid or expired. |  |
 
-#### JSONValue
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| JSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
-
 #### JSONValueType
 
 | Name | Type | Description | Required |
@@ -1873,6 +1875,12 @@ The remote file URL is not allowed.
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
+#### ShallowJSONValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ShallowJSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
+
 #### SimpleConversation
 
 | Name | Type | Description | Required |
@@ -1957,7 +1965,6 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | enable_step_by_step_tour | boolean |  | Yes |
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
-| knowledge_fs_enabled | boolean |  | Yes |
 | license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
 | rbac_enabled | boolean |  | Yes |

@@ -59,7 +59,6 @@ const toHotkeyDefinitions = (
       ...registrationOptions,
       meta: {
         id,
-        scope: 'workflow-canvas',
         name: shortcut.name,
         description: shortcut.description,
       } satisfies WorkflowCanvasHotkeyMeta,

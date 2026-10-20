@@ -1,7 +1,13 @@
 import logging
+from collections.abc import Callable, Sequence
+from typing import Never
 
-from core.dify_builder.models import Diagnosis
+import pytest
+
+from core.dify_builder.contract import ResourceOption
+from core.dify_builder.models import ConversationItem, Diagnosis, DifyBuilderContext, Graph, Inputs, NodeOutput, Run
 from core.dify_builder.ports import DifyBuilderAgent, ReasoningStreamingAgent
+from core.dify_builder.state import PcState
 from services.dify_builder.agent import build as build_mod
 from services.dify_builder.agent import chat as chat_mod
 from services.dify_builder.agent import edit as edit_mod
@@ -10,13 +16,13 @@ from services.dify_builder.agent import llm_agent
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
 
-def test_is_dify_builder_agent():
+def test_is_dify_builder_agent() -> None:
     agent = LlmBuilderAgent("t1", None)
     assert isinstance(agent, DifyBuilderAgent)
     assert isinstance(agent, ReasoningStreamingAgent)
 
 
-def test_llm_agent_build_methods_delegate_to_build(monkeypatch):
+def test_llm_agent_build_methods_delegate_to_build(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.agent import build
 
     monkeypatch.setattr(
@@ -31,10 +37,16 @@ def test_llm_agent_build_methods_delegate_to_build(monkeypatch):
     assert agent.analyze_goal("goal")["fields"][0]["key"] == "k"
 
 
-def test_build_methods_call_build_module_with_resolved_model(monkeypatch):
-    seen = {}
+def test_build_methods_call_build_module_with_resolved_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
 
-    def mock_analyze_goal(model, _goal_text, _reasoning=None, *, reply_language=None):
+    def mock_analyze_goal(
+        model: object,
+        _goal_text: str,
+        _reasoning: Callable[[str], None] | None = None,
+        *,
+        reply_language: str | None = None,
+    ) -> Graph:
         seen["m"] = model
         seen["reply_language"] = reply_language
         return {"fields": [], "values": {}}
@@ -47,53 +59,87 @@ def test_build_methods_call_build_module_with_resolved_model(monkeypatch):
     assert seen["reply_language"] == "es-ES"
 
 
-def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
+def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch: pytest.MonkeyPatch) -> None:
     """Mirrors test_build_methods_call_build_module_with_resolved_model for
     analyze_goal: pins that propose_plan_v1/discover_resources/
     assess_capability_gap/bind_resources/build_nodes/learn_from_build each call
     the corresponding build.* with the
     resolved model threaded through (build_nodes takes no model -- it threads
     self._tenant_id/self._model_config directly instead)."""
-    seen = {}
+    seen: dict[str, tuple[object, ...]] = {}
 
-    def mock_propose_plan_v1(model, requirements, _reasoning=None, *, tools=(), goal_text):
+    def mock_propose_plan_v1(
+        model: object,
+        requirements: Inputs,
+        _reasoning: Callable[[str], None] | None = None,
+        *,
+        tools: Sequence[object] = (),
+        goal_text: str,
+        mode: str,
+    ) -> list[object]:
+        assert mode == "workflow"
         seen["propose_plan_v1"] = (model, requirements, list(tools), goal_text)
         return []
 
     def mock_discover_resources(
-        model,
-        tenant_id,
-        plan_items,
-        _reasoning=None,
+        model: object,
+        tenant_id: str,
+        plan_items: list[str],
+        _reasoning: Callable[[str], None] | None = None,
         *,
-        goal_text,
-        requirements,
-        account_id=None,  # noqa: ARG001
-    ):
+        goal_text: str,
+        requirements: Inputs,
+        account_id: str | None = None,  # noqa: ARG001
+    ) -> list[object]:
         seen["discover_resources"] = (model, tenant_id, plan_items, goal_text, requirements)
         return []
 
-    def mock_assess_capability_gap(model, plan_items, options, *, goal_text, requirements):
+    def mock_assess_capability_gap(
+        model: object,
+        plan_items: list[str],
+        options: list[ResourceOption],
+        *,
+        goal_text: str,
+        requirements: Inputs,
+        mode: str,
+    ) -> str:
+        assert mode == "workflow"
         seen["assess_capability_gap"] = (model, plan_items, options, goal_text, requirements)
         return ""
 
-    def mock_bind_resources(model, tenant_id, plan_items, resource_ids, *, account_id=None):  # noqa: ARG001
+    def mock_bind_resources(
+        model: object,
+        tenant_id: str,
+        plan_items: list[str],
+        resource_ids: Sequence[str],
+        *,
+        account_id: str | None = None,  # noqa: ARG001
+    ) -> list[object]:
         seen["bind_resources"] = (model, tenant_id, plan_items, resource_ids)
         return []
 
     def mock_build_nodes(
-        tenant_id,
-        model_config,
-        plan_items,
-        resource_ids=(),
+        tenant_id: str,
+        model_config: Inputs | None,
+        plan_items: list[str],
+        resource_ids: Sequence[str] = (),
         *,
-        trusted_text="",
-        account_id=None,  # noqa: ARG001
-    ):
+        mode: str,
+        trusted_text: str = "",
+        account_id: str | None = None,  # noqa: ARG001
+    ) -> list[object]:
+        assert mode == "workflow"
         seen["build_nodes"] = (tenant_id, model_config, plan_items, resource_ids, trusted_text)
         return []
 
-    def mock_learn_from_build(model, goal_text, requirements, plan_items, built_node_ids, _reasoning=None):
+    def mock_learn_from_build(
+        model: object,
+        goal_text: str,
+        requirements: Inputs,
+        plan_items: list[str],
+        built_node_ids: list[str],
+        _reasoning: Callable[[str], None] | None = None,
+    ) -> str:
         seen["learn_from_build"] = (model, goal_text, requirements, plan_items, built_node_ids)
         return "skill"
 
@@ -107,7 +153,7 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     monkeypatch.setattr(build_mod, "build_nodes", mock_build_nodes)
     monkeypatch.setattr(build_mod, "learn_from_build", mock_learn_from_build)
 
-    model_config = {"provider": "p", "name": "m", "mode": "chat", "completion_params": {}}
+    model_config: Graph = {"provider": "p", "name": "m", "mode": "chat", "completion_params": {}}
     agent = LlmBuilderAgent("t1", model_config)
     monkeypatch.setattr(agent, "_model", lambda: "MODEL")
 
@@ -141,7 +187,7 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     assert seen["learn_from_build"] == ("MODEL", "goal", {"x": 1}, ["step"], ["n1"])
 
 
-def test_fix_methods_degrade_without_model():
+def test_fix_methods_degrade_without_model() -> None:
     """Fix methods call fix.* which degrades gracefully when model_config is None."""
     agent = LlmBuilderAgent("t1", None)
     diag = Diagnosis(culprit_node_id="llm", root_cause="x", severity="high")
@@ -150,10 +196,10 @@ def test_fix_methods_degrade_without_model():
     assert risk.level == "high"  # degraded response: high risk
 
 
-def test_model_is_resolved_lazily_and_memoized(monkeypatch):
+def test_model_is_resolved_lazily_and_memoized(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = {"n": 0}
 
-    def fake_resolve(tenant_id, model_config):  # noqa: ARG001
+    def fake_resolve(tenant_id: str, model_config: Inputs | None) -> str:  # noqa: ARG001
         calls["n"] += 1
         return "INSTANCE"
 
@@ -165,10 +211,16 @@ def test_model_is_resolved_lazily_and_memoized(monkeypatch):
     assert calls["n"] == 1  # memoized
 
 
-def test_fix_methods_call_fix_module_with_resolved_model(monkeypatch):
-    seen = {}
+def test_fix_methods_call_fix_module_with_resolved_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
 
-    def mock_diagnose(model, fr, g, no, _reasoning=None):  # noqa: ARG001
+    def mock_diagnose(
+        model: object,
+        _fr: Run,
+        _g: Graph,
+        _no: list[NodeOutput],
+        _reasoning: Callable[[str], None] | None = None,
+    ) -> str:
         seen["m"] = model
         return "DIAG"
 
@@ -179,8 +231,8 @@ def test_fix_methods_call_fix_module_with_resolved_model(monkeypatch):
     assert seen["m"] == "MODEL"
 
 
-def test_model_or_none_swallows_resolution_error(monkeypatch):
-    seen = {}
+def test_model_or_none_swallows_resolution_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: Graph = {}
     monkeypatch.setattr(
         fix_mod,
         "propose_repair",
@@ -188,7 +240,7 @@ def test_model_or_none_swallows_resolution_error(monkeypatch):
     )
     agent = LlmBuilderAgent("t1", None)
 
-    def boom():
+    def boom() -> Never:
         raise RuntimeError("no default model")
 
     monkeypatch.setattr(agent, "_model", boom)
@@ -196,7 +248,7 @@ def test_model_or_none_swallows_resolution_error(monkeypatch):
     assert seen["m"] is None  # a resolution error -> None passed to fix (degrade path)
 
 
-def test_llm_agent_generate_mock_inputs_delegates(monkeypatch):
+def test_llm_agent_generate_mock_inputs_delegates(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.agent import mock_inputs
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
@@ -204,7 +256,7 @@ def test_llm_agent_generate_mock_inputs_delegates(monkeypatch):
     assert LlmBuilderAgent("t1", {}).generate_mock_inputs({"variables": []}, {}) == {"q": "x"}
 
 
-def test_llm_agent_edit_methods_delegate_to_edit(monkeypatch):
+def test_llm_agent_edit_methods_delegate_to_edit(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         edit_mod,
         "analyze_impact",
@@ -224,21 +276,31 @@ def test_llm_agent_edit_methods_delegate_to_edit(monkeypatch):
     assert agent.build_edit_intents({}, {"nodes": [], "edges": []}) == []
 
 
-def test_edit_methods_call_edit_module_with_resolved_model(monkeypatch):
+def test_edit_methods_call_edit_module_with_resolved_model(monkeypatch: pytest.MonkeyPatch) -> None:
     """Mirrors test_remaining_build_methods_thread_model_and_tenant_args for the
     Edit trio: analyze_impact/propose_edit_plan/build_edit_intents each call the
     corresponding edit.* with the resolved model threaded through."""
-    seen = {}
+    seen: dict[str, object] = {}
 
-    def mock_analyze_impact(model, goal_text, graph, _reasoning=None):
+    def mock_analyze_impact(
+        model: object, goal_text: str, graph: Graph, _reasoning: Callable[[str], None] | None = None
+    ) -> Graph:
         seen["analyze_impact"] = (model, goal_text, graph)
         return {"fields": [], "values": {}, "target_node_ids": []}
 
-    def mock_propose_edit_plan(model, edit_rules, graph, _reasoning=None):
+    def mock_propose_edit_plan(
+        model: object, edit_rules: Inputs, graph: Graph, _reasoning: Callable[[str], None] | None = None
+    ) -> list[str]:
         seen["propose_edit_plan"] = (model, edit_rules, graph)
         return ["step"]
 
-    def mock_build_edit_intents(model, edit_rules, graph, _reasoning=None, **kwargs):
+    def mock_build_edit_intents(
+        model: object,
+        edit_rules: Inputs,
+        graph: Graph,
+        _reasoning: Callable[[str], None] | None = None,
+        **kwargs: object,
+    ) -> list[object]:
         seen["build_edit_intents"] = (model, edit_rules, graph)
         seen["build_edit_intents_kwargs"] = kwargs
         return []
@@ -250,7 +312,7 @@ def test_edit_methods_call_edit_module_with_resolved_model(monkeypatch):
     agent = LlmBuilderAgent("t1", {"provider": "p", "name": "m", "mode": "chat", "completion_params": {}})
     monkeypatch.setattr(agent, "_model", lambda: "MODEL")
 
-    graph = {"nodes": [], "edges": []}
+    graph: Graph = {"nodes": [], "edges": []}
     agent.analyze_impact("goal", graph)
     assert seen["analyze_impact"] == ("MODEL", "goal", graph)
 
@@ -262,8 +324,8 @@ def test_edit_methods_call_edit_module_with_resolved_model(monkeypatch):
     assert seen["build_edit_intents_kwargs"] == {"edit_target_node_ids": ["n1"], "last_edit_rejection": None}
 
 
-def test_model_or_none_logs_resolution_failure_once(caplog):
-    def _raise():
+def test_model_or_none_logs_resolution_failure_once(caplog: pytest.LogCaptureFixture) -> None:
+    def _raise() -> Never:
         raise RuntimeError("no credentials")
 
     agent = LlmBuilderAgent("t1", {"provider": "p", "name": "m", "mode": "chat", "completion_params": {}})
@@ -281,10 +343,20 @@ def test_model_or_none_logs_resolution_failure_once(caplog):
     assert warnings[0].exc_info is not None
 
 
-def test_message_reply_delegates_stream_callback(monkeypatch):
-    seen = {}
+def test_message_reply_delegates_stream_callback(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
 
-    def mock_respond(model, model_config, state, context, history, graph, text, on_delta, on_reasoning):
+    def mock_respond(
+        model: object,
+        model_config: Inputs | None,
+        state: PcState,
+        context: DifyBuilderContext,
+        history: list[ConversationItem],
+        graph: Graph,
+        text: str,
+        on_delta: Callable[[str], None],
+        on_reasoning: Callable[[str], None] | None,
+    ) -> str:
         seen["args"] = (model, model_config, state, context, history, graph, text)
         assert on_reasoning is None
         on_delta("first ")
@@ -292,15 +364,15 @@ def test_message_reply_delegates_stream_callback(monkeypatch):
         return "first second"
 
     monkeypatch.setattr(chat_mod, "respond", mock_respond)
-    model_config = {"provider": "p", "name": "m", "mode": "chat", "completion_params": {}}
+    model_config: Graph = {"provider": "p", "name": "m", "mode": "chat", "completion_params": {}}
     agent = LlmBuilderAgent("t1", model_config)
     monkeypatch.setattr(agent, "_model", lambda: "MODEL")
-    deltas = []
+    deltas: list[str] = []
 
     reply = agent.respond_to_message(
-        "fix.await_approval",
-        "CONTEXT",
-        ["HISTORY"],
+        PcState.FIX_AWAIT_APPROVAL,
+        DifyBuilderContext(),
+        [ConversationItem(kind="user", payload={"text": "history"})],
         {"nodes": [], "edges": []},
         "question",
         deltas.append,
@@ -311,9 +383,9 @@ def test_message_reply_delegates_stream_callback(monkeypatch):
     assert seen["args"] == (
         "MODEL",
         model_config,
-        "fix.await_approval",
-        "CONTEXT",
-        ["HISTORY"],
+        PcState.FIX_AWAIT_APPROVAL,
+        DifyBuilderContext(),
+        [ConversationItem(kind="user", payload={"text": "history"})],
         {"nodes": [], "edges": []},
         "question",
     )
@@ -322,22 +394,40 @@ def test_message_reply_delegates_stream_callback(monkeypatch):
 # ---- ENG-1191: the acting account and the request reach tool readiness -------
 
 
-def _capture_tool_owners(monkeypatch) -> dict:
-    seen: dict = {}
+def _capture_tool_owners(monkeypatch: pytest.MonkeyPatch) -> Graph:
+    seen: Graph = {}
 
-    def ready_tool_catalogue(tenant_id, **kwargs):
+    def ready_tool_catalogue(tenant_id: str, **kwargs: object) -> list[object]:
         seen["ready_tool_catalogue"] = (tenant_id, kwargs)
         return []
 
-    def discover_resources(model, tenant_id, plan_items, _reasoning=None, **kwargs):  # noqa: ARG001
+    def discover_resources(
+        model: object,  # noqa: ARG001
+        tenant_id: str,
+        plan_items: list[str],  # noqa: ARG001
+        _reasoning: Callable[[str], None] | None = None,
+        **kwargs: object,
+    ) -> list[object]:
         seen["discover_resources"] = (tenant_id, kwargs)
         return []
 
-    def bind_resources(model, tenant_id, plan_items, resource_ids, **kwargs):  # noqa: ARG001
+    def bind_resources(
+        _model: object,
+        tenant_id: str,
+        _plan_items: list[str],
+        _resource_ids: Sequence[str],
+        **kwargs: object,
+    ) -> list[object]:
         seen["bind_resources"] = (tenant_id, kwargs)
         return []
 
-    def build_nodes(tenant_id, model_config, plan_items, resource_ids=(), **kwargs):  # noqa: ARG001
+    def build_nodes(
+        tenant_id: str,
+        model_config: Inputs | None,  # noqa: ARG001
+        plan_items: list[str],  # noqa: ARG001
+        resource_ids: Sequence[str] = (),  # noqa: ARG001
+        **kwargs: object,
+    ) -> list[object]:
         seen["build_nodes"] = (tenant_id, kwargs)
         return []
 
@@ -349,7 +439,7 @@ def _capture_tool_owners(monkeypatch) -> dict:
     return seen
 
 
-def test_planner_tool_catalogue_is_ranked_against_the_goal_and_requirements(monkeypatch):
+def test_planner_tool_catalogue_is_ranked_against_the_goal_and_requirements(monkeypatch: pytest.MonkeyPatch) -> None:
     seen = _capture_tool_owners(monkeypatch)
     agent = LlmBuilderAgent("t1", {})
     monkeypatch.setattr(agent, "_model", lambda: "MODEL")
@@ -363,7 +453,7 @@ def test_planner_tool_catalogue_is_ranked_against_the_goal_and_requirements(monk
     assert "#oncall" in query
 
 
-def test_every_tool_owner_receives_the_acting_account(monkeypatch):
+def test_every_tool_owner_receives_the_acting_account(monkeypatch: pytest.MonkeyPatch) -> None:
     seen = _capture_tool_owners(monkeypatch)
     agent = LlmBuilderAgent("t1", {}, account_id="acct-a")
     monkeypatch.setattr(agent, "_model", lambda: "MODEL")
@@ -378,7 +468,7 @@ def test_every_tool_owner_receives_the_acting_account(monkeypatch):
         assert seen[owner][1].get("account_id") == "acct-a", owner
 
 
-def test_an_agent_without_an_actor_passes_none_rather_than_inventing_one(monkeypatch):
+def test_an_agent_without_an_actor_passes_none_rather_than_inventing_one(monkeypatch: pytest.MonkeyPatch) -> None:
     seen = _capture_tool_owners(monkeypatch)
     agent = LlmBuilderAgent("t1", {})
     monkeypatch.setattr(agent, "_model", lambda: "MODEL")

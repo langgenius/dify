@@ -10,26 +10,26 @@ import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
+import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
+import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
-import { useAvailableNodesMetaData } from '../hooks/use-available-nodes-meta-data'
-import { useConfigsMap } from '../hooks/use-configs-map'
 import { useDSLByCanEdit } from '../hooks/use-DSL'
 import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
-import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
 import { useNodesSyncDraftByCanEdit } from '../hooks/use-nodes-sync-draft'
 import { useWorkflowDraftGraphForCanvas } from '../hooks/use-workflow-draft-graph-for-canvas'
 import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
@@ -58,14 +58,16 @@ const GRAPH_RELOAD_RETRY_BASE_DELAY = 1000
 const GRAPH_RELOAD_RETRY_MAX_DELAY = 30_000
 
 const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow'] as const)
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
-  const appId = useStore((s) => s.appId)
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
   const isWorkflowDataLoaded = useStore((s) => s.isWorkflowDataLoaded)
   const hasWorkflowDraftConflict = useStore((s) => s.hasWorkflowDraftConflict)
   const showDifyBuilderPanel = useStore((s) => s.showDifyBuilderPanel)
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const containerRef = useRef<HTMLDivElement>(null)
   const [collaborationGraphState, setCollaborationGraphState] = useState({
@@ -92,12 +94,12 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = useMemo(
     () =>
-      getAppACLCapabilities(appDetail?.permission_keys, {
+      getAppACLCapabilities(appDetail.permission_keys, {
         currentUserId,
-        resourceMaintainer: appDetail?.maintainer,
+        resourceMaintainer: appDetail.maintainer,
         workspacePermissionKeys,
       }),
-    [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
+    [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys],
   )
   const {
     startCursorTracking,
@@ -207,7 +209,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const varsUpdateSyncRequestRef = useRef(0)
   const varsUpdateCompletedSyncRef = useRef(0)
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail?.mode)
+  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
   const {
     handleBackupDraft,
     handleLoadBackupDraft,
@@ -467,15 +469,13 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     handleWorkflowTriggerPluginRunInWorkflow,
     handleWorkflowRunAllTriggersInWorkflow,
   } = useWorkflowStartRunByCanEdit(appACLCapabilities.canEdit)
-  const availableNodesMetaData = useAvailableNodesMetaData()
+  const availableNodesMetaData = useWorkflowNodeCatalog()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
   const { exportCheck, handleExportDSL, isExporting } = useDSLByCanEdit(appACLCapabilities.canEdit)
 
-  const configsMap = useConfigsMap()
+  const fileSettings = useFeatures((state) => state.features.file)
 
-  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    ...configsMap,
-  })
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const {
     hasNodeInspectVars,
     hasSetInspectVar,
@@ -536,7 +536,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         canImportExportDSL: appACLCapabilities.canImportExportDSL,
         canReleaseAndVersion: appACLCapabilities.canReleaseAndVersion,
       },
-      configsMap,
+      fileSettings,
     }
   }, [
     syncWorkflowDraftWhenPageClose,
@@ -575,15 +575,16 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     resetConversationVar,
     invalidateConversationVarValues,
     appACLCapabilities,
-    configsMap,
+    fileSettings,
   ])
 
   const getDifyBuilderCanvasSnapshot = useCallback(
     () => ({
       nodes: reactFlow.getNodes(),
-      edgeCount: reactFlow.getEdges().length,
+      edges: reactFlow.getEdges(),
+      isChatflow: appDetail.mode === 'advanced-chat',
     }),
-    [reactFlow],
+    [appDetail.mode, reactFlow],
   )
   const handleDifyBuilderRefreshCanvas = useCallback(
     async (shouldApply: () => boolean) => {
