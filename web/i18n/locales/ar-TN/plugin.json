@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "إعدادات عميل OAuth",
   "auth.connection.otherMembers": "تم الإعداد بواسطة أعضاء آخرين",
+  "auth.connection.reauthorizationRequired": "تلزم إعادة التفويض",
   "auth.connection.reauthorize": "إعادة التفويض",
   "auth.connection.reauthorizeUnavailable": "إعادة تفويض اتصال موجود غير مدعومة بعد.",
   "auth.connection.replaceApiKey": "استبدال مفتاح API",

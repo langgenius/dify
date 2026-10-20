@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "การตั้งค่าไคลเอนต์ OAuth",
   "auth.connection.otherMembers": "กำหนดค่าโดยสมาชิกคนอื่น",
+  "auth.connection.reauthorizationRequired": "ต้องอนุญาตอีกครั้ง",
   "auth.connection.reauthorize": "อนุญาตอีกครั้ง",
   "auth.connection.reauthorizeUnavailable": "ยังไม่รองรับการอนุญาตการเชื่อมต่อที่มีอยู่อีกครั้ง",
   "auth.connection.replaceApiKey": "เปลี่ยนคีย์ API",

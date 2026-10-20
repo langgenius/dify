@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "OAuth-clientinstellingen",
   "auth.connection.otherMembers": "Geconfigureerd door andere leden",
+  "auth.connection.reauthorizationRequired": "Opnieuw autoriseren vereist",
   "auth.connection.reauthorize": "Opnieuw autoriseren",
   "auth.connection.reauthorizeUnavailable": "Een bestaande verbinding opnieuw autoriseren wordt nog niet ondersteund.",
   "auth.connection.replaceApiKey": "API-sleutel vervangen",

@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "OAuthクライアント設定",
   "auth.connection.otherMembers": "他のメンバーが設定",
+  "auth.connection.reauthorizationRequired": "再認証が必要です",
   "auth.connection.reauthorize": "再認証",
   "auth.connection.reauthorizeUnavailable": "既存の接続の再認証にはまだ対応していません。",
   "auth.connection.replaceApiKey": "APIキーを置き換え",

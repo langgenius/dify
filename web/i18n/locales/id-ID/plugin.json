@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "Pengaturan klien OAuth",
   "auth.connection.otherMembers": "Dikonfigurasi oleh anggota lain",
+  "auth.connection.reauthorizationRequired": "Otorisasi ulang diperlukan",
   "auth.connection.reauthorize": "Otorisasi ulang",
   "auth.connection.reauthorizeUnavailable": "Otorisasi ulang koneksi yang sudah ada belum didukung.",
   "auth.connection.replaceApiKey": "Ganti kunci API",

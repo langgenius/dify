@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "OAuth क्लाइंट सेटिंग्स",
   "auth.connection.otherMembers": "अन्य सदस्यों द्वारा कॉन्फ़िगर किया गया",
+  "auth.connection.reauthorizationRequired": "फिर से अधिकृत करना आवश्यक है",
   "auth.connection.reauthorize": "पुनः अधिकृत करें",
   "auth.connection.reauthorizeUnavailable": "किसी मौजूदा कनेक्शन को पुनः अधिकृत करना अभी समर्थित नहीं है।",
   "auth.connection.replaceApiKey": "API कुंजी बदलें",

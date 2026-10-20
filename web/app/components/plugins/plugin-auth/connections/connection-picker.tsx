@@ -17,6 +17,7 @@ export type ConnectionPickerOption = {
   isDefault?: boolean
   disabled?: boolean
   info?: string
+  reauthorizationRequired?: boolean
 }
 
 export type ConnectionPickerGroup = {
@@ -170,6 +171,13 @@ const ConnectionPicker = ({
                                 <span className="truncate system-xs-regular text-text-tertiary">
                                   {option.subtitle}
                                 </span>
+                                {option.reauthorizationRequired && (
+                                  <span className="system-xs-regular text-text-warning">
+                                    {t(($) => $['auth.connection.reauthorizationRequired'], {
+                                      ns: 'plugin',
+                                    })}
+                                  </span>
+                                )}
                               </span>
                               {option.isDefault && (
                                 <Badge className="shrink-0">

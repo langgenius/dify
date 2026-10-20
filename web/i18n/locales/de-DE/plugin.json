@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "OAuth-Client-Einstellungen",
   "auth.connection.otherMembers": "Von anderen Mitgliedern konfiguriert",
+  "auth.connection.reauthorizationRequired": "Erneute Autorisierung erforderlich",
   "auth.connection.reauthorize": "Erneut autorisieren",
   "auth.connection.reauthorizeUnavailable": "Die erneute Autorisierung einer bestehenden Verbindung wird noch nicht unterstützt.",
   "auth.connection.replaceApiKey": "API-Schlüssel ersetzen",

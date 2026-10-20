@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "OAuth 클라이언트 설정",
   "auth.connection.otherMembers": "다른 구성원이 설정함",
+  "auth.connection.reauthorizationRequired": "재인증 필요",
   "auth.connection.reauthorize": "다시 인증",
   "auth.connection.reauthorizeUnavailable": "기존 연결의 재인증은 아직 지원되지 않습니다.",
   "auth.connection.replaceApiKey": "API 키 교체",

@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "OAuth müştərisinin parametrləri",
   "auth.connection.otherMembers": "Digər üzvlər tərəfindən konfiqurasiya edilib",
+  "auth.connection.reauthorizationRequired": "Yenidən icazə vermək tələb olunur",
   "auth.connection.reauthorize": "Yenidən avtorizasiya et",
   "auth.connection.reauthorizeUnavailable": "Mövcud bağlantının yenidən avtorizasiyası hələ dəstəklənmir.",
   "auth.connection.replaceApiKey": "API açarını dəyişdir",

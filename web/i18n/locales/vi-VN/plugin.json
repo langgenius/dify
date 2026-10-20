@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "Cài đặt ứng dụng khách OAuth",
   "auth.connection.otherMembers": "Được cấu hình bởi thành viên khác",
+  "auth.connection.reauthorizationRequired": "Cần ủy quyền lại",
   "auth.connection.reauthorize": "Ủy quyền lại",
   "auth.connection.reauthorizeUnavailable": "Chưa hỗ trợ ủy quyền lại cho kết nối hiện có.",
   "auth.connection.replaceApiKey": "Thay thế khóa API",

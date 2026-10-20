@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "Налаштування клієнта OAuth",
   "auth.connection.otherMembers": "Налаштовано іншими учасниками",
+  "auth.connection.reauthorizationRequired": "Потрібна повторна авторизація",
   "auth.connection.reauthorize": "Повторно авторизувати",
   "auth.connection.reauthorizeUnavailable": "Повторна авторизація наявного підключення поки що не підтримується.",
   "auth.connection.replaceApiKey": "Замінити ключ API",

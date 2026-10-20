@@ -3640,6 +3640,7 @@ export default interface Resources {
     'auth.connection.oauth': 'OAuth'
     'auth.connection.oauthClientSettings': 'OAuth client settings'
     'auth.connection.otherMembers': 'Configured by other members'
+    'auth.connection.reauthorizationRequired': 'Reauthorization required'
     'auth.connection.reauthorize': 'Reauthorize'
     'auth.connection.reauthorizeUnavailable': 'Reauthorizing an existing connection is not supported yet.'
     'auth.connection.replaceApiKey': 'Replace API key'

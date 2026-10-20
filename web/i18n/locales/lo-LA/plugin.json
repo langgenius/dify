@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "ການຕັ້ງຄ່າ OAuth Client",
   "auth.connection.otherMembers": "ຕັ້ງຄ່າໂດຍສະມາຊິກຄົນອື່ນ",
+  "auth.connection.reauthorizationRequired": "ຕ້ອງອະນຸຍາດໃໝ່",
   "auth.connection.reauthorize": "ອະນຸຍາດອີກຄັ້ງ",
   "auth.connection.reauthorizeUnavailable": "ຍັງບໍ່ຮອງຮັບການອະນຸຍາດການເຊື່ອມຕໍ່ທີ່ມີຢູ່ອີກຄັ້ງ.",
   "auth.connection.replaceApiKey": "ປ່ຽນລະຫັດ API",

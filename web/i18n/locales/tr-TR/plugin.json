@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "OAuth istemci ayarları",
   "auth.connection.otherMembers": "Diğer üyeler tarafından yapılandırıldı",
+  "auth.connection.reauthorizationRequired": "Yeniden yetkilendirme gerekli",
   "auth.connection.reauthorize": "Yeniden yetkilendir",
   "auth.connection.reauthorizeUnavailable": "Mevcut bir bağlantıyı yeniden yetkilendirme henüz desteklenmiyor.",
   "auth.connection.replaceApiKey": "API anahtarını değiştir",

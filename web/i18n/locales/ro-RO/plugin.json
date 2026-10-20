@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "Setările clientului OAuth",
   "auth.connection.otherMembers": "Configurat de alți membri",
+  "auth.connection.reauthorizationRequired": "Este necesară reautorizarea",
   "auth.connection.reauthorize": "Autorizează din nou",
   "auth.connection.reauthorizeUnavailable": "Reautorizarea unei conexiuni existente nu este încă acceptată.",
   "auth.connection.replaceApiKey": "Înlocuiește cheia API",

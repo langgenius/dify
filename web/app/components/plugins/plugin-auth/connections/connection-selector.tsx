@@ -16,6 +16,8 @@ import ConnectionPicker from './connection-picker'
 export type ConnectionSelectorDataSource = {
   credentials: Credential[]
   selectedCredential?: Credential
+  // UI status supplied explicitly by the source, separate from visibility and query errors.
+  connectionStatusById?: Readonly<Record<string, 'reauthorization-required'>>
   workspaceDefault?: {
     option: ConnectionPickerOption
     selected: boolean
@@ -56,6 +58,8 @@ const ConnectionSelector = ({ dataSource }: { dataSource: ConnectionSelectorData
     method: credential.credential_type ?? CredentialTypeEnum.API_KEY,
     isDefault: credential.is_default,
     disabled: !dataSource.canUse || credential.not_allowed_to_use,
+    reauthorizationRequired:
+      dataSource.connectionStatusById?.[credential.id] === 'reauthorization-required',
     info: credential.from_other_member
       ? t(($) => $['auth.onlyAtCreationHintTooltip'], { ns: 'plugin' })
       : undefined,

@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "تنظیمات کلاینت OAuth",
   "auth.connection.otherMembers": "پیکربندی‌شده توسط سایر اعضا",
+  "auth.connection.reauthorizationRequired": "مجوزدهی مجدد الزامی است",
   "auth.connection.reauthorize": "مجوزدهی مجدد",
   "auth.connection.reauthorizeUnavailable": "مجوزدهی مجدد به اتصال موجود هنوز پشتیبانی نمی‌شود.",
   "auth.connection.replaceApiKey": "جایگزینی کلید API",

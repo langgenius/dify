@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "OAuth 客户端设置",
   "auth.connection.otherMembers": "由其他成员配置",
+  "auth.connection.reauthorizationRequired": "需要重新授权",
   "auth.connection.reauthorize": "重新授权",
   "auth.connection.reauthorizeUnavailable": "暂不支持重新授权现有连接。",
   "auth.connection.replaceApiKey": "替换 API 密钥",

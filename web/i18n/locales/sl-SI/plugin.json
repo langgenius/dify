@@ -51,6 +51,7 @@
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "Nastavitve odjemalca OAuth",
   "auth.connection.otherMembers": "Nastavili drugi člani",
+  "auth.connection.reauthorizationRequired": "Potrebna je ponovna avtorizacija",
   "auth.connection.reauthorize": "Ponovno avtoriziraj",
   "auth.connection.reauthorizeUnavailable": "Ponovna avtorizacija obstoječe povezave še ni podprta.",
   "auth.connection.replaceApiKey": "Zamenjaj ključ API",
