@@ -325,7 +325,7 @@ class DatasourceAuth(Resource):
                 name=req_data.name,
             )
         except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+            raise ValueError(str(ex)) from ex
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
     @console_ns.response(

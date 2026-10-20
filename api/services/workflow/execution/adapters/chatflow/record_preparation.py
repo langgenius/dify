@@ -1,5 +1,7 @@
 """Convert chatflow input into persistable conversation and message values."""
 
+from contextlib import suppress
+
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.file_reference import resolve_file_record_id
@@ -19,12 +21,10 @@ def prepare_chat_records(entity: AdvancedChatAppGenerateEntity, features: str) -
     introduction = (features_config.opening_statement if features_config else None) or ""
     if introduction:
         template = PromptTemplateParser(template=introduction)
-        try:
+        with suppress(KeyError):
             introduction = template.format(
                 {key: entity.inputs[key] for key in template.variable_keys if key in entity.inputs}
             )
-        except KeyError:
-            pass
     query = entity.query or "New conversation"
     return ChatRecordSeed(
         conversation={

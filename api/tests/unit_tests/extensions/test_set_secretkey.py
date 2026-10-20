@@ -15,8 +15,8 @@ class InMemoryStorage:
     def load_once(self, filename: str) -> bytes:
         try:
             return self.files[filename]
-        except KeyError:
-            raise FileNotFoundError(filename)
+        except KeyError as caught_error:
+            raise FileNotFoundError(filename) from caught_error
 
     def save(self, filename: str, data: bytes) -> None:
         self.files[filename] = data

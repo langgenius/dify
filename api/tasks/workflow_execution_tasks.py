@@ -12,6 +12,7 @@ from typing import Any
 from celery import shared_task
 
 from core.db.session_factory import session_factory
+from graphon.enums import WorkflowExecutionStatus
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
@@ -68,7 +69,7 @@ def save_workflow_execution_task(
     except Exception as e:
         logger.exception("Failed to save workflow execution %s", execution_data.get("id_", "unknown"))
         # Retry the task with exponential backoff
-        raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+        raise self.retry(exc=e, countdown=60 * (2**self.request.retries)) from e
 
 
 def _create_workflow_run_from_execution(
@@ -112,3 +113,21 @@ def _create_workflow_run_from_execution(
     workflow_run.finished_at = execution.finished_at
 
     return workflow_run
+
+
+def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: WorkflowExecution):
+    """
+    Update a WorkflowRun database model from a WorkflowExecution domain entity.
+    """
+    if workflow_run.stop_requested_at is not None and workflow_run.status == WorkflowExecutionStatus.STOPPED:
+        return
+    json_converter = WorkflowRuntimeTypeConverter()
+    workflow_run.status = execution.status
+    workflow_run.outputs = (
+        json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
+    )
+    workflow_run.error = execution.error_message
+    workflow_run.elapsed_time = execution.elapsed_time
+    workflow_run.total_tokens = execution.total_tokens
+    workflow_run.total_steps = execution.total_steps
+    workflow_run.finished_at = execution.finished_at

@@ -1,5 +1,6 @@
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any
 
 from pydantic import ValidationError
 
@@ -7,6 +8,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.app.entities.queue_entities import (
     AppQueueEvent,
+    NodeExecutionSnapshot,
     QueueAgentLogEvent,
     QueueHumanInputFormFilledEvent,
     QueueHumanInputFormTimeoutEvent,
@@ -33,18 +35,18 @@ from core.app.entities.queue_entities import (
 )
 from core.rag.entities import RetrievalSourceMetadata
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
-from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired, PauseReason
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
-from graphon.entities.pause_reason import HitlRequired
-from graphon.enums import BuiltinNodeTypes
-from graphon.graph_events import (
-    GraphEngineEvent,
+from enums.human_input import HumanInputFormStatus
+from graphon.engine_events import (
+    EngineEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
+    NodeEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunHumanInputFormFilledEvent,
@@ -64,25 +66,35 @@ from graphon.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
-from services.workflow.execution.ports import PauseReasonResolver
+from graphon.entities.pause_reason import HitlRequired
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
+from graphon.variables.factory import build_segment
+from models.human_input_contracts import HumanInputFormRecord
+from services.workflow.execution.adapters.human_input import DifyHITLCallback
+from services.workflow.execution.contracts import WorkflowRunEntry
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 logger = logging.getLogger(__name__)
 
 
+def _merge_container_metadata(
+    lifecycle_metadata: Mapping[str, Any], node_metadata: Mapping[str, Any]
+) -> dict[str, Any]:
+    # Keep lifecycle details and ancestor ownership together, preserving the
+    # existing node-result precedence when both sources contain the same key.
+    return {**lifecycle_metadata, **node_metadata}
+
+
 class WorkflowEventPublisher:
-    """Translate graph events into application events independently of graph construction."""
+    """Translate engine events into application events independently of graph construction."""
 
     def __init__(
         self,
         queue_manager: AppQueueManager,
         *,
-        resolve_pause: PauseReasonResolver,
         notify_pause: Callable[[Sequence[object]], None],
     ) -> None:
         self._queue_manager = queue_manager
-        self._resolve_pause = resolve_pause
         self._notify_pause = notify_pause
 
     @staticmethod
@@ -97,15 +109,100 @@ class WorkflowEventPublisher:
             logger.warning("Invalid agent strategy payload for node %s", event.node_id, exc_info=True)
             return None
 
-    def publish(self, workflow_entry: WorkflowEntry, event: GraphEngineEvent):
-        """
-        Handle event
-        :param workflow_entry: workflow entry
-        :param event: event
-        """
+    def publish_human_input_results(
+        self,
+        workflow_entry: WorkflowRunEntry,
+        pending_forms: Mapping[str, HitlRequired],
+        forms: Mapping[str, HumanInputFormRecord],
+        published_form_ids: set[str],
+    ) -> None:
+        """Publish materialized completions supplied by run orchestration."""
+        for form_id, reason in pending_forms.items():
+            form = forms[form_id]
+            node_id = reason.node_id
+            node_title = reason.node_title or form.definition.node_title or form.node_id
+            if form.status == HumanInputFormStatus.TIMEOUT:
+                self._publish_event(
+                    QueueHumanInputFormTimeoutEvent(
+                        form_id=form_id,
+                        node_id=node_id,
+                        node_type=BuiltinNodeTypes.HUMAN_INPUT,
+                        node_title=node_title,
+                        expiration_time=form.expiration_time,
+                    )
+                )
+                published_form_ids.add(form_id)
+            elif form.status == HumanInputFormStatus.SUBMITTED:
+                action = next(
+                    (item for item in form.definition.user_actions if item.id == form.selected_action_id), None
+                )
+                if action is None:
+                    raise ValueError(f"Submitted human input form has no matching action: {form_id}")
+                submitted_data = {name: build_segment(value) for name, value in (form.submitted_data or {}).items()}
+                self._publish_event(
+                    QueueHumanInputFormFilledEvent(
+                        form_id=form_id,
+                        node_id=node_id,
+                        node_type=BuiltinNodeTypes.HUMAN_INPUT,
+                        node_title=node_title,
+                        rendered_content=DifyHITLCallback.render_form_content_with_outputs(
+                            form.rendered_content,
+                            submitted_data,
+                            [item.output_variable_name for item in form.definition.inputs],
+                            form.definition.inputs,
+                        ),
+                        action_id=action.id,
+                        action_text=action.title,
+                        submitted_data=submitted_data,
+                    )
+                )
+                published_form_ids.add(form_id)
+
+    def publish(
+        self,
+        workflow_entry: WorkflowRunEntry,
+        event: EngineEvent,
+        *,
+        node_run_index: int = 1,
+        node_execution_snapshots: tuple[NodeExecutionSnapshot, ...] = (),
+        pause_reasons: Sequence[PauseReason] = (),
+    ) -> None:
+        """Publish one engine event with run-owned indexes and resolved pause data."""
+        node_metadata: dict[str, Any] = (
+            {str(key): value for key, value in event.node_run_result.metadata.items()}
+            if isinstance(event, NodeEvent)
+            else {}
+        )
+        iteration_id = node_metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_ID.value)
+        loop_id = node_metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID.value)
         match event:
+            case NodeRunHumanInputFormFilledEvent():
+                self._publish_event(
+                    QueueHumanInputFormFilledEvent(
+                        form_id=event.id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        node_title=event.node_title,
+                        rendered_content=event.rendered_content,
+                        action_id=event.action_id,
+                        action_text=event.action_text,
+                        submitted_data=event.submitted_data,
+                    )
+                )
+            case NodeRunHumanInputFormTimeoutEvent():
+                self._publish_event(
+                    QueueHumanInputFormTimeoutEvent(
+                        form_id=event.id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        node_title=event.node_title,
+                        expiration_time=event.expiration_time,
+                    )
+                )
             case GraphRunStartedEvent():
-                self._publish_event(QueueWorkflowStartedEvent(reason=event.reason))
+                self._publish_event(
+                    QueueWorkflowStartedEvent(reason=event.reason, node_execution_snapshots=node_execution_snapshots)
+                )
             case GraphRunSucceededEvent():
                 self._publish_event(QueueWorkflowSucceededEvent(outputs=event.outputs))
             case GraphRunPartialSucceededEvent():
@@ -124,42 +221,15 @@ class WorkflowEventPublisher:
                     )
                 )
             case GraphRunPausedEvent():
-                runtime_state = workflow_entry.graph_engine.graph_runtime_state
                 paused_nodes = list(
-                    dict.fromkeys(reason.node_id for reason in event.reasons if isinstance(reason, HitlRequired))
+                    dict.fromkeys(reason.node_id for reason in pause_reasons if isinstance(reason, HumanInputRequired))
                 )
-                enriched_reasons = self._resolve_pause(
-                    reasons=event.reasons,
-                    variable_pool=runtime_state.variable_pool,
-                )
-                self._notify_pause(enriched_reasons)
+                self._notify_pause(pause_reasons)
                 self._publish_event(
                     QueueWorkflowPausedEvent(
-                        reasons=enriched_reasons,
+                        reasons=list(pause_reasons),
                         outputs=event.outputs,
                         paused_nodes=paused_nodes,
-                    )
-                )
-            case NodeRunHumanInputFormFilledEvent():
-                self._publish_event(
-                    QueueHumanInputFormFilledEvent(
-                        node_execution_id=event.id,
-                        node_id=event.node_id,
-                        node_type=event.node_type,
-                        node_title=event.node_title,
-                        rendered_content=event.rendered_content,
-                        action_id=event.action_id,
-                        action_text=event.action_text,
-                        submitted_data=event.submitted_data,
-                    )
-                )
-            case NodeRunHumanInputFormTimeoutEvent():
-                self._publish_event(
-                    QueueHumanInputFormTimeoutEvent(
-                        node_id=event.node_id,
-                        node_type=event.node_type,
-                        node_title=event.node_title,
-                        expiration_time=event.expiration_time,
                     )
                 )
             case NodeRunRetryEvent():
@@ -167,11 +237,8 @@ class WorkflowEventPublisher:
                 inputs = node_run_result.inputs
                 process_data = node_run_result.process_data
                 outputs = project_node_outputs_for_workflow_run(
-                    node_type=event.node_type,
-                    inputs=inputs,
-                    outputs=node_run_result.outputs,
+                    node_type=event.node_type, inputs=inputs, outputs=node_run_result.outputs
                 )
-                execution_metadata = node_run_result.metadata
                 self._publish_event(
                     QueueNodeRetryEvent(
                         node_execution_id=event.id,
@@ -179,13 +246,13 @@ class WorkflowEventPublisher:
                         node_title=event.node_title,
                         node_type=event.node_type,
                         start_at=event.start_at,
-                        in_iteration_id=event.in_iteration_id,
-                        in_loop_id=event.in_loop_id,
+                        in_iteration_id=iteration_id,
+                        in_loop_id=loop_id,
                         inputs=inputs,
                         process_data=process_data,
                         outputs=outputs,
                         error=event.error,
-                        execution_metadata=execution_metadata,
+                        execution_metadata=node_run_result.metadata,
                         retry_index=event.retry_index,
                         provider_type=event.provider_type,
                         provider_id=event.provider_id,
@@ -195,12 +262,13 @@ class WorkflowEventPublisher:
                 self._publish_event(
                     QueueNodeStartedEvent(
                         node_execution_id=event.id,
+                        node_run_index=node_run_index,
                         node_id=event.node_id,
                         node_title=event.node_title,
                         node_type=event.node_type,
                         start_at=event.start_at,
-                        in_iteration_id=event.in_iteration_id,
-                        in_loop_id=event.in_loop_id,
+                        in_iteration_id=iteration_id,
+                        in_loop_id=loop_id,
                         agent_strategy=self._build_agent_strategy_info(event),
                         provider_type=event.provider_type,
                         provider_id=event.provider_id,
@@ -211,20 +279,17 @@ class WorkflowEventPublisher:
                 inputs = node_run_result.inputs
                 process_data = node_run_result.process_data
                 outputs = project_node_outputs_for_workflow_run(
-                    node_type=event.node_type,
-                    inputs=inputs,
-                    outputs=node_run_result.outputs,
+                    node_type=event.node_type, inputs=inputs, outputs=node_run_result.outputs
                 )
-                execution_metadata = node_run_result.metadata
-                if event.node_type == BuiltinNodeTypes.ANSWER and (event.in_iteration_id or event.in_loop_id):
+                if event.node_type == BuiltinNodeTypes.ANSWER and (iteration_id or loop_id):
                     answer = outputs.get("answer")
                     if isinstance(answer, str) and answer:
                         self._publish_event(
                             QueueTextChunkEvent(
                                 text=answer,
                                 from_variable_selector=[event.node_id, "answer"],
-                                in_iteration_id=event.in_iteration_id,
-                                in_loop_id=event.in_loop_id,
+                                in_iteration_id=iteration_id,
+                                in_loop_id=loop_id,
                             )
                         )
                 self._publish_event(
@@ -237,9 +302,9 @@ class WorkflowEventPublisher:
                         inputs=inputs,
                         process_data=process_data,
                         outputs=outputs,
-                        execution_metadata=execution_metadata,
-                        in_iteration_id=event.in_iteration_id,
-                        in_loop_id=event.in_loop_id,
+                        execution_metadata=node_run_result.metadata,
+                        in_iteration_id=iteration_id,
+                        in_loop_id=loop_id,
                     )
                 )
             case NodeRunFailedEvent():
@@ -260,8 +325,8 @@ class WorkflowEventPublisher:
                         outputs=outputs,
                         error=event.node_run_result.error or "Unknown error",
                         execution_metadata=event.node_run_result.metadata,
-                        in_iteration_id=event.in_iteration_id,
-                        in_loop_id=event.in_loop_id,
+                        in_iteration_id=iteration_id,
+                        in_loop_id=loop_id,
                     )
                 )
             case NodeRunExceptionEvent():
@@ -282,8 +347,8 @@ class WorkflowEventPublisher:
                         outputs=outputs,
                         error=event.node_run_result.error or "Unknown error",
                         execution_metadata=event.node_run_result.metadata,
-                        in_iteration_id=event.in_iteration_id,
-                        in_loop_id=event.in_loop_id,
+                        in_iteration_id=iteration_id,
+                        in_loop_id=loop_id,
                     )
                 )
             case NodeRunStreamChunkEvent():
@@ -291,8 +356,8 @@ class WorkflowEventPublisher:
                     QueueTextChunkEvent(
                         text=event.chunk,
                         from_variable_selector=list(event.selector),
-                        in_iteration_id=event.in_iteration_id,
-                        in_loop_id=event.in_loop_id,
+                        in_iteration_id=iteration_id,
+                        in_loop_id=loop_id,
                     )
                 )
             case NodeRunReasoningChunkEvent():
@@ -301,8 +366,8 @@ class WorkflowEventPublisher:
                         reasoning=event.chunk,
                         from_node_id=event.node_id,
                         is_final=event.is_final,
-                        in_iteration_id=event.in_iteration_id,
-                        in_loop_id=event.in_loop_id,
+                        in_iteration_id=iteration_id,
+                        in_loop_id=loop_id,
                     )
                 )
             case NodeRunRetrieverResourceEvent():
@@ -311,8 +376,8 @@ class WorkflowEventPublisher:
                         retriever_resources=[
                             RetrievalSourceMetadata.model_validate(resource) for resource in event.retriever_resources
                         ],
-                        in_iteration_id=event.in_iteration_id,
-                        in_loop_id=event.in_loop_id,
+                        in_iteration_id=iteration_id,
+                        in_loop_id=loop_id,
                     )
                 )
             case NodeRunAgentLogEvent():
@@ -337,9 +402,8 @@ class WorkflowEventPublisher:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         start_at=event.start_at,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                         inputs=event.inputs,
-                        metadata=event.metadata,
+                        metadata=_merge_container_metadata(event.metadata, node_metadata),
                     )
                 )
             case NodeRunIterationNextEvent():
@@ -350,7 +414,6 @@ class WorkflowEventPublisher:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         index=event.index,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                         output=event.pre_iteration_output,
                     )
                 )
@@ -362,10 +425,9 @@ class WorkflowEventPublisher:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         start_at=event.start_at,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                         inputs=event.inputs,
                         outputs=event.outputs,
-                        metadata=event.metadata,
+                        metadata=_merge_container_metadata(event.metadata, node_metadata),
                         steps=event.steps,
                         error=event.error if isinstance(event, NodeRunIterationFailedEvent) else None,
                     )
@@ -378,9 +440,8 @@ class WorkflowEventPublisher:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         start_at=event.start_at,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                         inputs=event.inputs,
-                        metadata=event.metadata,
+                        metadata=_merge_container_metadata(event.metadata, node_metadata),
                     )
                 )
             case NodeRunLoopNextEvent():
@@ -391,7 +452,6 @@ class WorkflowEventPublisher:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         index=event.index,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                         output=event.pre_loop_output,
                     )
                 )
@@ -403,16 +463,15 @@ class WorkflowEventPublisher:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         start_at=event.start_at,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                         inputs=event.inputs,
                         outputs=event.outputs,
-                        metadata=event.metadata,
+                        metadata=_merge_container_metadata(event.metadata, node_metadata),
                         steps=event.steps,
                         error=event.error if isinstance(event, NodeRunLoopFailedEvent) else None,
                     )
                 )
 
-    def _publish_event(self, event: AppQueueEvent):
+    def _publish_event(self, event: AppQueueEvent) -> None:
         self._queue_manager.publish(event, PublishFrom.APPLICATION_MANAGER)
 
 
