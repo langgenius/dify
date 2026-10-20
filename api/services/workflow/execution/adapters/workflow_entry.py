@@ -15,7 +15,6 @@ from core.app.entities.app_invoke_entities import (
     build_dify_run_context,
 )
 from core.app.file_access import DatabaseFileAccessController
-from core.app.layers.execution_context_layer import ExecutionContextLayer
 from core.app.workflow.file_runtime import create_dify_workflow_file_runtime
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.credit_usage import CreditUsageAppType
@@ -48,6 +47,7 @@ from models import Account
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
 from services.human_input.ports import HumanInputFormReader
 from services.workflow.contracts import WorkflowSnapshot
+from services.workflow.execution.adapters.execution_context_layer import ExecutionContextLayer
 from services.workflow.execution.adapters.human_input_events import HumanInputFormEventFilter
 from services.workflow.execution.adapters.node_factory import (
     DifyGraphInitContext,

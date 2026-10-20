@@ -34,6 +34,9 @@ from models.human_input_contracts import (
     HumanInputFormEntity as SharedHumanInputFormEntity,
 )
 from models.human_input_contracts import (
+    HumanInputFormRecord as SharedHumanInputFormRecord,
+)
+from models.human_input_contracts import (
     HumanInputFormRepository as SharedHumanInputFormRepository,
 )
 from models.human_input_delivery import (
@@ -172,33 +175,8 @@ class _HumanInputFormEntityImpl(HumanInputFormEntity):
 
 
 @dataclasses.dataclass(frozen=True)
-class HumanInputFormRecord:
-    form_id: str
-    workflow_run_id: str | None
-    node_id: str
-    tenant_id: str
-    app_id: str
-    form_kind: HumanInputFormKind
-    definition: FormDefinition
-    rendered_content: str
-    created_at: datetime
-    expiration_time: datetime
-    status: HumanInputFormStatus
-    selected_action_id: str | None
-    submitted_data: Mapping[str, Any] | None
-    submitted_at: datetime | None
-    submission_user_id: str | None
-    submission_end_user_id: str | None
-    completed_by_recipient_id: str | None
-    recipient_id: str | None
-    recipient_type: RecipientType | None
-    access_token: str | None
-    # Retain chatflow conversation correlation alongside the workflow run owner.
-    conversation_id: str | None = None
-
-    @property
-    def submitted(self) -> bool:
-        return self.submitted_at is not None
+class HumanInputFormRecord(SharedHumanInputFormRecord):
+    """Legacy constructor kept on the shared human-input record contract."""
 
     @classmethod
     def from_models(

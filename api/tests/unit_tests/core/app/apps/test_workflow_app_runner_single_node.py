@@ -7,14 +7,15 @@ import pytest
 from pydantic import ValidationError
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.credit_usage import CreditUsageAppType
 from core.workflow.system_variables import default_system_variables
 from graphon.runtime import RuntimeState, VariablePool
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.execution.adapters.graph import WorkflowGraphBuilder
+from services.workflow.execution.adapters.workflow.app_queue_manager import WorkflowAppQueueManager
 from services.workflow.execution.adapters.workflow.app_runner import WorkflowAppRunner
 from services.workflow.execution.ports import WorkflowRuntime
 
@@ -79,12 +80,13 @@ def test_run_uses_single_node_execution_branch(
         graph=json.dumps({"nodes": [], "edges": []}),
     )
     workflow.environment_variables = []
+    workflow_definition = workflow_snapshot(workflow)
 
     runner = WorkflowAppRunner(
         application_generate_entity=app_generate_entity,
         queue_manager=queue_manager,
         variable_loader=MagicMock(),
-        workflow=workflow,
+        workflow=workflow_definition,
         system_user_id="system-user",
         runtime=workflow_runtime,
     )
@@ -115,7 +117,7 @@ def test_run_uses_single_node_execution_branch(
         runner.prepare()
 
     prepare_single.assert_called_once_with(
-        workflow=workflow,
+        workflow=workflow_definition,
         single_iteration_run=single_iteration_run,
         single_loop_run=single_loop_run,
         user_id="user",
@@ -153,7 +155,7 @@ def test_single_node_run_validates_target_node_config() -> None:
 
     with pytest.raises(ValidationError, match="nodes.0.data.type"):
         runner._get_graph_and_variable_pool_for_single_node_run(
-            workflow=workflow,
+            workflow=workflow_snapshot(workflow),
             node_id="loop-node",
             user_inputs={},
             graph_runtime_state=graph_runtime_state,
@@ -231,12 +233,13 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(
         kind=WorkflowKind.SNIPPET,
     )
     workflow.environment_variables = []
+    workflow_definition = workflow_snapshot(workflow)
 
     runner = WorkflowAppRunner(
         application_generate_entity=app_generate_entity,
         queue_manager=queue_manager,
         variable_loader=MagicMock(),
-        workflow=workflow,
+        workflow=workflow_definition,
         system_user_id="system-user",
         runtime=workflow_runtime,
     )

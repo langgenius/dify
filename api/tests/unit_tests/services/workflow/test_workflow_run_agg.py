@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -298,12 +298,14 @@ def test_pause_database_failure_publishes_failure_instead_of_resume_ready(
 
 
 def test_late_form_submission_is_refreshed_before_the_real_queue_closes(
-    sqlite_session: Session, workflow_runtime: WorkflowExecutionDependencies
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    workflow_runtime: WorkflowExecutionDependencies,
 ) -> None:
     from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent
-    from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
     from enums.human_input import HumanInputFormStatus
     from graphon.engine_events import NodeRunStartedEvent
+    from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
     from tests.unit_tests.core.app.apps.test_workflow_human_input_completion import (
         _build_runner,
         _make_paused_workflow,
@@ -319,7 +321,7 @@ def test_late_form_submission_is_refreshed_before_the_real_queue_closes(
     for event in _resume_events(runner, entry):
         runner.handle_event(entry, event)
         if isinstance(event, NodeRunStartedEvent):
-            HumanInputFormSubmissionRepository().mark_submitted(
+            HumanInputFormSubmissionRepository(sessions=sqlite_session_factory).mark_submitted(
                 form_id=late.id,
                 recipient_id=None,
                 selected_action_id="approve",
@@ -336,11 +338,13 @@ def test_late_form_submission_is_refreshed_before_the_real_queue_closes(
 
 @pytest.mark.usefixtures("_local_storage")
 def test_durable_pause_resumes_with_one_form_completion_and_continuing_indexes(
-    sqlite_engine: Engine, workflow_runtime: WorkflowExecutionDependencies
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+    workflow_runtime: WorkflowExecutionDependencies,
 ) -> None:
     from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent, QueueWorkflowStartedEvent
-    from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
     from models.human_input import HumanInputForm
+    from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
 
     original, workflow_repository, node_repository = make_workflow_runner(
         sqlite_engine, workflow_runtime, human_input=True
@@ -356,7 +360,7 @@ def test_durable_pause_resumes_with_one_form_completion_and_continuing_indexes(
         assert form is not None
         form_id = form.id
         snapshot = WorkflowResumptionContext.loads(storage.load(pause.state_object_key).decode())
-    HumanInputFormSubmissionRepository().mark_submitted(
+    HumanInputFormSubmissionRepository(sessions=sqlite_session_factory).mark_submitted(
         form_id=form_id,
         recipient_id=None,
         selected_action_id="approve",
@@ -436,16 +440,17 @@ def test_active_execution_snapshot_failure_is_not_published_as_a_pause(
 def test_elapsed_time_accumulates_across_pauses_and_matches_delayed_stream_responses(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
     workflow_runtime: WorkflowExecutionDependencies,
     terminal_event: GraphRunSucceededEvent | GraphRunPartialSucceededEvent | GraphRunFailedEvent | GraphRunAbortedEvent,
     status: WorkflowExecutionStatus,
 ) -> None:
     from core.app.entities.task_entities import WorkflowPauseStreamResponse
-    from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
     from core.workflow.system_variables import build_system_variables
     from enums.human_input import HumanInputFormStatus
     from graphon.entities import WorkflowStartReason
     from models.human_input import HumanInputForm
+    from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
     from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 
     clock = [100.0]
@@ -537,7 +542,7 @@ def test_elapsed_time_accumulates_across_pauses_and_matches_delayed_stream_respo
             entity = snapshot.get_generate_entity()
             assert isinstance(entity, WorkflowAppGenerateEntity)
             assert entity.workflow_execution_timing.elapsed_time == snapshot.elapsed_time == total
-            HumanInputFormSubmissionRepository().mark_submitted(
+            HumanInputFormSubmissionRepository(sessions=sqlite_session_factory).mark_submitted(
                 form_id=form_id,
                 recipient_id=None,
                 selected_action_id="approve",

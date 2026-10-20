@@ -309,43 +309,80 @@ class KnowledgeRetrievalRepository:
 
             # Process PARENT_CHILD_INDEX text documents - batch fetch ChildChunks
             if parent_child_text_docs:
-                index_node_ids = [doc.metadata["doc_id"] for doc, _ in parent_child_text_docs if doc.metadata]
-                if index_node_ids:
-                    child_chunks_stmt = select(ChildChunk).where(ChildChunk.index_node_id.in_(index_node_ids))
+                child_keys = {
+                    (str(dataset_doc.dataset_id), str(dataset_doc.id), str(doc.metadata["doc_id"]))
+                    for doc, dataset_doc in parent_child_text_docs
+                    if doc.metadata and doc.metadata.get("doc_id")
+                }
+                if child_keys:
+                    child_chunks_stmt = select(ChildChunk).where(
+                        ChildChunk.tenant_id == tenant_id,
+                        ChildChunk.dataset_id.in_({key[0] for key in child_keys}),
+                        ChildChunk.document_id.in_({key[1] for key in child_keys}),
+                        ChildChunk.index_node_id.in_({key[2] for key in child_keys}),
+                    )
                     child_chunks = session.scalars(child_chunks_stmt).all()
-                    child_chunk_map = {chunk.index_node_id: chunk.segment_id for chunk in child_chunks}
-                    for doc, _ in parent_child_text_docs:
+                    child_chunk_map = {
+                        (str(chunk.dataset_id), str(chunk.document_id), str(chunk.index_node_id)): chunk.segment_id
+                        for chunk in child_chunks
+                    }
+                    for doc, dataset_doc in parent_child_text_docs:
                         if doc.metadata:
-                            segment_id = child_chunk_map.get(doc.metadata["doc_id"])
+                            segment_id = child_chunk_map.get(
+                                (str(dataset_doc.dataset_id), str(dataset_doc.id), str(doc.metadata["doc_id"]))
+                            )
                             if segment_id:
                                 segment_ids_to_update.add(str(segment_id))
 
             # Process non-PARENT_CHILD_INDEX text documents - batch fetch DocumentSegments
             if normal_text_docs:
-                index_node_ids = [doc.metadata["doc_id"] for doc, _ in normal_text_docs if doc.metadata]
-                if index_node_ids:
-                    segments_stmt = select(DocumentSegment).where(DocumentSegment.index_node_id.in_(index_node_ids))
+                segment_keys = {
+                    (str(dataset_doc.dataset_id), str(dataset_doc.id), str(doc.metadata["doc_id"]))
+                    for doc, dataset_doc in normal_text_docs
+                    if doc.metadata and doc.metadata.get("doc_id")
+                }
+                if segment_keys:
+                    segments_stmt = select(DocumentSegment).where(
+                        DocumentSegment.tenant_id == tenant_id,
+                        DocumentSegment.dataset_id.in_({key[0] for key in segment_keys}),
+                        DocumentSegment.document_id.in_({key[1] for key in segment_keys}),
+                        DocumentSegment.index_node_id.in_({key[2] for key in segment_keys}),
+                    )
                     segments = session.scalars(segments_stmt).all()
-                    segment_map = {seg.index_node_id: seg.id for seg in segments}
-                    for doc, _ in normal_text_docs:
+                    segment_map = {
+                        (str(segment.dataset_id), str(segment.document_id), str(segment.index_node_id)): segment.id
+                        for segment in segments
+                    }
+                    for doc, dataset_doc in normal_text_docs:
                         if doc.metadata:
-                            segment_id = segment_map.get(doc.metadata["doc_id"])
+                            segment_id = segment_map.get(
+                                (str(dataset_doc.dataset_id), str(dataset_doc.id), str(doc.metadata["doc_id"]))
+                            )
                             if segment_id:
                                 segment_ids_to_update.add(str(segment_id))
 
             # Process IMAGE documents - batch fetch SegmentAttachmentBindings
             all_image_docs = parent_child_image_docs + normal_image_docs
             if all_image_docs:
-                attachment_ids = [
-                    doc.metadata["doc_id"] for doc, _ in all_image_docs if doc.metadata and doc.metadata.get("doc_id")
-                ]
-                if attachment_ids:
+                attachment_keys = {
+                    (str(dataset_doc.dataset_id), str(dataset_doc.id), str(doc.metadata["doc_id"]))
+                    for doc, dataset_doc in all_image_docs
+                    if doc.metadata and doc.metadata.get("doc_id")
+                }
+                if attachment_keys:
                     bindings_stmt = select(SegmentAttachmentBinding).where(
                         SegmentAttachmentBinding.tenant_id == tenant_id,
-                        SegmentAttachmentBinding.attachment_id.in_(attachment_ids),
+                        SegmentAttachmentBinding.dataset_id.in_({key[0] for key in attachment_keys}),
+                        SegmentAttachmentBinding.document_id.in_({key[1] for key in attachment_keys}),
+                        SegmentAttachmentBinding.attachment_id.in_({key[2] for key in attachment_keys}),
                     )
                     bindings = session.scalars(bindings_stmt).all()
-                    segment_ids_to_update.update(str(binding.segment_id) for binding in bindings)
+                    segment_ids_to_update.update(
+                        str(binding.segment_id)
+                        for binding in bindings
+                        if (str(binding.dataset_id), str(binding.document_id), str(binding.attachment_id))
+                        in attachment_keys
+                    )
 
             # Batch update hit_count for all segments
             if segment_ids_to_update:
