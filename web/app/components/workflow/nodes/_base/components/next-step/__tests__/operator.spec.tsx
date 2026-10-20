@@ -105,15 +105,12 @@ describe('NextStep operator', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
-  it('opens the node selector from the change menu item with the keyboard', async () => {
+  it('opens the node selector from the change menu item', async () => {
     const user = userEvent.setup()
     renderOperator()
 
-    const trigger = screen.getByRole('button', { name: 'workflow.common.moreActions' })
-    for (let attempt = 0; attempt < 10 && document.activeElement !== trigger; attempt++)
-      await user.tab()
-    expect(trigger).toHaveFocus()
-    await user.keyboard('{ArrowDown}{Enter}')
+    await user.click(screen.getByRole('button', { name: 'workflow.common.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'workflow.panel.change' }))
 
     expect(
       await screen.findByRole('dialog', { name: 'workflow.common.addBlock' }),

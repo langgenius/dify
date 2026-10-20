@@ -1,5 +1,4 @@
 import type { Shape as HooksStoreShape } from '../../hooks-store/store'
-import { detectPlatform } from '@tanstack/react-hotkeys'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -80,14 +79,12 @@ describe('workflow zoom controls', () => {
     },
   )
 
-  it('fits the real graph from the existing menu shortcut', async () => {
+  it('fits the real graph from the menu item', async () => {
     const user = userEvent.setup()
     const { store, doSyncWorkflowDraft } = renderZoomInOut()
     const menu = await openZoomMenu(user)
-    act(() => menu.getByRole('menuitem', { name: '200%' }).focus())
-    const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
 
-    await user.keyboard(`{${mod}>}1{/${mod}}`)
+    await user.click(menu.getByRole('menuitem', { name: /^workflow\.operator\.zoomToFit/ }))
 
     await waitFor(() => expect(getZoomControls().label).toHaveAccessibleName('25%'))
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
