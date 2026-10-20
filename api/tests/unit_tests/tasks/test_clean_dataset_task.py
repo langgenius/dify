@@ -15,10 +15,14 @@ import json
 import uuid
 from collections.abc import Iterator, Sequence
 from datetime import UTC, datetime
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from threading import Thread
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
 from celery.exceptions import Retry
+from flask import Flask
 from sqlalchemy import Engine, event
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
@@ -127,6 +131,55 @@ def mock_get_image_upload_file_ids() -> Iterator[MagicMock]:
     with patch("tasks.clean_dataset_task.get_image_upload_file_ids", autospec=True) as mock_func:
         mock_func.return_value = []
         yield mock_func
+
+
+@pytest.fixture
+def elasticsearch_delete_endpoint() -> Iterator[tuple[int, list[int], list[tuple[str, int]]]]:
+    """Serve real SDK requests with Elasticsearch's missing-index response shape."""
+    pytest.importorskip("elasticsearch")
+    pytest.importorskip("dify_vdb_elasticsearch.elasticsearch_vector")
+    responses: list[int] = []
+    requests: list[tuple[str, int]] = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def respond(self, status: int, payload: dict[str, object]) -> None:
+            body = json.dumps(payload).encode()
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("X-Elastic-Product", "Elasticsearch")
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(body)
+
+        def do_HEAD(self) -> None:
+            self.respond(200, {})
+
+        def do_GET(self) -> None:
+            self.respond(200, {"version": {"number": "8.14.0"}})
+
+        def do_DELETE(self) -> None:
+            status = responses.pop(0) if responses else 500
+            requests.append((self.path, status))
+            if status == 200:
+                self.respond(status, {"acknowledged": True})
+            else:
+                error = {"type": "index_not_found_exception", "reason": "no such index [cleanup-index]"}
+                self.respond(status, {"error": {**error, "root_cause": [error]}, "status": status})
+
+        @override
+        def log_message(self, format: str, *args: object) -> None:
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+    thread.start()
+    try:
+        yield server.server_port, responses, requests
+    finally:
+        server.shutdown()
+        thread.join(timeout=1)
+        server.server_close()
 
 
 def _run_clean_dataset(
@@ -604,6 +657,103 @@ class TestEdgeCases:
 
 class TestIndexProcessorParameters:
     """Test cases for IndexProcessor clean method parameters."""
+
+    @pytest.mark.parametrize("commit_fails", [False, True])
+    def test_missing_elasticsearch_index_allows_parent_child_cleanup_after_retry(
+        self,
+        commit_fails: bool,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        elasticsearch_delete_endpoint: tuple[int, list[int], list[tuple[str, int]]],
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        orm_session_maker: sessionmaker[Session],
+        mock_storage: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        port, responses, requests = elasticsearch_delete_endpoint
+        expected_statuses = [200, 404] if commit_fails else [404]
+        responses.extend(expected_statuses)
+        for key, value in {
+            "ELASTICSEARCH_USE_CLOUD": False,
+            "ELASTICSEARCH_HOST": "http://127.0.0.1",
+            "ELASTICSEARCH_PORT": port,
+            "ELASTICSEARCH_USERNAME": "elastic",
+            "ELASTICSEARCH_PASSWORD": "test",
+            "ELASTICSEARCH_REQUEST_TIMEOUT": 2,
+            "ELASTICSEARCH_MAX_RETRIES": 0,
+            "ELASTICSEARCH_RETRY_ON_TIMEOUT": False,
+        }.items():
+            monkeypatch.setitem(app.config, key, value)
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segment = _persist_segment(
+            orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id
+        )
+        child = ChildChunk(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_id=document.id,
+            segment_id=segment.id,
+            position=1,
+            content="child",
+            word_count=1,
+            created_by=str(uuid.uuid4()),
+        )
+        with orm_session_maker.begin() as session:
+            session.add(child)
+        task_kwargs = {
+            "dataset_id": dataset_id,
+            "tenant_id": tenant_id,
+            "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
+            "index_struct": json.dumps({"type": "elasticsearch", "vector_store": {"class_prefix": "cleanup-index"}}),
+            "collection_binding_id": collection_binding_id,
+            "doc_form": IndexStructureType.PARENT_CHILD_INDEX,
+        }
+        failure = OperationalError("commit", {}, RuntimeError("temporary index commit failure"))
+        injected_failures: list[OperationalError] = []
+
+        def fail_first_index_commit(session: Session) -> None:
+            if requests == [("/cleanup-index", 200)] and not injected_failures:
+                assert session.get(ChildChunk, child.id) is None
+                injected_failures.append(failure)
+                raise failure
+
+        with (
+            patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh,
+            caplog.at_level("INFO", logger="tasks.clean_dataset_task"),
+        ):
+            if commit_fails:
+                event.listen(orm_session_maker, "before_commit", fail_first_index_commit)
+                try:
+                    with pytest.raises(Retry) as retried:
+                        clean_dataset_task.apply(kwargs=task_kwargs, throw=True)
+                finally:
+                    event.remove(orm_session_maker, "before_commit", fail_first_index_commit)
+                assert injected_failures == [failure]
+                assert retried.value.exc is failure
+                with orm_session_maker() as session:
+                    assert session.get(ChildChunk, child.id) is not None
+                    assert session.get(DocumentSegment, segment.id) is not None
+                    assert session.get(Document, document.id) is not None
+                schedule_refresh.assert_not_called()
+                assert not any("Cleaned dataset when dataset deleted:" in message for message in caplog.messages)
+                # celery-stubs omits the signature stored on Retry at runtime.
+                retry_signature = retried.value.sig  # pyrefly: ignore[missing-attribute]
+                assert retry_signature is not None
+                assert retry_signature.kwargs["index_cleanup_done"] is False
+                result = retry_signature.apply(throw=True)
+            else:
+                result = clean_dataset_task.apply(kwargs=task_kwargs, throw=True)
+            assert result.successful()
+            schedule_refresh.assert_called_once_with(tenant_id)
+
+        assert requests == [("/cleanup-index", status) for status in expected_statuses]
+        with orm_session_maker() as session:
+            assert session.get(ChildChunk, child.id) is None
+            assert session.get(DocumentSegment, segment.id) is None
+            assert session.get(Document, document.id) is None
+        mock_storage.delete.assert_not_called()
 
     def test_clean_dataset_task_passes_correct_parameters_to_index_processor(
         self,
