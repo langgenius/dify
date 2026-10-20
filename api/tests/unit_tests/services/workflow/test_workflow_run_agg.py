@@ -23,7 +23,6 @@ from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, Wor
 from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.nodes.human_input.entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
 from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from graphon.engine_events import (
@@ -40,6 +39,7 @@ from graphon.runtime import RuntimeState
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models import Account
 from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
+from models.human_input_entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
 from models.model import AppMode
 from models.trigger import WorkflowTriggerLog
 from models.workflow import (
@@ -289,7 +289,7 @@ def test_late_form_submission_is_refreshed_before_the_real_queue_closes(sqlite_s
     from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
     from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent
     from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
-    from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+    from enums.human_input import HumanInputFormStatus
     from graphon.engine_events import NodeRunStartedEvent
     from tests.unit_tests.core.app.apps.test_workflow_human_input_completion import (
         _make_paused_workflow,
@@ -420,8 +420,8 @@ def test_elapsed_time_accumulates_across_pauses_and_matches_delayed_stream_respo
     from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
     from core.app.entities.task_entities import WorkflowPauseStreamResponse
     from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
-    from core.workflow.nodes.human_input.enums import HumanInputFormStatus
     from core.workflow.system_variables import build_system_variables
+    from enums.human_input import HumanInputFormStatus
     from graphon.entities import WorkflowStartReason
     from models.human_input import HumanInputForm
 
@@ -547,7 +547,7 @@ def test_stop_wins_while_engine_is_persisting_a_pause(
     from sqlalchemy.orm import sessionmaker
 
     from core.app.entities.queue_entities import QueueStopEvent
-    from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+    from enums.human_input import HumanInputFormStatus
     from graphon.enums import WorkflowExecutionStatus
     from models.human_input import HumanInputForm
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository

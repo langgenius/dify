@@ -31,12 +31,12 @@ from core.app.apps.common.workflow_response_converter import WorkflowResponseCon
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
-from core.workflow.nodes.human_input.entities import FormInputConfig
 from extensions.ext_database import db
 from libs.external_api import error_responses
 from libs.login import login_required
 from models import Account, App
 from models.enums import CreatorUserRole
+from models.human_input_entities import FormInputConfig
 from models.model import AppMode
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory

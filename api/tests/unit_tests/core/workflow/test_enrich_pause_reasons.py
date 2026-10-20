@@ -5,12 +5,12 @@ import pytest
 from core.repositories.human_input_repository import HumanInputFormRecord
 from core.workflow.human_input_policy import FormDisposition, enrich_human_input_pause_reasons
 from core.workflow.nodes.human_input.boundary import build_human_input_pause_reason
-from core.workflow.nodes.human_input.entities import FormDefinition, SelectInputConfig, StringListSource
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from graphon.entities.pause_reason import HitlRequired
 from graphon.runtime import VariablePool
 from models.human_input import HumanInputForm
+from models.human_input_entities import FormDefinition, SelectInputConfig, StringListSource
 
 _HUMAN_INPUT_REASON = {"TYPE": DifyHITLEventType.HUMAN_INPUT_REQUIRED, "form_id": "f1"}
 

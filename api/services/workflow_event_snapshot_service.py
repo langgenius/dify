@@ -35,12 +35,12 @@ from core.workflow.human_input_policy import (
     resolve_human_input_pause_reason_inputs,
     resolve_variable_select_input_options,
 )
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import (
     DifyHITLEventType,
     HumanInputRequired,
     PauseReason,
 )
+from enums.human_input import HumanInputFormStatus
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import RuntimeState

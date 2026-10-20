@@ -10,17 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import services.remote_file_service as remote_file_service_module
-from core.workflow.human_input_adapter import (
-    EmailDeliveryConfig,
-    EmailDeliveryMethod,
-    EmailRecipients,
-    ExternalRecipient,
-)
-from core.workflow.nodes.human_input.entities import FileInputConfig, HumanInputNodeData
-from core.workflow.nodes.human_input.enums import HumanInputFormKind
+from enums.human_input import HumanInputFormKind
 from graphon.enums import BuiltinNodeTypes
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.human_input import HumanInputForm, HumanInputFormRecipient, HumanInputFormUploadFile
+from models.human_input_delivery import EmailDeliveryConfig, EmailDeliveryMethod, EmailRecipients, ExternalRecipient
+from models.human_input_entities import FileInputConfig, HumanInputNodeData
 from models.model import App, AppMode, UploadFile
 from models.workflow import Workflow, WorkflowType
 from services.workflow_service import WorkflowService

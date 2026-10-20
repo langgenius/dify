@@ -55,7 +55,6 @@ from core.workflow.node_factory import (
 )
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired, PauseReason
 from core.workflow.system_variables import (
     build_bootstrap_variables,
@@ -67,6 +66,7 @@ from core.workflow.system_variables import (
 from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
+from enums.human_input import HumanInputFormStatus
 from graphon.engine.layer import Layer
 from graphon.engine_events import (
     EngineEvent,

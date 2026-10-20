@@ -13,15 +13,14 @@ from typing import Annotated, Any, Literal, Self, assert_never, override
 
 from pydantic import BaseModel, Field, NonNegativeInt, field_validator, model_validator
 
+from enums.human_input import ButtonStyle, FormInputType, TimeoutUnit, ValueSourceType
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.file.enums import FileTransferMethod, FileType
 from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.consts import SELECTORS_LENGTH
 from graphon.variables.segments import Segment
-
-from . import _exc as exc
-from .enums import ButtonStyle, FormInputType, TimeoutUnit, ValueSourceType
+from models import _human_input_exc as exc
 
 _OUTPUT_VARIABLE_PATTERN = re.compile(
     r"\{\{#\$output\.(?P<field_name>[a-zA-Z_][a-zA-Z0-9_]{0,29})#\}\}",
