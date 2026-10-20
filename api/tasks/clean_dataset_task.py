@@ -201,19 +201,15 @@ def _delete_documents(session: Session, dataset_id: str) -> None:
 
 
 def _delete_upload_files(session: Session, file_ids: Sequence[str]) -> None:
-    """Delete ``UploadFile`` rows and attempt to remove their object-storage blobs.
-
-    Storage errors are logged but do not keep the row. Task retries only resume
-    remaining database rows; blob cleanup retains its existing best-effort behavior.
-    """
+    """Delete blobs before their lookup rows so failures retain storage keys for retry."""
     if not file_ids:
         return
     files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
     for file in files:
         try:
             storage.delete(file.key)
-        except Exception:
-            logger.exception("Delete file failed when storage deleted, upload_file_id: %s", file.id)
+        except FileNotFoundError:
+            logger.debug("Upload file already absent from storage, upload_file_id: %s", file.id)
     session.execute(delete(UploadFile).where(UploadFile.id.in_(file_ids)))
 
 

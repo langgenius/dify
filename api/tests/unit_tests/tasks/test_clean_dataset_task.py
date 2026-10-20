@@ -401,8 +401,10 @@ class TestPipelineAndWorkflowDeletion:
 class TestSegmentAttachmentCleanup:
     """Test cases for segment attachment cleanup."""
 
+    @pytest.mark.parametrize("storage_fails", [False, True])
     def test_inline_image_attachment_binding_is_deleted_after_its_file(
         self,
+        storage_fails: bool,
         dataset_id: str,
         tenant_id: str,
         collection_binding_id: str,
@@ -410,30 +412,64 @@ class TestSegmentAttachmentCleanup:
         mock_storage: MagicMock,
         mock_index_processor_factory: dict[str, MagicMock],
     ) -> None:
-        """Inline images and attachments can refer to the same uploaded file."""
+        """Inline images, source files and attachments can share an uploaded file."""
         document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
         segment = _persist_segment(
             orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id
         )
         binding, attachment_file = _persist_attachment(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
         segment.content = f"![image](https://example.com/files/{attachment_file.id}/file-preview)"
+        document.data_source_type = "upload_file"
+        document.data_source_info = json.dumps({"upload_file_id": attachment_file.id})
         binding.document_id = document.id
         binding.segment_id = segment.id
         with orm_session_maker.begin() as session:
-            session.add_all([segment, binding])
+            session.add_all([document, segment, binding])
         unrelated_attachments = [
             _persist_attachment(orm_session_maker, dataset_id=str(uuid.uuid4()), tenant_id=tenant_id),
             _persist_attachment(orm_session_maker, dataset_id=dataset_id, tenant_id=str(uuid.uuid4())),
         ]
+        if storage_fails:
+            failure = TimeoutError("shared source and inline image storage unavailable")
+            mock_storage.delete.side_effect = failure
+            with pytest.raises(Retry) as retried:
+                clean_dataset_task.apply(
+                    kwargs={
+                        "dataset_id": dataset_id,
+                        "tenant_id": tenant_id,
+                        "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
+                        "index_struct": None,
+                        "collection_binding_id": collection_binding_id,
+                        "doc_form": IndexStructureType.PARAGRAPH_INDEX,
+                    },
+                    throw=True,
+                )
+            assert retried.value.exc is failure
+            with orm_session_maker() as session:
+                assert session.get(Document, document.id) is not None
+                assert session.get(DocumentSegment, segment.id) is not None
+                assert session.get(SegmentAttachmentBinding, binding.id) is not None
+                retained_file = session.get(UploadFile, attachment_file.id)
+                assert retained_file is not None
+                assert retained_file.key == attachment_file.key
+            # celery-stubs omits the signature stored on Retry at runtime.
+            retry_signature = retried.value.sig  # pyrefly: ignore[missing-attribute]
+            assert retry_signature is not None
+            assert retry_signature.kwargs["index_cleanup_done"] is True
+            mock_storage.delete.side_effect = None
+            assert retry_signature.apply(throw=True).successful()
+        else:
+            _run_clean_dataset(
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                collection_binding_id=collection_binding_id,
+            )
 
-        _run_clean_dataset(
-            dataset_id=dataset_id,
-            tenant_id=tenant_id,
-            collection_binding_id=collection_binding_id,
-        )
-
-        mock_storage.delete.assert_called_once_with(attachment_file.key)
+        assert mock_storage.delete.call_count == (2 if storage_fails else 1)
+        mock_storage.delete.assert_called_with(attachment_file.key)
+        mock_index_processor_factory["processor"].clean.assert_called_once()
         with orm_session_maker() as session:
+            assert session.get(Document, document.id) is None
             assert session.get(DocumentSegment, segment.id) is None
             assert session.get(UploadFile, attachment_file.id) is None
             assert session.get(SegmentAttachmentBinding, binding.id) is None
@@ -768,6 +804,99 @@ class TestIndexProcessorParameters:
 
 class TestStepIsolation:
     """Committed batches survive failure, while dependent cleanup waits for retry."""
+
+    def test_source_file_failure_keeps_batch_references_and_retries_missing_blob(
+        self,
+        orm_session_maker: sessionmaker[Session],
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Retry a partially deleted source-file batch without losing its storage keys."""
+        documents = [_persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id) for _ in range(2)]
+        source_files = [
+            UploadFile(
+                tenant_id=tenant_id,
+                storage_type=StorageType.LOCAL,
+                key=f"upload_files/{uuid.uuid4()}.pdf",
+                name="source.pdf",
+                size=10,
+                extension="pdf",
+                mime_type="application/pdf",
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=str(uuid.uuid4()),
+                created_at=datetime.now(UTC),
+                used=False,
+            )
+            for _ in documents
+        ]
+        with orm_session_maker.begin() as session:
+            for document, source_file in zip(documents, source_files, strict=True):
+                document.data_source_type = "upload_file"
+                document.data_source_info = json.dumps({"upload_file_id": source_file.id})
+                session.add_all([document, source_file])
+
+        remaining_blobs = {source_file.key for source_file in source_files}
+        attempted_keys: list[str] = []
+        failure = TimeoutError("source storage unavailable")
+
+        def delete_blob(key: str) -> None:
+            attempted_keys.append(key)
+            if len(attempted_keys) == 2:
+                raise failure
+            if key not in remaining_blobs:
+                raise FileNotFoundError(key)
+            remaining_blobs.remove(key)
+
+        mock_storage.delete.side_effect = delete_blob
+        with (
+            patch("tasks.clean_dataset_task._DELETE_BATCH_SIZE", 2),
+            patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh,
+            caplog.at_level("INFO", logger="tasks.clean_dataset_task"),
+        ):
+            with pytest.raises(Retry) as retried:
+                clean_dataset_task.apply(
+                    kwargs={
+                        "dataset_id": dataset_id,
+                        "tenant_id": tenant_id,
+                        "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
+                        "index_struct": None,
+                        "collection_binding_id": collection_binding_id,
+                        "doc_form": IndexStructureType.PARAGRAPH_INDEX,
+                    },
+                    throw=True,
+                )
+
+            assert len(attempted_keys) == 2
+            assert remaining_blobs == {attempted_keys[1]}
+            with orm_session_maker() as session:
+                for document, source_file in zip(documents, source_files, strict=True):
+                    retained_document = session.get(Document, document.id)
+                    retained_file = session.get(UploadFile, source_file.id)
+                    assert retained_document is not None
+                    assert retained_document.data_source_info_dict["upload_file_id"] == source_file.id
+                    assert retained_file is not None
+                    assert retained_file.key == source_file.key
+            assert retried.value.exc is failure
+            assert not any("Cleaned dataset when dataset deleted:" in message for message in caplog.messages)
+            # celery-stubs omits the signature stored on Retry at runtime.
+            retry_signature = retried.value.sig  # pyrefly: ignore[missing-attribute]
+            assert retry_signature is not None
+            assert retry_signature.kwargs["index_cleanup_done"] is True
+            schedule_refresh.assert_called_once_with(tenant_id)
+
+            assert retry_signature.apply(throw=True).successful()
+            mock_index_processor_factory["processor"].clean.assert_called_once()
+            schedule_refresh.assert_called_once_with(tenant_id)
+
+        assert not remaining_blobs
+        assert all(attempted_keys.count(source_file.key) == 2 for source_file in source_files)
+        with orm_session_maker() as session:
+            assert all(session.get(Document, document.id) is None for document in documents)
+            assert all(session.get(UploadFile, source_file.id) is None for source_file in source_files)
 
     def test_cleanup_commits_more_than_once(
         self,
