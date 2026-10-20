@@ -12,6 +12,7 @@ function installApiAccessApi() {
       datasets: {
         apiKeys: {
           get: () => ({
+            max_keys: 10,
             data: [
               {
                 id: 'workspace-key',

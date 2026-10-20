@@ -768,6 +768,13 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       apiKeys: {
         post: {
           mutationOptions: {
+            // A rejected create can mean the server's capacity has changed.
+            onError: (_error, variables, _onMutateResult, context) =>
+              invalidateQueryKeys(context.client, [
+                consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
+                  input: { params: { resource_id: variables.params.resource_id } },
+                }),
+              ]),
             // Writes the new key into its list, so the one-time secret shows at once.
             onSuccess: (created, variables, _onMutateResult, context) =>
               addCreatedKeyToLists(
