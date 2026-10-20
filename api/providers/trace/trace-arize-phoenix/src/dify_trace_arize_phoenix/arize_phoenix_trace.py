@@ -1490,6 +1490,11 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         return self.carrier
 
     def api_check(self):
+        if isinstance(self.arize_phoenix_config, ArizeConfig):
+            from dify_trace_arize_phoenix.arize_configuration import verify_configuration
+
+            verify_configuration(self.arize_phoenix_config)
+            return True
         try:
             with self.tracer.start_span("api_check") as span:
                 span.set_attribute("test", "true")
@@ -1499,14 +1504,16 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             raise ValueError(f"[Arize/Phoenix] API check failed: {str(e)}") from e
 
     def get_project_url(self):
-        """Build a redirect URL that forwards the user to the correct project for Arize/Phoenix."""
+        """Get a Phoenix redirect; Arize Cloud requires verified destination metadata."""
         try:
             project_name = self.arize_phoenix_config.project
             endpoint = self.arize_phoenix_config.endpoint.rstrip("/")
 
-            # Arize
+            # Arize Cloud links require verified organization/space/project IDs.
+            # Only explicit config writes resolve and cache them; this legacy
+            # instance has none of that metadata and cannot promise a project.
             if isinstance(self.arize_phoenix_config, ArizeConfig):
-                return f"https://app.arize.com/?redirect_project_name={project_name}"
+                return None
 
             # Phoenix
             return f"{endpoint}/projects/?redirect_project_name={project_name}"

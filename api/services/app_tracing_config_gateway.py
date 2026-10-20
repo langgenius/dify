@@ -20,7 +20,6 @@ from services.app_tracing_config_service import (
 logger = logging.getLogger(__name__)
 
 _PROJECT_URL_FALLBACKS = {
-    "arize": "https://app.arize.com/",
     "phoenix": "https://app.phoenix.arize.com/projects/",
     "langsmith": "https://smith.langchain.com/",
     "opik": "https://www.comet.com/opik/",
@@ -73,7 +72,9 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             normalized_config = self._normalize_config(provider_config, tracing_config)
         self._verify_config(normalized_config, tracing_provider)
 
-        project_url = self._get_project_url(normalized_config, tracing_provider)
+        project_url = (
+            None if tracing_provider == "arize" else self._get_project_url(normalized_config, tracing_provider)
+        )
         try:
             encrypted_config = OpsTraceManager.encrypt_tracing_config(
                 workspace_id,
@@ -82,7 +83,9 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             )
         except Exception as error:
             raise AppTracingConfigProcessingError from error
-        if project_url:
+        if tracing_provider == "arize":
+            self._resolve_arize_destination(encrypted_config, normalized_config)
+        elif project_url:
             encrypted_config["project_url"] = project_url
         return encrypted_config
 
@@ -142,8 +145,10 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             for key in ("url", "workspace", "project"):
                 encrypted_config[key] = decrypted_config[key]
         # Re-resolve after destination changes; never retain a previous project's link.
-        project_url = self._get_project_url(decrypted_config, tracing_provider)
-        if project_url:
+        project_url = None if tracing_provider == "arize" else self._get_project_url(decrypted_config, tracing_provider)
+        if tracing_provider == "arize":
+            self._resolve_arize_destination(encrypted_config, decrypted_config)
+        elif project_url:
             encrypted_config["project_url"] = project_url
         return encrypted_config
 
@@ -170,7 +175,13 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         except Exception as error:
             raise AppTracingConfigProcessingError from error
 
-        if tracing_provider == "aliyun":
+        if tracing_provider == "arize":
+            from dify_trace_arize_phoenix.arize_configuration import project_url
+
+            # The encrypted record carries server-owned non-secret metadata.
+            # Legacy decryption intentionally retains only provider input fields.
+            presented_config["project_url"] = project_url(tracing_config)
+        elif tracing_provider == "aliyun":
             from dify_trace_aliyun.configuration import console_url
 
             # GET never constructs the legacy queue/exporter or probes credentials.
@@ -243,6 +254,24 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
                 presented_config["project_url"] = _PROJECT_URL_FALLBACKS[tracing_provider]
 
         return presented_config
+
+    @staticmethod
+    def _resolve_arize_destination(encrypted_config: dict[str, Any], verified_config: dict[str, Any]) -> None:
+        from dify_trace_arize_phoenix.arize_configuration import (
+            DESTINATION_KEY,
+            bind_destination,
+            project_url,
+            resolve_project_destination,
+        )
+
+        # Only the explicit write path may replace this cache. Never trust IDs
+        # or URLs submitted by a client, or retain a previous target on failure.
+        encrypted_config.pop(DESTINATION_KEY, None)
+        encrypted_config.pop("project_url", None)
+        destination = resolve_project_destination(verified_config)
+        if destination is not None:
+            encrypted_config[DESTINATION_KEY] = bind_destination(encrypted_config, destination)
+            encrypted_config["project_url"] = project_url(encrypted_config)
 
     @staticmethod
     def _provider_config(tracing_provider: str) -> TracingProviderConfigEntry:
@@ -320,6 +349,16 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
 
     @staticmethod
     def _verify_config(tracing_config: dict[str, Any], tracing_provider: str) -> None:
+        if tracing_provider == "arize":
+            from dify_trace_arize_phoenix.arize_configuration import ArizeConfigurationError, verify_configuration
+            from dify_trace_arize_phoenix.config import ArizeConfig
+
+            try:
+                verify_configuration(ArizeConfig.model_validate(tracing_config))
+            except ArizeConfigurationError as error:
+                logger.warning("Arize ingestion verification failed: error_code=%s", error.code)
+                raise AppTracingConfigVerificationFailedError from None
+            return
         if tracing_provider == "aliyun":
             from dify_trace_aliyun.config import AliyunConfig
             from dify_trace_aliyun.configuration import AliyunConfigurationError, verify_configuration
@@ -447,7 +486,9 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
 
                 return project_url(PhoenixConfig.model_validate(tracing_config))
             if tracing_provider == "arize":
-                return OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
+                from dify_trace_arize_phoenix.arize_configuration import project_url
+
+                return project_url(tracing_config)
             if tracing_provider == "langfuse":
                 project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
                 return f"{tracing_config.get('host')}/project/{project_key}"
