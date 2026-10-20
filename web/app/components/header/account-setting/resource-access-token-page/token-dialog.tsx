@@ -119,7 +119,7 @@ export default function ResourceAccessTokenDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
-      <DialogContent backdropProps={{ forceRender: true }} className="w-160">
+      <DialogContent backdropProps={{ forceRender: true }} className="w-168 overflow-hidden">
         <DialogHeader>
           <DialogTitle>
             {isEdit
@@ -160,8 +160,8 @@ export default function ResourceAccessTokenDialog({
           </>
         ) : (
           <form className="contents" onSubmit={handleSubmit}>
-            <DialogBody className="grid gap-5">
-              <Field name="name">
+            <DialogBody className="grid gap-6">
+              <Field name="name" className="border-b border-divider-subtle pb-6">
                 <FieldLabel>{nameLabel}</FieldLabel>
                 <Input
                   required
