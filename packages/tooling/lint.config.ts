@@ -631,6 +631,24 @@ export const lintConfig = {
     'no-undef': 'error',
   },
   overrides: [
+    {
+      files: ['web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
+      excludeFiles: [
+        'web/**/__tests__/**',
+        'web/**/__mocks__/**',
+        'web/test/**',
+        'web/scripts/**',
+        'web/**/*.spec.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+        'web/**/*.test.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+        'web/**/*.stories.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+        'web/**/*.story.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
+        'web/vitest.setup.ts',
+        'web/vitest.browser.setup.ts',
+      ],
+      rules: {
+        'dify/no-handwritten-api': 'error',
+      },
+    },
     ...(enableTailwindCanonicalClasses ? [tailwindCanonicalClassesOverride] : []),
     {
       files: ['**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],

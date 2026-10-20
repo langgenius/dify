@@ -156,6 +156,36 @@ Explain the concrete reason after `--`: which external contract, lifecycle, or r
 
 `reportUnusedDisableDirectives` runs at `error` repository-wide. Remove an exception when the finding no longer exists. Keep both checks active: a described disable may still be unused, and a used disable may still lack a reason.
 
+### Handwritten HTTP Calls
+
+`dify/no-handwritten-api` runs on Web production JavaScript and TypeScript,
+including service and feature clients. It reports calls to:
+
+- Global `fetch` and `XMLHttpRequest`, including `window`, `globalThis`, and `self` access.
+- Request helpers from `web/service/base.ts` and `web/service/fetch.ts`, including
+  public, marketplace, upload, streaming, and keepalive helpers.
+- Common HTTP clients such as `ky`, `axios`, `ofetch`, and `undici`.
+
+The rule follows named/namespace imports, relative module paths, static member
+access, local aliases, object destructuring, bound functions, and client factories.
+It checks each call, so adding another request through an existing import still
+increases the violation count. Direct transport re-exports are also checked.
+Generated `consoleClient`, `consoleQuery`, and marketplace clients remain allowed,
+including direct calls from UI code; this rule does not enforce Query ownership.
+
+Existing calls are recorded in `oxlint-suppressions.json`, including the generated
+clients' transport implementations. No production file or service directory is
+exempted from this rule. The baseline is a per-file count, not permission to add new
+endpoints: prune it when migrating existing calls and do not raise it for new work.
+Like other bulk suppressions, it cannot distinguish replacing one old call with
+another while keeping the same count.
+
+Tests, mocks, stories, test infrastructure, and maintenance scripts are outside this
+production rule. For a necessary new binary, streaming, third-party asset, or transport
+implementation, use a scoped `oxlint-disable-next-line dify/no-handwritten-api`
+with the concrete contract reason. The existing restrictions on importing
+`service/base` and `service/fetch` remain active independently.
+
 ### Translation Function Types
 
 `dify/require-i18n-namespace` requires translation hook calls to use non-empty

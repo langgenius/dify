@@ -42,12 +42,22 @@
       "count": 2
     }
   },
+  "web/app/(commonLayout)/plugins/page.tsx": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    }
+  },
   "web/app/(shareLayout)/webapp-signin/normalForm.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
+    }
+  },
+  "web/app/auth/refresh/route.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
     }
   },
   "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
@@ -349,6 +359,9 @@
     }
   },
   "web/app/components/base/audio-gallery/AudioPlayer.tsx": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "jsx-a11y/media-has-caption": {
       "count": 1
     },
@@ -423,6 +436,9 @@
     }
   },
   "web/app/components/base/chat/chat/hooks.ts": {
+    "dify/no-handwritten-api": {
+      "count": 2
+    },
     "eslint-react/set-state-in-effect": {
       "count": 2
     },
@@ -562,6 +578,9 @@
     }
   },
   "web/app/components/base/file-uploader/utils.ts": {
+    "dify/no-handwritten-api": {
+      "count": 2
+    },
     "no-restricted-imports": {
       "count": 1
     },
@@ -609,12 +628,23 @@
       "count": 15
     }
   },
+  "web/app/components/base/icon-picker/emoji-data.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    }
+  },
   "web/app/components/base/image-uploader/image-preview.tsx": {
+    "dify/no-handwritten-api": {
+      "count": 2
+    },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
     }
   },
   "web/app/components/base/image-uploader/utils.ts": {
+    "dify/no-handwritten-api": {
+      "count": 2
+    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -835,6 +865,9 @@
     }
   },
   "web/app/components/base/text-generation/hooks.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -879,6 +912,11 @@
   "web/app/components/datasets/common/document-status-with-action/status-with-action.tsx": {
     "eslint-react/static-components": {
       "count": 2
+    }
+  },
+  "web/app/components/datasets/common/image-previewer/index.tsx": {
+    "dify/no-handwritten-api": {
+      "count": 1
     }
   },
   "web/app/components/datasets/common/image-uploader/image-uploader-in-chunk/image-input.tsx": {
@@ -932,6 +970,9 @@
     }
   },
   "web/app/components/datasets/create/file-uploader/hooks/use-file-upload.ts": {
+    "dify/no-handwritten-api": {
+      "count": 2
+    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -1053,6 +1094,9 @@
     }
   },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.tsx": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     },
@@ -1069,6 +1113,9 @@
     }
   },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.tsx": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "eslint-react/set-state-in-effect": {
       "count": 5
     },
@@ -1101,6 +1148,9 @@
     }
   },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/index.tsx": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     },
@@ -1137,6 +1187,9 @@
     }
   },
   "web/app/components/datasets/documents/detail/batch-modal/csv-uploader.tsx": {
+    "dify/no-handwritten-api": {
+      "count": 2
+    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -1382,6 +1435,9 @@
   "web/app/components/header/github-star/index.tsx": {
     "@tanstack/query/prefer-query-options": {
       "count": 1
+    },
+    "dify/no-handwritten-api": {
+      "count": 1
     }
   },
   "web/app/components/main-nav/components/workspace-switcher.tsx": {
@@ -1390,6 +1446,9 @@
     }
   },
   "web/app/components/plugins/install-plugin/hooks.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "typescript/no-explicit-any": {
       "count": 4
     }
@@ -1417,6 +1476,9 @@
   "web/app/components/plugins/marketplace/hooks.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 3
+    },
+    "dify/no-handwritten-api": {
+      "count": 1
     },
     "no-restricted-imports": {
       "count": 1
@@ -1593,11 +1655,17 @@
     }
   },
   "web/app/components/rag-pipeline/hooks/use-nodes-sync-draft.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     }
   },
   "web/app/components/rag-pipeline/hooks/use-pipeline-run.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 2
     },
@@ -1646,6 +1714,9 @@
     }
   },
   "web/app/components/share/text-generation/result/workflow-stream-handlers.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 2
     }
@@ -1688,11 +1759,17 @@
     }
   },
   "web/app/components/snippets/hooks/use-nodes-sync-draft.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "dify/require-disable-directive-description": {
       "count": 1
     }
   },
   "web/app/components/snippets/hooks/use-snippet-run.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 2
     }
@@ -1726,21 +1803,33 @@
     }
   },
   "web/app/components/workflow-app/hooks/use-nodes-sync-draft.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     }
   },
   "web/app/components/workflow-app/hooks/use-workflow-run-callbacks.ts": {
+    "dify/no-handwritten-api": {
+      "count": 2
+    },
     "no-restricted-imports": {
       "count": 2
     }
   },
   "web/app/components/workflow-app/hooks/use-workflow-run-utils.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 3
     }
   },
   "web/app/components/workflow-app/hooks/use-workflow-run.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 2
     }
@@ -2092,6 +2181,9 @@
     }
   },
   "web/app/components/workflow/nodes/_base/hooks/use-one-step-run.ts": {
+    "dify/no-handwritten-api": {
+      "count": 2
+    },
     "dify/require-disable-directive-description": {
       "count": 1
     },
@@ -2683,6 +2775,9 @@
     }
   },
   "web/app/components/workflow/panel/debug-and-preview/hooks.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 2
     },
@@ -3015,12 +3110,25 @@
       "count": 1
     }
   },
+  "web/features/agent-v2/agent-detail/configure/components/orchestrate/skills/use-skill-detail.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    }
+  },
   "web/features/agent-v2/agent-detail/configure/components/preview/working-directory-panel.tsx": {
     "@tanstack/query/prefer-query-options": {
       "count": 2
     }
   },
+  "web/features/app-access-error/document-response.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    }
+  },
   "web/features/skills/client.ts": {
+    "dify/no-handwritten-api": {
+      "count": 6
+    },
     "dify/require-disable-directive-description": {
       "count": 2
     }
@@ -3036,6 +3144,11 @@
   "web/features/skills/detail/file-tree-items.tsx": {
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
+    }
+  },
+  "web/features/skills/detail/file-tree.tsx": {
+    "dify/no-handwritten-api": {
+      "count": 1
     }
   },
   "web/features/skills/detail/page.tsx": {
@@ -3114,6 +3227,9 @@
     }
   },
   "web/service/annotation.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -3124,6 +3240,9 @@
     }
   },
   "web/service/base.ts": {
+    "dify/no-handwritten-api": {
+      "count": 5
+    },
     "no-restricted-imports": {
       "count": 2
     },
@@ -3132,13 +3251,39 @@
     }
   },
   "web/service/common.ts": {
+    "dify/no-handwritten-api": {
+      "count": 7
+    },
     "no-restricted-imports": {
       "count": 1
     }
   },
+  "web/service/console/browser.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    }
+  },
+  "web/service/console/server.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    }
+  },
+  "web/service/datasets.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    }
+  },
   "web/service/debug.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 2
+    }
+  },
+  "web/service/device-flow.ts": {
+    "dify/no-handwritten-api": {
+      "count": 5
     }
   },
   "web/service/fetch.spec.ts": {
@@ -3147,26 +3292,51 @@
     }
   },
   "web/service/fetch.ts": {
+    "dify/no-handwritten-api": {
+      "count": 5
+    },
     "no-restricted-imports": {
       "count": 1
     }
   },
   "web/service/log.ts": {
+    "dify/no-handwritten-api": {
+      "count": 2
+    },
     "no-restricted-imports": {
       "count": 1
     }
   },
+  "web/service/marketplace-templates.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    }
+  },
+  "web/service/marketplace.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    }
+  },
   "web/service/plugins.ts": {
+    "dify/no-handwritten-api": {
+      "count": 5
+    },
     "no-restricted-imports": {
       "count": 1
     }
   },
   "web/service/refresh-token.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "no-restricted-properties": {
       "count": 7
     }
   },
   "web/service/share.ts": {
+    "dify/no-handwritten-api": {
+      "count": 15
+    },
     "no-restricted-imports": {
       "count": 2
     },
@@ -3175,12 +3345,23 @@
     }
   },
   "web/service/sso.ts": {
+    "dify/no-handwritten-api": {
+      "count": 3
+    },
     "no-restricted-imports": {
       "count": 1
     }
   },
+  "web/service/tools.ts": {
+    "dify/no-handwritten-api": {
+      "count": 4
+    }
+  },
   "web/service/use-common.ts": {
     "@tanstack/query/prefer-query-options": {
+      "count": 1
+    },
+    "dify/no-handwritten-api": {
       "count": 1
     },
     "dify/require-disable-directive-description": {
@@ -3191,6 +3372,9 @@
     "@tanstack/query/prefer-query-options": {
       "count": 1
     },
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -3198,6 +3382,9 @@
   "web/service/use-plugins.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 10
+    },
+    "dify/no-handwritten-api": {
+      "count": 4
     },
     "dify/require-disable-directive-description": {
       "count": 1
@@ -3231,9 +3418,15 @@
   "web/service/use-workflow.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 4
+    },
+    "dify/no-handwritten-api": {
+      "count": 2
     }
   },
   "web/service/webapp-auth.ts": {
+    "dify/no-handwritten-api": {
+      "count": 2
+    },
     "no-restricted-globals": {
       "count": 6
     },
@@ -3242,11 +3435,17 @@
     }
   },
   "web/service/workflow-generator.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "dify/require-disable-directive-description": {
       "count": 1
     }
   },
   "web/service/workflow.ts": {
+    "dify/no-handwritten-api": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 1
     }
