@@ -11,6 +11,7 @@ from pydantic import JsonValue
 from pytest_mock import MockerFixture
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Forbidden
 
 import services.human_input_service as human_input_service_module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
@@ -34,6 +35,7 @@ from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInput
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
+from models.account import Tenant, TenantStatus
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.workflow import WorkflowRun
@@ -147,8 +149,10 @@ def form_repository(
                 recipient_payload=json.dumps({"TYPE": record.recipient_type}),
                 access_token=record.access_token,
             )
+            tenant = Tenant(name="Workspace")
+            tenant.id = record.tenant_id
             with sqlite_session_factory.begin() as session:
-                session.add_all([form, delivery, recipient])
+                session.add_all([tenant, form, delivery, recipient])
         repository = HumanInputFormSubmissionRepository()
         mocker.spy(repository, "get_by_token")
         mocker.spy(repository, "mark_submitted")
@@ -976,3 +980,49 @@ def test_submit_form_by_token_rejects_cross_tenant_file_list(
         )
 
     cast(MagicMock, repo.mark_submitted).assert_not_called()
+
+
+def test_is_workspace_active_reflects_tenant_status(
+    form_repository: Callable[[HumanInputFormRecord | None], HumanInputFormSubmissionRepository],
+    sample_form_record: HumanInputFormRecord,
+    unbound_session_factory: sessionmaker[Session],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    form_repository(sample_form_record)
+    service = HumanInputService(unbound_session_factory)
+
+    assert service.is_workspace_active(sample_form_record.tenant_id)
+
+    with sqlite_session_factory.begin() as session:
+        tenant = session.get(Tenant, sample_form_record.tenant_id)
+        assert tenant is not None
+        tenant.status = TenantStatus.ARCHIVE
+
+    assert not service.is_workspace_active(sample_form_record.tenant_id)
+    assert not service.is_workspace_active("missing-tenant")
+
+
+def test_submit_form_by_token_rejects_archived_workspace(
+    form_repository: Callable[[HumanInputFormRecord | None], HumanInputFormSubmissionRepository],
+    sample_form_record: HumanInputFormRecord,
+    unbound_session_factory: sessionmaker[Session],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    repo = form_repository(sample_form_record)
+    with sqlite_session_factory.begin() as session:
+        tenant = session.get(Tenant, sample_form_record.tenant_id)
+        assert tenant is not None
+        tenant.status = TenantStatus.ARCHIVE
+    service = HumanInputService(unbound_session_factory, form_repository=repo)
+
+    with pytest.raises(Forbidden):
+        service.submit_form_by_token(
+            recipient_type=RecipientType.STANDALONE_WEB_APP,
+            form_token="token",
+            selected_action_id="submit",
+            form_data={"field": "value"},
+        )
+
+    persisted = repo.get_by_form_id(sample_form_record.form_id)
+    assert persisted is not None
+    assert persisted.status == HumanInputFormStatus.WAITING

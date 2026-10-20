@@ -10,13 +10,14 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Forbidden
 
 import services.human_input_file_upload_service as service_module
 from core.workflow.human_input_adapter import DeliveryMethodType
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
-from models.account import Account, Tenant, TenantAccountJoin
+from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.enums import CreatorUserRole, EndUserType
 from models.human_input import (
     HumanInputDelivery,
@@ -133,6 +134,10 @@ def upload_repository(sqlite_session_factory: sessionmaker[Session], mocker: Moc
                         ),
                     ]
                 )
+                if session.get(Tenant, record.tenant_id) is None:
+                    tenant = Tenant(name="Workspace")
+                    tenant.id = record.tenant_id
+                    session.add(tenant)
         repository = SQLAlchemyHumanInputFileUploadRepository(session_factory=sqlite_session_factory)
         for method in (
             "get_form_by_recipient_token",
@@ -367,3 +372,35 @@ def test_upload_remote_file_records_the_form_file_link(
         file_id="file-1",
     )
     _assert_file_link(sqlite_session_factory)
+
+
+def test_issue_upload_token_rejects_archived_workspace(
+    upload_repository: UploadRepositoryFactory,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    record = _active_form()
+    repository = upload_repository(record)
+    with sqlite_session_factory.begin() as session:
+        tenant = session.get(Tenant, record.tenant_id)
+        assert tenant is not None
+        tenant.status = TenantStatus.ARCHIVE
+    service = _create_service(uploads=repository)
+
+    with pytest.raises(Forbidden):
+        service.issue_upload_token("form-token-1")
+
+
+def test_validate_upload_token_rejects_archived_workspace(
+    upload_repository: UploadRepositoryFactory,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    record = _active_form()
+    repository = upload_repository(record)
+    with sqlite_session_factory.begin() as session:
+        tenant = session.get(Tenant, record.tenant_id)
+        assert tenant is not None
+        tenant.status = TenantStatus.ARCHIVE
+    service = _create_service(uploads=repository)
+
+    with pytest.raises(Forbidden):
+        service.validate_upload_token("upload-token-1")

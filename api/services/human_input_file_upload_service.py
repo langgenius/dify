@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Protocol
 
+from werkzeug.exceptions import Forbidden
+
 from configs import dify_config
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
@@ -68,6 +70,8 @@ class HumanInputFileUploadRepository(Protocol):
 
     def get_upload_grant(self, upload_token: str) -> HumanInputUploadGrantRecord | None: ...
 
+    def is_workspace_active(self, tenant_id: str) -> bool: ...
+
     def get_upload_owner(
         self,
         *,
@@ -124,10 +128,17 @@ class HumanInputFileUploadService:
         if form is None:
             raise FormNotFoundError()
 
+        if not self.is_workspace_active(form.tenant_id):
+            raise Forbidden()
         self._ensure_form_active(form)
         upload_token = self._generate_unique_upload_token()
         self._uploads.create_upload_token(form=form, upload_token=upload_token)
         return HumanInputUploadToken(upload_token=upload_token, expires_at=form.expiration_time)
+
+    def is_workspace_active(self, tenant_id: str) -> bool:
+        """Return whether the workspace that owns the upload token is still active."""
+
+        return self._uploads.is_workspace_active(tenant_id)
 
     def validate_upload_token(self, upload_token: str) -> HumanInputUploadContext:
         """Resolve an upload token and ensure the bound form is still active."""
@@ -137,6 +148,8 @@ class HumanInputFileUploadService:
             raise InvalidUploadTokenError()
 
         form = grant.form
+        if not self.is_workspace_active(form.tenant_id):
+            raise Forbidden()
         self._ensure_form_active(form)
         owner = self._resolve_upload_owner(form=form)
         return HumanInputUploadContext(

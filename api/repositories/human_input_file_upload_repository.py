@@ -5,7 +5,7 @@ from typing import override
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.account import Account, Tenant
+from models.account import Account, Tenant, TenantStatus
 from models.enums import CreatorUserRole
 from models.human_input import (
     HumanInputForm,
@@ -52,6 +52,12 @@ class SQLAlchemyHumanInputFileUploadRepository(HumanInputFileUploadRepository):
                     token=upload_token,
                 )
             )
+
+    @override
+    def is_workspace_active(self, tenant_id: str) -> bool:
+        with self._session_factory() as session:
+            status = session.scalar(select(Tenant.status).where(Tenant.id == tenant_id))
+        return status is not None and status != TenantStatus.ARCHIVE
 
     @override
     def get_upload_grant(self, upload_token: str) -> HumanInputUploadGrantRecord | None:

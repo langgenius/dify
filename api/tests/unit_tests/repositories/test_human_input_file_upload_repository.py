@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
-from models.account import Account, Tenant, TenantAccountJoin
+from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.enums import CreatorUserRole, EndUserType
 from models.human_input import (
     HumanInputForm,
@@ -249,3 +249,20 @@ def test_get_delivery_test_upload_owner_requires_matching_tenant(
     assert owner.id == _ACCOUNT_ID
     assert owner.current_tenant_id == _TENANT_ID
     assert repository.get_delivery_test_upload_owner(tenant_id=_OTHER_TENANT_ID, app_id=_APP_ID) is None
+
+
+def test_workspace_active_reflects_tenant_status(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    _persist_app_owner(sqlite_session)
+    repository = _repository(sqlite_session_factory)
+
+    assert repository.is_workspace_active(_TENANT_ID)
+
+    tenant = sqlite_session.get(Tenant, _TENANT_ID)
+    assert tenant is not None
+    tenant.status = TenantStatus.ARCHIVE
+    sqlite_session.commit()
+
+    assert not repository.is_workspace_active(_TENANT_ID)
+    assert not repository.is_workspace_active("missing-tenant")

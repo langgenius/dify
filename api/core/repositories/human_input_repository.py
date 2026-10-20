@@ -21,7 +21,7 @@ from core.workflow.nodes.human_input.entities import FormDefinition, HumanInputN
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
-from models.account import Account, TenantAccountJoin
+from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.human_input import (
     BackstageRecipientPayload,
     ConsoleDeliveryPayload,
@@ -594,6 +594,12 @@ class HumanInputFormRepositoryImpl:
 
 class HumanInputFormSubmissionRepository:
     """Repository for fetching and submitting human input forms."""
+
+    def is_workspace_active(self, tenant_id: str) -> bool:
+        """Return whether the workspace that owns a form is still active."""
+        with session_factory.create_session() as session:
+            tenant = session.get(Tenant, tenant_id)
+        return tenant is not None and tenant.status != TenantStatus.ARCHIVE
 
     def get_by_token(self, form_token: str) -> HumanInputFormRecord | None:
         query = (

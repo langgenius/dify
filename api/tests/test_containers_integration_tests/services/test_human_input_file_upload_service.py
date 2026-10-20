@@ -10,6 +10,7 @@ import services.human_input_file_upload_service as service_module
 from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
+from models.account import Tenant
 from models.human_input import (
     HumanInputForm,
     HumanInputFormRecipient,
@@ -26,11 +27,14 @@ def _create_waiting_form_recipient(
     form_id = "00000000-0000-0000-0000-000000000101"
     recipient_id = "00000000-0000-0000-0000-000000000102"
     expiration_time = naive_utc_now() + timedelta(hours=1)
+    tenant = Tenant(name="Workspace")
+    tenant.id = str(uuid.uuid4())
 
+    db_session_with_containers.add(tenant)
     db_session_with_containers.add(
         HumanInputForm(
             id=form_id,
-            tenant_id=str(uuid.uuid4()),
+            tenant_id=tenant.id,
             app_id=str(uuid.uuid4()),
             workflow_run_id=None,
             form_kind=HumanInputFormKind.DELIVERY_TEST,

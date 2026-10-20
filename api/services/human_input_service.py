@@ -6,6 +6,7 @@ from typing import Any, Protocol, cast
 from pydantic import JsonValue, TypeAdapter, ValidationError
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController
@@ -225,6 +226,8 @@ class HumanInputService:
         if form is None or form.recipient_type != recipient_type:
             raise WebAppDeliveryNotEnabledError()
 
+        if not self.is_workspace_active(form.tenant_id):
+            raise Forbidden()
         self.ensure_form_active(form)
         normalized_form_data = self._validate_submission(
             form=form,
@@ -251,6 +254,11 @@ class HumanInputService:
         # Runtime Human Input forms resume their owning workflow run.
         if result.workflow_run_id is not None:
             self.enqueue_resume(result.workflow_run_id)
+
+    def is_workspace_active(self, tenant_id: str) -> bool:
+        """Return whether the workspace that owns a form is still active."""
+
+        return self._form_repository.is_workspace_active(tenant_id)
 
     def ensure_form_active(self, form: Form) -> None:
         if form.submitted:
