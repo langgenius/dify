@@ -1,7 +1,7 @@
 import json
 import threading
-from collections.abc import Generator, Iterator
-from contextlib import contextmanager
+from collections.abc import Callable, Generator, Iterator, Mapping, Sequence
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import replace
 from datetime import datetime
 from unittest.mock import MagicMock, patch
@@ -615,7 +615,17 @@ def test_document_deleted_during_its_keyword_write_leaves_no_orphan_keywords(
     service = DocumentIndexingService(documents=documents, segments=segments, backend=adapter)
     write_keywords = Jieba.update_texts
 
-    def cleanup_wins_the_race(self: Jieba, texts, **kwargs) -> None:
+    def cleanup_wins_the_race(
+        self: Jieba,
+        texts: Sequence[IndexDocument],
+        *,
+        read: Callable[[], tuple[str, str | None]],
+        write: Callable[[str, str, Mapping[str, Sequence[str]]], None],
+        lock: AbstractContextManager[object],
+        keywords_list: Sequence[Sequence[str] | None] | None = None,
+        replace_existing: bool = False,
+        deleted_ids: Sequence[str] = (),
+    ) -> None:
         if texts:
             # The user deletes the document after the write passed its existence check;
             # document cleanup snapshots segment node ids before this write lands.
@@ -628,7 +638,16 @@ def test_document_deleted_during_its_keyword_write_leaves_no_orphan_keywords(
                 doc_form=job.doc_form,
                 new_session=sqlite_session_factory,
             )
-        write_keywords(self, texts, **kwargs)
+        write_keywords(
+            self,
+            texts,
+            read=read,
+            write=write,
+            lock=lock,
+            keywords_list=keywords_list,
+            replace_existing=replace_existing,
+            deleted_ids=deleted_ids,
+        )
 
     with (
         Flask(__name__).app_context(),
