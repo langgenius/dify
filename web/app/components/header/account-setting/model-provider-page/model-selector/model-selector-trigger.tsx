@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import type { ModelSelectorModel, ModelSelectorProvider, ModelSelectorValue } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -17,6 +18,7 @@ import ModelName from '../model-name'
 import { useCredentialPanelState as useCredentialPanelInfo } from '../provider-added-card/use-credential-panel-state'
 
 type ModelSelectorTriggerProps = {
+  ref?: Ref<HTMLButtonElement>
   'aria-labelledby'?: string
   currentProvider?: ModelSelectorProvider
   currentModel?: ModelSelectorModel
@@ -35,6 +37,7 @@ type ModelSelectorTriggerProps = {
 }
 
 function ModelSelectorTrigger({
+  ref,
   'aria-labelledby': labelledBy,
   currentProvider,
   currentModel,
@@ -107,6 +110,7 @@ function ModelSelectorTrigger({
   const trigger = (
     <Tooltip>
       <TooltipTrigger
+        ref={ref}
         disabled={!triggerTooltipLabel || isDisabled}
         render={
           <PopoverTrigger

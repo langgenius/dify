@@ -5,6 +5,7 @@ import type { PromptConfig } from '@/models/debug'
 import type { IOtherOptions } from '@/service/base'
 import type { VisionSettings } from '@/types/app'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { AppSourceType } from '@/service/share'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { Resolution, TransferMethod } from '@/types/app'
@@ -96,6 +97,8 @@ function renderSender(
 }
 
 beforeEach(() => {
+  window.history.replaceState({}, '', '/')
+  captureAppAccessScope()
   mocks.completion.mockResolvedValue(undefined)
   mocks.workflow.mockResolvedValue(undefined)
   mocks.sleep.mockImplementation(() => new Promise<void>(() => {}))
@@ -244,4 +247,49 @@ describe('result sending', () => {
       expect(result.current.state.isResponding).toBe(false)
     },
   )
+
+  it.each(['denied', 'navigation'] as const)(
+    'settles late completion and error callbacks silently after %s',
+    async (transition) => {
+      window.history.replaceState({}, '', '/completion/restricted-app')
+      const { result, notify, onCompleted } = renderSender()
+      await act(async () => {
+        await result.current.handleSend()
+      })
+      const callbacks = mocks.completion.mock.calls[0]![1] as CompletionHandlers
+      act(() => {
+        if (transition === 'denied')
+          handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope())
+        else {
+          window.history.replaceState({}, '', '/completion/another-app')
+          captureAppAccessScope()
+        }
+        callbacks.onCompleted()
+        callbacks.onError()
+      })
+      expect(notify).not.toHaveBeenCalled()
+      expect(result.current.state.isResponding).toBe(false)
+      expect(result.current.state.messageId).toBeNull()
+      expect(onCompleted).toHaveBeenCalledExactlyOnceWith('', 7, false)
+    },
+  )
+
+  it('silently settles a rejected workflow request after its page was denied', async () => {
+    window.history.replaceState({}, '', '/workflow/restricted-app')
+    let rejectRequest!: (error: Error) => void
+    mocks.workflow.mockReturnValue(
+      new Promise<void>((_resolve, reject) => {
+        rejectRequest = reject
+      }),
+    )
+    const { result, notify, onCompleted } = renderSender({ isWorkflow: true })
+    await act(async () => {
+      await result.current.handleSend()
+      handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope())
+      rejectRequest(new Error('Late workflow failure'))
+    })
+    expect(notify).not.toHaveBeenCalled()
+    expect(result.current.state.isResponding).toBe(false)
+    expect(onCompleted).toHaveBeenCalledExactlyOnceWith('', 7, false)
+  })
 })
