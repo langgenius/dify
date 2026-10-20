@@ -43,13 +43,6 @@ import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response
 import { AppACLPermission } from '@/utils/permission'
 import AppDeploy from '..'
 
-declare global {
-  // oxlint-disable-next-line typescript/consistent-type-definitions -- Vite's ImportMetaEnv interface requires declaration merging for this audit-only variable.
-  interface ImportMetaEnv {
-    readonly VITE_WCAG_LEVEL?: 'a' | 'aa'
-  }
-}
-
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useParams: () => ({ appId: 'deploy-audit' }),
@@ -297,10 +290,7 @@ async function checkAccessibility(verifyFocusGuards?: (count: number) => Promise
       )
       .map((animation) => animation.finished.catch(() => undefined)),
   )
-  const tags =
-    import.meta.env.VITE_WCAG_LEVEL === 'a'
-      ? ['wcag2a', 'wcag21a']
-      : ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
+  const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
   const results = await axe.run(document.body, { runOnly: { type: 'tag', values: tags } })
   const verifiedNodes = new Set<axe.NodeResult>()
   if (verifyFocusGuards) {
