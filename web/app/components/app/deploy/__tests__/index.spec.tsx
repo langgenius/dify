@@ -825,6 +825,8 @@ vi.mock('react-i18next', async () => {
     'deployments.status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED': 'Not deployed',
     'deployments.status.RUNTIME_INSTANCE_STATUS_UNDEPLOYING': 'Undeploying',
     'deployments.status.RUNTIME_INSTANCE_STATUS_UNSPECIFIED': 'Unknown',
+    'deployments.studio.activity.deploy': 'Deploy {{target}}',
+    'deployments.studio.activity.deployFailed': 'Deploy {{target}} failed',
     'deployments.studio.activity.deploySucceeded': 'Deploy {{target}} succeeded',
     'deployments.studio.activity.meta': '{{name}} · {{time}}',
     'deployments.studio.versionValue': 'Version value',
@@ -924,7 +926,9 @@ describe('AppDeploy', () => {
         }),
       ],
     })
-    const status = within(screen.getByRole('row', { name: /Canary/ })).getByRole('status')
+    const status = within(screen.getByRole('row', { name: /Canary/ }))
+      .getAllByRole('status')
+      .find((region) => within(region).queryByText('Running'))
     expect(status).toHaveTextContent('Canary: Running')
     expect(status).toHaveAttribute('aria-atomic', 'true')
 
@@ -941,6 +945,57 @@ describe('AppDeploy', () => {
     })
 
     await waitFor(() => expect(status).toHaveTextContent('Canary: Invalid'))
+  })
+
+  it('announces a failed deployment while the previous version stays running', async () => {
+    const row = environmentDeployment({
+      currentVersion: VERSIONS.beta,
+      id: 'canary',
+      latestOperation: deploymentOperation({
+        id: 'upgrade-canary',
+        status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
+        targetVersion: VERSIONS.sprint42,
+      }),
+      name: 'Canary',
+      runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
+    })
+    const view = render(
+      <AppDeployStateBoundary appId={APP_ID}>
+        <EnvironmentTable {...environmentTableProps()} />
+      </AppDeployStateBoundary>,
+      { environmentDeployments: [row] },
+    )
+    const canary = within(screen.getByRole('row', { name: /Canary/ }))
+    const runtimeStatus = canary
+      .getAllByRole('status')
+      .find((region) => within(region).queryByText('Running'))
+    const activityStatus = canary
+      .getAllByRole('status')
+      .find((region) => within(region).queryByText('Deploy Sprint-42'))
+    expect(activityStatus).toHaveTextContent('Canary: Deploy Sprint-42')
+
+    act(() => {
+      view.queryClient.setQueryData(appEnvironmentDeploymentsQueryOptions.queryKey, {
+        environment_deployments: [
+          {
+            ...row,
+            deployment: {
+              ...row.deployment,
+              runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
+              latest_operation: deploymentOperation({
+                id: 'upgrade-canary',
+                status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_FAILED,
+                targetVersion: VERSIONS.sprint42,
+              }),
+            },
+          },
+        ],
+      })
+    })
+
+    await waitFor(() => expect(activityStatus).toHaveTextContent('Canary: Deploy Sprint-42 failed'))
+    expect(runtimeStatus).toHaveTextContent('Canary: Running')
+    expect(activityStatus).not.toHaveTextContent('activity time')
   })
 
   it.each(ACTION_MATRIX_CASES)(
@@ -2116,80 +2171,91 @@ describe('AppDeploy', () => {
     expect(screen.getByRole('menuitem', { name: /Testing/ })).toBeInTheDocument()
   })
 
-  it('shows loading and retries after the environment deployment list fails', async () => {
-    const user = userEvent.setup()
-    const deploymentRequests: Request[] = []
-    let resolveInitialRequest: ((response: Response) => void) | undefined
-    vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
-      const request = input instanceof Request ? input : new Request(input, init)
-      if (
-        !new URL(request.url).pathname.endsWith(
-          '/enterprise/app-deploy/apps/app-1/workflows/environment-deployments',
+  it.each(['HTTP', 'network'] as const)(
+    'announces an environment deployment list %s failure and recovers after retry',
+    async (failure) => {
+      const user = userEvent.setup()
+      const deploymentRequests: Request[] = []
+      let failInitialRequest: (() => void) | undefined
+      vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+        const request = input instanceof Request ? input : new Request(input, init)
+        if (
+          !new URL(request.url).pathname.endsWith(
+            '/enterprise/app-deploy/apps/app-1/workflows/environment-deployments',
+          )
         )
+          throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+
+        deploymentRequests.push(request.clone())
+        if (deploymentRequests.length === 1) {
+          return new Promise((resolve, reject) => {
+            failInitialRequest = () => {
+              if (failure === 'network') {
+                reject(new TypeError('Failed to fetch'))
+                return
+              }
+              resolve(
+                new Response(JSON.stringify({ message: 'Failed to load deployments' }), {
+                  headers: { 'Content-Type': 'application/json' },
+                  status: 500,
+                }),
+              )
+            }
+          })
+        }
+
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              environment_deployments: APP_ENVIRONMENT_DEPLOYMENTS,
+            }),
+            {
+              headers: { 'Content-Type': 'application/json' },
+              status: 200,
+            },
+          ),
+        )
+      })
+      const queryClient = createConsoleQueryClient()
+      queryClient.setQueryData(appEnvironmentsQueryOptions.queryKey, {
+        data: APP_ENVIRONMENTS,
+      })
+      queryClient.setQueryData(
+        latestPublishedWorkflowQuery.queryKey,
+        mockBuiltInEnvironment.publishedWorkflow,
       )
-        throw new Error(`Unexpected request: ${request.method} ${request.url}`)
 
-      deploymentRequests.push(request.clone())
-      if (deploymentRequests.length === 1) {
-        return new Promise((resolve) => {
-          resolveInitialRequest = resolve
-        })
-      }
-
-      return Promise.resolve(
-        new Response(
-          JSON.stringify({
-            environment_deployments: APP_ENVIRONMENT_DEPLOYMENTS,
-          }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 200,
-          },
-        ),
+      renderWithConsoleQuery(
+        <AppDeployStateBoundary appId={APP_ID}>
+          <EnvironmentTable {...environmentTableProps()} />
+        </AppDeployStateBoundary>,
+        { queryClient },
       )
-    })
-    const queryClient = createConsoleQueryClient()
-    queryClient.setQueryData(appEnvironmentsQueryOptions.queryKey, {
-      data: APP_ENVIRONMENTS,
-    })
-    queryClient.setQueryData(
-      latestPublishedWorkflowQuery.queryKey,
-      mockBuiltInEnvironment.publishedWorkflow,
-    )
 
-    renderWithConsoleQuery(
-      <AppDeployStateBoundary appId={APP_ID}>
-        <EnvironmentTable {...environmentTableProps()} />
-      </AppDeployStateBoundary>,
-      { queryClient },
-    )
+      expect(screen.getByRole('progressbar', { name: /loading/ })).toBeInTheDocument()
+      expect(screen.queryByRole('table')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(deploymentRequests).toHaveLength(1)
+      })
 
-    expect(screen.getByRole('progressbar', { name: /loading/ })).toBeInTheDocument()
-    expect(screen.queryByRole('table')).not.toBeInTheDocument()
-    await waitFor(() => {
-      expect(deploymentRequests).toHaveLength(1)
-    })
+      failInitialRequest?.()
 
-    resolveInitialRequest?.(
-      new Response(JSON.stringify({ message: 'Failed to load deployments' }), {
-        headers: { 'Content-Type': 'application/json' },
-        status: 500,
-      }),
-    )
+      const alert = await screen.findByRole('alert')
+      expect(alert).toHaveTextContent('common.errorBoundary.title')
+      expect(alert).toHaveTextContent('deployments.common.loadFailed')
+      const retryButton = screen.getByRole('button', {
+        name: 'common.operation.retry',
+      })
+      expect(screen.queryByText('deployments.list.emptyTitle')).not.toBeInTheDocument()
+      expect(screen.queryByRole('table')).not.toBeInTheDocument()
 
-    const retryButton = await screen.findByRole('button', {
-      name: 'common.operation.retry',
-    })
-    expect(screen.getByRole('heading', { name: 'common.errorBoundary.title' })).toBeInTheDocument()
-    expect(screen.getByText('deployments.common.loadFailed')).toBeInTheDocument()
-    expect(screen.queryByText('deployments.list.emptyTitle')).not.toBeInTheDocument()
-    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+      await user.click(retryButton)
 
-    await user.click(retryButton)
-
-    expect(await screen.findByRole('rowheader', { name: /Staging/ })).toBeInTheDocument()
-    expect(deploymentRequests).toHaveLength(2)
-  })
+      expect(await screen.findByRole('rowheader', { name: /Staging/ })).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(deploymentRequests).toHaveLength(2)
+    },
+  )
 
   it('exposes only the first action and moves every remaining action into More', async () => {
     const user = userEvent.setup()

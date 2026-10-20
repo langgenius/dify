@@ -546,6 +546,51 @@ it('reflows the built-in card at 320px and keeps table actions reachable in a sh
   await expect.element(more).toHaveFocus()
 })
 
+it('keeps focused configuration fields and actions fully visible in a short viewport', async () => {
+  await page.viewport(320, 240)
+  const screen = await renderDeploy()
+  await screen.getByRole('button', { name: 'Deploy latest', exact: true }).click()
+  const configuration = screen.getByRole('dialog', { name: 'Deploy configuration', exact: true })
+  await expect
+    .element(configuration.getByRole('heading', { name: 'Deploy configuration', exact: true }))
+    .toHaveFocus()
+
+  const controls = [
+    configuration.getByRole('button', { name: /Deepseek.*Customer support workflow/ }),
+    configuration.getByRole('combobox', { name: 'Deepseek', exact: true }),
+    configuration.getByRole('combobox', { name: /PORT/ }),
+    configuration.getByRole('spinbutton', { name: 'PORT', exact: true }),
+    configuration.getByRole('button', { name: 'Cancel', exact: true }),
+  ]
+
+  for (const control of controls) {
+    await userEvent.keyboard('{Tab}')
+    await expect.element(control).toHaveFocus()
+    const element = control.element()
+    const bounds = element.getBoundingClientRect()
+    let visibleTop = 0
+    let visibleBottom = window.innerHeight
+
+    // A focusable field can pass visibility checks while its scroll area clips the whole field.
+    for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+      if (!['auto', 'hidden', 'scroll', 'clip'].includes(getComputedStyle(parent).overflowY))
+        continue
+      const parentBounds = parent.getBoundingClientRect()
+      visibleTop = Math.max(visibleTop, parentBounds.top + parent.clientTop)
+      visibleBottom = Math.min(
+        visibleBottom,
+        parentBounds.top + parent.clientTop + parent.clientHeight,
+      )
+    }
+
+    expect(bounds.height).toBeGreaterThan(0)
+    expect(bounds.left).toBeGreaterThanOrEqual(0)
+    expect(bounds.right).toBeLessThanOrEqual(window.innerWidth)
+    expect(bounds.top).toBeGreaterThanOrEqual(visibleTop)
+    expect(bounds.bottom).toBeLessThanOrEqual(visibleBottom)
+  }
+})
+
 it('keeps deployment status and version text readable in dark mode', async () => {
   document.documentElement.dataset.theme = 'dark'
   try {

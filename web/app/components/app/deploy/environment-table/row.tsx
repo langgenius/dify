@@ -70,7 +70,10 @@ export const EnvironmentRow = memo(
           </span>
         </td>
         <td className="border-b border-divider-subtle pr-2 pl-3">
-          <ActivityCell activity={row.deployment?.latest_operation} />
+          <ActivityCell
+            activity={row.deployment?.latest_operation}
+            environmentName={row.environment.display_name}
+          />
         </td>
         <td className="border-b border-divider-subtle pr-2 pl-3">
           <div className="flex items-center gap-1">

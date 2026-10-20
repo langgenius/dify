@@ -36,7 +36,10 @@ export function EnvironmentTableEmpty(props: EnvironmentTableEmptyProps) {
               <span aria-hidden className="i-ri-instance-line size-6 text-text-tertiary" />
             </div>
           </div>
-          <div className="flex w-full flex-col items-center gap-2">
+          <div
+            role={isError ? 'alert' : undefined}
+            className="flex w-full flex-col items-center gap-2"
+          >
             <h3 className="system-md-medium text-text-secondary">{title}</h3>
             <p className="system-sm-regular text-text-tertiary">{description}</p>
           </div>

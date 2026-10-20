@@ -38,8 +38,8 @@ function DeploymentDialogSession({
   return (
     <div
       className={cn(
-        'flex min-h-0 flex-1 flex-col',
-        !selectedVersion && 'h-[min(44rem,calc(100dvh-32px))]',
+        'flex flex-col',
+        selectedVersion ? 'shrink-0' : 'h-[min(44rem,calc(100dvh-32px))] min-h-0 flex-1',
       )}
     >
       {selectedVersion ? (
@@ -77,7 +77,7 @@ export function DeploymentDialog({
       <DialogContent
         initialFocus={titleRef}
         finalFocus={finalFocus}
-        className="max-h-[min(44rem,calc(100dvh-32px))] overflow-hidden"
+        className="max-h-[min(44rem,calc(100dvh-32px))]"
       >
         <DeploymentDialogSession
           titleRef={titleRef}
