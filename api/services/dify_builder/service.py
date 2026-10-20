@@ -12,12 +12,11 @@ import json
 import logging
 from collections.abc import Callable, Iterator
 from contextlib import suppress
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 from uuid import uuid4
 
-from core.dify_builder import recovery
 from core.dify_builder.contract import (
     CONFIRM_ACTION_ID,
     ActionKind,
@@ -41,11 +40,6 @@ from core.dify_builder.contract import (
 )
 from core.dify_builder.contract import Action as UiAction
 from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, NotFoundError
-from core.dify_builder.execution_policy import (
-    BuilderExecutionPolicyError,
-    HttpFixtureSetV1,
-    decode_http_fixture_submission,
-)
 from core.dify_builder.models import (
     CONFIRMED_TOOL_ACTION,
     Action,
@@ -58,13 +52,20 @@ from core.dify_builder.models import (
     Run,
     Session,
 )
-from core.dify_builder.ports import Repository
 from core.dify_builder.state import PcState, canvas_read_only, is_terminal, is_waiting, is_working
-from core.dify_builder.verification import publication_decision
+from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.presentation import BuilderText, copy_text, stored_text, text_parts
+from services.dify_builder import trace_diagnostics
 from services.dify_builder.action_policy import requires_app_revision
 from services.dify_builder.agent.model_resolver import validate_model_config
-from services.dify_builder.copy_ids import BuilderCopyId
-from services.dify_builder.presentation import BuilderText, copy_text, stored_text, text_parts
+from services.dify_builder.application import recovery
+from services.dify_builder.application.execution_policy import (
+    BuilderExecutionPolicyError,
+    HttpFixtureSetV1,
+    decode_http_fixture_submission,
+)
+from services.dify_builder.application.ports import Repository
+from services.dify_builder.application.verification import publication_decision
 from services.dify_builder.receipt_snapshot import apply_receipt_snapshot
 from services.dify_builder.repair_gate import NO_REPAIR_ACTIONS, NO_REPAIR_DECISION_COPY
 
@@ -255,7 +256,7 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             id="keep_draft",
             label=copy_text(BuilderCopyId.ACTIONS_KEEP_DRAFT),
             kind=ActionKind.SECONDARY,
-            next_state="build.review",
+            next_state="build.complete",
         ),
         UiAction(
             id="revert",
@@ -376,7 +377,7 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             id="keep_draft",
             label=copy_text(BuilderCopyId.ACTIONS_KEEP_DRAFT),
             kind=ActionKind.SECONDARY,
-            next_state="edit.review",
+            next_state="edit.complete",
         ),
         UiAction(
             id="revert",
@@ -591,6 +592,13 @@ _RECOVERY_DESCRIPTION: dict[str, BuilderText] = {
 def _decision_copy_for(state: PcState, actions: list[UiAction]) -> tuple[BuilderText, BuilderText]:
     if state == PcState.FIX_AWAIT_APPROVAL and any(action.id == "retry_repair" for action in actions):
         return NO_REPAIR_DECISION_COPY
+    if state in {PcState.BUILD_AWAIT_REPAIR, PcState.EDIT_AWAIT_REPAIR} and not any(
+        action.id == "approve_plan" for action in actions
+    ):
+        return (
+            copy_text(BuilderCopyId.DECISION_HOW_SHOULD_BUILDER_CONTINUE),
+            copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+        )
     return _DECISION_COPY_FOR.get(
         state,
         (
@@ -850,6 +858,8 @@ def _internal_action_allowed(state: PcState, fc: DifyBuilderContext, kind: str) 
     if state == PcState.FAILED:
         # Durable, deterministic failure -- only a restart is meaningful.
         return kind == "recovery_restart"
+    if is_terminal(state):
+        return kind == "message" and not fc.paused and not fc.recovery_class
     if not (is_waiting(state) or is_working(state)):
         return False
     if fc.paused:
@@ -990,7 +1000,9 @@ class DifyBuilderService:
         if s.owner_account_id != actor.account_id or s.tenant_id != actor.tenant_id:
             raise NotFoundError("session not found")
         self._authorize_app(s.app_id, actor, access)
-        return s, fc
+        from services.dify_builder.conversation_tasks import active_entry_mode
+
+        return replace(s, entry_mode=active_entry_mode(s, fc)), fc
 
     def authorize_session(self, session_id: str, actor: Actor) -> None:
         """Authorize a session before opening an SSE subscription.
@@ -1423,6 +1435,9 @@ class DifyBuilderService:
         )
 
     def _build_session_view(self, s: Session, fc: DifyBuilderContext) -> SessionView:
+        from services.dify_builder.conversation_tasks import active_entry_mode
+
+        s = replace(s, entry_mode=active_entry_mode(s, fc))
         st = s.current_state
         lock_held = self._session_lock.exists(s.id)
         current_app_revision = self._get_app_revision(
@@ -1454,6 +1469,9 @@ class DifyBuilderService:
         )
         recovery_ref = recovery.recovery_ref_for(fc.recovery_class)
         return SessionView(
+            diagnostics=trace_diagnostics.from_history(
+                self._repo.list_recent_conversation(s.id, limit=24), session_id=s.id, version=s.version
+            ),
             session_id=s.id,
             app_id=s.app_id,
             version=s.version,
@@ -1584,6 +1602,9 @@ class DifyBuilderService:
             and not fc.recovery_class
             and not baseline_exempt
             and action.kind not in {"check_recovery", "recovery_restart", "resume"}
+            # A completed-task message can only prepare a fresh plan/form.
+            # Its owner reads the current graph and invalidates old approvals.
+            and not (action.kind == "message" and is_terminal(s.current_state))
         ):
             raise ConflictError(f"draft changed outside Builder for app {s.app_id}")
         if (

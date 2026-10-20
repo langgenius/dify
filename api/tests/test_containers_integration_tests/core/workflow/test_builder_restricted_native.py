@@ -20,7 +20,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
-from core.dify_builder.execution_policy import (
+from core.dify_builder.models import Actor, Graph, Inputs, Run
+from extensions.ext_database import db
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession, DifyBuilderTestInput
+from models.model import App
+from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
+from runtime_contracts.builder.execution import BuilderExecutionRecorder
+from services.dify_builder.application.execution_policy import (
     BuilderExecutionContext,
     BuilderExecutionContextValue,
     BuilderExecutionObservation,
@@ -29,15 +36,8 @@ from core.dify_builder.execution_policy import (
     TrustedExecutionCompletion,
     scalar_inputs_digest,
 )
-from core.dify_builder.models import Actor, Graph, Inputs, Run
-from core.dify_builder.verification import is_execution_policy_blocker, publication_decision
-from extensions.ext_database import db
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession, DifyBuilderTestInput
-from models.model import App
-from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
+from services.dify_builder.application.verification import is_execution_policy_blocker, publication_decision
 from services.dify_builder.dify_port import WorkflowServiceDifyPort, _BuilderExecutionLaunch
-from services.dify_builder.execution_contracts import BuilderExecutionRecorder
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
 from services.dify_builder.revision import executable_graph_revision, execution_revision
 
@@ -576,7 +576,7 @@ def test_ordinary_native_scalar_execution_remains_ordinary(native_owner: NativeO
 def test_composed_class_replacement_refuses_before_native_validation(
     native_owner: NativeOwner, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from core.workflow import node_factory
+    from services.workflow_runtime import node_factory
 
     class Replacement:
         @staticmethod
@@ -653,7 +653,7 @@ def test_composed_http_retry_receipts_and_recorder_poison(
 def test_composed_canonical_seal_replay_cannot_upgrade_or_change(
     native_owner: NativeOwner, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 
     original = BuilderExecutionPolicyService.seal
     captured = []
@@ -1063,7 +1063,7 @@ def test_composed_template_text_without_complete_sql_proof_cannot_publish(
 def test_composed_template_seal_replay_rejects_changed_output(
     native_owner: NativeOwner, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 
     real_seal = BuilderExecutionPolicyService.seal
     captured = []

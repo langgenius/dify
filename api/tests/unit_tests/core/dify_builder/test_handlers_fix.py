@@ -11,18 +11,6 @@ from typing import NoReturn, Unpack
 from unittest.mock import Mock
 
 from core.dify_builder.contract import PreflightContextCard, PreflightIssue
-from core.dify_builder.handlers_fix import (
-    fix_registry,
-    handle_apply,
-    handle_await_approval,
-    handle_await_decision,
-    handle_await_testdata,
-    handle_await_verify,
-    handle_diagnose,
-    handle_propose,
-    handle_publish,
-    handle_verify,
-)
 from core.dify_builder.models import (
     Action,
     Actor,
@@ -40,8 +28,20 @@ from core.dify_builder.models import (
     StartSchema,
     Turn,
 )
-from core.dify_builder.runner import Env, Handler, Runner
 from core.dify_builder.state import PcState, canvas_read_only
+from services.dify_builder.application.handlers_fix import (
+    fix_registry,
+    handle_apply,
+    handle_await_approval,
+    handle_await_decision,
+    handle_await_testdata,
+    handle_await_verify,
+    handle_diagnose,
+    handle_propose,
+    handle_publish,
+    handle_verify,
+)
+from services.dify_builder.application.runner import Env, Handler, Runner
 from tests.unit_tests.core.dify_builder.fakes import (
     FakeDifyPort,
     FixtureEnv,
@@ -743,7 +743,7 @@ def test_fix_registry_has_exactly_twelve_states() -> None:
 
 
 def test_start_schema_reads_start_node_variables() -> None:
-    from core.dify_builder.handlers_fix import start_schema
+    from services.dify_builder.application.handlers_fix import start_schema
 
     graph: Graph = {
         "nodes": [
@@ -756,7 +756,7 @@ def test_start_schema_reads_start_node_variables() -> None:
 
 
 def test_start_schema_empty_when_no_start_or_no_vars() -> None:
-    from core.dify_builder.handlers_fix import start_schema
+    from services.dify_builder.application.handlers_fix import start_schema
 
     assert start_schema({"nodes": [{"id": "llm", "data": {"type": "llm"}}], "edges": []}) == {"variables": []}
     assert start_schema({"nodes": [{"id": "s", "data": {"type": "start"}}], "edges": []}) == {"variables": []}
@@ -766,27 +766,27 @@ def test_start_schema_empty_when_no_start_or_no_vars() -> None:
 
 
 def test_needs_upload_inputs_false_for_an_all_text_schema() -> None:
-    from core.dify_builder.handlers_fix import needs_upload_inputs
+    from services.dify_builder.application.handlers_fix import needs_upload_inputs
 
     schema = {"variables": [{"variable": "topic", "type": "text-input"}, {"variable": "count", "type": "number"}]}
     assert needs_upload_inputs(schema) is False
 
 
 def test_needs_upload_inputs_false_when_there_are_no_variables() -> None:
-    from core.dify_builder.handlers_fix import needs_upload_inputs
+    from services.dify_builder.application.handlers_fix import needs_upload_inputs
 
     assert needs_upload_inputs({"variables": []}) is False
 
 
 def test_needs_upload_inputs_true_for_a_file_variable() -> None:
-    from core.dify_builder.handlers_fix import needs_upload_inputs
+    from services.dify_builder.application.handlers_fix import needs_upload_inputs
 
     schema = {"variables": [{"variable": "doc", "type": "file"}]}
     assert needs_upload_inputs(schema) is True
 
 
 def test_needs_upload_inputs_true_for_a_file_list_variable() -> None:
-    from core.dify_builder.handlers_fix import needs_upload_inputs
+    from services.dify_builder.application.handlers_fix import needs_upload_inputs
 
     schema = {"variables": [{"variable": "docs", "type": "file-list"}]}
     assert needs_upload_inputs(schema) is True
@@ -795,7 +795,7 @@ def test_needs_upload_inputs_true_for_a_file_list_variable() -> None:
 def test_needs_upload_inputs_true_for_a_mixed_schema() -> None:
     """A human still has to supply the file even though everything else in
     the schema could be mocked -- the mixed case must still stop at the gate."""
-    from core.dify_builder.handlers_fix import needs_upload_inputs
+    from services.dify_builder.application.handlers_fix import needs_upload_inputs
 
     schema = {
         "variables": [
@@ -810,7 +810,7 @@ def test_needs_upload_inputs_true_for_a_mixed_schema() -> None:
 
 
 def test_endpoint_variable_names_finds_a_start_variable_referenced_as_the_whole_url() -> None:
-    from core.dify_builder.handlers_fix import endpoint_variable_names
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
 
     graph: Graph = {
         "nodes": [
@@ -830,7 +830,7 @@ def test_endpoint_variable_names_ignores_a_url_template_not_in_host_position() -
     template occupying the HOST position (the url, stripped, STARTS with it)
     counts; this intentionally narrows the old (Plan 3) behaviour, which
     collected any embedded reference."""
-    from core.dify_builder.handlers_fix import endpoint_variable_names
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
 
     graph: Graph = {
         "nodes": [
@@ -845,7 +845,7 @@ def test_endpoint_variable_names_ignores_a_url_template_not_in_host_position() -
 def test_endpoint_variable_names_finds_a_leading_start_template_before_a_path() -> None:
     """``{{#s.h_url#}}/v1/render`` -- what grounding writes for an invented
     host with a templated path/query -- reads its endpoint from ``h_url``."""
-    from core.dify_builder.handlers_fix import endpoint_variable_names
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
 
     graph: Graph = {
         "nodes": [
@@ -860,7 +860,7 @@ def test_endpoint_variable_names_finds_a_leading_start_template_before_a_path() 
 def test_endpoint_variable_names_finds_a_start_template_inside_the_host() -> None:
     """M4: a template in the parsed HOST (not only a leading one) is the
     endpoint; a template in the same url's path stays an ordinary data input."""
-    from core.dify_builder.handlers_fix import endpoint_variable_names
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
 
     graph: Graph = {
         "nodes": [
@@ -880,7 +880,7 @@ def test_endpoint_variable_names_ignores_non_credential_header_and_param_keys() 
     search query or an Accept-Language header was silently dropped from
     every prefill/mock, and "use mock data" failed for every API-calling
     app. Only a CREDENTIAL-keyed line counts now."""
-    from core.dify_builder.handlers_fix import endpoint_variable_names
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
 
     graph: Graph = {
         "nodes": [
@@ -913,7 +913,7 @@ def test_endpoint_variable_names_ignores_non_credential_header_and_param_keys() 
 def test_endpoint_variable_names_ignores_a_reference_to_a_non_start_node() -> None:
     """A template pointing at another node's output is an ordinary wired
     value, not an endpoint waiting on the user."""
-    from core.dify_builder.handlers_fix import endpoint_variable_names
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
 
     graph: Graph = {
         "nodes": [
@@ -927,7 +927,7 @@ def test_endpoint_variable_names_ignores_a_reference_to_a_non_start_node() -> No
 
 
 def test_endpoint_variable_names_empty_when_there_is_no_http_request_node() -> None:
-    from core.dify_builder.handlers_fix import endpoint_variable_names
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
 
     graph: Graph = {
         "nodes": [{"id": "s", "data": {"type": "start", "variables": [{"variable": "topic", "type": "text-input"}]}}],
@@ -940,7 +940,7 @@ def test_endpoint_variable_names_collects_headers_too() -> None:
     """A node whose url and header both read the start node counts both; a
     header reading another node's output is an ordinary wired value, not a
     credential waiting on the user."""
-    from core.dify_builder.handlers_fix import endpoint_variable_names
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
 
     graph: Graph = {
         "nodes": [
@@ -972,7 +972,7 @@ def test_endpoint_variable_names_collects_headers_too() -> None:
 
 
 def test_endpoint_variable_names_also_collects_params_and_authorization_api_key() -> None:
-    from core.dify_builder.handlers_fix import endpoint_variable_names
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
 
     graph: Graph = {
         "nodes": [
@@ -1031,7 +1031,7 @@ def _endpoint_graph() -> Graph:
 
 
 def test_without_endpoint_values_drops_only_the_endpoint_keys() -> None:
-    from core.dify_builder.handlers_fix import without_endpoint_values
+    from services.dify_builder.application.handlers_fix import without_endpoint_values
 
     inputs = {"topic": "quarterly report", "h_url": "https://api.example.com/ppt/generate"}
 
@@ -1040,7 +1040,7 @@ def test_without_endpoint_values_drops_only_the_endpoint_keys() -> None:
 
 
 def test_without_endpoint_values_keeps_everything_when_no_url_reads_a_start_variable() -> None:
-    from core.dify_builder.handlers_fix import without_endpoint_values
+    from services.dify_builder.application.handlers_fix import without_endpoint_values
 
     graph: Graph = {
         "nodes": [
@@ -1084,8 +1084,8 @@ def test_fix_await_testdata_mock_leaves_the_endpoint_for_the_form() -> None:
 
 
 def test_is_input_failure_matches_input_signals() -> None:
-    from core.dify_builder.handlers_fix import is_input_failure
     from core.dify_builder.models import NodeOutput, Run
+    from services.dify_builder.application.handlers_fix import is_input_failure
 
     fail = Run(
         per_node=[
@@ -1105,8 +1105,8 @@ def test_is_input_failure_does_not_misclassify_a_config_required_field_error() -
     # fires on config/runtime faults that have nothing to do with test inputs,
     # misrouting them to the testdata gate where the diagnosed auto-repair is
     # never offered. Only genuinely input/file-shaped signals should match.
-    from core.dify_builder.handlers_fix import is_input_failure
     from core.dify_builder.models import NodeOutput, Run
+    from services.dify_builder.application.handlers_fix import is_input_failure
 
     cfg = Run(
         per_node=[NodeOutput(node_id="n1", status="failed", error="Node config invalid: field 'timeout' is required")]
@@ -1115,7 +1115,7 @@ def test_is_input_failure_does_not_misclassify_a_config_required_field_error() -
 
 
 def test_testdata_form_fields_preserves_file_type() -> None:
-    from core.dify_builder.handlers_fix import testdata_form_fields
+    from services.dify_builder.application.handlers_fix import testdata_form_fields
 
     schema = {
         "variables": [
@@ -1131,7 +1131,7 @@ def test_testdata_form_fields_preserves_file_type() -> None:
 
 
 def test_testdata_form_fields_copies_start_input_constraints() -> None:
-    from core.dify_builder.handlers_fix import testdata_form_fields
+    from services.dify_builder.application.handlers_fix import testdata_form_fields
 
     schema = {
         "variables": [
@@ -1187,7 +1187,7 @@ def test_testdata_form_fields_copies_start_input_constraints() -> None:
 
 
 def test_testdata_form_fields_drops_malformed_constraints() -> None:
-    from core.dify_builder.handlers_fix import testdata_form_fields
+    from services.dify_builder.application.handlers_fix import testdata_form_fields
 
     fields = testdata_form_fields(
         {
@@ -1235,7 +1235,7 @@ def test_is_input_failure_matches_launch_error_input_validation() -> None:
     """A launch-time failure (empty per_node, message on run.error) that carries
     an input-validation signal must classify as an input failure so it routes to
     the testdata gate, not the blind config-repair loop."""
-    from core.dify_builder.handlers_fix import is_input_failure
+    from services.dify_builder.application.handlers_fix import is_input_failure
 
     run = Run(status="failed", per_node=[], error="query is required in input form")
     assert is_input_failure(run) is True
@@ -1243,14 +1243,14 @@ def test_is_input_failure_matches_launch_error_input_validation() -> None:
 
 def test_is_input_failure_launch_error_non_input_is_config() -> None:
     """A launch error that matches no input signal stays a config failure."""
-    from core.dify_builder.handlers_fix import is_input_failure
+    from services.dify_builder.application.handlers_fix import is_input_failure
 
     run = Run(status="failed", per_node=[], error="RuntimeError: connection reset by peer")
     assert is_input_failure(run) is False
 
 
 def test_launch_error_text_prefers_message_falls_back_to_type() -> None:
-    from core.dify_builder.handlers_fix import launch_error_text
+    from services.dify_builder.application.handlers_fix import launch_error_text
 
     assert launch_error_text(ValueError("query is required in input form")) == "query is required in input form"
 
@@ -1270,7 +1270,7 @@ def _run_with_node_error(err: str) -> Run:
 
 
 def test_model_config_error_text_matches_model_and_provider_not_exist() -> None:
-    from core.dify_builder.handlers_fix import model_config_error_text
+    from services.dify_builder.application.handlers_fix import model_config_error_text
 
     model_err = "Model gpt-5.6 does not exist."
     assert model_config_error_text(_run_with_node_error(model_err)) == model_err
@@ -1280,7 +1280,7 @@ def test_model_config_error_text_matches_model_and_provider_not_exist() -> None:
 
 
 def test_model_config_error_text_ignores_non_model_errors() -> None:
-    from core.dify_builder.handlers_fix import model_config_error_text
+    from services.dify_builder.application.handlers_fix import model_config_error_text
 
     # a real node-logic error is NOT a model-config failure
     assert model_config_error_text(_run_with_node_error("NameError: x is not defined")) is None
@@ -1290,8 +1290,8 @@ def test_model_config_error_text_ignores_non_model_errors() -> None:
 
 def test_build_change_set_survives_non_string_changed_nodes() -> None:
     """ESQ1-271: an int node id used to crash the whole session on join()."""
-    from core.dify_builder.handlers_fix import build_change_set
     from core.dify_builder.models import ApplyResult
+    from services.dify_builder.application.handlers_fix import build_change_set
 
     # ApplyResult is @dataclass(kw_only=True) with every field defaulted
     # (models.py:213) -- pass only what the assertion needs.
@@ -1397,8 +1397,8 @@ _DEAD_END_GRAPH: Graph = {
 
 
 def test_dead_end_branch_node_id_finds_a_branch_whose_target_never_ran() -> None:
-    from core.dify_builder.handlers_fix import dead_end_branch_node_id, run_finished_without_output
     from core.dify_builder.models import NodeOutput
+    from services.dify_builder.application.handlers_fix import dead_end_branch_node_id, run_finished_without_output
 
     per_node = [NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")]
 
@@ -1409,8 +1409,8 @@ def test_dead_end_branch_node_id_finds_a_branch_whose_target_never_ran() -> None
 def test_dead_end_branch_node_id_is_empty_once_a_target_shows_up_with_any_status() -> None:
     """A target that appears in per_node -- even failed -- means the engine
     entered that arm, so the branch did not route nowhere."""
-    from core.dify_builder.handlers_fix import dead_end_branch_node_id, run_finished_without_output
     from core.dify_builder.models import NodeOutput
+    from services.dify_builder.application.handlers_fix import dead_end_branch_node_id, run_finished_without_output
 
     per_node = [
         NodeOutput(node_id="node1", status="succeeded"),
@@ -1423,8 +1423,8 @@ def test_dead_end_branch_node_id_is_empty_once_a_target_shows_up_with_any_status
 
 
 def test_dead_end_branch_node_id_treats_no_outgoing_edges_as_routing_nowhere() -> None:
-    from core.dify_builder.handlers_fix import dead_end_branch_node_id
     from core.dify_builder.models import NodeOutput
+    from services.dify_builder.application.handlers_fix import dead_end_branch_node_id
 
     graph: Graph = {
         "nodes": [
@@ -1440,8 +1440,8 @@ def test_dead_end_branch_node_id_treats_no_outgoing_edges_as_routing_nowhere() -
 
 
 def test_run_finished_without_output_is_false_without_an_end_node() -> None:
-    from core.dify_builder.handlers_fix import run_finished_without_output
     from core.dify_builder.models import NodeOutput
+    from services.dify_builder.application.handlers_fix import run_finished_without_output
 
     graph: Graph = {
         "nodes": [{"id": "node1", "data": {"type": "start"}}, {"id": "node2", "data": {"type": "if-else"}}],
@@ -1505,7 +1505,7 @@ def test_re_fix_after_unknown_requires_new_inputs() -> None:
 def test_the_unknown_outcome_counter_is_exported_with_its_cap() -> None:
     """Build and Edit import note_unknown_outcome from this module, so it is
     part of the shared surface ``__all__`` declares, next to its cap."""
-    from core.dify_builder import handlers_fix
+    from services.dify_builder.application import handlers_fix
 
     assert {"MAX_UNKNOWN_OUTCOMES", "note_unknown_outcome"} <= set(handlers_fix.__all__)
 
@@ -1573,7 +1573,7 @@ def test_a_staged_repair_still_carries_no_error_card() -> None:
 
 
 def test_missing_test_input_ref_requests_test_data_without_launch() -> None:
-    from core.dify_builder.handlers_fix import handle_verify
+    from services.dify_builder.application.handlers_fix import handle_verify
 
     env, repo = _new_env()
     s = Session(
@@ -1597,8 +1597,8 @@ def test_confirmed_fix_verify_uses_saved_input_without_repair_and_returns_to_dec
 
 
 def test_confirmed_fix_without_saved_input_refuses_instead_of_generating_mocks() -> None:
-    from core.dify_builder.handlers_fix import handle_verify
     from core.dify_builder.models import CONFIRMED_TOOL_ACTION
+    from services.dify_builder.application.handlers_fix import handle_verify
     from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import (
         ConfirmedSpyPort,
         NoModelAgent,

@@ -131,7 +131,7 @@ def test_posted_live_mode_cannot_select_builder_policy(
 def test_restricted_dispatch_rejects_other_modes_before_guardrails(
     monkeypatch: pytest.MonkeyPatch, mode: AppMode
 ) -> None:
-    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
     from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
 
     guardrails = MagicMock(side_effect=AssertionError("must refuse before native dispatch"))
@@ -151,7 +151,7 @@ def test_restricted_dispatch_rejects_other_modes_before_guardrails(
 
 
 def test_restricted_marker_cannot_enter_agent_dispatch_of_workflow_app(monkeypatch: pytest.MonkeyPatch) -> None:
-    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
     from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
 
     app = MagicMock(spec=App)
@@ -175,3 +175,40 @@ def test_restricted_marker_cannot_enter_agent_dispatch_of_workflow_app(monkeypat
             builder_execution_admit=MagicMock(),
         )
     agent.assert_not_called()
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+@pytest.mark.parametrize("transport", ["in_process", "celery"])
+def test_pre_generator_tool_admission_failure_has_qualified_preparation_boundary(monkeypatch, mode, transport):
+    from core.tools.errors import ToolProviderCredentialValidationError
+    from services.dify_builder.native_launch_observation import NativeLaunchObservation
+
+    app = MagicMock(spec=App)
+    app.mode = mode
+    app.is_agent_with_session.return_value = False
+    user = MagicMock(spec=Account)
+    monkeypatch.setattr(AppGenerateService, "_get_workflow", MagicMock(return_value=MagicMock()))
+    monkeypatch.setattr(
+        AppGenerateService,
+        "_run_with_guardrails",
+        staticmethod(lambda **kwargs: kwargs["action"](MagicMock(), "request")),
+    )
+    monkeypatch.setattr(
+        AppGenerateService,
+        "_admit_normal_draft_tools",
+        MagicMock(side_effect=ToolProviderCredentialValidationError("metadata service unavailable")),
+    )
+    generator = MagicMock(side_effect=AssertionError("no worker dispatch"))
+    monkeypatch.setattr(module.WorkflowAppGenerator, "generate", generator)
+    monkeypatch.setattr(module.AdvancedChatAppGenerator, "generate", generator)
+    observation = NativeLaunchObservation()
+    with (
+        observation.track(),
+        Session() as session,
+        pytest.raises(ToolProviderCredentialValidationError, match="metadata service unavailable"),
+    ):
+        AppGenerateService.generate(
+            app, user, {"inputs": {}}, InvokeFrom.DEBUGGER, session=session, workflow_execution_mode=transport
+        )
+    assert observation.failed_before_dispatch is (transport == "in_process")
+    generator.assert_not_called()

@@ -9,12 +9,12 @@ from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
-from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from models import Account, Tenant, TenantAccountJoin
 from models.enums import EndUserType
 from models.model import App, AppMode, AppModelConfig, EndUser
 from models.workflow import Workflow
+from services.plugin_app_backwards_invocation import PluginAppBackwardsInvocation
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.model_factories import make_app, make_end_user, make_workflow
 
@@ -124,7 +124,7 @@ class TestPluginAppBackwardsInvocation:
         self.session_factory = sqlite_session_factory
         self.sqlite_engine = sqlite_engine
         self.end_users = _EndUserProvisioner()
-        mocker.patch("core.plugin.backwards_invocation.app.create_session", side_effect=sqlite_session_factory)
+        mocker.patch("services.plugin_app_backwards_invocation.create_session", side_effect=sqlite_session_factory)
 
     def test_fetch_app_info_workflow_path(self, mocker: MockerFixture):
         variable = {"type": "text-input", "variable": "foo", "label": "Foo", "required": False}
@@ -135,7 +135,7 @@ class TestPluginAppBackwardsInvocation:
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=app)
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_workflow", return_value=workflow)
         mapper = mocker.patch(
-            "core.plugin.backwards_invocation.app.get_parameters_from_feature_dict",
+            "services.plugin_app_backwards_invocation.get_parameters_from_feature_dict",
             return_value={"mapped": True},
         )
 
@@ -150,7 +150,7 @@ class TestPluginAppBackwardsInvocation:
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=app)
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app_model_config_dict", return_value=model_config_dict)
         mocker.patch(
-            "core.plugin.backwards_invocation.app.get_parameters_from_feature_dict",
+            "services.plugin_app_backwards_invocation.get_parameters_from_feature_dict",
             return_value={"mapped": True},
         )
 
@@ -267,8 +267,8 @@ class TestPluginAppBackwardsInvocation:
     @pytest.mark.parametrize(
         ("mode", "generator_path"),
         [
-            (AppMode.AGENT_CHAT, "core.plugin.backwards_invocation.app.AgentChatAppGenerator.generate"),
-            (AppMode.CHAT, "core.plugin.backwards_invocation.app.ChatAppGenerator.generate"),
+            (AppMode.AGENT_CHAT, "services.plugin_app_backwards_invocation.AgentChatAppGenerator.generate"),
+            (AppMode.CHAT, "services.plugin_app_backwards_invocation.ChatAppGenerator.generate"),
         ],
     )
     def test_invoke_chat_app_agent_and_chat(self, mocker: MockerFixture, mode, generator_path):
@@ -298,11 +298,11 @@ class TestPluginAppBackwardsInvocation:
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_workflow", return_value=workflow)
 
         mocker.patch(
-            "core.plugin.backwards_invocation.app.db",
+            "services.plugin_app_backwards_invocation.db",
             _DatabaseWithEngine(self.sqlite_engine),
         )
         generator_spy = mocker.patch(
-            "core.plugin.backwards_invocation.app.AdvancedChatAppGenerator.generate",
+            "services.plugin_app_backwards_invocation.AdvancedChatAppGenerator.generate",
             return_value={"result": "ok"},
         )
         session = self.session
@@ -364,11 +364,11 @@ class TestPluginAppBackwardsInvocation:
         app = _app(mode=AppMode.WORKFLOW)
 
         mocker.patch(
-            "core.plugin.backwards_invocation.app.db",
+            "services.plugin_app_backwards_invocation.db",
             _DatabaseWithEngine(self.sqlite_engine),
         )
         generator_spy = mocker.patch(
-            "core.plugin.backwards_invocation.app.WorkflowAppGenerator.generate",
+            "services.plugin_app_backwards_invocation.WorkflowAppGenerator.generate",
             return_value={"result": "ok"},
         )
 
@@ -410,7 +410,7 @@ class TestPluginAppBackwardsInvocation:
 
     def test_invoke_completion_app(self, mocker: MockerFixture):
         spy = mocker.patch(
-            "core.plugin.backwards_invocation.app.CompletionAppGenerator.generate", return_value={"ok": 1}
+            "services.plugin_app_backwards_invocation.CompletionAppGenerator.generate", return_value={"ok": 1}
         )
         app = _app(mode=AppMode.COMPLETION)
 
@@ -623,7 +623,7 @@ class TestPluginAppBackwardsInvocation:
         self.session.add(app_model_config)
         self.session.commit()
         load_annotation_reply_config = mocker.patch(
-            "core.plugin.backwards_invocation.app.load_annotation_reply_config",
+            "services.plugin_app_backwards_invocation.load_annotation_reply_config",
             return_value=annotation_reply,
         )
         app = _app(app_model_config_id="config-1")

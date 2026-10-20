@@ -8,12 +8,12 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
-from core.dify_builder.execution_policy import scalar_inputs_digest
 from models.dify_builder import DifyBuilderTestInput
 from models.model import AppMode
 from models.workflow import Workflow
+from runtime_contracts.builder.execution import ExecutionEvidenceSummary, TrustedExecutionCompletion
+from services.dify_builder.application.execution_policy import scalar_inputs_digest
 from services.dify_builder.dify_port import _BuilderExecutionLaunch
-from services.dify_builder.execution_contracts import ExecutionEvidenceSummary, TrustedExecutionCompletion
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414 - export the shared pytest fixture
@@ -21,7 +21,7 @@ from tests.unit_tests.services.dify_builder.test_execution_policy_service import
 
 @pytest.fixture
 def effects(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[MagicMock]]:
-    import core.app.apps.workflow.app_generator as generator
+    import services.workflow_runtime.workflow_generator as generator
     from core.helper import encrypter
     from core.helper.code_executor.code_executor import CodeExecutor
     from core.model_manager import ModelManager
@@ -140,12 +140,12 @@ def test_native_generator_revalidates_its_normalized_effective_inputs(
 ) -> None:
     from types import SimpleNamespace
 
-    import core.app.apps.workflow.app_generator as module
+    import services.workflow_runtime.workflow_generator as module
     from core.app.app_config.workflow_ui_based_app.variables.manager import WorkflowVariablesConfigManager
     from core.app.apps.base_app_generator import BaseAppGenerator
     from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
     from models.account import Account
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
     from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
 
@@ -232,7 +232,7 @@ def test_port_preserves_worker_policy_refusal_without_allocating_native_result(
     owned: Owned, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import services.dify_builder.dify_port as module
-    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 
     factory, actor, app, workflow, sid, tid = owned
     monkeypatch.setattr(module, "_session_factory", lambda: factory)
@@ -299,10 +299,10 @@ def test_postflight_rejects_raw_changes_before_secret_revision(
 def test_direct_restricted_generator_admits_raw_before_config_and_normalization(
     owned: Owned, monkeypatch: pytest.MonkeyPatch, change: str
 ) -> None:
-    import core.app.apps.workflow.app_generator as module
+    import services.workflow_runtime.workflow_generator as module
     from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
     from models.account import Account
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
     from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import prepare_inputs
@@ -461,7 +461,7 @@ def test_port_always_closes_prepared_request_unknown_without_actual_worker(
 
 @pytest.mark.parametrize("preworker", [False, True])
 def test_refusal_origin_requires_explicit_preworker_fact(owned: Owned, preworker: bool) -> None:
-    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
     from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import prepare_inputs, service_module
 
@@ -479,9 +479,9 @@ def test_refusal_origin_requires_explicit_preworker_fact(owned: Owned, preworker
 
 def test_real_service_transport_guard_marks_preworker_origin(owned: Owned) -> None:
     from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
     from models.account import Account
     from services.app_generate_service import AppGenerateService
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
     from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import prepare_inputs, service_module
 
@@ -512,7 +512,7 @@ def test_poststart_setup_policy_error_cannot_claim_preworker_origin(
     import threading
 
     import services.dify_builder.dify_port as module
-    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 
     factory, actor, app, workflow, sid, tid = owned
     monkeypatch.setattr(module, "_session_factory", lambda: factory)
@@ -551,7 +551,7 @@ def test_poststart_setup_policy_error_cannot_claim_preworker_origin(
 def test_preworker_origin_rejects_conflicts(owned: Owned, conflict: str) -> None:
     import threading
 
-    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
     from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import prepare_inputs, service_module
 
@@ -584,7 +584,7 @@ def test_final_seal_failure_returns_unsealed_unknown_without_allocation_identity
     owned: Owned, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import services.dify_builder.dify_port as module
-    from core.dify_builder.verification import is_execution_policy_blocker, publication_decision
+    from services.dify_builder.application.verification import is_execution_policy_blocker, publication_decision
 
     factory, actor, app, workflow, sid, tid = owned
     monkeypatch.setattr(module, "_session_factory", lambda: factory)
@@ -610,7 +610,7 @@ def test_final_seal_failure_returns_unsealed_unknown_without_allocation_identity
 def test_invalid_worker_candidate_latches_unknown(owned: Owned, invalid: str) -> None:
     import threading
 
-    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
     from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import prepare_inputs, service_module
 
@@ -658,7 +658,7 @@ def test_setup_refusal_is_completed_only_with_positive_preworker_origin(
     import threading
 
     import services.dify_builder.dify_port as module
-    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 
     factory, actor, app, workflow, sid, tid = owned
     monkeypatch.setattr(module, "_session_factory", lambda: factory)

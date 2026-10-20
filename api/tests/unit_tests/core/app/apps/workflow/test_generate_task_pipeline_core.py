@@ -7,7 +7,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
-from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
@@ -55,6 +54,7 @@ from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import AppMode, EndUser
 from models.workflow import Workflow, WorkflowAppLog
+from services.workflow_runtime.workflow_pipeline import WorkflowAppGenerateTaskPipeline
 from tests.unit_tests.model_factories import make_end_user, make_workflow
 from tests.workflow_test_utils import build_test_variable_pool
 
@@ -214,7 +214,7 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline._workflow_response_converter.workflow_start_to_stream_response = lambda **kwargs: "started"
 
         monkeypatch.setattr(
-            "core.app.apps.workflow.generate_task_pipeline.db",
+            "services.workflow_runtime.workflow_pipeline.db",
             SimpleNamespace(engine=sqlite_engine),
         )
         monkeypatch.setattr(pipeline, "_save_workflow_app_log", lambda **kwargs: None)
@@ -488,7 +488,7 @@ class TestWorkflowGenerateTaskPipeline:
                 return None
 
         monkeypatch.setattr(
-            "core.app.apps.workflow.generate_task_pipeline.AppGeneratorTTSPublisher",
+            "services.workflow_runtime.workflow_pipeline.AppGeneratorTTSPublisher",
             _Publisher,
         )
 
@@ -641,7 +641,7 @@ class TestWorkflowGenerateTaskPipeline:
                 return None
 
         monkeypatch.setattr(
-            "core.app.apps.workflow.generate_task_pipeline.AppGeneratorTTSPublisher",
+            "services.workflow_runtime.workflow_pipeline.AppGeneratorTTSPublisher",
             _Publisher,
         )
 
@@ -675,7 +675,7 @@ class TestWorkflowGenerateTaskPipeline:
                 return None
 
         monkeypatch.setattr(
-            "core.app.apps.workflow.generate_task_pipeline.AppGeneratorTTSPublisher",
+            "services.workflow_runtime.workflow_pipeline.AppGeneratorTTSPublisher",
             _Publisher,
         )
 
@@ -690,7 +690,7 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline._application_generate_entity.invoke_from = InvokeFrom.SERVICE_API
         pipeline._user_id = "user"
         monkeypatch.setattr(
-            "core.app.apps.workflow.generate_task_pipeline.db",
+            "services.workflow_runtime.workflow_pipeline.db",
             SimpleNamespace(engine=sqlite_engine),
         )
 

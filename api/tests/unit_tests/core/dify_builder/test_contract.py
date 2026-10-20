@@ -243,6 +243,10 @@ def test_card_shapes_round_trip() -> None:
         "consent_id": None,
         "action_state": None,
         "action_reason_code": None,
+        "failure_phase": None,
+        "failure_code": None,
+        "failure_resource": None,
+        "failure_node_ids": [],
     }
 
     # assistant_turn keeps model reasoning separate from observable execution.
@@ -406,6 +410,7 @@ def test_transport_json_schema_contains_request_and_sse_unions() -> None:
         "command_started",
         "conversation_item_appended",
         "error",
+        "native_execution",
         "progress",
         "progress_snapshot",
         "reasoning",

@@ -5,11 +5,9 @@ from copy import deepcopy
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
-from controllers.console.app.workflow import LoopNodeRunPayload
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
+from fields.workflow_run_fields import LoopNodeRunPayload
 from graphon.file import FileUploadConfig
 from graphon.file.models import File
 from graphon.graph import Graph
@@ -19,6 +17,8 @@ from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel
 from services.snippet_generate_service import SnippetGenerateService
 from services.snippet_service import SnippetService
+from services.workflow_runtime.node_factory import DifyNodeFactory
+from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 from services.workflow_service import WorkflowService
 from tests.unit_tests.model_factories import make_account, make_workflow
 from tests.workflow_test_utils import build_test_graph_init_params

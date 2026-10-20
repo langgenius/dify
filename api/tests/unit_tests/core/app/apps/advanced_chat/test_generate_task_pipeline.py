@@ -10,7 +10,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.advanced_chat import generate_task_pipeline as pipeline_module
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
     QueuePingEvent,
@@ -27,6 +26,7 @@ from models.execution_extra_content import HumanInputContent
 from models.model import AppMode, EndUser, Message
 from models.workflow import WorkflowRun
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from services.workflow_runtime import chatflow_pipeline as pipeline_module
 
 
 def _build_generate_entity() -> AdvancedChatAppGenerateEntity:

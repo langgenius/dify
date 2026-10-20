@@ -32,7 +32,7 @@ from models.model import load_annotation_reply_config
 from services.conversation_service import ConversationService
 
 if TYPE_CHECKING:
-    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from runtime_contracts.workflow_driver import WorkflowRunDriver
 
 logger = logging.getLogger(__name__)
 

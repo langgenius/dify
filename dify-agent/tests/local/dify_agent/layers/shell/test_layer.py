@@ -1252,3 +1252,96 @@ def test_redact_output_skips_short_jwe_values() -> None:
         assert "short" in output
 
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("remote", [False, True])
+def test_native_stub_refuses_before_job_creation(remote: bool) -> None:
+    from dify_agent.runtime_backend.native_test_scope import NativeScopeLease
+    from dify_agent.runtime.native_effects import NativePolicyStopped
+
+    commands = FakeCommands()
+    layer, _ = _layer(commands=commands)
+    layer.deps.resources.leases["runtime"] = NativeScopeLease(
+        handle="native:scope:1",
+        layout=RuntimeLayout(home_dir="/home", workspace_dir="/workspace"),
+        client=None,
+        commands=commands,
+    )
+    layer.deps.services.agent_stub_token_factory = lambda *a, **kw: pytest.fail("token issued")
+
+    async def exercise():
+        with pytest.raises(NativePolicyStopped):
+            if remote:
+                await layer.run_remote_script_complete("dify-agent config pull", inject_agent_stub_env=True)
+            else:
+                await layer._tool_run("dify-agent file upload x")
+
+    asyncio.run(exercise())
+    assert commands.run_calls == []
+
+
+def test_native_required_stub_env_refuses_even_when_unconfigured() -> None:
+    from dify_agent.runtime_backend.native_test_scope import NativeScopeLease
+    from dify_agent.runtime.native_effects import NativePolicyStopped
+
+    commands = FakeCommands()
+    layer, _ = _layer(commands=commands)
+    layer.deps.resources.leases["runtime"] = NativeScopeLease(
+        handle="native:scope:1",
+        layout=RuntimeLayout(home_dir="/home", workspace_dir="/workspace"),
+        client=None,
+        commands=commands,
+    )
+    with pytest.raises(NativePolicyStopped):
+        layer._build_shell_command_env(include_agent_stub_env=True, require_agent_stub_env=True)
+    assert commands.run_calls == []
+
+
+def test_strict_shell_checks_actual_deps_run_before_token_issuance() -> None:
+    import httpx
+    from dify_agent.adapters.native_testing.transport import (
+        AgentRuntimeHTTPClient,
+        AgentRuntimeTransportError,
+        bind_runtime_identity,
+    )
+    from dify_agent.protocol.native_testing import AgentRuntimeIdentity
+
+    commands = FakeCommands()
+    layer, _ = _layer(commands=commands)
+    _bind_execution_context(layer)
+    layer.deps.services.agent_stub_api_base_url = "http://stub/agent-stub"
+    layer.deps.services.agent_stub_token_factory = lambda *a, **kw: pytest.fail("issued under wrong Deps owner")
+    selected = AgentRuntimeIdentity(
+        run_id="different-run", execution_mode="ordinary", parent_node=None, request_digest="a" * 64, agent_generation=0
+    )
+
+    async def exercise():
+        async with AgentRuntimeHTTPClient(
+            api_url="http://api",
+            api_token="backend",
+            transport=httpx.MockTransport(lambda req: pytest.fail("network reached")),
+        ) as client:
+            layer.deps.services.dify_api_http_client = client
+            with bind_runtime_identity(selected):
+                with pytest.raises(AgentRuntimeTransportError):
+                    layer._build_shell_command_env(include_agent_stub_env=True)
+
+    asyncio.run(exercise())
+    assert commands.run_calls == []
+
+
+def test_confirmed_shell_exit_keeps_jobs_without_unapproved_cleanup():
+    from types import SimpleNamespace
+    from dify_agent.layers.shell.layer import Capability
+
+    commands = FakeCommands()
+    session, _ = _layer(commands=commands)
+    session.deps.layers["shell"]["state"] = State(initialized=True, job_ids=["existing-job"]).model_dump(mode="json")
+    session.deps.native_effects = SimpleNamespace(continuation=SimpleNamespace(native_test_profile="confirmed"))
+
+    async def handler():
+        return SimpleNamespace(output="done")
+
+    asyncio.run(Capability("shell").wrap_run(SimpleNamespace(deps=session.deps), handler=handler))
+    assert commands.delete_calls == []
+    assert session.runtime_state.job_ids == ["existing-job"]

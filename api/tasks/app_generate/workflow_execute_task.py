@@ -12,10 +12,8 @@ from pydantic import BaseModel, Discriminator, Field, Tag
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.execution_coordinator import clear_app_task_cancellation_signals
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -23,7 +21,6 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.task_entities import WorkflowFinishStreamResponse, WorkflowStartStreamResponse
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
-from core.dify_builder.execution_policy import BuilderExecutionContextValue, BuilderExecutionPolicyError
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from graphon.engine.filter import ResponseStreamFilter
@@ -39,9 +36,14 @@ from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
+from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.app_task_service import AppTaskService
+from services.dify_builder.application.execution_policy import BuilderExecutionContextValue, BuilderExecutionPolicyError
+from services.dify_builder.native_testing.native_execution import dispatch_native_worker
 from services.tools.draft_tool_setup import admit_draft_tool_setup, admit_resumed_draft_tool_setup
 from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_runtime.chatflow_generator import AdvancedChatAppGenerator
+from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +91,8 @@ type User = Annotated[
 
 
 class AppExecutionParams(BaseModel):
+    native_test_required: bool = False
+    native_test_ref: NativeTestContextRef | None = None
     builder_execution: BuilderExecutionContextValue | None = None
 
     app_id: str
@@ -491,6 +495,8 @@ def workflow_based_app_execution_task(
     payload: str,
 ) -> Mapping[str, Any] | None:
     exec_params = AppExecutionParams.model_validate_json(payload)
+    if exec_params.native_test_required or exec_params.native_test_ref is not None:
+        return dispatch_native_worker(ref=exec_params.native_test_ref, generation=None).model_dump(mode="json")
     if exec_params.builder_execution is not None:
         raise BuilderExecutionPolicyError("unsupported_execution_transport")
 
@@ -501,6 +507,10 @@ def workflow_based_app_execution_task(
 
 
 def _resume_app_execution(payload: dict[str, Any]) -> None:
+    from services.dify_builder.native_testing.confirmed_agent_commands import preflight_confirmed_agent_resume
+
+    if not preflight_confirmed_agent_resume(payload=payload):
+        return
     workflow_run_id = payload["workflow_run_id"]
 
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
@@ -518,6 +528,13 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         return
 
     generate_entity = resumption_context.get_generate_entity()
+    from services.dify_builder.native_testing.confirmed_agent_commands import guard_confirmed_agent_resume
+
+    if not guard_confirmed_agent_resume(payload=payload, generate_entity=generate_entity):
+        return
+    if generate_entity.native_test_required or generate_entity.native_test_ref is not None:
+        dispatch_native_worker(ref=generate_entity.native_test_ref, generation=None)
+        return
     if generate_entity.builder_execution is not None:
         raise BuilderExecutionPolicyError("unsupported_execution_transport")
 
@@ -816,4 +833,11 @@ def _resume_workflow(
 
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE, name="resume_app_execution")
 def resume_app_execution(payload: dict[str, Any]) -> None:
-    _resume_app_execution(payload)
+    from services.dify_builder.native_testing.confirmed_agent_commands import finish_confirmed_agent_resume
+
+    payload = dict(payload)
+    payload.pop("_builder_agent_claimed", None)
+    try:
+        _resume_app_execution(payload)
+    finally:
+        finish_confirmed_agent_resume(payload=payload)

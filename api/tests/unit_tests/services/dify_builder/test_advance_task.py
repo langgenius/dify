@@ -425,6 +425,7 @@ def test_terminal_review_projects_current_persisted_verification(
         session_id: str,
         test_input_id: str,
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
+        effect_confirmation: Mapping[str, str] | None = None,
         confirmed_consent_id: str | None = None,
         command_id: str | None = None,
     ) -> Run:
@@ -436,6 +437,7 @@ def test_terminal_review_projects_current_persisted_verification(
             session_id=session_id,
             test_input_id=test_input_id,
             on_workflow_event=on_workflow_event,
+            effect_confirmation=effect_confirmation,
             confirmed_consent_id=confirmed_consent_id,
             command_id=command_id,
         )

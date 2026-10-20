@@ -14,7 +14,6 @@ from typing import override
 
 from core.dify_builder.contract import ConversationPage, ResourceOption
 from core.dify_builder.errors import BusyError, ConflictError, NotFoundError
-from core.dify_builder.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
 from core.dify_builder.models import (
     Actor,
     ApplyResult,
@@ -39,8 +38,10 @@ from core.dify_builder.models import (
     StartSchema,
     TestInput,
 )
-from core.dify_builder.ports import DifyBuilderAgent, DifyPort, Repository
 from core.dify_builder.state import PcState
+from services.dify_builder.application.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
+from services.dify_builder.application.ports import DifyBuilderAgent, DifyPort, Repository
+from services.dify_builder.effect_disclosure import EffectDisclosure
 from services.dify_builder.plan import WorkflowPlan
 
 
@@ -176,13 +177,11 @@ class _StubAgent(DifyBuilderAgent):
     ) -> str:
         return "stub"
 
-    @override
-    def analyze_impact(self, goal_text: str, graph: Graph) -> dict[str, object]:
+    def analyze_impact(self, _goal_text, _graph, *, reply_language=None):  # noqa: ARG002
         return {"edit_rules": {}, "target_node_ids": []}
 
-    @override
-    def propose_edit_plan(self, edit_rules: dict[str, object], graph: Graph) -> WorkflowPlan | None:
-        return None
+    def propose_edit_plan(self, _edit_rules, _graph, **_kwargs):
+        return []
 
     @override
     def build_edit_intents(
@@ -192,6 +191,7 @@ class _StubAgent(DifyBuilderAgent):
         *,
         edit_target_node_ids: Sequence[str] = (),
         last_edit_rejection: str | None = None,
+        approved_plan: WorkflowPlan | None = None,
     ) -> list[MutationIntent]:
         return []
 
@@ -262,8 +262,15 @@ class _StubDifyPort(DifyPort):
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
         confirmed_consent_id: str | None = None,
         command_id: str | None = None,
+        effect_confirmation: Mapping[str, str] | None = None,
     ) -> Run:
         return Run()
+
+    def prepare_code_risks(self, _app_id, _actor, *, session_id, inputs, context):  # noqa: ARG002
+        return {}
+
+    def disclose_effects(self, _app_id, _actor, *, inputs=None, code_risk_context=None):  # noqa: ARG002
+        return EffectDisclosure()
 
     @override
     def publish(
@@ -430,21 +437,21 @@ def test_pcstate_is_the_state_module_type_used_by_compare_and_advance() -> None:
 
 
 def test_agent_missing_learn_from_build_is_not_a_dify_builder_agent() -> None:
-    from core.dify_builder.ports import DifyBuilderAgent
+    from services.dify_builder.application.ports import DifyBuilderAgent
 
     class _Missing:  # a former-complete agent lacking only learn_from_build
-        def diagnose(self, *a: object) -> None: ...
-        def diagnose_checklist(self, *a: object) -> None: ...
-        def propose_repair(self, *a: object) -> None: ...
-        def generate_mock_inputs(self, *a: object) -> None: ...
-        def analyze_goal(self, *a: object) -> None: ...
-        def propose_plan_v1(self, *a: object) -> None: ...
-        def discover_resources(self, *a: object) -> None: ...
-        def bind_resources(self, *a: object) -> None: ...
-        def build_nodes(self, *a: object) -> None: ...
-        def analyze_impact(self, *a: object) -> None: ...
-        def propose_edit_plan(self, *a: object) -> None: ...
-        def build_edit_intents(self, *a: object) -> None: ...
-        def respond_to_message(self, *a: object) -> None: ...
+        def diagnose(self, *a): ...
+        def diagnose_checklist(self, *a): ...
+        def propose_repair(self, *a): ...
+        def generate_mock_inputs(self, *a): ...
+        def analyze_goal(self, *a): ...
+        def propose_plan_v1(self, *a): ...
+        def discover_resources(self, *a): ...
+        def bind_resources(self, *a): ...
+        def build_nodes(self, *a): ...
+        def analyze_impact(self, *a, **kwargs): ...
+        def propose_edit_plan(self, *a): ...
+        def build_edit_intents(self, *a): ...
+        def respond_to_message(self, *a): ...
 
     assert not isinstance(_Missing(), DifyBuilderAgent)

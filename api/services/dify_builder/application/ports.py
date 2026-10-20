@@ -1,0 +1,346 @@
+"""Dify Builder outbound ports.
+
+Port of dify-enterprise/server/pkg/enterprise/biz/dify_builder/ports.go.
+
+Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
+
+- ``ForwardAuth`` is dropped entirely. ``DifyPort`` methods take
+  ``actor: Actor`` instead of a forwarded console token — the fake used in
+  P1 ignores it; the real adapter (P2) uses it to call ``WorkflowService``.
+- Method names are ``snake_case``.
+- The value types Go defines in this file (``Diagnosis``, ``Risk``,
+  ``MutationIntent``, ``ChangeSet``, ``NodeEvent``, ``ApplyResult``) live in
+  ``models.py`` instead, alongside the rest of the domain dataclasses —
+  ``DifyBuilderContext`` embeds several of them directly, and defining them here
+  (where the models are imported) would create a models<->ports import
+  cycle. They are re-exported from here for convenience.
+- ``interface`` becomes ``typing.Protocol``, marked ``@runtime_checkable`` so
+  conformance can be asserted with ``isinstance`` in tests (see
+  ``seam_test.go``'s ``TestSeam_AnyConformingAgent_DrivesFlowToTerminal``).
+"""
+
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, Protocol, runtime_checkable
+
+from core.dify_builder.contract import ConversationPage, ResourceOption
+from core.dify_builder.models import (
+    Actor,
+    ApplyResult,
+    BuildNodesResult,
+    ChangeSet,
+    ChecklistError,
+    Checkpoint,
+    ConversationItem,
+    Diagnosis,
+    DifyBuilderContext,
+    Graph,
+    Inputs,
+    MutationIntent,
+    NodeEvent,
+    NodeOutput,
+    PublishResult,
+    Risk,
+    Run,
+    Session,
+    Snapshot,
+    StartSchema,
+    TestInput,
+)
+from core.dify_builder.state import PcState
+from services.dify_builder.application.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
+from services.dify_builder.effect_disclosure import EffectDisclosure
+from services.dify_builder.plan import WorkflowPlan
+
+__all__ = [
+    "ApplyResult",
+    "ChangeSet",
+    "Diagnosis",
+    "DifyBuilderAgent",
+    "DifyPort",
+    "MutationIntent",
+    "NodeEvent",
+    "ReasoningStreamingAgent",
+    "Repository",
+    "Risk",
+]
+
+
+@runtime_checkable
+class DifyBuilderAgent(Protocol):
+    """The cognitive seam implemented by both LLM and fallback agents."""
+
+    def diagnose(self, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> Diagnosis: ...
+
+    def diagnose_checklist(self, errors: list[ChecklistError], graph: Graph) -> Diagnosis: ...
+
+    def propose_repair(self, diagnosis: Diagnosis, graph: Graph) -> tuple[list[MutationIntent], Risk]: ...
+
+    def generate_mock_inputs(self, schema: StartSchema, prior_failed: Inputs) -> Inputs: ...
+
+    # -- Build cognition --
+
+    def analyze_goal(self, goal_text: str, *, reply_language: str | None = None) -> dict[str, Any]: ...
+
+    # Short human title for a prompt-created app. Returns the raw proposal; the
+    # service layer normalizes and stores it.
+    def propose_app_name(self, goal_text: str, requirements: dict[str, Any]) -> str: ...
+
+    def propose_plan_v1(self, requirements: dict[str, Any], *, goal_text: str) -> WorkflowPlan | None: ...
+
+    def discover_resources(
+        self, plan_items: list[str], *, goal_text: str, requirements: dict[str, Any]
+    ) -> list[ResourceOption]: ...
+
+    # One plain sentence naming a plan step nothing installed can perform, or
+    # "" when the recommended resources cover the plan. Never raises.
+    def assess_capability_gap(
+        self, plan_items: list[str], options: list[ResourceOption], *, goal_text: str, requirements: dict[str, Any]
+    ) -> str: ...
+
+    def bind_resources(self, plan_items: list[str], resource_ids: list[str]) -> list[str]: ...
+
+    def build_nodes(
+        self, plan_items: list[str], resource_ids: list[str] | None = None, *, trusted_text: str = ""
+    ) -> BuildNodesResult: ...
+
+    def learn_from_build(
+        self,
+        goal_text: str,
+        requirements: dict[str, Any],
+        plan_items: list[str],
+        built_node_ids: list[str],
+    ) -> str: ...
+
+    # -- Edit cognition --
+
+    def analyze_impact(self, goal_text: str, graph: Graph, *, reply_language: str | None = None) -> dict[str, Any]: ...
+
+    # None means no complete proposal was generated; retain the current plan.
+    def propose_edit_plan(
+        self, edit_rules: dict[str, Any], graph: Graph, *, reply_language: str | None = None
+    ) -> WorkflowPlan | None: ...
+
+    # ``edit_target_node_ids``: the nodes analyze_impact said the change
+    # touches; an implementation may show the model their current config so it
+    # can leave what it was not asked about alone. ``last_edit_rejection``:
+    # why the previous attempt was refused, for a corrective re-prompt. Both
+    # are keyword-only and optional -- an agent is free to ignore either.
+    # ``approved_plan`` is the presentation snapshot the user approved, so the
+    # generator can apply that plan together with the submitted edit rules.
+    #
+    # MAY raise ``errors.ProposalWouldRunWrongError`` instead of returning, when
+    # the implementation has judged its own final proposal wrong -- a batch that
+    # would apply cleanly, start, run green and not do what was asked. Nothing
+    # has been written; the handler surfaces the reason at the approval gate and
+    # carries it into the next attempt. An agent with no such judgement (the
+    # placeholder) simply never raises it, so this stays optional.
+    def build_edit_intents(
+        self,
+        edit_rules: dict[str, Any],
+        graph: Graph,
+        *,
+        edit_target_node_ids: Sequence[str] = (),
+        last_edit_rejection: str | None = None,
+        approved_plan: WorkflowPlan | None = None,
+    ) -> list[MutationIntent]: ...
+
+    def respond_to_message(
+        self,
+        state: PcState,
+        context: DifyBuilderContext,
+        history: list[ConversationItem],
+        graph: Graph,
+        text: str,
+        on_delta: Callable[[str], None] | None = None,
+    ) -> str: ...
+
+    # The agent's resolved model instance (or None when it can't resolve).
+    # Typed loosely as ``object | None`` to keep this pure port free of any
+    # model-runtime import; the reply-language detector uses it as its model
+    # provider. Implementers that have no model return None.
+    def model_or_none(self) -> object | None: ...
+
+
+@runtime_checkable
+class ReasoningStreamingAgent(Protocol):
+    """Optional capability for agents that expose model-provided reasoning."""
+
+    def set_reasoning_callback(self, callback: Callable[[str, str], None] | None) -> None: ...
+
+
+@runtime_checkable
+class DifyPort(Protocol):
+    """The outbound port to Dify.
+
+    Implemented by the token-forwarding adapter in P2. ``actor`` identifies
+    who is driving the call (Go: ``auth ForwardAuth``).
+    """
+
+    def read_graph(self, app_id: str, actor: Actor) -> tuple[Graph, str]:
+        """Return the graph and its execution revision, excluding canvas presentation."""
+        ...
+
+    def stamp_http_fixtures(
+        self, app_id: str, actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
+    ) -> HttpFixtureSetV1: ...
+
+    def get_app_mode(self, app_id: str, actor: Actor) -> str:
+        """Return the persisted app mode after actor/tenant-scoped authorization."""
+        ...
+
+    def node_outputs(self, app_id: str, actor: Actor, run_id: str) -> list[NodeOutput]: ...
+
+    def apply_repair(
+        self,
+        app_id: str,
+        actor: Actor,
+        intents: list[MutationIntent],
+        on_canvas: Callable[[dict], None] | None = None,
+        *,
+        expected_revision: str,
+        failed_run_id: str | None = None,
+        confirmed_resource_ids: Sequence[str] | None = None,
+        expected_resource_fingerprints: dict[str, str] | None = None,
+        expected_node_resources: dict[str, str] | None = None,
+    ) -> ApplyResult: ...
+
+    def run_draft(
+        self,
+        app_id: str,
+        actor: Actor,
+        inputs: Inputs,
+        on_event: Callable[[NodeEvent], None],
+        *,
+        session_id: str,
+        test_input_id: str,
+        on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
+        confirmed_consent_id: str | None = None,
+        command_id: str | None = None,
+        effect_confirmation: Mapping[str, str] | None = None,
+    ) -> Run:
+        """Run the saved draft test. Both confirmed IDs ``None``: the default restricted run.
+
+        Both set: launch the server-reserved confirmed command for this
+        invocation only; the adapter reloads the reservation and refuses a
+        mismatch. Supplying exactly one is a refusal, never a fallback.
+
+        ``effect_confirmation`` (node ID -> effect signature, see
+        ``disclose_effects``) applies only when the draft takes the confirmed
+        full run: a side effect runs for real only while its signature still
+        matches, and every other side effect or destructive node is mocked.
+        """
+        ...
+
+    def prepare_code_risks(
+        self,
+        app_id: str,
+        actor: Actor,
+        *,
+        session_id: str,
+        inputs: Mapping[str, Any],
+        context: DifyBuilderContext,
+    ) -> dict[str, dict[str, Any]]:
+        """Prepare/reuse one bounded explanation using trusted in-turn cognition."""
+        ...
+
+    def disclose_effects(
+        self,
+        app_id: str,
+        actor: Actor,
+        *,
+        inputs: Mapping[str, Any] | None = None,
+        code_risk_context: DifyBuilderContext | None = None,
+    ) -> EffectDisclosure:
+        """What a Test Run of the current draft would reach outside Dify (PRD §9.1).
+
+        ``inputs`` binds direct Start references to submitted test values; omit
+        it to inspect configuration alone. Empty when nothing needs disclosure.
+        """
+        ...
+
+    def publish(
+        self, app_id: str, actor: Actor, *, expected_revision: str, expected_graph_revision: str
+    ) -> PublishResult: ...
+
+    def graph_revision(self, graph: Graph) -> str:
+        """Opaque executable graph digest, separate from the full execution revision."""
+        ...
+
+    def restore_graph(self, app_id: str, actor: Actor, graph: Graph, *, expected_revision: str) -> str: ...
+
+    def structural_fingerprint(self, graph: Graph) -> str:
+        """Stable hash of the graph's structure (node identity+type + edges),
+        excluding config -- the core-visible primitive backing recovery (C-1).
+        The adapter delegates to ``graph_ops.structural_fingerprint``."""
+        ...
+
+    def graph_node_ids(self, graph: Graph) -> list[str]:
+        """The ids of every node in ``graph`` -- backs recovery's
+        target-presence check. Delegates to ``graph_ops.node_ids``."""
+        ...
+
+
+@runtime_checkable
+class Repository(Protocol):
+    """The durable store.
+
+    ``compare_and_advance`` is the single concurrency primitive: it appends a
+    commit and advances the session version iff the current version equals
+    ``base_version``, else raises ``ConflictError``.
+    """
+
+    def create_session(
+        self, session: Session, initial_fc: DifyBuilderContext, items: list[ConversationItem]
+    ) -> None: ...
+
+    def get_session(self, id: str) -> tuple[Session, DifyBuilderContext]: ...
+
+    def compare_and_advance(
+        self,
+        session_id: str,
+        base_version: int,
+        next: PcState,
+        fc: DifyBuilderContext,
+        items: list[ConversationItem],
+    ) -> int: ...
+
+    def create_checkpoint(self, cp: Checkpoint, snap: Snapshot) -> None: ...
+
+    def get_checkpoint(self, id: str) -> tuple[Checkpoint, Snapshot]: ...
+
+    def save_run(self, session_id: str, run: Run) -> None:
+        """Persist a run.
+
+        Implementations MUST preserve a caller-supplied non-empty ``run.id``
+        (do not regenerate it): ``handle_verify`` pre-generates the id and sets
+        ``fc.verify_run_id`` to the same value, so a regenerated id would
+        silently desync the persisted row from the session context (surfacing
+        later as a wrong-run / not-found lookup). If ``run.id`` is empty the
+        implementation assigns one.
+        """
+        ...
+
+    def get_run(self, id: str) -> Run: ...
+
+    def save_test_input(self, ti: TestInput) -> None: ...
+
+    def get_test_input(self, id: str) -> TestInput: ...
+
+    def list_conversation(self, session_id: str) -> list[ConversationItem]: ...
+
+    def list_recent_conversation(self, session_id: str, *, limit: int) -> list[ConversationItem]: ...
+
+    def get_conversation_turn_kinds(self, session_id: str, turn_id: str) -> frozenset[str]: ...
+
+    def list_conversation_page(
+        self,
+        session_id: str,
+        *,
+        limit: int,
+        before_seq: int | None = None,
+        after_seq: int | None = None,
+    ) -> ConversationPage: ...
+
+    def get_latest_conversation_item(self, session_id: str, kinds: frozenset[str]) -> ConversationItem | None: ...
+
+    def invalidate_conversation_items(self, session_id: str, from_seq: int) -> None: ...

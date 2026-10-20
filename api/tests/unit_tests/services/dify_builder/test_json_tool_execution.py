@@ -10,9 +10,9 @@ from unittest.mock import Mock
 import pytest
 from pydantic import Field, ValidationError
 
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError, RestrictedAdmissionSnapshot
 from core.dify_builder.models import Graph
 from graphon.runtime import VariablePool
+from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError, RestrictedAdmissionSnapshot
 from services.dify_builder.json_tool_execution import (
     QualifiedJsonToolBinding,
     admit_json_workflow,
@@ -309,7 +309,7 @@ def test_exact_graph_and_static_tool_shape_refuse_mutations(json_graph: Graph, m
 def test_wrong_resolved_tool_class_refuses_before_class_validation(
     json_graph: Graph, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from core.workflow import node_factory
+    from services.workflow_runtime import node_factory
 
     original = node_factory.resolve_workflow_node_class
 

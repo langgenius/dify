@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import ClassVar, Literal
 
+from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 type AgentToolProviderType = Literal["plugin", "builtin", "api", "workflow", "mcp"]
@@ -47,6 +48,7 @@ class AgentToolInvokeTarget(BaseModel):
 class AgentToolInvokeRequest(BaseModel):
     caller: AgentToolInvokeCaller
     tool: AgentToolInvokeTarget
+    native_dispatch: AgentPhysicalDispatchPayload | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

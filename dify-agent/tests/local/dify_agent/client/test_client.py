@@ -1098,3 +1098,253 @@ def test_stream_timeout_can_reconnect_until_terminal() -> None:
 
     assert calls == 2
     assert [event.type for event in events] == ["run_succeeded"]
+
+
+# Private checkpoint readback tests use real HTTPX streams; no backend ACK claim.
+def _private_checkpoint_request():
+    from dify_agent.protocol.native_continuation import ReadNativeCheckpointRequest
+
+    return ReadNativeCheckpointRequest.model_validate(
+        {
+            "ref": {
+                "policy_version": "builder-native-test-v1",
+                "request_id": "req",
+                "invocation_id": "inv",
+                "context_digest": "a" * 64,
+            },
+            "expected_generation": 7,
+            "waiting_event_id": "123-1",
+            "config_ref": "config",
+            "config_digest": "b" * 64,
+        }
+    )
+
+
+def _private_checkpoint_response():
+    from dify_agent.protocol.native_continuation import AgentCheckpoint
+
+    cp = AgentCheckpoint.model_validate(
+        {
+            "run_id": "run-1",
+            "generation": 7,
+            "ref": _private_checkpoint_request().ref.model_dump(mode="json"),
+            "stage": "bootstrap",
+            "pending_calls": [
+                {
+                    "call_id": "c",
+                    "tool_name": "boot",
+                    "stage": "bootstrap",
+                    "pending_operation_id": "p",
+                    "wait_reason": "configuration",
+                    "intent": {
+                        "key": {"invocation_id": "inv", "occurrence_path": ["boot"], "cursor": 0},
+                        "kind": "bootstrap",
+                        "resource_ref": "r",
+                        "implementation_revision": "v",
+                        "account_ref": None,
+                        "target": {},
+                        "parameters": [True, 1],
+                        "input_digest": "c" * 64,
+                        "capability_digest": "d" * 64,
+                    },
+                }
+            ],
+            "history": [],
+            "operation_cursor": 0,
+            "result_refs": {},
+            "job_refs": [],
+            "config_ref": "config",
+            "config_digest": "b" * 64,
+            "session_snapshot": {"schema_version": 2, "layers": {}},
+        }
+    )
+    return {
+        "checkpoint": cp.model_dump(mode="json"),
+        "waiting_event": cp.waiting_event().model_copy(update={"id": "123-1"}).model_dump(mode="json"),
+    }
+
+
+@pytest.mark.parametrize("asynchronous", [False, True])
+def test_private_checkpoint_read_sends_exact_selection_once_and_preserves_types(asynchronous):
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        assert request.url.path == "/runs/run-1/native-checkpoint"
+        assert request.method == "POST"
+        assert request.headers["Authorization"] == "Bearer synthetic-service-token"
+        assert json.loads(request.content)["expected_generation"] == 7
+        return httpx.Response(200, json=_private_checkpoint_response())
+
+    if asynchronous:
+
+        async def run():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+                async with Client(
+                    base_url="http://synthetic.invalid",
+                    async_http_client=http,
+                    headers={"Authorization": "Bearer synthetic-service-token"},
+                ) as client:
+                    return await client.read_native_checkpoint("run-1", _private_checkpoint_request())
+
+        result = asyncio.run(run())
+    else:
+        with httpx.Client(transport=httpx.MockTransport(handler)) as http:
+            with Client(
+                base_url="http://synthetic.invalid",
+                sync_http_client=http,
+                headers={"Authorization": "Bearer synthetic-service-token"},
+            ) as client:
+                result = client.read_native_checkpoint_sync("run-1", _private_checkpoint_request())
+    assert result.checkpoint.generation == 7
+    assert result.checkpoint.pending_calls[0].intent.parameters == [True, 1]
+    assert result.waiting_event.id == "123-1"
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("asynchronous", [False, True])
+@pytest.mark.parametrize(
+    "failure",
+    [
+        "timeout",
+        "connect",
+        "error",
+        "invalid",
+        "oversize",
+        "wrong_run",
+        "wrong_event",
+        "wrong_generation",
+        "wrong_config",
+        "wrong_ref",
+    ],
+)
+def test_private_checkpoint_client_refuses_without_retry_or_history_leak(asynchronous, failure):
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        if failure == "timeout":
+            raise httpx.ReadTimeout("private-canary", request=request)
+        if failure == "connect":
+            raise httpx.ConnectError("private-canary", request=request)
+        if failure == "error":
+            return httpx.Response(409, json={"history": "private-canary"})
+        if failure == "invalid":
+            return httpx.Response(200, content=b'{"private-canary":true}')
+        if failure == "oversize":
+            return httpx.Response(200, content=b"private-canary" * 200000)
+        body = _private_checkpoint_response()
+        if failure == "wrong_run":
+            body["checkpoint"]["run_id"] = "foreign"
+        if failure == "wrong_event":
+            body["waiting_event"]["id"] = "124-1"
+        if failure == "wrong_generation":
+            body["checkpoint"]["generation"] = 6
+            body["waiting_event"]["data"]["generation"] = 6
+        if failure == "wrong_config":
+            body["checkpoint"]["config_ref"] = "other"
+        if failure == "wrong_ref":
+            body["checkpoint"]["ref"]["request_id"] = "other"
+        return httpx.Response(200, json=body)
+
+    if asynchronous:
+
+        async def run():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+                async with Client(base_url="http://synthetic.invalid", async_http_client=http) as client:
+                    await client.read_native_checkpoint("run-1", _private_checkpoint_request())
+
+        with pytest.raises((DifyAgentHTTPError, client_module.DifyAgentClientError)) as caught:
+            asyncio.run(run())
+    else:
+        with httpx.Client(transport=httpx.MockTransport(handler)) as http:
+            with Client(base_url="http://synthetic.invalid", sync_http_client=http) as client:
+                with pytest.raises((DifyAgentHTTPError, client_module.DifyAgentClientError)) as caught:
+                    client.read_native_checkpoint_sync("run-1", _private_checkpoint_request())
+    assert "private-canary" not in str(caught.value)
+    assert "private-canary" not in str(getattr(caught.value, "detail", ""))
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("asynchronous", [False, True])
+def test_private_checkpoint_stream_bound_counts_actual_bytes_without_content_length(asynchronous):
+    pulls = []
+
+    class SyncChunks(httpx.SyncByteStream):
+        def __iter__(self):
+            for index in range(100):
+                pulls.append(index)
+                yield b"x" * 65536
+
+    class AsyncChunks(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            for index in range(100):
+                pulls.append(index)
+                yield b"x" * 65536
+
+    def handler(request):
+        return httpx.Response(200, stream=AsyncChunks() if asynchronous else SyncChunks())
+
+    if asynchronous:
+
+        async def run():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+                async with Client(base_url="http://synthetic.invalid", async_http_client=http) as client:
+                    await client.read_native_checkpoint("run-1", _private_checkpoint_request())
+
+        with pytest.raises(DifyAgentValidationError):
+            asyncio.run(run())
+    else:
+        with httpx.Client(transport=httpx.MockTransport(handler)) as http:
+            with Client(base_url="http://synthetic.invalid", sync_http_client=http) as client:
+                with pytest.raises(DifyAgentValidationError):
+                    client.read_native_checkpoint_sync("run-1", _private_checkpoint_request())
+    assert len(pulls) == 33  # Read the bounded excess chunk, then close; never drain the 100 chunks.
+
+
+@pytest.mark.parametrize("asynchronous", [False, True])
+def test_private_checkpoint_never_follows_transport_redirects(asynchronous):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        if len(requests) == 1:
+            return httpx.Response(307, headers={"Location": "http://foreign.invalid/private"})
+        return httpx.Response(200, json=_private_checkpoint_response())
+
+    if asynchronous:
+
+        async def run():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler), follow_redirects=True) as http:
+                async with Client(base_url="http://synthetic.invalid", async_http_client=http) as client:
+                    await client.read_native_checkpoint("run-1", _private_checkpoint_request())
+
+        with pytest.raises(DifyAgentValidationError):
+            asyncio.run(run())
+    else:
+        with httpx.Client(transport=httpx.MockTransport(handler), follow_redirects=True) as http:
+            with Client(base_url="http://synthetic.invalid", sync_http_client=http) as client:
+                with pytest.raises(DifyAgentValidationError):
+                    client.read_native_checkpoint_sync("run-1", _private_checkpoint_request())
+    assert len(requests) == 1
+
+
+def test_private_checkpoint_invalid_copied_request_refuses_without_serializer_warning():
+    import warnings
+
+    attempts = []
+
+    def handler(request):
+        attempts.append(request)
+        return httpx.Response(500)
+
+    invalid = _private_checkpoint_request().model_copy(update={"config_ref": {"private-canary": True}})
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http:
+        with Client(base_url="http://synthetic.invalid", sync_http_client=http) as client:
+            with warnings.catch_warnings(record=True) as emitted:
+                warnings.simplefilter("always")
+                with pytest.raises(DifyAgentValidationError) as caught:
+                    client.read_native_checkpoint_sync("run-1", invalid)
+    assert "private-canary" not in str(caught.value)
+    assert emitted == []
+    assert attempts == []

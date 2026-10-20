@@ -5,13 +5,17 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError, HttpFixtureSetV1, HttpResponseFixtureV1
 from core.dify_builder.models import Action, Actor, Turn
-from core.dify_builder.ports import DifyPort
+from services.dify_builder.application.execution_policy import (
+    BuilderExecutionPolicyError,
+    HttpFixtureSetV1,
+    HttpResponseFixtureV1,
+)
+from services.dify_builder.application.ports import DifyPort
 
 
 def stamp(dify: DifyPort, turn: Turn) -> HttpFixtureSetV1 | None:
-    return importlib.import_module("core.dify_builder.testdata").stamp_testdata_http_fixtures(
+    return importlib.import_module("services.dify_builder.application.testdata").stamp_testdata_http_fixtures(
         dify, app_id="app", turn=turn
     )
 

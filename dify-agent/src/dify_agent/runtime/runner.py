@@ -10,37 +10,32 @@ scopes. Workspace and Binding retirement remain API-owned.
 import asyncio
 from collections.abc import AsyncIterable, Callable, Mapping
 from dataclasses import dataclass
-from typing import Protocol, cast, runtime_checkable
 from types import ModuleType
+from typing import Protocol, cast, runtime_checkable
 
-from graphon.model_runtime.entities.llm_entities import LLMUsage
-from pydantic import JsonValue, TypeAdapter
-from pydantic_ai import capture_run_messages
-from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
-from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
-from pydantic_ai.usage import RunUsage, UsageLimits
-
-from dify_agent.protocol.snapshot import SessionSnapshot
-from dify_agent.runtime.context import Services
-from dify_agent.runtime.modules import REGISTRY, load_modules, create_modules, snapshot_modules
-from pydantic_ai.capabilities import AbstractCapability
-from pydantic_ai.toolsets import AbstractToolset
 from dify_agent.layers import history as history_module
-from dify_agent.layers.prompt import layer as prompt_module
 from dify_agent.layers.dify_plugin import llm_layer as llm_module
-from dify_agent.layers.output import output_layer as output_module
-from dify_agent.layers.user_prompt import layer as user_prompt_module
 from dify_agent.layers.knowledge import layer as knowledge_module
 from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClientError
+from dify_agent.layers.output import output_layer as output_module
+from dify_agent.layers.prompt import layer as prompt_module
+from dify_agent.layers.user_prompt import layer as user_prompt_module
+from dify_agent.protocol.native_testing import (
+    NATIVE_TEST_CAPABILITIES,
+    NativeTestCapabilities,
+    NativeTestProtocolUnsupported,
+    require_native_test_capabilities,
+)
 from dify_agent.protocol.schemas import (
+    DIFY_AGENT_MODEL_LAYER_ID,
     AgentRunUsage,
     CreateRunRequest,
-    DIFY_AGENT_MODEL_LAYER_ID,
     RunFailureType,
 )
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
 from dify_agent.runtime.compaction import build_compaction_capability
-from dify_agent.runtime_backend import BindingLostError
+from dify_agent.runtime.context import Services
 from dify_agent.runtime.event_coalescer import (
     DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
     DEFAULT_TEXT_DELTA_MAX_CHARS,
@@ -53,9 +48,24 @@ from dify_agent.runtime.event_sink import (
     emit_run_started,
     emit_run_succeeded,
 )
+from dify_agent.runtime.modules import REGISTRY, create_modules, load_modules, snapshot_modules
+from dify_agent.runtime.native_continuation import (
+    AgentCheckpoint,
+    NativeApprovalSuspended,
+    NativeContinuation,
+    NativePolicyStopped,
+)
 from dify_agent.runtime.observability import AgentObservability
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
-
+from dify_agent.runtime_backend import BindingLostError
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from pydantic import JsonValue, TypeAdapter
+from pydantic_ai import DeferredToolRequests, DeferredToolResults, capture_run_messages
+from pydantic_ai.capabilities import AbstractCapability
+from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
+from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
+from pydantic_ai.toolsets import AbstractToolset
+from pydantic_ai.usage import RunUsage, UsageLimits
 
 _AGENT_OUTPUT_ADAPTER = TypeAdapter(object)
 _MAX_AGENT_STEPS_PER_RUN = 500
@@ -76,6 +86,9 @@ def _run_failed_error_payload(exc: Exception) -> tuple[str, RunFailureType | Non
     """Return the public failed-run error text, type, and structured reason."""
     message = str(exc) or type(exc).__name__
     reason: str | None = None
+
+    if isinstance(exc, NativePolicyStopped):
+        return exc.reason_code, None, exc.reason_code
 
     if isinstance(exc, UsageLimitExceeded):
         return message, RunFailureType.AGENT_RUN_LIMIT_EXCEEDED, None
@@ -153,11 +166,17 @@ class AgentRunRunner:
         stream_text_delta_flush_interval_seconds: float = DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
         stream_text_delta_max_chars: int = DEFAULT_TEXT_DELTA_MAX_CHARS,
         agent_observability: AgentObservability | None = None,
+        native_continuation: NativeContinuation | None = None,
+        native_capabilities: NativeTestCapabilities = NATIVE_TEST_CAPABILITIES,
+        deferred_tool_results: DeferredToolResults | None = None,
     ) -> None:
         if stream_text_delta_flush_interval_seconds <= 0:
             raise ValueError("stream_text_delta_flush_interval_seconds must be positive")
         if stream_text_delta_max_chars <= 0:
             raise ValueError("stream_text_delta_max_chars must be positive")
+        self.native_continuation = native_continuation
+        self.native_capabilities = native_capabilities
+        self.deferred_tool_results = deferred_tool_results
         self.sink = sink
         self.request = request
         self.run_id = run_id
@@ -186,12 +205,36 @@ class AgentRunRunner:
         """Execute the run and emit the documented event sequence."""
         self._terminal_session_snapshot = None
         self._terminal_usage = None
+        if self.request.execution_mode == "builder_test":
+            require_native_test_capabilities(self.native_capabilities, profile=self.request.native_test_profile)
+            if self.native_continuation is None or self.native_continuation.ref != self.request.native_test_ref:
+                raise NativeTestProtocolUnsupported()
+            from dify_agent.runtime.native_effects import NativeEffectsCapability
+
+            gates = [
+                capability
+                for capability in self.native_continuation.capabilities
+                if isinstance(capability, NativeEffectsCapability)
+            ]
+            if len(gates) != 1 or gates[0].session.continuation is not self.native_continuation:
+                raise NativeTestProtocolUnsupported()
         if self.is_cancelled():
             return
-        _ = await emit_run_started(self.sink, run_id=self.run_id)
+        if self.native_continuation is None or self.native_continuation.generation == 0:
+            _ = await emit_run_started(self.sink, run_id=self.run_id)
 
         try:
-            outcome = await self._run_agent()
+            try:
+                outcome = await self._run_agent()
+            except NativeApprovalSuspended as wait:
+                if self.native_continuation is None:
+                    raise
+                if self._terminal_session_snapshot is not None:
+                    self.native_continuation.session_snapshot = self._terminal_session_snapshot
+                outcome = self.native_continuation.capture_wait(wait)
+            if isinstance(outcome, AgentCheckpoint):
+                await self.sink.persist_waiting(run_id=self.run_id, checkpoint=outcome, event=outcome.waiting_event())
+                return
         except Exception as exc:
             if self.is_cancelled():
                 return
@@ -219,9 +262,20 @@ class AgentRunRunner:
             usage=outcome.usage,
         )
 
-    async def _run_agent(self) -> RunSuccessOutcome:
+    async def _run_agent(self) -> RunSuccessOutcome | AgentCheckpoint:
         try:
             deps = load_modules(self.request, self.services, self.run_id, registry=self.registry)
+            if self.native_continuation is not None:
+                from dify_agent.runtime.native_effects import NativeEffectsCapability
+
+                gates = [
+                    capability
+                    for capability in self.native_continuation.capabilities
+                    if isinstance(capability, NativeEffectsCapability)
+                ]
+                if len(gates) != 1 or gates[0].session.continuation is not self.native_continuation:
+                    raise NativeTestProtocolUnsupported()
+                deps.native_effects = gates[0].session
             modules = create_modules(deps, registry=self.registry)
             model_module = modules[DIFY_AGENT_MODEL_LAYER_ID]
             if not isinstance(model_module, llm_module.Capability):
@@ -249,6 +303,8 @@ class AgentRunRunner:
             if not has_non_blank_user_prompt(user_content) and not eager_user_content:
                 raise ValueError(EMPTY_USER_PROMPTS_ERROR)
             capabilities = [module for module in modules.values() if isinstance(module, AbstractCapability)]
+            if self.native_continuation is not None:
+                capabilities.extend(self.native_continuation.capabilities)
             compaction = build_compaction_capability(
                 context_window_tokens=llm_config.context_window_tokens, model_settings=llm_config.model_settings
             )
@@ -258,7 +314,9 @@ class AgentRunRunner:
                 model,
                 toolsets=[module for module in modules.values() if isinstance(module, AbstractToolset)],
                 capabilities=capabilities,
-                output_type=output_type,
+                output_type=[output_type, DeferredToolRequests]
+                if self.native_continuation is not None
+                else output_type,
             )
             if self.agent_observability is not None:
                 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
@@ -286,27 +344,49 @@ class AgentRunRunner:
                     self.sink, run_id=self.run_id, data=event, agent_message_delta=_extract_agent_message_delta(event)
                 )
 
+        resuming_history = (
+            self.native_continuation is not None
+            and self.native_continuation.generation > 0
+            and bool(self.native_continuation.history)
+        )
         timeout = asyncio.timeout(self.run_timeout_seconds)
         try:
             with capture_run_messages() as messages:
                 finished = False
+                suspended = False
                 try:
                     async with timeout:
                         result = await agent.run(
-                            normalize_user_input(user_content),
+                            None
+                            if self.deferred_tool_results is not None or resuming_history
+                            else normalize_user_input(user_content),
                             deps=deps,
-                            message_history=message_history,
+                            message_history=self.native_continuation.history
+                            if resuming_history and self.native_continuation is not None
+                            else message_history,
+                            deferred_tool_results=self.deferred_tool_results,
                             event_stream_handler=handle_events,
                             usage_limits=UsageLimits(request_limit=_MAX_AGENT_STEPS_PER_RUN),
                         )
                     finished = True
+                except NativeApprovalSuspended:
+                    suspended = True
+                    raise
                 finally:
                     if messages and isinstance(history, history_module.Capability):
-                        history.save_messages(deps, messages, interrupted=not finished)
+                        history.save_messages(deps, messages, interrupted=not finished and not suspended)
+                    if messages and self.native_continuation is not None:
+                        self.native_continuation.history = history_module.persistent_messages(
+                            messages, interrupted=not finished and not suspended
+                        )
             complete_usage = model.accumulated_usage if isinstance(model, _HasAccumulatedUsage) else None
             self._terminal_usage = _serialize_agent_usage(
                 complete_usage if complete_usage is not None else result.usage
             )
+            if isinstance(result.output, DeferredToolRequests):
+                if self.native_continuation is None:
+                    raise NativeTestProtocolUnsupported()
+                return self.native_continuation.capture(result=result, deps=deps)
             final_output = _serialize_agent_output(result.output)
         except TimeoutError as exc:
             if not timeout.expired():

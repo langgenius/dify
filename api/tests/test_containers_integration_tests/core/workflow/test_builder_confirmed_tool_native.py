@@ -68,16 +68,9 @@ import contexts
 from configs import dify_config
 from constants import COOKIE_NAME_CSRF_TOKEN, HEADER_NAME_CSRF_TOKEN
 from controllers.console import wraps as console_wraps
-from core.dify_builder import gmail_read_policy
 from core.dify_builder.errors import BusyError, NotFoundError
-from core.dify_builder.execution_policy import (
-    BuilderExecutionContextValue,
-    BuilderExecutionPolicyError,
-    ConfirmedToolExecutionContext,
-)
 from core.dify_builder.input_schema import schema_hash, start_schema
 from core.dify_builder.models import Action, Actor, DifyBuilderContext, NodeEvent, Run
-from core.dify_builder.ports import DifyBuilderAgent
 from core.dify_builder.real_call_consent import (
     ConsentReceipt,
     CredentialReference,
@@ -105,7 +98,6 @@ from core.tools.entities.tool_entities import (
     ToolProviderEntityWithPlugin,
     ToolProviderIdentity,
 )
-from core.workflow import node_factory
 from core.workflow.node_runtime import DifyToolNodeRuntime
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from enums import DeploymentEdition
@@ -140,6 +132,13 @@ from services.app_generate_service import AppGenerateService
 from services.dify_builder import real_call_consent_service, real_call_metadata, session_lock, wiring
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 from services.dify_builder.agent_factory import set_dify_builder_agent_factory
+from services.dify_builder.application import gmail_read_policy
+from services.dify_builder.application.execution_policy import (
+    BuilderExecutionContextValue,
+    BuilderExecutionPolicyError,
+    ConfirmedToolExecutionContext,
+)
+from services.dify_builder.application.ports import DifyBuilderAgent
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService, StrandedObservation
 from services.dify_builder.repository import SqlDifyBuilderRepository
@@ -150,6 +149,7 @@ from services.entities.feature_entities import FeatureModel
 from services.feature_service import FeatureService
 from services.tools.builder_credential_reference import select_builder_credential
 from services.tools.builtin_tools_manage_service import BuilderCredentialRuntime, BuiltinToolManageService
+from services.workflow_runtime import node_factory
 from tasks import dify_builder_advance_task
 from tasks.dify_builder_advance_task import advance_session
 from tests.test_containers_integration_tests.core.workflow.test_builder_real_call_consent_persistence import (

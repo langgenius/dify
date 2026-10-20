@@ -6,8 +6,6 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
-from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowStartedEvent
 from core.workflow.system_variables import build_system_variables
@@ -17,6 +15,8 @@ from graphon.runtime import RuntimeState
 from models.account import Account
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowType
+from services.workflow_runtime.workflow_pipeline import WorkflowAppGenerateTaskPipeline
+from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
 from tests.workflow_test_utils import build_test_variable_pool
 
 

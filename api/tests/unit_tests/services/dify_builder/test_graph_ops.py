@@ -12,7 +12,6 @@ import copy
 import pytest
 
 from core.dify_builder.models import Graph, MutationIntent
-from core.workflow.graph_normalizers import heal_nodes_for_preflight
 from services.dify_builder import credentials, graph_ops
 from services.dify_builder.graph_ops import (
     MUTATION_ARG_KEYS,
@@ -25,6 +24,7 @@ from services.dify_builder.graph_ops import (
     validate_intent_args,
 )
 from services.dify_builder.preflight import preflight_errors
+from services.workflow_generation.graph_normalizers import heal_nodes_for_preflight
 
 # ---- validate_intent_args --------------------------------------------------
 
@@ -664,8 +664,8 @@ def test_diff_graphs_added_node_and_edge_is_structure_scope() -> None:
     changes, scope = diff_graphs(before, after)
 
     assert scope == "structure"
-    assert "added node knowledge-1" in changes
-    assert "added knowledge-1 → a" in changes
+    assert "＋ knowledge-1" in changes
+    assert "＋ knowledge-1 → a" in changes
 
 
 def test_diff_graphs_removed_node_is_structure_scope() -> None:
@@ -675,7 +675,7 @@ def test_diff_graphs_removed_node_is_structure_scope() -> None:
     changes, scope = diff_graphs(before, after)
 
     assert scope == "structure"
-    assert changes == ["removed node a"]
+    assert changes == ["− a"]
 
 
 def test_diff_graphs_config_only_change_is_configuration_scope() -> None:
@@ -685,7 +685,7 @@ def test_diff_graphs_config_only_change_is_configuration_scope() -> None:
     changes, scope = diff_graphs(before, after)
 
     assert scope == "configuration"
-    assert changes == ["llm-1: prompt_template updated"]
+    assert changes == ["llm-1: prompt_template"]
 
 
 def test_diff_graphs_no_changes_is_configuration_scope_with_empty_changes() -> None:

@@ -30,7 +30,6 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import PipelineRunError
 from controllers.service_api.schema import event_stream_response, json_or_event_stream_response, multipart_file_params
 from controllers.service_api.wraps import DatasetApiResource
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
 from extensions.ext_application_services import application_services
@@ -51,6 +50,7 @@ from services.rag_pipeline.entity.pipeline_service_api_entities import (
 )
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.workflow_runtime.pipeline_generator import PipelineGenerator
 
 
 class DatasourceNodeRunPayload(BaseModel):

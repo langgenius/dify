@@ -21,9 +21,9 @@ import pytest
 from jinja2 import Template
 
 from core.workflow.generator.prompts.node_builder_prompts import format_node_outputs_section
-from core.workflow.generator.runner import WorkflowGenerator, _find_planned_tool_entry, _parse_node_outputs
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from core.workflow.generator.types import GraphDict
+from services.workflow_generation.runner import WorkflowGenerator, _find_planned_tool_entry, _parse_node_outputs
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -975,7 +975,7 @@ class TestBoundedFragmentRecovery:
 
     @pytest.mark.parametrize("rejected", [{}, {"config": []}, {"config": "private-rejected-value"}, {"config": None}])
     def test_invalid_config_corrects_only_the_rejected_node(self, rejected, caplog):
-        caplog.set_level("INFO", logger="core.workflow.generator.runner")
+        caplog.set_level("INFO", logger="services.workflow_generation.runner")
         model = _ParallelBuilderModel(
             self._PLAN,
             self._CONFIGS,
@@ -999,7 +999,7 @@ class TestBoundedFragmentRecovery:
 
     @pytest.mark.parametrize("rejected", [{}, {"config": []}, {"config": "private-rejected-value"}])
     def test_invalid_config_exhaustion_returns_schema_error_and_empty_graph(self, rejected, caplog):
-        caplog.set_level("INFO", logger="core.workflow.generator.runner")
+        caplog.set_level("INFO", logger="services.workflow_generation.runner")
         model = _ParallelBuilderModel(
             self._PLAN,
             self._CONFIGS,
@@ -1044,7 +1044,7 @@ class TestBoundedFragmentRecovery:
         ],
     )
     def test_rejection_feedback_enables_correction_at_the_model_boundary(self, rejected, shape, stage, code, caplog):
-        caplog.set_level("INFO", logger="core.workflow.generator.runner")
+        caplog.set_level("INFO", logger="services.workflow_generation.runner")
         base = _ParallelBuilderModel(self._PLAN, self._CONFIGS, barrier_parties=0)
         attempts = 0
 
@@ -1087,8 +1087,8 @@ class TestBoundedFragmentRecovery:
 
     @pytest.mark.parametrize("recover", [False, True])
     def test_parser_exception_response_text_is_not_echoed_or_logged(self, recover, caplog):
-        from core.workflow.generator import runner
         from services import workflow_generator_response
+        from services.workflow_generation import runner
 
         caplog.set_level("INFO", logger=runner.__name__)
         responses = ["parser-rejection-trigger"]
@@ -1905,7 +1905,7 @@ class TestAutoModeResolution:
         assert result["mode"] == "advanced-chat"
 
     def test_auto_with_no_terminal_node_defaults_to_conversational(self):
-        from core.workflow.generator.runner import _resolve_generation_mode
+        from services.workflow_generation.runner import _resolve_generation_mode
 
         plan = cast(Any, {"title": "x", "description": "x", "nodes": [{"node_type": "llm"}]})
         assert _resolve_generation_mode("auto", plan) == "advanced-chat"
@@ -2267,7 +2267,7 @@ class TestWorkflowGeneratorTransientRetry:
         # The planner's first invoke raises a transient connection error; the
         # retry succeeds and the pipeline completes normally. Sleep is patched
         # out so the test doesn't actually wait for the backoff.
-        import core.workflow.generator.runner as _runner_mod
+        import services.workflow_generation.runner as _runner_mod
         from graphon.model_runtime.errors.invoke import InvokeConnectionError
 
         monkeypatch.setattr(_runner_mod.time, "sleep", lambda _s: None)
@@ -2303,7 +2303,7 @@ class TestWorkflowGeneratorTransientRetry:
         # Every attempt hits the transient error — once we exhaust the retry
         # budget the failure surfaces as a normal error envelope rather than
         # hanging or looping forever.
-        import core.workflow.generator.runner as _runner_mod
+        import services.workflow_generation.runner as _runner_mod
         from graphon.model_runtime.errors.invoke import InvokeServerUnavailableError
 
         monkeypatch.setattr(_runner_mod.time, "sleep", lambda _s: None)
@@ -2323,7 +2323,7 @@ class TestWorkflowGeneratorTransientRetry:
 
         assert result["error"]
         # Bounded: planner attempts == the retry budget, nothing more.
-        from core.workflow.generator.runner import _INVOKE_MAX_ATTEMPTS
+        from services.workflow_generation.runner import _INVOKE_MAX_ATTEMPTS
 
         assert model_instance.invoke_llm.call_count == _INVOKE_MAX_ATTEMPTS
 
@@ -2332,7 +2332,7 @@ class TestWorkflowGeneratorTransientRetry:
         # The runner must fail on the first attempt.
         # If the code wrongly slept here we'd want the test to still be fast;
         # patch sleep defensively so a regression can't hang CI.
-        import core.workflow.generator.runner as _runner_mod
+        import services.workflow_generation.runner as _runner_mod
         from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 
         monkeypatch.setattr(_runner_mod.time, "sleep", lambda _s: None)
@@ -2364,7 +2364,7 @@ class TestWorkflowGeneratorEdgeCases:
         # The planner needs deterministic output — a permissive temperature
         # would let it ramble. The runner pins it back down for the planner
         # call while leaving the builder call alone.
-        from core.workflow.generator.runner import _clamp_for_planner
+        from services.workflow_generation.runner import _clamp_for_planner
 
         out = _clamp_for_planner({"temperature": 0.9, "max_tokens": 1024})
         assert out["temperature"] == 0.2
@@ -2375,7 +2375,7 @@ class TestWorkflowGeneratorEdgeCases:
     def test_clamp_for_planner_preserves_low_temperature(self):
         # A user who already picked a tight temperature shouldn't have their
         # setting overridden — clamping only kicks in above 0.5.
-        from core.workflow.generator.runner import _clamp_for_planner
+        from services.workflow_generation.runner import _clamp_for_planner
 
         out = _clamp_for_planner({"temperature": 0.3})
         assert out["temperature"] == 0.3
@@ -2383,7 +2383,7 @@ class TestWorkflowGeneratorEdgeCases:
     def test_clamp_for_planner_injects_default_when_missing(self):
         # No temperature → planner picks 0.2 so the output stays consistent
         # across calls.
-        from core.workflow.generator.runner import _clamp_for_planner
+        from services.workflow_generation.runner import _clamp_for_planner
 
         out = _clamp_for_planner({})
         assert out["temperature"] == 0.2
@@ -2393,7 +2393,7 @@ class TestWorkflowGeneratorEdgeCases:
         # pin max_tokens we inject a tight default. This bounds latency/cost
         # and stops a model that ignores the JSON instruction from rambling
         # until it hits the provider's (often huge) default ceiling.
-        from core.workflow.generator.runner import _PLANNER_DEFAULT_MAX_TOKENS, _clamp_for_planner
+        from services.workflow_generation.runner import _PLANNER_DEFAULT_MAX_TOKENS, _clamp_for_planner
 
         out = _clamp_for_planner({})
         assert out["max_tokens"] == _PLANNER_DEFAULT_MAX_TOKENS
@@ -2401,7 +2401,7 @@ class TestWorkflowGeneratorEdgeCases:
     def test_clamp_for_planner_preserves_caller_max_tokens(self):
         # A caller who explicitly asked for a budget keeps it — we only fill
         # the default in when it's absent, never override an intentional value.
-        from core.workflow.generator.runner import _clamp_for_planner
+        from services.workflow_generation.runner import _clamp_for_planner
 
         out = _clamp_for_planner({"max_tokens": 8192})
         assert out["max_tokens"] == 8192
@@ -3705,7 +3705,7 @@ class TestWorkflowGeneratorVariableReferences:
         # the walker should not treat it as a reference (the LLM-at-runtime
         # will see the literal single-brace string and ignore it; nothing
         # for us to validate).
-        from core.workflow.generator.runner import WorkflowGenerator
+        from services.workflow_generation.runner import WorkflowGenerator
 
         refs: set[tuple[str, str]] = set()
         WorkflowGenerator._collect_refs_in_data(
@@ -5167,7 +5167,7 @@ class TestWorkflowGeneratorBranchHandleRepair:
         assert edges[0]["sourceHandle"] == "source"
 
     def test_logs_each_re_homed_edge_and_not_the_ones_left_as_they_were(self, caplog: pytest.LogCaptureFixture):
-        caplog.set_level("INFO", logger="core.workflow.generator.runner")
+        caplog.set_level("INFO", logger="services.workflow_generation.runner")
         nodes = [
             self._if_else_node(),
             {"id": "qc", "data": {"type": "question-classifier", "classes": [{"id": "1"}, {"id": "2"}]}},
@@ -5505,7 +5505,7 @@ def _tool_node(node_id="node2", output_schema=None):
 
 
 def test_tool_node_declares_its_fixed_envelope():
-    from core.workflow.generator.runner import WorkflowGenerator as G
+    from services.workflow_generation.runner import WorkflowGenerator as G
 
     node = _tool_node(output_schema={"properties": {"parsed": {"type": "string"}}})
     assert G._declares_variable(node, "text") is True
@@ -5514,7 +5514,7 @@ def test_tool_node_declares_its_fixed_envelope():
 
 
 def test_tool_node_declares_its_output_schema_properties():
-    from core.workflow.generator.runner import WorkflowGenerator as G
+    from services.workflow_generation.runner import WorkflowGenerator as G
 
     node = _tool_node(output_schema={"properties": {"parsed": {"type": "string"}}})
     assert G._declares_variable(node, "parsed") is True
@@ -5522,7 +5522,7 @@ def test_tool_node_declares_its_output_schema_properties():
 
 def test_tool_node_rejects_an_undeclared_output_when_a_schema_is_present():
     """ESQ1-296 / ESQ1-289: `result` is the reference the model invents."""
-    from core.workflow.generator.runner import WorkflowGenerator as G
+    from services.workflow_generation.runner import WorkflowGenerator as G
 
     node = _tool_node(output_schema={"properties": {"parsed": {"type": "string"}}})
     assert G._declares_variable(node, "result") is False
@@ -5530,7 +5530,7 @@ def test_tool_node_rejects_an_undeclared_output_when_a_schema_is_present():
 
 def test_tool_node_fails_open_without_an_output_schema():
     """cmd+K safety: a tool we cannot describe keeps today's behaviour."""
-    from core.workflow.generator.runner import WorkflowGenerator as G
+    from services.workflow_generation.runner import WorkflowGenerator as G
 
     assert G._declares_variable(_tool_node(), "anything") is True
     assert G._declares_variable(_tool_node(output_schema={}), "anything") is True
@@ -5539,7 +5539,7 @@ def test_tool_node_fails_open_without_an_output_schema():
 def test_tool_node_fails_open_when_output_schema_is_not_a_dict():
     """A hand-edited or legacy graph can carry a malformed output_schema;
     that must degrade to fail-open, not raise."""
-    from core.workflow.generator.runner import WorkflowGenerator as G
+    from services.workflow_generation.runner import WorkflowGenerator as G
 
     assert G._declares_variable(_tool_node(output_schema=" oops "), "anything") is True
     assert G._declares_variable(_tool_node(output_schema=["a"]), "anything") is True
@@ -5547,7 +5547,7 @@ def test_tool_node_fails_open_when_output_schema_is_not_a_dict():
 
 
 def test_tool_node_fails_open_when_properties_is_not_a_dict():
-    from core.workflow.generator.runner import WorkflowGenerator as G
+    from services.workflow_generation.runner import WorkflowGenerator as G
 
     node = _tool_node(output_schema={"properties": "oops"})
     assert G._declares_variable(node, "anything") is True
@@ -5555,7 +5555,7 @@ def test_tool_node_fails_open_when_properties_is_not_a_dict():
 
 def test_tool_result_is_aliased_to_text():
     """Self-heal the common mistake rather than failing the build for it."""
-    from core.workflow.generator.runner import WorkflowGenerator as G
+    from services.workflow_generation.runner import WorkflowGenerator as G
 
     node = _tool_node(output_schema={"properties": {"parsed": {"type": "string"}}})
     assert G._aliased_output(node, "result") == "text"
@@ -5802,7 +5802,7 @@ def _llm_node(node_id="node2", *, structured_output_enabled=None, schema_propert
 def test_invented_structured_output_name_aliases_to_text_when_never_planned(invented_name):
     """B3a: no structured-output key at all -- a schema-less LLM node's only
     real output is ``text``."""
-    from core.workflow.generator.runner import WorkflowGenerator as G
+    from services.workflow_generation.runner import WorkflowGenerator as G
 
     node = _llm_node()
     assert G._aliased_output(node, invented_name) == "text"
@@ -5815,7 +5815,7 @@ def test_invented_structured_output_name_aliases_to_text_when_flag_off_despite_a
     the invented name still resolves to `text` rather than staying
     unresolved. (Distinct from the pre-existing sole-output fallback, which
     only looks at the schema and would leave this case ambiguous.)"""
-    from core.workflow.generator.runner import WorkflowGenerator as G
+    from services.workflow_generation.runner import WorkflowGenerator as G
 
     node = _llm_node(structured_output_enabled=False, schema_properties={"answer": {"type": "string"}})
     assert G._aliased_output(node, invented_name) == "text"
@@ -5825,7 +5825,7 @@ def test_invented_structured_output_name_aliases_to_text_when_flag_off_despite_a
 def test_invented_structured_output_name_is_not_aliased_when_really_enabled(invented_name):
     """A real structured-output LLM node may mean one of these names as an
     actual schema property; the alias must not paper over that."""
-    from core.workflow.generator.runner import WorkflowGenerator as G
+    from services.workflow_generation.runner import WorkflowGenerator as G
 
     node = _llm_node(structured_output_enabled=True, schema_properties={"answer": {"type": "string"}})
     assert G._aliased_output(node, invented_name) is None
@@ -5834,7 +5834,7 @@ def test_invented_structured_output_name_is_not_aliased_when_really_enabled(inve
 def test_llm_unrelated_invented_name_is_not_aliased():
     """The alias table is scoped to the known structured-output family --
     an unrelated invented name is still left for the caller to report."""
-    from core.workflow.generator.runner import WorkflowGenerator as G
+    from services.workflow_generation.runner import WorkflowGenerator as G
 
     node = _llm_node()
     assert G._aliased_output(node, "presentation") is None
@@ -5842,7 +5842,7 @@ def test_llm_unrelated_invented_name_is_not_aliased():
 
 def test_code_node_reference_is_untouched_by_the_llm_alias_table():
     """The new LLM entries must not leak onto other node types."""
-    from core.workflow.generator.runner import WorkflowGenerator as G
+    from services.workflow_generation.runner import WorkflowGenerator as G
 
     node = {"id": "node2", "data": {"type": "code", "outputs": {"summary": {"type": "string"}}}}
     assert G._aliased_output(node, "result") is None
@@ -6594,7 +6594,7 @@ class TestDottedReferencesResolveByTheirRoot:
 
 
 class TestPostprocessGraphNormalizers:
-    """The shared postprocess applies the pure ``core.workflow.graph_normalizers``
+    """The shared postprocess applies the pure ``services.workflow_generation.graph_normalizers``
     so cmd+K ``/create`` / ``/refine`` and the Builder heal the same defects the
     same way. Driven by the REAL ESQ1-303 dev draft (value 60, invented
     handles) and the REAL ESQ1-302 http-request node (body items without type)."""
@@ -7166,7 +7166,7 @@ class TestAJsonSchemaArrayIsNotAValueSelector:
 class TestContainerMarkerOwnership:
     @pytest.mark.parametrize("marker_type", ["iteration-start", "loop-start"])
     def test_planner_cannot_own_container_start_markers(self, marker_type):
-        from core.workflow.generator.runner import _StageSchemaError
+        from services.workflow_generation.runner import _StageSchemaError
 
         parsed = {
             "nodes": [
@@ -7270,9 +7270,9 @@ class TestResponseMetadata:
 
     @pytest.mark.parametrize("rejected", ['["private-response-sentinel"]', '{"secret":"private-response-sentinel"}'])
     def test_metadata_records_actual_usage_for_rejected_reply_and_successful_retry(self, rejected, caplog):
-        from core.workflow.generator.runner import _StageSchemaError
         from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
         from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+        from services.workflow_generation.runner import _StageSchemaError
 
         def validate(parsed):
             if "config" not in parsed:
@@ -7297,7 +7297,7 @@ class TestResponseMetadata:
             )
             for text in texts
         ]
-        caplog.set_level("INFO", logger="core.workflow.generator.runner")
+        caplog.set_level("INFO", logger="services.workflow_generation.runner")
         assert self._invoke(
             responses, parameters={"max_tokens": 4096, "secret": "private-parameter-sentinel"}, validate=validate
         ) == {"config": {}}
@@ -7345,7 +7345,7 @@ class TestResponseMetadata:
         response = SimpleNamespace(message=AssistantPromptMessage(content="{}"))
         if usage is not None:
             response.usage = usage
-        caplog.set_level("INFO", logger="core.workflow.generator.runner")
+        caplog.set_level("INFO", logger="services.workflow_generation.runner")
         assert self._invoke([response], parameters=parameters) == {}
         assert self._records(caplog) == [
             "Workflow generator response metadata: stage=Planner attempt=1 response_characters=2 "
@@ -7354,11 +7354,11 @@ class TestResponseMetadata:
         assert "MagicMock" not in caplog.text
 
     def test_metadata_is_recorded_before_parser_exception_and_preserves_two_attempt_limit(self, caplog):
-        from core.workflow.generator.runner import _StageJSONError
         from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+        from services.workflow_generation.runner import _StageJSONError
 
         response = SimpleNamespace(message=AssistantPromptMessage(content="private-response-sentinel"))
-        caplog.set_level("INFO", logger="core.workflow.generator.runner")
+        caplog.set_level("INFO", logger="services.workflow_generation.runner")
         with patch(
             "services.workflow_generator_response.json_repair.loads", side_effect=ValueError("private-parser-sentinel")
         ):
@@ -7900,3 +7900,81 @@ class TestNativeEndPublicOutputMessages:
             assert dynamic not in system
         end = next(node["data"] for node in graph["nodes"] if node["id"] == "end_public_91")
         assert end["outputs"] == [{"variable": public_name, "value_selector": ["aggregate_public_91", "output"]}]
+
+
+@pytest.mark.parametrize(
+    ("requirements", "code", "error_strategy"),
+    [
+        (
+            {"error_status_value": 0, "continue_on_post_failure": False, "post_success_status": 200},
+            "def main():\n    raise RuntimeError('POST failed; http_status=0')",
+            None,
+        ),
+        (
+            {"health_success_status": 404, "continue_on_post_failure": False},
+            "def main():\n    return {'http_status': 404}",
+            None,
+        ),
+        (
+            {"error_status_value": 0, "continue_on_post_failure": True, "fallback": "return diagnostic"},
+            "def main():\n    return {'http_status': 0}",
+            "default-value",
+        ),
+    ],
+)
+def test_generator_carries_failure_and_http_contract_to_real_code_builder(requirements, code, error_strategy):
+    """Catch lost source/rules at the provider boundary; do not pretend a fake evaluates the prompt."""
+    planner = {
+        "title": "Receipt",
+        "description": "POST receipt then check health",
+        "nodes": [
+            {"id": "start", "label": "Start", "node_type": "start", "purpose": "Start"},
+            {"id": "code", "label": "Calls", "node_type": "code", "purpose": "Call the endpoints"},
+            {"id": "end", "label": "End", "node_type": "end", "purpose": "Return status"},
+        ],
+        "edges": [{"source": "start", "target": "code"}, {"source": "code", "target": "end"}],
+    }
+    code_config = {
+        "code_language": "python3",
+        "code": code,
+        "variables": [],
+        "outputs": {"http_status": {"type": "number", "children": None}},
+    }
+    if error_strategy:
+        code_config["error_strategy"] = error_strategy
+    model = _ParallelBuilderModel(
+        planner,
+        {
+            "start": {"variables": []},
+            "code": code_config,
+            "end": {"outputs": [{"variable": "http_status", "value_selector": ["code", "http_status"]}]},
+        },
+    )
+    source = "ORIGINAL GOAL:\nPOST then fetch health\nCONFIRMED REQUIREMENTS:\n" + json.dumps(requirements)
+
+    result = WorkflowGenerator.generate_workflow_graph(
+        model_instance=model,
+        model_parameters={},
+        provider="openai",
+        model_name="gpt-4o",
+        model_mode="chat",
+        mode="workflow",
+        instruction=source,
+    )
+
+    assert result["error"] == ""
+    messages = model.messages_by_node["code"][0]
+    assert source in str(messages[1].content)
+    system = str(messages[0].content)
+    assert "stop-on-error" in system
+    assert "raise" in system
+    assert "HTTP success contract" in system
+    assert "404" in system
+    assert "Preserve existing error_strategy" in system
+    assert "explicitly requested fallback" in system
+    planner_system = str(model.planner_prompt_messages[0].content)
+    assert "stop-on-error" in planner_system
+    actual_code = next(node["data"] for node in result["graph"]["nodes"] if node["id"] == "code")
+    assert actual_code["code"] == code
+    assert actual_code.get("error_strategy") == error_strategy
+    assert actual_code["outputs"] == {"http_status": {"type": "number", "children": None}}

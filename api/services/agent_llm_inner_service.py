@@ -51,6 +51,23 @@ class AgentLLMInnerService:
         self._session_factory = session_factory or default_session_factory.create_session
 
     def prepare(self, request: AgentLLMInvokeRequest) -> PreparedAgentLLMInvocation:
+        from services.dify_builder.native_testing.agent_bridge import require_agent_service_envelope
+
+        require_agent_service_envelope(request.native_dispatch)
+        if request.native_dispatch is not None:
+            from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+            from services.dify_builder.native_testing.agent_operations import agent_operations_for_ref
+
+            try:
+                agent_operations_for_ref(request.native_dispatch.ref).validate_model_request(request=request)
+                return self._prepare(request)
+            except BuilderExecutionPolicyError:
+                raise
+            except Exception:
+                raise BuilderExecutionPolicyError("native_agent_model_prepare_failed") from None
+        return self._prepare(request)
+
+    def _prepare(self, request: AgentLLMInvokeRequest) -> PreparedAgentLLMInvocation:
         caller = request.caller
         target = request.target
         app = self._validate_app_tenant(app_id=caller.app_id, tenant_id=caller.tenant_id)
@@ -83,6 +100,23 @@ class AgentLLMInnerService:
         )
 
     def invoke(self, prepared: PreparedAgentLLMInvocation) -> Generator[LLMResultChunk]:
+        if prepared.request.native_dispatch is not None:
+            from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+            from services.dify_builder.native_testing.agent_operations import agent_operations_for_ref
+
+            envelope = prepared.request.native_dispatch
+            try:
+                owner = agent_operations_for_ref(envelope.ref)
+                owner.validate_model_request(request=prepared.request)
+                yield from owner.invoke_model(envelope=envelope, invoke=lambda: self._invoke(prepared))
+            except BuilderExecutionPolicyError:
+                raise
+            except Exception:
+                raise BuilderExecutionPolicyError("native_agent_model_dispatch_failed") from None
+            return
+        yield from self._invoke(prepared)
+
+    def _invoke(self, prepared: PreparedAgentLLMInvocation) -> Generator[LLMResultChunk]:
         request = prepared.request
         caller = request.caller
         target = request.target

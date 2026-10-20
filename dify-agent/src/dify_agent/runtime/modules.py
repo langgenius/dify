@@ -51,7 +51,7 @@ REGISTRY: dict[str, ModuleType] = {
 _REFERENCES: dict[ModuleType, dict[str, ModuleType]] = {
     llm: {"execution_context": execution_context},
     plugin_tools: {"execution_context": execution_context, "shell": shell},
-    core_tools: {"execution_context": execution_context},
+    core_tools: {"execution_context": execution_context, "shell": shell},
     knowledge: {"execution_context": execution_context},
     shell: {"runtime": runtime, "execution_context": execution_context},
     config: {"shell": shell},
@@ -111,6 +111,10 @@ def load_modules(
         if module is plugin_tools:
             for tool in cast(plugin_tools.Config, cfg).tools:
                 plugin_tools._validate_required_hidden_parameters(tool, tool.parameters)
+        if module is core_tools:
+            for tool in cast(core_tools.Config, cfg).tools:
+                if tool.uses_plugin_parameters:
+                    plugin_tools._validate_required_hidden_parameters(tool, tool.parameters)
         if module is knowledge:
             target = cast(knowledge.Config, cfg).execution_context
             knowledge._build_caller_context(configs[target])

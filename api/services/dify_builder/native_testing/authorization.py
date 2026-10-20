@@ -1,0 +1,674 @@
+"""Scoped approval and atomic append-only dispatch spends.
+
+Every real transport attempt (including OAuth, redirects and retries) needs its
+own persisted native cursor. A permit authorizes exactly one dispatch; uncertain
+or failed attempts never refund quota and cannot be reissued under another key.
+"""
+
+from collections.abc import Callable
+from datetime import datetime, timedelta
+from typing import Literal, overload
+from uuid import uuid4
+
+from pydantic import ValidationError
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from models.dify_builder import DifyBuilderExecutionRequest
+from models.dify_builder_native_tests import (
+    NativeEffectAttempt,
+    NativeEffectDispatchClaim,
+    NativeEffectGrant,
+    NativeEffectOperation,
+    NativeEffectOutcome,
+    NativeInvocationState,
+    NativePendingAction,
+    NativeTestScope,
+)
+from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
+from runtime_contracts.builder.native.contracts import (
+    ApprovalWait,
+    DispatchPermit,
+    EffectDecision,
+    EffectIntent,
+    EffectReceipt,
+    NativeTestContextRef,
+    Outcome,
+    PolicyStop,
+    RecordedResult,
+    operation_digest,
+)
+from services.dify_builder.native_testing.pending_intents import PendingDecisionGuard
+from services.dify_builder.native_testing.private_reads import validate_invocation_workflow, validate_private_read
+from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
+from services.dify_builder.native_testing.repository import (
+    BudgetReservation,
+    NativeBinding,
+    OwnedNativeTest,
+    OwnedNativeTestLoader,
+    admitted_workflow_revision,
+    native_workflow_revision,
+    utc_now,
+)
+from services.dify_builder.native_testing.transitions import dispatch_readiness, require_ancestor_authority
+
+
+def validate_binding(intent: EffectIntent, binding: NativeBinding) -> None:
+    if canonical_digest(intent.model_dump(mode="json")) != binding.intent_digest or any(
+        getattr(intent, field) != getattr(binding, field)
+        for field in ("kind", "resource_ref", "implementation_revision", "account_ref", "capability_digest")
+    ):
+        raise BuilderExecutionPolicyError("native_binding_mismatch")
+    if binding.destructive:
+        raise BuilderExecutionPolicyError("destructive_effect_forbidden")
+
+
+def task_grant_allowed(binding: NativeBinding, *, task_approved: bool, confirmed_model: bool = False) -> bool:
+    if confirmed_model and binding.kind == "model":
+        return task_approved and not binding.destructive
+    return (
+        task_approved
+        and binding.kind in {"code", "file"}
+        and binding.isolated
+        and not binding.egress
+        and not binding.new_data
+        and not binding.destructive
+    )
+
+
+def _scope_digest(intent: EffectIntent, binding: NativeBinding) -> str:
+    # Legacy batches exclude logical occurrence and the new default field so
+    # their immutable grant digests stay byte-for-byte compatible. Operation
+    # approval includes the actual key and explicit server-selected mode.
+    batch = binding.approval_scope == "batch"
+    binding_exclusions = {"intent_digest", "execution_id", "invocation_digest"}
+    if batch:
+        binding_exclusions.add("approval_scope")
+    return canonical_digest(
+        {
+            "intent": intent.model_dump(mode="json", exclude={"key"} if batch else set()),
+            "binding": binding.model_dump(mode="json", exclude=binding_exclusions),
+        }
+    )
+
+
+def _owner(owned: OwnedNativeTest) -> dict[str, str]:
+    return {"tenant_id": owned.tenant_id, "request_id": owned.ref.request_id, "invocation_id": owned.ref.invocation_id}
+
+
+def _owned_query(model, owned: OwnedNativeTest):
+    return select(model).where(
+        model.tenant_id == owned.tenant_id,
+        model.request_id == owned.ref.request_id,
+        model.invocation_id == owned.ref.invocation_id,
+    )
+
+
+class EffectAuthorizationService:
+    def __init__(self, loader: OwnedNativeTestLoader, *, clock: Callable[[], datetime] = utc_now):
+        self.loader = loader
+        self.clock = clock
+
+    def _binding(self, session: Session, owned: OwnedNativeTest, intent: EffectIntent) -> NativeBinding:
+        if intent.key.invocation_id != owned.ref.invocation_id:
+            raise BuilderExecutionPolicyError("native_binding_mismatch")
+        raw = owned.bindings.get(operation_digest(intent.key))
+        if raw is None:
+            raise BuilderExecutionPolicyError("native_cursor_mismatch")
+        try:
+            frozen = NativeBinding.model_validate(raw)
+            current = self.loader.resolver.resolve_binding(session=session, owned=owned, key=intent.key)
+            current = NativeBinding.model_validate(current.model_dump(mode="json"))
+        except (ValidationError, AttributeError, TypeError):
+            raise BuilderExecutionPolicyError("native_binding_mismatch") from None
+        if current != frozen:
+            raise BuilderExecutionPolicyError("native_binding_drift")
+        validate_binding(intent, current)
+        return current
+
+    def before_call(self, *, ref: NativeTestContextRef, intent: EffectIntent) -> EffectDecision:
+        try:
+            # Revalidate DTOs after in-process model_copy/model_construct boundaries.
+            ref = NativeTestContextRef.model_validate(ref.model_dump(mode="json"))
+            intent = EffectIntent.model_validate(intent.model_dump(mode="json"))
+            self.loader.load(ref=ref)
+            with self.loader.locked(ref=ref) as (session, owned, scope):
+                result = self._claim(session, owned, scope, intent)
+            # The transaction committed before the permit crosses the I/O boundary.
+            return result
+        except BuilderExecutionPolicyError as error:
+            return PolicyStop(reason_code=error.reason_code)
+        except (ValidationError, AttributeError, TypeError):
+            return PolicyStop(reason_code="invalid_native_effect")
+
+    def _claim(
+        self, session: Session, owned: OwnedNativeTest, scope: NativeTestScope, intent: EffectIntent
+    ) -> EffectDecision:
+        now = self.clock()
+        operation = session.scalar(
+            _owned_query(NativeEffectOperation, owned).where(
+                NativeEffectOperation.operation_digest == operation_digest(intent.key)
+            )
+        )
+        digest = canonical_digest(intent.model_dump(mode="json"))
+        if operation is not None and operation.intent_digest != digest:
+            return PolicyStop(reason_code="native_intent_conflict")
+        binding = self._binding(session, owned, intent)
+        scoped = _scope_digest(intent, binding)
+        if operation is not None and operation.state != "pending":
+            return self._existing(session, owned, operation, now)
+        if now >= scope.expires_at:
+            return PolicyStop(reason_code="native_scope_expired")
+        grant = session.scalar(
+            select(NativeEffectGrant).where(
+                NativeEffectGrant.tenant_id == owned.tenant_id,
+                NativeEffectGrant.request_id == owned.ref.request_id,
+                NativeEffectGrant.scope_digest == scoped,
+            )
+        )
+        if grant is not None and grant.decision == "denied":
+            return PolicyStop(reason_code="effect_denied")
+        fence = dispatch_readiness(session, ref=owned.ref, tenant_id=owned.tenant_id, now=now, coalesce_self=True)
+        if fence is not None:
+            from services.dify_builder.native_testing.agent_operations import confirmed_deferred_tool_approval
+
+            if not confirmed_deferred_tool_approval(
+                session=session, owned=owned, intent=intent, binding=binding, fence=fence
+            ):
+                return ApprovalWait(pending_operation_id=fence.id, wait_reason=fence.category)
+        if operation is None:
+            operation = NativeEffectOperation(
+                **_owner(owned),
+                operation_digest=operation_digest(intent.key),
+                intent_digest=digest,
+                scope_digest=scoped,
+                state="pending",
+                result_ref=None,
+            )
+            session.add(operation)
+            session.flush()
+        if fence is not None:
+            return self._pending(session, owned, operation)
+        # Only the server-owned confirmed Agent producer can bind this exact
+        # selected model to an already confirmed outer task. Tool calls still
+        # require their actual-argument operation grant.
+        from services.dify_builder.native_testing.agent_operations import confirmed_task_model
+
+        if grant is None and task_grant_allowed(
+            binding,
+            task_approved=owned.task_approved,
+            confirmed_model=confirmed_task_model(session=session, owned=owned, intent=intent),
+        ):
+            grant = NativeEffectGrant(
+                tenant_id=owned.tenant_id,
+                request_id=owned.ref.request_id,
+                actor_id=owned.actor_id,
+                scope_digest=scoped,
+                decision="approved",
+                expires_at=scope.expires_at,
+                max_calls=scope.max_calls,
+                max_dispatches=scope.max_dispatches,
+                max_cost_units=scope.max_cost_units,
+                spent_calls=0,
+                spent_dispatches=0,
+                spent_cost_units=0,
+            )
+            session.add(grant)
+            session.flush()
+        if grant is None or grant.expires_at <= now or not self._fits(grant, binding.cost_units):
+            return self._pending(session, owned, operation)
+        if not self._fits(scope, binding.cost_units):
+            return PolicyStop(reason_code="native_budget_exhausted")
+        spent = dict(scope.budget_spent)
+        for name, amount in binding.budget.items():
+            limit, profile, previous = scope.budget_limits.get(name), scope.profile.get(name), spent.get(name, 0)
+            if (
+                type(limit) is not int
+                or type(profile) is not int
+                or type(previous) is not int
+                or min(limit, profile, previous) < 0
+                or amount > profile
+                or previous + amount > limit
+            ):
+                return PolicyStop(reason_code="native_budget_exhausted")
+            spent[name] = previous + amount
+        for quota in (scope, grant):
+            quota.spent_calls += 1
+            quota.spent_dispatches += 1
+            quota.spent_cost_units += binding.cost_units
+        scope.budget_spent = spent
+        permit_id = str(uuid4())
+        attempt = NativeEffectAttempt(
+            **_owner(owned),
+            operation_id=operation.id,
+            grant_id=grant.id,
+            dispatch_index=1,
+            permit_digest=canonical_digest(permit_id),
+            expires_at=min(now + timedelta(minutes=5), grant.expires_at, scope.expires_at),
+            cost_units=binding.cost_units,
+            budget_reservation_ref=str(uuid4()),
+            execution_id=binding.execution_id,
+            invocation_digest=binding.invocation_digest,
+            budget=dict(binding.budget),
+            profile=dict(scope.profile),
+        )
+        session.add(attempt)
+        operation.state = "claimed"
+        session.flush()
+        return DispatchPermit(
+            permit_id=permit_id,
+            attempt_id=attempt.id,
+            operation_id=operation.id,
+            expires_at=attempt.expires_at.isoformat(),
+        )
+
+    @staticmethod
+    def _fits(quota, cost_units: int) -> bool:
+        return (
+            quota.spent_calls < quota.max_calls
+            and quota.spent_dispatches < quota.max_dispatches
+            and quota.spent_cost_units + cost_units <= quota.max_cost_units
+        )
+
+    def _existing(
+        self, session: Session, owned: OwnedNativeTest, operation: NativeEffectOperation, now: datetime
+    ) -> EffectDecision:
+        if operation.state == "completed" and operation.result_ref is not None:
+            return RecordedResult(operation_id=operation.id, result_ref=operation.result_ref)
+        if operation.state == "claimed":
+            attempt = session.scalar(
+                _owned_query(NativeEffectAttempt, owned).where(NativeEffectAttempt.operation_id == operation.id)
+            )
+            if attempt is None:
+                raise BuilderExecutionPolicyError("native_ledger_inconsistent")
+            if attempt.expires_at > now:
+                return PolicyStop(reason_code="dispatch_in_progress")
+            self._append_outcome(session, owned, operation, attempt, "unknown", None)
+            return PolicyStop(reason_code="outcome_unknown")
+        return PolicyStop(
+            reason_code={"unknown": "outcome_unknown", "denied": "effect_denied", "cancelled": "native_cancelled"}.get(
+                operation.state, "effect_already_spent"
+            )
+        )
+
+    @staticmethod
+    def _pending(session: Session, owned: OwnedNativeTest, operation: NativeEffectOperation) -> ApprovalWait:
+        state = session.scalar(_owned_query(NativeInvocationState, owned))
+        if state is None:
+            raise BuilderExecutionPolicyError("native_invocation_mismatch")
+        pending = session.scalar(
+            _owned_query(NativePendingAction, owned).where(
+                NativePendingAction.operation_id == operation.id, NativePendingAction.generation == state.generation
+            )
+        )
+        if pending is None:
+            pending = NativePendingAction(
+                **_owner(owned),
+                generation=state.generation,
+                category="approval",
+                reference_digest=canonical_digest(operation.id),
+                reference=operation.id,
+                owner_ref=owned.app_id,
+                owner_version=operation.scope_digest,
+                operation_id=operation.id,
+            )
+            session.add(pending)
+            session.flush()
+        return ApprovalWait(pending_operation_id=pending.id)
+
+    @overload
+    def decide(
+        self,
+        *,
+        ref: NativeTestContextRef,
+        intent: EffectIntent,
+        decision: Literal["approved", "denied"],
+        max_calls: int,
+        max_dispatches: int,
+        max_cost_units: int,
+        expires_at: datetime,
+        pending_guard: PendingDecisionGuard,
+    ) -> NativeTestPublicReceipt: ...
+
+    @overload
+    def decide(
+        self,
+        *,
+        ref: NativeTestContextRef,
+        intent: EffectIntent,
+        decision: Literal["approved", "denied"],
+        max_calls: int,
+        max_dispatches: int,
+        max_cost_units: int,
+        expires_at: datetime,
+        pending_guard: None = None,
+    ) -> str: ...
+
+    def decide(
+        self,
+        *,
+        ref: NativeTestContextRef,
+        intent: EffectIntent,
+        decision: Literal["approved", "denied"],
+        max_calls: int,
+        max_dispatches: int,
+        max_cost_units: int,
+        expires_at: datetime,
+        pending_guard: PendingDecisionGuard | None = None,
+    ) -> str | NativeTestPublicReceipt:
+        """Internal C04 command boundary; caller authenticates explicit user confirmation.
+
+        Public API callers must supply pending_guard; existing trusted internal
+        ledger callers omit it and retain their grant-ID return contract. Public
+        commands return the first receipt saved under the serialized decision lock.
+        Existing grants are immutable, including limits and expiry. Repeated
+        decisions are idempotent; a retry cannot mint a new quota allowance.
+        """
+        self.loader.load(ref=ref)
+        if pending_guard is not None:
+            # Refresh actual child permission at the final public authorization
+            # boundary, before SQL locking. Like root RBAC, this external check
+            # cannot fence revocations that happen after the RPC returns.
+            authority = validate_private_read(self.loader, ref)
+            if pending_guard.resolved.ref != ref or (
+                authority.app_id,
+                authority.workflow_id,
+                authority.graph_revision,
+                authority.generation,
+            ) != (
+                pending_guard.invocation_app_id,
+                pending_guard.invocation_workflow_id,
+                pending_guard.invocation_revision,
+                pending_guard.resolved.generation,
+            ):
+                raise BuilderExecutionPolicyError("native_pending_conflict")
+        if decision not in {"approved", "denied"} or any(
+            type(v) is not int or v < 0 or v > 2**63 - 1 for v in (max_calls, max_dispatches, max_cost_units)
+        ):
+            raise BuilderExecutionPolicyError("invalid_native_grant")
+        with self.loader.locked(ref=ref) as (session, owned, scope):
+            if expires_at.tzinfo is None or not self.clock() < expires_at <= scope.expires_at:
+                raise BuilderExecutionPolicyError("invalid_native_grant")
+            binding = self._binding(session, owned, intent)
+            digest = _scope_digest(intent, binding)
+            if pending_guard is not None:
+                terms = pending_guard.terms
+                if (max_calls, max_dispatches, max_cost_units, expires_at) != (
+                    terms.max_calls,
+                    terms.max_dispatches,
+                    terms.max_cost_units,
+                    datetime.fromisoformat(terms.expires_at),
+                ):
+                    raise BuilderExecutionPolicyError("native_pending_conflict")
+                pending_guard.recheck(session=session, owned=owned, intent=intent, scope_digest=digest)
+            grant = session.scalar(
+                select(NativeEffectGrant).where(
+                    NativeEffectGrant.tenant_id == owned.tenant_id,
+                    NativeEffectGrant.request_id == ref.request_id,
+                    NativeEffectGrant.scope_digest == digest,
+                )
+            )
+            fields = {
+                "decision": decision,
+                "max_calls": max_calls,
+                "max_dispatches": max_dispatches,
+                "max_cost_units": max_cost_units,
+                "expires_at": expires_at,
+            }
+            if grant is not None:
+                if any(getattr(grant, name) != value for name, value in fields.items()):
+                    raise BuilderExecutionPolicyError("native_grant_conflict")
+                if pending_guard is not None:
+                    return pending_guard.save(session=session, request_id=ref.request_id)
+                return grant.id
+            grant = NativeEffectGrant(
+                tenant_id=owned.tenant_id,
+                request_id=ref.request_id,
+                actor_id=owned.actor_id,
+                scope_digest=digest,
+                spent_calls=0,
+                spent_dispatches=0,
+                spent_cost_units=0,
+                **fields,
+            )
+            session.add(grant)
+            session.flush()
+            if pending_guard is not None:
+                return pending_guard.save(session=session, request_id=ref.request_id)
+            return grant.id
+
+    def _permit_ref(self, permit: DispatchPermit) -> NativeTestContextRef:
+        with self.loader.session_factory() as session:
+            row = session.execute(
+                select(NativeEffectAttempt, DifyBuilderExecutionRequest)
+                .join(DifyBuilderExecutionRequest, DifyBuilderExecutionRequest.id == NativeEffectAttempt.request_id)
+                .where(
+                    NativeEffectAttempt.id == permit.attempt_id,
+                    NativeEffectAttempt.operation_id == permit.operation_id,
+                    NativeEffectAttempt.permit_digest == canonical_digest(permit.permit_id),
+                    NativeEffectAttempt.tenant_id == self.loader.actor.tenant_id,
+                    DifyBuilderExecutionRequest.tenant_id == self.loader.actor.tenant_id,
+                    DifyBuilderExecutionRequest.actor_id == self.loader.actor.account_id,
+                )
+            ).one_or_none()
+            if row is None:
+                raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+            attempt, request = row
+            if attempt.expires_at != datetime.fromisoformat(permit.expires_at):
+                raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+            return NativeTestContextRef(
+                request_id=request.id, invocation_id=attempt.invocation_id, context_digest=request.context_digest
+            )
+
+    def _attempt(self, session: Session, owned: OwnedNativeTest, permit: DispatchPermit) -> NativeEffectAttempt:
+        attempt = session.scalar(
+            _owned_query(NativeEffectAttempt, owned).where(
+                NativeEffectAttempt.id == permit.attempt_id,
+                NativeEffectAttempt.operation_id == permit.operation_id,
+                NativeEffectAttempt.permit_digest == canonical_digest(permit.permit_id),
+            )
+        )
+        if attempt is None:
+            raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+        return attempt
+
+    def validate_dispatch(self, *, ref: NativeTestContextRef, intent: EffectIntent, permit: DispatchPermit) -> None:
+        """Revalidate a reserved permit without claiming or spending another one.
+
+        This is NOT a physical-dispatch fence. An authenticated endpoint must
+        also atomically consume its durable dispatch fence before performing I/O;
+        repeated validation cannot authorize repeating the transport operation.
+        """
+        try:
+            ref = NativeTestContextRef.model_validate(ref.model_dump(mode="json"))
+            intent = EffectIntent.model_validate(intent.model_dump(mode="json"))
+            permit = DispatchPermit.model_validate(permit.model_dump(mode="json"))
+        except (ValidationError, AttributeError, TypeError):
+            raise BuilderExecutionPolicyError("invalid_dispatch_permit") from None
+        if self._permit_ref(permit) != ref:
+            raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+        self.loader.load(ref=ref)
+        with self.loader.locked(ref=ref) as (session, owned, scope):
+            self._validate_dispatch_locked(session=session, owned=owned, scope=scope, intent=intent, permit=permit)
+
+    def claim_dispatch(self, *, ref: NativeTestContextRef, intent: EffectIntent, permit: DispatchPermit) -> None:
+        """Consume a reserved permit once, durably, before the sole owner's I/O.
+
+        The actual owner must compare its requested resource, target, typed args
+        and phase with intent before calling this boundary. Success is returned
+        only after commit. A lost/uncertain response must never be retried and
+        followed by I/O: the committed claim cannot be reissued or refunded.
+        This method never spends another permit or performs external I/O under
+        the root request lock. It does not itself execute the physical effect.
+        """
+        try:
+            ref = NativeTestContextRef.model_validate(ref.model_dump(mode="json"))
+            intent = EffectIntent.model_validate(intent.model_dump(mode="json"))
+            permit = DispatchPermit.model_validate(permit.model_dump(mode="json"))
+        except (BuilderExecutionPolicyError, ValidationError, AttributeError, TypeError):
+            raise BuilderExecutionPolicyError("invalid_dispatch_permit") from None
+        if self._permit_ref(permit) != ref:
+            raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+        self.loader.load(ref=ref)
+        # Child-app RBAC may perform RPC, so refresh before the writer lock.
+        # SQL provenance and state are checked again inside the transaction.
+        authority = validate_private_read(self.loader, ref)
+        with self.loader.locked(ref=ref) as (session, owned, scope):
+            attempt = self._validate_dispatch_locked(
+                session=session, owned=owned, scope=scope, intent=intent, permit=permit
+            )
+            require_ancestor_authority(session, ref, owned.tenant_id)
+            state = session.scalar(_owned_query(NativeInvocationState, owned))
+            if (
+                state is None
+                or state.state not in {"running", "waiting", "queued"}
+                or (state.app_id, state.workflow_id, state.context_object_id, state.generation)
+                != (authority.app_id, authority.workflow_id, authority.context_object_id, authority.generation)
+            ):
+                raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+            workflow = validate_invocation_workflow(
+                session, tenant_id=owned.tenant_id, app_id=authority.app_id, workflow_id=authority.workflow_id
+            )
+            revision_context = getattr(authority, "revision_context", None)
+            revision = (
+                admitted_workflow_revision(workflow, revision_context)
+                if revision_context
+                else native_workflow_revision(workflow)
+            )
+            if revision != authority.graph_revision:
+                raise BuilderExecutionPolicyError("native_revision_drift")
+            existing = session.scalar(
+                _owned_query(NativeEffectDispatchClaim, owned).where(
+                    NativeEffectDispatchClaim.operation_id == attempt.operation_id
+                )
+            )
+            if existing is not None:
+                raise BuilderExecutionPolicyError("dispatch_already_consumed")
+            session.add(
+                NativeEffectDispatchClaim(
+                    **_owner(owned),
+                    operation_id=attempt.operation_id,
+                    attempt_id=attempt.id,
+                    claimed_at=self.clock(),
+                )
+            )
+            session.flush()
+        # Leaving loader.locked commits before any caller can perform I/O.
+
+    def _validate_dispatch_locked(
+        self,
+        *,
+        session: Session,
+        owned: OwnedNativeTest,
+        scope: NativeTestScope,
+        intent: EffectIntent,
+        permit: DispatchPermit,
+    ) -> NativeEffectAttempt:
+        """Shared local validation inside the caller's existing root transaction.
+
+        The durable transport consumer must call this while holding loader.locked
+        and insert its unique consumption fence before committing that same lock.
+        No I/O, independent transaction or quota mutation occurs in this helper.
+        """
+        attempt = self._attempt(session, owned, permit)
+        operation = session.scalar(
+            _owned_query(NativeEffectOperation, owned).where(NativeEffectOperation.id == permit.operation_id)
+        )
+        binding = self._binding(session, owned, intent)
+        now = self.clock()
+        if (
+            operation is None
+            or operation.operation_digest != operation_digest(intent.key)
+            or operation.intent_digest != canonical_digest(intent.model_dump(mode="json"))
+            or operation.scope_digest != _scope_digest(intent, binding)
+            or operation.state != "claimed"
+            or attempt.expires_at != datetime.fromisoformat(permit.expires_at)
+            or now >= attempt.expires_at
+            or now >= scope.expires_at
+        ):
+            raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+        require_ancestor_authority(session, owned.ref, owned.tenant_id)
+        dispatch_readiness(session, ref=owned.ref, tenant_id=owned.tenant_id, now=now)
+        return attempt
+
+    def record_outcome(self, *, permit: DispatchPermit, outcome: Outcome, result_ref: str | None) -> EffectReceipt:
+        receipt = EffectReceipt(
+            operation_id=permit.operation_id, attempt_id=permit.attempt_id, outcome=outcome, result_ref=result_ref
+        )
+        if outcome == "completed" and result_ref is None:
+            raise BuilderExecutionPolicyError("completed_result_required")
+        ref = self._permit_ref(permit)
+        with self.loader.locked(ref=ref, settlement=True) as (session, owned, _):
+            attempt = self._attempt(session, owned, permit)
+            operation = session.scalar(
+                _owned_query(NativeEffectOperation, owned).where(NativeEffectOperation.id == permit.operation_id)
+            )
+            if operation is None:
+                raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+            existing = session.scalar(
+                _owned_query(NativeEffectOutcome, owned).where(NativeEffectOutcome.attempt_id == attempt.id)
+            )
+            if existing is not None:
+                if existing.outcome != outcome or existing.result_ref != result_ref:
+                    raise BuilderExecutionPolicyError("outcome_conflict")
+                return receipt
+            self._append_outcome(session, owned, operation, attempt, outcome, result_ref)
+        return receipt
+
+    @staticmethod
+    def _append_outcome(session, owned, operation, attempt, outcome, result_ref):
+        session.add(
+            NativeEffectOutcome(
+                **_owner(owned),
+                operation_id=operation.id,
+                attempt_id=attempt.id,
+                outcome=outcome,
+                result_ref=result_ref,
+            )
+        )
+        operation.state, operation.result_ref = outcome, result_ref
+
+    def resolve_budget_reservation(
+        self, *, permit: DispatchPermit, execution_id: str, invocation_digest: str
+    ) -> BudgetReservation:
+        ref = self._permit_ref(permit)
+        self.loader.load(ref=ref)
+        with self.loader.locked(ref=ref) as (session, owned, _):
+            attempt = self._attempt(session, owned, permit)
+            return self._reservation(session, owned, attempt, execution_id, invocation_digest)
+
+    def resolve_budget_reference(
+        self, *, ref: NativeTestContextRef, budget_reservation_ref: str, execution_id: str, invocation_digest: str
+    ) -> BudgetReservation:
+        """CS6 authenticated server bridge; a supplied reference is never authority."""
+        self.loader.load(ref=ref)
+        with self.loader.locked(ref=ref) as (session, owned, _):
+            attempt = session.scalar(
+                _owned_query(NativeEffectAttempt, owned).where(
+                    NativeEffectAttempt.budget_reservation_ref == budget_reservation_ref
+                )
+            )
+            if attempt is None:
+                raise BuilderExecutionPolicyError("invalid_budget_reservation")
+            return self._reservation(session, owned, attempt, execution_id, invocation_digest)
+
+    def _reservation(self, session, owned, attempt, execution_id, invocation_digest) -> BudgetReservation:
+        operation = session.scalar(
+            _owned_query(NativeEffectOperation, owned).where(NativeEffectOperation.id == attempt.operation_id)
+        )
+        if (
+            attempt.execution_id != execution_id
+            or attempt.invocation_digest != invocation_digest
+            or attempt.expires_at <= self.clock()
+            or operation is None
+            or operation.state != "claimed"
+        ):
+            raise BuilderExecutionPolicyError("invalid_budget_reservation")
+        return BudgetReservation(
+            budget_reservation_ref=attempt.budget_reservation_ref,
+            execution_id=attempt.execution_id,
+            invocation_digest=attempt.invocation_digest,
+            expires_at=attempt.expires_at,
+            limits=dict(attempt.budget),
+            profile=dict(attempt.profile),
+        )

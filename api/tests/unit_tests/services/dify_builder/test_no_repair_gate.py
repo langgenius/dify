@@ -6,7 +6,6 @@ from typing import override
 import pytest
 
 from core.dify_builder.errors import BadRequestError
-from core.dify_builder.handlers_fix import fix_registry, handle_propose
 from core.dify_builder.models import (
     Action,
     Actor,
@@ -22,8 +21,9 @@ from core.dify_builder.models import (
     Session,
     Turn,
 )
-from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState
+from services.dify_builder.application.handlers_fix import fix_registry, handle_propose
+from services.dify_builder.application.runner import Env, Runner
 from services.dify_builder.service import DifyBuilderService, resolve_submitted_action
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text

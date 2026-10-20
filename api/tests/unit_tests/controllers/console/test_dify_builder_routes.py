@@ -43,7 +43,6 @@ from controllers.console.dify_builder_fields import (
 )
 from core.dify_builder.contract import ConversationPage, RunStatus
 from core.dify_builder.errors import BusyError, ConflictError, ModelUnavailableError, NotFoundError
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.models import (
     CONFIRMED_TOOL_ACTION,
     Action,
@@ -53,7 +52,6 @@ from core.dify_builder.models import (
     EntryMode,
 )
 from core.dify_builder.models import Session as DomainSession
-from core.dify_builder.ports import Repository
 from core.dify_builder.real_call_consent import ConsentReceipt, gmail_message_url
 from core.dify_builder.state import PcState
 from enums import DeploymentEdition
@@ -65,6 +63,8 @@ from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, Te
 from models.base import Base, TypeBase
 from models.model import App, DifySetup
 from services.dify_builder import wiring
+from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
+from services.dify_builder.application.ports import Repository
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.service import DifyBuilderService, SessionView
 from services.enterprise.rbac_service import RBACService
@@ -145,10 +145,13 @@ def test_session_stream_delegates_to_reconnect_stream(monkeypatch: pytest.Monkey
     stream = MagicMock(return_value=Response(_frames(), mimetype="text/event-stream", headers=mod._SSE_HEADERS))
     monkeypatch.setattr(mod, "_stream", stream)
 
-    response = unwrap(mod.DifyBuilderSessionStreamApi.get)(object(), "ten-1", _account(), "s1")
+    with Flask(__name__).test_request_context():
+        response = unwrap(mod.DifyBuilderSessionStreamApi.get)(object(), "ten-1", _account(), "s1")
 
     _assert_event_stream(response)
-    stream.assert_called_once_with("s1", Actor(account_id="acc-1", tenant_id="ten-1"))
+    stream.assert_called_once_with(
+        "s1", Actor(account_id="acc-1", tenant_id="ten-1"), native_version=None, native_cursor=""
+    )
 
 
 def test_conversation_get_validates_query_and_returns_json_page(monkeypatch: pytest.MonkeyPatch) -> None:

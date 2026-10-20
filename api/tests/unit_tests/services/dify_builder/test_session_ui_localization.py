@@ -12,8 +12,8 @@ from core.dify_builder.contract import FormCard, FormField
 from core.dify_builder.errors import BadRequestError
 from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Session
 from core.dify_builder.state import PcState
-from services.dify_builder.copy_ids import BuilderCopyId
-from services.dify_builder.presentation import copy_text
+from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.presentation import copy_text
 from services.dify_builder.serde import context_from_dict, context_to_dict
 from services.dify_builder.service import DifyBuilderService
 from tests.unit_tests.core.dify_builder.fakes import InMemoryRepository

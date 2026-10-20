@@ -18,7 +18,6 @@ from sqlalchemy.orm import sessionmaker
 
 from core.dify_builder.contract import ActionKind
 from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, NotFoundError
-from core.dify_builder.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
 from core.dify_builder.models import (
     Action,
     Actor,
@@ -34,6 +33,7 @@ from core.dify_builder.models import (
 from core.dify_builder.state import PcState
 from models.base import Base
 from services.dify_builder import service as service_module
+from services.dify_builder.application.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
 from services.dify_builder.plan import WorkflowPlan
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import (
@@ -993,8 +993,16 @@ def test_internal_action_state_guards(
             service.submit_action(working.id, _actor(), Action(kind=kind, payload=payload, base_version=1))
 
     terminal = _seed_session_at(repo, PcState.SUCCESS)
-    with pytest.raises(BadRequestError, match="not allowed"):
-        service.submit_message(terminal.id, _actor(), "context", base_version=1, client_turn_id="turn-3")
+    _view, expect_advance, items = service._prepare_action(
+        terminal.id,
+        _actor(),
+        Action(kind="message", payload={"text": "context", "client_turn_id": "turn-3"}, base_version=1),
+    )
+    assert expect_advance is True
+    assert items == []
+    for kind in ("run_verify", "publish", "approve_repair"):
+        with pytest.raises(BadRequestError, match="not allowed"):
+            service.submit_action(terminal.id, _actor(), Action(kind=kind, base_version=1))
     assert enqueued == []
     # An interrupted working handler can classify drift without executing it.
     _view, expect_advance, items = service._prepare_action(
@@ -1205,6 +1213,11 @@ def test_repair_view_only_offers_approval_for_a_staged_repair(
     assert [option.id for option in view.decision.options] == expected
     expected_default = "approve_plan" if staged else "retry_repair" if state == PcState.FIX_AWAIT_APPROVAL else ""
     assert view.decision.default_option_id == expected_default
+    if state in {PcState.BUILD_AWAIT_REPAIR, PcState.EDIT_AWAIT_REPAIR}:
+        keep = next(option for option in view.decision.options if option.id == "keep_draft")
+        assert keep.next_state == ("build.complete" if entry_mode == EntryMode.BUILD else "edit.complete")
+        if not staged:
+            assert "proposed repair" not in english_text(view.decision.title).lower()
 
 
 @pytest.mark.parametrize("state", [PcState.BUILD_PLAN_APPROVAL, PcState.EDIT_PLAN_APPROVAL])
@@ -1817,9 +1830,9 @@ def test_failed_build_planning_reload_reoffers_confirmed_requirements_and_retry_
     from datetime import datetime
 
     from core.dify_builder.contract import FormCard, FormField
-    from core.dify_builder.handlers_build import build_registry
     from core.dify_builder.models import Turn
-    from core.dify_builder.runner import Env, Runner
+    from services.dify_builder.application.handlers_build import build_registry
+    from services.dify_builder.application.runner import Env, Runner
     from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
 
     class UnavailablePlanner(StubAgent):
@@ -2292,8 +2305,8 @@ def test_get_session_view_run_status_paused(service: DifyBuilderService, repo: S
 def test_recovery_ref_for() -> None:
     # A session whose fc has a recovery_class surfaces a RecoveryRef;
     # can_continue/can_restart follow the class.
-    from core.dify_builder import recovery
     from core.dify_builder.contract import RecoveryClass
+    from services.dify_builder.application import recovery
 
     ref = recovery.recovery_ref_for(str(RecoveryClass.STRUCTURAL_INVALIDATING))
     assert ref is not None
@@ -2506,7 +2519,7 @@ def test_fixture_submit_strict_after_full_authorization(
 def test_fixture_stamp_precedes_revision_and_stale_failure_is_synchronous(
     repo: SqlDifyBuilderRepository, lock: FakeSessionLock
 ) -> None:
-    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 
     events: list[str | AppAccess] = []
 
@@ -2544,7 +2557,7 @@ def test_fixture_stamp_precedes_revision_and_stale_failure_is_synchronous(
 def test_fixture_submission_stamps_immutable_values_and_keeps_celery_json_safe(
     repo: SqlDifyBuilderRepository, lock: FakeSessionLock
 ) -> None:
-    from core.dify_builder.execution_policy import HttpFixtureSetV1
+    from services.dify_builder.application.execution_policy import HttpFixtureSetV1
 
     captured: list[tuple[HttpResponseFixtureV1, ...]] = []
     enqueued: list[Action] = []
@@ -2591,3 +2604,24 @@ def test_foreign_actor_is_refused_before_fixture_decode(repo: SqlDifyBuilderRepo
             Actor(account_id=OTHER_ACCOUNT_ID, tenant_id=TENANT_ID),
             Action(kind="provide_testdata", base_version=s.version, payload={"http_fixtures": None}),
         )
+
+
+def test_completed_task_message_can_prepare_against_current_draft(service, repo, enqueued):
+    terminal = _seed_session_at(repo, PcState.BUILD_COMPLETE)
+    _, context = repo.get_session(terminal.id)
+    context.last_snapshot_hash = "old-draft"
+    repo.compare_and_advance(terminal.id, terminal.version, terminal.current_state, context, [])
+    terminal, _ = repo.get_session(terminal.id)
+    service._get_app_revision_fn = lambda _app, _actor: "current-draft"
+    _, advance, items = service._prepare_action(
+        terminal.id,
+        _actor(),
+        Action(
+            kind="message",
+            payload={"text": "Prepare another test", "client_turn_id": "new-task"},
+            base_version=terminal.version,
+        ),
+    )
+    assert advance
+    assert not items
+    assert not enqueued

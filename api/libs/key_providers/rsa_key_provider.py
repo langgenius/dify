@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import override
 
 from Crypto.PublicKey import RSA
@@ -15,46 +16,16 @@ class RSAKeyProvider(BaseKeyProvider):
     crypto logic is intentionally left untouched.
     """
 
+    def __init__(self, *, public_key_reader: Callable[[str], str]) -> None:
+        self._public_key_reader = public_key_reader
+
     @override
     def generate_key_pair(self, tenant_id: str) -> str:
         return rsa.generate_key_pair(tenant_id)
 
     @override
     def encrypt(self, tenant_id: str, text: str) -> bytes:
-        return rsa.encrypt(text, self._public_key(tenant_id))
-
-    @staticmethod
-    def _public_key(tenant_id: str) -> str:
-        """The tenant's public key, read without leaving a SQL transaction open.
-
-        A caller whose request-scoped session already holds state (an open
-        transaction, e.g. a tenant it created and has not committed) is read
-        through that session, which stays exactly as the caller left it.
-        Otherwise the key is read and detached in the provider's own short
-        session, closed before encryption, so the scoped session is never
-        left open across the caller's later external work.
-        """
-        from sqlalchemy import select
-        from sqlalchemy.orm import scoped_session
-
-        from core.db.session_factory import session_factory
-        from models.account import Tenant
-        from models.engine import db
-
-        # The current request-scoped Session (a registry lookup, never a new transaction).
-        scoped = db.session() if isinstance(db.session, scoped_session) else db.session
-        if scoped.in_transaction():
-            tenant = scoped.get(Tenant, tenant_id)
-            found, public_key = tenant is not None, tenant.encrypt_public_key if tenant is not None else None
-        else:
-            with session_factory.create_session() as session:
-                row = session.execute(select(Tenant.encrypt_public_key).where(Tenant.id == tenant_id)).first()
-            found, public_key = row is not None, row[0] if row is not None else None
-        if not found:
-            raise ValueError(f"Tenant with id {tenant_id} not found")
-        if public_key is None:
-            raise ValueError(f"Tenant with id {tenant_id} has no encrypt_public_key")
-        return public_key
+        return rsa.encrypt(text, self._public_key_reader(tenant_id))
 
     @override
     def get_decrypt_decoding(self, tenant_id: str) -> tuple[RSA.RsaKey, object]:

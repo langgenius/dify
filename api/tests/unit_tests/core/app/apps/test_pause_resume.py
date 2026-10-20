@@ -9,11 +9,7 @@ from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 import core.workflow.nodes.human_input.entities  # noqa: F401
-from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
-from core.app.apps.workflow import app_generator as wf_app_gen_module
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow import node_factory as node_factory_module
-from core.workflow.node_factory import DifyNodeFactory
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.workflow.system_variables import build_system_variables
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
@@ -40,6 +36,10 @@ from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import Workflow, WorkflowType
 from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_runtime import chatflow_generator as adv_app_gen_module
+from services.workflow_runtime import node_factory as node_factory_module
+from services.workflow_runtime import workflow_generator as wf_app_gen_module
+from services.workflow_runtime.node_factory import DifyNodeFactory
 from tests.workflow_test_utils import build_test_graph_init_params
 
 if "core.ops.ops_trace_manager" not in sys.modules:
@@ -301,8 +301,10 @@ def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
         app_model=_make_app(),
         workflow=_make_workflow(),
         user=_make_account(),
-        application_generate_entity=SimpleNamespace(
+        application_generate_entity=WorkflowAppGenerateEntity.model_construct(
             builder_execution=None,
+            native_test_required=False,
+            native_test_ref=None,
             stream=False,
             invoke_from=InvokeFrom.SERVICE_API,
             trace_manager=SimpleNamespace(),

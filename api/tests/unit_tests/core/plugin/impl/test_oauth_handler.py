@@ -207,7 +207,7 @@ class TestOAuthHandler:
     def test_refresh_credentials_refuses_other_confirmed_headers_before_transport(
         self, mocker: MockerFixture, headers: dict[str, str]
     ) -> None:
-        from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+        from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 
         handler = OAuthHandler()
         stream_mock = mocker.patch.object(handler, "_request_with_plugin_daemon_response_stream")

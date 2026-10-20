@@ -13,8 +13,8 @@ from controllers.console.dify_builder_fields import (
     DifyBuilderStreamEventResponse,
 )
 from core.dify_builder.contract import AssistantTurnItem
-from services.dify_builder.copy_ids import BuilderCopyId
-from services.dify_builder.presentation import _PARAMETERS, BuilderCopy, copy_text, stored_text, text_parts
+from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.presentation import _PARAMETERS, BuilderCopy, copy_text, stored_text, text_parts
 
 
 def test_presentation_json_keeps_literal_collisions_and_parameters() -> None:

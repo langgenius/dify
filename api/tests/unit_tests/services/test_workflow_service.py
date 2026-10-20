@@ -27,7 +27,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
-from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from enums import DeploymentEdition
@@ -71,6 +70,7 @@ from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.workflow_ref_service import WorkflowRef
+from services.workflow_runtime.node_factory import DifyNodeFactory
 from services.workflow_service import (
     WorkflowService,
     _merge_environment_variable_patch,

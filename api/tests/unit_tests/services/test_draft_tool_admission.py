@@ -95,6 +95,14 @@ def native_draft(
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
 ) -> SimpleNamespace:
+    import core.tools.tool_manager as runtime_module
+    import services.tools.ordinary_tool_credentials as credential_owner
+
+    # Ordinary credential SQL/crypto moved out of ToolManager. Bind the new
+    # owner to the same real SQLite database and existing fail-closed sentinel.
+    # Its legacy label is retained so every no-secret assertion stays unchanged.
+    monkeypatch.setattr(credential_owner, "db", runtime_module.db)
+    monkeypatch.setattr(credential_owner, "create_provider_encrypter", runtime_module.create_provider_encrypter)
     config_overrides(DEPLOYMENT_EDITION="COMMUNITY")
     monkeypatch.setattr(generate_module, "RateLimit", LocalRateLimit)
     monkeypatch.setattr(workflow_module.SystemFeatureService, "is_plugin_manager_enabled", lambda: False)
@@ -253,7 +261,7 @@ def invoke(
             streaming=False,
         )
     if entrypoint.endswith("loop"):
-        from controllers.console.app.workflow import LoopNodeRunPayload
+        from fields.workflow_run_fields import LoopNodeRunPayload
 
         nest_tool_in_container(case, session, "loop")
         return AppGenerateService.generate_single_loop(
@@ -719,11 +727,13 @@ def test_ambiguous_native_default_cannot_mask_hidden_credential(
     assert native_draft.tools.forbidden == []
 
 
-def native_tool_node(case: SimpleNamespace, *, workflow_id: str | None = None) -> tuple[ToolNode, VariablePool]:
+def native_tool_node(
+    case: SimpleNamespace, *, workflow_id: str | None = None, credential_bindings: dict[str, str] | None = None
+) -> tuple[ToolNode, VariablePool]:
     """Construct the real Tool through the production native factory and scope."""
     from core.app.entities.app_invoke_entities import UserFrom, build_dify_run_context
-    from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory
     from graphon.runtime import RuntimeState, VariablePool
+    from services.workflow_runtime.node_factory import DifyGraphInitContext, DifyNodeFactory
 
     pool = VariablePool()
     factory = DifyNodeFactory.from_graph_init_context(
@@ -736,6 +746,7 @@ def native_tool_node(case: SimpleNamespace, *, workflow_id: str | None = None) -
                 user_id=ACCOUNT_A,
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
+                builder_tool_credential_bindings=credential_bindings,
             ),
             call_depth=0,
         ),
@@ -893,6 +904,7 @@ def native_draft_oauth(
     import contexts
     import core.tools.tool_manager as runtime_module
     import services.tools.builtin_tools_manage_service as client_module
+    import services.tools.ordinary_tool_credentials as credential_owner
     from core.helper import provider_cache
     from core.plugin.entities.plugin_daemon import CredentialType as ToolCredentialType
     from core.plugin.entities.plugin_daemon import PluginOAuthCredentialsResponse
@@ -955,6 +967,7 @@ def native_draft_oauth(
         credential_id = credential.id
         native_database = SimpleNamespace(engine=native_draft.tools.engine, session=sqlite_session)
         monkeypatch.setattr(runtime_module, "db", native_database)
+        monkeypatch.setattr(credential_owner, "db", native_database)
         monkeypatch.setattr(client_module, "db", native_database)
         monkeypatch.setattr(ToolManager, "get_tool_runtime", classmethod(_NATIVE_TOOL_RUNTIME))
         monkeypatch.setattr(OAuthHandler, "refresh_credentials", _NATIVE_OAUTH_REFRESH)
@@ -1030,6 +1043,7 @@ def native_draft_oauth(
                 return 1
 
         monkeypatch.setattr(runtime_module, "create_provider_encrypter", crypto_factory)
+        monkeypatch.setattr(credential_owner, "create_provider_encrypter", crypto_factory)
         monkeypatch.setattr(client_module, "create_provider_encrypter", crypto_factory)
         monkeypatch.setattr(OAuthHandler, "_request_with_plugin_daemon_response_stream", refresh_stream)
         monkeypatch.setattr(provider_cache, "redis_client", RedisBoundary())
@@ -1050,6 +1064,7 @@ def native_draft_oauth(
 
         yield SimpleNamespace(
             resolve=resolve_runtime,
+            case=native_draft,
             engine=native_draft.tools.engine,
             credential_id=credential_id,
             crypto_calls=crypto_calls,
@@ -1589,3 +1604,98 @@ def test_resume_saved_graph_requires_actual_run_and_invocation_owners(
     with pytest.raises(ToolProviderCredentialValidationError, match="Tool|Saved draft execution"):
         paused_native_draft.resume()
     paused_native_draft.assert_not_resumed()
+
+
+@pytest.mark.parametrize("change", ["default-swap", "rotation-before-read"])
+def test_builder_native_tool_refuses_changed_confirmed_credential_before_crypto(
+    native_draft, sqlite_session, monkeypatch, change
+):
+    import hashlib
+
+    from sqlalchemy import event
+
+    from graphon.nodes.tool.exc import ToolRuntimeResolutionError
+    from models.tools import BuiltinToolProvider
+
+    credential = add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
+    fingerprint = hashlib.sha256(
+        f"{credential.id}:{credential.updated_at}:{credential.encrypted_credentials}".encode()
+    ).hexdigest()
+    node, pool = native_tool_node(native_draft, credential_bindings={"t": fingerprint})
+    if change == "default-swap":
+        credential.is_default = False
+        add_credential(
+            sqlite_session,
+            tenant_id=TENANT_ID,
+            provider=AUTH_PROVIDER,
+            user_id=ACCOUNT_A,
+            name="Different authorized account",
+        )
+    monkeypatch.setattr(ToolManager, "get_tool_runtime", classmethod(_NATIVE_TOOL_RUNTIME))
+    rotated = []
+
+    def rotate_before_value_read(state):
+        descriptions = getattr(state.statement, "column_descriptions", ())
+        if (
+            change == "rotation-before-read"
+            and not rotated
+            and descriptions
+            and descriptions[0].get("expr") is BuiltinToolProvider
+        ):
+            rotated.append(True)
+            # A timestamp can retain second-level precision; bind ciphertext as well.
+            original_updated_at = credential.updated_at
+            credential.encrypted_credentials = '{"api_key":"changed"}'
+            credential.updated_at = original_updated_at
+            sqlite_session.commit()
+
+    event.listen(Session, "do_orm_execute", rotate_before_value_read)
+    try:
+        with pytest.raises(ToolRuntimeResolutionError, match="credential changed after confirmation"):
+            node._runtime.get_runtime(node_id="t", node_data=node.node_data, variable_pool=pool)
+        assert rotated == ([True] if change == "rotation-before-read" else [])
+        assert native_draft.tools.forbidden == []
+    finally:
+        event.remove(Session, "do_orm_execute", rotate_before_value_read)
+
+
+@pytest.mark.parametrize("external_rotation", [False, True])
+def test_builder_two_nodes_share_only_their_authorized_oauth_refresh_receipt(native_draft_oauth, external_rotation):
+    from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+    from core.workflow.node_runtime import DifyToolNodeRuntime
+    from models.tools import BuiltinToolProvider
+    from services.tools.draft_tool_setup import tool_credential_fingerprint
+
+    boundary = native_draft_oauth
+    with Session(boundary.engine) as session:
+        credential = session.get(BuiltinToolProvider, boundary.credential_id)
+        fingerprint = tool_credential_fingerprint(credential)
+    bindings = {"t": fingerprint, "second": fingerprint, "other-account": "unrelated-binding"}
+    node, pool = native_tool_node(boundary.case, credential_bindings=bindings)
+    first = node._runtime.get_runtime(node_id="t", node_data=node.node_data, variable_pool=pool)
+    assert first.raw.tool.runtime.credentials["access_token"] == "synthetic-new-access"
+    # A nested factory shares its DifyRunContext; serialization must preserve
+    # this run's trusted rotation for native pause/rebuild as well.
+    context = node._runtime._run_context
+    assert context.builder_tool_credential_bindings["second"] != fingerprint
+    assert context.builder_tool_credential_bindings["other-account"] == "unrelated-binding"
+    restored = DifyRunContext.model_validate_json(context.model_dump_json())
+    second_runtime = DifyToolNodeRuntime(
+        {DIFY_RUN_CONTEXT_KEY: restored},
+        workflow_id=DRAFT_ID,
+    )
+    if external_rotation:
+        from graphon.nodes.tool.exc import ToolRuntimeResolutionError
+
+        with Session(boundary.engine) as session, session.begin():
+            credential = session.get(BuiltinToolProvider, boundary.credential_id)
+            credential.encrypted_credentials = '{"access_token":"external-rotation"}'
+        with pytest.raises(ToolRuntimeResolutionError, match="credential changed after confirmation"):
+            second_runtime.get_runtime(node_id="second", node_data=node.node_data, variable_pool=pool)
+    else:
+        second = second_runtime.get_runtime(node_id="second", node_data=node.node_data, variable_pool=pool)
+        assert second.raw.tool.runtime.credentials["access_token"] == "synthetic-new-access"
+    assert len(boundary.refresh_calls) == 1
+    assert bindings["second"] == context.builder_tool_credential_bindings["second"]
+    assert SECRET_MARKER not in context.model_dump_json()
+    assert "synthetic-new-access" not in context.model_dump_json()

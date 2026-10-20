@@ -1,3 +1,4 @@
+import json
 import logging
 from collections.abc import Callable, Sequence
 from datetime import datetime
@@ -1245,7 +1246,7 @@ def test_every_variable_url_grounding_creates_is_excluded_from_mocks_and_path_da
     """Reviewer check (a): the grounding side and ``endpoint_variable_names``
     agree after the origin-only substitution -- the grounded ``h_url`` is a
     value a human must supply, the ``topic`` in the path/query stays mockable."""
-    from core.dify_builder.handlers_fix import endpoint_variable_names
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
 
     for url in (
         "https://api.pptrender.io/v1/render?topic={{#s.topic#}}",
@@ -1809,7 +1810,7 @@ def test_full_build_completeness_requires_one_actual_start(extra_start: bool) ->
 
 
 def test_full_build_accepts_native_assembled_nested_containers() -> None:
-    from core.workflow.generator.runner import WorkflowGenerator
+    from services.workflow_generation.runner import WorkflowGenerator
 
     plan_nodes = [
         {"id": "entry", "label": "Start", "node_type": "start", "purpose": "Begin"},
@@ -1902,3 +1903,19 @@ def test_full_build_completeness_accepts_complete_parallel_fanout_only() -> None
     problems = generated_graph_completeness_problems(graph, mode="workflow", current_graph=None)
     assert len(problems) == 1
     assert "'b'" in problems[0]
+
+
+def test_build_nodes_passes_confirmed_failure_policy_to_generator():
+    """A concise approved plan cannot erase authoritative failure/HTTP constraints."""
+    requirements = {"error_status_value": 0, "continue_on_post_failure": False, "health_success_status": 404}
+    trusted_text = "ORIGINAL GOAL:\nPOST then fetch health\nCONFIRMED REQUIREMENTS:\n" + json.dumps(requirements)
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch.object(build.WorkflowGeneratorService, "generate_workflow_graph", return_value=_GEN_GRAPH) as generate,
+    ):
+        result = build.build_nodes("tenant", {}, ["code node calls both endpoints"], trusted_text=trusted_text)
+
+    assert result.intents
+    instruction = generate.call_args.kwargs["instruction"]
+    assert trusted_text in instruction
+    assert "follow the original source" in instruction

@@ -6,6 +6,7 @@ from typing import TypedDict
 import contexts
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from extensions.ext_database import db
+from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import WorkflowExecutionStatus
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from machinery.context import RequestContext
@@ -222,6 +223,10 @@ class WorkflowRunService:
 
         human_input_reasons: list[HumanInputRequired] = []
         for reason in pause_record.reasons:
+            if isinstance(reason, SchedulingPause):
+                # Scheduling waits have no human form; their message can carry
+                # private runtime state and must not enter this response.
+                continue
             if not isinstance(reason, HumanInputRequired):
                 raise NotImplementedError(f"Pause details do not support {type(reason).__name__}")
             human_input_reasons.append(reason)

@@ -20,9 +20,6 @@ from sqlalchemy.orm import Session, sessionmaker
 import services.app_generate_service as ags_module
 from controllers.service_api.app.workflow_events import WorkflowEventsApi
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
-from core.app.apps.advanced_chat.generate_task_pipeline import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
-from core.app.apps.common import workflow_response_converter
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import (
@@ -51,6 +48,9 @@ from repositories.api_workflow_node_execution_repository import WorkflowNodeExec
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app_generate_service import AppGenerateService
 from services.workflow_event_snapshot_service import _build_snapshot_events
+from services.workflow_runtime import response_converter as workflow_response_converter
+from services.workflow_runtime.chatflow_pipeline import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
+from services.workflow_runtime.response_converter import WorkflowResponseConverter
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -483,7 +483,7 @@ class TestHitlServiceApi:
 
     def test_advanced_chat_blocking_pipeline_pause_payload_contract(self) -> None:
         from core.app.app_config.entities import AppAdditionalFeatures
-        from core.app.apps.advanced_chat.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
+        from services.workflow_runtime.chatflow_pipeline import AdvancedChatAppGenerateTaskPipeline
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -575,7 +575,7 @@ class TestHitlServiceApi:
         assert response.data.reasons[0]["expiration_time"] == 123
 
     def test_workflow_blocking_pipeline_pause_payload_contract(self) -> None:
-        from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
+        from services.workflow_runtime.workflow_pipeline import WorkflowAppGenerateTaskPipeline
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",

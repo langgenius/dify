@@ -10,11 +10,9 @@ import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
 
-import core.app.apps.workflow.app_generator as app_generator_module
+import services.workflow_runtime.workflow_generator as app_generator_module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowSucceededEvent
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
@@ -28,6 +26,8 @@ from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
+from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
 from tests.unit_tests.model_factories import make_workflow
 
 
@@ -254,15 +254,15 @@ def test_generate_includes_parent_trace_context_in_extras(
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
 
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.WorkflowAppGenerator._bind_file_access_scope",
+        "services.workflow_runtime.workflow_generator.WorkflowAppGenerator._bind_file_access_scope",
         lambda *args, **kwargs: contextlib.nullcontext(),
     )
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.WorkflowAppConfigManager.get_app_config",
+        "services.workflow_runtime.workflow_generator.WorkflowAppConfigManager.get_app_config",
         lambda *args, **kwargs: _app_config(app, workflow),
     )
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.file_factory.build_from_mappings", lambda *args, **kwargs: []
+        "services.workflow_runtime.workflow_generator.file_factory.build_from_mappings", lambda *args, **kwargs: []
     )
     repository_tenant_ids: dict[str, str] = {}
     workflow_execution_factory = app_generator_module.DifyCoreRepositoryFactory.create_workflow_execution_repository
@@ -279,14 +279,16 @@ def test_generate_includes_parent_trace_context_in_extras(
         return workflow_node_execution_factory(**kwargs)
 
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+        "services.workflow_runtime.workflow_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
         create_workflow_execution_repository,
     )
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+        "services.workflow_runtime.workflow_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
         create_workflow_node_execution_repository,
     )
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.db", SimpleNamespace(engine=sqlite_session.get_bind()))
+    monkeypatch.setattr(
+        "services.workflow_runtime.workflow_generator.db", SimpleNamespace(engine=sqlite_session.get_bind())
+    )
     monkeypatch.setattr(generator, "_prepare_user_inputs", lambda *, user_inputs, **kwargs: user_inputs)
 
     captured = {}
@@ -329,6 +331,88 @@ def test_generate_includes_parent_trace_context_in_extras(
     assert isinstance(captured["workflow_execution_repository"], SQLAlchemyWorkflowExecutionRepository)
     assert isinstance(captured["workflow_node_execution_repository"], SQLAlchemyWorkflowNodeExecutionRepository)
     assert repository_tenant_ids == {"workflow": app.tenant_id, "node": app.tenant_id}
+
+
+@pytest.mark.parametrize("case", ["valid", "run_mismatch", "non_debugger", "native_mix", "nested"])
+def test_confirmed_agent_generator_keeps_preallocated_identity(monkeypatch, sqlite_session, case):
+    from models.model import Account
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
+    from tests.unit_tests.services.dify_builder.native_testing.test_agent_context import marker
+
+    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+    app, workflow, _ = _persist_generator_rows(sqlite_session)
+    account = MagicMock(spec=Account)
+    account.id = "actor"
+    context = marker()
+    captured = {}
+    monkeypatch.setattr(generator, "_bind_file_access_scope", lambda **_: contextlib.nullcontext())
+    monkeypatch.setattr(
+        app_generator_module.WorkflowAppConfigManager, "get_app_config", lambda **_: _app_config(app, workflow)
+    )
+    monkeypatch.setattr(app_generator_module.file_factory, "build_from_mappings", lambda **_: [])
+    monkeypatch.setattr(app_generator_module, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
+    monkeypatch.setattr(generator, "_prepare_user_inputs", lambda *, user_inputs, **_: user_inputs)
+    monkeypatch.setattr(generator, "_generate", lambda **kw: captured.update(kw))
+    kwargs = {
+        "app_model": app,
+        "workflow": workflow,
+        "user": account,
+        "args": {"inputs": {}},
+        "invoke_from": InvokeFrom.SERVICE_API if case == "non_debugger" else InvokeFrom.DEBUGGER,
+        "builder_agent_execution": context,
+        "workflow_run_id": "other" if case == "run_mismatch" else None,
+        "call_depth": 1 if case == "nested" else 0,
+        "native_test_required": case == "native_mix",
+    }
+    if case != "valid":
+        with pytest.raises(BuilderExecutionPolicyError):
+            generator.generate(**kwargs)
+        assert captured == {}
+        return
+    generator.generate(**kwargs)
+    entity = captured["application_generate_entity"]
+    assert entity.builder_agent_execution == context
+    assert entity.workflow_execution_id == context.native_run_id
+
+
+@pytest.mark.parametrize("valid", [True, False])
+def test_confirmed_agent_resume_keeps_original_context_and_run(monkeypatch, sqlite_session, valid):
+    from models.model import Account
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
+    from tests.unit_tests.services.dify_builder.native_testing.test_agent_context import marker
+
+    app, workflow, end_user = _persist_generator_rows(sqlite_session)
+    context = marker()
+    entity = _generate_entity(app, workflow, end_user, invoke_from=InvokeFrom.DEBUGGER).model_copy(
+        update={"builder_agent_execution": context, "workflow_execution_id": context.native_run_id}
+    )
+    # Exercise the persisted carrier, including reconstruction of transient tracing.
+    entity = WorkflowAppGenerateEntity.model_validate_json(entity.model_dump_json())
+    user = MagicMock(spec=Account)
+    user.id = entity.user_id
+    if not valid:
+        entity.invoke_from = InvokeFrom.SERVICE_API
+    captured = {}
+    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+    monkeypatch.setattr(generator, "_generate", lambda **kw: captured.update(kw))
+    kwargs = {
+        "app_model": app,
+        "workflow": workflow,
+        "user": user,
+        "application_generate_entity": entity,
+        "graph_runtime_state": _runtime_state(),
+        "workflow_execution_repository": MagicMock(),
+        "workflow_node_execution_repository": MagicMock(),
+    }
+    if not valid:
+        with pytest.raises(BuilderExecutionPolicyError):
+            generator.resume(**kwargs)
+        assert captured == {}
+        return
+    generator.resume(**kwargs)
+    restored = captured["application_generate_entity"]
+    assert restored.builder_agent_execution == context
+    assert restored.workflow_execution_id == context.native_run_id
 
 
 def test_resume_delegates_to_generate(
@@ -388,12 +472,12 @@ def test_generate_forwards_pause_configuration_and_state(
 
     queue_manager = MagicMock()
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.WorkflowAppQueueManager",
+        "services.workflow_runtime.workflow_generator.WorkflowAppQueueManager",
         MagicMock(return_value=queue_manager),
     )
 
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.WorkflowAppGenerateResponseConverter.convert",
+        "services.workflow_runtime.workflow_generator.WorkflowAppGenerateResponseConverter.convert",
         MagicMock(return_value="converted"),
     )
     monkeypatch.setattr(WorkflowAppGenerator, "_handle_response", MagicMock(return_value="response"))
@@ -433,7 +517,7 @@ def test_generate_forwards_pause_configuration_and_state(
         def is_alive(self):
             return False
 
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.threading.Thread", DummyThread)
+    monkeypatch.setattr("services.workflow_runtime.workflow_generator.threading.Thread", DummyThread)
 
     application_generate_entity = _generate_entity(app, workflow, end_user)
     graph_runtime_state = _runtime_state()
@@ -497,13 +581,13 @@ def test_resume_path_runs_worker_with_runtime_state(
 
     queue_manager = MagicMock()
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.WorkflowAppQueueManager",
+        "services.workflow_runtime.workflow_generator.WorkflowAppQueueManager",
         MagicMock(return_value=queue_manager),
     )
 
     monkeypatch.setattr(generator, "_handle_response", MagicMock(return_value="raw-response"))
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.WorkflowAppGenerateResponseConverter.convert",
+        "services.workflow_runtime.workflow_generator.WorkflowAppGenerateResponseConverter.convert",
         MagicMock(side_effect=lambda response, invoke_from: response),
     )
 
@@ -521,7 +605,7 @@ def test_resume_path_runs_worker_with_runtime_state(
         return runner_instance
 
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.WorkflowAppRunner",
+        "services.workflow_runtime.workflow_generator.WorkflowAppRunner",
         MagicMock(side_effect=runner_ctor),
     )
 
@@ -541,7 +625,7 @@ def test_resume_path_runs_worker_with_runtime_state(
         def is_alive(self):
             return False
 
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.threading.Thread", ImmediateThread)
+    monkeypatch.setattr("services.workflow_runtime.workflow_generator.threading.Thread", ImmediateThread)
 
     pause_config = PauseStateLayerConfig(
         session_factory=sqlite_session_factory,
@@ -568,3 +652,73 @@ def test_resume_path_runs_worker_with_runtime_state(
     assert worker_lifecycle["joined"] is True
     assert worker_lifecycle["join_timeout"] == 300
     runner_instance.prepare.assert_called_once()
+
+
+def test_builder_worker_refuses_draft_changed_after_confirmation_before_runner(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    from services.dify_builder.revision import execution_revision
+
+    app, workflow, end_user = _persist_generator_rows(sqlite_session)
+    graph = workflow.graph_dict
+    graph["nodes"].append({"id": "send", "data": {"type": "http-request", "url": "https://approved.example"}})
+    workflow.graph = json.dumps(graph)
+    sqlite_session.commit()
+    approved_revision = execution_revision(workflow)
+    entity = _generate_entity(app, workflow, end_user, invoke_from=InvokeFrom.DEBUGGER)
+    entity.builder_expected_revision = approved_revision
+    # Same node identity, changed executable data in the worker's independent read.
+    workflow.graph = workflow.graph.replace("https://approved.example", "https://changed.example")
+    sqlite_session.commit()
+    monkeypatch.setattr(
+        app_generator_module, "preserve_flask_contexts", lambda *args, **kwargs: contextlib.nullcontext()
+    )
+    monkeypatch.setattr(app_generator_module, "session_factory", SimpleNamespace(create_session=sqlite_session_factory))
+    reached = []
+
+    def first_node(**kwargs):
+        reached.append(kwargs)
+        return SimpleNamespace(run=lambda: None)
+
+    monkeypatch.setattr(app_generator_module, "WorkflowAppRunner", first_node)
+    queue = MagicMock()
+    repositories = _repositories(sqlite_session_factory, app, end_user)
+    WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)._generate_worker(
+        flask_app=Flask(__name__),
+        application_generate_entity=entity,
+        queue_manager=queue,
+        context=SimpleNamespace(),
+        variable_loader=SimpleNamespace(),
+        workflow_execution_repository=repositories[0],
+        workflow_node_execution_repository=repositories[1],
+    )
+
+    assert reached == []
+    assert queue.publish_error.call_args.args[0].reason_code == "stale_execution_revision"
+
+
+def test_actual_generation_marks_configuration_failure_before_worker_dispatch(
+    monkeypatch,
+    sqlite_session,
+):
+    from services.dify_builder.native_launch_observation import NativeLaunchObservation
+
+    app, workflow, user = _persist_generator_rows(sqlite_session)
+    monkeypatch.setattr(
+        app_generator_module.WorkflowAppConfigManager,
+        "get_app_config",
+        MagicMock(side_effect=ConnectionRefusedError("private plugin schema service")),
+    )
+    observation = NativeLaunchObservation()
+    with observation.track(), pytest.raises(ConnectionRefusedError):
+        WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+            app_model=app,
+            workflow=workflow,
+            user=user,
+            args={"inputs": {}},
+            invoke_from=InvokeFrom.DEBUGGER,
+            streaming=True,
+        )
+    assert observation.failed_before_dispatch

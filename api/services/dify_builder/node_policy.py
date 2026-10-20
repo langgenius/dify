@@ -14,6 +14,7 @@ from core.dify_builder.models import Graph, MutationIntent
 from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from graphon.enums import BuiltinNodeTypes
 from services.dify_builder import graph_ops
+from services.dify_builder.native_testing.agent_binding import has_native_roster_binding
 
 _UNAVAILABLE_ADDITIONS = frozenset(
     {BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, BuiltinNodeTypes.HUMAN_INPUT, BuiltinNodeTypes.AGENT}
@@ -52,7 +53,10 @@ def proposal_policy_rejections(graph: Graph, intents: list[MutationIntent]) -> l
             continue
         if intent.op in ("create_node", "insert_between"):
             node_type = intent.args["node_type"]
-            if node_type in _UNAVAILABLE_ADDITIONS:
+            if node_type in _UNAVAILABLE_ADDITIONS and not (
+                node_type == BuiltinNodeTypes.AGENT
+                and has_native_roster_binding({"type": node_type, **(intent.args.get("config") or {})})
+            ):
                 reasons.append(f"{intent.op}: adding {node_type!r} nodes is unavailable in Builder's first phase")
         elif intent.op == "set_node_config":
             node_id = changed[0]
@@ -64,12 +68,21 @@ def proposal_policy_rejections(graph: Graph, intents: list[MutationIntent]) -> l
                     f"set_node_config: changing knowledge-retrieval configuration on node {node_id!r} "
                     "is unavailable in Builder's first phase"
                 )
-            elif isinstance(after_type, str) and after_type in _UNAVAILABLE_ADDITIONS and before_type != after_type:
+            elif (
+                isinstance(after_type, str)
+                and after_type in _UNAVAILABLE_ADDITIONS
+                and before_type != after_type
+                and not has_native_roster_binding(after_data)
+            ):
                 reasons.append(
                     f"set_node_config: converting node {node_id!r} to {after_type!r} "
                     "is unavailable in Builder's first phase"
                 )
-            elif is_dify_agent_node_data(after_data) and not is_dify_agent_node_data(before_data):
+            elif (
+                is_dify_agent_node_data(after_data)
+                and not is_dify_agent_node_data(before_data)
+                and not has_native_roster_binding(after_data)
+            ):
                 reasons.append(
                     f"set_node_config: converting node {node_id!r} to New Agent "
                     "is unavailable in Builder's first phase until published-resource binding is implemented"

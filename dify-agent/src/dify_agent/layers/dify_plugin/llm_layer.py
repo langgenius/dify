@@ -24,7 +24,7 @@ class Capability(AbstractCapability[Deps]):
 
     def build_model(self, deps: Deps) -> DifyLLMAdapterModel:
         config = Config.model_validate(deps.layers[self.name]["config"])
-        if deps.services.dify_api_http_client.is_closed:
+        if deps.dify_api_http_client.is_closed:
             raise RuntimeError("Model execution requires an open Dify API HTTP client.")
         provider = DifyApiLLMProvider(
             plugin_id=config.plugin_id,
@@ -32,7 +32,8 @@ class Capability(AbstractCapability[Deps]):
             inner_api_key=deps.services.inner_api_key,
             execution_context=ExecutionContextConfig.model_validate(deps.layers[config.execution_context]["config"]),
             agent_run_id=deps.run_id,
-            http_client=deps.services.dify_api_http_client,
+            http_client=deps.dify_api_http_client,
+            native_effects=deps.native_effects,
         )
         return DifyLLMAdapterModel(
             model=config.model,

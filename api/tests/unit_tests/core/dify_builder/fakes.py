@@ -35,7 +35,7 @@ from __future__ import annotations
 import copy
 import threading
 import uuid
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping
 from dataclasses import replace
 from datetime import datetime
 from typing import Unpack, override
@@ -45,7 +45,6 @@ from typing_extensions import TypedDict
 from core.dify_builder import node_defaults
 from core.dify_builder.contract import ConversationPage, ResourceOption
 from core.dify_builder.errors import ConflictError, NotFoundError
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError, HttpFixtureSetV1, HttpResponseFixtureV1
 from core.dify_builder.models import (
     Actor,
     ApplyResult,
@@ -71,10 +70,16 @@ from core.dify_builder.models import (
     StartSchema,
     TestInput,
 )
-from core.dify_builder.ports import DifyBuilderAgent, DifyPort, Repository
-from core.dify_builder.runner import Env
 from core.dify_builder.state import PcState
 from graphon.enums import BuiltinNodeTypes
+from services.dify_builder.application.execution_policy import (
+    BuilderExecutionPolicyError,
+    HttpFixtureSetV1,
+    HttpResponseFixtureV1,
+)
+from services.dify_builder.application.ports import DifyBuilderAgent, DifyPort, Repository
+from services.dify_builder.application.runner import Env
+from services.dify_builder.effect_disclosure import EffectDisclosure
 from services.dify_builder.graph_ops import (
     apply_connect,
     apply_create_node,
@@ -346,10 +351,25 @@ class FakeDifyPort(DifyPort):
         # result card) to show. Empty by default -- most tests don't care.
         self.run_outputs: Inputs = {}
         self.workflow_events: list[dict[str, object]] = []
+        # Settable Test Run effect disclosure; empty means nothing to confirm.
+        self.effect_disclosure = EffectDisclosure()
+        self.run_draft_effect_confirmation: dict[str, str] = {}
 
     @override
     def get_app_mode(self, app_id: str, actor: Actor) -> str:
         return self.app_mode
+
+    def prepare_code_risks(self, _app_id, _actor, *, session_id, inputs, context):
+        del session_id, inputs
+        # This canned fake has no reasoning/runtime implementation; Code tests
+        # use the real adapter with an explicit deterministic reasoner.
+        return dict(context.code_risk_assessments)
+
+    def disclose_effects(
+        self, _app_id: str, _actor: Actor, *, inputs: Mapping[str, object] | None = None, code_risk_context=None
+    ) -> EffectDisclosure:
+        del inputs, code_risk_context
+        return self.effect_disclosure
 
     @override
     def stamp_http_fixtures(
@@ -403,11 +423,13 @@ class FakeDifyPort(DifyPort):
         session_id: str,
         test_input_id: str,
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
+        effect_confirmation: Mapping[str, str] | None = None,
         confirmed_consent_id: str | None = None,
         command_id: str | None = None,
     ) -> Run:
         self.run_draft_identity = (session_id, test_input_id)
         self.run_draft_inputs = copy.deepcopy(inputs)
+        self.run_draft_effect_confirmation = dict(effect_confirmation or {})
         if on_workflow_event is not None:
             for event in self.workflow_events:
                 on_workflow_event(event)
@@ -539,23 +561,22 @@ class StubAgent(DifyBuilderAgent):
         self.learn_calls = getattr(self, "learn_calls", 0) + 1
         return "stub-skill"
 
-    @override
-    def analyze_impact(self, goal_text: str, graph: Graph) -> dict[str, object]:
+    def analyze_impact(self, _goal_text, _graph, *, reply_language=None):  # noqa: ARG002
         return {"edit_rules": {}, "target_node_ids": []}
 
-    @override
-    def propose_edit_plan(self, edit_rules: dict[str, object], graph: Graph) -> WorkflowPlan | None:
-        return None
+    def propose_edit_plan(self, _edit_rules, _graph, **_kwargs):
+        return []
 
-    @override
     def build_edit_intents(
         self,
-        edit_rules: dict[str, object],
-        graph: Graph,
+        _edit_rules,
+        _graph,
         *,
-        edit_target_node_ids: Sequence[str] = (),
-        last_edit_rejection: str | None = None,
-    ) -> list[MutationIntent]:
+        edit_target_node_ids=(),
+        last_edit_rejection=None,
+        approved_plan=None,  # noqa: ARG002
+    ):
+        self.edit_intent_calls = getattr(self, "edit_intent_calls", [])
         self.edit_intent_calls.append((list(edit_target_node_ids), last_edit_rejection))
         return []
 
@@ -633,10 +654,24 @@ class FakeBuildDifyPort(DifyPort):
         self.verify_pass: bool = True
         self.run_draft_inputs: Inputs = {}
         self.fail_error: str = "boom"
+        self.effect_disclosure = EffectDisclosure()
+        self.run_draft_effect_confirmation: dict[str, str] = {}
 
     @override
     def get_app_mode(self, app_id: str, actor: Actor) -> str:
         return self.app_mode
+
+    def prepare_code_risks(self, _app_id, _actor, *, session_id, inputs, context):
+        del session_id, inputs
+        # This canned fake has no reasoning/runtime implementation; Code tests
+        # use the real adapter with an explicit deterministic reasoner.
+        return dict(context.code_risk_assessments)
+
+    def disclose_effects(
+        self, _app_id: str, _actor: Actor, *, inputs: Mapping[str, object] | None = None, code_risk_context=None
+    ) -> EffectDisclosure:
+        del inputs, code_risk_context
+        return self.effect_disclosure
 
     @override
     def stamp_http_fixtures(
@@ -708,11 +743,13 @@ class FakeBuildDifyPort(DifyPort):
         session_id: str,
         test_input_id: str,
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
+        effect_confirmation: Mapping[str, str] | None = None,
         confirmed_consent_id: str | None = None,
         command_id: str | None = None,
     ) -> Run:
         self.run_draft_identity = (session_id, test_input_id)
         self.run_draft_inputs = copy.deepcopy(inputs)
+        self.run_draft_effect_confirmation = dict(effect_confirmation or {})
         if on_workflow_event is not None:
             for event in self.workflow_events:
                 on_workflow_event(event)
@@ -826,7 +863,7 @@ class FakeEditDifyPort(FakeBuildDifyPort):
 
 def successful_verification(dify: FakeDifyPort | FakeBuildDifyPort, *, no_output: bool = False) -> RunVerification:
     """Unit policy fixture only; never evidence of a composed native execution."""
-    from core.dify_builder.execution_policy import ExecutionEvidenceSummary
+    from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
 
     return RunVerification(
         execution_evidence=ExecutionEvidenceSummary(

@@ -73,7 +73,8 @@ def test_each_source_degrades_to_empty() -> None:
         patch.object(resources, "_list_tools", side_effect=RuntimeError("boom")),
     ):
         out = resources.list_tenant_resources("t1")
-    assert out == resources.TenantResources(models=[], datasets=[], tools=[])
+    assert out.models == out.datasets == out.tools == []
+    assert out.model_source_error == out.tool_source_error == "inventory_unavailable"
 
 
 def test_mixed_failure_partial_success() -> None:
@@ -555,9 +556,8 @@ def test_models_and_datasets_keep_their_semantics_for_an_actor(monkeypatch: pyte
     anonymous = resources.list_tenant_resources("t1")
     acting = resources.list_tenant_resources("t1", account_id=ACCOUNT_A)
 
-    assert (
-        acting.models
-        == anonymous.models
-        == [resources.ResourceRef(id="anthropic/claude-opus-4-8", label="anthropic/claude-opus-4-8")]
-    )
+    assert acting.models == anonymous.models
+    assert [ref.id for ref in acting.models] == ["anthropic/claude-opus-4-8"]
+    assert acting.models[0].binding == {"provider": "anthropic", "name": "claude-opus-4-8"}
+    assert acting.models[0].availability["runtime"] == "unverified"
     assert acting.datasets == anonymous.datasets == [resources.ResourceRef(id="kb-1", label="Company KB")]

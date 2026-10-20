@@ -13,21 +13,22 @@ the FastAPI lifespan-owned shared plugin-daemon and Dify API clients into
 
 from __future__ import annotations
 
-from copy import deepcopy
 import json
 import mimetypes
 from collections.abc import Mapping, Sequence
+from copy import deepcopy
 from dataclasses import dataclass, field, replace
-from typing import ClassVar, override
+from typing import ClassVar, Protocol, override
 from urllib.parse import urlparse
 
 import httpx
-from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
+
+from dify_agent.adapters.native_testing.transport import agent_api_endpoint, AgentRuntimeHTTPClient
+from pydantic import BaseModel, ConfigDict, JsonValue, TypeAdapter, ValidationError
 from pydantic_ai import RunContext, Tool
 from pydantic_ai.tools import ToolDefinition
-
 from pydantic_ai.toolsets import FunctionToolset
-from dify_agent.runtime.context import Deps
+
 from dify_agent.layers.dify_plugin.configs import (
     DifyPluginToolConfig,
     DifyPluginToolParameter,
@@ -42,7 +43,9 @@ from dify_agent.layers.dify_plugin.tool_client import (
 )
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import Capability as ExecutionContextCapability
-
+from dify_agent.runtime.context import Deps
+from dify_agent.runtime.native_continuation import NativePolicyStopped
+from dify_agent.runtime.native_effects import NativeToolBoundary, canonical_effect_json
 
 # Plugin tools intentionally do not expose a per-tool strictness override in the
 # public config. The API supplies already-prepared schemas, but Dify Agent always
@@ -111,11 +114,18 @@ class _DifyPluginToolFileClient:
             "invoke_from": execution_context.invoke_from,
             "file": dict(file_mapping),
         }
+        url, headers = agent_api_endpoint(
+            self.http_client,
+            base_url=self.base_url,
+            legacy_path="download/file/request",
+            runtime_path="files/download-request",
+            api_key=self.api_key,
+        )
         try:
             response = await self.http_client.post(
-                f"{self.base_url}/inner/api/download/file/request",
+                url,
                 headers={
-                    "X-Inner-Api-Key": self.api_key,
+                    **headers,
                     "Content-Type": "application/json",
                 },
                 json=payload,
@@ -131,6 +141,13 @@ class _DifyPluginToolFileClient:
             raise DifyPluginToolClientError(
                 response.text or f"HTTP {response.status_code}", status_code=response.status_code
             )
+        if isinstance(self.http_client, AgentRuntimeHTTPClient):
+            try:
+                value = response.json()
+                value["download_url"] = value.pop("download_uri")
+                return _DownloadFileResponse.model_validate(value)
+            except (ValueError, KeyError, TypeError):
+                raise DifyPluginToolClientError("Invalid Dify API file download response.") from None
         try:
             envelope = _BackwardsInvocationEnvelope.model_validate_json(response.text)
         except ValidationError as exc:
@@ -166,14 +183,14 @@ class Toolset(FunctionToolset[Deps]):
         if not self._loaded:
             config = Config.model_validate(ctx.deps.layers[self.name]["config"])
             services = ctx.deps.services
-            if services.dify_api_http_client.is_closed:
+            if ctx.deps.dify_api_http_client.is_closed:
                 raise RuntimeError("Plugin tools require an open shared Dify API HTTP client.")
             tool_clients: dict[str, DifyPluginDaemonToolClient] = {}
             file_context = _PluginToolFileContext(
                 file_client=_DifyPluginToolFileClient(
                     base_url=services.inner_api_url,
                     api_key=services.inner_api_key,
-                    http_client=services.dify_api_http_client,
+                    http_client=ctx.deps.dify_api_http_client,
                 ),
                 execution_context=DifyExecutionContextLayerConfig.model_validate(
                     ctx.deps.layers[config.execution_context]["config"]
@@ -206,7 +223,7 @@ class Toolset(FunctionToolset[Deps]):
 
 
 def _validate_required_hidden_parameters(
-    tool_config: DifyPluginToolConfig,
+    tool_config: _PreparedToolParameters,
     effective_parameters: Sequence[DifyPluginToolParameter],
 ) -> None:
     missing_names = [
@@ -227,13 +244,65 @@ def _build_pydantic_ai_tool(
     client: DifyPluginDaemonToolClient,
     tool_config: DifyPluginToolConfig,
     effective_parameters: Sequence[DifyPluginToolParameter],
-    file_context: "_PluginToolFileContext",
+    file_context: _PluginToolFileContext,
 ) -> Tool[Deps]:
     tool_name = tool_config.name or tool_config.tool_name
     tool_description = tool_config.description or tool_name
     tool_schema = deepcopy(tool_config.parameters_json_schema)
 
+    def native_target() -> dict[str, JsonValue]:
+        return {
+            "plugin_id": tool_config.plugin_id,
+            "provider": tool_config.provider,
+            "tool_name": tool_config.tool_name,
+        }
+
+    async def native_arguments(arguments: dict[str, object]) -> dict[str, JsonValue]:
+        prepared = await _prepare_tool_arguments(
+            effective_parameters, tool_config, arguments, file_context=file_context, materialize_files=False
+        )
+        _require_native_file_dependencies(effective_parameters, prepared)
+        return TypeAdapter(dict[str, JsonValue]).validate_python(prepared)
+
     async def invoke_tool(_ctx: RunContext[Deps], **tool_arguments: object) -> str:
+        if _ctx.deps.native_effects is not None:
+            from dify_agent.adapters.native_testing.client import HttpAgentPolicyClient
+            from dify_agent.runtime.native_effects import current_native_dispatch
+
+            policy = _ctx.deps.native_effects.dispatcher.policy
+            envelope = current_native_dispatch()
+            if envelope is None or not isinstance(policy, HttpAgentPolicyClient):
+                raise NativePolicyStopped("native_dispatch_fence_unavailable")
+            # No file dependency or unresolved secret may be converted after
+            # reserving the parent. Both have separate protected owners.
+            merged = await native_arguments(tool_arguments)
+            if any(isinstance(value, dict) and "secret_ref" in value for value in merged.values()):
+                raise NativePolicyStopped("native_parameter_materialization_unavailable")
+            if canonical_effect_json(native_target()) != canonical_effect_json(
+                envelope.intent.target
+            ) or canonical_effect_json(merged) != canonical_effect_json(envelope.intent.parameters):
+                raise NativePolicyStopped("native_effect_arguments_changed")
+            materialized = await policy.materialize(
+                ref=envelope.ref,
+                intent=envelope.intent,
+                permit=envelope.permit,
+                tool_ref=envelope.intent.resource_ref,
+                phase="business",
+            )
+            if materialized.runtime_parameters:
+                raise NativePolicyStopped("native_parameter_materialization_unavailable")
+            await policy.claim_dispatch(ref=envelope.ref, intent=envelope.intent, permit=envelope.permit)
+            try:
+                messages = await client.invoke(
+                    provider=tool_config.provider,
+                    tool_name=tool_config.tool_name,
+                    credential_type=materialized.credential_type,
+                    credentials=dict(materialized.credentials),
+                    tool_parameters=merged,
+                )
+            except DifyPluginToolClientError:
+                raise NativePolicyStopped("native_tool_transport_unavailable") from None
+            return _convert_tool_response_to_text(messages)
         try:
             merged_arguments = await _prepare_tool_arguments(
                 effective_parameters,
@@ -263,15 +332,49 @@ def _build_pydantic_ai_tool(
         name=tool_name,
         description=tool_description,
         prepare=prepare_tool_definition,
+        metadata={
+            "native_effect": NativeToolBoundary(
+                boundary="direct_plugin",
+                target=native_target(),
+                prepare_arguments=native_arguments,
+            )
+        },
     )
+
+
+class _PreparedToolParameters(Protocol):
+    @property
+    def tool_name(self) -> str: ...
+
+    @property
+    def runtime_parameters(self) -> Mapping[str, object]: ...
+
+
+def _require_native_file_dependencies(
+    parameters: Sequence[DifyPluginToolParameter], arguments: Mapping[str, object]
+) -> None:
+    # NW4 must complete the stable file child before the parent business permit.
+    # Canonical refs are preserved by inert preparation; no signed URL is frozen.
+    if any(
+        parameter.name in arguments
+        and parameter.type
+        in {
+            DifyPluginToolParameterType.FILE,
+            DifyPluginToolParameterType.FILES,
+            DifyPluginToolParameterType.SYSTEM_FILES,
+        }
+        for parameter in parameters
+    ):
+        raise NativePolicyStopped("native_file_dependency_unavailable")
 
 
 async def _prepare_tool_arguments(
     effective_parameters: Sequence[DifyPluginToolParameter],
-    tool_config: DifyPluginToolConfig,
+    tool_config: _PreparedToolParameters,
     tool_arguments: Mapping[str, object],
     *,
-    file_context: "_PluginToolFileContext",
+    file_context: _PluginToolFileContext | None,
+    materialize_files: bool = True,
 ) -> dict[str, object]:
     """Build the daemon invocation payload from prepared config + model args.
 
@@ -298,6 +401,14 @@ async def _prepare_tool_arguments(
         elif parameter.required:
             raise ValueError(f"tool parameter {parameter.name} not found in tool config")
         else:
+            continue
+        if not materialize_files and parameter.type in {
+            DifyPluginToolParameterType.FILE,
+            DifyPluginToolParameterType.FILES,
+            DifyPluginToolParameterType.SYSTEM_FILES,
+            DifyPluginToolParameterType.SECRET_INPUT,
+        }:
+            prepared_arguments[parameter.name] = value
             continue
         prepared_arguments[parameter.name] = await _cast_tool_parameter_value(
             parameter.type,
@@ -395,7 +506,7 @@ async def _cast_tool_parameter_value(
     parameter_type: DifyPluginToolParameterType,
     value: object,
     *,
-    file_context: _PluginToolFileContext,
+    file_context: _PluginToolFileContext | None,
 ) -> object:
     """Cast prepared tool argument values into daemon-facing wire shapes.
 
@@ -431,9 +542,13 @@ async def _cast_tool_parameter_value(
                 return float(value) if "." in value else int(value)
             return value
         case DifyPluginToolParameterType.SYSTEM_FILES | DifyPluginToolParameterType.FILES:
+            if file_context is None:
+                raise DifyPluginToolsClientConfigurationError("File context is unavailable.")
             values = value if isinstance(value, list) else [value]
             return [await file_context.to_plugin_file_parameter(item) for item in values]
         case DifyPluginToolParameterType.FILE:
+            if file_context is None:
+                raise DifyPluginToolsClientConfigurationError("File context is unavailable.")
             if isinstance(value, list):
                 if len(value) != 1:
                     raise ValueError("This parameter only accepts one file but got multiple files while invoking.")

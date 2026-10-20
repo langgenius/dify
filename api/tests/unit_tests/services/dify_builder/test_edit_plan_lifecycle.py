@@ -7,12 +7,12 @@ from unittest.mock import patch
 import pytest
 
 from core.dify_builder.contract import ProgressEventData
-from core.dify_builder.handlers_edit import edit_registry
 from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Graph, MutationIntent, Session, Turn
-from core.dify_builder.placeholder_agent import PlaceholderAgent
-from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState
-from services.dify_builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.copy_ids import BuilderCopyId
+from services.dify_builder.application.handlers_edit import edit_registry
+from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+from services.dify_builder.application.runner import Env, Runner
 from services.dify_builder.plan import WorkflowPlan, make_plan_card
 from services.dify_builder.serde import context_from_dict, context_to_dict
 from tests.unit_tests.core.dify_builder.fakes import FakeEditDifyPort, InMemoryRepository
@@ -28,7 +28,12 @@ def test_failed_replanning_preserves_snapshot_and_recovers_on_retry(
     agent = PlaceholderAgent()
     new_plan = WorkflowPlan("New title", "New input", "New output", ["New step", "Return answer"])
     proposals = iter([None, new_plan])
-    monkeypatch.setattr(agent, "propose_edit_plan", lambda *_: next(proposals))
+
+    def propose_edit_plan(*_, reply_language=None):
+        assert reply_language == "zh-Hans"
+        return next(proposals)
+
+    monkeypatch.setattr(agent, "propose_edit_plan", propose_edit_plan)
     repo = InMemoryRepository()
     dify = FakeEditDifyPort()
     progress: list[ProgressEventData] = []

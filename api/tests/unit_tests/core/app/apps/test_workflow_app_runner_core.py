@@ -12,8 +12,6 @@ from pydantic import ValidationError
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.execution_coordinator import AppExecutionState
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
-from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
@@ -36,7 +34,6 @@ from core.app.entities.queue_entities import (
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import default_system_variables
-from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
 from graphon.engine.layer import Layer
 from graphon.engine_events import (
     GraphRunAbortedEvent,
@@ -65,6 +62,9 @@ from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow
 from services.workflow_run_index import WorkflowRunIndex
+from services.workflow_runtime.base_runner import WorkflowBasedAppRunner
+from services.workflow_runtime.entry import WorkflowEntry, iter_dify_graph_engine_events
+from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
 from tests.unit_tests.model_factories import make_workflow
 
 
@@ -262,6 +262,9 @@ class TestWorkflowBasedAppRunner:
             )
 
     def test_init_graph_includes_trace_session_id_in_run_context(self, monkeypatch: pytest.MonkeyPatch):
+        from tests.unit_tests.services.dify_builder.native_testing.test_agent_context import marker
+
+        agent_context = marker()
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
         runtime_state = RuntimeState(
             workflow_id="test-workflow",
@@ -278,10 +281,10 @@ class TestWorkflowBasedAppRunner:
             return SimpleNamespace()
 
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.DifyNodeFactory.from_graph_init_context",
+            "services.workflow_runtime.base_runner.DifyNodeFactory.from_graph_init_context",
             fake_from_graph_init_context,
         )
-        monkeypatch.setattr("core.app.apps.workflow_app_runner.Graph.init", lambda **_kwargs: SimpleNamespace())
+        monkeypatch.setattr("services.workflow_runtime.base_runner.Graph.init", lambda **_kwargs: SimpleNamespace())
 
         runner._init_graph(
             graph_config={"nodes": [], "edges": []},
@@ -290,10 +293,12 @@ class TestWorkflowBasedAppRunner:
             invoke_from=InvokeFrom.DEBUGGER,
             root_node_id="root",
             trace_session_id="session-1",
+            builder_agent_execution=agent_context,
             call_depth=3,
         )
 
         assert captured["run_context"][DIFY_RUN_CONTEXT_KEY].trace_session_id == "session-1"
+        assert captured["run_context"][DIFY_RUN_CONTEXT_KEY].builder_agent_execution == agent_context
         assert captured["call_depth"] == 3
         assert captured["runtime_state"] is runtime_state
 
@@ -365,9 +370,9 @@ class TestWorkflowBasedAppRunner:
             return Mock()
 
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.DifyNodeFactory.from_graph_init_context", capture_context
+            "services.workflow_runtime.base_runner.DifyNodeFactory.from_graph_init_context", capture_context
         )
-        monkeypatch.setattr("core.app.apps.workflow_app_runner.Graph.init", lambda **_kwargs: Mock())
+        monkeypatch.setattr("services.workflow_runtime.base_runner.Graph.init", lambda **_kwargs: Mock())
         runner._init_graph(
             graph_config=raw_graph,
             graph_runtime_state=runtime_state,
@@ -460,16 +465,16 @@ class TestWorkflowBasedAppRunner:
             def extract_variable_selector_to_variable_mapping(graph_config, config):
                 return {}
 
-        from core.app.apps import workflow_app_runner
+        from services.workflow_runtime import base_runner as workflow_app_runner
 
-        monkeypatch.setattr("core.app.apps.workflow_app_runner.Graph.init", fake_graph_init)
+        monkeypatch.setattr("services.workflow_runtime.base_runner.Graph.init", fake_graph_init)
         monkeypatch.setattr(workflow_app_runner, "resolve_workflow_node_class", lambda **_kwargs: _NodeCls)
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.load_into_variable_pool",
+            "services.workflow_runtime.base_runner.load_into_variable_pool",
             lambda **kwargs: kwargs["user_inputs"].update({"from_loader": "local-only"}),
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool",
+            "services.workflow_runtime.base_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool",
             lambda **kwargs: kwargs["user_inputs"].update({"from_mapping": "local-only"}),
         )
 
@@ -517,17 +522,17 @@ class TestWorkflowBasedAppRunner:
             def extract_variable_selector_to_variable_mapping(graph_config, config):
                 return {}
 
-        from core.app.apps import workflow_app_runner
+        from services.workflow_runtime import base_runner as workflow_app_runner
 
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.DifyNodeFactory.from_graph_init_context",
+            "services.workflow_runtime.base_runner.DifyNodeFactory.from_graph_init_context",
             fake_from_graph_init_context,
         )
-        monkeypatch.setattr("core.app.apps.workflow_app_runner.Graph.init", lambda **kwargs: SimpleNamespace())
+        monkeypatch.setattr("services.workflow_runtime.base_runner.Graph.init", lambda **kwargs: SimpleNamespace())
         monkeypatch.setattr(workflow_app_runner, "resolve_workflow_node_class", lambda **_kwargs: _NodeCls)
-        monkeypatch.setattr("core.app.apps.workflow_app_runner.load_into_variable_pool", lambda **kwargs: None)
+        monkeypatch.setattr("services.workflow_runtime.base_runner.load_into_variable_pool", lambda **kwargs: None)
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool",
+            "services.workflow_runtime.base_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool",
             lambda **kwargs: None,
         )
 
@@ -601,19 +606,19 @@ class TestWorkflowBasedAppRunner:
             return SimpleNamespace()
 
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.Graph.init",
+            "services.workflow_runtime.base_runner.Graph.init",
             _graph_init,
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.resolve_workflow_node_class",
+            "services.workflow_runtime.base_runner.resolve_workflow_node_class",
             lambda **_kwargs: _LoopNodeCls,
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.load_into_variable_pool",
+            "services.workflow_runtime.base_runner.load_into_variable_pool",
             lambda **kwargs: None,
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool",
+            "services.workflow_runtime.base_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool",
             lambda **kwargs: None,
         )
 
@@ -650,7 +655,7 @@ class TestWorkflowBasedAppRunner:
                 emails.append({"kwargs": kwargs, "queue": queue})
 
         monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.dispatch_human_input_email_task",
+            "services.workflow_runtime.base_runner.dispatch_human_input_email_task",
             _Dispatch(),
         )
         enriched_reason = HumanInputRequired(

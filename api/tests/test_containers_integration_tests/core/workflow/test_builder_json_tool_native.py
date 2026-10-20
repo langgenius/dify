@@ -18,7 +18,6 @@ from sqlalchemy import select
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
-from core.dify_builder.execution_policy import TrustedExecutionCompletion
 from core.plugin.entities.plugin import PluginInstallation
 from core.plugin.entities.plugin_daemon import PluginToolProviderEntity
 from core.tools import tool_manager as manager_module
@@ -28,16 +27,17 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
-from services.app_generate_service import AppGenerateService
-from services.dify_builder import json_tool_metadata as metadata
-from services.dify_builder.dify_port import WorkflowServiceDifyPort, _BuilderExecutionLaunch
-from services.dify_builder.execution_contracts import (
+from runtime_contracts.builder.execution import (
     BuilderExecutionObservation,
     BuilderExecutionPolicyError,
     ExecutionEvidenceSummary,
     JsonToolExecutionContext,
     canonical_digest,
 )
+from services.app_generate_service import AppGenerateService
+from services.dify_builder import json_tool_metadata as metadata
+from services.dify_builder.application.execution_policy import TrustedExecutionCompletion
+from services.dify_builder.dify_port import WorkflowServiceDifyPort, _BuilderExecutionLaunch
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
 from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import NativeOwner
 from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (

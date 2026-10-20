@@ -7,6 +7,8 @@ the service owns auth and file/config delegation.
 
 from __future__ import annotations
 
+from dify_agent.agent_stub.server.admission import AgentStubAdmission
+
 from fastapi import APIRouter, Header, HTTPException
 
 from dify_agent.agent_stub.protocol.agent_stub import (
@@ -32,11 +34,13 @@ def create_agent_stub_http_router(
     token_codec: AgentStubTokenCodec | None,
     file_request_handler: AgentStubFileRequestHandler | None = None,
     config_request_handler: AgentStubConfigRequestHandler | None = None,
+    admission: AgentStubAdmission | None = None,
 ) -> APIRouter:
     """Create HTTP routes bound to the application's Agent Stub dependencies."""
     router = APIRouter(prefix="/agent-stub", tags=["agent-stub"])
     service = AgentStubControlPlaneService(
         token_codec=token_codec,
+        admission=admission,
         file_request_handler=file_request_handler,
         config_request_handler=config_request_handler,
     )

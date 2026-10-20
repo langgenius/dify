@@ -11,10 +11,12 @@ from pydantic import ValidationError
 
 from controllers.common.schema import register_schema_models
 from controllers.inner_api import inner_api_ns
-from controllers.inner_api.wraps import agent_inner_api_only
+from controllers.inner_api.wraps import agent_endpoint_api_only
 from core.errors.error import QuotaExceededError
 from libs.exception import BaseHTTPException
+from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from services.agent_llm_inner_service import AgentLLMInnerService, AgentLLMInnerServiceError
+from services.dify_builder.native_testing.agent_bridge import claim_agent_endpoint
 from services.entities.agent_llm_inner import AgentLLMInvokeRequest
 
 
@@ -37,7 +39,7 @@ register_schema_models(inner_api_ns, AgentLLMInvokeRequest)
 class AgentLLMInvokeApi(Resource):
     """Resolve one dify-agent model request before proxying it."""
 
-    @agent_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("inner_agent_llm_invoke")
     @inner_api_ns.expect(inner_api_ns.models[AgentLLMInvokeRequest.__name__])
     @inner_api_ns.produces(["text/event-stream"])
@@ -51,9 +53,30 @@ class AgentLLMInvokeApi(Resource):
                 status_code=400,
             ) from exc
 
+        try:
+            claim_agent_endpoint(
+                boundary="model",
+                caller=payload.caller.model_dump(mode="json"),
+                envelope=payload.native_dispatch,
+                target={
+                    "plugin_id": "/".join(payload.target.provider.split("/")[:2]),
+                    "provider": payload.target.provider,
+                    "model": payload.target.model,
+                },
+                parameters={**payload.target.model_dump(mode="json", exclude={"provider", "model"}), "stream": True},
+                kind="model",
+            )
+        except BuilderExecutionPolicyError:
+            raise AgentLLMInvokeHttpError(
+                error_code="native_agent_control_refused", description="Native Agent dispatch refused.", status_code=409
+            ) from None
         service = AgentLLMInnerService()
         try:
             prepared = service.prepare(payload)
+        except BuilderExecutionPolicyError:
+            raise AgentLLMInvokeHttpError(
+                error_code="native_agent_control_refused", description="Native Agent dispatch refused.", status_code=409
+            ) from None
         except AgentLLMInnerServiceError as exc:
             raise AgentLLMInvokeHttpError(
                 error_code=exc.error_code,
@@ -83,7 +106,11 @@ class AgentLLMInvokeApi(Resource):
             except QuotaExceededError as exc:
                 error = {
                     "error_type": "AgentLLMQuotaExceededError",
-                    "message": str(exc) or "Insufficient hosted model quota remaining.",
+                    "message": (
+                        "Insufficient hosted model quota remaining."
+                        if payload.native_dispatch is not None
+                        else str(exc) or "Insufficient hosted model quota remaining."
+                    ),
                 }
                 envelope = {
                     "code": -429,
@@ -93,8 +120,12 @@ class AgentLLMInvokeApi(Resource):
                 yield f"data: {json.dumps(envelope, ensure_ascii=False, separators=(',', ':'))}\n\n"
             except Exception as exc:
                 error = {
-                    "error_type": type(exc).__name__,
-                    "message": str(exc) or "Agent LLM invocation failed.",
+                    "error_type": "NativeAgentModelDispatchFailed"
+                    if payload.native_dispatch is not None
+                    else type(exc).__name__,
+                    "message": "Native Agent model invocation failed."
+                    if payload.native_dispatch is not None
+                    else str(exc) or "Agent LLM invocation failed.",
                 }
                 envelope = {
                     "code": -500,

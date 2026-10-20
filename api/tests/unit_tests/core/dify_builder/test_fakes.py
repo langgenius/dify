@@ -28,8 +28,8 @@ from core.dify_builder.models import (
     Snapshot,
     TestInput,
 )
-from core.dify_builder.ports import DifyBuilderAgent, DifyPort, Repository
 from core.dify_builder.state import PcState
+from services.dify_builder.application.ports import DifyBuilderAgent, DifyPort, Repository
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, SessionOverrides, StubAgent
 
 

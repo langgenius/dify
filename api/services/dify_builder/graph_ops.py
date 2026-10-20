@@ -15,8 +15,8 @@ from typing import Any, NamedTuple
 
 from core.dify_builder.models import Graph, MutationIntent
 from core.dify_builder.node_defaults import default_config_or_empty
-from core.workflow.graph_normalizers import declared_branch_handles, heal_nodes_for_preflight
 from services.dify_builder import credentials
+from services.workflow_generation.graph_normalizers import declared_branch_handles, heal_nodes_for_preflight
 
 MUTATION_ARG_KEYS: dict[str, tuple[str, ...]] = {
     "set_node_config": ("node_id", "path", "value"),
@@ -27,7 +27,7 @@ MUTATION_ARG_KEYS: dict[str, tuple[str, ...]] = {
 }
 
 # ReactFlow containment, matching what the generator computes for a child of
-# an iteration/loop container (core/workflow/generator/runner.py:1441-1442).
+# an iteration/loop container (services/workflow_generation/runner.py:1441-1442).
 _CHILD_EXTENT = "parent"
 _CHILD_Z_INDEX = 1002
 
@@ -224,7 +224,7 @@ def _next_unique_id(base: str, existing_ids: set) -> str:
 def _next_node_id(prefix: str, existing_ids: set) -> str:
     """Return a short, human-readable node id not present in ``existing_ids``.
 
-    Mirrors ``core.workflow.generator.runner._next_generated_node_id``'s
+    Mirrors ``services.workflow_generation.runner._next_generated_node_id``'s
     prefix, then prefix_2, prefix_3, ... collision scheme -- reimplemented
     locally so this module stays free of any dependency on the generator
     subsystem.
@@ -258,7 +258,7 @@ def _build_node(
 ) -> dict[str, Any]:
     """Construct one ``GraphNodeDict``-shaped node, generating an id/position
     when omitted (mirrors the generator's ``_fill_node_defaults``,
-    ``core/workflow/generator/runner.py:2387-2394``). Raises ``ValueError``
+    ``services/workflow_generation/runner.py:2387-2394``). Raises ``ValueError``
     if a caller-supplied ``node_id`` already exists in ``graph["nodes"]``.
 
     ``flow_type`` is the node-level ReactFlow type. Almost every node is the
@@ -482,9 +482,10 @@ def diff_graphs(before: Graph, after: Graph) -> tuple[list[str], str]:
     ``scope`` is ``"structure"`` if any node or edge was added or removed,
     else ``"configuration"`` if any surviving node's ``data`` changed, else
     ``"configuration"`` with an empty ``changes`` list if nothing differs.
-    ``changes`` is human-readable lines (e.g. ``"added node knowledge-1"``,
-    ``"added knowledge-1 → llm-1"``, ``"llm-1: prompt_template updated"``)
-    -- not bare ids.
+    ``changes`` uses language-neutral diff notation: ``＋ knowledge-1``,
+    ``− knowledge-1 → llm-1``, ``llm-1: prompt_template``. Actual resource
+    IDs and configuration field names are preserved; the UI localizes the
+    surrounding change heading and scope.
     """
     before_nodes = {n.get("id"): n for n in before.get("nodes", []) if n.get("id")}
     after_nodes = {n.get("id"): n for n in after.get("nodes", []) if n.get("id")}
@@ -506,10 +507,10 @@ def diff_graphs(before: Graph, after: Graph) -> tuple[list[str], str]:
     removed_edges = sorted(before_edges - after_edges)
 
     changes: list[str] = []
-    changes.extend(f"added node {node_id}" for node_id in added_nodes)
-    changes.extend(f"removed node {node_id}" for node_id in removed_nodes)
-    changes.extend(f"added {source} → {target}" for source, target, _sh, _th in added_edges)
-    changes.extend(f"removed {source} → {target}" for source, target, _sh, _th in removed_edges)
+    changes.extend(f"＋ {node_id}" for node_id in added_nodes)
+    changes.extend(f"− {node_id}" for node_id in removed_nodes)
+    changes.extend(f"＋ {source} → {target}" for source, target, _sh, _th in added_edges)
+    changes.extend(f"− {source} → {target}" for source, target, _sh, _th in removed_edges)
 
     for node_id in sorted(before_nodes.keys() & after_nodes.keys()):
         before_data = before_nodes[node_id].get("data", {})
@@ -517,7 +518,7 @@ def diff_graphs(before: Graph, after: Graph) -> tuple[list[str], str]:
         changed_keys = sorted(
             key for key in set(before_data) | set(after_data) if before_data.get(key) != after_data.get(key)
         )
-        changes.extend(f"{node_id}: {key} updated" for key in changed_keys)
+        changes.extend(f"{node_id}: {key}" for key in changed_keys)
 
     structural = bool(added_nodes or removed_nodes or added_edges or removed_edges)
     return changes, "structure" if structural else "configuration"
@@ -671,7 +672,7 @@ def filter_applicable(
     write.
 
     The working copy then goes through the shared deterministic heal set
-    (``core.workflow.graph_normalizers.heal_nodes_for_preflight``), exactly as
+    (``services.workflow_generation.graph_normalizers.heal_nodes_for_preflight``), exactly as
     ``dify_port.apply_repair`` runs it over the real draft after its own apply
     loop. Same normalizers, same place in the sequence, one definition: a dry run
     that healed less than the write chokepoint would report a defect the write

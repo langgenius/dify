@@ -12,7 +12,6 @@ from sqlalchemy import Engine, Table
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
-from core.dify_builder.execution_policy import BuilderExecutionObservation, BuilderExecutionRecorder
 from core.dify_builder.models import Graph as BuilderGraph
 from core.dify_builder.real_call_consent import ConsentReceipt
 from core.model_manager import ModelInstance
@@ -20,7 +19,6 @@ from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.workflow import node_factory
 from core.workflow import template_rendering as workflow_template_rendering
 from core.workflow.llm_node import DifyLLMNode
 from core.workflow.node_runtime import DifyPreparedLLM
@@ -43,6 +41,8 @@ from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
+from services.dify_builder.application.execution_policy import BuilderExecutionObservation, BuilderExecutionRecorder
+from services.workflow_runtime import node_factory
 from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import (
     owned as owned,  # noqa: PLC0414 - shared pytest fixture
@@ -423,6 +423,7 @@ class TestDifyNodeFactoryCreateNode:
     @pytest.fixture
     def factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
+        factory._native_runtime = None
         factory.init_params = sentinel.init_params
         factory.runtime_state = MagicMock(spec=RuntimeState, variable_pool=MagicMock())
         factory._dify_context = DifyRunContext(
@@ -1657,7 +1658,7 @@ class TestConfirmedToolFactory:
     def test_recorder_without_service_guard_issuer_refuses_construction(
         self, consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+        from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 
         _forbid_eager_effects(monkeypatch)
         with pytest.raises(BuilderExecutionPolicyError, match="missing_confirmed_tool_guard"):
@@ -1667,7 +1668,7 @@ class TestConfirmedToolFactory:
     def test_forged_actor_or_scope_refuses_before_any_effect(
         self, consent_owner: Owner, monkeypatch: pytest.MonkeyPatch, forgery: str
     ) -> None:
-        from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+        from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 
         _forbid_eager_effects(monkeypatch)
         forged_user = str(uuid4()) if forgery == "actor" else None
@@ -1678,7 +1679,7 @@ class TestConfirmedToolFactory:
     def test_unhealthy_recorder_refuses_construction(
         self, consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+        from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 
         _forbid_eager_effects(monkeypatch)
         with pytest.raises(BuilderExecutionPolicyError, match="missing_execution_recorder"):
@@ -1721,7 +1722,7 @@ class TestConfirmedToolFactory:
     def test_only_the_exact_admitted_nodes_are_constructed(
         self, consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+        from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 
         _forbid_eager_effects(monkeypatch)
         factory, graph, _reserved, _run_id = _confirmed_factory(consent_owner)

@@ -9,7 +9,7 @@ creating another wire contract.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from dify_agent.client import (
     DifyAgentClientError,
@@ -27,6 +27,8 @@ from dify_agent.protocol import (
     RunEvent,
     RunStatusResponse,
 )
+from dify_agent.protocol.native_continuation import ReadNativeCheckpointRequest, SelectedNativeCheckpoint
+from dify_agent.protocol.run_recovery import LookupRunRequest
 
 from clients.agent_backend.errors import (
     AgentBackendError,
@@ -66,6 +68,24 @@ class AgentBackendRunClient(Protocol):
 
     def wait_run(self, run_id: str, *, timeout_seconds: float | None = None) -> RunStatusResponse:
         """Wait for a run to reach a terminal status and return that status."""
+
+
+class AgentBackendNativeRunClient(AgentBackendRunClient, Protocol):
+    """Private read extension; ordinary run clients/fakes retain their contract."""
+
+    def read_native_checkpoint(self, run_id: str, request: ReadNativeCheckpointRequest) -> SelectedNativeCheckpoint: ...
+
+
+@runtime_checkable
+class _DifyAgentRecoverySyncClient(Protocol):
+    def lookup_run_sync(self, request: LookupRunRequest) -> CreateRunResponse: ...
+
+
+@runtime_checkable
+class _DifyAgentNativeSyncClient(Protocol):
+    def read_native_checkpoint_sync(
+        self, run_id: str, request: ReadNativeCheckpointRequest
+    ) -> SelectedNativeCheckpoint: ...
 
 
 class _DifyAgentSyncClient(Protocol):
@@ -121,6 +141,36 @@ class DifyAgentBackendRunClient:
             return self.client.create_run_sync(request)
         except Exception as exc:
             raise _normalize_dify_agent_error(exc) from exc
+
+    def lookup_run(self, request: LookupRunRequest) -> CreateRunResponse:
+        """Observe one retained create identity; never retry the create request."""
+        if not isinstance(self.client, _DifyAgentRecoverySyncClient):
+            raise AgentBackendTransportError("Agent create identity lookup is unavailable")
+        try:
+            return self.client.lookup_run_sync(request)
+        except Exception as exc:
+            raise _normalize_dify_agent_error(exc) from exc
+
+    def read_native_checkpoint(self, run_id: str, request: ReadNativeCheckpointRequest) -> SelectedNativeCheckpoint:
+        """Read only the selected backend wait; API SQL/parent authority stays with its caller."""
+        if not isinstance(self.client, _DifyAgentNativeSyncClient):
+            raise AgentBackendValidationError(
+                "Agent backend private checkpoint read unavailable", detail="native checkpoint unavailable"
+            )
+        try:
+            return self.client.read_native_checkpoint_sync(run_id, request)
+        except DifyAgentValidationError:
+            raise AgentBackendValidationError(
+                "Agent backend private checkpoint read unavailable", detail="native checkpoint unavailable"
+            ) from None
+        except DifyAgentHTTPError as exc:
+            raise AgentBackendHTTPError(
+                "Agent backend private checkpoint read unavailable",
+                status_code=exc.status_code,
+                detail="native checkpoint unavailable",
+            ) from None
+        except Exception:
+            raise AgentBackendTransportError("Agent backend private checkpoint read unavailable") from None
 
     def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         """Cancel one run through ``POST /runs/{run_id}/cancel`` and normalize exceptions."""

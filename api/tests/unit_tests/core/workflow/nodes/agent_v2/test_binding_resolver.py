@@ -8,7 +8,6 @@ from sqlalchemy import event, inspect
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.sql import Executable
 
-from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.agent import (
@@ -32,6 +31,7 @@ from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, 
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.agent.workspace_service import AgentWorkspaceService
+from services.workflow_runtime.agent_binding import WorkflowAgentBindingError, WorkflowAgentBindingResolver
 
 RESOLVER_MODELS = (WorkflowAgentNodeBinding, Agent, AgentConfigSnapshot, AgentConfigRevision)
 CHATFLOW_MODELS = (

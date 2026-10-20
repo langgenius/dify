@@ -65,6 +65,7 @@ from .dify_builder import (
     DifyBuilderSnapshot,
     DifyBuilderTestInput,
 )
+from .dify_builder_native_code import NativeCodePhysicalOperation
 from .enums import (
     AppTriggerStatus,
     AppTriggerType,
@@ -262,6 +263,7 @@ __all__ = [
     "MessageChain",
     "MessageFeedback",
     "MessageFile",
+    "NativeCodePhysicalOperation",
     "OAuthAccessToken",
     "OperationLog",
     "PermissionEnum",
@@ -329,3 +331,14 @@ __all__ = [
     "WorkflowVersionCounter",
     "resolve_workflow_kind",
 ]
+
+from .dify_builder_native_tests import (  # noqa: F401
+    NativeContinuation,
+    NativeEffectAttempt,
+    NativeEffectGrant,
+    NativeEffectOperation,
+    NativeEffectOutcome,
+    NativePendingAction,
+    NativeTestInvocation,
+    NativeTestScope,
+)

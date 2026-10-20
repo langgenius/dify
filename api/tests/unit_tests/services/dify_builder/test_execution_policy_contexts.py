@@ -9,13 +9,12 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
-from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import SystemVariableKey, system_variable_selector
 from graphon.nodes.tool.tool_node import ToolNode
 from graphon.runtime import InitParams, RuntimeState, VariablePool
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.workflow import Workflow
-from services.dify_builder.execution_contracts import (
+from runtime_contracts.builder.execution import (
     BuilderExecutionObservation,
     BuilderExecutionPolicyError,
     JsonToolExecutionContext,
@@ -23,6 +22,7 @@ from services.dify_builder.execution_contracts import (
 )
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
 from services.dify_builder.json_tool_metadata import InstalledJsonParse
+from services.workflow_runtime.node_factory import DifyNodeFactory
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
 from tests.unit_tests.services.dify_builder.test_json_tool_execution_admission import GRAPH_FIXTURE
 from tests.unit_tests.services.dify_builder.test_json_tool_metadata import _installation, _owners

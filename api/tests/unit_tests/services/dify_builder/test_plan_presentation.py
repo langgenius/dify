@@ -6,13 +6,13 @@ from typing import override
 
 import pytest
 
-from core.dify_builder.handlers_build import build_registry
-from core.dify_builder.handlers_edit import edit_registry
-from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Graph, Session, Turn
-from core.dify_builder.placeholder_agent import PlaceholderAgent
-from core.dify_builder.runner import Env, Runner
+from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
 from core.dify_builder.state import PcState
 from services.dify_builder.agent import build
+from services.dify_builder.application.handlers_build import build_registry
+from services.dify_builder.application.handlers_edit import edit_registry
+from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+from services.dify_builder.application.runner import Env, Runner
 from services.dify_builder.plan import WorkflowPlan
 from services.dify_builder.serde import context_from_dict, context_to_dict
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
@@ -31,8 +31,7 @@ class PlanningAgent(PlaceholderAgent):
     def propose_plan_v1(self, requirements: dict[str, object], *, goal_text: str) -> WorkflowPlan:
         return self.plan
 
-    @override
-    def propose_edit_plan(self, edit_rules: dict[str, object], graph: Graph) -> WorkflowPlan:
+    def propose_edit_plan(self, _edit_rules, _graph, **_kwargs):
         return self.plan
 
     @override

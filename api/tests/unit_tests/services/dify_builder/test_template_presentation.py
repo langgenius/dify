@@ -10,7 +10,6 @@ from typing import Never
 
 import pytest
 
-from core.dify_builder.execution_policy import BuilderExecutionRefusal
 from core.dify_builder.models import (
     Diagnosis,
     DifyBuilderContext,
@@ -21,8 +20,13 @@ from core.dify_builder.models import (
     Turn,
 )
 from core.dify_builder.state import PcState
-from core.dify_builder.verification import is_execution_policy_blocker, publication_decision, result_card
-from services.dify_builder.presentation import BuilderCopy
+from runtime_contracts.builder.presentation import BuilderCopy
+from services.dify_builder.application.execution_policy import BuilderExecutionRefusal
+from services.dify_builder.application.verification import (
+    is_execution_policy_blocker,
+    publication_decision,
+    result_card,
+)
 from tests.unit_tests.core.dify_builder.test_handlers_build import _actor, _new_env, _session
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
@@ -124,7 +128,7 @@ def test_json_coverage_refusal_uses_only_static_actionable_copy(reason: str, exp
 
 
 def test_template_refusal_clears_staged_repairs_and_cannot_publish() -> None:
-    from core.dify_builder.handlers_build import handle_test_and_repair
+    from services.dify_builder.application.handlers_build import handle_test_and_repair
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
 
     run = refused_run("unsupported_template_syntax")

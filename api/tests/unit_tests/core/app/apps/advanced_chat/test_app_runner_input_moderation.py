@@ -8,14 +8,14 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-import core.app.apps.advanced_chat.app_runner as module
+import services.workflow_runtime.chatflow_runner as module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent
 from core.moderation.base import ModerationError
 from models.model import App, AppMode, Conversation, IconType, Message, MessageAnnotation
 from models.workflow import Workflow, WorkflowType
+from services.workflow_runtime.chatflow_runner import AdvancedChatAppRunner
 
 MINIMAL_GRAPH = {
     "nodes": [
@@ -102,7 +102,7 @@ def build_runner(sqlite_session: Session):
 def _patch_common_run_deps(runner: AdvancedChatAppRunner):
     """Context manager that patches common heavy deps used by run()."""
     return patch.multiple(
-        "core.app.apps.advanced_chat.app_runner",
+        "services.workflow_runtime.chatflow_runner",
         RedisChannel=MagicMock(),
         redis_client=MagicMock(),
         WorkflowEntry=MagicMock(**{"return_value.run.return_value": iter([])}),

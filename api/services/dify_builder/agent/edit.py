@@ -15,12 +15,14 @@ import json_repair
 from core.dify_builder.errors import ProposalWouldRunWrongError
 from core.dify_builder.models import MutationIntent
 from core.dify_builder.node_defaults import default_config_or_empty
-from core.workflow.graph_normalizers import declared_branch_handles
+from core.workflow.generator.prompts.builder_prompts import CODE_FAILURE_POLICY_RULES
 from graphon.enums import BUILT_IN_NODE_TYPES
 from services.dify_builder import credentials, preflight
+from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.agent import form_schema, graph_prompt, llm
 from services.dify_builder.agent.plan_context import workflow_io_context
 from services.dify_builder.plan import PLAN_PRESENTATION_INSTRUCTION, WorkflowPlan, parse_plan_response
+from services.workflow_generation.graph_normalizers import declared_branch_handles
 
 _ALLOWED_NODE_TYPES: set[str] = set(BUILT_IN_NODE_TYPES)
 
@@ -161,6 +163,8 @@ def analyze_impact(
     goal_text: str,
     graph: dict,
     on_reasoning: Callable[[str], None] | None = None,
+    *,
+    reply_language: str | None = None,
 ) -> dict[str, Any]:
     if model is None:
         return _degraded_impact(goal_text)
@@ -169,8 +173,21 @@ def analyze_impact(
         "propose 2-5 goal-shaped edit-rule fields, sensible values, and which EXISTING node ids the "
         f"change touches. {form_schema.FORM_FIELD_TYPE_GUIDANCE}"
         'Reply with ONLY JSON: {"fields": [{"key","label","type","options"}], '
-        '"values": {...}, "target_node_ids": ["<existing id>", ...]}.'
+        '"values": {...}, "target_node_ids": ["<existing id>", ...], '
+        '"resource_requests": [{"kind": "model|tool", "node_id": "<target id>", "query": "<requested resource>"}]}.'
+        "For every requested model/tool replacement or addition, include a resource_request using the user's "
+        "resource description, not a guessed canonical ID. For a replacement use the resource node's existing ID; "
+        "for an addition choose an unused new node ID and use that same ID in the later plan. "
+        "Never use an existing neighbour's ID for the added resource. "
+        "Use [] when no resource identity changes. "
     ) + llm.json_language_instruction("field labels and values")
+    if reply_language:
+        system += (
+            f"\nSESSION REPLY LANGUAGE (BCP-47): {reply_language}. "
+            "Write generated field labels, hints and other explanatory prose in this session language. "
+            "Preserve code, resource IDs and user-supplied business values exactly; "
+            "an explicitly preserved title does not change the language of other labels."
+        )
     try:
         data = llm.invoke_json(
             model,
@@ -179,6 +196,7 @@ def analyze_impact(
             on_reasoning=on_reasoning,
         )
     except Exception:
+        diagnostics.report("deterministic_fallback", fallback_used=True)
         return _degraded_impact(goal_text)
     ids = _node_ids(graph)
     raw_targets = data.get("target_node_ids")
@@ -189,6 +207,7 @@ def analyze_impact(
         "fields": form_schema.reconcile_form_fields(fields, values),
         "values": values,
         "target_node_ids": targets,
+        "resource_requests": data.get("resource_requests") if isinstance(data.get("resource_requests"), list) else [],
     }
 
 
@@ -197,6 +216,8 @@ def propose_edit_plan(
     edit_rules: dict[str, Any],
     graph: dict,
     on_reasoning: Callable[[str], None] | None = None,
+    *,
+    reply_language: str | None = None,
 ) -> WorkflowPlan | None:
     """Return a complete proposal or None, sharing one correction budget.
 
@@ -207,6 +228,14 @@ def propose_edit_plan(
         return None
     system = (
         "You are a Dify workflow edit planner. Propose the requested changes to the current graph. "
+        "Use the server-confirmed __builder_resource_bindings in EDIT RULES as the only identities for "
+        "resource changes. Never compose, reorder or guess provider/model/tool IDs. "
+        "Preserve their exact source spelling. "
+        "Respect __builder_resource_parameter_contracts for parameter names, form and required inputs. "
+        "For create_node and insert_between, pass the confirmed new target as args.node_id explicitly; "
+        "a title or an ID inside config does not assign the node ID. "
+        "Assign each resource only to its node in __builder_resource_node_targets, and respect "
+        "the declared mode/features in __builder_resource_model_contracts; unknown capabilities are not verified. "
         + PLAN_PRESENTATION_INSTRUCTION
         + llm.json_language_instruction("the plan title, input and output summaries, and plan steps")
     )
@@ -214,19 +243,32 @@ def propose_edit_plan(
         f"EDIT RULES:\n{json.dumps(edit_rules, ensure_ascii=False)}\n\nGRAPH:\n{_graph_context(graph)}"
         f"\n\nWORKFLOW INPUTS AND OUTPUTS:\n{workflow_io_context(graph)}"
     )
+    if reply_language:
+        source += (
+            f"\n\nSESSION REPLY LANGUAGE (BCP-47): {reply_language}. "
+            "Write the title, summaries and plan steps in this language. "
+            "Preserve resource IDs and literal business values exactly."
+        )
     user = source
     for attempt in range(2):
         try:
             text = llm.invoke_text(model, system=system, user=user, on_reasoning=on_reasoning)
         except Exception:
+            diagnostics.report("deterministic_fallback", fallback_used=True)
             return None
         try:
             data = json_repair.loads(text)
-        except Exception:
+            if not isinstance(data, dict):
+                diagnostics.report("json_decode_failed", attempt=attempt + 1)
+        except Exception as exc:
+            diagnostics.report("deterministic_fallback", fallback_used=True)
+            diagnostics.report("json_decode_failed", error=exc, attempt=attempt + 1)
             data = None
         try:
             return parse_plan_response(data)
         except ValueError as exc:
+            if isinstance(data, dict):
+                diagnostics.report("response_schema_invalid", error=exc, attempt=attempt + 1)
             issue = str(exc)
         if attempt == 0:
             user = f"{source}\n\nSCHEMA CORRECTION:\n{issue} Reply with ONLY the complete corrected JSON object."
@@ -246,6 +288,7 @@ def build_edit_intents(
     *,
     edit_target_node_ids: Sequence[str] = (),
     last_edit_rejection: str | None = None,
+    approved_plan: WorkflowPlan | None = None,
 ) -> list[MutationIntent]:
     """Propose the mutations that apply ``edit_rules`` to an existing graph.
 
@@ -254,6 +297,9 @@ def build_edit_intents(
     the model can rewrite the one field it was asked about and leave the rest
     byte-identical. An empty list is legal and simply yields today's
     title/type/handles-only context.
+
+    ``approved_plan`` is the snapshot the user approved, supplied verbatim to
+    generation alongside the rules; no topology is inferred from its prose.
 
     ``last_edit_rejection`` is what the ENGINE said when it refused the
     previous attempt's write (``handlers_edit._change_not_applied``), quoted
@@ -274,20 +320,48 @@ def build_edit_intents(
         return []
     system = (
         "You are a Dify workflow editor. Propose the minimal mutations that apply the edit rules to "
-        "EXISTING nodes. Reference only node ids that exist and use only the listed node types. "
+        "existing nodes or explicitly requested new nodes. References must name existing nodes or nodes created "
+        "by this batch. Use only the listed node types. For create_node and insert_between, pass the confirmed "
+        "new target from __builder_resource_node_targets as args.node_id explicitly; a title or an ID inside "
+        "config does not assign the node ID. "
+        "Resource replacements must copy the exact canonical provider/model/tool identity from "
+        "__builder_resource_bindings in EDIT RULES. Keep unrelated prompt/parameters unchanged; do not invent IDs. "
+        "When the selected action schema requires a parameter change, follow __builder_resource_parameter_contracts "
+        "and preserve every compatible existing binding. Respect __builder_resource_node_targets for each node "
+        "and __builder_resource_model_contracts for declared model mode/features. "
         'Reply with ONLY JSON: {"intents": [{"op": ..., "args": {...}}]}.\n'
         + _OP_SCHEMA
+        + "For an insertion into an existing path, use insert_between with the exact existing edge and "
+        "an explicit new node_id. It atomically removes the old edge and connects source -> new -> target; "
+        "create_node alone leaves an isolated draft and does not implement insertion. "
+        "Control-flow insertion does not rewrite value selectors. When the approved change requires "
+        "the downstream consumer (including End) to use the new result, also update that exact selector "
+        "with set_node_config, preserving its output variable name, sibling fields and unrelated bindings. "
+        "Use the producer's actual declared output: template-transform publishes output; code uses its "
+        "declared outputs; use actual native contracts for tools, never guess a selector. "
+        "Preserve existing source/target nodes and their unrelated config.\n"
+        + CODE_FAILURE_POLICY_RULES
         + "Allowed node types: "
         + ", ".join(sorted(_ALLOWED_NODE_TYPES))
         + ".\n"
     )
     user = f"EDIT RULES:\n{edit_rules}\n\nGRAPH:\n{_graph_context(graph, edit_target_node_ids)}"
+    if approved_plan is not None:
+        user += "\n\nAPPROVED CHANGE PLAN:\n" + json.dumps(
+            {
+                "title": approved_plan.title,
+                "input_summary": approved_plan.input_summary,
+                "output_summary": approved_plan.output_summary,
+                "plan": approved_plan.items,
+            },
+            ensure_ascii=False,
+        )
     if last_edit_rejection:
         user += f"\n\n{_REJECTION_HEADER}\n{last_edit_rejection}\nDo not repeat it."
     intents = _invoke_intents(model, system, user, on_reasoning)
     if intents is None:
         return []
-    first = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES)
+    first = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES, atomic_added_node_wiring=True)
     # ANY rejection -- partial, total, or a node the engine would refuse to start
     # -- burns the one corrective re-prompt: a partial reject can silently drop
     # the one intent that mattered (e.g. a connect from a branch node missing its
@@ -300,10 +374,17 @@ def build_edit_intents(
     if not first.rejections:
         return first.applicable
 
+    diagnostics.report("validation_refused", attempt=1)
     reasons = "\n".join(first.rejections)
     retry_user = f"{user}\n\nYour previous intents were invalid:\n{reasons}\nReturn corrected intents."
     retried = _invoke_intents(model, system, retry_user, on_reasoning)
-    vetted = preflight.vet_intents(graph, retried, _ALLOWED_NODE_TYPES) if retried is not None else None
+    vetted = (
+        preflight.vet_intents(graph, retried, _ALLOWED_NODE_TYPES, atomic_added_node_wiring=True)
+        if retried is not None
+        else None
+    )
+    if vetted is not None and vetted.applicable:
+        vetted.would_run_wrong.extend(preflight.added_node_retry_wiring_reasons(graph, intents, vetted.applicable))
     chosen = vetted if vetted is not None and vetted.applicable else first
     _refuse_a_batch_already_judged_wrong(chosen)
     return chosen.applicable
@@ -335,6 +416,7 @@ def _refuse_a_batch_already_judged_wrong(vetted: preflight.VettedIntents) -> Non
     off the structured list, never off the rejection text.
     """
     if vetted.would_run_wrong:
+        diagnostics.report("validation_refused")
         raise ProposalWouldRunWrongError("\n".join(vetted.would_run_wrong))
 
 
@@ -347,9 +429,11 @@ def _invoke_intents(
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
     except Exception:
+        diagnostics.report("deterministic_fallback", fallback_used=True)
         return None
     raw = data.get("intents")
     if not isinstance(raw, list):
+        diagnostics.report("response_schema_invalid")
         return None
     out: list[MutationIntent] = []
     for item in raw:

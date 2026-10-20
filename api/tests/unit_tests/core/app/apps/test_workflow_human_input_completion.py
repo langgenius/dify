@@ -13,9 +13,6 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.base_app_queue_manager import PublishFrom
-from core.app.apps.common import workflow_response_converter
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
-from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     AppQueueEvent,
@@ -40,7 +37,6 @@ from core.workflow.nodes.human_input.entities import (
     UserActionConfig,
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
-from core.workflow.workflow_entry import WorkflowEntry
 from extensions.storage.storage_type import StorageType
 from graphon.engine.ready_queue import StartTask
 from graphon.engine_events import EngineEvent, GraphRunFailedEvent
@@ -60,6 +56,10 @@ from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_runtime import response_converter as workflow_response_converter
+from services.workflow_runtime.base_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
+from services.workflow_runtime.entry import WorkflowEntry
+from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
 from tests.unit_tests.core.app.apps.advanced_chat.test_generate_task_pipeline import (
     _build_generate_entity,
     _build_pipeline,

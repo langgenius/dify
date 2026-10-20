@@ -22,8 +22,8 @@ import json
 from collections.abc import Mapping
 from typing import Any
 
-from core.workflow.graph_normalizers import declared_branch_handles
 from services.dify_builder import credentials
+from services.workflow_generation.graph_normalizers import declared_branch_handles
 
 # graphon reads an edge with no ``sourceHandle`` as this one
 # (``edge_config.get("sourceHandle", "source")``, ``graph/graph.py``), so an
@@ -143,6 +143,16 @@ def published_variables_of(node: Mapping[str, Any]) -> frozenset[str] | None:
     known = PUBLISHED_VARIABLES_BY_NODE_TYPE.get(str(data.get("type") or ""))
     if known is not None:
         return known
+    if data.get("type") == "agent" and data.get("version") == "2" and data.get("agent_node_kind") == "dify_agent":
+        from models.agent_config_entities import WorkflowNodeJobConfig, effective_declared_outputs
+
+        job = WorkflowNodeJobConfig.model_validate(
+            {
+                "declared_outputs": data.get("agent_declared_outputs") or [],
+                "output_routes": data.get("agent_output_routes") or {},
+            }
+        )
+        return frozenset(item.name for item in effective_declared_outputs(job.declared_outputs, job.output_routes))
     outputs = data.get("outputs")
     if isinstance(outputs, Mapping) and outputs:
         return frozenset(str(key) for key in outputs)
@@ -242,7 +252,7 @@ OP_LIST = (
     "  When from_node is an if-else, question-classifier or human-input node (or a node with "
     "error_strategy fail-branch), source_handle is required and must be one of the handles "
     "listed for that node in GRAPH.\n"
-    "- insert_between: {edge: {source, target}, node_type, config}\n"
+    "- insert_between: {edge: {source, target}, node_type, config, node_id?}\n"
 )
 
 # graphon's own comparison literals, in graphon's own order

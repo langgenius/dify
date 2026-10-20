@@ -18,6 +18,9 @@ from pydantic import AliasChoices, AnyHttpUrl, Field, SecretStr, TypeAdapter, fi
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic_settings.sources import DotEnvSettingsSource, InitSettingsSource, PydanticBaseSettingsSource
 
+from collections.abc import Callable
+from dify_agent.adapters.native_testing.transport import AgentRuntimeHTTPClient
+from dify_agent.agent_stub.server.admission import AgentStubAdmission
 from dify_agent.agent_stub.protocol.agent_stub import normalize_agent_stub_api_base_url
 from dify_agent.agent_stub.server.agent_stub_config import DifyApiAgentStubConfigRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
@@ -335,25 +338,39 @@ class ServerSettings(BaseSettings):
             return None
         return AgentStubTokenCodec.from_server_secret(self.server_secret_key)
 
-    def create_agent_stub_file_request_handler(self) -> DifyApiAgentStubFileRequestHandler | None:
+    def create_agent_stub_file_request_handler(
+        self,
+        *,
+        runtime_client: Callable[[], AgentRuntimeHTTPClient] | None = None,
+        admission: AgentStubAdmission | None = None,
+    ) -> DifyApiAgentStubFileRequestHandler | None:
         """Return the file bridge when inner API and Sandbox data-plane settings are configured."""
-        if self.inner_api_key is None or self.sandbox_files_base_url is None:
+        if (self.inner_api_key is None and runtime_client is None) or self.sandbox_files_base_url is None:
             return None
         return DifyApiAgentStubFileRequestHandler(
             inner_api_url=self.inner_api_url,
-            inner_api_key=self.inner_api_key,
+            inner_api_key=self.inner_api_key or "",
+            runtime_client=runtime_client,
+            admission=admission,
             sandbox_files_base_url=self.sandbox_files_base_url,
             max_upload_size_bytes=self.stub_upload_file_size_limit * 1024 * 1024,
             timeout=self.create_outbound_http_timeout(),
         )
 
-    def create_agent_stub_config_request_handler(self) -> DifyApiAgentStubConfigRequestHandler | None:
+    def create_agent_stub_config_request_handler(
+        self,
+        *,
+        runtime_client: Callable[[], AgentRuntimeHTTPClient] | None = None,
+        admission: AgentStubAdmission | None = None,
+    ) -> DifyApiAgentStubConfigRequestHandler | None:
         """Return the Config bridge when inner API and Sandbox data-plane settings are configured."""
-        if self.inner_api_key is None or self.sandbox_files_base_url is None:
+        if (self.inner_api_key is None and runtime_client is None) or self.sandbox_files_base_url is None:
             return None
         return DifyApiAgentStubConfigRequestHandler(
             inner_api_url=self.inner_api_url,
-            inner_api_key=self.inner_api_key,
+            inner_api_key=self.inner_api_key or "",
+            runtime_client=runtime_client,
+            admission=admission,
             sandbox_files_base_url=self.sandbox_files_base_url,
             timeout=self.create_outbound_http_timeout(),
         )

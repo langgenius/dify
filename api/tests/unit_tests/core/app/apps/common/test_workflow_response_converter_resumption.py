@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 import pytest
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     NodeExecutionSnapshot,
@@ -16,6 +15,7 @@ from graphon.entities import WorkflowStartReason
 from graphon.enums import BuiltinNodeTypes
 from models.account import Account
 from models.model import AppMode
+from services.workflow_runtime.response_converter import WorkflowResponseConverter
 
 
 def _build_converter() -> WorkflowResponseConverter:

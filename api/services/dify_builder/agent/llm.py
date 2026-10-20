@@ -20,6 +20,7 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from graphon.nodes.llm.reasoning import ThinkStreamFilter, split_reasoning
+from services.dify_builder import trace_diagnostics as diagnostics
 
 # --- Reply-language instruction (M1) -----------------------------------------
 # Appended to user-facing prompts so generated prose adopts the user's input
@@ -66,17 +67,24 @@ def _emit_reasoning(callback: ReasoningCallback | None, reasoning: str) -> None:
 
 
 def _complete(model_instance, messages, model_parameters, stop, on_reasoning: ReasoningCallback | None) -> str:
-    result = model_instance.invoke_llm(
-        prompt_messages=messages, model_parameters=model_parameters or {}, stop=stop, stream=False
-    )
+    try:
+        result = model_instance.invoke_llm(
+            prompt_messages=messages, model_parameters=model_parameters or {}, stop=stop, stream=False
+        )
+    except Exception as exc:
+        diagnostics.report("provider_invocation_failed", error=exc)
+        raise
     native_reasoning = _direct_reasoning(result)
     _emit_reasoning(on_reasoning, native_reasoning)
     message = getattr(result, "message", None)
     if message is None or not hasattr(message, "get_text_content"):
+        diagnostics.report("response_schema_invalid")
         raise LlmError("model returned an invalid blocking response")
     clean_text, tagged_reasoning = split_reasoning(message.get_text_content(), "separated")
     if tagged_reasoning and tagged_reasoning != native_reasoning:
         _emit_reasoning(on_reasoning, tagged_reasoning)
+    if not clean_text.strip():
+        diagnostics.report("empty_response")
     return clean_text
 
 
@@ -112,12 +120,16 @@ def invoke_text_stream(
 ) -> Iterator[str]:
     """Yield answer deltas while routing model reasoning to its own callback."""
     messages = [SystemPromptMessage(content=system), UserPromptMessage(content=user)]
-    result = model_instance.invoke_llm(
-        prompt_messages=messages,
-        model_parameters=model_parameters or {},
-        stop=stop,
-        stream=True,
-    )
+    try:
+        result = model_instance.invoke_llm(
+            prompt_messages=messages,
+            model_parameters=model_parameters or {},
+            stop=stop,
+            stream=True,
+        )
+    except Exception as exc:
+        diagnostics.report("provider_invocation_failed", error=exc)
+        raise
     if isinstance(result, LLMResult):
         native_reasoning = _direct_reasoning(result)
         _emit_reasoning(on_reasoning, native_reasoning)
@@ -129,7 +141,7 @@ def invoke_text_stream(
         return
 
     think_filter = ThinkStreamFilter()
-    for chunk in cast(Generator[LLMResultChunk], result):
+    for chunk in _stream_chunks(cast(Generator[LLMResultChunk], result)):
         native_reasoning = next(
             (
                 reasoning
@@ -162,6 +174,14 @@ def invoke_text_stream(
             yield piece.chunk
 
 
+def _stream_chunks(result: Iterator[LLMResultChunk]) -> Iterator[LLMResultChunk]:
+    try:
+        yield from result
+    except Exception as exc:
+        diagnostics.report("provider_invocation_failed", error=exc)
+        raise
+
+
 def invoke_json(
     model_instance,
     *,
@@ -176,6 +196,7 @@ def invoke_json(
     parsed = _as_dict(text)
     if parsed is not None:
         return parsed
+    diagnostics.report("json_decode_failed", attempt=1)
     messages.append(
         UserPromptMessage(
             content=(
@@ -187,4 +208,5 @@ def invoke_json(
     parsed = _as_dict(retry_text)
     if parsed is not None:
         return parsed
+    diagnostics.report("json_decode_failed", attempt=2)
     raise LlmError(f"model did not return valid JSON after one retry: {retry_text[:200]!r}")

@@ -6,15 +6,15 @@ from datetime import datetime
 import pytest
 
 from core.dify_builder.contract import ProgressEventData
-from core.dify_builder.handlers_build import build_registry
-from core.dify_builder.handlers_edit import edit_registry
-from core.dify_builder.handlers_fix import fix_registry
 from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, MutationIntent, Session, Turn
-from core.dify_builder.placeholder_agent import PlaceholderAgent
-from core.dify_builder.runner import Runner
 from core.dify_builder.state import PcState
-from services.dify_builder.copy_ids import BuilderCopyId
-from services.dify_builder.presentation import copy_text
+from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.presentation import copy_text
+from services.dify_builder.application.handlers_build import build_registry
+from services.dify_builder.application.handlers_edit import edit_registry
+from services.dify_builder.application.handlers_fix import fix_registry
+from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+from services.dify_builder.application.runner import Runner
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, FixtureEnv, InMemoryRepository
 
 

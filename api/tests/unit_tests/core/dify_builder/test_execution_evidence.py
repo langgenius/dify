@@ -4,9 +4,9 @@ from typing import Literal
 
 import pytest
 
-from core.dify_builder import verification
-from core.dify_builder.execution_policy import ExecutionEvidenceSummary
 from core.dify_builder.models import Run, RunVerification
+from services.dify_builder.application import verification
+from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
 
 
 def sample(
@@ -120,7 +120,7 @@ def test_handlers_keep_denials_out_of_review_and_repair(
     from tests.unit_tests.core.dify_builder.fakes import saved_test_context
 
     helpers = importlib.import_module(f"tests.unit_tests.core.dify_builder.test_handlers_{flow}")
-    handlers = importlib.import_module(f"core.dify_builder.handlers_{flow}")
+    handlers = importlib.import_module(f"services.dify_builder.application.handlers_{flow}")
     env, repo = helpers._new_env()
     state = {
         "build": PcState.BUILD_TEST_AND_REPAIR,
@@ -154,9 +154,9 @@ def test_handlers_keep_denials_out_of_review_and_repair(
 def test_fix_diagnose_does_not_diagnose_persisted_policy_denial() -> None:
     from unittest.mock import Mock
 
-    from core.dify_builder.handlers_fix import handle_diagnose
     from core.dify_builder.models import DifyBuilderContext, Turn
     from core.dify_builder.state import PcState
+    from services.dify_builder.application.handlers_fix import handle_diagnose
     from tests.unit_tests.core.dify_builder.test_handlers_fix import _actor, _new_env, _session
 
     env, repo = _new_env()
@@ -181,7 +181,7 @@ def test_generic_verification_exception_never_enters_diagnosis(flow: str) -> Non
     from tests.unit_tests.core.dify_builder.fakes import saved_test_context
 
     helpers = importlib.import_module(f"tests.unit_tests.core.dify_builder.test_handlers_{flow}")
-    handlers = importlib.import_module(f"core.dify_builder.handlers_{flow}")
+    handlers = importlib.import_module(f"services.dify_builder.application.handlers_{flow}")
     env, repo = helpers._new_env()
     session = helpers._session(
         current_state={

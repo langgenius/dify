@@ -11,8 +11,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.apps.workflow import app_generator as app_generator_module
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager
 from models.enums import EndUserType
@@ -20,6 +18,8 @@ from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_runtime import workflow_generator as app_generator_module
+from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 
 
 @pytest.fixture(autouse=True)
@@ -193,19 +193,21 @@ class TestWorkflowAppGeneratorValidation:
 
         monkeypatch.setattr(generator, "_bind_file_access_scope", lambda **kwargs: contextlib.nullcontext())
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.WorkflowAppQueueManager",
+            "services.workflow_runtime.workflow_generator.WorkflowAppQueueManager",
             lambda **kwargs: SimpleNamespace(**kwargs),
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.current_app",
+            "services.workflow_runtime.workflow_generator.current_app",
             SimpleNamespace(_get_current_object=lambda: SimpleNamespace(name="flask")),
         )
-        monkeypatch.setattr("core.app.apps.workflow.app_generator.contextvars.copy_context", lambda: "ctx")
-        monkeypatch.setattr("core.app.apps.workflow.app_generator.threading.Thread", lambda **kwargs: worker_thread)
+        monkeypatch.setattr("services.workflow_runtime.workflow_generator.contextvars.copy_context", lambda: "ctx")
+        monkeypatch.setattr(
+            "services.workflow_runtime.workflow_generator.threading.Thread", lambda **kwargs: worker_thread
+        )
         monkeypatch.setattr(generator, "_get_draft_var_saver_factory", lambda *args, **kwargs: "draft-factory")
         monkeypatch.setattr(generator, "_handle_response", lambda **kwargs: response_stream())
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.WorkflowAppGenerateResponseConverter.convert",
+            "services.workflow_runtime.workflow_generator.WorkflowAppGenerateResponseConverter.convert",
             lambda response, invoke_from: response,
         )
 
@@ -336,20 +338,22 @@ class TestWorkflowAppGeneratorValidation:
         draft_sessions: list[Session] = []
 
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.WorkflowAppConfigManager.get_app_config",
+            "services.workflow_runtime.workflow_generator.WorkflowAppConfigManager.get_app_config",
             lambda **kwargs: app_config,
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "services.workflow_runtime.workflow_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
             lambda **kwargs: repository_session_makers.append(kwargs["session_factory"]) or SimpleNamespace(),
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "services.workflow_runtime.workflow_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
             lambda **kwargs: repository_session_makers.append(kwargs["session_factory"]) or SimpleNamespace(),
         )
-        monkeypatch.setattr("core.app.apps.workflow.app_generator.DraftVarLoader", lambda **kwargs: SimpleNamespace())
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.WorkflowDraftVariableService",
+            "services.workflow_runtime.workflow_generator.DraftVarLoader", lambda **kwargs: SimpleNamespace()
+        )
+        monkeypatch.setattr(
+            "services.workflow_runtime.workflow_generator.WorkflowDraftVariableService",
             lambda session: (
                 draft_sessions.append(session)
                 or SimpleNamespace(prefill_conversation_variable_default_values=lambda *args, **kwargs: None)
@@ -396,20 +400,22 @@ class TestWorkflowAppGeneratorValidation:
         draft_sessions: list[Session] = []
 
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.WorkflowAppConfigManager.get_app_config",
+            "services.workflow_runtime.workflow_generator.WorkflowAppConfigManager.get_app_config",
             lambda **kwargs: app_config,
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "services.workflow_runtime.workflow_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
             lambda **kwargs: repository_session_makers.append(kwargs["session_factory"]) or SimpleNamespace(),
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "services.workflow_runtime.workflow_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
             lambda **kwargs: repository_session_makers.append(kwargs["session_factory"]) or SimpleNamespace(),
         )
-        monkeypatch.setattr("core.app.apps.workflow.app_generator.DraftVarLoader", lambda **kwargs: SimpleNamespace())
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.WorkflowDraftVariableService",
+            "services.workflow_runtime.workflow_generator.DraftVarLoader", lambda **kwargs: SimpleNamespace()
+        )
+        monkeypatch.setattr(
+            "services.workflow_runtime.workflow_generator.WorkflowDraftVariableService",
             lambda session: (
                 draft_sessions.append(session)
                 or SimpleNamespace(prefill_conversation_variable_default_values=lambda *args, **kwargs: None)
@@ -479,7 +485,7 @@ class TestWorkflowAppGeneratorHandleResponse:
                 raise ValueError("I/O operation on closed file.")
 
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.WorkflowAppGenerateTaskPipeline",
+            "services.workflow_runtime.workflow_generator.WorkflowAppGenerateTaskPipeline",
             _Pipeline,
         )
 
@@ -619,7 +625,7 @@ class TestWorkflowAppGeneratorResume:
             },
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.TraceQueueManager",
+            "services.workflow_runtime.workflow_generator.TraceQueueManager",
             dummy_trace_queue_manager,
         )
         captured_entity: WorkflowAppGenerateEntity | None = None
@@ -717,10 +723,10 @@ class TestWorkflowAppGeneratorWorker:
                 return None
 
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.preserve_flask_contexts",
+            "services.workflow_runtime.workflow_generator.preserve_flask_contexts",
             lambda flask_app, context_vars: contextlib.nullcontext(),
         )
-        monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppRunner", _Runner)
+        monkeypatch.setattr("services.workflow_runtime.workflow_generator.WorkflowAppRunner", _Runner)
         restore_workflow_run_graph = Mock()
         monkeypatch.setattr(generator, "_restore_workflow_run_graph", restore_workflow_run_graph)
 

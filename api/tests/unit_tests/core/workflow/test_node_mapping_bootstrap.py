@@ -23,7 +23,7 @@ def test_moved_core_nodes_resolve_after_importing_production_entrypoints():
         from core.app.apps import workflow_app_runner
         from core.workflow import workflow_entry
         from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
-        from core.workflow.node_factory import (
+        from services.workflow_runtime.node_factory import (
             DifyNodeFactory,
             NODE_TYPE_CLASSES_MAPPING,
             resolve_workflow_node_class,

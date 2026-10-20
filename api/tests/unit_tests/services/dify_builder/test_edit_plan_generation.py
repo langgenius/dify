@@ -219,3 +219,11 @@ def test_long_input_definitions_are_not_removed_by_the_generic_config_limit() ->
     assert edit.propose_edit_plan(model, {}, graph) is not None
     assert all(variable["variable"] in model.prompts[0] for variable in variables)
     assert all(field["name"] in model.prompts[0] for field in fields)
+
+
+def test_edit_plan_uses_explicit_session_language_even_when_rules_are_english():
+    model = RecordingModel([json.dumps(VALID_PLAN)])
+    plan = edit.propose_edit_plan(model, {"model": "claude-fable-5-1"}, workflow(), reply_language="zh-Hans")
+    assert plan is not None
+    assert "zh-Hans" in model.prompts[0]
+    assert "claude-fable-5-1" in model.prompts[0]

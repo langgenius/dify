@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope, grant_retriever_segment_access
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.real_call_consent import ConfirmedToolGuard
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.model_manager import QuotaManagedModelInstance
@@ -65,6 +64,7 @@ from models.dataset import SegmentAttachmentBinding
 from models.enums import CreatorUserRole
 from models.model import StorageType, UploadFile
 from models.tools import ToolFile
+from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 from tests.workflow_test_utils import build_test_run_context
 
 

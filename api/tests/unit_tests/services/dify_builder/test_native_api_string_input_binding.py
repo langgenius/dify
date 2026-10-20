@@ -10,7 +10,6 @@ import pytest
 
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.tools.utils.parser import ApiBasedToolSchemaParser
-from core.workflow.generator.runner import WorkflowGenerator
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from core.workflow.generator.types import GraphDict
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool
@@ -21,6 +20,7 @@ from graphon.nodes.tool_runtime_entities import ToolRuntimeParameter
 from graphon.runtime import VariablePool
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from graphon.variables.segments import NoneSegment, StringSegment
+from services.workflow_generation.runner import WorkflowGenerator
 from tests.unit_tests.services.dify_builder.installed_tool_inventory import forbid_secret_and_business_calls
 
 

@@ -613,3 +613,37 @@ class TestBaseAppGeneratorExtras:
         )
 
         assert saver is not None
+
+
+def test_closing_event_stream_closes_underlying_native_events():
+    closed = []
+
+    def native_events():
+        try:
+            yield {"event": "workflow_started"}
+            yield {"event": "workflow_finished"}
+        finally:
+            closed.append(True)
+
+    converted = BaseAppGenerator.convert_to_event_stream(native_events(), close_source=True)
+    assert next(converted).startswith("data: ")
+    converted.close()
+    assert closed == [True]
+
+
+def test_event_stream_preserves_the_native_owners_default_close_authority():
+    closed = []
+
+    def native_events():
+        try:
+            yield {"event": "workflow_started"}
+        finally:
+            closed.append(True)
+
+    source = native_events()
+    converted = BaseAppGenerator.convert_to_event_stream(source)
+    next(converted)
+    converted.close()
+    assert closed == []
+    source.close()
+    assert closed == [True]

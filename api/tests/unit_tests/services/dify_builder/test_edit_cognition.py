@@ -1063,3 +1063,213 @@ def test_a_first_attempt_the_guards_condemn_surfaces_even_when_the_retry_is_unus
         edit.build_edit_intents(m, {"add": "an excellent branch"}, _TARGET_GRAPH, edit_target_node_ids=["node2"])
 
     assert len(m.calls) >= 2  # the retry was spent before the refusal (invoke_json re-parses once of its own)
+
+
+def test_edit_receives_stop_policy_and_preserves_known_error_strategy():
+    """Editor guidance must not turn an unrelated Code edit into swallowed errors."""
+    model = _RecordingInstance(['{"intents": []}'])
+    graph = {
+        "nodes": [
+            {
+                "id": "code",
+                "data": {
+                    "type": "code",
+                    "title": "POST",
+                    "code_language": "python3",
+                    "code": "def main():\n    raise RuntimeError('POST failed')",
+                    "variables": [],
+                    "outputs": {},
+                    "error_strategy": "fail-branch",
+                },
+            }
+        ],
+        "edges": [],
+    }
+    rules = {"change": "add timeout detail", "continue_on_post_failure": False, "error_status_value": 0}
+
+    assert edit.build_edit_intents(model, rules, graph, edit_target_node_ids=["code"]) == []
+
+    messages = model.calls[0]["prompt_messages"]
+    user = str(messages[1].content)
+    assert "continue_on_post_failure" in user
+    assert "False" in user
+    config = json.loads(user.split("    config: ", 1)[1].split("\nEDGES:", 1)[0])
+    assert config["error_strategy"] == "fail-branch"
+    system = str(messages[0].content)
+    assert "stop-on-error" in system
+    assert "raise" in system
+    assert "Preserve existing error_strategy" in system
+    assert "explicitly requested fallback" in system
+
+
+def test_edit_rule_labels_receive_explicit_session_language_and_preserve_business_value():
+    model = _RecordingInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [{"key": "title", "label": "Node title", "type": "text"}],
+                    "values": {"title": "字段验证"},
+                    "target_node_ids": [],
+                }
+            )
+        ]
+    )
+    impact = edit.analyze_impact(model, "Please reply in English; preserve 字段验证", _GRAPH, reply_language="en")
+    messages = model.calls[0]["prompt_messages"]
+    system = messages[0].get_text_content()
+    assert "SESSION REPLY LANGUAGE (BCP-47): en" in system
+    assert impact["values"]["title"] == "字段验证"
+
+
+@pytest.mark.parametrize("retry", [None, "same"])
+def test_edit_refuses_partial_added_node_when_its_wiring_is_rejected(retry):
+    """Dropping the failed connection must not turn insertion into a new orphan."""
+    batch = {
+        "intents": [
+            {
+                "op": "create_node",
+                "args": {
+                    "node_id": "added",
+                    "node_type": "template-transform",
+                    "config": {"title": "Inserted", "template": "hello", "variables": []},
+                },
+            },
+            {"op": "connect", "args": {"from_node": "missing", "to_node": "added"}},
+        ]
+    }
+    replies = [json.dumps(batch), json.dumps(batch) if retry else "{}"]
+    with pytest.raises(ProposalWouldRunWrongError, match="wiring"):
+        edit.build_edit_intents(_RecordingInstance(replies), {}, _GRAPH)
+
+
+def test_edit_exposes_approved_insertion_plan_and_preserves_receipt_contract():
+    from services.dify_builder.plan import WorkflowPlan
+
+    graph = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start", "variables": []}},
+            {
+                "id": "receipt",
+                "data": {
+                    "type": "template-transform",
+                    "title": "生成回执",
+                    "template": "订单号：A-1001；金额：88.00元。",
+                    "variables": [],
+                },
+            },
+            {
+                "id": "end",
+                "data": {
+                    "type": "end",
+                    "title": "输出回执",
+                    "outputs": [
+                        {"variable": "receipt", "value_selector": ["receipt", "output"], "value_type": "string"}
+                    ],
+                },
+            },
+        ],
+        "edges": [{"source": "start", "target": "receipt"}, {"source": "receipt", "target": "end"}],
+    }
+    plan = WorkflowPlan(
+        "添加审阅标记",
+        "订单输入",
+        "带审阅标记的回执",
+        ["在生成回执与输出回执之间插入添加审阅标记，前缀【已生成】，更新 End receipt selector"],
+    )
+    model = _RecordingInstance(
+        [
+            json.dumps(
+                {
+                    "intents": [
+                        {
+                            "op": "insert_between",
+                            "args": {
+                                "node_id": "mark",
+                                "edge": {"source": "receipt", "target": "end"},
+                                "node_type": "template-transform",
+                                "config": {
+                                    "title": "添加审阅标记",
+                                    "template": "【已生成】{{ receipt }}",
+                                    "variables": [
+                                        {
+                                            "variable": "receipt",
+                                            "value_selector": ["receipt", "output"],
+                                            "value_type": "string",
+                                        }
+                                    ],
+                                },
+                            },
+                        },
+                        {
+                            "op": "set_node_config",
+                            "args": {"node_id": "end", "path": "outputs.0.value_selector", "value": ["mark", "output"]},
+                        },
+                    ]
+                }
+            )
+        ]
+    )
+    intents = edit.build_edit_intents(model, {}, graph, approved_plan=plan, edit_target_node_ids=["receipt", "end"])
+    result = graph_ops.filter_applicable(graph, intents).graph
+    assert {(e["source"], e["target"]) for e in result["edges"]} == {
+        ("start", "receipt"),
+        ("receipt", "mark"),
+        ("mark", "end"),
+    }
+    assert result["nodes"][:2] == graph["nodes"][:2]
+    assert result["nodes"][2]["data"]["outputs"] == [
+        {"variable": "receipt", "value_selector": ["mark", "output"], "value_type": "string"}
+    ]
+    system, user = model.calls[0]["prompt_messages"]
+    assert plan.items[0] in user.content
+    assert plan.output_summary in user.content
+
+
+def test_edit_still_allows_intentional_isolated_draft_addition():
+    batch = {
+        "intents": [
+            {
+                "op": "create_node",
+                "args": {
+                    "node_id": "draft",
+                    "node_type": "template-transform",
+                    "config": {"title": "Draft", "template": "hello", "variables": []},
+                },
+            }
+        ]
+    }
+    intents = edit.build_edit_intents(_RecordingInstance([json.dumps(batch)]), {"change": "Add isolated draft"}, _GRAPH)
+    assert [i.args["node_id"] for i in intents] == ["draft"]
+
+
+def test_edit_retry_cannot_remove_rejected_wiring_and_keep_same_isolated_addition():
+    create = {
+        "op": "create_node",
+        "args": {
+            "node_id": "added",
+            "node_type": "template-transform",
+            "config": {"title": "Inserted", "template": "hello", "variables": []},
+        },
+    }
+    first = {"intents": [create, {"op": "connect", "args": {"from_node": "missing", "to_node": "added"}}]}
+    retry = {"intents": [create]}
+    with pytest.raises(ProposalWouldRunWrongError, match="wiring"):
+        edit.build_edit_intents(_RecordingInstance([json.dumps(first), json.dumps(retry)]), {}, _GRAPH)
+
+
+def test_edit_retry_can_correct_added_node_wiring_to_existing_anchor():
+    create = {
+        "op": "create_node",
+        "args": {
+            "node_id": "added",
+            "node_type": "template-transform",
+            "config": {"title": "Inserted", "template": "hello", "variables": []},
+        },
+    }
+    first = {"intents": [create, {"op": "connect", "args": {"from_node": "missing", "to_node": "added"}}]}
+    retry = {"intents": [create, {"op": "connect", "args": {"from_node": "llm", "to_node": "added"}}]}
+    model = _RecordingInstance([json.dumps(first), json.dumps(retry)])
+    intents = edit.build_edit_intents(model, {}, _GRAPH)
+    graph = graph_ops.filter_applicable(_GRAPH, intents).graph
+    assert [(e["source"], e["target"]) for e in graph["edges"]] == [("llm", "added")]
+    assert len(model.calls) == 2

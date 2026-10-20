@@ -49,7 +49,6 @@ from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
     KnowledgebasePipelineFileUploadApi,
     PipelineRunApi,
 )
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.storage.storage_type import StorageType
 from models.account import Account
@@ -66,6 +65,7 @@ from services.rag_pipeline.entity.pipeline_service_api_entities import (
     PipelineRunApiEntity,
 )
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.workflow_runtime.pipeline_generator import PipelineGenerator
 
 
 def _persist_dataset(session: Session, *, tenant_id: str, dataset_id: str) -> Dataset:

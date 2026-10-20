@@ -1,8 +1,8 @@
 """Presentation gates for the qualified JSON Parse safe-test variant."""
 
-from services.dify_builder.copy_ids import BuilderCopyId
-from services.dify_builder.execution_contracts import ExecutionEvidenceSummary
-from services.dify_builder.presentation import BuilderText, copy_text
+from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.execution import ExecutionEvidenceSummary
+from runtime_contracts.builder.presentation import BuilderText, copy_text
 
 JSON_FAILED_REASON = copy_text(BuilderCopyId.JSON_FAILED)
 

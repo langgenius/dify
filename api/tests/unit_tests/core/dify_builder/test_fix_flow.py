@@ -20,7 +20,6 @@ from typing import Unpack
 import pytest
 
 from core.dify_builder.errors import ConflictError
-from core.dify_builder.handlers_fix import fix_registry
 from core.dify_builder.models import (
     Action,
     Actor,
@@ -32,9 +31,10 @@ from core.dify_builder.models import (
     Session,
     Turn,
 )
-from core.dify_builder.placeholder_agent import FIXED_CODE, PlaceholderAgent
-from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState, canvas_read_only
+from services.dify_builder.application.handlers_fix import fix_registry
+from services.dify_builder.application.placeholder_agent import FIXED_CODE, PlaceholderAgent
+from services.dify_builder.application.runner import Env, Runner
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, SessionOverrides
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 

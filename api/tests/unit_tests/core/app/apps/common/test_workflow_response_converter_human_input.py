@@ -1,7 +1,6 @@
 from datetime import UTC, datetime
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent, QueueHumanInputFormTimeoutEvent
 from core.workflow.system_variables import build_system_variables
@@ -9,6 +8,7 @@ from graphon.entities import WorkflowStartReason
 from graphon.variables.segments import StringSegment
 from models.account import Account
 from models.model import AppMode
+from services.workflow_runtime.response_converter import WorkflowResponseConverter
 
 
 def _build_converter() -> WorkflowResponseConverter:

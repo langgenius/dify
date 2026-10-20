@@ -176,12 +176,12 @@ def test_real_fix_cognition_routes_repairs_through_core_approval(
     """Dropping deterministic risk shaping would write a model switch before approval."""
     from datetime import datetime
 
-    from core.dify_builder.handlers_fix import fix_registry
     from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
     from core.dify_builder.node_defaults import default_config
-    from core.dify_builder.runner import Env, Runner
     from core.dify_builder.state import PcState
     from services.dify_builder.agent import llm_agent
+    from services.dify_builder.application.handlers_fix import fix_registry
+    from services.dify_builder.application.runner import Env, Runner
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, InMemoryRepository
 
     data = default_config("llm")
@@ -273,11 +273,11 @@ def test_real_fix_aggregator_source_switch_waits_for_explicit_approval(
     """A preflight-valid upstream selector switch must not auto-apply as a config repair."""
     from datetime import datetime
 
-    from core.dify_builder.handlers_fix import fix_registry
     from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
-    from core.dify_builder.runner import Env, Runner
     from core.dify_builder.state import PcState
     from services.dify_builder.agent import llm_agent
+    from services.dify_builder.application.handlers_fix import fix_registry
+    from services.dify_builder.application.runner import Env, Runner
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, InMemoryRepository
 
     graph: Graph = {
@@ -703,11 +703,11 @@ def test_real_fix_native_data_access_changes_wait_for_explicit_approval(
     """
     from datetime import datetime
 
-    from core.dify_builder.handlers_fix import fix_registry
     from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
-    from core.dify_builder.runner import Env, Runner
     from core.dify_builder.state import PcState
     from services.dify_builder.agent import llm_agent
+    from services.dify_builder.application.handlers_fix import fix_registry
+    from services.dify_builder.application.runner import Env, Runner
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, InMemoryRepository
 
     graph: Graph = {
@@ -1597,3 +1597,29 @@ def test_a_repair_that_answers_the_guard_on_the_retry_is_staged_as_normal() -> N
 
     assert len(intents) == 4
     assert risk.level == "high"  # structural, so it goes to the approval gate -- but it IS staged
+
+
+def test_repair_receives_native_failure_rule_without_inventing_a_stop_policy():
+    """Fix only knows diagnosis/config; it must retain known failure and fallback semantics."""
+
+    class RecordingInstance(_FakeInstance):
+        def invoke_llm(self, **kwargs):
+            self.messages = kwargs["prompt_messages"]
+            return super().invoke_llm(**kwargs)
+
+    model = RecordingInstance(['{"intents": [], "risk": {"level": "low"}}'])
+    graph = deepcopy(_RG)
+    graph["nodes"][0]["data"]["error_strategy"] = "default-value"
+    diagnosis = Diagnosis(culprit_node_id="code1", root_cause="repair a missing import", severity="medium")
+
+    intents, _risk = fix.propose_repair(model, diagnosis, graph)
+
+    assert intents == []
+    user = str(model.messages[1].content)
+    config = json.loads(user.split("CULPRIT NODE CONFIG:\n", 1)[1].split("\n\nGRAPH:\n", 1)[0])
+    assert config["error_strategy"] == "default-value"
+    system = str(model.messages[0].content)
+    assert "stop-on-error" in system
+    assert "user or known config" in system
+    assert "Preserve existing error_strategy" in system
+    assert "explicitly requested fallback" in system

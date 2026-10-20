@@ -1092,3 +1092,28 @@ def test_get_provider_schema_supports_short_alias_and_rejects_invalid_provider(m
 
     with pytest.raises(ValueError, match="Invalid provider"):
         runtime._get_provider_schema("missing")
+
+
+def test_schema_failure_observation_uses_canonical_identity_and_never_credentials(monkeypatch):
+    from services.dify_builder.native_launch_observation import NativeLaunchObservation
+
+    client, _, _ = _recording_model_client(monkeypatch)
+
+    def unavailable(**_kwargs):
+        raise ConnectionRefusedError("private endpoint and secret")
+
+    monkeypatch.setattr(client, "get_model_schema", unavailable)
+    redis = Redis()
+    monkeypatch.setattr(redis, "get", lambda _key: None)
+    monkeypatch.setattr(model_runtime_module, "redis_client", redis)
+    runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+    observation = NativeLaunchObservation()
+    with observation.track(), pytest.raises(ConnectionRefusedError):
+        runtime.get_model_schema(
+            provider="langgenius/openai/openai",
+            model_type=ModelType.LLM,
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+        )
+    assert observation.failure_resource == ("model", "langgenius/openai/openai", "gpt-4o-mini")
+    assert "secret" not in repr(observation)

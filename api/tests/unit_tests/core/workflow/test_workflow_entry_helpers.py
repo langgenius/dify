@@ -9,7 +9,6 @@ from pytest_mock import MockerFixture
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.credit_usage import CreditUsageAppType
-from core.workflow import workflow_entry
 from core.workflow.system_variables import default_system_variables
 from graphon.engine.filter import ResponseStreamFilter
 from graphon.engine_events import GraphRunFailedEvent, NodeRunSucceededEvent
@@ -23,6 +22,7 @@ from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow
+from services.workflow_runtime import entry as workflow_entry
 from tests.unit_tests.model_factories import make_workflow
 
 

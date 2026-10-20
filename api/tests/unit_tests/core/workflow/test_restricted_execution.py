@@ -11,14 +11,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.dify_builder.execution_policy import (
-    BuilderExecutionPolicyError,
-    admitted_node_bindings,
-)
 from graphon.http import HttpClientProtocol
 from graphon.nodes.http_request.node import HttpRequestNode
 from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import RuntimeState, VariablePool
+from services.dify_builder.application.execution_policy import (
+    BuilderExecutionPolicyError,
+    admitted_node_bindings,
+)
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph, snapshot
 from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native import (
     forbid_live as forbid_live,  # noqa: PLC0414
@@ -43,7 +43,7 @@ class RawGraph(TypedDict):
 
 @pytest.mark.parametrize("method", ["get", "head", "post", "put", "delete", "patch"])
 def test_all_protocol_methods_serve_text_and_append_distinct_attempts(owned: Owned, method: str) -> None:
-    from core.workflow.restricted_execution import PolicyTransportError, RestrictedHttpClient
+    from services.dify_builder.restricted_execution import PolicyTransportError, RestrictedHttpClient
 
     factory, context, recorder = prepare_native(owned, "http_text.yml", samples=(fixture(body="你好"),))
     node = factory.create_node(factory.init_params.graph_config["nodes"][1])
@@ -99,7 +99,7 @@ def test_all_protocol_methods_serve_text_and_append_distinct_attempts(owned: Own
     ],
 )
 def test_runtime_kwargs_deny_before_fixture_return_and_append_receipt(owned: Owned, kwargs: dict[str, object]) -> None:
-    from core.workflow.restricted_execution import PolicyTransportError
+    from services.dify_builder.restricted_execution import PolicyTransportError
 
     factory, _, _ = prepare_native(owned, "http_text.yml", samples=(fixture(),))
     node = factory.create_node(factory.init_params.graph_config["nodes"][1])
@@ -115,7 +115,7 @@ def test_runtime_kwargs_deny_before_fixture_return_and_append_receipt(owned: Own
     "entry", ["download", "build_from_mapping", "create_file_by_raw", "get_file_generator_by_tool_file_id", "factory"]
 )
 def test_file_collaborators_deny_and_record(owned: Owned, entry: str) -> None:
-    from core.workflow.restricted_execution import PolicyTransportError
+    from services.dify_builder.restricted_execution import PolicyTransportError
 
     factory, _, _ = prepare_native(owned, "http_text.yml", samples=(fixture(),))
     node = factory.create_node(factory.init_params.graph_config["nodes"][1])
@@ -165,8 +165,8 @@ def test_forbidden_raw_type_refused_before_concrete_validation_or_model_resoluti
 def test_raw_identity_and_config_gate_runs_before_concrete_validation(
     owned: Owned, monkeypatch: pytest.MonkeyPatch, mutation: str, entry: str
 ) -> None:
-    from core.workflow.node_factory import DifyNodeFactory
     from graphon.graph import Graph
+    from services.workflow_runtime.node_factory import DifyNodeFactory
 
     factory, _, _ = prepare_native(owned, "scalar.yml", inputs={"text": "x"})
     node = deepcopy(factory.init_params.graph_config["nodes"][0])
@@ -277,8 +277,8 @@ def test_reserved_sandbox_fixtures_are_unavailable_before_sandbox_owner(owned: O
 @pytest.mark.parametrize("change", ["fixture_digest", "fixture_node", "fixture_body", "context_digest"])
 def test_wrong_fixture_or_context_cannot_construct_native_adapter(owned: Owned, change: str) -> None:
     from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
-    from core.dify_builder.execution_policy import context_digest
-    from core.workflow.node_factory import DifyNodeFactory
+    from services.dify_builder.application.execution_policy import context_digest
+    from services.workflow_runtime.node_factory import DifyNodeFactory
 
     factory, context, recorder = prepare_native(owned, "http_text.yml", samples=(fixture(),))
     if change == "fixture_digest":
@@ -356,7 +356,7 @@ def test_actual_resolved_class_is_guarded_before_its_validator_when_registry_cha
 def test_typed_capability_recheck_requires_same_exact_binding_and_version(
     owned: Owned, monkeypatch: pytest.MonkeyPatch, change: str
 ) -> None:
-    from core.workflow.restricted_execution import validate_restricted_node
+    from services.dify_builder.restricted_execution import validate_restricted_node
 
     factory, context, _ = prepare_native(owned, "scalar.yml", inputs={"text": "x"})
     data = StartNode.validate_node_data(factory.init_params.graph_config["nodes"][0]["data"])

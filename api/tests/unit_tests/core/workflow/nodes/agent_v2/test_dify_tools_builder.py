@@ -1108,3 +1108,36 @@ def test_list_provider_tool_names_reads_builtin_provider(monkeypatch: pytest.Mon
 
     assert names == ["ddg_search", "ddg_news"]
     assert captured == {"provider_id": "langgenius/duckduckgo/duckduckgo", "tenant_id": "tenant-1"}
+
+
+def test_native_layers_without_an_injected_preparer_fail_closed() -> None:
+    builder = WorkflowAgentDifyToolsBuilder()
+
+    with pytest.raises(WorkflowAgentDifyToolsBuildError) as caught:
+        builder.build_layers(
+            tenant_id="tenant",
+            app_id="app",
+            user_id="actor",
+            tools=AgentSoulToolsConfig(),
+            invoke_from=InvokeFrom.DEBUGGER,
+            native_test_required=True,
+        )
+
+    assert caught.value.error_code == "agent_tool_declarations_unavailable"
+
+
+def test_ordinary_layers_do_not_use_an_injected_native_preparer() -> None:
+    class NativePreparer:
+        def prepare(self, **_kwargs: Any) -> Any:
+            pytest.fail("Ordinary tools invoked native declaration preparation")
+
+    layers = WorkflowAgentDifyToolsBuilder(native_declaration_preparer=NativePreparer()).build_layers(
+        tenant_id="tenant",
+        app_id="app",
+        user_id="actor",
+        tools=AgentSoulToolsConfig(),
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+    assert layers.plugin_tools is None
+    assert layers.core_tools is None

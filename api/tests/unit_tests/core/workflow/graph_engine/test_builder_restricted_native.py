@@ -18,20 +18,10 @@ from sqlalchemy import event, select
 from sqlalchemy.exc import OperationalError
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
-from core.dify_builder.execution_policy import (
-    BuilderExecutionContext,
-    BuilderExecutionPolicyError,
-    BuilderExecutionRecorder,
-    HttpResponseFixtureV1,
-    canonical_digest,
-)
 from core.dify_builder.models import Graph as BuilderGraph
 from core.dify_builder.models import Inputs
-from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool
-from core.workflow.workflow_entry import iter_dify_graph_engine_events
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.engine.layer import Layer
@@ -52,10 +42,20 @@ from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import InitParams, RuntimeState, VariablePool
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.workflow import Workflow
+from services.dify_builder.application.execution_policy import (
+    BuilderExecutionContext,
+    BuilderExecutionPolicyError,
+    BuilderExecutionRecorder,
+    HttpResponseFixtureV1,
+    canonical_digest,
+)
 from services.dify_builder.execution_policy_service import (
     BuilderExecutionPolicyService,
 )
 from services.dify_builder.revision import execution_revision
+from services.workflow_runtime.base_runner import WorkflowBasedAppRunner
+from services.workflow_runtime.entry import iter_dify_graph_engine_events
+from services.workflow_runtime.node_factory import DifyNodeFactory
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
@@ -197,7 +197,7 @@ def receipts(owned: Owned) -> list[dict[str, object]]:
 
 @pytest.fixture(autouse=True)
 def forbid_live(monkeypatch: pytest.MonkeyPatch) -> list[str]:
-    import core.workflow.node_factory as module
+    import services.workflow_runtime.node_factory as module
     from core.helper import ssrf_proxy
     from core.helper.code_executor.code_executor import CodeExecutor
     from core.plugin.impl import oauth
@@ -433,7 +433,7 @@ def test_recorder_db_failure_prevents_fixture_return_and_poisons_shared_latch(ow
         assert not any(isinstance(e, GraphRunSucceededEvent) for e in events)
         assert not recorder.healthy
         assert receipts(owned) == []
-        from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+        from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 
         with pytest.raises(BuilderExecutionPolicyError, match="missing_execution_recorder"):
             factory.with_runtime_state(factory.runtime_state)

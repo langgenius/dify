@@ -94,3 +94,19 @@ def test_respond_keeps_dynamic_history_and_ignores_legacy_notices(monkeypatch: p
     assert "Legacy recovery notice" not in prompts[0]
     assert reply == "动态 response"
     assert deltas == ["动态 ", "response"]
+
+
+def test_completed_draft_history_can_be_reported_without_claiming_a_new_action(monkeypatch):
+    captured = {}
+
+    def stream(_model, *, system, user, **_kwargs):
+        captured.update(system=system, user=user)
+        return iter(["The confirmed changes were applied and kept as a draft."])
+
+    monkeypatch.setattr(chat.llm, "invoke_text_stream", stream)
+    history = [ConversationItem(kind="assistant_turn", payload={"reply_text": "Applied 1 change(s) to the canvas."})]
+    chat.respond(object(), {}, PcState.EDIT_COMPLETE, DifyBuilderContext(), history, {"nodes": []}, "Explain")
+    assert "Applied 1 change(s)" in captured["user"]
+    assert "may report actions already confirmed" in captured["system"]
+    assert "kept as a draft does not mean unapplied" in captured["system"]
+    assert "never approve, publish, revert, run, or mutate" in captured["system"]

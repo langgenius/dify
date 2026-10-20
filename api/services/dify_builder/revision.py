@@ -8,8 +8,9 @@ from operator import itemgetter
 from typing import TYPE_CHECKING
 
 from core.dify_builder.models import Graph
+from core.trigger.constants import TRIGGER_NODE_TYPES
 from graphon.enums import BuiltinNodeTypes
-from services.dify_builder.execution_contracts import canonical_digest
+from runtime_contracts.builder.execution import canonical_digest
 
 if TYPE_CHECKING:
     from models.workflow import Workflow
@@ -42,6 +43,8 @@ _EDGE_DATA_PRESENTATION_FIELDS = frozenset(
     {"sourceType", "targetType", "isInIteration", "iteration_id", "isInLoop", "loop_id"}
 )
 
+
+_DEFAULT_ENTRY_NODE_TYPES = frozenset({BuiltinNodeTypes.START, BuiltinNodeTypes.DATASOURCE, *TRIGGER_NODE_TYPES})
 
 _MISSING = object()
 
@@ -133,10 +136,10 @@ def execution_revision(workflow: "Workflow") -> str:
     """Hash execution inputs while retaining unknown configuration fields.
 
     Canvas hydration and the editor's transient data keys (prefixed with ``_``)
-    do not affect execution. Nodes are keyed by ID; their canvas array order
-    is ignored. Configuration array order is preserved because it can change
-    branch, prompt, or variable semantics. Secret variables use their resolved
-    values so re-encryption alone cannot invalidate a plan.
+    do not affect execution. Unambiguous graph nodes are ordered by identity;
+    edge and configuration array order is preserved because it can affect
+    traversal, branch, prompt, or variable semantics. Secret variables
+    use their resolved values so re-encryption alone cannot invalidate a plan.
     Only the digest leaves the adapter; plaintext values are neither returned
     nor persisted here.
 
@@ -188,10 +191,20 @@ def normalize_execution_graph(graph: Graph) -> Graph:
         for node in graph.get("nodes", [])
         if node.get("type") != "custom-note"
     ]
-    # Collaboration exports the node map in key order, which can differ from
-    # the template's array order. Execution resolves nodes by ID and edges.
-    # Sort only this collection, leaving ordered node configuration untouched.
-    graph["nodes"].sort(key=itemgetter("id"))
+    nodes = graph["nodes"]
+    node_ids = [node.get("id") for node in nodes]
+    # Graphon resolves unique nodes by ID. The canvas may reorder them during
+    # autosave, without changing execution. Keep ambiguous identities ordered:
+    # Graphon overwrites duplicate IDs, and Dify chooses the first default entry
+    # node when several start/datasource/trigger nodes are present.
+    if (
+        all(isinstance(node_id, str) and node_id for node_id in node_ids)
+        and len(set(node_ids)) == len(node_ids)
+        and sum(node["data"].get("type") in _DEFAULT_ENTRY_NODE_TYPES for node in nodes) <= 1
+    ):
+        graph["nodes"] = sorted(nodes, key=itemgetter("id"))
+    # Edge order remains significant: Graphon assigns positional IDs and uses
+    # the outgoing edge order when scheduling downstream nodes.
     graph["edges"] = [
         {
             **{key: value for key, value in edge.items() if key not in _EDGE_PRESENTATION_FIELDS},
@@ -211,7 +224,7 @@ def normalize_execution_graph(graph: Graph) -> Graph:
 
 
 def executable_graph_revision(graph: Graph) -> str:
-    """Digest of executable graph configuration; preserves configuration array order."""
+    """Opaque graph digest with the same execution normalization as workflow revisions."""
     return hashlib.sha256(
         json.dumps(normalize_execution_graph(graph), sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()

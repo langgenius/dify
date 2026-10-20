@@ -127,7 +127,7 @@ class TestWorkflowPersistenceLayer:
         layer, _, _, _ = _make_layer()
 
         monkeypatch.setattr(
-            "core.workflow.workflow_entry.WorkflowEntry.handle_special_values",
+            "services.workflow_runtime.entry.WorkflowEntry.handle_special_values",
             lambda inputs: inputs,
         )
 

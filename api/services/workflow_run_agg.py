@@ -8,7 +8,6 @@ from dataclasses import replace
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     RagPipelineGenerateEntity,
@@ -53,6 +52,7 @@ from repositories.sqlalchemy_api_workflow_run_repository import WorkflowPauseSto
 from services.conversation_variable_updater import ConversationVariableUpdater
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
+from services.workflow_runtime.base_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +69,7 @@ class WorkflowRunAgg:
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ) -> None:
+        self._native_host = prepared.native_host
         self._workflow_execution_repository = workflow_execution_repository
         self._prepared = prepared
         self._runner = runner
@@ -89,11 +90,21 @@ class WorkflowRunAgg:
         self._form_repository = HumanInputFormSubmissionRepository()
         self.pause_reasons: Sequence[PauseReason] = ()
         is_resuming = self._runtime_state.graph_execution.paused
-        histories = (
-            workflow_node_execution_repository.get_by_workflow_execution(self._run_id, include_paused=True)
-            if is_resuming
-            else ()
-        )
+        if is_resuming and self._native_host is not None:
+            from services.dify_builder.native_testing.runtime import read_claimed_history
+
+            _, histories = read_claimed_history(
+                host=self._native_host,
+                entity=prepared.generate_entity,
+                workflow_repository=workflow_execution_repository,
+                node_repository=workflow_node_execution_repository,
+            )
+        else:
+            histories = (
+                workflow_node_execution_repository.get_by_workflow_execution(self._run_id, include_paused=True)
+                if is_resuming
+                else ()
+            )
         self._persistence_layer = WorkflowPersistenceLayer(
             application_generate_entity=prepared.generate_entity,
             workflow_info=PersistenceWorkflowInfo(
@@ -105,6 +116,8 @@ class WorkflowRunAgg:
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             trace_manager=prepared.generate_entity.trace_manager,
+            native_observation=self._native_host.native_observation if self._native_host is not None else None,
+            native_host=self._native_host,
         )
         application_layers: list[Layer] = [self._persistence_layer]
         if not isinstance(prepared.generate_entity, RagPipelineGenerateEntity):
@@ -280,7 +293,10 @@ class WorkflowRunAgg:
         execution = self._persistence_layer.workflow_execution
         execution.status = WorkflowExecutionStatus.PAUSED
         execution.accumulated_elapsed_time = elapsed_time
-        execution.outputs = event.outputs or self._runtime_state.outputs
+        outputs = event.outputs or self._runtime_state.outputs
+        execution.outputs = (
+            self._native_host.native_observation.values(outputs) if self._native_host is not None else outputs
+        )
         execution.total_tokens = self._runtime_state.total_tokens
         execution.total_steps = self._runtime_state.node_run_steps
         execution.exceptions_count = max(

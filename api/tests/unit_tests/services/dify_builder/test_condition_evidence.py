@@ -12,8 +12,8 @@ import pytest
 
 from core.dify_builder.errors import NotFoundError
 from core.dify_builder.models import Actor, ApplyResult, Diagnosis, Graph, MutationIntent, NodeOutput, Risk, Run
-from core.dify_builder.runner import Env
 from services.dify_builder.agent import fix
+from services.dify_builder.application.runner import Env
 from services.dify_builder.condition_evidence import build_evidence
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.errors import PreflightError
@@ -548,9 +548,9 @@ def test_real_vet_rejects_equality_transition_with_native_incompatible_expected(
 
 @pytest.mark.parametrize("mode", ["build", "edit"])
 def test_runtime_build_edit_handlers_bind_native_condition_evidence(mode: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    from core.dify_builder import handlers_build, handlers_edit
     from core.dify_builder.models import DifyBuilderContext, EntryMode, TestInput, Turn
     from services.dify_builder.agent import llm_agent
+    from services.dify_builder.application import handlers_build, handlers_edit
     from tests.unit_tests.core.dify_builder import test_handlers_build as build_tests
     from tests.unit_tests.core.dify_builder import test_handlers_edit as edit_tests
     from tests.unit_tests.core.dify_builder.fakes import failed_verification
@@ -819,9 +819,9 @@ def test_proven_equality_repair_preserves_native_threshold_route(
 def test_runtime_handler_write_reloads_trusted_failed_run_and_refuses_value_only(
     native_adapter: SimpleNamespace, mode: str
 ) -> None:
-    from core.dify_builder import handlers_build, handlers_edit, handlers_fix
     from core.dify_builder.models import Action, DifyBuilderContext, EntryMode, Turn
     from core.dify_builder.state import PcState
+    from services.dify_builder.application import handlers_build, handlers_edit, handlers_fix
     from tests.unit_tests.core.dify_builder import test_handlers_build as build_tests
 
     env, repo = build_tests._new_env(dify=native_adapter.port)

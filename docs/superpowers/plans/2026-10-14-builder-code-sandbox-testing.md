@@ -12,6 +12,12 @@
 
 **Coordinator:** `docs/superpowers/plans/2026-10-14-builder-unified-native-testing.md`: consume C01 common contracts and C03 trusted state/lifecycle implementations; `2026-10-14-builder-native-workflow-testing.md` NW1/NW3 owns runtime ports and typed control/factory composition.
 
+## Current execution boundary — 2026-10-16
+
+The user's Dify-first instruction supersedes this plan's original cross-repository architecture. Complete the project in the Dify monorepo wherever practical. CS1–CS5 source, registration, build, publication, deployment and conformance activation in the separate Sandbox repository remain frozen and are not default MVP prerequisites. Their steps below are retained historical proposals, not current execution instructions.
+
+CS6 proceeds through Dify-owned native adapters and qualification of the existing Sandbox interface/runtime. Do not require a newly proposed wire envelope or supervisor when the installed service has not demonstrated that capability. Evaluate a verified gap against Dify-only and existing deployment alternatives before considering a cross-repository exception; only a substantially better solution warrants consideration. Preserve actual authorization, unknown-outcome and anti-replay semantics. Record unsupported guarantees honestly rather than claiming isolation or cleanup from client-side timeouts. See the coordinator's “主仓优先约束” for the current dependency boundary.
+
 ## Global Constraints
 
 - Dify baseline: `13368bd5fa91a613c65ccc1bd328fcadac732cf2`; separate sandbox repository: `/Users/chongbinyao/dify/dify-sandbox`, audited `5631afef06ec88f80c28129aec7fd22a30006b14`.

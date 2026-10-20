@@ -1,6 +1,6 @@
 """Tests for the Edit-flow handlers + edit_registry() (Slice 3)."""
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
 from typing import NoReturn, Unpack, override
@@ -24,10 +24,10 @@ from core.dify_builder.models import (
     StartSchema,
     Turn,
 )
-from core.dify_builder.placeholder_agent import PlaceholderAgent
-from core.dify_builder.ports import DifyBuilderAgent
-from core.dify_builder.runner import Env, Runner, StepResult
 from core.dify_builder.state import PcState
+from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+from services.dify_builder.application.ports import DifyBuilderAgent
+from services.dify_builder.application.runner import Env, Runner, StepResult
 from tests.unit_tests.core.dify_builder.fakes import (
     ContextOverrides,
     FakeBuildDifyPort,
@@ -88,7 +88,7 @@ def _seed_edit_session(repo: InMemoryRepository, state: PcState, **fc_kwargs: Un
 
 
 def test_capability_check_send_edit_goal_advances_to_impact_analysis() -> None:
-    from core.dify_builder.handlers_edit import edit_registry
+    from services.dify_builder.application.handlers_edit import edit_registry
 
     events: list[dict[str, object]] = []
     env, repo = _new_env(emit_canvas=events.append)
@@ -120,19 +120,14 @@ def test_edit_capability_check_renders_agent_fields() -> None:
     # PlaceholderAgent.analyze_impact returns dynamic fields/values/targets;
     # the form card and fc.form_fields/edit_rules/edit_target_node_ids must
     # reflect them (not the old hardcoded _EDIT_RULE_FIELDS constant).
-    from core.dify_builder.handlers_edit import handle_capability_check
+    from services.dify_builder.application.handlers_edit import handle_capability_check
 
     env, _ = _new_env()
-
-    def analyze_impact(goal_text: str, graph: Graph) -> dict[str, object]:
-        _ = goal_text, graph
-        return {
-            "fields": [{"key": "tone", "label": "Tone", "type": "select", "options": ["formal", "casual"]}],
-            "values": {"tone": "formal"},
-            "target_node_ids": ["llm"],
-        }
-
-    env.agent.analyze_impact = analyze_impact
+    env.agent.analyze_impact = lambda _g, _graph, **_kwargs: {
+        "fields": [{"key": "tone", "label": "Tone", "type": "select", "options": ["formal", "casual"]}],
+        "values": {"tone": "formal"},
+        "target_node_ids": ["llm"],
+    }
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_CAPABILITY_CHECK)
     fc = DifyBuilderContext(goal_text="make it formal")
     result = handle_capability_check(
@@ -148,7 +143,7 @@ def test_edit_capability_check_renders_agent_fields() -> None:
 
 
 def test_capability_check_ignores_non_goal_action() -> None:
-    from core.dify_builder.handlers_edit import handle_capability_check
+    from services.dify_builder.application.handlers_edit import handle_capability_check
 
     env, repo = _new_env()
     s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK)
@@ -159,7 +154,7 @@ def test_capability_check_ignores_non_goal_action() -> None:
 
 
 def test_impact_analysis_submit_rules_advances_to_plan_approval_with_checkpoint() -> None:
-    from core.dify_builder.handlers_edit import handle_impact_analysis
+    from services.dify_builder.application.handlers_edit import handle_impact_analysis
 
     env, repo = _new_env()
     s = _seed_edit_session(
@@ -199,7 +194,7 @@ def test_impact_analysis_submit_rules_advances_to_plan_approval_with_checkpoint(
 
 
 def test_edit_registry_maps_capability_check_and_impact_analysis() -> None:
-    from core.dify_builder.handlers_edit import (
+    from services.dify_builder.application.handlers_edit import (
         edit_registry,
         handle_capability_check,
         handle_impact_analysis,
@@ -211,7 +206,7 @@ def test_edit_registry_maps_capability_check_and_impact_analysis() -> None:
 
 
 def test_plan_approval_approve_edits_graph_and_emits_canvas() -> None:
-    from core.dify_builder.handlers_edit import handle_plan_approval
+    from services.dify_builder.application.handlers_edit import handle_plan_approval
 
     events: list[dict[str, object]] = []
     dify = FakeEditDifyPort()
@@ -243,7 +238,7 @@ def test_plan_approval_approve_edits_graph_and_emits_canvas() -> None:
 
 
 def test_plan_approval_ignores_non_approve_action() -> None:
-    from core.dify_builder.handlers_edit import handle_plan_approval
+    from services.dify_builder.application.handlers_edit import handle_plan_approval
 
     env, repo = _new_env()
     s = _seed_edit_session(repo, PcState.EDIT_PLAN_APPROVAL, edit_target_node_ids=["llm"])
@@ -254,20 +249,24 @@ def test_plan_approval_ignores_non_approve_action() -> None:
 
 
 def test_apply_changes_run_affected_tests_advances_to_test() -> None:
-    from core.dify_builder.handlers_edit import handle_apply_changes
+    from core.dify_builder.models import TestInput
+    from services.dify_builder.application.handlers_edit import handle_apply_changes
 
     events: list[dict[str, object]] = []
     env, repo = _new_env(emit_canvas=events.append)
     # test_input_ref already prepared -- run_affected_tests must skip the testdata gate.
     s = _seed_edit_session(repo, PcState.EDIT_APPLY_CHANGES, edit_target_node_ids=["llm"], test_input_ref="ti-1")
+    repo.save_test_input(TestInput(id="ti-1", session_id=s.id, inputs={"topic": "hello"}))
     turn = Turn(action=Action(kind="run_affected_tests", base_version=1), actor=_actor())
     res = handle_apply_changes(env, turn, *repo.get_session(s.id))
     assert res.next == PcState.EDIT_TEST_AFFECTED_PATHS
+    assert res.context.test_input_ref != "ti-1"
+    assert repo.get_test_input(res.context.test_input_ref).inputs == {"topic": "hello"}
     assert events == []
 
 
 def test_apply_changes_revert_records_intent_only() -> None:
-    from core.dify_builder.handlers_edit import handle_apply_changes
+    from services.dify_builder.application.handlers_edit import handle_apply_changes
 
     events: list[dict[str, object]] = []
     env, repo = _new_env(emit_canvas=events.append)
@@ -280,7 +279,7 @@ def test_apply_changes_revert_records_intent_only() -> None:
 
 
 def test_edit_test_pass_goes_to_review_with_real_run() -> None:
-    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     events: list[dict[str, object]] = []
     env, _ = _new_env(emit_canvas=events.append)  # FakeEditDifyPort.verify_pass True by default
@@ -303,7 +302,7 @@ def test_edit_test_pass_goes_to_review_with_real_run() -> None:
 
 
 def test_edit_test_fail_routes_to_await_repair() -> None:
-    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     events: list[dict[str, object]] = []
     env, _ = _new_env(agent=StubAgent(), emit_canvas=events.append)
@@ -336,7 +335,7 @@ def test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate() -> None:
     must still route to the gate, but WITHOUT a change_set card, and with the
     "no safe automatic fix" reply_text variant -- the `if intents` branch the
     handler takes to decide between the two card/reply-text shapes."""
-    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     env, _ = _new_env()
     env.fake_dify.verify_pass = False
@@ -362,7 +361,7 @@ def test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate() -> None:
 
 
 def test_edit_test_reuses_persisted_inputs_on_retest() -> None:
-    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     env, _ = _new_env()
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
@@ -377,7 +376,7 @@ def test_edit_test_run_draft_raises_routes_to_await_repair_failed() -> None:
     """run_draft raising must not crash the advance -- the try/except degrade
     path converts the exception into a failed run and still routes to the
     edit.await_repair gate."""
-    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     env, _ = _new_env()
     env.fake_dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("boom"))
@@ -394,7 +393,7 @@ def test_edit_test_run_draft_raises_routes_to_await_repair_failed() -> None:
 def test_edit_test_run_draft_raises_captures_error_on_run() -> None:
     """Regression: a launch-time exception must be captured on run.error, not
     silently discarded. A non-input error still routes to the config-repair gate."""
-    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     env, _ = _new_env()
     env.fake_dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("kaboom-provider"))
@@ -410,8 +409,8 @@ def test_edit_test_run_draft_raises_captures_error_on_run() -> None:
 
 def test_edit_launch_input_error_without_proof_stops_at_review() -> None:
     """Unproven launch errors retain inputs for review without diagnosis."""
-    from core.dify_builder.handlers_edit import handle_test_affected_paths
     from core.dify_builder.models import TestInput
+    from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     env, _ = _new_env()
     env.fake_dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(ValueError("query is required in input form"))
@@ -432,8 +431,8 @@ def test_edit_test_input_failure_routes_to_testdata_gate() -> None:
     """An INPUT-caused run failure (missing/invalid test data, per
     is_input_failure's signal match) must clear the stale input ref and route
     back to the testdata gate -- not the config-repair gate."""
-    from core.dify_builder.handlers_edit import handle_test_affected_paths
     from core.dify_builder.models import TestInput
+    from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     env, _ = _new_env()
     env.fake_dify.verify_pass = False
@@ -464,8 +463,8 @@ def test_edit_test_config_failure_still_routes_to_repair_gate() -> None:
     """A config-caused run failure (the fake's default error, which matches no
     input-failure signal) must still route to the config-repair gate,
     unchanged."""
-    from core.dify_builder.handlers_edit import handle_test_affected_paths
     from core.dify_builder.models import TestInput
+    from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     env, _ = _new_env(agent=StubAgent())
     env.fake_dify.verify_pass = False  # default error "boom" -> config, not input
@@ -484,8 +483,8 @@ def test_edit_test_config_failure_still_routes_to_repair_gate() -> None:
 def test_edit_test_model_config_failure_surfaces_without_repair() -> None:
     """A model-config failure must be surfaced (no diagnose/propose_repair
     thrash); no node-mutation repair is staged."""
-    from core.dify_builder.handlers_edit import handle_test_affected_paths
     from core.dify_builder.models import TestInput
+    from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     env, _ = _new_env(agent=StubAgent())
     env.fake_dify.verify_pass = False
@@ -508,7 +507,7 @@ def test_edit_test_model_config_failure_surfaces_without_repair() -> None:
 
 
 def test_review_publish_enters_working_publish_before_side_effect() -> None:
-    from core.dify_builder.handlers_edit import handle_publish, handle_review
+    from services.dify_builder.application.handlers_edit import handle_publish, handle_review
 
     dify = FakeEditDifyPort()
     events: list[dict[str, object]] = []
@@ -537,7 +536,7 @@ def test_review_publish_enters_working_publish_before_side_effect() -> None:
 
 
 def test_review_keep_draft_reaches_terminal_without_publish_card() -> None:
-    from core.dify_builder.handlers_edit import handle_review
+    from services.dify_builder.application.handlers_edit import handle_review
 
     dify = FakeEditDifyPort()
     events: list[dict[str, object]] = []
@@ -557,7 +556,7 @@ def test_review_keep_draft_reaches_terminal_without_publish_card() -> None:
 
 
 def test_review_continue_adjusting_returns_to_impact_analysis() -> None:
-    from core.dify_builder.handlers_edit import handle_review
+    from services.dify_builder.application.handlers_edit import handle_review
 
     env, repo = _new_env()
     s = _seed_edit_session(
@@ -573,7 +572,7 @@ def test_review_continue_adjusting_returns_to_impact_analysis() -> None:
 
 
 def test_review_revert_records_intent_only() -> None:
-    from core.dify_builder.handlers_edit import handle_review
+    from services.dify_builder.application.handlers_edit import handle_review
 
     events: list[dict[str, object]] = []
     env, repo = _new_env(emit_canvas=events.append)
@@ -584,7 +583,7 @@ def test_review_revert_records_intent_only() -> None:
 
 
 def test_reverted_retry_returns_to_plan_approval_with_fresh_checkpoint() -> None:
-    from core.dify_builder.handlers_edit import handle_reverted
+    from services.dify_builder.application.handlers_edit import handle_reverted
 
     env, repo = _new_env()
     s = _seed_edit_session(repo, PcState.EDIT_REVERTED, edit_rules={"risk_threshold": "high"})
@@ -610,7 +609,7 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id() -> None:
     early. The unknown-outcome count resets too: after the cap (2) ->
     keep_draft -> review -> re_fix, the new cycle's FIRST unknown outcome
     would otherwise re-cap with "twice in a row"."""
-    from core.dify_builder.handlers_edit import handle_reverted, handle_review
+    from services.dify_builder.application.handlers_edit import handle_reverted, handle_review
 
     env, repo = _new_env()
     s = _seed_edit_session(
@@ -655,7 +654,7 @@ def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id() -> None:
 
 
 def test_edit_await_repair_approve_applies_and_waits_for_retest() -> None:
-    from core.dify_builder.handlers_edit import handle_await_repair
+    from services.dify_builder.application.handlers_edit import handle_await_repair
 
     env, _ = _new_env()
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_REPAIR)
@@ -678,7 +677,7 @@ def test_edit_await_repair_refuses_to_apply_an_empty_staged_repair() -> None:
     """ESQ1-291 in Edit: the model-config branch stages NO repair and still
     routes here, so approving would apply nothing, retest, and re-offer the
     identical failure forever."""
-    from core.dify_builder.handlers_edit import handle_await_repair
+    from services.dify_builder.application.handlers_edit import handle_await_repair
 
     env, _ = _new_env()
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_REPAIR)
@@ -694,7 +693,7 @@ def test_edit_await_repair_refuses_to_apply_an_empty_staged_repair() -> None:
 
 def test_edit_await_repair_surfaces_a_stale_intent_instead_of_failing_the_session() -> None:
     """A stale staged intent degrades to assistant text, not an exception."""
-    from core.dify_builder.handlers_edit import handle_await_repair
+    from services.dify_builder.application.handlers_edit import handle_await_repair
 
     env, _ = _new_env()
 
@@ -722,7 +721,7 @@ def test_edit_await_repair_says_a_fix_that_would_not_start_is_not_a_stale_fix() 
     """A fix the preflight rejected applied fine; it would leave a draft that
     fails at Graph.init. Same recovery as a stale intent, true reason."""
     from core.dify_builder.errors import DraftWouldNotStartError
-    from core.dify_builder.handlers_edit import handle_await_repair
+    from services.dify_builder.application.handlers_edit import handle_await_repair
 
     env, _ = _new_env()
 
@@ -749,17 +748,26 @@ def test_edit_await_repair_says_a_fix_that_would_not_start_is_not_a_stale_fix() 
     assert result.context.staged_repair == []
 
 
-def test_edit_await_repair_keep_draft_goes_to_review() -> None:
-    from core.dify_builder.handlers_edit import handle_await_repair
+def test_edit_await_repair_keep_draft_completes_without_second_confirmation(monkeypatch):
+    from services.dify_builder.application.handlers_edit import handle_await_repair
 
     env, _ = _new_env()
+
+    def unexpected_effect(*_args, **_kwargs):
+        pytest.fail("Keeping a failed draft must not mutate, execute or publish it")
+
+    for method in ("apply_repair", "run_draft", "publish"):
+        monkeypatch.setattr(env.dify, method, unexpected_effect)
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_REPAIR)
-    result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="keep_draft")), s, DifyBuilderContext())
-    assert result.next == PcState.EDIT_REVIEW
+    context = DifyBuilderContext(verify_run_id="failed-run", last_repair_error="model unavailable")
+    result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="keep_draft")), s, context)
+    assert result.next == PcState.EDIT_COMPLETE
+    assert result.context.verify_run_id == "failed-run"
+    assert result.context.last_repair_error == "model unavailable"
 
 
 def test_edit_await_repair_undo_reverts() -> None:
-    from core.dify_builder.handlers_edit import handle_await_repair
+    from services.dify_builder.application.handlers_edit import handle_await_repair
 
     events: list[dict[str, object]] = []
     env, repo = _new_env(emit_canvas=events.append)
@@ -770,7 +778,7 @@ def test_edit_await_repair_undo_reverts() -> None:
 
 
 def test_edit_await_repair_default_stays() -> None:
-    from core.dify_builder.handlers_edit import handle_await_repair
+    from services.dify_builder.application.handlers_edit import handle_await_repair
 
     env, _ = _new_env()
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_REPAIR)
@@ -788,7 +796,7 @@ def test_edit_await_repair_is_waiting_and_projected() -> None:
 
 
 def test_edit_registry_covers_all_non_terminal_edit_states() -> None:
-    from core.dify_builder.handlers_edit import edit_registry
+    from services.dify_builder.application.handlers_edit import edit_registry
 
     assert set(edit_registry().keys()) == {
         PcState.EDIT_CAPABILITY_CHECK,
@@ -806,7 +814,7 @@ def test_edit_registry_covers_all_non_terminal_edit_states() -> None:
 
 
 def test_full_edit_flow_goal_to_publish() -> None:
-    from core.dify_builder.handlers_edit import edit_registry
+    from services.dify_builder.application.handlers_edit import edit_registry
 
     dify = FakeEditDifyPort()
     env, repo = _new_env(dify=dify)
@@ -871,7 +879,7 @@ def test_full_edit_flow_goal_to_publish() -> None:
 
 
 def test_full_edit_flow_keep_draft_completes_without_publish() -> None:
-    from core.dify_builder.handlers_edit import edit_registry
+    from services.dify_builder.application.handlers_edit import edit_registry
 
     dify = FakeEditDifyPort()
     env, repo = _new_env(dify=dify)
@@ -900,7 +908,7 @@ def test_continue_adjusting_then_reapprove_is_idempotent() -> None:
     impact_analysis, re-submit rules, re-approve. Re-applying the same
     set_node_config value overwrites (no crash); the flow reaches edit.apply_
     changes again."""
-    from core.dify_builder.handlers_edit import edit_registry
+    from services.dify_builder.application.handlers_edit import edit_registry
 
     dify = FakeEditDifyPort()
     env, repo = _new_env(dify=dify)
@@ -931,7 +939,7 @@ def test_continue_adjusting_then_reapprove_is_idempotent() -> None:
 
 
 def test_run_affected_tests_routes_to_testdata_gate_when_no_input() -> None:
-    from core.dify_builder.handlers_edit import handle_apply_changes
+    from services.dify_builder.application.handlers_edit import handle_apply_changes
 
     env, _ = _new_env()
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_APPLY_CHANGES)
@@ -946,7 +954,7 @@ def test_run_affected_tests_routes_to_testdata_gate_when_no_input() -> None:
 
 
 def test_edit_await_testdata_mock_prepares_and_advances() -> None:
-    from core.dify_builder.handlers_edit import handle_await_testdata
+    from services.dify_builder.application.handlers_edit import handle_await_testdata
 
     env, _ = _new_env()
 
@@ -999,7 +1007,7 @@ def test_edit_await_testdata_mock_leaves_the_endpoint_for_the_form() -> None:
     """A mocked endpoint URL is accepted at launch and fails on connection -- a
     config failure that feeds the repair loop (ESQ1-302). Left out, the missing
     required key fails the launch as an input the form then asks for."""
-    from core.dify_builder.handlers_edit import handle_await_testdata
+    from services.dify_builder.application.handlers_edit import handle_await_testdata
 
     env, _ = _new_env()
     env.fake_dify.graph = _endpoint_graph()
@@ -1019,7 +1027,7 @@ def test_edit_await_testdata_mock_leaves_the_endpoint_for_the_form() -> None:
 
 
 def test_edit_test_affected_paths_defensive_mock_leaves_the_endpoint_for_the_form() -> None:
-    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     env, _ = _new_env()
     env.fake_dify.graph = _endpoint_graph()
@@ -1047,7 +1055,7 @@ def test_edit_await_testdata_is_waiting_and_projected() -> None:
 def test_revert_then_retry_after_revert_reapprove_is_idempotent() -> None:
     """Loop back via the revert -> reverted -> retry_after_revert (handle_
     reverted's re_fix -> edit.plan_approval) path, then re-approve."""
-    from core.dify_builder.handlers_edit import edit_registry
+    from services.dify_builder.application.handlers_edit import edit_registry
 
     dify = FakeEditDifyPort()
     env, repo = _new_env(dify=dify)
@@ -1077,8 +1085,8 @@ def test_revert_then_retry_after_revert_reapprove_is_idempotent() -> None:
 
 def test_edit_launch_error_is_preserved_at_unknown_review_gate() -> None:
     """Launch errors retain their text but lack execution proof for diagnosis."""
-    from core.dify_builder.handlers_edit import handle_test_affected_paths
     from core.dify_builder.models import Run, TestInput
+    from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     launch_error = "node 'node4' (http-request): body.data.0.type Field required [invalid_param]"
 
@@ -1105,7 +1113,7 @@ def test_plan_approval_surfaces_an_edit_that_would_not_start_instead_of_crashing
     Graph.init. The edit session must survive it with a reply and stay at the
     plan gate."""
     from core.dify_builder.errors import DraftWouldNotStartError
-    from core.dify_builder.handlers_edit import handle_plan_approval
+    from services.dify_builder.application.handlers_edit import handle_plan_approval
 
     dify = FakeEditDifyPort()
 
@@ -1136,7 +1144,7 @@ def test_plan_approval_does_not_call_an_unapplicable_edit_a_workflow_that_cannot
     """A graph_ops rejection ("node not found") never reached the startability
     check -- the edit intents just did not apply. Same recovery as the
     preflight reply (nothing written, plan still approvable), honest reason."""
-    from core.dify_builder.handlers_edit import handle_plan_approval
+    from services.dify_builder.application.handlers_edit import handle_plan_approval
 
     dify = FakeEditDifyPort()
 
@@ -1167,8 +1175,8 @@ def test_plan_approval_does_not_call_an_unapplicable_edit_a_workflow_that_cannot
 
 
 def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass() -> None:
-    from core.dify_builder.handlers_edit import handle_test_affected_paths
     from core.dify_builder.models import NodeOutput, Run, TestInput
+    from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     dify = FakeEditDifyPort()
     dify.graph = {
@@ -1210,8 +1218,8 @@ def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass() -> No
 
 
 def test_each_unknown_outcome_stops_at_the_edit_gate() -> None:
-    from core.dify_builder.handlers_edit import handle_test_affected_paths
     from core.dify_builder.models import Diagnosis, Run, TestInput
+    from services.dify_builder.application.handlers_edit import handle_test_affected_paths
     from services.dify_builder.run_mapping import TRUNCATED_STREAM_ERROR
 
     env, repo = _new_env()
@@ -1246,9 +1254,9 @@ def test_each_unknown_outcome_stops_at_the_edit_gate() -> None:
 def test_the_same_failing_affected_path_test_trips_the_breaker_on_the_third_repeat() -> None:
     """Edit had no repair breaker at all: the same engine failure could be
     diagnosed, repaired and re-run indefinitely. It now shares Build's."""
-    from core.dify_builder.handlers_edit import handle_test_affected_paths
-    from core.dify_builder.handlers_fix import MAX_REPEATED_REPAIRS
     from core.dify_builder.models import TestInput
+    from services.dify_builder.application.handlers_edit import handle_test_affected_paths
+    from services.dify_builder.application.handlers_fix import MAX_REPEATED_REPAIRS
 
     dify = FakeEditDifyPort()
     dify.verify_pass = False  # the engine fails the same way every time
@@ -1274,7 +1282,7 @@ def test_the_same_failing_affected_path_test_trips_the_breaker_on_the_third_repe
 
 
 def test_sending_a_new_edit_goal_resets_the_breaker() -> None:
-    from core.dify_builder.handlers_edit import handle_capability_check
+    from services.dify_builder.application.handlers_edit import handle_capability_check
 
     env, repo = _new_env()
     s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK, repair_attempts=3, last_repair_error="llm|boom")
@@ -1296,7 +1304,7 @@ def test_plan_approval_threads_edit_targets_into_build_edit_intents() -> None:
     about to rewrite, and the model regenerates whole arrays from scratch --
     triage ``edit-branch-failure-2026-09-22`` cause (c).
     """
-    from core.dify_builder.handlers_edit import handle_plan_approval
+    from services.dify_builder.application.handlers_edit import handle_plan_approval
 
     seen: dict[str, object] = {}
 
@@ -1307,9 +1315,10 @@ def test_plan_approval_threads_edit_targets_into_build_edit_intents() -> None:
             edit_rules: dict[str, object],
             graph: Graph,
             *,
-            edit_target_node_ids: Sequence[str] = (),
-            last_edit_rejection: str | None = None,
-        ) -> list[MutationIntent]:
+            edit_target_node_ids=(),
+            last_edit_rejection=None,
+            approved_plan=None,
+        ):
             seen["targets"] = list(edit_target_node_ids)
             return super().build_edit_intents(edit_rules, graph)
 
@@ -1352,17 +1361,13 @@ class _RejectionRecordingAgent(PlaceholderAgent):
     def __init__(self) -> None:
         self.rejections: list[str | None] = []
 
-    @override
     def build_edit_intents(
-        self,
-        edit_rules: dict[str, object],
-        graph: Graph,
-        *,
-        edit_target_node_ids: Sequence[str] = (),
-        last_edit_rejection: str | None = None,
-    ) -> list[MutationIntent]:
+        self, edit_rules, graph, *, edit_target_node_ids=(), last_edit_rejection=None, approved_plan=None
+    ):
         self.rejections.append(last_edit_rejection)
-        return super().build_edit_intents(edit_rules, graph, edit_target_node_ids=edit_target_node_ids)
+        return super().build_edit_intents(
+            edit_rules, graph, edit_target_node_ids=edit_target_node_ids, approved_plan=approved_plan
+        )
 
 
 def _refusing_port(*errors: Exception) -> FakeEditDifyPort:
@@ -1378,7 +1383,7 @@ def _refusing_port(*errors: Exception) -> FakeEditDifyPort:
 
 
 def _approve(env: Env, session: Session, fc: DifyBuilderContext) -> StepResult:
-    from core.dify_builder.handlers_edit import handle_plan_approval
+    from services.dify_builder.application.handlers_edit import handle_plan_approval
 
     turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
     return handle_plan_approval(env, turn, session, fc)
@@ -1493,7 +1498,7 @@ def test_an_applied_edit_forgets_the_engines_earlier_refusal() -> None:
 
 
 def test_a_new_edit_goal_forgets_a_refusal_from_the_previous_one() -> None:
-    from core.dify_builder.handlers_edit import edit_registry
+    from services.dify_builder.application.handlers_edit import edit_registry
 
     env, repo = _new_env()
     s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK, last_edit_rejection=_KLINGON)
@@ -1511,7 +1516,7 @@ def test_a_new_edit_goal_forgets_a_refusal_from_the_previous_one() -> None:
 
 
 def test_a_recovery_reset_forgets_the_refusal_of_a_batch_that_is_gone() -> None:
-    from core.dify_builder.recovery import _reset_working_fields
+    from services.dify_builder.application.recovery import _reset_working_fields
 
     fc = DifyBuilderContext(last_edit_rejection=_KLINGON)
 
@@ -1524,7 +1529,7 @@ def test_a_huge_refusal_is_capped_before_it_is_persisted_and_re_prompted() -> No
     """A batch refusal concatenates one message per node, and this text is both
     stored in the session context blob and prepended to the next prompt."""
     from core.dify_builder.errors import DraftWouldNotStartError
-    from core.dify_builder.handlers_edit import _MAX_REJECTION_CHARS, _REJECTION_TRUNCATED_MARKER
+    from services.dify_builder.application.handlers_edit import _MAX_REJECTION_CHARS, _REJECTION_TRUNCATED_MARKER
 
     env, repo = _new_env(dify=_refusing_port(DraftWouldNotStartError("x" * (_MAX_REJECTION_CHARS + 500))))
     s = _seed_edit_session(
@@ -1549,7 +1554,7 @@ def test_a_refused_edit_can_be_adjusted_instead_of_only_re_approved() -> None:
     with ``approve_plan`` as the only move, while the card told them to adjust
     (triage edit-branch-failure-2026-09-22)."""
     from core.dify_builder.errors import DraftWouldNotStartError
-    from core.dify_builder.handlers_edit import handle_plan_approval
+    from services.dify_builder.application.handlers_edit import handle_plan_approval
 
     env, repo = _new_env(dify=_refusing_port(DraftWouldNotStartError(_KLINGON)))
     s = _seed_edit_session(
@@ -1581,7 +1586,7 @@ def test_routing_back_to_the_form_does_not_forget_the_refusal() -> None:
     resubmit, and until they do, the engine's text still describes exactly what
     the next approval would try. Only handle_impact_analysis, which owns the
     mutation of fc.edit_rules, may clear it."""
-    from core.dify_builder.handlers_edit import handle_plan_approval, handle_review
+    from services.dify_builder.application.handlers_edit import handle_plan_approval, handle_review
 
     env, repo = _new_env()
     at_gate = _seed_edit_session(
@@ -1641,7 +1646,7 @@ def _refuse_once_then_apply(error: Exception) -> FakeEditDifyPort:
 def _refused_at_the_gate(agent: DifyBuilderAgent) -> tuple[Runner, InMemoryRepository, Session, Session]:
     """Drive a real Edit session to a refused approval parked at the gate."""
     from core.dify_builder.errors import DraftWouldNotStartError
-    from core.dify_builder.handlers_edit import edit_registry
+    from services.dify_builder.application.handlers_edit import edit_registry
 
     env, repo = _new_env(dify=_refuse_once_then_apply(DraftWouldNotStartError(_KLINGON)), agent=agent)
     s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK)
@@ -1724,7 +1729,7 @@ def test_resubmitting_the_very_same_rules_keeps_the_refusal() -> None:
 def test_the_plan_gate_reverts_through_the_checkpoint_it_already_minted() -> None:
     """No second revert path: the gate reuses perform_revert against the
     checkpoint handle_impact_analysis mints when it proposes the plan."""
-    from core.dify_builder.handlers_edit import edit_registry
+    from services.dify_builder.application.handlers_edit import edit_registry
 
     events: list[dict[str, object]] = []
     env, repo = _new_env(emit_canvas=events.append)
@@ -1873,7 +1878,7 @@ class _RevisionEditPort(FakeEditDifyPort):
 def test_plan_approval_empty_proposal_refuses_before_apply_and_preserves_gate_exits(
     next_action: str, next_state: PcState
 ) -> None:
-    from core.dify_builder.handlers_edit import handle_plan_approval
+    from services.dify_builder.application.handlers_edit import handle_plan_approval
 
     events = []
     env, _ = _new_env(dify=_EmptyProposalWriteSpy(), agent=_ApprovalIntentsAgent([]), emit_canvas=events.append)
@@ -2002,3 +2007,38 @@ def test_confirmed_edit_action_for_another_command_is_refused_before_any_run() -
 
     with pytest.raises(ConflictError):
         run_confirmed_handler("edit", PcState.EDIT_TEST_AFFECTED_PATHS, command="command-other")
+
+
+def test_approved_edit_uses_the_presented_plan_snapshot_for_generation():
+    from services.dify_builder.application.handlers_edit import handle_plan_approval
+    from services.dify_builder.plan import WorkflowPlan
+
+    seen = []
+
+    class RecordingAgent(PlaceholderAgent):
+        def build_edit_intents(self, _edit_rules, _graph, **kwargs):
+            seen.append(kwargs.get("approved_plan"))
+            return []
+
+    env, repo = _new_env(agent=RecordingAgent())
+    s = _seed_edit_session(
+        repo,
+        PcState.EDIT_PLAN_APPROVAL,
+        plan_title="Insert review marker",
+        plan_input_summary="Order fields",
+        plan_output_summary="Marked receipt",
+        plan_items=["Insert marker between receipt and End; update receipt selector"],
+        checkpoint_id="cp-1",
+    )
+    result = handle_plan_approval(
+        env, Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor()), *repo.get_session(s.id)
+    )
+    assert seen == [
+        WorkflowPlan(
+            "Insert review marker",
+            "Order fields",
+            "Marked receipt",
+            ["Insert marker between receipt and End; update receipt selector"],
+        )
+    ]
+    assert result.next == PcState.EDIT_PLAN_APPROVAL

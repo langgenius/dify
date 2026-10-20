@@ -11,7 +11,6 @@ import pytest
 from flask import Flask, Response, request_finished
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from extensions.application_services.app import AppServices
 from extensions.ext_application_services import (
     _batch_get_enterprise_webapp_access_modes,
@@ -29,6 +28,7 @@ from services.tag_application_service import TagApplicationService
 from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService
 from services.workflow.dsl_import import DslImportService
+from services.workflow_runtime.pipeline_generator import PipelineGenerator
 from tests.unit_tests.controllers.error_contract import check_response, track_external_apis
 
 track_external_apis()

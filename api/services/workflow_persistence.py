@@ -4,10 +4,12 @@ The aggregate constructs this observer and supplies its repositories, indexes,
 and history before the engine starts. Engine events remain storage-agnostic.
 """
 
+from __future__ import annotations
+
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
@@ -25,6 +27,7 @@ from graphon.engine_events import (
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
+    GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunExceptionEvent,
@@ -34,7 +37,7 @@ from graphon.engine_events import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from graphon.entities import WorkflowNodeExecution
+from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowExecutionStatus,
@@ -45,12 +48,16 @@ from graphon.enums import (
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from repositories.entities.workflow_execution import WorkflowExecution
+from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
 from services.workflow.inspector_events import (
     publish_node_changed as _inspector_publish_node_changed,
 )
 from services.workflow.inspector_events import (
     publish_workflow_completed as _inspector_publish_workflow_completed,
 )
+
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.host_execution import NativeHostLaunch
 
 
 @dataclass(slots=True)
@@ -64,7 +71,14 @@ class PersistenceWorkflowInfo:
 
 
 class WorkflowPersistenceLayer(Layer):
-    """Engine layer that persists workflow and node execution state."""
+    """Persist native state, or independent redacted diagnostics when explicitly bound.
+
+    The optional guard is supplied only by trusted server composition. A failed
+    marked observer notifies that owner; Graphon swallowing its safe exception
+    is never persistence acknowledgment. Ordinary None behavior is unchanged.
+    """
+
+    _native_observation: NativeObservationGuard | None = None
 
     def __init__(
         self,
@@ -74,8 +88,19 @@ class WorkflowPersistenceLayer(Layer):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         trace_manager: TraceQueueManager | None = None,
+        native_observation: NativeObservationGuard | None = None,
+        native_host: NativeHostLaunch | None = None,
     ) -> None:
         super().__init__()
+        if native_observation is not None and type(native_observation) is not NativeObservationGuard:
+            raise NativeObservationError() from None
+        self._native_host = native_host
+        self._native_observation = native_observation
+        if native_observation is not None:
+            with native_observation.persistence_scope():
+                if trace_manager is not None or application_generate_entity.trace_manager is not None:
+                    native_observation.fail()
+                workflow_info = replace(workflow_info, graph_data=native_observation.graph(workflow_info.graph_data))
         self._application_generate_entity = application_generate_entity
         self._workflow_info = workflow_info
         self._workflow_execution_repository = workflow_execution_repository
@@ -104,10 +129,51 @@ class WorkflowPersistenceLayer(Layer):
     # Layer lifecycle
     # ------------------------------------------------------------------
     @override
+    def on_graph_start(self) -> None:
+        if self._native_observation is not None:
+            self._native_observation.require_healthy()
+
+    @override
     def on_event(self, event: EngineEvent) -> None:
+        guard = self._native_observation
+        if guard is None:
+            self._persist_event(event)
+            return
+        with guard.persistence_scope():
+            if self._native_host is not None:
+                event = self._native_host.diagnostic_event(event=event)
+            if isinstance(event, GraphRunStartedEvent) and event.reason == WorkflowStartReason.RESUMPTION:
+                from services.dify_builder.native_testing.runtime import read_claimed_history
+
+                if self._native_host is None or self._native_host.native_observation is not guard:
+                    guard.fail()
+                execution, nodes = read_claimed_history(
+                    host=self._native_host,
+                    entity=self._application_generate_entity,
+                    workflow_repository=self._workflow_execution_repository,
+                    node_repository=self._workflow_node_execution_repository,
+                )
+                observed = guard.event(event)
+                # Install only after every actual history/offload read and the
+                # claimed host's post-IO authority recheck have succeeded.
+                self._workflow_execution = execution
+                self._node_execution_cache = {node.id: node for node in nodes}
+            else:
+                observed = guard.persistence_event(event)
+            # Projection markers are truthy. Preserve the original empty-output
+            # fallback choice while projecting the real runtime value first.
+            if (
+                isinstance(event, (GraphRunSucceededEvent, GraphRunPartialSucceededEvent, GraphRunPausedEvent))
+                and not event.outputs
+            ):
+                if isinstance(observed, (GraphRunSucceededEvent, GraphRunPartialSucceededEvent, GraphRunPausedEvent)):
+                    observed.outputs = guard.values(self.runtime_state.outputs)
+            self._persist_event(observed)
+
+    def _persist_event(self, event: EngineEvent) -> None:
         match event:
             case GraphRunStartedEvent():
-                self._handle_graph_run_started()
+                self._handle_graph_run_started(event)
             case GraphRunSucceededEvent():
                 self._handle_graph_run_succeeded(event)
             case GraphRunPartialSucceededEvent():
@@ -129,12 +195,32 @@ class WorkflowPersistenceLayer(Layer):
             case NodeRunPauseRequestedEvent():
                 self._handle_node_pause_requested(event)
 
+    @override
+    def on_graph_end(self, error: Exception | None) -> None:
+        if self._native_observation is not None:
+            self._native_observation.require_healthy()
+
     # ------------------------------------------------------------------
     # Graph-level handlers
     # ------------------------------------------------------------------
-    def _handle_graph_run_started(self) -> None:
+    def _handle_graph_run_started(self, event: GraphRunStartedEvent) -> None:
         execution_id = self._get_execution_id()
         timing = self._application_generate_entity.workflow_execution_timing
+        if (
+            self._native_observation is not None
+            and event is not None
+            and event.reason == WorkflowStartReason.RESUMPTION
+        ):
+            execution = self._get_workflow_execution()
+            if execution.id_ != execution_id or execution.status is not WorkflowExecutionStatus.PAUSED:
+                self._native_observation.fail()
+            # Native checkpoints exclude this process-local timer. Owned paused
+            # history carries the settled duration across the restored entity.
+            timing.elapsed_time = execution.elapsed_time
+            timing.start()
+            execution.status = WorkflowExecutionStatus.RUNNING
+            self._workflow_execution_repository.save(execution)
+            return
         timing.start()
         workflow_execution = WorkflowExecution(
             id_=execution_id,
@@ -197,6 +283,11 @@ class WorkflowPersistenceLayer(Layer):
             WorkflowNodeExecutionMetadataKey.ITERATION_ID: iteration_id,
             WorkflowNodeExecutionMetadataKey.LOOP_ID: loop_id,
         }
+        if self._native_observation is not None:
+            # Root nodes have no container identities. Preserve real IDs, and
+            # omit absent metadata rather than inventing an identity for None.
+            metadata = {key: value for key, value in metadata.items() if value is not None}
+
         previous = self._node_execution_cache.get(event.id)
         domain_execution = WorkflowNodeExecution(
             id=previous.id if previous is not None else event.id,
@@ -292,12 +383,18 @@ class WorkflowPersistenceLayer(Layer):
     # Helpers
     # ------------------------------------------------------------------
     def _get_execution_id(self) -> str:
+        if self._native_observation is not None:
+            return self._native_observation.workflow_execution_id(self._system_variables())
         workflow_execution_id = self._system_variables().get(SystemVariableKey.WORKFLOW_EXECUTION_ID)
         if not workflow_execution_id:
             raise ValueError("workflow_execution_id must be provided in system variables for pause/resume flows")
         return str(workflow_execution_id)
 
     def _prepare_workflow_inputs(self) -> Mapping[str, Any]:
+        if self._native_observation is not None:
+            return self._native_observation.workflow_inputs(
+                inputs=self._application_generate_entity.inputs, system_variables=self._system_variables()
+            )
         inputs = {**self._application_generate_entity.inputs}
         for field_name, value in self._system_variables().items():
             if field_name == SystemVariableKey.CONVERSATION_ID.value:
@@ -306,7 +403,7 @@ class WorkflowPersistenceLayer(Layer):
                 continue
             inputs[f"sys.{field_name}"] = value
         # Local import to avoid circular dependency during app bootstrapping.
-        from core.workflow.workflow_entry import WorkflowEntry
+        from services.workflow_runtime.entry import WorkflowEntry
 
         handled = WorkflowEntry.handle_special_values(inputs)
         return handled or {}
@@ -372,7 +469,10 @@ class WorkflowPersistenceLayer(Layer):
         runtime_state = self.runtime_state
         execution.total_tokens = runtime_state.total_tokens
         execution.total_steps = runtime_state.node_run_steps
-        execution.outputs = execution.outputs or runtime_state.outputs
+        if self._native_observation is not None:
+            execution.outputs = execution.outputs or self._native_observation.values(runtime_state.outputs)
+        else:
+            execution.outputs = execution.outputs or runtime_state.outputs
         execution.exceptions_count = max(execution.exceptions_count, runtime_state.exceptions_count)
 
     def _update_node_execution(
@@ -436,6 +536,10 @@ class WorkflowPersistenceLayer(Layer):
                 self._workflow_node_execution_repository.save(execution)
 
     def _enqueue_trace_task(self, execution: WorkflowExecution) -> None:
+        if self._native_observation is not None:
+            if self._trace_manager is not None or self._application_generate_entity.trace_manager is not None:
+                self._native_observation.fail()
+            return
         if not self._trace_manager:
             return
 

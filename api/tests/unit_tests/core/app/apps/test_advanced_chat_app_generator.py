@@ -7,9 +7,8 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-import core.app.apps.advanced_chat.app_generator as app_generator_module
+import services.workflow_runtime.chatflow_generator as app_generator_module
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.task_pipeline import message_cycle_manager
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
@@ -19,6 +18,7 @@ from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation
 from services.errors.conversation import ConversationNotExistsError
 from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_runtime.chatflow_generator import AdvancedChatAppGenerator
 
 
 def _make_app_config() -> WorkflowUIBasedAppConfig:
@@ -153,29 +153,29 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
         raise ConversationNotExistsError()
 
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.ConversationService.get_conversation",
+        "services.workflow_runtime.chatflow_generator.ConversationService.get_conversation",
         raise_conversation_not_exists,
     )
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.FileUploadConfigManager.convert",
+        "services.workflow_runtime.chatflow_generator.FileUploadConfigManager.convert",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.AdvancedChatAppConfigManager.get_app_config",
+        "services.workflow_runtime.chatflow_generator.AdvancedChatAppConfigManager.get_app_config",
         lambda **_kwargs: app_config,
     )
     monkeypatch.setattr(app_generator_module, "db", SimpleNamespace(engine=sqlite_engine))
     trace_manager = object.__new__(TraceQueueManager)
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
+        "services.workflow_runtime.chatflow_generator.TraceQueueManager",
         lambda **_kwargs: trace_manager,
     )
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+        "services.workflow_runtime.chatflow_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
         lambda **_kwargs: SimpleNamespace(),
     )
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+        "services.workflow_runtime.chatflow_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
         lambda **_kwargs: SimpleNamespace(),
     )
 

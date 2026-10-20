@@ -12,15 +12,15 @@ import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from itertools import count
-from typing import NoReturn, Protocol, cast
+from typing import TYPE_CHECKING, NoReturn, Protocol, cast, override
 from uuid import NAMESPACE_URL, uuid5
 
 import httpx
+
+from dify_agent.adapters.native_testing.transport import agent_api_endpoint
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from pydantic import BaseModel
-from typing_extensions import override
-
+from pydantic import BaseModel, JsonValue, TypeAdapter
 from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError, UnexpectedModelBehavior, UserError
 from pydantic_ai.providers import Provider
 
@@ -30,6 +30,79 @@ from dify_agent.plugin_daemon_transport import (
     to_plugin_daemon_jsonable,
     unwrap_plugin_daemon_error,
 )
+from dify_agent.runtime.native_continuation import NativePolicyStopped
+
+if TYPE_CHECKING:
+    from dify_agent.runtime.native_effects import NativeEffectSession
+
+
+def _model_receipt_bytes(value: object) -> int:
+    return len(json.dumps(value, ensure_ascii=False).encode("utf-8"))
+
+
+class ProtectedModelChunkReceipt:
+    """Shared gateway/SDK receipt: exact chunks with identical prompts stored once."""
+
+    def __init__(self) -> None:
+        self._prompts: list[JsonValue] = []
+        self._chunks: list[JsonValue] = []
+        self._prompt_refs: dict[str, int] = {}
+        self.value: dict[str, JsonValue] = {
+            "format": "dify-model-chunks-v1",
+            "prompts": self._prompts,
+            "chunks": self._chunks,
+        }
+        self._size = _model_receipt_bytes(self.value)
+
+    def append(self, chunk: LLMResultChunk) -> None:
+        # Plugins may construct chunks with raw prompt dicts; normalize exactly
+        # as the SDK's HTTP decoder does before comparing protected receipts.
+        value = LLMResultChunk.model_validate(chunk.model_dump(mode="json")).model_dump(mode="json")
+        prompt = value.pop("prompt_messages")
+        prompt_key = json.dumps(prompt, ensure_ascii=False, sort_keys=True)
+        prompt_ref = self._prompt_refs.get(prompt_key)
+        added_prompt_bytes = 0
+        if prompt_ref is None:
+            prompt_ref = len(self._prompts)
+            added_prompt_bytes = _model_receipt_bytes(prompt) + (2 if self._prompts else 0)
+        entry = {"prompt_ref": prompt_ref, "chunk": value}
+        size = self._size + added_prompt_bytes + _model_receipt_bytes(entry) + (2 if self._chunks else 0)
+        if size > 1024 * 1024:
+            raise NativePolicyStopped("native_model_result_too_large")
+        if added_prompt_bytes:
+            self._prompt_refs[prompt_key] = prompt_ref
+            self._prompts.append(TypeAdapter(JsonValue).validate_python(prompt))
+        self._chunks.append(TypeAdapter(JsonValue).validate_python(entry))
+        self._size = size
+
+
+def _decode_model_receipt(result: JsonValue) -> list[LLMResultChunk]:
+    # Existing completed receipts are lists and must remain replayable verbatim.
+    if isinstance(result, list):
+        return [LLMResultChunk.model_validate(chunk) for chunk in result]
+    try:
+        if not isinstance(result, dict) or set(result) != {"format", "prompts", "chunks"}:
+            raise ValueError
+        if result["format"] != "dify-model-chunks-v1" or _model_receipt_bytes(result) > 1024 * 1024:
+            raise ValueError
+        prompts, entries = result["prompts"], result["chunks"]
+        if not isinstance(prompts, list) or not all(isinstance(prompt, list) for prompt in prompts):
+            raise ValueError
+        if not isinstance(entries, list):
+            raise ValueError
+        chunks = []
+        for entry in entries:
+            if not isinstance(entry, dict) or set(entry) != {"prompt_ref", "chunk"}:
+                raise ValueError
+            ref, chunk = entry["prompt_ref"], entry["chunk"]
+            if type(ref) is not int or not 0 <= ref < len(prompts):
+                raise ValueError
+            if not isinstance(chunk, dict) or "prompt_messages" in chunk:
+                raise ValueError
+            chunks.append(LLMResultChunk.model_validate({**chunk, "prompt_messages": prompts[ref]}))
+        return chunks
+    except (ValueError, TypeError):
+        raise UnexpectedModelBehavior("Invalid protected model result") from None
 
 
 class DifyLLMClient(Protocol):
@@ -66,12 +139,75 @@ class DifyApiLLMClient:
     execution_context: DifyExecutionContextLayerConfig
     agent_run_id: str
     http_client: httpx.AsyncClient = field(repr=False)
+    native_effects: NativeEffectSession | None = field(default=None, repr=False)
     _call_counter: count[int] = field(default_factory=lambda: count(1), init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.inner_api_url = self.inner_api_url.rstrip("/")
 
     async def iter_llm_result_chunks(
+        self,
+        *,
+        provider: str,
+        model: str,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict[str, object],
+        tools: list[PromptMessageTool] | None,
+        stop: list[str] | None,
+        stream: bool,
+    ) -> AsyncIterator[LLMResultChunk]:
+        arguments = {
+            "provider": provider,
+            "model": model,
+            "prompt_messages": prompt_messages,
+            "model_parameters": model_parameters,
+            "tools": tools,
+            "stop": stop,
+            "stream": stream,
+        }
+        if self.native_effects is None:
+            async for chunk in self._iter_llm_result_chunks(**arguments):
+                yield chunk
+            return
+        # The existing API gateway always invokes a stream, including requests
+        # from a non-streaming consumer. Freeze that actual effective argument.
+        arguments["stream"] = True
+
+        async def invoke(_permit) -> JsonValue:
+            receipt = ProtectedModelChunkReceipt()
+            async for chunk in self._iter_llm_result_chunks(**arguments):
+                receipt.append(chunk)
+            return receipt.value
+
+        state = self.native_effects.continuation
+        result = await self.native_effects.stage(
+            boundary="model",
+            call_id=f"model-{state.operation_cursor}",
+            target={
+                "plugin_id": self.plugin_id,
+                "provider": provider if provider.count("/") == 2 else f"{self.plugin_id}/{provider}",
+                "model": model,
+            },
+            parameters=TypeAdapter(JsonValue).validate_python(
+                to_plugin_daemon_jsonable(
+                    {
+                        "prompt_messages": prompt_messages,
+                        "model_parameters": model_parameters,
+                        "tools": tools,
+                        "stop": stop,
+                        "stream": True,
+                    }
+                )
+            ),
+            stage="model",
+            invoke=invoke,
+        )
+        chunks = _decode_model_receipt(result)
+        state.operation_cursor += 1
+        for chunk in chunks:
+            yield chunk
+
+    async def _iter_llm_result_chunks(
         self,
         *,
         provider: str,
@@ -120,15 +256,28 @@ class DifyApiLLMClient:
                 },
             }
         )
-        url = f"{self.inner_api_url}/inner/api/agent/llm/invoke"
-        headers = {
-            "X-Inner-Api-Key": self.inner_api_key,
-            "Content-Type": "application/json",
-        }
+        if self.native_effects is not None:
+            from dify_agent.runtime.native_effects import current_native_dispatch
+
+            envelope = current_native_dispatch()
+            if envelope is None:
+                raise NativePolicyStopped("native_tool_permit_missing")
+            payload = TypeAdapter(dict[str, JsonValue]).validate_python(payload)
+            payload["native_dispatch"] = envelope.wire()
+        url, headers = agent_api_endpoint(
+            self.http_client,
+            base_url=self.inner_api_url,
+            legacy_path="agent/llm/invoke",
+            runtime_path="llm/invoke",
+            api_key=self.inner_api_key,
+        )
+        headers["Content-Type"] = "application/json"
 
         try:
             async with self.http_client.stream("POST", url, headers=headers, json=payload) as response:
                 if response.is_error:
+                    if self.native_effects is not None:
+                        raise NativePolicyStopped("native_model_transport_unavailable")
                     body = (await response.aread()).decode("utf-8", errors="replace")
                     _raise_agent_gateway_http_error(
                         model_name=model,
@@ -178,6 +327,7 @@ class DifyApiLLMProvider(Provider[DifyLLMClient]):
     execution_context: DifyExecutionContextLayerConfig
     agent_run_id: str
     http_client: httpx.AsyncClient = field(repr=False)
+    native_effects: NativeEffectSession | None = field(default=None, repr=False)
     _client: DifyLLMClient = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -189,6 +339,7 @@ class DifyApiLLMProvider(Provider[DifyLLMClient]):
             execution_context=self.execution_context,
             agent_run_id=self.agent_run_id,
             http_client=self.http_client,
+            native_effects=self.native_effects,
         )
 
     @override

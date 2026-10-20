@@ -7,10 +7,10 @@ from typing import override
 import pytest
 
 from core.dify_builder.contract import ProgressEventData, ResourceOption
-from core.dify_builder.handlers_build import build_registry
 from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, MutationIntent, Session, Turn
-from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState
+from services.dify_builder.application.handlers_build import build_registry
+from services.dify_builder.application.runner import Env, Runner
 from services.dify_builder.plan import WorkflowPlan
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text

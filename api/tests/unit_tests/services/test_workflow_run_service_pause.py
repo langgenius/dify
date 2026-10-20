@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from graphon.entities.pause_reason import SchedulingPause
+from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import WorkflowExecutionStatus
 from machinery.context import RequestContext
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunPauseRecord
@@ -100,13 +100,56 @@ def test_get_pause_details_maps_human_input_and_token(workflow_runs: MagicMock) 
     )
 
 
+def test_get_pause_details_preserves_scheduling_pause_without_exposing_private_message(
+    workflow_runs: MagicMock,
+) -> None:
+    paused_at = datetime(2026, 1, 2, 3, 4, 5)
+    workflow_runs.get_pause_record.return_value = WorkflowRunPauseRecord(
+        status=WorkflowExecutionStatus.PAUSED,
+        paused_at=paused_at,
+        reasons=(SchedulingPause(message="private-agent-command-carrier"),),
+        form_tokens={"private-agent-command-carrier": "not-a-human-form-token"},
+    )
+
+    result = _service(workflow_runs).get_pause_details(
+        _request_context(workspace_id="tenant-context"), workflow_run_id="run-1"
+    )
+
+    assert result == WorkflowRunPauseDetails(paused_at=paused_at, paused_nodes=())
+    workflow_runs.get_pause_record.assert_called_once_with(workspace_id="tenant-context", workflow_run_id="run-1")
+
+
+@pytest.mark.parametrize("scheduling_first", [True, False])
+def test_get_pause_details_keeps_human_form_when_scheduling_also_waits(
+    workflow_runs: MagicMock, scheduling_first: bool
+) -> None:
+    human = HumanInputRequired(form_id="form-1", form_content="Approve?", node_id="node-1", node_title="Approval")
+    scheduling = SchedulingPause(message="private-agent-command-carrier")
+    paused_at = datetime(2026, 1, 2, 3, 4, 5)
+    workflow_runs.get_pause_record.return_value = WorkflowRunPauseRecord(
+        status=WorkflowExecutionStatus.PAUSED,
+        paused_at=paused_at,
+        reasons=(scheduling, human) if scheduling_first else (human, scheduling),
+        form_tokens={"form-1": "form-token", "private-agent-command-carrier": "not-a-human-form-token"},
+    )
+
+    result = _service(workflow_runs).get_pause_details(_request_context(), workflow_run_id="run-1")
+
+    assert result == WorkflowRunPauseDetails(
+        paused_at=paused_at,
+        paused_nodes=(
+            WorkflowRunPausedNode(node_id="node-1", node_title="Approval", form_id="form-1", form_token="form-token"),
+        ),
+    )
+
+
 def test_get_pause_details_rejects_unsupported_pause_reason(workflow_runs: MagicMock) -> None:
     workflow_runs.get_pause_record.return_value = WorkflowRunPauseRecord(
         status=WorkflowExecutionStatus.PAUSED,
         paused_at=None,
-        reasons=(SchedulingPause(message="Waiting for external input"),),
+        reasons=(HitlRequired(session_id="unhydrated-form", node_id="node-1", node_title="Approval"),),
         form_tokens={},
     )
 
-    with pytest.raises(NotImplementedError, match="Pause details do not support SchedulingPause"):
+    with pytest.raises(NotImplementedError, match="Pause details do not support HitlRequired"):
         _service(workflow_runs).get_pause_details(_request_context(), workflow_run_id="run-1")

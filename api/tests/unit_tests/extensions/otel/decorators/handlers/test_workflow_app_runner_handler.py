@@ -100,3 +100,20 @@ class TestWorkflowAppRunnerHandler:
         assert attrs[GenAIAttributes.USER_ID] == test_user_id
         assert attrs[DifySpanAttributes.WORKFLOW_ID] == test_workflow_id
         assert attrs[DifySpanAttributes.STREAMING] is False
+
+
+def test_marked_native_driver_does_not_emit_workflow_span(sqlite_engine: Engine) -> None:
+    runner, _, _ = make_workflow_runner(sqlite_engine)
+    runner.application_generate_entity.native_test_required = True
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+
+    def marked_execution(runner) -> None:
+        assert runner.application_generate_entity.native_test_required
+
+    try:
+        WorkflowAppRunnerHandler().wrapper(provider.get_tracer(__name__), marked_execution, runner)
+        assert exporter.get_finished_spans() == ()
+    finally:
+        provider.shutdown()

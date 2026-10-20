@@ -13,12 +13,16 @@ from unittest.mock import Mock
 import pytest
 import yaml
 
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError, admitted_node_bindings, canonical_digest
 from core.dify_builder.models import Graph
-from core.workflow.restricted_execution import validate_restricted_node, validate_restricted_raw_node
 from graphon.engine_events import GraphRunSucceededEvent, NodeRunSucceededEvent
 from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
 from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
+from services.dify_builder.application.execution_policy import (
+    BuilderExecutionPolicyError,
+    admitted_node_bindings,
+    canonical_digest,
+)
+from services.dify_builder.restricted_execution import validate_restricted_node, validate_restricted_raw_node
 from tests.unit_tests.core.dify_builder.test_execution_policy import snapshot
 from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native import (
     FIXTURES,
@@ -480,8 +484,8 @@ def test_native_template_class_version_and_raw_binding_are_rechecked(owned: Owne
 def test_native_factory_rejects_template_raw_drift_before_native_validator(
     owned: Owned, monkeypatch: pytest.MonkeyPatch, entry: str
 ) -> None:
-    from core.workflow.node_factory import DifyNodeFactory
     from graphon.graph import Graph
+    from services.workflow_runtime.node_factory import DifyNodeFactory
 
     factory, _, recorder = prepare_native(
         owned,

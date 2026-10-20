@@ -7,9 +7,6 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.common import workflow_response_converter
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
@@ -30,6 +27,9 @@ from models.account import Account
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowType
+from services.workflow_runtime import response_converter as workflow_response_converter
+from services.workflow_runtime.response_converter import WorkflowResponseConverter
+from services.workflow_runtime.workflow_runner import WorkflowAppRunner
 from tests.unit_tests.core.app.apps.test_workflow_app_runner_core import _workflow_entry
 
 
@@ -83,7 +83,7 @@ def _persist_human_input_form(
 
 
 def _build_runner():
-    app_entity = SimpleNamespace(
+    app_entity = WorkflowAppGenerateEntity.model_construct(
         app_config=SimpleNamespace(app_id="app-id"),
         inputs={},
         files=[],
@@ -140,7 +140,7 @@ def test_graph_run_paused_event_uses_projected_nodes_for_highlighting(
         node_id="node-human",
         node_title="Human Step",
     )
-    monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_email_task", MagicMock())
+    monkeypatch.setattr("services.workflow_runtime.base_runner.dispatch_human_input_email_task", MagicMock())
 
     runner.handle_event(workflow_entry, event, pause_reasons=[enriched_reason])
 

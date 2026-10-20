@@ -13,14 +13,14 @@ from typing import NoReturn, cast, get_args
 import pytest
 
 from core.dify_builder.models import Graph
-from core.workflow.graph_normalizers import (
+from graphon.nodes.list_operator.entities import FilterOperator
+from graphon.utils.condition.entities import SupportedComparisonOperator
+from services.workflow_generation.graph_normalizers import (
     heal_nodes_for_preflight,
     normalize_condition_value,
     normalize_conditions,
     normalize_filter_condition_value,
 )
-from graphon.nodes.list_operator.entities import FilterOperator
-from graphon.utils.condition.entities import SupportedComparisonOperator
 
 _FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -99,7 +99,7 @@ class TestNormalizeConditionsDispatch:
     def test_a_type_error_inside_a_value_normalizer_is_not_masked(self) -> None:
         # The walker used to retry any TypeError as a one-argument call, which
         # replaced a genuine bug's error with an unrelated "missing argument".
-        from core.workflow.graph_normalizers import _normalize_condition_list
+        from services.workflow_generation.graph_normalizers import _normalize_condition_list
 
         def broken(_value: object, _operator: object) -> NoReturn:
             raise TypeError("genuine bug")
@@ -395,7 +395,7 @@ class TestCanonicalizeComparisonOperators:
         # ``normalize_condition_value`` keys on the operator (a scalar under
         # ``in`` / ``not in`` / ``all of`` becomes a one-item list), so it must
         # never see an operator the engine is about to reject.
-        from core.workflow.graph_normalizers import _normalize_condition_list
+        from services.workflow_generation.graph_normalizers import _normalize_condition_list
 
         seen: list[str] = []
 
@@ -484,7 +484,7 @@ class TestDeriveIfElseVarTypes:
     certain -- from a declared start-variable type -- and never guess."""
 
     def test_derives_number_from_the_esq1_303_start_variable(self) -> None:
-        from core.workflow.graph_normalizers import derive_if_else_var_types
+        from services.workflow_generation.graph_normalizers import derive_if_else_var_types
 
         nodes = _esq1_303_nodes()
         condition = next(n for n in nodes if n["id"] == "node2")["data"]["cases"][0]["conditions"][0]
@@ -494,7 +494,7 @@ class TestDeriveIfElseVarTypes:
         assert condition["varType"] == "number"
 
     def test_maps_every_certain_start_type_and_nothing_else(self) -> None:
-        from core.workflow.graph_normalizers import derive_if_else_var_types
+        from services.workflow_generation.graph_normalizers import derive_if_else_var_types
 
         def cond(var: str) -> Graph:
             return {"id": var, "variable_selector": ["start", var], "comparison_operator": "is", "value": ""}
@@ -547,7 +547,7 @@ class TestDeriveIfElseVarTypes:
         }
 
     def test_leaves_existing_non_start_and_sys_selectors_alone(self) -> None:
-        from core.workflow.graph_normalizers import derive_if_else_var_types
+        from services.workflow_generation.graph_normalizers import derive_if_else_var_types
 
         nodes: list[Graph] = [
             {"id": "start", "data": {"type": "start", "variables": [{"variable": "n", "type": "number"}]}},
@@ -579,7 +579,7 @@ class TestDeriveIfElseVarTypes:
         assert "varType" not in conds["d"]
 
     def test_derives_declared_direct_http_request_output_types(self) -> None:
-        from core.workflow.graph_normalizers import derive_if_else_var_types
+        from services.workflow_generation.graph_normalizers import derive_if_else_var_types
 
         roots = {
             "status_code": "number",
@@ -610,7 +610,7 @@ class TestDeriveIfElseVarTypes:
         assert {condition["id"]: condition["varType"] for condition in conditions} == roots
 
     def test_preserves_authored_types_and_leaves_unknown_or_nested_outputs_unknown(self) -> None:
-        from core.workflow.graph_normalizers import derive_if_else_var_types
+        from services.workflow_generation.graph_normalizers import derive_if_else_var_types
 
         conditions: list[Graph] = [
             {"id": "authored", "variable_selector": ["request", "status_code"], "varType": "string"},
@@ -634,7 +634,7 @@ class TestDeriveIfElseVarTypes:
         assert all("varType" not in condition for condition in conditions[1:])
 
     def test_http_output_hints_require_exact_http_request_node_type(self) -> None:
-        from core.workflow.graph_normalizers import derive_if_else_var_types
+        from services.workflow_generation.graph_normalizers import derive_if_else_var_types
 
         nodes: list[Graph] = [
             {"id": "tool", "data": {"type": "tool", "outputs": ["status_code"]}},
@@ -680,7 +680,7 @@ ESQ1_302_HTTP_NODE: Graph = {
 
 class TestNormalizeHttpRequestBodies:
     def test_fills_the_missing_item_type_on_the_esq1_302_node(self) -> None:
-        from core.workflow.graph_normalizers import normalize_http_request_bodies
+        from services.workflow_generation.graph_normalizers import normalize_http_request_bodies
 
         node = copy.deepcopy(ESQ1_302_HTTP_NODE)
 
@@ -688,7 +688,7 @@ class TestNormalizeHttpRequestBodies:
         assert [item["type"] for item in node["data"]["body"]["data"]] == ["text", "text"]
 
     def test_an_item_carrying_a_file_selector_is_a_file_item(self) -> None:
-        from core.workflow.graph_normalizers import normalize_http_request_bodies
+        from services.workflow_generation.graph_normalizers import normalize_http_request_bodies
 
         node: Graph = {
             "id": "up",
@@ -706,7 +706,7 @@ class TestNormalizeHttpRequestBodies:
         assert [item["type"] for item in node["data"]["body"]["data"]] == ["file", "text"]
 
     def test_a_none_body_drops_stray_items(self) -> None:
-        from core.workflow.graph_normalizers import normalize_http_request_bodies
+        from services.workflow_generation.graph_normalizers import normalize_http_request_bodies
 
         node: Graph = {
             "id": "get",
@@ -720,7 +720,7 @@ class TestNormalizeHttpRequestBodies:
         assert node["data"]["body"]["data"] == []
 
     def test_a_string_body_and_a_clean_body_are_left_alone(self) -> None:
-        from core.workflow.graph_normalizers import normalize_http_request_bodies
+        from services.workflow_generation.graph_normalizers import normalize_http_request_bodies
 
         nodes: list[Graph] = [
             {
@@ -759,7 +759,7 @@ class TestNormalizeHttpRequestAuthorization:
         }
 
     def test_a_config_carrying_an_api_key_becomes_api_key(self) -> None:
-        from core.workflow.graph_normalizers import normalize_http_request_bodies
+        from services.workflow_generation.graph_normalizers import normalize_http_request_bodies
 
         node = self._node({"config": {"type": "bearer", "api_key": "x"}})
 
@@ -767,7 +767,7 @@ class TestNormalizeHttpRequestAuthorization:
         assert node["data"]["authorization"] == {"type": "api-key", "config": {"type": "bearer", "api_key": "x"}}
 
     def test_an_empty_authorization_becomes_no_auth(self) -> None:
-        from core.workflow.graph_normalizers import normalize_http_request_bodies
+        from services.workflow_generation.graph_normalizers import normalize_http_request_bodies
 
         node = self._node({})
 
@@ -775,7 +775,7 @@ class TestNormalizeHttpRequestAuthorization:
         assert node["data"]["authorization"] == {"type": "no-auth", "config": None}
 
     def test_a_config_without_a_key_becomes_no_auth(self) -> None:
-        from core.workflow.graph_normalizers import normalize_http_request_bodies
+        from services.workflow_generation.graph_normalizers import normalize_http_request_bodies
 
         node = self._node({"config": {"type": "bearer", "api_key": ""}})
 
@@ -783,7 +783,7 @@ class TestNormalizeHttpRequestAuthorization:
         assert node["data"]["authorization"] == {"type": "no-auth", "config": None}
 
     def test_an_authorization_with_a_type_or_not_a_dict_is_left_alone(self) -> None:
-        from core.workflow.graph_normalizers import normalize_http_request_bodies
+        from services.workflow_generation.graph_normalizers import normalize_http_request_bodies
 
         nodes: list[Graph] = [
             self._node({"type": "api-key", "config": {"type": "bearer", "api_key": "x"}}),
@@ -803,7 +803,7 @@ class TestHttpRequestBodyErrors:
     plain text). The honest answer is a structured rejection naming the node."""
 
     def test_the_esq1_302_json_body_with_two_items_is_rejected_with_the_node_id(self) -> None:
-        from core.workflow.graph_normalizers import http_request_body_errors
+        from services.workflow_generation.graph_normalizers import http_request_body_errors
 
         node = copy.deepcopy(ESQ1_302_HTTP_NODE)
         errors = http_request_body_errors([node])
@@ -815,7 +815,7 @@ class TestHttpRequestBodyErrors:
         assert "2 items" in detail
 
     def test_raw_text_and_binary_need_exactly_one_item_form_bodies_take_any_number(self) -> None:
-        from core.workflow.graph_normalizers import http_request_body_errors
+        from services.workflow_generation.graph_normalizers import http_request_body_errors
 
         def node(nid: str, body_type: str, count: int) -> Graph:
             items = [{"type": "text", "key": str(i), "value": "v"} for i in range(count)]
@@ -840,7 +840,7 @@ class TestHttpRequestBodyErrors:
         assert [nid for nid, _ in http_request_body_errors(nodes)] == ["raw0", "bin2"]
 
     def test_empty_string_bodies_are_rejected_as_having_no_items(self) -> None:
-        from core.workflow.graph_normalizers import http_request_body_errors
+        from services.workflow_generation.graph_normalizers import http_request_body_errors
 
         nodes: list[Graph] = [
             {
@@ -878,7 +878,7 @@ class TestHttpRequestBodyErrors:
         assert error_ids == ["raw_empty", "json_empty", "bin_empty"]
 
     def test_normalize_http_request_bodies_handles_empty_string_data_safely(self) -> None:
-        from core.workflow.graph_normalizers import normalize_http_request_bodies
+        from services.workflow_generation.graph_normalizers import normalize_http_request_bodies
 
         nodes: list[Graph] = [
             {
@@ -944,13 +944,13 @@ def _handles(edges: list[Graph]) -> list[tuple[str, str | None]]:
 
 class TestDeclaredBranchHandles:
     def test_if_else_declares_its_case_ids_plus_the_implicit_else(self) -> None:
-        from core.workflow.graph_normalizers import declared_branch_handles
+        from services.workflow_generation.graph_normalizers import declared_branch_handles
 
         assert declared_branch_handles(_if_else("n", ("true",))) == ["true", "false"]
         assert declared_branch_handles(_if_else("n", ("c1", "c2"))) == ["c1", "c2", "false"]
 
     def test_question_classifier_declares_its_class_ids(self) -> None:
-        from core.workflow.graph_normalizers import declared_branch_handles
+        from services.workflow_generation.graph_normalizers import declared_branch_handles
 
         qc = {"id": "q", "data": {"type": "question-classifier", "classes": [{"id": "1", "name": "A"}, {"id": "2"}]}}
         assert declared_branch_handles(qc) == ["1", "2"]
@@ -959,7 +959,7 @@ class TestDeclaredBranchHandles:
         # (i) R1(b): human-input routes an implicit "__timeout" arm
         # (TIMEOUT_HANDLE, core/workflow/nodes/human_input/constants.py) in
         # addition to its declared user actions.
-        from core.workflow.graph_normalizers import declared_branch_handles
+        from services.workflow_generation.graph_normalizers import declared_branch_handles
 
         hi = {"id": "h", "data": {"type": "human-input", "user_actions": [{"id": "approve"}, {"id": "deny"}]}}
         assert declared_branch_handles(hi) == ["approve", "deny", "__timeout"]
@@ -968,7 +968,7 @@ class TestDeclaredBranchHandles:
         # R1(a): a fail-branch node's SUCCESS path stays on the handle
         # graphon actually emits (NodeRunResult.edge_source_handle defaults
         # to "source"), not an invented "success" handle nothing emits.
-        from core.workflow.graph_normalizers import declared_branch_handles
+        from services.workflow_generation.graph_normalizers import declared_branch_handles
 
         node: Graph = {"id": "h", "data": {"type": "http-request", "error_strategy": "fail-branch"}}
         assert declared_branch_handles(node) == ["source", "fail-branch"]
@@ -976,14 +976,14 @@ class TestDeclaredBranchHandles:
     def test_if_else_with_fail_branch_declares_cases_false_and_fail_branch(self) -> None:
         # (iv) a branch-type node with error_strategy fail-branch appends
         # "fail-branch" to its own declared handles rather than replacing them.
-        from core.workflow.graph_normalizers import declared_branch_handles
+        from services.workflow_generation.graph_normalizers import declared_branch_handles
 
         node = _if_else("n", ("c1", "c2"))
         node["data"]["error_strategy"] = "fail-branch"
         assert declared_branch_handles(node) == ["c1", "c2", "false", "fail-branch"]
 
     def test_plain_nodes_declare_nothing(self) -> None:
-        from core.workflow.graph_normalizers import declared_branch_handles
+        from services.workflow_generation.graph_normalizers import declared_branch_handles
 
         assert declared_branch_handles({"id": "l", "data": {"type": "llm"}}) == []
 
@@ -991,7 +991,7 @@ class TestDeclaredBranchHandles:
         # graphon routes a node whose ``cases`` is absent or None on "true"
         # (iter_cases' legacy case) or "false"; declaring only "false" made
         # the engine's own "true" arm look undeclared.
-        from core.workflow.graph_normalizers import declared_branch_handles
+        from services.workflow_generation.graph_normalizers import declared_branch_handles
 
         assert declared_branch_handles(_legacy_if_else("n")) == ["true", "false"]
 
@@ -1006,7 +1006,7 @@ class TestDeclaredBranchHandles:
     def test_an_explicitly_empty_cases_list_is_not_the_legacy_shape(self) -> None:
         # ``cases: []`` is not None: graphon iterates zero cases and always
         # takes the ELSE arm, so only "false" is declared.
-        from core.workflow.graph_normalizers import declared_branch_handles
+        from services.workflow_generation.graph_normalizers import declared_branch_handles
 
         assert declared_branch_handles(_if_else("n", ())) == ["false"]
 
@@ -1017,7 +1017,7 @@ class TestRepairBranchEdgeHandles:
     Repair only what is forced; leave anything ambiguous for the validator."""
 
     def test_heals_the_esq1_303_dev_edges_else_alias_pins_the_other_arm(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         graph = _esq1_303_graph()
 
@@ -1028,14 +1028,14 @@ class TestRepairBranchEdgeHandles:
         assert by_target == {"node3": "true", "node4": "false"}
 
     def test_legacy_default_handle_edges_still_take_unused_handles_in_order(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         edges = _edges("n", [("source", "a"), (None, "b")])
         assert repair_branch_edge_handles([_if_else("n")], edges) == []
         assert _handles(edges) == [("a", "true"), ("b", "false")]
 
     def test_three_default_edges_on_two_handles_stay_untouched(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         edges = _edges("n", [("source", "a"), ("source", "b"), ("source", "c")])
         unresolved = repair_branch_edge_handles([_if_else("n")], edges)
@@ -1043,7 +1043,7 @@ class TestRepairBranchEdgeHandles:
         assert all(h == "source" for _, h in _handles(edges))
 
     def test_both_edges_unknown_with_no_alias_is_ambiguous_and_untouched(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         edges = _edges("n", [("pass", "a"), ("fail", "b")])
         unresolved = repair_branch_edge_handles([_if_else("n")], edges)
@@ -1051,42 +1051,42 @@ class TestRepairBranchEdgeHandles:
         assert _handles(edges) == [("a", "pass"), ("b", "fail")]
 
     def test_a_single_unknown_edge_with_two_free_arms_is_ambiguous(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         edges = _edges("n", [("maybe", "a")])
         assert len(repair_branch_edge_handles([_if_else("n")], edges)) == 1
         assert _handles(edges) == [("a", "maybe")]
 
     def test_three_case_if_else_with_invented_names_is_ambiguous(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         edges = _edges("n", [("low", "a"), ("mid", "b"), ("high", "c")])
         assert len(repair_branch_edge_handles([_if_else("n", ("case1", "case2"))], edges)) == 3
         assert _handles(edges) == [("a", "low"), ("b", "mid"), ("c", "high")]
 
     def test_one_exact_plus_else_alias_forces_the_last_unknown_onto_the_last_free_case(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         edges = _edges("n", [("case1", "a"), ("whatever", "b"), ("else", "c")])
         assert repair_branch_edge_handles([_if_else("n", ("case1", "case2"))], edges) == []
         assert _handles(edges) == [("a", "case1"), ("b", "case2"), ("c", "false")]
 
     def test_an_if_alias_while_true_is_taken_is_a_fan_out_not_the_else_arm(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         edges = _edges("n", [("true", "a"), ("if", "b")])
         repair_branch_edge_handles([_if_else("n")], edges)
         assert _handles(edges) == [("a", "true"), ("b", "true")]
 
     def test_the_same_unknown_handle_twice_is_one_arm_fanning_out(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         edges = _edges("n", [("false", "a"), ("matched", "b"), ("matched", "c")])
         assert repair_branch_edge_handles([_if_else("n")], edges) == []
         assert _handles(edges) == [("a", "false"), ("b", "true"), ("c", "true")]
 
     def test_question_classifier_matches_class_names_case_and_space_insensitively(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         nodes: list[Graph] = [
             {
@@ -1110,7 +1110,7 @@ class TestRepairBranchEdgeHandles:
         assert _handles(edges) == [("a", "1"), ("b", "2")]
 
     def test_human_input_matches_action_stems_then_eliminates(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         nodes: list[Graph] = [
             {
@@ -1126,7 +1126,7 @@ class TestRepairBranchEdgeHandles:
         assert _handles(edges) == [("a", "approve"), ("b", "deny")]
 
     def test_a_short_stem_never_matches_by_prefix(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         # "no" is too short a stem to claim "nothing"; both arms are free, so refuse.
         nodes: list[Graph] = [
@@ -1136,7 +1136,7 @@ class TestRepairBranchEdgeHandles:
         assert len(repair_branch_edge_handles(nodes, edges)) == 1
 
     def test_alias_trust_documented_limit_a_mislabelled_else_alias_swaps_the_arms(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         # The planner put an ELSE alias on the IF-arm edge and "true" on the
         # other. Names are trusted as names: this maps "default" -> false. No
@@ -1147,7 +1147,7 @@ class TestRepairBranchEdgeHandles:
         assert _handles(edges) == [("a", "false"), ("b", "true")]
 
     def test_non_branch_nodes_are_untouched(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         edges = [{"source": "llm1", "target": "end", "sourceHandle": "source"}]
         assert repair_branch_edge_handles([{"id": "llm1", "data": {"type": "llm"}}], edges) == []
@@ -1157,7 +1157,7 @@ class TestRepairBranchEdgeHandles:
         # (ii) R1(a): the success edge is already on "source" (what graphon
         # actually emits) and the failure edge on "fail-branch"; both are
         # exact matches, so nothing is re-homed.
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         nodes: list[Graph] = [{"id": "h", "data": {"type": "http-request", "error_strategy": "fail-branch"}}]
         edges = _edges("h", [("source", "ok"), ("fail-branch", "err")])
@@ -1167,7 +1167,7 @@ class TestRepairBranchEdgeHandles:
     def test_human_input_timeout_edge_is_untouched(self) -> None:
         # (iii) the implicit "__timeout" arm is a declared handle; an edge
         # already on it is an exact match and is left alone.
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         nodes: list[Graph] = [
             {"id": "h", "data": {"type": "human-input", "user_actions": [{"id": "approve"}, {"id": "deny"}]}}
@@ -1181,7 +1181,7 @@ class TestRepairBranchEdgeHandles:
         # sourceHandle to "source" (edge_config.get("sourceHandle",
         # "source"), graph/graph.py:131). These are already-valid graphs;
         # they must come out byte-for-byte identical, not re-homed.
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         node: Graph = {"id": "h", "data": {"type": "http-request", "error_strategy": "fail-branch"}}
 
@@ -1201,7 +1201,7 @@ class TestRepairBranchEdgeHandles:
         # Review fix round 1, Important 2 (probe 1): "fail-branch" must not
         # be a candidate the fan-out rule assigns to -- with true/false both
         # wired, a third, unrecognized name has nowhere safe to land.
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         node = _if_else("n", ("true",))
         node["data"]["error_strategy"] = "fail-branch"
@@ -1217,7 +1217,7 @@ class TestRepairBranchEdgeHandles:
         # Review fix round 1, Important 2 (probe 2): three default-handle
         # edges against true/false only (fail-branch excluded from the
         # pool) is exactly the pre-fail-branch "too many defaults" case.
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         node = _if_else("n", ("true",))
         node["data"]["error_strategy"] = "fail-branch"
@@ -1232,7 +1232,7 @@ class TestRepairBranchEdgeHandles:
         # Review fix round 1, Important 2 (probe 3): "success" is an
         # explicit alias for a plain fail-branch node's "source" arm, not a
         # guess made by process of elimination.
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         nodes: list[Graph] = [{"id": "h", "data": {"type": "http-request", "error_strategy": "fail-branch"}}]
         edges = _edges("h", [("source", "ok"), ("success", "b")])
@@ -1247,7 +1247,7 @@ class TestRepairBranchEdgeHandles:
         # not on either alias list must still fail closed rather than land
         # on the one handle ("source") that rule 2 would otherwise see as
         # the sole unused slot.
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         nodes: list[Graph] = [{"id": "h", "data": {"type": "http-request", "error_strategy": "fail-branch"}}]
         edges = _edges("h", [("problem", "b")])
@@ -1261,7 +1261,7 @@ class TestRepairBranchEdgeHandles:
         # Review fix round 1, Important 3: "timeout" must resolve via the
         # explicit alias (rule 1), not fan out onto the unwired "deny" arm
         # by elimination (rule 2).
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         nodes: list[Graph] = [
             {"id": "h", "data": {"type": "human-input", "user_actions": [{"id": "approve"}, {"id": "deny"}]}}
@@ -1273,7 +1273,7 @@ class TestRepairBranchEdgeHandles:
     def test_duplicate_canonical_class_names_fail_closed_instead_of_picking_a_winner(self) -> None:
         # Review fix round 1, Minor 1a: "Support" and "support" both canon
         # to "support" -- that name must not silently pick class "1" or "2".
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         nodes: list[Graph] = [
             {
@@ -1295,7 +1295,7 @@ class TestRepairBranchEdgeHandles:
         # Review fix round 1, Minor 1b: "default" is the ELSE alias, but it
         # is also the unambiguous stem of a case literally named
         # "default_case" -- the two signals disagree, so neither wins.
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         node = _if_else("n", ("default_case", "other"))
         edges = _edges("n", [("default", "a")])
@@ -1312,7 +1312,7 @@ class TestRepairBranchEdgeHandles:
         # "false" is already taken by another edge, so elimination (which
         # would otherwise also land "yes" on the sole leftover handle) can't
         # mask a wrongly-firing IF alias either: this isolates the alias fix.
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         node = _if_else("n", ())
         node["data"]["error_strategy"] = "fail-branch"
@@ -1328,7 +1328,7 @@ class TestRepairBranchEdgeHandles:
         # Review fix round 1, Minor 2: one case + fail-branch has 3 declared
         # handles (["true", "false", "fail-branch"]); the IF alias must
         # still resolve since there is still exactly one case.
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         node = _if_else("n", ("true",))
         node["data"]["error_strategy"] = "fail-branch"
@@ -1337,7 +1337,7 @@ class TestRepairBranchEdgeHandles:
         assert _handles(edges) == [("a", "true")]
 
     def test_a_legacy_if_else_wired_true_and_false_is_untouched_and_fully_declared(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles, undeclared_branch_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles, undeclared_branch_handles
 
         nodes: list[Graph] = [_legacy_if_else("n")]
         edges = _edges("n", [("true", "a"), ("false", "b")])
@@ -1349,7 +1349,7 @@ class TestRepairBranchEdgeHandles:
     def test_a_legacy_if_else_with_only_its_true_arm_wired_keeps_it_on_true(self) -> None:
         # Before: "true" looked undeclared, the one unused declared handle was
         # "false", and the fan-out rule re-homed the IF arm onto ELSE.
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         edges = _edges("n", [("true", "a")])
 
@@ -1357,7 +1357,7 @@ class TestRepairBranchEdgeHandles:
         assert _handles(edges) == [("a", "true")]
 
     def test_a_legacy_if_else_counts_as_one_case_for_the_if_alias(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         edges = _edges("n", [("yes", "a")])
         assert repair_branch_edge_handles([_legacy_if_else("n")], edges) == []
@@ -1368,7 +1368,7 @@ class TestRepairBranchEdgeHandles:
         assert _handles(edges) == [("a", "true"), ("b", "false")]
 
     def test_failure_arm_aliases_reach_fail_branch_however_they_are_spelled(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         node: Graph = {"id": "h", "data": {"type": "http-request", "error_strategy": "fail-branch"}}
         for name in ("fail_branch", "failbranch", "Fail Branch", "error_branch", "Error-Branch", "on_fail", "fallback"):
@@ -1379,7 +1379,7 @@ class TestRepairBranchEdgeHandles:
     def test_a_branch_type_fail_branch_node_resolves_a_failure_alias_to_fail_branch_not_else(self) -> None:
         # Before: "fallback" was no alias, so with "true" wired the fan-out
         # rule eliminated it onto the one unused arm it counts -- ELSE.
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         node = _if_else("n", ("true",))
         node["data"]["error_strategy"] = "fail-branch"
@@ -1391,7 +1391,7 @@ class TestRepairBranchEdgeHandles:
     def test_an_unknown_name_on_a_branch_type_node_with_an_unwired_fail_branch_is_not_eliminated(self) -> None:
         # With the fail-branch arm unwired, an unrecognized name is as likely
         # to be the failure arm as the one free branch arm: fail closed.
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         node = _if_else("n", ("true",))
         node["data"]["error_strategy"] = "fail-branch"
@@ -1406,7 +1406,7 @@ class TestRepairBranchEdgeHandles:
         # Once the fail-branch arm is wired it is on the same footing as the
         # IF arm, and the pre-existing rule applies: the one unwired branch
         # arm (ELSE) is the forced home of the unknown name.
-        from core.workflow.graph_normalizers import repair_branch_edge_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles
 
         node = _if_else("n", ("true",))
         node["data"]["error_strategy"] = "fail-branch"
@@ -1418,7 +1418,7 @@ class TestRepairBranchEdgeHandles:
 
 class TestUndeclaredBranchHandles:
     def test_reports_every_edge_whose_handle_the_node_does_not_declare(self) -> None:
-        from core.workflow.graph_normalizers import undeclared_branch_handles
+        from services.workflow_generation.graph_normalizers import undeclared_branch_handles
 
         graph = _esq1_303_graph()  # before repair: score_equals_60 / else
         bad = undeclared_branch_handles(graph["nodes"], graph["edges"])
@@ -1430,13 +1430,13 @@ class TestUndeclaredBranchHandles:
         assert bad[0]["declared"] == ["true", "false"]
 
     def test_default_handles_on_branch_nodes_are_undeclared_too(self) -> None:
-        from core.workflow.graph_normalizers import undeclared_branch_handles
+        from services.workflow_generation.graph_normalizers import undeclared_branch_handles
 
         edges = [{"source": "n", "target": "a"}, {"source": "n", "target": "b", "sourceHandle": "source"}]
         assert [b["handle"] for b in undeclared_branch_handles([_if_else("n")], edges)] == ["source", "source"]
 
     def test_a_clean_graph_reports_nothing(self) -> None:
-        from core.workflow.graph_normalizers import repair_branch_edge_handles, undeclared_branch_handles
+        from services.workflow_generation.graph_normalizers import repair_branch_edge_handles, undeclared_branch_handles
 
         graph = _esq1_303_graph()
         repair_branch_edge_handles(graph["nodes"], graph["edges"])
@@ -1444,7 +1444,7 @@ class TestUndeclaredBranchHandles:
 
     def test_fail_branch_node_clean_edges_report_nothing(self) -> None:
         # (ii) source + fail-branch is exactly the declared set; nothing to report.
-        from core.workflow.graph_normalizers import undeclared_branch_handles
+        from services.workflow_generation.graph_normalizers import undeclared_branch_handles
 
         nodes: list[Graph] = [{"id": "h", "data": {"type": "http-request", "error_strategy": "fail-branch"}}]
         edges = _edges("h", [("source", "ok"), ("fail-branch", "err")])
@@ -1452,7 +1452,7 @@ class TestUndeclaredBranchHandles:
 
     def test_human_input_timeout_edge_is_not_reported(self) -> None:
         # (iii) "__timeout" is declared, so it is not flagged as undeclared.
-        from core.workflow.graph_normalizers import undeclared_branch_handles
+        from services.workflow_generation.graph_normalizers import undeclared_branch_handles
 
         nodes: list[Graph] = [
             {"id": "h", "data": {"type": "human-input", "user_actions": [{"id": "approve"}, {"id": "deny"}]}}
@@ -1464,7 +1464,7 @@ class TestUndeclaredBranchHandles:
         # Review fix round 1, Important 1: a missing/None sourceHandle means
         # "source" to graphon; it must not be reported as an undeclared
         # handle when "source" itself is declared (a fail-branch node).
-        from core.workflow.graph_normalizers import undeclared_branch_handles
+        from services.workflow_generation.graph_normalizers import undeclared_branch_handles
 
         node: Graph = {"id": "h", "data": {"type": "http-request", "error_strategy": "fail-branch"}}
 
@@ -1482,7 +1482,7 @@ class TestNormalizeParameterExtractorQueries:
     unambiguous case; the prompt itself is fixed separately."""
 
     def test_unwraps_a_single_nested_selector(self) -> None:
-        from core.workflow.graph_normalizers import normalize_parameter_extractor_queries
+        from services.workflow_generation.graph_normalizers import normalize_parameter_extractor_queries
 
         node: Graph = {"id": "node3", "data": {"type": "parameter-extractor", "query": [["node2", "text"]]}}
 
@@ -1490,7 +1490,7 @@ class TestNormalizeParameterExtractorQueries:
         assert node["data"]["query"] == ["node2", "text"]
 
     def test_an_already_flat_query_is_left_alone(self) -> None:
-        from core.workflow.graph_normalizers import normalize_parameter_extractor_queries
+        from services.workflow_generation.graph_normalizers import normalize_parameter_extractor_queries
 
         node: Graph = {"id": "node3", "data": {"type": "parameter-extractor", "query": ["node2", "text"]}}
 
@@ -1498,7 +1498,7 @@ class TestNormalizeParameterExtractorQueries:
         assert node["data"]["query"] == ["node2", "text"]
 
     def test_an_empty_query_is_left_alone(self) -> None:
-        from core.workflow.graph_normalizers import normalize_parameter_extractor_queries
+        from services.workflow_generation.graph_normalizers import normalize_parameter_extractor_queries
 
         node: Graph = {"id": "node3", "data": {"type": "parameter-extractor", "query": []}}
 
@@ -1506,7 +1506,7 @@ class TestNormalizeParameterExtractorQueries:
         assert node["data"]["query"] == []
 
     def test_more_than_one_inner_selector_is_ambiguous_and_left_for_the_validator(self) -> None:
-        from core.workflow.graph_normalizers import normalize_parameter_extractor_queries
+        from services.workflow_generation.graph_normalizers import normalize_parameter_extractor_queries
 
         node: Graph = {"id": "node3", "data": {"type": "parameter-extractor", "query": [["a", "b"], ["c", "d"]]}}
 
@@ -1514,7 +1514,7 @@ class TestNormalizeParameterExtractorQueries:
         assert node["data"]["query"] == [["a", "b"], ["c", "d"]]
 
     def test_a_non_parameter_extractor_node_is_untouched(self) -> None:
-        from core.workflow.graph_normalizers import normalize_parameter_extractor_queries
+        from services.workflow_generation.graph_normalizers import normalize_parameter_extractor_queries
 
         node: Graph = {"id": "node3", "data": {"type": "llm", "query": [["node2", "text"]]}}
 
@@ -1529,7 +1529,7 @@ class TestNormalizeParameterExtractorQueries:
         # normalizer only turns a graph the engine REFUSES into one it ACCEPTS,
         # so it must not trade a loud ``Graph.init`` refusal for a silent
         # run-time break.
-        from core.workflow.graph_normalizers import normalize_parameter_extractor_queries
+        from services.workflow_generation.graph_normalizers import normalize_parameter_extractor_queries
 
         node: Graph = {"id": "node3", "data": {"type": "parameter-extractor", "query": [[]]}}
 
@@ -1539,7 +1539,7 @@ class TestNormalizeParameterExtractorQueries:
     def test_a_one_segment_inner_selector_is_left_for_the_engine_to_refuse(self) -> None:
         # Same reason as the empty inner selector: ``["node2"]`` is a valid
         # ``list[str]`` but ``VariablePool.get`` never resolves it.
-        from core.workflow.graph_normalizers import normalize_parameter_extractor_queries
+        from services.workflow_generation.graph_normalizers import normalize_parameter_extractor_queries
 
         node: Graph = {"id": "node3", "data": {"type": "parameter-extractor", "query": [["node2"]]}}
 

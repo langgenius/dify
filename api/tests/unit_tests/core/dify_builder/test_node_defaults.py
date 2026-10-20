@@ -159,7 +159,7 @@ def test_if_else_has_no_entry_at_all() -> None:
 
 def test_an_if_else_without_cases_still_declares_both_branch_handles() -> None:
     """Proof that dropping the entry did not weaken handle validation."""
-    from core.workflow.graph_normalizers import declared_branch_handles
+    from services.workflow_generation.graph_normalizers import declared_branch_handles
 
     bare = {"id": "n1", "data": {"type": "if-else", "title": "Check", **default_config_or_empty("if-else")}}
 

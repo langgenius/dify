@@ -4,8 +4,8 @@ from types import SimpleNamespace
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
-from core.workflow.node_factory import DifyNodeFactory
 from graphon.enums import BuiltinNodeTypes
+from services.workflow_runtime.node_factory import DifyNodeFactory
 
 
 class DummyNode:
@@ -59,7 +59,7 @@ class TestDifyNodeFactory:
     @staticmethod
     def _stub_node_resolution(monkeypatch: pytest.MonkeyPatch, node_class):
         monkeypatch.setattr(
-            "core.workflow.node_factory.resolve_workflow_node_class",
+            "services.workflow_runtime.node_factory.resolve_workflow_node_class",
             lambda **_kwargs: node_class,
         )
 
@@ -73,7 +73,7 @@ class TestDifyNodeFactory:
         )
 
         return DifyNodeFactory(
-            init_params=SimpleNamespace(run_context=run_context),
+            init_params=SimpleNamespace(run_context=run_context, workflow_id="workflow"),
             runtime_state=SimpleNamespace(),
         )
 
@@ -85,7 +85,7 @@ class TestDifyNodeFactory:
 
     def test_create_node_missing_mapping(self, monkeypatch: pytest.MonkeyPatch):
         factory = self._factory()
-        monkeypatch.setattr("core.workflow.node_factory.get_node_type_classes_mapping", lambda: {})
+        monkeypatch.setattr("services.workflow_runtime.node_factory.get_node_type_classes_mapping", lambda: {})
 
         with pytest.raises(ValueError, match="No class mapping found for node type: start"):
             factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
@@ -93,10 +93,10 @@ class TestDifyNodeFactory:
     def test_create_node_missing_latest_class(self, monkeypatch: pytest.MonkeyPatch):
         factory = self._factory()
         monkeypatch.setattr(
-            "core.workflow.node_factory.get_node_type_classes_mapping",
+            "services.workflow_runtime.node_factory.get_node_type_classes_mapping",
             lambda: {BuiltinNodeTypes.START: {"1": None}},
         )
-        monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "latest")
+        monkeypatch.setattr("services.workflow_runtime.node_factory.LATEST_VERSION", "latest")
 
         with pytest.raises(ValueError, match="No latest version class found for node type: start"):
             factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
@@ -112,7 +112,7 @@ class TestDifyNodeFactory:
             selected_versions.append(("snapshot", "called"))
             return {BuiltinNodeTypes.START: {"1": DummyNode, "2": DummyNodeV2}}
 
-        monkeypatch.setattr("core.workflow.node_factory.get_node_type_classes_mapping", _get_mapping)
+        monkeypatch.setattr("services.workflow_runtime.node_factory.get_node_type_classes_mapping", _get_mapping)
 
         node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START, "version": "2"}})
 

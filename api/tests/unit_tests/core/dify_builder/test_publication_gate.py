@@ -4,11 +4,11 @@ from unittest.mock import Mock
 
 import pytest
 
-from core.dify_builder import handlers_build, handlers_edit, handlers_fix
 from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Run, RunVerification, Session, Turn
-from core.dify_builder.placeholder_agent import PlaceholderAgent
-from core.dify_builder.runner import Env
 from core.dify_builder.state import PcState
+from services.dify_builder.application import handlers_build, handlers_edit, handlers_fix
+from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+from services.dify_builder.application.runner import Env
 from tests.unit_tests.core.dify_builder.fakes import (
     FakeDifyPort,
     InMemoryRepository,
@@ -236,7 +236,7 @@ def test_verification_input_failure_retains_latest_persisted_attempt(
     flow: tuple[ModuleType, EntryMode, PcState, str, str], failure_mode: str
 ) -> None:
     from core.dify_builder.models import TestInput
-    from core.dify_builder.runner import Runner
+    from services.dify_builder.application.runner import Runner
     from tests.unit_tests.core.dify_builder.fakes import successful_verification
 
     module, dify, repo, env, session, turn = fixture(flow)

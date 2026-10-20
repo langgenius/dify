@@ -218,13 +218,16 @@ class PluginToolManager(BasePluginClient):
 
             return json_response
 
-        response = self._request_with_plugin_daemon_response(
-            "GET",
-            f"plugin/{tenant_id}/management/tool",
-            PluginToolProviderEntity,
-            params={"provider": tool_provider_id.provider_name, "plugin_id": tool_provider_id.plugin_id},
-            transformer=transformer,
-        )
+        from services.dify_builder.native_launch_observation import observe_resource
+
+        with observe_resource("tool", provider):
+            response = self._request_with_plugin_daemon_response(
+                "GET",
+                f"plugin/{tenant_id}/management/tool",
+                PluginToolProviderEntity,
+                params={"provider": tool_provider_id.provider_name, "plugin_id": tool_provider_id.plugin_id},
+                transformer=transformer,
+            )
 
         response.declaration.identity.name = f"{response.plugin_id}/{response.declaration.identity.name}"
 

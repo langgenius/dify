@@ -1,7 +1,7 @@
 """Unit tests for PipelineRunner behavior.
 
 This module validates core control-flow outcomes for
-``core.app.apps.pipeline.pipeline_runner``: app/workflow lookup, graph
+``services.workflow_runtime.pipeline_runner``: app/workflow lookup, graph
 initialization guards, invoke-source to user-source resolution, and failed-run
 event handling. Invariants asserted here include strict graph-config
 validation, correct ``InvokeFrom`` to ``UserFrom`` mapping, and publishing
@@ -19,13 +19,11 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-import core.app.apps.pipeline.pipeline_runner as module
+import services.workflow_runtime.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
-from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.queue_entities import AppQueueEvent, QueueWorkflowFailedEvent
-from core.workflow.workflow_entry import WorkflowEntry
 from graphon.engine_events import EngineEvent, GraphRunFailedEvent
 from graphon.graph import Graph
 from graphon.runtime import RuntimeState, VariablePool
@@ -35,6 +33,8 @@ from models.enums import DocumentCreatedFrom
 from models.model import AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from services.workflow_runtime.entry import WorkflowEntry
+from services.workflow_runtime.pipeline_runner import PipelineRunner
 from tests.unit_tests.model_factories import make_dataset, make_document, make_end_user, make_workflow
 
 

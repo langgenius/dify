@@ -12,8 +12,8 @@ from typing import Any, NoReturn, cast, override
 
 from jinja2 import Environment, nodes
 
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
+from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 
 MAX_SOURCE_BYTES = 16384
 MAX_TOKENS = 512

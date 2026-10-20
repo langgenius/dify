@@ -1,8 +1,6 @@
 from datetime import datetime
 
 from core.dify_builder.contract import RecoveryClass
-from core.dify_builder.handlers_build import build_registry
-from core.dify_builder.handlers_fix import fix_registry
 from core.dify_builder.models import (
     Action,
     Actor,
@@ -15,9 +13,11 @@ from core.dify_builder.models import (
     Session,
     Turn,
 )
-from core.dify_builder.placeholder_agent import PlaceholderAgent
-from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState, is_waiting, is_working
+from services.dify_builder.application.handlers_build import build_registry
+from services.dify_builder.application.handlers_fix import fix_registry
+from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+from services.dify_builder.application.runner import Env, Runner
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
 
 
@@ -45,7 +45,7 @@ def test_entry_state_for_all_modes() -> None:
     a fresh session would start somewhere entry_state_for doesn't expect,
     which is exactly the drift this test guards against.
     """
-    from core.dify_builder import recovery
+    from services.dify_builder.application import recovery
 
     assert recovery.entry_state_for(EntryMode.FIX) == PcState.FIX_DIAGNOSE
     assert recovery.entry_state_for(EntryMode.FIX_CHECKLIST) == PcState.CHECKLIST_DIAGNOSE
@@ -57,7 +57,7 @@ def test_entry_state_for_all_modes() -> None:
 
 
 def test_target_node_ids_per_mode() -> None:
-    from core.dify_builder import recovery
+    from services.dify_builder.application import recovery
 
     build_fc = DifyBuilderContext(built_node_ids=["n1", "n2"])
     assert recovery.target_node_ids(build_fc, EntryMode.BUILD) == ["n1", "n2"]
@@ -77,7 +77,7 @@ def test_target_node_ids_per_mode() -> None:
 
 
 def test_target_node_ids_fix_guard_branches() -> None:
-    from core.dify_builder import recovery
+    from services.dify_builder.application import recovery
 
     # no diagnosis yet (e.g. recovery checked before diagnose ever ran).
     assert recovery.target_node_ids(DifyBuilderContext(), EntryMode.FIX) == []
@@ -91,21 +91,21 @@ def test_target_node_ids_fix_guard_branches() -> None:
 
 
 def test_classify_unchanged() -> None:
-    from core.dify_builder import recovery
+    from services.dify_builder.application import recovery
 
     fc = DifyBuilderContext(last_snapshot_hash="h1", last_structure_fingerprint="fp1")
     assert recovery.classify("h1", "fp-anything", [], fc, EntryMode.BUILD) == RecoveryClass.UNCHANGED
 
 
 def test_classify_config_only() -> None:
-    from core.dify_builder import recovery
+    from services.dify_builder.application import recovery
 
     fc = DifyBuilderContext(last_snapshot_hash="h1", last_structure_fingerprint="fp1")
     assert recovery.classify("h2", "fp1", [], fc, EntryMode.BUILD) == RecoveryClass.CONFIG_ONLY
 
 
 def test_classify_structural_compatible() -> None:
-    from core.dify_builder import recovery
+    from services.dify_builder.application import recovery
 
     fc = DifyBuilderContext(
         last_snapshot_hash="h1",
@@ -117,7 +117,7 @@ def test_classify_structural_compatible() -> None:
 
 
 def test_classify_structural_invalidating() -> None:
-    from core.dify_builder import recovery
+    from services.dify_builder.application import recovery
 
     fc = DifyBuilderContext(
         last_snapshot_hash="h1",

@@ -6,9 +6,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.dify_builder.handlers_build import build_registry, handle_test_and_repair
-from core.dify_builder.handlers_edit import edit_registry, handle_test_affected_paths
-from core.dify_builder.handlers_fix import handle_verify
 from core.dify_builder.models import (
     Action,
     Actor,
@@ -20,8 +17,11 @@ from core.dify_builder.models import (
     TestInput,
     Turn,
 )
-from core.dify_builder.runner import Env, Handler, Runner
 from core.dify_builder.state import PcState
+from services.dify_builder.application.handlers_build import build_registry, handle_test_and_repair
+from services.dify_builder.application.handlers_edit import edit_registry, handle_test_affected_paths
+from services.dify_builder.application.handlers_fix import handle_verify
+from services.dify_builder.application.runner import Env, Handler, Runner
 from tests.unit_tests.core.dify_builder.fakes import (
     FakeDifyPort,
     FakeEditDifyPort,

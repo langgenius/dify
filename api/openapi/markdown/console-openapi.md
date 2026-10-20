@@ -7180,6 +7180,118 @@ Delete an API key for a dataset
 | 409 | Session conflict | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /dify-builder/sessions/{session_id}/native-test-input
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| session_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Current saved test input binding | **application/json**: [DifyBuilderNativeTestInputResponse](#difybuildernativetestinputresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /dify-builder/sessions/{session_id}/native-tests
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| session_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NativeTestStartPayload](#nativeteststartpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Native test admission receipt | **application/json**: [DifyBuilderNativeTestResponse](#difybuildernativetestresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /dify-builder/sessions/{session_id}/native-tests/{request_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| request_id | path |  | Yes | string |
+| session_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Current native test receipt | **application/json**: [DifyBuilderNativeTestResponse](#difybuildernativetestresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /dify-builder/sessions/{session_id}/native-tests/{request_id}/cancel
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| request_id | path |  | Yes | string |
+| session_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NativeTestCancelPayload](#nativetestcancelpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Native test cancellation receipt | **application/json**: [DifyBuilderNativeTestResponse](#difybuildernativetestresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /dify-builder/sessions/{session_id}/native-tests/{request_id}/decisions
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| request_id | path |  | Yes | string |
+| session_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NativeTestDecisionPayload](#nativetestdecisionpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Saved native test decision | **application/json**: [DifyBuilderNativeTestResponse](#difybuildernativetestresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /dify-builder/sessions/{session_id}/native-tests/{request_id}/resume
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| request_id | path |  | Yes | string |
+| session_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NativeTestResumePayload](#nativetestresumepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Native test continuation receipt | **application/json**: [DifyBuilderNativeTestResponse](#difybuildernativetestresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /dify-builder/sessions/{session_id}/real-call-consents
 #### Parameters
 
@@ -7277,6 +7389,7 @@ Delete an API key for a dataset
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| native_tests | query | Include durable native execution snapshots with reconnect cursors | No | string, <br>**Available values:** "builder-native-test-v1" |
 | session_id | path |  | Yes | string |
 
 #### Responses
@@ -19253,6 +19366,7 @@ The archived document is not editable.
 | ---- | ---- | ----------- | -------- |
 | card_state | string |  | No |
 | cards | [ string ] |  | No |
+| diagnostics | [ object ] |  | No |
 | execution | [ExecutionProgress](#executionprogress) |  | Yes |
 | reasoning_text | string |  | No |
 | reply_language | string |  | No |
@@ -19543,6 +19657,15 @@ Button styles for user actions.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ButtonStyle | string | Button styles for user actions. |  |
+
+#### CancellationReceipt
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| generation | integer |  | Yes |
+| operation_states | object |  | Yes |
+| request_id | string |  | Yes |
+| status | string, <br>**Available values:** "cancelled", "cancelling", "unknown" | *Enum:* `"cancelled"`, `"cancelling"`, `"unknown"` | Yes |
 
 #### CannotOperateSelfError
 
@@ -21413,6 +21536,7 @@ Enum representing the deployment edition of the platform.
 | command_id | string |  | Yes |
 | conversation_last_seq | integer |  | Yes |
 | decision | [Decision](#decision) |  | No |
+| diagnostics | [ object ] |  | No |
 | interrupted | boolean |  | Yes |
 | model | [SessionModel](#sessionmodel) |  | No |
 | phase | [Phase](#phase) |  | Yes |
@@ -21626,6 +21750,35 @@ Builder is not enabled for the workspace (the shared ``dify_builder_required`` g
 | kind | string |  | Yes |
 | payload | [InteractionResponseItem](#interactionresponseitem) |  | Yes |
 | seq | integer |  | Yes |
+
+#### DifyBuilderNativeExecutionEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | Yes |
+| receipt | [NativeTestPublicReceipt](#nativetestpublicreceipt) |  | Yes |
+| session_id | string |  | Yes |
+
+#### DifyBuilderNativeExecutionEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [DifyBuilderNativeExecutionEventData](#difybuildernativeexecutioneventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderNativeTestInputResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [NativeTestInputBinding](#nativetestinputbinding) |  | Yes |
+
+#### DifyBuilderNativeTestResponse
+
+Strict public native receipt; domain DTO also owns generated schemas.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [NativeTestPublicReceipt](#nativetestpublicreceipt) |  | Yes |
 
 #### DifyBuilderNoticeConversationItemResponse
 
@@ -21849,6 +22002,7 @@ Localized display only; submitted values remain in action.payload.
 | canvas_read_only | boolean |  | Yes |
 | conversation_last_seq | integer |  | Yes |
 | decision | [Decision](#decision) |  | No |
+| diagnostics | [ object ] |  | No |
 | interrupted | boolean |  | Yes |
 | last_command_id | string |  | No |
 | model | [SessionModel](#sessionmodel) |  | No |
@@ -21865,7 +22019,7 @@ One JSON object carried by an SSE ``data:`` frame.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| DifyBuilderStreamEventResponse | [DifyBuilderCommandStartedEventResponse](#difybuildercommandstartedeventresponse)<br>[DifyBuilderWorkflowEventResponse](#difybuilderworkfloweventresponse)<br>[DifyBuilderCanvasEventResponse](#difybuildercanvaseventresponse)<br>[DifyBuilderAgentMessageEventResponse](#difybuilderagentmessageeventresponse)<br>[DifyBuilderConversationItemAppendedEventResponse](#difybuilderconversationitemappendedeventresponse)<br>[DifyBuilderReasoningEventResponse](#difybuilderreasoningeventresponse)<br>[DifyBuilderProgressEventResponse](#difybuilderprogresseventresponse)<br>[DifyBuilderProgressSnapshotEventResponse](#difybuilderprogresssnapshoteventresponse)<br>[DifyBuilderCommandFinishedEventResponse](#difybuildercommandfinishedeventresponse)<br>[DifyBuilderErrorEventResponse](#difybuildererroreventresponse) | One JSON object carried by an SSE ``data:`` frame. |  |
+| DifyBuilderStreamEventResponse | [DifyBuilderCommandStartedEventResponse](#difybuildercommandstartedeventresponse)<br>[DifyBuilderWorkflowEventResponse](#difybuilderworkfloweventresponse)<br>[DifyBuilderCanvasEventResponse](#difybuildercanvaseventresponse)<br>[DifyBuilderAgentMessageEventResponse](#difybuilderagentmessageeventresponse)<br>[DifyBuilderConversationItemAppendedEventResponse](#difybuilderconversationitemappendedeventresponse)<br>[DifyBuilderReasoningEventResponse](#difybuilderreasoningeventresponse)<br>[DifyBuilderProgressEventResponse](#difybuilderprogresseventresponse)<br>[DifyBuilderProgressSnapshotEventResponse](#difybuilderprogresssnapshoteventresponse)<br>[DifyBuilderCommandFinishedEventResponse](#difybuildercommandfinishedeventresponse)<br>[DifyBuilderErrorEventResponse](#difybuildererroreventresponse)<br>[DifyBuilderNativeExecutionEventResponse](#difybuildernativeexecutioneventresponse) | One JSON object carried by an SSE ``data:`` frame. |  |
 
 #### DifyBuilderSubmitActionPayload
 
@@ -24750,6 +24904,84 @@ Model with provider entity.
 | dataset | [ResourcePermissionSnapshot](#resourcepermissionsnapshot) |  | No |
 | workspace | [WorkspacePermissionSnapshot](#workspacepermissionsnapshot) |  | No |
 
+#### NativeApprovalTerms
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_at | string |  | Yes |
+| max_calls | integer |  | Yes |
+| max_cost_units | integer |  | Yes |
+| max_dispatches | integer |  | Yes |
+
+#### NativeTestCancelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| idempotency_key | string |  | Yes |
+| schema_version | string |  | Yes |
+
+#### NativeTestDecisionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| decision | string, <br>**Available values:** "confirm", "deny" | *Enum:* `"confirm"`, `"deny"` | Yes |
+| expected_version | integer |  | Yes |
+| idempotency_key | string |  | Yes |
+| pending_operation_id | string |  | Yes |
+| schema_version | string |  | Yes |
+| scope_digest | string |  | Yes |
+
+#### NativeTestInputBinding
+
+Binding only; ordinary Builder actions remain the preferred start path.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| direct_start_capability | string, <br>**Default:** requires_runtime_qualification |  | No |
+| expected_version | integer |  | Yes |
+| graph_revision | string |  | Yes |
+| preferred_start | string, <br>**Default:** builder_action |  | No |
+| test_input_id | string |  | Yes |
+| workflow_id | string |  | Yes |
+
+#### NativeTestPublicReceipt
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| can_resume | boolean |  | No |
+| cancellation | [CancellationReceipt](#cancellationreceipt) |  | No |
+| decision_public_revision | integer |  | No |
+| evidence_refs | [ string ] |  | Yes |
+| generation | integer |  | Yes |
+| native_run_id | string |  | Yes |
+| native_status | string |  | Yes |
+| outcome | string, <br>**Available values:** "cancelled", "failed", "succeeded", "unknown" |  | Yes |
+| pending | [ [PendingActionDisclosure](#pendingactiondisclosure) ] |  | Yes |
+| request_id | string |  | Yes |
+| resume_blocked_reason | string, <br>**Available values:** "approval_required", "native_resolution_unavailable", "not_waiting", "state_unavailable" |  | No |
+| schema_version | string, <br>**Default:** builder-native-test-v1 |  | No |
+| status | string, <br>**Available values:** "prepared", "running", "terminal", "waiting" | *Enum:* `"prepared"`, `"running"`, `"terminal"`, `"waiting"` | Yes |
+| version | integer |  | Yes |
+| wait_reason | string, <br>**Available values:** "approval", "configuration", "interaction" |  | Yes |
+
+#### NativeTestResumePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expected_generation | integer |  | Yes |
+| idempotency_key | string |  | Yes |
+| schema_version | string |  | Yes |
+
+#### NativeTestStartPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expected_version | integer |  | Yes |
+| idempotency_key | string |  | Yes |
+| mode | string, <br>**Available values:** "mock", "native" | *Enum:* `"mock"`, `"native"` | Yes |
+| schema_version | string |  | Yes |
+| test_input_id | string |  | Yes |
+
 #### NeedAddIdsError
 
 Need to add ids.
@@ -25780,6 +26012,26 @@ Too many password reset emails have been sent. Please try again in {minutes} min
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
 | pause_type | [HumanInputPauseTypeResponse](#humaninputpausetyperesponse) |  | Yes |
+
+#### PendingActionDisclosure
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_label | string |  | Yes |
+| action | string |  | Yes |
+| approval_limits | [NativeApprovalTerms](#nativeapprovalterms) |  | Yes |
+| continuation_blocked_reason | string |  | No |
+| decision | string, <br>**Available values:** "confirm", "deny" |  | No |
+| decision_status | string, <br>**Available values:** "awaiting_decision", "confirmed", "denied", "exhausted", "expired" |  | No |
+| native_form_ref | string |  | Yes |
+| parameters_summary | [JsonValue](#jsonvalue) |  | Yes |
+| pending_operation_id | string |  | Yes |
+| required_configuration | [ string ] |  | Yes |
+| risk_notice | string |  | Yes |
+| scope_digest | string |  | Yes |
+| target | [JsonValue](#jsonvalue) |  | Yes |
+| version | integer |  | Yes |
+| wait_reason | string, <br>**Available values:** "approval", "configuration", "interaction" | *Enum:* `"approval"`, `"configuration"`, `"interaction"` | Yes |
 
 #### Permission
 
@@ -28905,13 +29157,17 @@ Tag type
 | consent_id | string |  | No |
 | dify_run_id | string |  | No |
 | executed_node_ids | [ string ] |  | No |
-| execution_mode | string, <br>**Available values:** "confirmed_tool", "mock", "restricted" |  | No |
+| execution_mode | string, <br>**Available values:** "confirmed_run", "confirmed_tool", "mock", "restricted" |  | No |
+| failure_code | string, <br>**Available values:** "authentication", "connection_refused", "rate_limit", "service_unavailable", "timeout", "unknown" |  | No |
+| failure_node_ids | [ string ] |  | No |
+| failure_phase | string, <br>**Available values:** "execution", "preparation" |  | No |
 | failure_reason | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
+| failure_resource | string |  | No |
 | outcome | string, <br>**Available values:** "execution_failed", "execution_succeeded_needs_review", "execution_unknown", "required_output_unresolved" |  | No |
-| policy_version | string, <br>**Available values:** "builder-confirmed-gmail-read-v1", "builder-json-parse-v1", "builder-restricted-v1" |  | No |
+| policy_version | string, <br>**Available values:** "builder-confirmed-gmail-read-v1", "builder-confirmed-run-v1", "builder-json-parse-v1", "builder-restricted-v1" |  | No |
 | reply_language | string |  | No |
 | review_note | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
-| safety_outcome | string, <br>**Available values:** "confirmed_tool_completed", "execution_blocked", "execution_evidence_unknown", "native_failed", "restricted_execution_completed", "simulation_completed", "unsupported_safe_execution" |  | No |
+| safety_outcome | string, <br>**Available values:** "confirmed_run_completed", "confirmed_tool_completed", "execution_blocked", "execution_evidence_unknown", "native_failed", "preparation_failed", "restricted_execution_completed", "simulation_completed", "unsupported_safe_execution" |  | No |
 | simulated_node_ids | [ string ] |  | No |
 | status | string, <br>**Available values:** "failed", "succeeded" | *Enum:* `"failed"`, `"succeeded"` | Yes |
 | terminal_outputs | object |  | No |

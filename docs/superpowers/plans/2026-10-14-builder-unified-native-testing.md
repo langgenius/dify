@@ -12,6 +12,16 @@
 
 **Execution method:** 用户已指定 GPT 子 agent 并行执行；不使用 Claude。本文与三个子计划共同组成一次计划审阅对象，批准后按下列依赖执行，无需再次选择执行方法。本文是计划，不是已运行的测试报告。
 
+**执行更新（2026-10-15）：** 用户明确撤销 Graphon 0.8 的全部迁移与协议改动，恢复以 Dify main 当前锁定的正式 `0.7.0` 为基线。0.8 的测试结果不能作为 0.7 的验收证据。保留与版本迁移无关的授权、防重放、恢复和 Agent 工作；不修改已安装包，不以 sibling 源码替代正式依赖制品。后续仓库边界以下列 2026-10-16 更新为准。
+
+## 主仓优先约束（2026-10-16，覆盖旧跨仓依赖）
+
+- 本项目尽可能在 Dify 主仓实现，包括 `api/`、`dify-agent/`、`dify-agent-runtime/` 和部署配置，先复用现有原生运行时与正式依赖。
+- Sandbox、Graphon、plugin daemon 及其他仓库的修改默认不实施。只有实际缺口和主仓替代方案的比较证明跨仓方案显著更优时才考虑；先说明具体收益、复杂度及维护成本，不能只以理论上更强的隔离为理由。
+- 现有跨仓分支保留并冻结；不继续其注册、构建、发布或部署。正式 Graphon 0.7.0 保持不变。
+- CS1–CS5 的新 Sandbox 基座与 NW3 的上游修改/发布步骤保留为历史方案，不再是主仓交付的默认前置条件。CS6 先复用现有 Sandbox 接口；主仓授权、恢复、防重放、New Agent 和原生执行接入继续完成。
+- 所有主仓实际支持的链路仍需 CI、Local → Dev E2E、截图与 Trace。实测能力缺口单独记录；不能伪造清理/隔离证据、绕过授权，或把未覆盖能力称为全量通过。
+
 ## Global Constraints
 
 - ENG-1117 继续暂停。前端不实现；前端缺口先记录，待后端/API 全部在 Dev 验证后再处理前端工单。
@@ -43,12 +53,12 @@
 | 本文 C01–C04 | 1196/1184 共享 owner | 契约、ledger、continuation、认证 API 与兼容迁移 |
 | [原生 Workflow 子计划](2026-10-14-builder-native-workflow-testing.md) | 1196，NW 任务 | 原生图运行、真实能力守卫、Graphon 控制流和父子恢复 |
 | [New Agent 子计划](2026-10-14-builder-new-agent-testing.md) | 1177/1184，A 任务 | 资源发现/绑定、Agent 协议、内部调用、独立测试 lease 与实际 Local runtime 隔离 |
-| [CodeSandbox 子计划](2026-10-14-builder-code-sandbox-testing.md) | 1189，CS 任务 | 请求隔离、预算/取消、实际服务制品和 Code/Jinja adapter |
+| [CodeSandbox 子计划](2026-10-14-builder-code-sandbox-testing.md) | 1189，CS6 主仓接入 | 复用现有 Sandbox 的原生 Code/Jinja adapter 与实际能力验证；CS1–CS5 跨仓方案冻结 |
 | 本文 I01–I03 | root 集成 | 完整注册表覆盖、Local/Dev 证据、每票交付判断 |
 
-先完成 C01 和 NW1 的只含契约交付，再并行 C02、A1/A2、CS1；C03 在 C02/NW1 后实现原生持久化端口；C04 在 C02/C03 后暴露 API。A7 在 A2 契约后实现现有 Go Local runtime 的真实测试 scope，A4 使用其能力，A6 完成贯通验收；不能把所有 runtime 都返回 unavailable 当作交付。NW 的运行/能力适配、A 的 runtime/bridge 与 CS 的 transport 在接口稳定后汇合。I01 不能在任一必需 lane 未完成时宣称整图通过。
+先完成 C01 和 NW1 的只含契约交付，再并行主仓内的 C02、A1/A2 与 CS6 现有接口接入；C03 在 C02/NW1 后实现原生持久化端口；C04 在 C02/C03 后暴露 API。A7 在 A2 契约后实现主仓现有 Go Local runtime 的真实测试 scope，A4 使用其能力，A6 完成贯通验收；不能把所有 runtime 都返回 unavailable 当作交付。NW 的运行/能力适配、A 的 runtime/bridge 与 CS6 transport 在接口稳定后汇合。I01 依赖这些主仓必需能力及实际运行验证，不依赖冻结的跨仓发布；缺少必需运行能力时明确记录缺口，不能宣称整图通过。
 
-同一 worktree 内只允许一个 agent 修改同一文件。C lane 独占 `models/dify_builder*`、migration、公开 Console route/DTO、`authorization.py`、`lifecycle.py`、`state_store.py`、`child_invocations.py`；NW 独占 `node_factory.py` 最终组合和通用运行适配；A 独占 Agent bridge/inner route、目录/绑定、`dify-agent/` 和 A7 的 `dify-agent-runtime/`；CS 独占 sandbox 仓库与 Code/Jinja collaborator。`node_policy.py`、共享 config、CI workflow 和依赖锁由 root 顺序集成，不同时派给两人。
+同一 worktree 内只允许一个 agent 修改同一文件。C lane 独占 `models/dify_builder*`、migration、公开 Console route/DTO、`authorization.py`、`lifecycle.py`、`state_store.py`、`child_invocations.py`；NW 独占 `node_factory.py` 最终组合和通用运行适配；A 独占 Agent bridge/inner route、目录/绑定、`dify-agent/` 和 A7 的 `dify-agent-runtime/`；CS 仅拥有主仓 Code/Jinja collaborator，Sandbox 仓库冻结。`node_policy.py`、共享 config、CI workflow 和依赖锁由 root 顺序集成，不同时派给两人。
 
 每任务按红 → 绿 → 独立规格审查 → 独立质量审查 → commit。审阅者只认可实际运行的 Linux/CI 证据；集成层测试不接受 transport mock 冒充真实框架/网络。普通测试回归在各 lane 首次触及其 owner 时运行，后续仅因新变化或失败补跑。
 
@@ -340,7 +350,7 @@ resume endpoint: consume decision via lifecycle CAS; return queued/waiting/termi
 
 **Files:** Create `api/tests/test_containers_integration_tests/core/workflow/test_builder_unified_native_chain.py`、`api/tests/fixtures/workflow/builder_native_testing/{contract_agent,code_iteration_agent_tool,node_matrix}.json`; Modify `.github/workflows/builder-safe-execution-tests.yml`、`.github/workflows/dify-agent-tests.yml` 与对应正常 reusable CI 调用入口。Test 原有 native suites 全部保留。
 
-**Dependencies:** C01–C04、全部 NW/A/CS 任务的必需交付。**Interfaces:** 以公开 v2 API 驱动运行；native Run/node persistence、实际 Agent backend 测试服务、实际合格 sandbox 和受控 canary 是验证所有者。显式 mock 的外部服务只证明受控业务契约，真实部署/账号调用另列 I02/I03。
+**Dependencies:** C01–C04、NW/A 的主仓必需交付、CS6 现有 Sandbox 接入及其实际能力验证；冻结的 Sandbox 新基座/发布与 Graphon 上游补丁不构成默认前置条件。**Interfaces:** 以公开 v2 API 驱动运行；native Run/node persistence、实际 Agent backend 测试服务、经过实际验证的现有 sandbox 和受控 canary 是验证所有者。显式 mock 的外部服务只证明受控业务契约，真实部署/账号调用另列 I02/I03。未被现有运行时满足的必需能力保留为明确缺口，不能标记通过。
 
 - [ ] **Step 1: 写贯通失败测试，在 Code → Iteration(New Agent) → Tool → End 场景使用两个合成合同片段，返回每段 risks/summary，汇总 result。**
 

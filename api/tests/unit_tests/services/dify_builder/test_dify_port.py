@@ -33,14 +33,14 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.dify_builder.models import Actor, ChangedNode, Graph, MutationIntent, NodeEvent, Run
-from core.dify_builder.ports import DifyPort
 from models.account import Account
 from models.model import App
 from models.workflow import Workflow
+from runtime_contracts.builder.execution import BuilderExecutionContext
 from services.dify_builder import run_mapping
+from services.dify_builder.application.ports import DifyPort
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.errors import HashMismatchError, WorkflowNotInitializedError
-from services.dify_builder.execution_contracts import BuilderExecutionContext
 from services.dify_builder.revision import execution_revision
 from services.errors.app import WorkflowHashNotEqualError
 from tests.unit_tests.services.dify_builder.workflow_stream_fixtures import (
@@ -146,7 +146,7 @@ def _mock_execution_preparation() -> Iterator[None]:
         ),
     ):
         policy.return_value.prepare.side_effect = prepare
-        from core.dify_builder.execution_policy import ExecutionEvidenceSummary
+        from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
 
         policy.return_value.seal.return_value = ExecutionEvidenceSummary(
             request_id="unit-request",
@@ -407,8 +407,8 @@ def test_apply_repair_computes_real_diff_changes_and_scope_for_structural_edit(m
         )
 
     assert result.scope == "structure"
-    assert "added node llm-1" in result.changes
-    assert "added a → llm-1" in result.changes
+    assert "＋ llm-1" in result.changes
+    assert "＋ a → llm-1" in result.changes
     assert result.nodes == [ChangedNode(node_id="llm-1", title="llm-1"), ChangedNode(node_id="a")]
 
 
@@ -433,7 +433,7 @@ def test_apply_repair_computes_configuration_scope_for_set_node_config(mock_sess
         )
 
     assert result.scope == "configuration"
-    assert result.changes == ["node-1: code updated"]
+    assert result.changes == ["node-1: code"]
     assert result.nodes == [ChangedNode(node_id="node-1")]
 
 

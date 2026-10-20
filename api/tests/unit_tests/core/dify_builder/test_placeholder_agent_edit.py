@@ -1,8 +1,8 @@
 """Canned Edit cognition on PlaceholderAgent (Slice 3)."""
 
 from core.dify_builder.models import Graph
-from core.dify_builder.placeholder_agent import PlaceholderAgent
-from core.dify_builder.ports import DifyBuilderAgent
+from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+from services.dify_builder.application.ports import DifyBuilderAgent
 
 
 def _graph_with_llm() -> Graph:

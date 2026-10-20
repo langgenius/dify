@@ -15,12 +15,12 @@ import pytest
 from pydantic import ValidationError
 
 from core.dify_builder.models import Graph, MutationIntent
-from core.workflow.graph_normalizers import heal_nodes_for_preflight
 from core.workflow.human_input_adapter import parse_human_input_delivery_methods
-from core.workflow.node_factory import validate_node_config
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from services.dify_builder import graph_ops
 from services.dify_builder.preflight import new_preflight_problems, preflight_errors, vet_intents
+from services.workflow_generation.graph_normalizers import heal_nodes_for_preflight
+from services.workflow_runtime.node_factory import validate_node_config
 
 _FIXTURES = Path(__file__).parent / "fixtures"
 

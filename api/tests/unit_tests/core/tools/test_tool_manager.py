@@ -84,7 +84,7 @@ class _ToolDatabase:
 
 
 @pytest.fixture
-def tool_database(sqlite_engine: Engine) -> Iterator[_ToolDatabase]:
+def tool_database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[_ToolDatabase]:
     """Provide isolated provider tables through the same engine/session split used in production."""
 
     tables = [
@@ -93,7 +93,9 @@ def tool_database(sqlite_engine: Engine) -> Iterator[_ToolDatabase]:
     ]
     TypeBase.metadata.create_all(sqlite_engine, tables=tables)
     with Session(sqlite_engine, expire_on_commit=False) as session:
-        yield _ToolDatabase(engine=sqlite_engine, session=_CallableSessionProxy(session))
+        database = _ToolDatabase(engine=sqlite_engine, session=_CallableSessionProxy(session))
+        monkeypatch.setattr("services.tools.ordinary_tool_credentials.db", database)
+        yield database
 
 
 def _builtin_provider(
@@ -400,7 +402,9 @@ def test_get_tool_runtime_builtin_with_credentials_decrypts_and_forks(
             encrypter = Mock()
             encrypter.decrypt.return_value = {"api_key": "secret"}
             cache = Mock()
-            with patch("core.tools.tool_manager.create_provider_encrypter", return_value=(encrypter, cache)):
+            with patch(
+                "services.tools.ordinary_tool_credentials.create_provider_encrypter", return_value=(encrypter, cache)
+            ):
                 result = ToolManager.get_tool_runtime(
                     provider_type=ToolProviderType.BUILT_IN,
                     provider_id="time",
@@ -414,13 +418,13 @@ def test_get_tool_runtime_builtin_with_credentials_decrypts_and_forks(
     assert runtime.credential_type == CredentialType.API_KEY
 
 
-@patch("core.tools.tool_manager.create_provider_encrypter")
+@patch("services.tools.ordinary_tool_credentials.create_provider_encrypter")
 @patch("core.plugin.impl.oauth.OAuthHandler")
 @patch(
     "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
     return_value={"client_id": "id"},
 )
-@patch("core.tools.tool_manager.time.time", return_value=1000)
+@patch("services.tools.ordinary_tool_credentials.time.time", return_value=1000)
 @patch("core.helper.credential_utils.check_credential_policy_compliance")
 def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
     mock_check,
@@ -467,9 +471,10 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
         )
 
     assert result == "runtime-tool"
+    # The bounded refresh writer commits independently of the original read.
+    tool_database.session.expire_all()
     assert builtin_provider.expires_at == refreshed.expires_at
     assert builtin_provider.encrypted_credentials == json.dumps({"token": "encrypted"})
-    tool_database.session.expire_all()
     persisted = tool_database.session.get(BuiltinToolProvider, provider_id)
     assert persisted is not None
     assert persisted.expires_at == refreshed.expires_at
@@ -501,8 +506,8 @@ def test_get_tool_runtime_builtin_maps_oauth_refresh_failure_to_credential_error
     encrypter.decrypt.return_value = {"token": "expired"}
     with (
         patch.object(ToolManager, "get_builtin_provider", return_value=controller),
-        patch("core.tools.tool_manager.create_provider_encrypter", return_value=(encrypter, Mock())),
-        patch("core.tools.tool_manager.time.time", return_value=1000),
+        patch("services.tools.ordinary_tool_credentials.create_provider_encrypter", return_value=(encrypter, Mock())),
+        patch("services.tools.ordinary_tool_credentials.time.time", return_value=1000),
         patch(
             "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
             return_value={"client_id": "id"},
@@ -652,10 +657,12 @@ def test_get_tool_runtime_workflow_path(monkeypatch: pytest.MonkeyPatch, tool_da
 
 
 def test_get_tool_runtime_plugin_path():
+    tool = Mock()
+    tool.fork_tool_runtime.return_value = "plugin-tool"
     with patch.object(
         ToolManager,
         "get_plugin_provider",
-        return_value=SimpleNamespace(get_tool=lambda _: "plugin-tool"),
+        return_value=SimpleNamespace(get_tool=lambda _: tool, need_credentials=False),
     ):
         assert (
             ToolManager.get_tool_runtime(

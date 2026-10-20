@@ -11,7 +11,6 @@ from typing import Any
 import pytest
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueEvent,
@@ -29,6 +28,7 @@ from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.model import AppMode
+from services.workflow_runtime.response_converter import WorkflowResponseConverter
 
 
 class TestWorkflowResponseConverter:
@@ -251,7 +251,7 @@ class TestWorkflowResponseConverter:
         delayed_processing_time = datetime(2024, 1, 1, 0, 0, 10, tzinfo=UTC).replace(tzinfo=None)
 
         monkeypatch.setattr(
-            "core.app.apps.common.workflow_response_converter.naive_utc_now",
+            "services.workflow_runtime.response_converter.naive_utc_now",
             lambda: delayed_processing_time,
         )
         converter.workflow_start_to_stream_response(

@@ -19,7 +19,7 @@ Three layers, each built on the one above:
   native config refusals and known producer semantics checked identically.
 
 Pure with respect to the Builder: no session, no DB, no engine state. It
-imports ``core.workflow.node_factory`` (the same validation ``create_node``
+imports ``services.workflow_runtime.node_factory`` (the same validation ``create_node``
 does), which is why it lives in ``services/dify_builder`` and not in the
 I/O-free ``core/dify_builder``.
 """
@@ -31,8 +31,6 @@ from typing import Any, NamedTuple
 from pydantic import ValidationError
 
 from core.dify_builder.models import Graph, MutationIntent
-from core.workflow.graph_normalizers import heal_nodes_for_preflight
-from core.workflow.node_factory import validate_node_config
 from services.dify_builder import credentials, graph_ops
 
 # Only for the node-type knowledge the rejoin guard's REASON needs -- which
@@ -44,6 +42,8 @@ from services.dify_builder import credentials, graph_ops
 from services.dify_builder.agent import graph_prompt
 from services.dify_builder.native_http_output_contract import native_http_condition_problems
 from services.dify_builder.node_policy import proposal_policy_rejections
+from services.workflow_generation.graph_normalizers import heal_nodes_for_preflight
+from services.workflow_runtime.node_factory import validate_node_config
 
 # graphon's ``Graph._filter_canvas_only_nodes`` drops persisted note widgets
 # (top-level ``type == "custom-note"``, empty ``data.type``) before validating
@@ -80,7 +80,7 @@ def preflight_errors(graph: Graph) -> list[str]:
     """Native config refusals and known numeric HTTP condition failures.
 
     Each message starts with ``node '<id>' (<type>):``
-    (see ``core.workflow.node_factory.validate_node_config``). Empty when the
+    (see ``services.workflow_runtime.node_factory.validate_node_config``). Empty when the
     draft would start.
 
     A validation step must never crash the Builder: a node whose validation
@@ -803,6 +803,7 @@ def vet_intents(
     allowed_node_types: set[str] | None = None,
     *,
     evidence: dict[str, Any] | None = None,
+    atomic_added_node_wiring: bool = False,
 ) -> VettedIntents:
     """Put a proposed batch through the whole engine check, structure AND node
     data, before it can reach a human approval gate.
@@ -824,6 +825,12 @@ def vet_intents(
     corrective re-prompt could never fire because nothing had been rejected.
     Every re-approval re-sent the identical prompt and got the identical batch
     back.
+
+    Edit opts into ``atomic_added_node_wiring``: a rejected structural intent
+    referencing a node the remaining batch adds becomes a whole-batch verdict,
+    rather than silently applying that partial addition. Other callers retain
+    their existing filtering behavior; isolated creates with no rejected wiring
+    are allowed in either mode.
     """
     dry_run = graph_ops.filter_applicable(graph, intents, allowed_node_types)
     rejections = [f"- {intent.op} {_withheld_args(intent)}: {reason}" for intent, reason in dry_run.rejected]
@@ -846,5 +853,68 @@ def vet_intents(
         + _unfed_aggregator_reasons(graph, dry_run.graph)
         + _dropped_identity_reasons(graph, dry_run.graph, dry_run.applicable)
     )
+    if atomic_added_node_wiring:
+        would_run_wrong += _partial_added_node_wiring_reasons(graph, dry_run)
     rejections += [f"- {reason}" for reason in would_run_wrong]
     return VettedIntents(dry_run.applicable, rejections, would_run_wrong)
+
+
+def _partial_added_node_wiring_reasons(before: Graph, dry_run: graph_ops.DryRun) -> list[str]:
+    """Keep an Edit addition with rejected wiring out of partial-batch fallback.
+
+    Only explicit rejected structural intents referencing a successfully added
+    node count. An intentional isolated create has no rejected wiring and is
+    legal, as are pre-existing disconnected drafts. This does not interpret
+    natural language or synthesize edges or output selectors.
+    """
+    existing = set(graph_ops.node_ids(before))
+    added = set(graph_ops.node_ids(dry_run.graph)) - existing
+    affected: set[str] = set()
+    for intent, _reason in dry_run.rejected:
+        if intent.op not in graph_ops.STRUCTURAL_OPS:
+            continue
+        args = intent.args
+        refs = [args.get("node_id"), args.get("from_node"), args.get("to_node")]
+        edge = args.get("edge")
+        if isinstance(edge, dict):
+            refs.extend((edge.get("source"), edge.get("target")))
+        affected.update(ref for ref in refs if isinstance(ref, str) and ref in added)
+    if not affected:
+        return []
+    return [
+        "The wiring for added nodes "
+        + ", ".join(repr(node_id) for node_id in sorted(affected))
+        + " was rejected. Return the complete corrected structural batch; do not apply an isolated partial addition."
+    ]
+
+
+def added_node_retry_wiring_reasons(
+    before: Graph, original: list[MutationIntent], corrected: list[MutationIntent]
+) -> list[str]:
+    """A correction cannot keep an addition while dropping its explicit wiring.
+
+    Check only first-attempt rejected connects to new nodes that survive the
+    correction. Incoming/outgoing requirements come from those explicit ops;
+    correcting a mistaken anchor ID is allowed. An unrelated isolated draft or
+    a withdrawn addition establishes no requirement.
+    """
+    first = graph_ops.filter_applicable(before, original)
+    added = set(graph_ops.node_ids(first.graph)) - set(graph_ops.node_ids(before))
+    after = graph_ops.filter_applicable(before, corrected).graph
+    surviving = set(graph_ops.node_ids(after)) & added
+    reasons: list[str] = []
+    for intent, _reason in first.rejected:
+        if intent.op != "connect":
+            continue
+        for arg, endpoint in (("from_node", "source"), ("to_node", "target")):
+            node_id = intent.args.get(arg)
+            if not isinstance(node_id, str) or node_id not in surviving:
+                continue
+            if any(edge.get(endpoint) == node_id for edge in after.get("edges", [])):
+                continue
+            reasons.append(
+                f"The corrected batch dropped the rejected wiring for added node {node_id!r} "
+                f"without providing its {'outgoing' if endpoint == 'source' else 'incoming'} connection. "
+                "Return the complete structural change or withdraw the addition."
+            )
+    return reasons

@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.db.session_factory import session_factory
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.models import Actor
 from core.dify_builder.real_call_consent import ConfirmedToolBinding, CredentialReference
 from core.helper.name_generator import generate_incremental_name
@@ -40,6 +39,7 @@ from models.enums import PermissionEnum
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from services.credentials.query import CredentialQuery, ToolCredentialRecord
+from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 from services.tools.builder_credential_reference import (
     BuilderCredentialSnapshot,
     OAuthClientSnapshot,
@@ -669,6 +669,91 @@ class BuiltinToolManageService:
         BuilderRealCallConsentService(session_factory.get_session_maker()).validate_runtime_snapshot(
             binding=binding, reference=reference
         )
+
+    @staticmethod
+    def persist_native_agent_refresh(
+        *,
+        actor: Actor,
+        provider_id: str,
+        verified_plugin: bool,
+        selection: BuilderCredentialRuntime,
+        encrypted_credentials: str,
+        expires_at: int,
+    ) -> CredentialReference:
+        """CAS one detached native selection after its OAuth dispatch claim.
+
+        The caller owns the unique committed phase claim and native outcome.
+        This credential owner only compares metadata and persists ciphertext;
+        encryption, refresh, cache invalidation and external I/O are outside SQL.
+        """
+        from models.credential_permission import CredentialPermission
+
+        key = dify_config.SECRET_KEY
+        if not isinstance(key, str) or not key:
+            raise BuilderExecutionPolicyError("invalid_scope_key")
+        if (
+            not isinstance(encrypted_credentials, str)
+            or not encrypted_credentials
+            or type(expires_at) is not int
+            or expires_at < -1
+        ):
+            raise BuilderExecutionPolicyError("invalid_refresh_result")
+        snapshot = selection.snapshot
+        if snapshot.reference.credential_type != CredentialType.OAUTH2:
+            raise BuilderExecutionPolicyError("native_materialization_phase_mismatch")
+        with session_factory.get_session_maker().begin() as session:
+            row = session.scalar(
+                select(BuiltinToolProvider)
+                .where(
+                    BuiltinToolProvider.id == snapshot.reference.credential_id,
+                    BuiltinToolProvider.tenant_id == actor.tenant_id,
+                )
+                .with_for_update()
+            )
+            if row is None:
+                raise BuilderExecutionPolicyError("native_credential_drift")
+            if snapshot.access.grant_ids:
+                session.scalars(
+                    select(CredentialPermission)
+                    .where(CredentialPermission.id.in_(snapshot.access.grant_ids))
+                    .with_for_update()
+                ).all()
+            client_model = ToolOAuthTenantClient if snapshot.client.source == "tenant" else ToolOAuthSystemClient
+            session.scalar(select(client_model).where(client_model.id == snapshot.client.row_id).with_for_update())
+            current = select_builder_credential(
+                session,
+                actor=actor,
+                provider_id=provider_id,
+                credential_id=snapshot.reference.credential_id,
+                verified_plugin=verified_plugin,
+                revision_key=key.encode(),
+            )
+            if current != snapshot or row.user_id != selection.owner_user_id:
+                raise BuilderExecutionPolicyError("native_credential_drift")
+            updated = session.scalar(
+                update(BuiltinToolProvider)
+                .where(
+                    BuiltinToolProvider.id == row.id,
+                    BuiltinToolProvider.tenant_id == actor.tenant_id,
+                    BuiltinToolProvider.encrypted_credentials == snapshot.encrypted_credentials,
+                    BuiltinToolProvider.expires_at == snapshot.reference.expires_at,
+                )
+                .values(encrypted_credentials=encrypted_credentials, expires_at=expires_at)
+                .returning(BuiltinToolProvider.id)
+                .execution_options(synchronize_session=False)
+            )
+            if updated != row.id:
+                raise BuilderExecutionPolicyError("native_credential_drift")
+            session.expire(row)
+            reference = select_builder_credential(
+                session,
+                actor=actor,
+                provider_id=provider_id,
+                credential_id=snapshot.reference.credential_id,
+                verified_plugin=verified_plugin,
+                revision_key=key.encode(),
+            ).reference
+        return reference
 
     @staticmethod
     def decrypt_builder_oauth_client(

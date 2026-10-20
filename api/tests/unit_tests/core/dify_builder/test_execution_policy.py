@@ -8,15 +8,15 @@ from typing import TYPE_CHECKING, NoReturn, cast
 import pytest
 from pydantic import ValidationError
 
-from core.dify_builder.execution_policy import HttpResponseFixtureV1, RestrictedAdmissionSnapshot
 from core.dify_builder.models import Graph
+from services.dify_builder.application.execution_policy import HttpResponseFixtureV1, RestrictedAdmissionSnapshot
 
 if TYPE_CHECKING:
-    from core.dify_builder.execution_policy import ExecutionEvidenceSummary
+    from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
 
 
 def policy() -> ModuleType:
-    return importlib.import_module("core.dify_builder.execution_policy")
+    return importlib.import_module("services.dify_builder.application.execution_policy")
 
 
 def fixture(**overrides: object) -> HttpResponseFixtureV1:
@@ -204,7 +204,7 @@ def test_admission_rejects_unsupported_effect_shapes(mutation: str) -> None:
 
 
 def test_exact_implementation_identity_precedes_native_validation(monkeypatch: pytest.MonkeyPatch) -> None:
-    from core.workflow import node_factory
+    from services.workflow_runtime import node_factory
 
     class Unreviewed:
         @staticmethod

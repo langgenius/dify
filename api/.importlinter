@@ -1,5 +1,6 @@
 [importlinter]
 root_packages =
+    clients
     core
     core.rag.extractor.entity
     constants
@@ -15,6 +16,7 @@ root_packages =
     repositories
     tasks
     services
+    runtime_contracts
 include_external_packages = True
 
 [importlinter:contract:backend-layers]
@@ -24,16 +26,13 @@ layers =
     controllers
     services
     core
+    runtime_contracts
     libs
 # Migration baseline: keep every exception exact. The default unmatched-import
 # error makes this list shrink whenever a legacy dependency is removed.
 unmatched_ignore_imports_alerting = error
 ignore_imports =
     core.app.app_config.easy_ui_based_app.dataset.manager -> services.knowledge.dataset_service
-    core.app.apps.advanced_chat.app_generator -> controllers.console.app.workflow
-    core.app.apps.advanced_chat.app_generator -> services.conversation_service
-    core.app.apps.advanced_chat.app_generator -> services.errors.conversation
-    core.app.apps.advanced_chat.app_generator -> services.workflow_draft_variable_service
     core.app.apps.agent_app.app_generator -> services.agent.composer_service
     core.app.apps.agent_app.app_generator -> services.agent.workspace_service
     core.app.apps.agent_app.app_generator -> services.conversation_service
@@ -42,24 +41,12 @@ ignore_imports =
     core.app.apps.agent_chat.app_generator -> services.conversation_service
     core.app.apps.base_app_generator -> services.workflow_draft_variable_service
     core.app.apps.chat.app_generator -> services.conversation_service
-    core.app.apps.common.workflow_response_converter -> services.variable_truncator
     core.app.apps.completion.app_generator -> services.errors.app
     core.app.apps.completion.app_generator -> services.errors.message
     core.app.apps.message_based_app_generator -> services.errors.app_model_config
     core.app.apps.message_based_app_generator -> services.errors.conversation
     core.app.apps.message_based_app_generator -> services.errors.message
-    core.app.apps.pipeline.pipeline_generator -> services
-    core.app.apps.pipeline.pipeline_generator -> services.knowledge.dataset_service
-    core.app.apps.pipeline.pipeline_generator -> services.data_source.provider_service
-    core.app.apps.pipeline.pipeline_generator -> services.feature_service
-    core.app.apps.pipeline.pipeline_generator -> services.workflow_draft_variable_service
-    core.app.apps.workflow.app_generator -> controllers.console.app.workflow
-    core.app.apps.workflow.app_generator -> services.snippet_generate_service
-    core.app.apps.workflow.app_generator -> services.workflow_draft_variable_service
     # Legacy debug callers delegate input hydration to the application owner during core migration.
-    core.app.apps.workflow_app_runner -> services.workflow_node_variables
-    core.workflow.workflow_entry -> services.workflow_node_variables
-    core.app.apps.workflow_app_runner -> tasks.mail_human_input_delivery_task
     core.app.features.annotation_reply.annotation_reply -> services.annotation_service
     core.app.features.annotation_reply.annotation_reply -> services.knowledge.dataset_service
     core.app.llm.quota -> services.credit_pool_service
@@ -85,10 +72,7 @@ ignore_imports =
     core.tools.tool_manager -> services
     core.workflow.node_runtime -> services
     # Node construction delegates datasource dependency assembly to the composition root.
-    core.workflow.node_factory -> extensions.application_services.data_sources
     core.workflow.nodes.agent.message_transformer -> services
-    core.workflow.nodes.agent_v2.agent_node -> services.agent.prompt_mentions
-    core.workflow.nodes.agent_v2.agent_node -> services.agent.workspace_service
     core.workflow.nodes.agent_v2.dify_tools_builder -> services
     core.workflow.nodes.agent_v2.runtime_feature_manifest -> services.agent.knowledge_datasets
     core.workflow.nodes.agent_v2.runtime_request_builder -> services.agent.prompt_mentions
@@ -113,7 +97,6 @@ ignore_imports =
     libs.oauth_bearer -> models
     libs.rsa -> extensions.ext_storage
     libs.workspace_permission -> services.enterprise.enterprise_service
-    services.app_generate_service -> controllers.console.app.workflow
 
 [importlinter:contract:no-direct-rsa-imports]
 # Note: `libs` itself is deliberately excluded from source_modules -- import-linter's
@@ -316,8 +299,8 @@ allow_indirect_imports = True
 name = Pipeline core depends on its document store port
 type = forbidden
 source_modules =
-    core.app.apps.pipeline.pipeline_generator
-    core.app.apps.pipeline.pipeline_runner
+    services.workflow_runtime.pipeline_generator
+    services.workflow_runtime.pipeline_runner
 forbidden_modules =
     repositories
 allow_indirect_imports = True
@@ -1181,3 +1164,26 @@ forbidden_modules =
     services.account.adapters
     sqlalchemy
     werkzeug
+
+[importlinter:contract:runtime-contracts-neutrality]
+name = Shared runtime contracts are independent of application and infrastructure owners
+type = forbidden
+source_modules =
+    runtime_contracts
+forbidden_modules =
+    core
+    services
+    controllers
+    extensions
+    models
+    repositories
+    tasks
+
+[importlinter:contract:ordinary-code-execution-client-boundary]
+name = Ordinary code execution client is independent of application and controller owners
+type = forbidden
+source_modules =
+    clients.code_execution
+forbidden_modules =
+    services
+    controllers

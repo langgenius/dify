@@ -487,7 +487,7 @@ def test_verification_roundtrip_and_legacy(repo: SqlDifyBuilderRepository) -> No
 
 
 def test_fixture_lineage_roundtrip_and_legacy_absence(repo: SqlDifyBuilderRepository) -> None:
-    from core.dify_builder.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
+    from services.dify_builder.application.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
     from services.dify_builder.serde import test_input_from_dict
 
     sample = HttpResponseFixtureV1(

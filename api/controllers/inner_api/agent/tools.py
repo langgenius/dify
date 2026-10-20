@@ -7,9 +7,11 @@ from sqlalchemy.orm import Session
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
 from controllers.inner_api import inner_api_ns
-from controllers.inner_api.wraps import agent_inner_api_only
+from controllers.inner_api.wraps import agent_endpoint_api_only
 from libs.exception import BaseHTTPException
+from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from services.agent_tool_inner_service import AgentToolInnerService
+from services.dify_builder.native_testing.agent_bridge import claim_agent_endpoint
 from services.entities.agent_tool_inner import AgentToolInvokeRequest, AgentToolInvokeResponse
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
 
@@ -43,7 +45,7 @@ register_response_schema_models(inner_api_ns, AgentToolInvokeResponse)
 class AgentToolInvokeApi(Resource):
     """Invoke one Agent tool through the API-owned core tool runtime path."""
 
-    @agent_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("inner_agent_tool_invoke")
     @inner_api_ns.expect(inner_api_ns.models[AgentToolInvokeRequest.__name__])
     @inner_api_ns.response(200, "Tool invoked successfully", inner_api_ns.models[AgentToolInvokeResponse.__name__])
@@ -59,7 +61,24 @@ class AgentToolInvokeApi(Resource):
             ) from exc
 
         try:
+            claim_agent_endpoint(
+                boundary="core_tool",
+                caller=payload.caller.model_dump(mode="json"),
+                envelope=payload.native_dispatch,
+                target={
+                    "provider_type": payload.tool.provider_type,
+                    "provider_id": payload.tool.provider_id,
+                    "tool_name": payload.tool.tool_name,
+                },
+                parameters={**payload.tool.runtime_parameters, **payload.tool.tool_parameters},
+                kind="tool",
+                physical_owner_ready=False,
+            )
             response = AgentToolInnerService().invoke(session=session, request=payload)
+        except BuilderExecutionPolicyError:
+            raise AgentToolInvokeHttpError(
+                error_code="native_agent_control_refused", description="Native Agent dispatch refused.", status_code=409
+            ) from None
         except AgentToolInnerServiceError as exc:
             raise AgentToolInvokeHttpError(
                 error_code=exc.error_code,

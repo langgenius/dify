@@ -1,9 +1,10 @@
 """SQL lifetime of the default RSA key provider's tenant public-key read, on real SQLite rows.
 
 ``models.engine.db.session`` is replaced by a real ``scoped_session`` over the unit SQLite engine
-(the unit app does not initialize Flask-SQLAlchemy), and the global session factory already points
-at that engine. Encryption is real RSA/AES; the matching private key decrypts the result. An engine
-event witness counts connection-level transactions, so a read the provider leaves open is visible.
+(the unit app does not initialize Flask-SQLAlchemy), and the production provider factory composes
+its public-key repository against that engine. Encryption is real RSA/AES; the matching private key
+decrypts the result. An engine event witness counts connection-level transactions, so a read the
+provider leaves open is visible.
 """
 
 from collections.abc import Iterator
@@ -14,6 +15,7 @@ from Crypto.PublicKey import RSA
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
+import extensions.ext_key_provider as key_provider_module
 import models.engine
 from libs import gmpy2_pkcs10aep_cipher
 from libs.key_providers.rsa_key_provider import RSAKeyProvider
@@ -53,6 +55,7 @@ def scoped(
     registry = scoped_session(sqlite_session_factory)
     monkeypatch.setattr(models.engine, "db", SimpleNamespace(session=registry, engine=sqlite_engine))
     try:
+        monkeypatch.setattr(key_provider_module, "db", models.engine.db)
         yield registry
     finally:
         registry.remove()
@@ -75,8 +78,16 @@ def _tenant(sqlite_session_factory: sessionmaker[Session], public_key: str | Non
         return tenant.id
 
 
+def _provider() -> RSAKeyProvider:
+    provider = key_provider_module.KeyProviderManager.get_provider_factory("local")()
+    assert isinstance(provider, RSAKeyProvider)
+    return provider
+
+
 def _decrypt(ciphertext: bytes) -> str:
-    return RSAKeyProvider().decrypt_with_decoding(ciphertext, (_PRIVATE_KEY, gmpy2_pkcs10aep_cipher.new(_PRIVATE_KEY)))
+    return RSAKeyProvider(public_key_reader=lambda _: _PUBLIC_PEM).decrypt_with_decoding(
+        ciphertext, (_PRIVATE_KEY, gmpy2_pkcs10aep_cipher.new(_PRIVATE_KEY))
+    )
 
 
 def test_encrypt_reads_the_public_key_without_leaving_sql_open(
@@ -86,7 +97,7 @@ def test_encrypt_reads_the_public_key_without_leaving_sql_open(
     assert not scoped().in_transaction()
     assert witness.open == 0
 
-    ciphertext = RSAKeyProvider().encrypt(tenant_id, "refreshed-secret")
+    ciphertext = _provider().encrypt(tenant_id, "refreshed-secret")
 
     # No scoped or connection transaction survives into the caller's later external work.
     assert not scoped().in_transaction()
@@ -103,7 +114,7 @@ def test_encrypt_inside_a_caller_transaction_uses_and_keeps_it(
     scoped.flush()
     assert scoped().in_transaction()
 
-    ciphertext = RSAKeyProvider().encrypt(tenant.id, "value")
+    ciphertext = _provider().encrypt(tenant.id, "value")
 
     assert _decrypt(ciphertext) == "value"
     # The caller's own transaction is neither committed, rolled back nor closed by the provider.
@@ -118,7 +129,7 @@ def test_encrypt_sees_a_pending_unflushed_tenant_of_the_caller(scoped: scoped_se
     # ``add`` begins the caller's session transaction; nothing is flushed yet.
     scoped.add(tenant)
 
-    assert _decrypt(RSAKeyProvider().encrypt(tenant.id, "pending")) == "pending"
+    assert _decrypt(_provider().encrypt(tenant.id, "pending")) == "pending"
     scoped.rollback()
 
 
@@ -127,8 +138,59 @@ def test_missing_tenant_or_key_refuses_without_leaving_sql_open(
 ) -> None:
     keyless = _tenant(sqlite_session_factory, public_key=None)
     with pytest.raises(ValueError, match="has no encrypt_public_key"):
-        RSAKeyProvider().encrypt(keyless, "value")
+        _provider().encrypt(keyless, "value")
     with pytest.raises(ValueError, match="not found"):
-        RSAKeyProvider().encrypt("00000000-0000-0000-0000-000000000000", "value")
+        _provider().encrypt("00000000-0000-0000-0000-000000000000", "value")
     assert not scoped().in_transaction()
     assert witness.open == 0
+
+
+def test_encrypt_uses_the_injected_public_key_reader() -> None:
+    tenant_ids = []
+
+    def public_key(tenant_id: str) -> str:
+        tenant_ids.append(tenant_id)
+        return _PUBLIC_PEM
+
+    ciphertext = RSAKeyProvider(public_key_reader=public_key).encrypt("injected-tenant", "injected-secret")
+
+    assert tenant_ids == ["injected-tenant"]
+    assert _decrypt(ciphertext) == "injected-secret"
+
+
+def test_fresh_public_key_read_closes_before_encryption(
+    scoped: scoped_session[Session],
+    witness: TxWitness,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from libs.key_providers import rsa_key_provider
+
+    tenant_id = _tenant(sqlite_session_factory)
+    encrypt = rsa_key_provider.rsa.encrypt
+    observed = []
+
+    def encrypt_after_read(text: str, public_key: str) -> bytes:
+        observed.append((scoped().in_transaction(), witness.open))
+        return encrypt(text, public_key)
+
+    monkeypatch.setattr(rsa_key_provider.rsa, "encrypt", encrypt_after_read)
+
+    ciphertext = _provider().encrypt(tenant_id, "closed-before-encryption")
+
+    assert observed == [(False, 0)]
+    assert _decrypt(ciphertext) == "closed-before-encryption"
+
+
+def test_active_transaction_reads_the_callers_changed_public_key(scoped: scoped_session[Session]) -> None:
+    tenant = Tenant(name="Changed tenant", encrypt_public_key="old-key")
+    scoped.add(tenant)
+    scoped.flush()
+    tenant.encrypt_public_key = _PUBLIC_PEM
+
+    ciphertext = _provider().encrypt(tenant.id, "current-key")
+
+    assert _decrypt(ciphertext) == "current-key"
+    assert scoped().in_transaction()
+    assert tenant in scoped().dirty
+    scoped.rollback()

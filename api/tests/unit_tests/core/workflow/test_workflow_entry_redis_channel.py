@@ -2,9 +2,9 @@
 
 from unittest.mock import MagicMock, patch
 
-from core.workflow.workflow_entry import WorkflowEntry
 from graphon.engine.command import RedisChannel
 from graphon.runtime import RuntimeState, VariablePool
+from services.workflow_runtime.entry import WorkflowEntry
 
 
 class TestWorkflowEntryRedisChannel:
@@ -23,7 +23,7 @@ class TestWorkflowEntryRedisChannel:
         redis_channel = RedisChannel(mock_redis_client, "test:channel:key")
 
         # Patch Engine to verify it receives the Redis channel
-        with patch("core.workflow.workflow_entry.Engine", autospec=True) as mock_graph_engine_type:
+        with patch("services.workflow_runtime.entry.Engine", autospec=True) as mock_graph_engine_type:
             # Create WorkflowEntry with Redis channel
             workflow_entry = WorkflowEntry(
                 graph_config=mock_graph_config,
@@ -49,8 +49,8 @@ class TestWorkflowEntryRedisChannel:
 
         # Patch Engine and InMemoryChannel
         with (
-            patch("core.workflow.workflow_entry.Engine", autospec=True) as mock_graph_engine_type,
-            patch("core.workflow.workflow_entry.InMemoryChannel", autospec=True) as mock_in_memory_channel,
+            patch("services.workflow_runtime.entry.Engine", autospec=True) as mock_graph_engine_type,
+            patch("services.workflow_runtime.entry.InMemoryChannel", autospec=True) as mock_in_memory_channel,
         ):
             mock_inmemory_channel = mock_in_memory_channel.return_value
             # Create WorkflowEntry without providing a channel
@@ -88,7 +88,7 @@ class TestWorkflowEntryRedisChannel:
         mock_event2 = MagicMock()
 
         # Patch Engine
-        with patch("core.workflow.workflow_entry.Engine", autospec=True) as mock_graph_engine_type:
+        with patch("services.workflow_runtime.entry.Engine", autospec=True) as mock_graph_engine_type:
             mock_graph_engine = MagicMock()
             mock_graph_engine.run.return_value = iter([mock_event1, mock_event2])
             mock_graph_engine_type.return_value = mock_graph_engine

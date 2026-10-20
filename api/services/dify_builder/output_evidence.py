@@ -1,13 +1,15 @@
 """Conservative selector facts from the executed native graph and persisted node rows."""
 
 from core.dify_builder.models import Graph, NodeOutput, OutputFinding
+from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
+from services.dify_builder.native_agent_output_contract import declares_native_agent_output
 
 _ORDINARY_PRODUCERS = {"start", "code", "llm", "tool"}
 _SPECIAL_NAMESPACES = {"sys", "env", "conversation"}
 
 
 def collect_output_findings(graph: Graph, per_node: list[NodeOutput]) -> list[OutputFinding]:
-    """Only complete, single ordinary producer rows prove presence or absence.
+    """Complete single rows prove ordinary or declared native Agent root keys.
 
     Nested/container/retry/assignment provenance is deliberately unverified.
     In particular a present null is not evidence of a missing reference.
@@ -48,7 +50,14 @@ def collect_output_findings(graph: Graph, per_node: list[NodeOutput]) -> list[Ou
                 )
                 if (
                     len(selector) == 2
-                    and config.get("type") in _ORDINARY_PRODUCERS
+                    and (
+                        config.get("type") in _ORDINARY_PRODUCERS
+                        or (
+                            is_dify_agent_node_data(config)
+                            and "." not in selector[1]
+                            and declares_native_agent_output(config, selector[1])
+                        )
+                    )
                     and not ambiguous
                     and len(source_rows) == 1
                 ):

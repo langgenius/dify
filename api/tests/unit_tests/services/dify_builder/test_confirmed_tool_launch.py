@@ -23,15 +23,6 @@ from sqlalchemy import func, select
 
 from core.dify_builder.contract import TestResultCard
 from core.dify_builder.errors import BadRequestError, BusyError
-from core.dify_builder.execution_policy import (
-    BuilderExecutionObservation,
-    BuilderExecutionPolicyError,
-    BuilderExecutionRefusal,
-    ConfirmedToolExecutionContext,
-    ExecutionEvidenceSummary,
-    TrustedExecutionCompletion,
-    validate_execution_context,
-)
 from core.dify_builder.models import (
     Action,
     Actor,
@@ -45,14 +36,23 @@ from core.dify_builder.models import (
     RunVerification,
     StartSchema,
 )
-from core.dify_builder.ports import DifyBuilderAgent, DifyPort, Repository
 from core.dify_builder.real_call_consent import ConfirmedToolBinding, ConsentReceipt
-from core.dify_builder.runner import Env, Handler, Runner
 from core.dify_builder.state import PcState
-from core.dify_builder.verification import publication_decision, result_card
 from libs.datetime_utils import naive_utc_now
 from models.dify_builder import DifyBuilderExecutionRequest
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
+from services.dify_builder.application.execution_policy import (
+    BuilderExecutionObservation,
+    BuilderExecutionPolicyError,
+    BuilderExecutionRefusal,
+    ConfirmedToolExecutionContext,
+    ExecutionEvidenceSummary,
+    TrustedExecutionCompletion,
+    validate_execution_context,
+)
+from services.dify_builder.application.ports import DifyBuilderAgent, DifyPort, Repository
+from services.dify_builder.application.runner import Env, Handler, Runner
+from services.dify_builder.application.verification import publication_decision, result_card
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
@@ -76,8 +76,8 @@ from tests.unit_tests.services.dify_builder.test_real_call_consent_service impor
 )
 
 if TYPE_CHECKING:
-    from core.dify_builder.execution_policy import BuilderExecutionContext
     from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+    from services.dify_builder.application.execution_policy import BuilderExecutionContext
     from services.dify_builder.dify_port import ConfirmedLaunchRecorder
     from services.dify_builder.real_call_consent_service import (
         BuilderRealCallConsentService,
@@ -423,8 +423,9 @@ class ConfirmedSpyPort(FakeDifyPort):
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
         confirmed_consent_id: str | None = None,
         command_id: str | None = None,
+        effect_confirmation: Mapping[str, str] | None = None,
     ) -> Run:
-        _ = (session_id, on_workflow_event)  # the shared port signature; not inspected here
+        _ = (session_id, on_workflow_event, effect_confirmation)  # the shared port signature; not inspected here
         self.confirmed_calls.append(
             {
                 "inputs": dict(inputs),
@@ -644,6 +645,7 @@ def test_same_token_duplicate_delivery_cannot_release_or_settle_the_active_winne
             on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
             confirmed_consent_id: str | None = None,
             command_id: str | None = None,
+            effect_confirmation: Mapping[str, str] | None = None,
         ) -> Run:
             # A has launched: its sidecar launch identity is claimed (existing fixture stand-in).
             simulate_task6_launch(owner, reserved)
@@ -661,6 +663,7 @@ def test_same_token_duplicate_delivery_cannot_release_or_settle_the_active_winne
                 on_workflow_event=on_workflow_event,
                 confirmed_consent_id=confirmed_consent_id,
                 command_id=command_id,
+                effect_confirmation=effect_confirmation,
             )
 
     port = WinnerPort()
@@ -922,9 +925,9 @@ def assert_confirmed_handler_outcome(entry_mode: str, state: PcState, review: Pc
 
 
 def _registries() -> dict[PcState, Handler]:
-    from core.dify_builder.handlers_build import build_registry
-    from core.dify_builder.handlers_edit import edit_registry
-    from core.dify_builder.handlers_fix import fix_registry
+    from services.dify_builder.application.handlers_build import build_registry
+    from services.dify_builder.application.handlers_edit import edit_registry
+    from services.dify_builder.application.handlers_fix import fix_registry
 
     return fix_registry() | build_registry() | edit_registry()
 
@@ -1602,11 +1605,11 @@ def install_native_generation(owner: Owner, monkeypatch: pytest.MonkeyPatch) -> 
     from sqlalchemy.orm import Session
 
     import services.dify_builder.dify_port as port_module
-    from core.app.apps.workflow.app_generator import BuilderExecutionAdmission
     from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
     from models.account import Account
     from models.model import App
     from services.dify_builder.dify_port import ConfirmedLaunchRecorder
+    from services.workflow_runtime.workflow_generator import BuilderExecutionAdmission
 
     run_ids: list[str] = []
 
@@ -1712,11 +1715,11 @@ def test_port_launches_reserved_command_natively_and_projects_sanitized_builder_
     from sqlalchemy.orm import Session
 
     import services.dify_builder.dify_port as port_module
-    from core.app.apps.workflow.app_generator import BuilderExecutionAdmission
     from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
     from models.account import Account
     from models.model import App
     from services.dify_builder.dify_port import ConfirmedLaunchRecorder
+    from services.workflow_runtime.workflow_generator import BuilderExecutionAdmission
 
     caplog.set_level(logging.DEBUG)
     owner = consent_owner
@@ -1922,12 +1925,12 @@ def _drive_generator_draft_saving(
     import core.app.apps.base_app_generator as base_generator_module
     from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
     from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
-    from core.app.apps.workflow import app_generator as app_generator_module
-    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
     from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
     from graphon.enums import BuiltinNodeTypes
     from models.account import Account
     from models.model import App, AppMode
+    from services.workflow_runtime import workflow_generator as app_generator_module
+    from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 
     engine = owner.factory.kw["bind"]
     writes = _DraftWrites()

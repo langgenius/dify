@@ -1,9 +1,9 @@
 """Unit coverage for Dify's in-memory ResponseStreamFilter boundary behavior."""
 
-from core.workflow.workflow_entry import iter_dify_graph_engine_events
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.engine_events import GraphRunSucceededEvent, NodeRunStreamChunkEvent
+from services.workflow_runtime.entry import iter_dify_graph_engine_events
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder
 from tests.unit_tests.core.workflow.graph_engine.test_table_runner import WorkflowRunner
 

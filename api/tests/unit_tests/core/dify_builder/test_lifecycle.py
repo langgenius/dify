@@ -2,7 +2,7 @@
 checkpoint surfacing, pause/resume."""
 
 from core.dify_builder.models import Actor, Graph
-from core.dify_builder.ports import DifyPort
+from services.dify_builder.application.ports import DifyPort
 from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, FakeDifyPort
 
 
@@ -71,11 +71,11 @@ def test_in_memory_invalidate_flips_assistant_turns_from_seq() -> None:
 def test_fix_await_decision_undo_restores_draft_and_invalidates() -> None:
     from datetime import datetime
 
-    from core.dify_builder.handlers_fix import handle_await_decision
     from core.dify_builder.models import Action, ConversationItem, DifyBuilderContext, EntryMode, Session, Turn
-    from core.dify_builder.placeholder_agent import PlaceholderAgent
-    from core.dify_builder.runner import Env
     from core.dify_builder.state import PcState
+    from services.dify_builder.application.handlers_fix import handle_await_decision
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+    from services.dify_builder.application.runner import Env
     from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
 
     repo = InMemoryRepository()
@@ -125,11 +125,11 @@ def test_fix_await_decision_undo_restores_draft_and_invalidates() -> None:
 def test_perform_revert_without_checkpoint_is_graceful_noop() -> None:
     from datetime import datetime
 
-    from core.dify_builder.handlers_fix import perform_revert
     from core.dify_builder.models import DifyBuilderContext, EntryMode, Session, Turn
-    from core.dify_builder.placeholder_agent import PlaceholderAgent
-    from core.dify_builder.runner import Env
     from core.dify_builder.state import PcState
+    from services.dify_builder.application.handlers_fix import perform_revert
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+    from services.dify_builder.application.runner import Env
     from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
 
     dify = FakeDifyPort()
@@ -160,7 +160,6 @@ def test_perform_revert_without_checkpoint_is_graceful_noop() -> None:
 def test_build_review_undo_restores_pre_build_graph() -> None:
     from datetime import datetime
 
-    from core.dify_builder.handlers_build import handle_review
     from core.dify_builder.models import (
         Action,
         Checkpoint,
@@ -171,9 +170,10 @@ def test_build_review_undo_restores_pre_build_graph() -> None:
         Snapshot,
         Turn,
     )
-    from core.dify_builder.placeholder_agent import PlaceholderAgent
-    from core.dify_builder.runner import Env
     from core.dify_builder.state import PcState
+    from services.dify_builder.application.handlers_build import handle_review
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+    from services.dify_builder.application.runner import Env
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, InMemoryRepository
 
     repo = InMemoryRepository()
@@ -213,7 +213,6 @@ def test_build_review_undo_restores_pre_build_graph() -> None:
 def test_edit_apply_changes_undo_restores_pre_edit_graph() -> None:
     from datetime import datetime
 
-    from core.dify_builder.handlers_edit import handle_apply_changes
     from core.dify_builder.models import (
         Action,
         Checkpoint,
@@ -224,9 +223,10 @@ def test_edit_apply_changes_undo_restores_pre_edit_graph() -> None:
         Snapshot,
         Turn,
     )
-    from core.dify_builder.placeholder_agent import PlaceholderAgent
-    from core.dify_builder.runner import Env
     from core.dify_builder.state import PcState
+    from services.dify_builder.application.handlers_edit import handle_apply_changes
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+    from services.dify_builder.application.runner import Env
     from tests.unit_tests.core.dify_builder.fakes import FakeEditDifyPort, InMemoryRepository
 
     repo = InMemoryRepository()
@@ -265,9 +265,9 @@ def test_runner_stop_sets_paused_same_state_and_bumps_version() -> None:
     from datetime import datetime
 
     from core.dify_builder.models import Action, ConversationItem, DifyBuilderContext, EntryMode, Session, Turn
-    from core.dify_builder.placeholder_agent import PlaceholderAgent
-    from core.dify_builder.runner import Env, Runner
     from core.dify_builder.state import PcState
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+    from services.dify_builder.application.runner import Env, Runner
     from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
 
     repo = InMemoryRepository()

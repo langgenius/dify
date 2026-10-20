@@ -11,10 +11,10 @@ from typing import Never
 
 import pytest
 
-from core.dify_builder.execution_policy import scalar_inputs_digest
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.workflow import Workflow
-from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+from services.dify_builder.application.execution_policy import scalar_inputs_digest
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
 from services.dify_builder.json_tool_metadata import InstalledJsonParse
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned

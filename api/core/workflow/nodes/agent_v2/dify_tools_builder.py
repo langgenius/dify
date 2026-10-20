@@ -88,6 +88,27 @@ class WorkflowAgentToolLayers:
         return names
 
 
+class NativeAgentToolDeclarationLayers(Protocol):
+    """Inert layer declarations returned by the trusted application preparer."""
+
+    @property
+    def plugin_tools(self) -> DifyPluginToolsLayerConfig | None: ...
+
+    @property
+    def core_tools(self) -> DifyCoreToolsLayerConfig | None: ...
+
+
+class NativeAgentToolDeclarationPreparer(Protocol):
+    def prepare(
+        self,
+        *,
+        tenant_id: str,
+        actor_id: str,
+        app_id: str,
+        tools: AgentSoulToolsConfig,
+    ) -> NativeAgentToolDeclarationLayers: ...
+
+
 class WorkflowAgentDifyToolLayersBuilder(Protocol):
     def build_layers(
         self,
@@ -97,6 +118,7 @@ class WorkflowAgentDifyToolLayersBuilder(Protocol):
         user_id: str | None,
         tools: AgentSoulToolsConfig,
         invoke_from: InvokeFrom,
+        native_test_required: bool = False,
     ) -> WorkflowAgentToolLayers: ...
 
 
@@ -161,10 +183,12 @@ class WorkflowAgentDifyToolsBuilder:
         tool_runtime_provider: AgentToolRuntimeProvider | None = None,
         provider_tools_lister: ProviderToolsLister | None = None,
         mcp_provider_id_resolver: MCPProviderIDResolver | None = None,
+        native_declaration_preparer: NativeAgentToolDeclarationPreparer | None = None,
     ) -> None:
         self._tool_runtime_provider = tool_runtime_provider or ToolManager
         self._provider_tools_lister = provider_tools_lister or _list_provider_tool_names
         self._mcp_provider_id_resolver = mcp_provider_id_resolver or _resolve_mcp_provider_id
+        self._native_declaration_preparer = native_declaration_preparer
 
     def build_layers(
         self,
@@ -174,6 +198,7 @@ class WorkflowAgentDifyToolsBuilder:
         user_id: str | None,
         tools: AgentSoulToolsConfig,
         invoke_from: InvokeFrom,
+        native_test_required: bool = False,
     ) -> WorkflowAgentToolLayers:
         """Resolve user-selected Dify tools into direct/core Agent backend DTOs.
 
@@ -182,6 +207,19 @@ class WorkflowAgentDifyToolsBuilder:
         be threaded through to `ToolManager` so credential quotas, rate limits,
         and audit tags match the actual call site.
         """
+        if native_test_required:
+            if user_id is None:
+                raise WorkflowAgentDifyToolsBuildError(
+                    "agent_tool_owner_missing", "Native tool declarations require an actor."
+                )
+            if self._native_declaration_preparer is None:
+                raise WorkflowAgentDifyToolsBuildError(
+                    "agent_tool_declarations_unavailable", "Native tool declaration preparation is unavailable."
+                )
+            prepared = self._native_declaration_preparer.prepare(
+                tenant_id=tenant_id, actor_id=user_id, app_id=app_id, tools=tools
+            )
+            return WorkflowAgentToolLayers(plugin_tools=prepared.plugin_tools, core_tools=prepared.core_tools)
         enabled_tools = [tool for tool in tools.dify_tools if tool.enabled]
         if not enabled_tools:
             return WorkflowAgentToolLayers()

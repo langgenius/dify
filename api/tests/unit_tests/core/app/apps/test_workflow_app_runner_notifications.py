@@ -2,11 +2,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.engine_events import GraphRunPausedEvent
 from graphon.entities.pause_reason import HitlRequired
+from services.workflow_runtime.base_runner import WorkflowBasedAppRunner
 
 
 class _DummyQueueManager:
@@ -48,7 +48,7 @@ def test_handle_pause_event_enqueues_email_task(monkeypatch: pytest.MonkeyPatch)
         node_id="node-1",
         node_title="Review",
     )
-    monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_email_task", email_task)
+    monkeypatch.setattr("services.workflow_runtime.base_runner.dispatch_human_input_email_task", email_task)
 
     runner.handle_event(workflow_entry, event, pause_reasons=[enriched_reason])
 

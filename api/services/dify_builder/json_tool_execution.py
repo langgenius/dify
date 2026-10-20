@@ -10,20 +10,20 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, NoReturn
 
-from core.dify_builder.execution_policy import (
-    RestrictedAdmissionSnapshot,
-    admit_raw_execution_metadata,
-)
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
-from services.dify_builder.execution_contracts import (
+from runtime_contracts.builder.execution import (
     AdmittedNodeBinding,
     BuilderExecutionPolicyError,
     QualifiedJsonToolBinding,
     canonical_digest,
+)
+from services.dify_builder.application.execution_policy import (
+    RestrictedAdmissionSnapshot,
+    admit_raw_execution_metadata,
 )
 from services.dify_builder.revision import node_config_digest
 
@@ -334,10 +334,10 @@ def admit_json_workflow(snapshot: RestrictedAdmissionSnapshot) -> JsonToolAdmiss
     """Require exactly the audited native Start→Tool→End graph and raw values."""
     from pydantic import ValidationError
 
-    from core.workflow.node_factory import resolve_workflow_node_class
     from graphon.nodes.end.end_node import EndNode
     from graphon.nodes.start.start_node import StartNode
     from graphon.nodes.tool.tool_node import ToolNode
+    from services.workflow_runtime.node_factory import resolve_workflow_node_class
 
     admit_raw_execution_metadata(snapshot)
     graph = snapshot.graph

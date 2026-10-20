@@ -14,8 +14,8 @@ throwaway conformer.
 """
 
 from core.dify_builder.models import ChecklistError, Graph, NodeOutput, Run
-from core.dify_builder.placeholder_agent import FIXED_CODE, PlaceholderAgent
-from core.dify_builder.ports import DifyBuilderAgent
+from services.dify_builder.application.placeholder_agent import FIXED_CODE, PlaceholderAgent
+from services.dify_builder.application.ports import DifyBuilderAgent
 
 
 def test_placeholder_agent_satisfies_dify_builder_agent_protocol() -> None:
@@ -101,7 +101,7 @@ def test_generate_mock_inputs_returns_canned_query() -> None:
 
 
 def test_analyze_goal_returns_full_requirements_shape() -> None:
-    from core.dify_builder.placeholder_agent import PlaceholderAgent
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
 
     analysis = PlaceholderAgent().analyze_goal("Build a quarterly report workflow")
     assert set(analysis.keys()) == {"fields", "values"}
@@ -126,7 +126,7 @@ def test_analyze_goal_returns_full_requirements_shape() -> None:
 
 
 def test_propose_plan_v1_and_bind_resources_return_ordered_strings() -> None:
-    from core.dify_builder.placeholder_agent import PlaceholderAgent
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
 
     a = PlaceholderAgent()
     v1 = a.propose_plan_v1({"currency": "USD"}, goal_text="Build a report")
@@ -138,7 +138,7 @@ def test_propose_plan_v1_and_bind_resources_return_ordered_strings() -> None:
 
 
 def test_discover_resources_returns_one_ready_option() -> None:
-    from core.dify_builder.placeholder_agent import PlaceholderAgent
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
 
     opts = PlaceholderAgent().discover_resources(["Retrieve", "Summarize"], goal_text="Build a report", requirements={})
     assert len(opts) == 1
@@ -147,7 +147,7 @@ def test_discover_resources_returns_one_ready_option() -> None:
 
 
 def test_build_nodes_emits_start_knowledge_llm_end_with_valid_connects() -> None:
-    from core.dify_builder.placeholder_agent import (
+    from services.dify_builder.application.placeholder_agent import (
         BUILD_END_ID,
         BUILD_KNOWLEDGE_ID,
         BUILD_LLM_ID,
@@ -183,7 +183,7 @@ def test_build_nodes_emits_start_knowledge_llm_end_with_valid_connects() -> None
 
 
 def test_placeholder_learn_from_build_returns_descriptor() -> None:
-    from core.dify_builder.placeholder_agent import PlaceholderAgent
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
 
     out = PlaceholderAgent().learn_from_build("summarize a PDF", {}, ["step"], ["llm"])
     assert isinstance(out, str)

@@ -61,11 +61,11 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import sessionmaker
 
     from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.dify_builder.execution_policy import BuilderExecutionContext, JsonToolExecutionContext
     from core.dify_builder.models import ConversationItem, Turn
-    from core.dify_builder.ports import DifyPort
     from models.account import Account
     from models.model import App
+    from services.dify_builder.application.execution_policy import BuilderExecutionContext, JsonToolExecutionContext
+    from services.dify_builder.application.ports import DifyPort
     from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
     from services.dify_builder.json_tool_metadata import InstalledJsonParse
@@ -488,8 +488,8 @@ def test_canvas_presentation_survives_the_service_worker_port_and_native_admissi
     owned: Owned, monkeypatch: pytest.MonkeyPatch, phase: str, presentation: str
 ) -> None:
     """Use real admission/claim owners; stop before native graph effects, with unknown execution evidence."""
-    import core.app.apps.workflow.app_generator as native
     import services.dify_builder.dify_port as port_module
+    import services.workflow_runtime.workflow_generator as native
     from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
 
     factory, actor, app, workflow, _sid, _tid = owned
@@ -614,9 +614,9 @@ def test_canvas_presentation_survives_the_service_worker_port_and_native_admissi
         launch(current, app, entity, "start", False)
         # The native factory and Graph.init recheck raw node bindings too.
         from core.app.entities.app_invoke_entities import UserFrom, build_dify_run_context
-        from core.workflow.node_factory import DifyNodeFactory
         from graphon.graph import Graph
         from graphon.runtime import InitParams, RuntimeState, VariablePool
+        from services.workflow_runtime.node_factory import DifyNodeFactory
 
         configuration = current.graph_dict
         node_factory = DifyNodeFactory(
@@ -680,7 +680,7 @@ def test_canvas_presentation_survives_the_service_worker_port_and_native_admissi
             "node_binding_mismatch",
             "stale_http_fixtures",
         }
-        from core.dify_builder.verification import publication_decision
+        from services.dify_builder.application.verification import publication_decision
 
         assert not publication_decision(
             stored_run, session_id=sid, current_revision=revision, current_graph_revision=graph_revision
@@ -690,7 +690,7 @@ def test_canvas_presentation_survives_the_service_worker_port_and_native_admissi
     assert admitted[0].recorder is not None
     assert admitted[0].context.execution_revision == revision
     assert admitted[0].context.graph_revision == graph_revision
-    from services.dify_builder.execution_contracts import BuilderExecutionContext
+    from runtime_contracts.builder.execution import BuilderExecutionContext
 
     assert isinstance(admitted[0].context, BuilderExecutionContext)
     assert admitted[0].context.http_fixtures == (fixture(),)
@@ -710,8 +710,8 @@ def test_json_metadata_io_rechecks_execution_configuration_and_owned_state(
     owned: Owned, monkeypatch: pytest.MonkeyPatch, phase: str, change: str
 ) -> None:
     """JSON's post-I/O owner check must retain the same presentation exemption and ownership fences."""
+    from runtime_contracts.builder.execution import BuilderExecutionPolicyError, JsonToolExecutionContext
     from services.dify_builder import execution_policy_service as policy_module
-    from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, JsonToolExecutionContext
     from tests.unit_tests.services.dify_builder.test_json_tool_execution_admission import GRAPH_FIXTURE
     from tests.unit_tests.services.dify_builder.test_json_tool_metadata import _installation, _owners
 

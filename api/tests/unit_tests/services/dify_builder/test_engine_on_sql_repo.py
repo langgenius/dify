@@ -22,7 +22,6 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.dify_builder.errors import ConflictError
-from core.dify_builder.handlers_fix import fix_registry
 from core.dify_builder.models import (
     Action,
     Actor,
@@ -35,11 +34,12 @@ from core.dify_builder.models import (
     Session,
     Turn,
 )
-from core.dify_builder.placeholder_agent import FIXED_CODE, PlaceholderAgent
-from core.dify_builder.ports import Repository
-from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState, canvas_read_only
 from models.base import Base
+from services.dify_builder.application.handlers_fix import fix_registry
+from services.dify_builder.application.placeholder_agent import FIXED_CODE, PlaceholderAgent
+from services.dify_builder.application.ports import Repository
+from services.dify_builder.application.runner import Env, Runner
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
@@ -299,8 +299,8 @@ def test_checklist_entry_flow_wires_diagnose_through_await_recheck_to_decision_o
 
 
 def test_execution_evidence_round_trips_without_historical_backfill(repo: SqlDifyBuilderRepository) -> None:
-    from core.dify_builder.execution_policy import ExecutionEvidenceSummary
     from core.dify_builder.models import RunVerification
+    from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
 
     # This is serialization evidence only, not a native execution positive control.
     evidence = RunVerification(

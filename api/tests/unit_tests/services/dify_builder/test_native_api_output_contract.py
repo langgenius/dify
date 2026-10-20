@@ -5,8 +5,8 @@ from typing import cast
 
 import pytest
 
-from core.workflow.generator.runner import WorkflowGenerator
 from core.workflow.generator.types import GraphDict, GraphNodeDict, WorkflowGenerateErrorDict
+from services.workflow_generation.runner import WorkflowGenerator
 
 PROVIDER = "14076462-4152-4ef0-aad2-3eaea9369b1a"
 

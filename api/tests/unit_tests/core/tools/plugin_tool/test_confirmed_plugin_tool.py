@@ -14,8 +14,6 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError
-from core.dify_builder.gmail_read_policy import normalize_get_message_parameters
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -23,6 +21,8 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage, ToolParameter
 from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_engine import ToolEngine
+from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
+from services.dify_builder.application.gmail_read_policy import normalize_get_message_parameters
 
 # SYNTHETIC values in the exact proposed contract shape; never a qualified artifact.
 SYNTHETIC_HEADERS = {

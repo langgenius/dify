@@ -3,8 +3,6 @@ from datetime import datetime
 
 import pytest
 
-from core.dify_builder import handlers_build, handlers_edit, handlers_fix
-from core.dify_builder.handlers_fix import build_form_fields
 from core.dify_builder.models import (
     Action,
     Actor,
@@ -17,8 +15,10 @@ from core.dify_builder.models import (
     TestInput,
     Turn,
 )
-from core.dify_builder.runner import Handler, StepResult
 from core.dify_builder.state import PcState
+from services.dify_builder.application import handlers_build, handlers_edit, handlers_fix
+from services.dify_builder.application.handlers_fix import build_form_fields
+from services.dify_builder.application.runner import Handler, StepResult
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, FixtureEnv, InMemoryRepository, StubAgent
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
@@ -266,8 +266,8 @@ def test_workflow_fix_input_failures_keep_the_existing_decision_route() -> None:
 
 def test_system_message_label_uses_a_scene_without_changing_the_runtime_schema() -> None:
     from core.dify_builder.input_schema import schema_hash, start_schema
-    from services.dify_builder.copy_ids import BuilderCopyId
-    from services.dify_builder.presentation import copy_text
+    from runtime_contracts.builder.copy_ids import BuilderCopyId
+    from runtime_contracts.builder.presentation import copy_text
 
     graph: Graph = {
         "nodes": [

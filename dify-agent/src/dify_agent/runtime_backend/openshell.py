@@ -511,6 +511,8 @@ class OpenShellExecutionBindingBackend:
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
         """Create one stopped sandbox, optionally materializing a Home Snapshot."""
+        if spec.native_test_scope is not None:
+            raise BindingCreateError("native_scope_unavailable")
         if spec.existing_workspace_ref is not None:
             raise SharedWorkspaceUnsupportedError("current OpenShell backend cannot attach to an existing Workspace")
         name = _binding_sandbox_name(spec.binding_id)
@@ -548,6 +550,8 @@ class OpenShellExecutionBindingBackend:
             _reraise_as(exc, error=BindingCreateError)
 
     async def acquire(self, binding_ref: str) -> RuntimeLease:
+        if binding_ref.startswith("native:"):
+            raise BindingAcquireError("native_scope_unavailable")
         """Start the sandbox when needed, bootstrap shellctl, and open the tunnel."""
         tunnel: OpenShellTunnelHandle | None = None
         data_plane: ShellctlRuntimeLease | None = None
@@ -616,6 +620,8 @@ class OpenShellExecutionBindingBackend:
             raise BindingAcquireError(str(close_error)) from close_error
 
     async def destroy_binding(self, spec: ExecutionBindingDestroySpec) -> None:
+        if spec.binding_ref.startswith("native:"):
+            raise BindingDestroyError("native_scope_cleanup_unavailable")
         """Destroy the coupled physical Binding and Workspace idempotently."""
         if not spec.destroy_workspace:
             raise WorkspacePreservationUnsupportedError(

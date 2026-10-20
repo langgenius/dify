@@ -578,3 +578,19 @@ class TestFetchToolProviderMetadataConsistency:
 
         with pytest.raises(ValueError, match="another plugin|metadata disagrees"):
             PluginToolManager().fetch_tool_providers("tenant-1")
+
+
+def test_provider_failure_observation_records_only_canonical_tool_identity(mocker):
+    from services.dify_builder.native_launch_observation import NativeLaunchObservation
+
+    manager = PluginToolManager()
+    mocker.patch.object(
+        manager,
+        "_request_with_plugin_daemon_response",
+        side_effect=ConnectionRefusedError("private endpoint and secret"),
+    )
+    observation = NativeLaunchObservation()
+    with observation.track(), pytest.raises(ConnectionRefusedError):
+        manager.fetch_tool_provider("tenant", "org/plugin/provider")
+    assert observation.failure_resource == ("tool", "org/plugin/provider", "")
+    assert "secret" not in repr(observation)

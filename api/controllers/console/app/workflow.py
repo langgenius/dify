@@ -76,6 +76,8 @@ from fields.base import ResponseModel
 from fields.conversation_variable_fields import WorkflowConversationVariableResponse
 from fields.member_fields import SimpleAccount
 from fields.workflow_run_fields import (
+    IterationNodeRunPayload,
+    LoopNodeRunPayload,
     WorkflowRunNodeExecutionResponse,
     node_execution_response_source,
 )
@@ -175,14 +177,6 @@ class AdvancedChatWorkflowRunPayload(BaseWorkflowRunPayload):
         if value is None:
             return value
         return uuid_value(value)
-
-
-class IterationNodeRunPayload(BaseModel):
-    inputs: dict[str, Any] | None = Field(default=None)
-
-
-class LoopNodeRunPayload(BaseModel):
-    inputs: dict[str, Any] | None = Field(default=None)
 
 
 class DraftWorkflowRunPayload(BaseWorkflowRunPayload):

@@ -25,8 +25,8 @@ from core.dify_builder.models import (
     Session,
     Turn,
 )
-from core.dify_builder.runner import Env, Handler, Runner, StepResult
 from core.dify_builder.state import PcState
+from services.dify_builder.application.runner import Env, Handler, Runner, StepResult
 from tests.unit_tests.core.dify_builder.fakes import (
     FakeDifyPort,
     FixtureEnv,
@@ -636,7 +636,7 @@ def test_advance_logs_each_successful_cas_and_persists_ordered_items(caplog: pyt
         return StepResult(next=PcState.FIX_AWAIT_APPROVAL, context=fc, items=[item])
 
     runner = Runner(env, {PcState.FIX_DIAGNOSE: diagnose, PcState.FIX_PROPOSE: propose})
-    with caplog.at_level(logging.INFO, logger="core.dify_builder.runner"):
+    with caplog.at_level(logging.INFO, logger="services.dify_builder.application.runner"):
         runner.advance(
             s.id,
             Turn(action=Action(kind="request_fix", base_version=1, command_id="command-1"), actor=_actor()),
@@ -727,7 +727,7 @@ def test_recovery_short_path_persists_its_items(monkeypatch: pytest.MonkeyPatch)
         fc.next_seq += 1
         return session.current_state, [item]
 
-    monkeypatch.setattr("core.dify_builder.runner.recovery.apply_recovery_action", apply_recovery)
+    monkeypatch.setattr("services.dify_builder.application.runner.recovery.apply_recovery_action", apply_recovery)
     Runner(env, {}).advance(
         s.id,
         Turn(
@@ -881,3 +881,18 @@ def test_recovery_clears_pending_confirmed_reference() -> None:
     Runner(env, {}).advance(s.id, Turn(action=Action(kind="check_recovery", base_version=1), actor=_actor()))
     _session_after, fc = repo.get_session(s.id)
     assert (fc.confirmed_consent_id, fc.confirmed_command_id) == ("", "")
+
+
+def test_committed_test_input_remains_available_as_prefill_after_replanning():
+    env, repo = _new_env()
+    session = _session()
+    context = DifyBuilderContext(test_input_ref="latest-input")
+    repo.create_session(session, context, [])
+    runner = Runner(env, {})
+    runner._commit(session, PcState.FIX_AWAIT_VERIFY, context, [], settled=True)
+    context.test_input_ref = ""
+    runner._commit(session, PcState.FIX_AWAIT_APPROVAL, context, [], settled=True)
+    _, stored = repo.get_session(session.id)
+    assert stored.test_input_ref == ""
+    assert stored.retained_test_input_ref == "latest-input"
+    assert not stored.confirmed_consent_id

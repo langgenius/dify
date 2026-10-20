@@ -18,7 +18,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 from typing_extensions import TypedDict
 
-from core.dify_builder import execution_policy as domain
 from core.dify_builder.models import Actor, Graph
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -26,7 +25,8 @@ from models.base import Base, TypeBase
 from models.dify_builder import DifyBuilderSession, DifyBuilderTestInput
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
-from services.dify_builder.execution_contracts import TrustedExecutionCompletion
+from runtime_contracts.builder.execution import TrustedExecutionCompletion
+from services.dify_builder.application import execution_policy as domain
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph, policy
 
 type Owned = tuple[sessionmaker[Session], Actor, App, Workflow, str, str]
@@ -535,12 +535,12 @@ def test_all_handlers_persist_actual_server_stamp(
 ) -> None:
     from datetime import datetime
 
-    from core.dify_builder import handlers_build, handlers_edit, handlers_fix
     from core.dify_builder.models import Action, DifyBuilderContext, EntryMode, Turn
     from core.dify_builder.models import Session as BuilderSession
-    from core.dify_builder.runner import Env
     from core.dify_builder.state import PcState
     from services.dify_builder import dify_port
+    from services.dify_builder.application import handlers_build, handlers_edit, handlers_fix
+    from services.dify_builder.application.runner import Env
     from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
 
     factory, actor, app, workflow, sid, tid = owned

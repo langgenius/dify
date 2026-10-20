@@ -6,12 +6,12 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.app.apps.advanced_chat import app_runner as app_runner_module
-from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
 from factories import variable_factory
 from graphon.variables import SegmentType
 from models import App, Conversation, ConversationVariable, Message
 from models.workflow import Workflow, WorkflowType
+from services.workflow_runtime import chatflow_runner as app_runner_module
+from services.workflow_runtime.chatflow_runner import AdvancedChatAppRunner
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
 CONVERSATION_ID = "22222222-2222-2222-2222-222222222222"

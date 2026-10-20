@@ -34,8 +34,6 @@ from clients.agent_backend import (
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
-from core.workflow.nodes.agent_v2 import DifyAgentNode
-from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
@@ -66,6 +64,8 @@ from models.agent_config_entities import (
     WorkflowNodeJobConfig,
 )
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
+from services.workflow_runtime.agent_binding import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
+from services.workflow_runtime.agent_node import DifyAgentNode
 
 
 @pytest.fixture(autouse=True)
@@ -407,8 +407,10 @@ def _node(
     binding_resolver: FakeBindingResolver | None = None,
     runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
     error_strategy: ErrorStrategy | None = None,
+    graph_init_params: InitParams | None = None,
+    confirmed_owners: tuple | None = None,
 ) -> DifyAgentNode:
-    graph_init_params = InitParams(
+    graph_init_params = graph_init_params or InitParams(
         workflow_id="workflow-1",
         graph_config={"nodes": [], "edges": []},
         run_context={
@@ -470,6 +472,15 @@ def _node(
         type_checker=PerOutputTypeChecker(file_validator=_AlwaysAllowFileValidator()),
         failure_orchestrator=OutputFailureOrchestrator(),
         session_store=cast(WorkflowAgentWorkspaceStore, session_store or FakeSessionStore()),
+        **(
+            {
+                "agent_preparation": confirmed_owners[0],
+                "agent_commands": confirmed_owners[1],
+                "agent_run_recovery": confirmed_owners[2],
+            }
+            if confirmed_owners is not None
+            else {}
+        ),
     )
     node.bind_execution_id(str(uuid4()))
     return node
@@ -1035,7 +1046,7 @@ def test_agent_node_selects_the_configured_success_exit(enabled, count, output, 
 def test_agent_routes_initialize_through_workflow_node_factory(
     enabled, error_strategy, expected_execution_type, config_overrides
 ):
-    from core.workflow.node_factory import DifyNodeFactory
+    from services.workflow_runtime.node_factory import DifyNodeFactory
 
     config_overrides(AGENT_BACKEND_USE_FAKE=True)
     template = _node()

@@ -165,6 +165,10 @@ class WorkflowAgentRuntimeRequestBuilder:
         self._dify_tools_builder = dify_tools_builder or WorkflowAgentDifyToolsBuilder()
 
     def build(self, context: WorkflowAgentRuntimeBuildContext) -> WorkflowAgentRuntimeRequest:
+        if context.dify_context.native_test_required != (context.dify_context.native_test_ref is not None):
+            raise WorkflowAgentRuntimeRequestBuildError(
+                "native_context_missing", "Native Agent authority is unavailable."
+            )
         agent_soul = AgentSoulConfig.model_validate(context.snapshot.config_snapshot_dict)
         node_job = WorkflowNodeJobConfig.model_validate(context.binding.node_job_config_dict)
         node_job.output_routes.validate_for_execution()
@@ -189,6 +193,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 user_id=context.dify_context.user_id,
                 tools=agent_soul.tools,
                 invoke_from=context.dify_context.invoke_from,
+                native_test_required=context.dify_context.native_test_required,
             )
         except WorkflowAgentDifyToolsBuildError as error:
             raise WorkflowAgentRuntimeRequestBuildError(error.error_code, str(error)) from error
@@ -276,6 +281,19 @@ class WorkflowAgentRuntimeRequestBuilder:
                 metadata=metadata,
             )
         )
+        if context.dify_context.native_test_required:
+            from dify_agent.protocol.native_testing import AgentNativeTestRef
+
+            assert context.dify_context.native_test_ref is not None
+            request = request.model_copy(
+                update={
+                    "execution_mode": "builder_test",
+                    "native_test_protocol_version": 1,
+                    "native_test_ref": AgentNativeTestRef.model_validate(
+                        context.dify_context.native_test_ref.model_dump(mode="json")
+                    ),
+                }
+            )
         redacted = cast(dict[str, Any], redact_for_agent_backend_log(request))
         return WorkflowAgentRuntimeRequest(
             request=request,
@@ -293,6 +311,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         user_id: str | None,
         tools: AgentSoulToolsConfig,
         invoke_from: InvokeFrom,
+        native_test_required: bool = False,
     ) -> WorkflowAgentToolLayers:
         # Production workflow runs intentionally keep existing plugin configs on
         # the direct `dify.plugin.tools` route. This builder emits plugin tools
@@ -303,6 +322,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             user_id=user_id,
             tools=tools,
             invoke_from=invoke_from,
+            **({"native_test_required": True} if native_test_required else {}),
         )
 
     @staticmethod

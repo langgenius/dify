@@ -6,7 +6,6 @@ from uuid import uuid4
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from libs.helper import generate_text_hash
 from repositories.app.console_repository import ConsoleAppRepository
@@ -53,6 +52,7 @@ from services.knowledge.segments.indexing import SegmentIndexingGateway
 from services.rbac.members import MemberService
 from services.tag_application_service import TagTargetQuery
 from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_runtime.pipeline_generator import PipelineGenerator
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segments_from_index_task import disable_segments_from_index_task

@@ -129,7 +129,7 @@ class DifyBuilderRun(Base):
     kind: Mapped[str] = mapped_column(String(50), nullable=False)
     dify_run_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(50), nullable=False)
-    per_node: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
+    per_node: Mapped[list[dict] | None] = mapped_column(AdjustedJSON, nullable=True)
     verification: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
     culprit_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Launch-failure text captured when a verify run throws before any node runs.
@@ -204,7 +204,14 @@ class DifyBuilderExecutionRequest(Base):
         sa.PrimaryKeyConstraint("id", name="dify_builder_execution_request_pkey"),
         sa.Index("dify_builder_execution_request_session_idx", "session_id"),
         sa.Index("dify_builder_execution_request_app_idx", "tenant_id", "app_id"),
-        sa.CheckConstraint("state IN ('prepared', 'running', 'sealed')", name="builder_execution_request_state"),
+        sa.CheckConstraint(
+            "state IN ('prepared','running','sealed') OR "
+            "(state = 'waiting' AND COALESCE(context->>'policy_version', '') = 'builder-native-test-v1')",
+            name="builder_execution_request_state",
+        ),
+        sa.Index(
+            "builder_native_waiting_idx", "tenant_id", "app_id", "state", postgresql_where=sa.text("state = 'waiting'")
+        ),
     )
 
     id: Mapped[str] = mapped_column(StringUUID)

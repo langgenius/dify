@@ -313,34 +313,40 @@ class BaseAppGenerator:
 
     @overload
     @classmethod
-    def convert_to_event_stream[MappingT: Mapping[str, object]](cls, generator: MappingT) -> MappingT: ...
+    def convert_to_event_stream[MappingT: Mapping[str, object]](
+        cls, generator: MappingT, *, close_source: bool = False
+    ) -> MappingT: ...
 
     @overload
     @classmethod
-    def convert_to_event_stream(cls, generator: Generator[Mapping[str, object] | str]) -> Generator[str]: ...
+    def convert_to_event_stream(
+        cls, generator: Generator[Mapping[str, object] | str], *, close_source: bool = False
+    ) -> Generator[str]: ...
 
     @classmethod
     def convert_to_event_stream(
-        cls, generator: Mapping[str, object] | Generator[Mapping[str, object] | str]
+        cls, generator: Mapping[str, object] | Generator[Mapping[str, object] | str], *, close_source: bool = False
     ) -> Mapping[str, object] | Generator[str]:
-        """
-        Convert messages into an event stream and retain ownership of its cleanup.
+        """Convert messages into an event stream.
+
+        In-process dispatch opts into source closure. Native host-owned streams
+        retain their existing reader finalizer as the close authority.
         """
         if isinstance(generator, Mapping):
             return generator
-        else:
 
-            def gen() -> Generator[str]:
-                try:
-                    for message in generator:
-                        if isinstance(message, Mapping):
-                            yield f"data: {orjson_dumps(message)}\n\n"
-                        else:
-                            yield f"event: {message}\n\n"
-                finally:
+        def gen() -> Generator[str]:
+            try:
+                for message in generator:
+                    if isinstance(message, Mapping):
+                        yield f"data: {orjson_dumps(message)}\n\n"
+                    else:
+                        yield f"event: {message}\n\n"
+            finally:
+                if close_source:
                     generator.close()
 
-            return gen()
+        return gen()
 
     @final
     @staticmethod

@@ -13,12 +13,18 @@ api = ExternalApi(
     title="Inner API",
     description="Internal APIs for enterprise features, billing, knowledge retrieval, and plugin communication",
     authorizations={
+        "AgentBearer": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": "Bearer AGENT_BACKEND_API_TOKEN; runtime routes also require X-Dify-Agent-Run.",
+        },
         "InnerApiKey": {
             "type": "apiKey",
             "in": "header",
             "name": "X-Inner-Api-Key",
             "description": "INNER_API_KEY for enterprise callers; INNER_API_KEY_FOR_PLUGIN for plugin/agent callers.",
-        }
+        },
     },
     security="InnerApiKey",
 )
@@ -31,7 +37,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     """Load route modules after their namespace exists."""
 
     from . import mail, runtime_credentials
-    from .agent import files, llm, runtime_usage, tools
+    from .agent import files, llm, runtime, runtime_usage, tools
     from .app import app, dsl, file_grants
     from .knowledge import retrieval
     from .plugin import agent_config, plugin, skills
@@ -42,6 +48,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         runtime_credentials,
         files,
         llm,
+        runtime,
         runtime_usage,
         tools,
         app,
@@ -60,6 +67,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     _runtime_credentials,
     _agent_files,
     _agent_llm,
+    _agent_runtime,
     _agent_runtime_usage,
     _agent_tools,
     _app_app,
@@ -72,12 +80,21 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     _workspace,
 ) = _register_controllers()
 
+
+@bp.record_once
+def _install_agent_lineage(state):
+    from services.dify_builder.wiring import build_native_agent_endpoint_lineage
+
+    state.app.extensions["native_agent_endpoint_lineage"] = build_native_agent_endpoint_lineage()
+
+
 api.add_namespace(inner_api_ns)
 
 __all__ = [
     "_agent_config",
     "_agent_files",
     "_agent_llm",
+    "_agent_runtime",
     "_agent_runtime_usage",
     "_agent_tools",
     "_app_app",

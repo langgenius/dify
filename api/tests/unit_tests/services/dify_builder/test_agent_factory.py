@@ -4,9 +4,9 @@ from unittest.mock import Mock
 import pytest
 
 from configs import dify_config
-from core.dify_builder.ports import DifyBuilderAgent
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 from services.dify_builder.agent_factory import build_dify_builder_agent, set_dify_builder_agent_factory
+from services.dify_builder.application.ports import DifyBuilderAgent
 
 
 def test_default_factory_returns_llm_agent() -> None:

@@ -2,6 +2,8 @@
 SQLAlchemy implementation of the WorkflowNodeExecutionRepository.
 """
 
+from __future__ import annotations
+
 import dataclasses
 import json
 import logging
@@ -10,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, override
 
 import psycopg2.errors
+from pydantic import ValidationError
 from sqlalchemy import UnaryExpression, asc, desc, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
@@ -17,7 +20,7 @@ from sqlalchemy.orm import sessionmaker
 from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt
 
 from configs import dify_config
-from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
+from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository, WorkflowNodeObservation
 from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
 from extensions.ext_storage import storage
 from graphon.entities import WorkflowNodeExecution
@@ -36,10 +39,50 @@ from models.enums import ExecutionOffLoadType
 from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionOffload
 from repositories.workflow_run_control import apply_workflow_stop_to_node, get_stopped_workflow_run
+from runtime_contracts.agent_recovery import AgentCreateIntent
 from services.file_service import FileService
 from services.variable_truncator import VariableTruncator
 
 logger = logging.getLogger(__name__)
+
+
+def _preserve_agent_process_data(
+    identity_source: Mapping[str, Any] | None,
+    process_data: Mapping[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Keep bounded durable create identities when terminal events replace metadata.
+
+    A terminal event can predate an acknowledged child; it cannot erase that
+    identity or replace the original create key/request digest.
+    """
+    merged = preserve_workflow_agent_binding_id(identity_source, process_data)
+    if not any("agent_create_attempts" in data for data in (identity_source or {}, process_data or {})):
+        return merged
+
+    attempts: dict[int, AgentCreateIntent] = {}
+    for data in (identity_source or {}, process_data or {}):
+        raw = data.get("agent_create_attempts", [])
+        if not isinstance(raw, list) or len(raw) > 11:
+            raise ValueError("Agent create identities are invalid")
+        try:
+            validated = [AgentCreateIntent.model_validate(item) for item in raw]
+        except ValidationError:
+            raise ValueError("Agent create identities are invalid") from None
+        if len({item.attempt for item in validated}) != len(validated):
+            raise ValueError("Agent create identities are ambiguous")
+        for item in validated:
+            existing = attempts.get(item.attempt)
+            if existing is not None:
+                if (existing.key, existing.digest) != (item.key, item.digest) or (
+                    existing.child_run_id is not None
+                    and item.child_run_id is not None
+                    and existing.child_run_id != item.child_run_id
+                ):
+                    raise ValueError("Agent create identity does not match")
+                if existing.child_run_id is not None:
+                    continue
+            attempts[item.attempt] = item
+    return {**(merged or {}), "agent_create_attempts": [item.model_dump(mode="json") for item in attempts.values()]}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -60,6 +103,16 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     This implementation also includes an in-memory cache for node executions to improve
     performance by reducing database queries.
     """
+
+    _native_observation: WorkflowNodeObservation | None = None
+    _native_observation_started: bool = False
+
+    def bind_native_observation(self, *, observation: WorkflowNodeObservation) -> None:
+        """Attach the service-composed observer without constructing its application owner."""
+        previous = self._native_observation
+        if previous is not None and previous is not observation:
+            previous.fail()
+        self._native_observation = observation
 
     def __init__(
         self,
@@ -119,6 +172,12 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         )
 
     def _to_domain_model(self, db_model: WorkflowNodeExecutionModel) -> WorkflowNodeExecution:
+        self._native_observation_started = True
+        if self._native_observation is not None:
+            return self._native_observation.to_domain_node(self, db_model)
+        return self._ordinary_to_domain_model(db_model)
+
+    def _ordinary_to_domain_model(self, db_model: WorkflowNodeExecutionModel) -> WorkflowNodeExecution:
         """
         Convert a database model to a domain model.
 
@@ -189,6 +248,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         return domain_model
 
     def _load_file(self, file: UploadFile) -> Mapping[str, Any]:
+        self._native_observation_started = True
+        if self._native_observation is not None:
+            self._native_observation.fail()  # Bound offloads require the complete SQL owner chain.
         content = storage.load(file.key)
         return json.loads(content)
 
@@ -198,6 +260,11 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         return json.dumps(json_converter.to_json_encodable(values))
 
     def _to_db_model(self, domain_model: WorkflowNodeExecution) -> WorkflowNodeExecutionModel:
+        if self._native_observation is not None:
+            return self._native_observation.to_db_node(self, domain_model)
+        return self._ordinary_to_db_model(domain_model)
+
+    def _ordinary_to_db_model(self, domain_model: WorkflowNodeExecution) -> WorkflowNodeExecutionModel:
         """
         Convert a domain model to a database model. This copies the inputs /
         process_data / outputs from domain model directly without applying truncation.
@@ -281,6 +348,17 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         execution_id: str,
         type_: ExecutionOffLoadType,
     ) -> _InputsOutputsTruncationResult | None:
+        self._native_observation_started = True
+        if self._native_observation is not None:
+            self._native_observation.fail()  # Standalone upload lacks a bound Run/node owner.
+        return self._ordinary_truncate_and_upload(values, execution_id, type_)
+
+    def _ordinary_truncate_and_upload(
+        self,
+        values: Mapping[str, Any] | None,
+        execution_id: str,
+        type_: ExecutionOffLoadType,
+    ) -> _InputsOutputsTruncationResult | None:
         if values is None:
             return None
 
@@ -341,6 +419,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         # Only the final call contains the complete inputs and outputs payloads, so earlier invocations
         # must tolerate missing data without attempting to offload variables.
 
+        self._native_observation_started = True
+        if self._native_observation is not None:
+            return self._native_observation.save_node(self, execution)
         # Convert domain model to database model using tenant context and other attributes
         db_model = self._to_db_model(execution)
 
@@ -390,6 +471,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         Args:
             db_model: The database model to persist
         """
+        self._native_observation_started = True
+        if self._native_observation is not None:
+            return self._native_observation.persist_node(self, db_model)
         with self._session_factory() as session:
             if db_model.status in (
                 WorkflowNodeExecutionStatus.RUNNING,
@@ -403,10 +487,12 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                     ),
                 )
             # Check if record already exists
-            existing = session.get(WorkflowNodeExecutionModel, db_model.id)
+            existing = session.scalar(
+                select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == db_model.id).with_for_update()
+            )
 
             if existing:
-                merged_process_data = preserve_workflow_agent_binding_id(
+                merged_process_data = _preserve_agent_process_data(
                     existing.process_data_dict,
                     db_model.process_data_dict,
                 )
@@ -430,6 +516,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
     @override
     def save_execution_data(self, execution: WorkflowNodeExecution):
+        self._native_observation_started = True
+        if self._native_observation is not None:
+            return self._native_observation.save_node(self, execution, data=True)
         domain_model = execution
         with self._session_factory(expire_on_commit=False) as session:
             query = WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel)).where(
@@ -469,7 +558,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             else:
                 db_model.outputs = self._json_encode(domain_model.outputs)
 
-        process_data = preserve_workflow_agent_binding_id(db_model.process_data_dict, domain_model.process_data)
+        process_data = _preserve_agent_process_data(db_model.process_data_dict, domain_model.process_data)
         if process_data is not None:
             result = self._truncate_and_upload(
                 process_data,
@@ -477,9 +566,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 ExecutionOffLoadType.PROCESS_DATA,
             )
             if result is not None:
-                truncated_process_data = preserve_workflow_agent_binding_id(
+                truncated_process_data = _preserve_agent_process_data(
                     process_data,
-                    result.truncated_value,
+                    {key: value for key, value in result.truncated_value.items() if key != "agent_create_attempts"},
                 )
                 if truncated_process_data is None:
                     raise ValueError("truncated process data is unavailable")
@@ -491,6 +580,21 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         db_model.offload_data = offload_data
         with self._session_factory() as session, session.begin():
+            # Uploads deliberately happen outside this transaction. Re-read the
+            # receipt under the same row lock used by the create intent owner so
+            # an ACK committed during upload cannot be lost by detached merge.
+            existing = session.scalar(
+                select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == db_model.id).with_for_update()
+            )
+            if existing is not None:
+                latest_process_data = _preserve_agent_process_data(
+                    existing.process_data_dict, db_model.process_data_dict
+                )
+                db_model.process_data = (
+                    self._json_encode(latest_process_data) if latest_process_data is not None else None
+                )
+                if domain_model.get_truncated_process_data() is not None and latest_process_data is not None:
+                    domain_model.set_truncated_process_data(latest_process_data)
             if db_model.status in (
                 WorkflowNodeExecutionStatus.RUNNING,
                 WorkflowNodeExecutionStatus.PAUSED,
@@ -510,6 +614,25 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         workflow_run_id: str,
         order_config: OrderConfig | None = None,
         *,
+        include_paused: bool = False,
+    ) -> Sequence[WorkflowNodeExecutionModel]:
+        self._native_observation_started = True
+        triggered_from = self._triggered_from or WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+        if self._native_observation is not None:
+            return self._native_observation.get_nodes(
+                self, workflow_run_id, order_config, triggered_from, include_paused=include_paused
+            )
+        return self._ordinary_get_db_models_by_workflow_run(
+            workflow_run_id, order_config, triggered_from, include_paused=include_paused
+        )
+
+    def _ordinary_get_db_models_by_workflow_run(
+        self,
+        workflow_run_id: str,
+        order_config: OrderConfig | None = None,
+        triggered_from: WorkflowNodeExecutionTriggeredFrom = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        *,
+        cache: bool = True,
         include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
@@ -536,8 +659,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             stmt = stmt.where(
                 WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
                 WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
-                WorkflowNodeExecutionModel.triggered_from
-                == (self._triggered_from or WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),
+                WorkflowNodeExecutionModel.triggered_from == triggered_from,
             )
 
             if not include_paused:
@@ -564,9 +686,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             db_models = session.scalars(stmt).all()
 
             # Update the cache with the retrieved DB models
-            for model in db_models:
-                if model.node_execution_id:
-                    self._node_execution_cache[model.node_execution_id] = model
+            if cache:
+                for model in db_models:
+                    if model.node_execution_id:
+                        self._node_execution_cache[model.node_execution_id] = model
 
             return db_models
 

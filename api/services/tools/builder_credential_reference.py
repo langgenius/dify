@@ -32,7 +32,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError, canonical_json
 from core.dify_builder.models import Actor
 from core.dify_builder.real_call_consent import CredentialReference
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -41,6 +40,7 @@ from models.credential_permission import CredentialType as CredentialPermissionT
 from models.enums import PermissionEnum
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
+from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError, canonical_json
 
 OAuthClientSource = Literal["tenant", "system", "missing"]
 AccessBasis = Literal["owner", "legacy_shared", "all_team", "partial_grant"]

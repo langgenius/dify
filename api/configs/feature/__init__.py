@@ -1010,6 +1010,15 @@ class WorkflowConfig(BaseSettings):
         default=False,
     )
 
+    DIFY_BUILDER_CONFIRMED_RUN_ENABLED: bool = Field(
+        description=(
+            "Run a Builder Test Run the restricted runtime cannot admit as an ordinary draft run: model, sandbox "
+            "and read-only nodes run, side effects run only when confirmed in the test-data form and are mocked "
+            "otherwise, destructive operations are always mocked. A run with mocked steps cannot be published."
+        ),
+        default=False,
+    )
+
 
 class WorkflowNodeExecutionConfig(BaseSettings):
     """

@@ -35,13 +35,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import ConnectionPoolEntry, NullPool
 
 from configs import dify_config
-from core.dify_builder import gmail_read_policy
 from core.dify_builder.errors import ConflictError
-from core.dify_builder.execution_policy import (
-    BuilderExecutionPolicyError,
-    ConfirmedToolExecutionContext,
-    validate_execution_context,
-)
 from core.dify_builder.input_schema import schema_hash, start_schema
 from core.dify_builder.models import Actor, ConversationItem, DifyBuilderContext
 from core.dify_builder.real_call_consent import (
@@ -65,6 +59,12 @@ from models.model import App
 from models.tools import BuiltinToolProvider, ToolOAuthTenantClient
 from models.workflow import Workflow
 from services.dify_builder import real_call_consent_service, real_call_metadata
+from services.dify_builder.application import gmail_read_policy
+from services.dify_builder.application.execution_policy import (
+    BuilderExecutionPolicyError,
+    ConfirmedToolExecutionContext,
+    validate_execution_context,
+)
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import execution_revision

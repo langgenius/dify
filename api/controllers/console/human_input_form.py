@@ -25,11 +25,8 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from core.workflow.nodes.human_input.entities import FormInputConfig
 from extensions.ext_database import db
@@ -48,6 +45,9 @@ from services.human_input_service import (
     InvalidFormDataError,
 )
 from services.workflow_event_snapshot_service import build_workflow_event_stream
+from services.workflow_runtime.chatflow_generator import AdvancedChatAppGenerator
+from services.workflow_runtime.response_converter import WorkflowResponseConverter
+from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 
 logger = logging.getLogger(__name__)
 

@@ -408,3 +408,124 @@ async def test_local_binding_destroy_preserves_shellctl_error_when_close_fails()
         )
 
     assert factory.clients and all(client.closed for client in factory.clients)
+
+
+@pytest.fixture
+def native_scope_http_server():
+    import json
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    state = {
+        "requests": [],
+        "status": 200,
+        "body": {"scope_id": "scope-one", "generation": 7, "status": "ready", "token": "scope-secret"},
+    }
+
+    class Handler(BaseHTTPRequestHandler):
+        def handle_request(self):
+            length = int(self.headers.get("Content-Length", "0"))
+            body = self.rfile.read(length)
+            state["requests"].append((self.command, self.path, dict(self.headers), json.loads(body) if body else None))
+            self.send_response(state["status"])
+            self.send_header("Content-Type", "application/json")
+            if state["status"] == 307:
+                self.send_header("Location", "/v1/jobs")
+            self.end_headers()
+            self.wfile.write(json.dumps(state["body"]).encode())
+
+        do_GET = do_POST = do_DELETE = handle_request
+
+        def log_message(self, *_args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}", state
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def _native_transport_spec():
+    from datetime import datetime, timedelta, timezone
+    from shellctl.shared.schemas import NativeScopeSpec
+
+    return NativeScopeSpec.model_validate(
+        {
+            "scope_id": "scope-one",
+            "generation": 7,
+            "binding_ref": "binding-one",
+            "base_snapshot_ref": "home-one",
+            "input_file_refs": ["file-one"],
+            "capability_digest": "a" * 64,
+            "deadline": datetime.now(timezone.utc) + timedelta(seconds=60),
+            "limits": {
+                "cpu_quota": 100000,
+                "memory_bytes": 128 << 20,
+                "pids": 32,
+                "fds": 64,
+                "wall_seconds": 120,
+                "input_bytes": 1 << 20,
+                "output_bytes": 1 << 20,
+                "disk_bytes": 16 << 20,
+            },
+        }
+    )
+
+
+@pytest.mark.anyio
+async def test_native_scope_transport_create_inspect_destroy_and_ephemeral_handle(native_scope_http_server) -> None:
+    from dify_agent.runtime_backend.local import LocalNativeScopeClient
+
+    endpoint, state = native_scope_http_server
+    client = LocalNativeScopeClient(endpoint, "control-secret")
+    handle = await client.create(_native_transport_spec())
+    assert handle.scope_id == "scope-one"
+    assert await client.inspect("scope-one", 7) == handle
+    state["body"] = {"status": "destroyed"}
+    await client.destroy("scope-one", 7)
+    requests = state["requests"]
+    assert [(method, path) for method, path, _, _ in requests] == [
+        ("POST", "/v1/test-scopes"),
+        ("GET", "/v1/test-scopes/scope-one"),
+        ("DELETE", "/v1/test-scopes/scope-one"),
+    ]
+    assert all(headers["Authorization"] == "Bearer control-secret" for _, _, headers, _ in requests)
+    assert requests[1][2]["X-Scope-Generation"] == "7"
+    assert requests[0][3]["input_file_refs"] == ["file-one"]
+    assert "control-secret" not in repr(client)
+    assert "scope-secret" not in handle.model_dump_json()
+    async with client.job_client(handle) as jobs:
+        assert jobs.base_url == endpoint
+        assert jobs.native_scope is handle
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("status", [404, 409, 307])
+async def test_native_scope_transport_never_recreates_or_redirects_lost_owner(
+    native_scope_http_server, status: int
+) -> None:
+    from dify_agent.runtime_backend.local import LocalNativeScopeClient
+    from shellctl.client import ShellctlClientError
+
+    endpoint, state = native_scope_http_server
+    state["status"] = status
+    client = LocalNativeScopeClient(endpoint, "control-secret")
+    with pytest.raises(ShellctlClientError, match="native_scope_unavailable"):
+        await client.inspect("scope-one", 7)
+    assert [(method, path) for method, path, _, _ in state["requests"]] == [("GET", "/v1/test-scopes/scope-one")]
+
+
+@pytest.mark.anyio
+async def test_native_scope_transport_rejects_wrong_generation(native_scope_http_server) -> None:
+    from dify_agent.runtime_backend.local import LocalNativeScopeClient
+    from shellctl.client import ShellctlClientError
+
+    endpoint, state = native_scope_http_server
+    state["body"]["generation"] = 8
+    with pytest.raises(ShellctlClientError, match="native_scope_identity_mismatch"):
+        await LocalNativeScopeClient(endpoint, "control-secret").inspect("scope-one", 7)

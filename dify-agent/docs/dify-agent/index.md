@@ -42,3 +42,18 @@ capability hooks use native Pydantic AI interfaces.
 See [run lifecycle](concepts/run-lifecycle/index.md),
 [resources](concepts/runtime-resources/index.md), and the
 [operations guide](guide/index.md).
+
+Confirmed Builder Test Runs may borrow the existing ordinary Workspace for
+configured CLI tools, skills and files. The immutable request and current API
+Workspace owner are checked before acquiring the lease; each shell/bootstrap or
+configuration pull spends its exact durable operation permit before command
+execution. Config reads carry that claimed dispatch through the encrypted Agent
+Stub token and strict Run-bound API transport. Config writes and generic file
+upload/download remain unavailable in this profile.
+
+Preparation waits retain their stage and resume through the same API ledger.
+Completed results are read back; an unknown operation or lost claim response
+never triggers automatic replay. The runtime releases its borrowed lease but
+does not force-delete tracked jobs on confirmed Run exit. Workspace retirement
+stays with its existing owner, and an HTTP timeout does not prove remote process
+cleanup.
