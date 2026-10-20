@@ -14,6 +14,7 @@ from models import Account, Tenant, TenantAccountJoin
 from models.enums import EndUserType
 from models.model import App, AppMode, AppModelConfig, EndUser
 from models.workflow import Workflow
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.app.generation.runtime import AppGenerationRuntime
 from services.plugin.app_invocation import PluginAppBackwardsInvocation
 from tests.unit_tests.model_factories import make_app, make_end_user, make_workflow
@@ -319,10 +320,9 @@ class TestPluginAppBackwardsInvocation:
             "services.plugin.app_invocation.db",
             _DatabaseWithEngine(self.sqlite_engine),
         )
-        generator_spy = mocker.patch(
-            "services.plugin.app_invocation.AdvancedChatAppGenerator.generate",
-            return_value={"result": "ok"},
-        )
+        generator_factory = mocker.patch("services.plugin.app_invocation.AdvancedChatAppGenerator")
+        generator_spy = generator_factory.return_value.generate
+        generator_spy.return_value = {"result": "ok"}
         session = self.session
 
         result = PluginAppBackwardsInvocation.invoke_chat_app(
@@ -338,6 +338,8 @@ class TestPluginAppBackwardsInvocation:
         )
 
         assert result == {"result": "ok"}
+        assert generator_factory.call_args.kwargs["runtime"] is workflow_runtime
+        assert generator_factory.call_args.kwargs["execution_driver"] is workflow_runtime.execution_driver
         call_kwargs = generator_spy.call_args.kwargs
         assert "session" not in call_kwargs
         pause_state_config = call_kwargs.get("pause_state_config")
@@ -389,14 +391,13 @@ class TestPluginAppBackwardsInvocation:
             "services.plugin.app_invocation.db",
             _DatabaseWithEngine(self.sqlite_engine),
         )
-        generator_spy = mocker.patch(
-            "services.plugin.app_invocation.WorkflowAppGenerator.generate",
-            return_value={"result": "ok"},
-        )
+        generator_factory = mocker.patch("services.plugin.app_invocation.WorkflowAppGenerator")
+        generator_spy = generator_factory.return_value.generate
+        generator_spy.return_value = {"result": "ok"}
 
         result = PluginAppBackwardsInvocation.invoke_workflow_app(
             app=app,
-            workflow=workflow,
+            workflow=workflow_snapshot(workflow),
             user=_end_user(),
             stream=False,
             inputs={"k": "v"},
@@ -405,6 +406,8 @@ class TestPluginAppBackwardsInvocation:
         )
 
         assert result == {"result": "ok"}
+        assert generator_factory.call_args.kwargs["runtime"] is workflow_runtime
+        assert generator_factory.call_args.kwargs["execution_driver"] is workflow_runtime.execution_driver
         call_kwargs = generator_spy.call_args.kwargs
         pause_state_config = call_kwargs.get("pause_state_config")
         assert isinstance(pause_state_config, PauseStateLayerConfig)

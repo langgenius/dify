@@ -8,6 +8,7 @@ with appropriate retry policies and error handling.
 import logging
 from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
 from celery import shared_task
 from sqlalchemy import select
@@ -23,7 +24,7 @@ from core.db.session_factory import session_factory
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.application_services.workflow import build_workflow_execution_dependencies
 from extensions.ext_database import db
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from models.model import App, EndUser, Tenant
@@ -32,6 +33,7 @@ from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, Workfl
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from repositories.workflow.definition_repository import workflow_snapshot
+from services.app_task_service import AppTaskService
 from services.errors.app import WorkflowNotFoundError
 from services.workflow.entities import (
     TriggerData,
@@ -39,6 +41,7 @@ from services.workflow.entities import (
     WorkflowTaskData,
 )
 from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
+from services.workflow_run_agg import WorkflowRunAgg
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity, AsyncWorkflowCFSPlanScheduler
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue, AsyncWorkflowSystemStrategy
 
@@ -150,6 +153,7 @@ def _execute_workflow_common(
             # Execute workflow using WorkflowAppGenerator
             generator = WorkflowAppGenerator(
                 runtime=build_workflow_execution_dependencies(session_factory.get_session_maker()),
+                execution_driver=WorkflowRunAgg.run,
             )
 
             # Adapt trigger inputs and files for the generator.
@@ -229,7 +233,30 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         )
         return
 
-    graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    # TODO: Remove legacy task recovery 30 days after the last legacy writer is retired.
+    task_id = workflow_run.task_id
+    if task_id is None:
+        try:
+            task_id = str(UUID(generate_entity.task_id))
+        except ValueError:
+            logger.warning("Invalid saved task ID for workflow run %s", task_data.workflow_run_id)
+            return
+        AppTaskService.index_workflow_pause_task(
+            workflow_run=workflow_run,
+            pause_entity=pause_entity,
+            resumption_context=resumption_context,
+            workflow_run_repo=workflow_run_repo,
+        )
+        indexed_run = workflow_run_repo.get_workflow_run_by_id(
+            workflow_run.tenant_id, workflow_run.app_id, workflow_run.id
+        )
+        if indexed_run is None or indexed_run.task_id != task_id:
+            logger.warning("Cannot recover saved task ownership for workflow run %s", task_data.workflow_run_id)
+            return
+        workflow_run.task_id = task_id
+    generate_entity.task_id = task_id
+
+    graph_runtime_state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
     response_stream_filter = resumption_context.get_response_stream_filter()
 
     with session_factory() as session:
@@ -266,6 +293,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
 
     generator = WorkflowAppGenerator(
         runtime=build_workflow_execution_dependencies(session_factory),
+        execution_driver=WorkflowRunAgg.run,
     )
     start_time = datetime.now(UTC)
     graph_engine_layers = []

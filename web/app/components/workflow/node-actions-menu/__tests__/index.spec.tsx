@@ -1,17 +1,16 @@
-import type { AvailableNodesMetaData } from '../../hooks-store'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { use, useLayoutEffect } from 'react'
-import { useNodes } from 'reactflow'
+import {
+  CANVAS_NODES_STATUS_NAME,
+  CanvasNodesCatalogProbe,
+} from '@/app/components/workflow/__tests__/canvas-nodes-catalog-probe'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { HooksStoreContext } from '../../hooks-store'
 import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
-import { useWorkflowNodeCatalog } from '../../node-catalog'
 import { NodeActionsDropdown } from '../index'
 
 // Node metadata comes from the per-app block registry, which has its own suite.
@@ -41,27 +40,7 @@ vi.mock('../change-block-popup', () => ({
 
 const mockUseNodeMetaData = vi.mocked(useNodeMetaData)
 
-// Publishes the real block catalog so copy/duplicate know which nodes are copyable.
-const CanvasNodes = () => {
-  const catalog = useWorkflowNodeCatalog()
-  const hooksStore = use(HooksStoreContext)!
-  useLayoutEffect(() => {
-    const nodesMap = catalog.nodesMap as NonNullable<AvailableNodesMetaData['nodesMap']>
-    hooksStore.setState({
-      availableNodesMetaData: {
-        nodes: catalog.nodes.map((node) => nodesMap[node.metaData.type]),
-        nodesMap,
-      },
-    })
-  }, [catalog, hooksStore])
-  const nodes = useNodes<{ selected?: boolean }>()
-  return (
-    <output aria-label="Canvas nodes">
-      {nodes.map((node) => `${node.id}${node.data.selected ? '*' : ''}`).join(',')}
-    </output>
-  )
-}
-const canvasNodes = () => screen.getByRole('status', { name: 'Canvas nodes' }).textContent
+const canvasNodes = () => screen.getByRole('status', { name: CANVAS_NODES_STATUS_NAME }).textContent
 const renderComponent = (
   showHelpLink: boolean = true,
   onOpenChange?: (open: boolean) => void,
@@ -82,7 +61,7 @@ const renderComponent = (
         onOpenChange={onOpenChange}
         showHelpLink={showHelpLink}
       />
-      <CanvasNodes />
+      <CanvasNodesCatalogProbe />
     </>,
     {
       initialStoreState: { canvasReadOnly: readOnly },

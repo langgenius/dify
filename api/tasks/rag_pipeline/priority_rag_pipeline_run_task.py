@@ -29,6 +29,7 @@ from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.file_service import FileService
 from services.workflow.execution.adapters.pipeline.pipeline_generator import PipelineGenerator
+from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +182,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
 
             pipeline_generator = PipelineGenerator(
                 runtime=build_workflow_execution_dependencies(session_factory),
+                execution_driver=WorkflowRunAgg.run,
                 documents=SQLAlchemyDocumentRepository(session_factory=session_factory),
                 datasource_providers=build_data_source_credentials(database_client=get_session_maker()).providers,
             )

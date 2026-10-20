@@ -53,7 +53,7 @@ def test_submission_forwards_form_and_upstream_inputs(
 ) -> None:
     outputs = {"answer": "42", "__action_id": "approve"}
     workflows.submit_form.return_value = outputs
-    args = controller.HumanInputFormSubmitPayload(
+    args = controller.HumanInputFormPreviewSubmitPayload(
         form_inputs={"answer": "42"}, inputs={"#upstream.output#": "text"}, action="approve"
     )
     with app.test_request_context(method="POST"):

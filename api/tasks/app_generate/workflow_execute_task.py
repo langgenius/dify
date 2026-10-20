@@ -4,6 +4,7 @@ import uuid
 from collections.abc import Callable, Generator, Mapping
 from dataclasses import replace
 from enum import StrEnum
+from functools import partial
 from typing import Annotated, Any
 
 from celery import shared_task
@@ -23,10 +24,10 @@ from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, Wor
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.application_services.workflow import build_workflow_execution_dependencies
 from extensions.ext_database import db
+from graphon.engine.filter import ResponseStreamFilter
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
-from graphon.filters import ResponseStreamFilter
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import set_login_user
 from libs.helper import to_timestamp
@@ -35,10 +36,12 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
 from repositories.workflow.debug_reservation_repository import WorkflowDebugReservationRepository
 from repositories.workflow.definition_repository import workflow_snapshot
 from repositories.workflow.execution_write_repository import WorkflowExecutionWriteRepository
 from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.app_task_service import AppTaskService
 from services.errors.workflow_service import WorkflowDebugReservationExpiredError
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.debug_cancellation import DebugExecutionCancellation
@@ -47,6 +50,7 @@ from services.workflow.execution.adapters.response_converter import WorkflowResp
 from services.workflow.execution.adapters.response_stream import WorkflowEventStream
 from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 from services.workflow.variable_contracts import WorkflowExecutionVariables
+from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
@@ -338,6 +342,7 @@ class _AppRunner:
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
             return AdvancedChatAppGenerator(
                 runtime=self._runtime,
+                execution_driver=WorkflowRunAgg.run,
                 draft_variable_loader=variables.workflow_loader,
                 draft_variable_saver=variables.saver_factory,
             ).generate(
@@ -353,6 +358,7 @@ class _AppRunner:
         if exec_params.app_mode == AppMode.WORKFLOW:
             return WorkflowAppGenerator(
                 runtime=self._runtime,
+                execution_driver=WorkflowRunAgg.run,
                 draft_variable_loader=variables.workflow_loader,
                 draft_variable_saver=variables.saver_factory,
                 cancellation=self._cancellation,
@@ -707,7 +713,7 @@ def _resume_app_execution(payload: dict[str, Any], *, variables: WorkflowExecuti
 
     generate_entity = resumption_context.get_generate_entity()
 
-    graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    graph_runtime_state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
     response_stream_filter = resumption_context.get_response_stream_filter()
 
     conversation = None
@@ -773,13 +779,42 @@ def _resume_app_execution(payload: dict[str, Any], *, variables: WorkflowExecuti
         )
         return
 
+    # TODO: Remove legacy task recovery 30 days after the last legacy writer is retired.
+    task_id = workflow_run.task_id
+    if task_id is None:
+        try:
+            task_id = str(uuid.UUID(generate_entity.task_id))
+        except ValueError:
+            logger.warning("Invalid saved task ID for workflow run %s", workflow_run_id)
+            return
+        AppTaskService.index_workflow_pause_task(
+            workflow_run=workflow_run,
+            pause_entity=pause_entity,
+            resumption_context=resumption_context,
+            workflow_run_repo=workflow_run_repo,
+        )
+        indexed_run = workflow_run_repo.get_workflow_run_by_id(
+            workflow_run.tenant_id, workflow_run.app_id, workflow_run.id
+        )
+        if indexed_run is None or indexed_run.task_id != task_id:
+            logger.warning("Cannot recover saved task ownership for workflow run %s", workflow_run_id)
+            return
+        workflow_run.task_id = task_id
+    generate_entity.task_id = task_id
+
     # The resumed attempt reuses the paused run's task ID, so cancellation
     # signals armed against that ID before or during the pause would abort it
     # immediately and report it as stopped by the user. This attempt is starting
     # deliberately, so drop them before any engine can observe them.
-    clear_app_task_cancellation_signals(generate_entity.task_id)
-
-    workflow_run_repo.resume_workflow_pause(workflow_run_id, pause_entity)
+    try:
+        workflow_run_repo.resume_workflow_pause(
+            workflow_run_id,
+            pause_entity,
+            before_resume=partial(clear_app_task_cancellation_signals, generate_entity.task_id),
+        )
+    except WorkflowRunNotPausedError:
+        logger.info("Workflow run %s was stopped or resumed by another request", workflow_run_id)
+        return
 
     pause_config = PauseStateLayerConfig(
         session_factory=session_factory,
@@ -832,7 +867,7 @@ def _resume_advanced_chat(
     conversation: Conversation,
     message: Message,
     generate_entity: AdvancedChatAppGenerateEntity,
-    graph_runtime_state: GraphRuntimeState,
+    graph_runtime_state: RuntimeState,
     response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
@@ -863,6 +898,7 @@ def _resume_advanced_chat(
 
     generator = AdvancedChatAppGenerator(
         runtime=build_workflow_execution_dependencies(session_factory),
+        execution_driver=WorkflowRunAgg.run,
         draft_variable_loader=variables.workflow_loader,
         draft_variable_saver=variables.saver_factory,
     )
@@ -907,7 +943,7 @@ def _resume_workflow(
     workflow: WorkflowSnapshot,
     user: Account | EndUser,
     generate_entity: WorkflowAppGenerateEntity,
-    graph_runtime_state: GraphRuntimeState,
+    graph_runtime_state: RuntimeState,
     response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
@@ -945,6 +981,7 @@ def _resume_workflow(
     ) as cancellation:
         generator = WorkflowAppGenerator(
             runtime=build_workflow_execution_dependencies(session_factory),
+            execution_driver=WorkflowRunAgg.run,
             draft_variable_loader=variables.workflow_loader,
             draft_variable_saver=variables.saver_factory,
             cancellation=cancellation,

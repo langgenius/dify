@@ -1,12 +1,11 @@
 """Adapt the existing workflow engine to framework-neutral Console ports."""
 
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, Protocol
 
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
 from core.plugin.impl.exc import PluginInvokeError
@@ -14,9 +13,10 @@ from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
 from core.trigger.debug.event_selectors import create_event_poller, select_trigger_debug_events
 from factories import file_factory
 from graphon.file import File
-from graphon.graph_engine.manager import GraphEngineManager
 from machinery.context import RequestContext
 from models import Account, App
+from models.enums import CreatorUserRole
+from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.agent.retirement_repository import WorkflowAgentRetirementRepository
 from repositories.workflow.debug_reservation_repository import WorkflowDebugReservationRepository
@@ -38,6 +38,18 @@ from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow_service import WorkflowService
 
 
+class WorkflowTaskControl(Protocol):
+    def stop_workflow_task(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        task_id: str,
+        app_mode: AppMode,
+        owner: tuple[CreatorUserRole, str] | None,
+    ) -> bool: ...
+
+
 class WorkflowRuntimeGateway:
     def __init__(
         self,
@@ -48,7 +60,7 @@ class WorkflowRuntimeGateway:
         reservations: WorkflowDebugReservationRepository,
         executions: WorkflowNodeExecutionRepository,
         generator: type[AppGenerateService],
-        graph_engine: GraphEngineManager,
+        tasks: WorkflowTaskControl,
         file_access: DatabaseFileAccessController,
         variables: WorkflowExecutionVariables,
         runtime: AppGenerationRuntime,
@@ -59,7 +71,7 @@ class WorkflowRuntimeGateway:
         self._reservations = reservations
         self._executions = executions
         self._generator = generator
-        self._graph_engine = graph_engine
+        self._tasks = tasks
         self._file_access = file_access
         self._variables = variables
         self._runtime = runtime
@@ -246,10 +258,15 @@ class WorkflowRuntimeGateway:
             return None
         return WorkflowTriggerEvent(event.node_id, dict(event.workflow_args), snapshot)
 
-    def stop(self, task_id: str) -> None:
-        # Both mechanisms are still consumed by running workflows.
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
-        self._graph_engine.send_stop_command(task_id)
+    def stop(self, context: RequestContext, app_id: str, task_id: str) -> None:
+        app = self._definitions.app(context, app_id)
+        self._tasks.stop_workflow_task(
+            tenant_id=context.active_workspace_id,
+            app_id=app_id,
+            task_id=task_id,
+            app_mode=app.mode,
+            owner=None,
+        )
 
     def default_blocks(self) -> Sequence[Mapping[str, object]]:
         return self._workflows.get_default_block_configs()

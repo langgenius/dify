@@ -12,7 +12,7 @@ from graphon.graph import Graph
 from graphon.node_events import StreamCompletedEvent
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool.tool_node import ToolNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 from services.workflow.execution.adapters.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
 from services.workflow.execution.ports import WorkflowRuntime
@@ -50,12 +50,14 @@ def init_tool_node(config: dict[str, object], *, workflow_runtime: WorkflowRunti
         conversation_variables=[],
     )
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter()
+    )
 
     # Create node factory
     node_factory = DifyNodeFactory(
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
     )
 
     Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
@@ -65,8 +67,8 @@ def init_tool_node(config: dict[str, object], *, workflow_runtime: WorkflowRunti
     node = ToolNode(
         node_id=str(uuid.uuid4()),
         data=ToolNodeData.model_validate(config["data"]),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
         tool_file_manager=tool_file_manager,
         runtime=DifyToolNodeRuntime(init_params.run_context, workflow_runtime=workflow_runtime),
     )
@@ -99,7 +101,7 @@ def test_tool_variable_invoke(workflow_runtime: WorkflowRuntime) -> None:
         "decrypt_tool_parameters",
         return_value={"format": "%Y-%m-%d %H:%M:%S"},
     ):
-        node.graph_runtime_state.variable_pool.add(["1", "args1"], "1+1")
+        node.runtime_state.variable_pool.add(["1", "args1"], "1+1")
 
         # execute node
         result = node._run()

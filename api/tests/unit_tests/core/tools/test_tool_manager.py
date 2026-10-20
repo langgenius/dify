@@ -21,9 +21,14 @@ from core.helper.provider_encryption import ProviderConfigEncrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.exc import PluginDaemonNotFoundError, PluginNotFoundError
 from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
+    ToolEntity,
+    ToolIdentity,
     ToolInvokeFrom,
     ToolParameter,
+    ToolProviderEntity,
+    ToolProviderIdentity,
     ToolProviderType,
 )
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
@@ -34,6 +39,8 @@ from models.base import TypeBase
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 from repositories.tools.provider_repository import ToolProviderRepository
 from services.tools.tool_manager import ToolManager
+from services.tools.workflow.provider import WorkflowToolProviderController
+from services.tools.workflow.tool import WorkflowTool
 
 
 class _CallableSessionProxy:
@@ -539,32 +546,67 @@ def test_get_tool_runtime_api_path(*, tool_providers, workflow_queries):
 
 
 def test_get_tool_runtime_workflow_path(
-    monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase, *, tool_providers, workflow_queries
+    tool_database: _ToolDatabase, *, tool_providers, workflow_queries, workflow_runtime
 ):
     tenant_id = "00000000-0000-0000-0000-000000000001"
     provider_id = "00000000-0000-0000-0000-000000000002"
     workflow_provider = _workflow_provider(provider_id=provider_id, tenant_id=tenant_id)
     tool_database.session.add(workflow_provider)
     tool_database.session.commit()
-    workflow_tool = Mock()
-    workflow_tool.fork_tool_runtime.return_value = "wf-runtime"
-    workflow_controller = Mock()
-    workflow_controller.get_tools.return_value = [workflow_tool]
+    workflow_tool = WorkflowTool(
+        workflow_app_id=workflow_provider.app_id,
+        workflow_as_tool_id=provider_id,
+        version=workflow_provider.version,
+        workflow_entities={},
+        workflow_call_depth=0,
+        entity=ToolEntity(
+            identity=ToolIdentity(author="test", name="wf", label=I18nObject(en_US="Workflow"), provider=provider_id),
+        ),
+        runtime=ToolRuntime(tenant_id=tenant_id),
+        queries=workflow_queries,
+        draft_variable_saver=None,
+        workflow_runtime=workflow_runtime,
+    )
+    workflow_controller = WorkflowToolProviderController(
+        entity=ToolProviderEntity(
+            identity=ToolProviderIdentity(
+                author="test",
+                name=workflow_provider.name,
+                label=I18nObject(en_US=workflow_provider.label),
+                description=I18nObject(en_US=workflow_provider.description),
+                icon=workflow_provider.icon,
+            ),
+        ),
+        provider_id=provider_id,
+        queries=workflow_queries,
+        draft_variable_saver=None,
+        workflow_runtime=workflow_runtime,
+    )
+    workflow_controller.tools = [workflow_tool]
     with patch(
         "services.tools.tool_manager.ToolTransformService.workflow_provider_to_controller",
         return_value=workflow_controller,
     ):
-        assert (
-            ToolManager.get_tool_runtime(
-                provider_type=ToolProviderType.WORKFLOW,
-                provider_id=provider_id,
-                tool_name="wf",
-                tenant_id=tenant_id,
-                tool_providers=tool_providers,
-                workflow_queries=workflow_queries,
-            )
-            == "wf-runtime"
+        runtime_tool = ToolManager.get_tool_runtime(
+            provider_type=ToolProviderType.WORKFLOW,
+            provider_id=provider_id,
+            tool_name="wf",
+            tenant_id=tenant_id,
+            tool_providers=tool_providers,
+            workflow_queries=workflow_queries,
+            workflow_runtime=workflow_runtime,
         )
+    assert isinstance(runtime_tool, WorkflowTool)
+    assert runtime_tool is not workflow_tool
+    assert runtime_tool.entity == workflow_tool.entity
+    assert runtime_tool.workflow_as_tool_id == provider_id
+    assert runtime_tool.runtime == ToolRuntime(
+        tenant_id=tenant_id,
+        invoke_from=InvokeFrom.DEBUGGER,
+        tool_invoke_from=ToolInvokeFrom.AGENT,
+    )
+    assert runtime_tool._workflow_runtime is workflow_runtime
+    assert runtime_tool._workflow_runtime.execution_driver is workflow_runtime.execution_driver
 
 
 def test_get_tool_runtime_plugin_path(*, tool_providers, workflow_queries):
@@ -631,7 +673,7 @@ def test_get_tool_runtime_app_not_implemented(*, tool_providers, workflow_querie
         )
 
 
-def test_get_agent_runtime_apply_runtime_parameters(*, tool_providers, workflow_queries):
+def test_get_agent_runtime_apply_runtime_parameters(*, tool_providers, workflow_queries, workflow_runtime):
     saver = Mock()
     parameter = ToolParameter.get_simple_instance(
         name="query",
@@ -658,7 +700,7 @@ def test_get_agent_runtime_apply_runtime_parameters(*, tool_providers, workflow_
                 )
                 result = ToolManager.get_agent_tool_runtime(
                     draft_variable_saver=saver,
-                    workflow_runtime=None,
+                    workflow_runtime=workflow_runtime,
                     tenant_id="tenant-1",
                     app_id="app-1",
                     agent_tool=agent_tool,
@@ -683,11 +725,11 @@ def test_get_agent_runtime_apply_runtime_parameters(*, tool_providers, workflow_
         tool_invoke_from=ToolInvokeFrom.AGENT,
         credential_id=None,
         draft_variable_saver=saver,
-        workflow_runtime=None,
+        workflow_runtime=workflow_runtime,
     )
 
 
-def test_get_workflow_runtime_apply_runtime_parameters(*, tool_providers, workflow_queries):
+def test_get_workflow_runtime_apply_runtime_parameters(*, tool_providers, workflow_queries, workflow_runtime):
     saver = Mock()
     parameter = ToolParameter.get_simple_instance(
         name="query",
@@ -713,7 +755,7 @@ def test_get_workflow_runtime_apply_runtime_parameters(*, tool_providers, workfl
             with patch("services.tools.tool_manager.ToolParameterConfigurationManager", return_value=manager):
                 workflow_result = ToolManager.get_workflow_tool_runtime(
                     draft_variable_saver=saver,
-                    workflow_runtime=None,
+                    workflow_runtime=workflow_runtime,
                     tenant_id="tenant-1",
                     app_id="app-1",
                     node_id="node-1",
@@ -739,7 +781,7 @@ def test_get_workflow_runtime_apply_runtime_parameters(*, tool_providers, workfl
         tool_invoke_from=ToolInvokeFrom.WORKFLOW,
         credential_id=None,
         draft_variable_saver=saver,
-        workflow_runtime=None,
+        workflow_runtime=workflow_runtime,
     )
 
 

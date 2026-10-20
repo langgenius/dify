@@ -87,6 +87,7 @@ def test_resume_workflow_projects_the_persisted_workflow_before_resuming(
     user = make_account(account_id="account-1")
     workflow_run = SimpleNamespace(
         id="workflow-run-1",
+        task_id="task-1",
         workflow_id=workflow_model.id,
         app_id=app.id,
         triggered_from=WorkflowRunTriggeredFrom.SCHEDULE,
@@ -140,7 +141,7 @@ def test_resume_workflow_projects_the_persisted_workflow_before_resuming(
         MagicMock(return_value=resumption_context),
     )
     monkeypatch.setattr(
-        async_workflow_tasks.GraphRuntimeState,
+        async_workflow_tasks.RuntimeState,
         "from_snapshot",
         MagicMock(return_value=graph_runtime_state),
     )

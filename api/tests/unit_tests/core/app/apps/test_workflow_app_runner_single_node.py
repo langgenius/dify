@@ -10,7 +10,7 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.credit_usage import CreditUsageAppType
 from core.workflow.system_variables import default_system_variables
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind
 from repositories.workflow.definition_repository import workflow_snapshot
@@ -27,7 +27,11 @@ def _make_graph_state():
         environment_variables=[],
         conversation_variables=[],
     )
-    return MagicMock(), variable_pool, GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+    return (
+        MagicMock(),
+        variable_pool,
+        RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=0.0),
+    )
 
 
 @pytest.fixture
@@ -84,8 +88,6 @@ def test_run_uses_single_node_execution_branch(
         variable_loader=MagicMock(),
         workflow=workflow_definition,
         system_user_id="system-user",
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
         runtime=workflow_runtime,
     )
 
@@ -112,7 +114,7 @@ def test_run_uses_single_node_execution_branch(
         ) as prepare_single,
         patch.object(runner._graphs, "build") as init_graph,
     ):
-        runner.run()
+        runner.prepare()
 
     prepare_single.assert_called_once_with(
         workflow=workflow_definition,
@@ -124,10 +126,7 @@ def test_run_uses_single_node_execution_branch(
     )
     init_graph.assert_not_called()
 
-    entry_kwargs = entry_class.call_args.kwargs
-    assert entry_kwargs["invoke_from"] == InvokeFrom.DEBUGGER
-    assert entry_kwargs["variable_pool"] is variable_pool
-    assert entry_kwargs["graph_runtime_state"] is graph_runtime_state
+    assert entry_class.call_args.kwargs["graph_runtime_state"] is graph_runtime_state
 
 
 def test_single_node_run_validates_target_node_config() -> None:
@@ -160,7 +159,48 @@ def test_single_node_run_validates_target_node_config() -> None:
             node_id="loop-node",
             user_inputs={},
             graph_runtime_state=graph_runtime_state,
-            node_type_filter_key="loop_id",
+            node_type_label="loop",
+            user_id="00000000-0000-0000-0000-000000000001",
+        )
+
+
+def test_single_node_run_rejects_invalid_loop_count() -> None:
+    runner = WorkflowGraphBuilder(app_id="app")
+
+    workflow = Workflow(
+        id="workflow",
+        tenant_id="tenant",
+        graph=json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "loop-node",
+                        "data": {
+                            "type": "loop",
+                            "title": "Loop",
+                            "loop_count": 0,
+                            "start_node_id": "loop-start",
+                            "break_conditions": [],
+                            "logical_operator": "and",
+                        },
+                    },
+                    {
+                        "id": "loop-start",
+                        "data": {"type": "loop-start", "title": "Loop start", "container_id": "loop-node"},
+                    },
+                ],
+                "edges": [],
+            }
+        ),
+    )
+
+    _, _, graph_runtime_state = _make_graph_state()
+    with pytest.raises(ValidationError, match="loop_count"):
+        runner._get_graph_and_variable_pool_for_single_node_run(
+            workflow=workflow,
+            node_id="loop-node",
+            user_inputs={},
+            graph_runtime_state=graph_runtime_state,
             node_type_label="loop",
             user_id="00000000-0000-0000-0000-000000000001",
         )
@@ -180,6 +220,7 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(
         workflow_execution_id="execution-id",
         task_id="task-id",
         stream=True,
+        call_depth=4,
     )
 
     workflow = Workflow(
@@ -200,8 +241,6 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(
         variable_loader=MagicMock(),
         workflow=workflow_definition,
         system_user_id="system-user",
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
         runtime=workflow_runtime,
     )
 
@@ -228,12 +267,13 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(
             return_value=("legacy-start",),
         ) as aliases,
         patch("services.workflow.execution.adapters.workflow.app_runner.add_node_inputs_to_pool") as add_inputs,
-        patch.object(runner._graphs, "build", return_value=MagicMock()),
+        patch.object(runner._graphs, "build", return_value=MagicMock()) as init_graph,
     ):
-        runner.run()
+        runner.prepare()
 
     aliases.assert_called_once_with(workflow_kind="snippet", root_node_id="root-node")
     add_inputs.assert_called_once()
     assert add_inputs.call_args.kwargs["node_id"] == "root-node"
     assert add_inputs.call_args.kwargs["inputs"] == {"question": "hello"}
     assert add_inputs.call_args.kwargs["aliases"] == ("legacy-start",)
+    assert init_graph.call_args.kwargs["call_depth"] == 4

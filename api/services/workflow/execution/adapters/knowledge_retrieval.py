@@ -22,7 +22,6 @@ from core.workflow.nodes.knowledge_retrieval.exc import (
     RateLimitExceededError,
 )
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest, Source
-from graphon.entities import GraphInitParams
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
@@ -32,6 +31,7 @@ from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
+from graphon.runtime import InitParams
 from graphon.variables import (
     ArrayFileSegment,
     FileSegment,
@@ -43,7 +43,7 @@ from services.knowledge.retrieval.ports import DatasetRetriever
 
 if TYPE_CHECKING:
     from graphon.file import File
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import RuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -72,15 +72,15 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
         node_id: str,
         data: KnowledgeRetrievalNodeData,
         *,
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        init_params: "InitParams",
+        runtime_state: "RuntimeState",
         retrieval: DatasetRetriever,
     ) -> None:
         super().__init__(
             node_id=node_id,
             data=data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
         # LLM file outputs, used for MultiModal outputs.
         self._file_outputs = []
@@ -106,7 +106,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
         variables: dict[str, Any] = {}
         # extract variables
         if self._node_data.query_variable_selector:
-            variable = self.graph_runtime_state.variable_pool.get(self._node_data.query_variable_selector)
+            variable = self.runtime_state.variable_pool.get(self._node_data.query_variable_selector)
             if not isinstance(variable, StringSegment):
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
@@ -117,7 +117,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
             variables["query"] = query
 
         if self._node_data.query_attachment_selector:
-            variable = self.graph_runtime_state.variable_pool.get(self._node_data.query_attachment_selector)
+            variable = self.runtime_state.variable_pool.get(self._node_data.query_attachment_selector)
             if not isinstance(variable, ArrayFileSegment) and not isinstance(variable, FileSegment):
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
@@ -298,7 +298,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
                 conditions=None,
             )
 
-        variable_pool = self.graph_runtime_state.variable_pool
+        variable_pool = self.runtime_state.variable_pool
         resolved_conditions: list[Condition] = []
         for cond in conditions.conditions or []:
             value = cond.value

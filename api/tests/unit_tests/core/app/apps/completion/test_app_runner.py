@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 from redis import Redis
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import (
     AppAdditionalFeatures,
@@ -42,6 +42,7 @@ from graphon.model_runtime.model_providers.base.large_language_model import Larg
 from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, IconType, Message
+from repositories.app.generation_repository import AppGenerationRepository
 from services.app.generation.adapters.completion_runner import CompletionAppRunner
 from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalKnowledgeApiSetting
 from services.knowledge.external.service import ExternalDatasetService
@@ -142,7 +143,9 @@ def model_runtime(monkeypatch: pytest.MonkeyPatch) -> tuple[ProviderModelBundle,
 
 
 @pytest.fixture
-def runner(*, app_records, sqlite_session_factory) -> CompletionAppRunner:
+def runner(
+    *, app_records: AppGenerationRepository, sqlite_session_factory: sessionmaker[Session]
+) -> CompletionAppRunner:
     return CompletionAppRunner(
         retrieval=build_dataset_retrieval(sqlite_session_factory),
         records=app_records,
@@ -306,6 +309,7 @@ class TestCompletionAppRunner:
             tenant_id=TENANT_ID,
             settings=json.dumps({"endpoint": "https://knowledge.example", "api_key": "secret"}),
             created_by="user",
+            updated_by="user",
         )
         sqlite_session.add_all([dataset, external_api])
         sqlite_session.flush()
