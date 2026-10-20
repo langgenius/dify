@@ -34,6 +34,7 @@ from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from models.account import Account
 from repositories.credentials.query_repository import CredentialQueryRepository
 from services.data_source.provider_service import DatasourceProviderService
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from services.plugin.oauth_service import OAuthProxyService
 from tests.unit_tests.model_factories import make_account
 
@@ -139,7 +140,9 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
-                return_value=oauth_client,
+                return_value=PluginOAuthClientConfig(
+                    "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", oauth_client
+                ),
             ) as get_oauth_client,
             patch.object(
                 OAuthProxyService,
@@ -166,7 +169,10 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
             plugin_id="langgenius/notion_datasource",
             provider="notion",
             credential_id="cred-1",
-            extra_data={"visibility": "only_me"},
+            extra_data={
+                "visibility": "only_me",
+                "plugin_unique_identifier": "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            },
         )
         get_authorization_url.assert_called_once()
         assert get_authorization_url.call_args.kwargs["tenant_id"] == "tenant-1"
@@ -202,7 +208,9 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
-                return_value={"client_id": "abc"},
+                return_value=PluginOAuthClientConfig(
+                    "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "abc"}
+                ),
             ),
             patch.object(
                 OAuthProxyService,
@@ -235,6 +243,8 @@ class TestDatasourceOAuthCallback:
         context = {
             "user_id": "user-1",
             "tenant_id": "tenant-1",
+            "plugin_id": "langgenius/notion_datasource",
+            "provider": "notion",
             "credential_id": None,
         }
 
@@ -248,7 +258,10 @@ class TestDatasourceOAuthCallback:
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
-                return_value={"client_id": "abc", "client_secret": "secret"},
+                return_value=PluginOAuthClientConfig(
+                    "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    {"client_id": "abc", "client_secret": "secret"},
+                ),
             ),
             patch.object(
                 OAuthHandler,
@@ -339,6 +352,8 @@ class TestDatasourceOAuthCallback:
         context = {
             "user_id": "user-1",
             "tenant_id": "tenant-1",
+            "plugin_id": "langgenius/notion_datasource",
+            "provider": "notion",
             "credential_id": "cred-1",
         }
 
@@ -352,7 +367,9 @@ class TestDatasourceOAuthCallback:
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
-                return_value={"client_id": "abc"},
+                return_value=PluginOAuthClientConfig(
+                    "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "abc"}
+                ),
             ),
             patch.object(
                 OAuthHandler,
@@ -386,6 +403,8 @@ class TestDatasourceOAuthCallback:
         context = {
             "user_id": "user-1",
             "tenant_id": "tenant-1",
+            "plugin_id": "langgenius/notion_datasource",
+            "provider": "notion",
             "credential_id": None,
         }
 
@@ -399,7 +418,9 @@ class TestDatasourceOAuthCallback:
             patch.object(
                 DatasourceProviderService,
                 "get_oauth_client",
-                return_value={"client_id": "abc"},
+                return_value=PluginOAuthClientConfig(
+                    "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "abc"}
+                ),
             ),
             patch.object(
                 OAuthHandler,
@@ -412,7 +433,7 @@ class TestDatasourceOAuthCallback:
                 return_value=None,
             ),
         ):
-            response = method(api, "notion")
+            response = method(api, _PROVIDER_ID)
 
         assert response.status_code == 302
 

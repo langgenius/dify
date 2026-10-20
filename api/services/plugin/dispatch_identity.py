@@ -1,10 +1,20 @@
 """Bind daemon dispatches to the plugin declaration used by the caller."""
 
-from typing import NotRequired
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from typing import Any, NotRequired
 
 from typing_extensions import TypedDict
 
 PLUGIN_IDENTIFIER_HEADER = "X-Plugin-Unique-Identifier"
+
+
+@dataclass(frozen=True, slots=True)
+class PluginOAuthClientConfig:
+    """OAuth credentials paired with the declaration used to resolve them."""
+
+    plugin_unique_identifier: str
+    credentials: Mapping[str, Any] = field(repr=False)
 
 
 class PluginDispatchIdentity(TypedDict, closed=True):

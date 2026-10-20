@@ -18,6 +18,7 @@ from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.data_source.credential_repository import SQLAlchemyDatasourceCredentialRepository
 from services.data_source import provider_service as service_module
 from services.data_source.provider_service import DatasourceProviderService, get_current_user
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -347,7 +348,11 @@ class TestDatasourceProviderService:
         persist(sqlite_session, p)
         with (
             patch("services.data_source.provider_service.get_current_user", return_value=mock_user),
-            patch.object(service, "get_oauth_client", return_value={"oc": "v"}),
+            patch.object(
+                service,
+                "get_oauth_client",
+                return_value=PluginOAuthClientConfig("org/plug:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"oc": "v"}),
+            ),
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"tok": "plain"}),
         ):
             service.get_datasource_credentials("t1", "prov", "org/plug")
@@ -365,7 +370,11 @@ class TestDatasourceProviderService:
         with (
             patch("services.data_source.provider_service.get_current_user", return_value=mock_user),
             patch("services.data_source.provider_service.OAuthHandler") as oauth_handler,
-            patch.object(service, "get_oauth_client", return_value={"oc": "v"}),
+            patch.object(
+                service,
+                "get_oauth_client",
+                return_value=PluginOAuthClientConfig("org/plug:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"oc": "v"}),
+            ),
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"tok": "plain"}),
         ):
             oauth_handler.return_value.refresh_credentials.side_effect = RuntimeError("token endpoint failed")
@@ -463,7 +472,11 @@ class TestDatasourceProviderService:
         persist(sqlite_session, p)
         with (
             patch("services.data_source.provider_service.get_current_user", return_value=mock_user),
-            patch.object(service, "get_oauth_client", return_value={"oc": "v"}),
+            patch.object(
+                service,
+                "get_oauth_client",
+                return_value=PluginOAuthClientConfig("org/plug:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"oc": "v"}),
+            ),
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"t": "plain"}),
         ):
             result = service.get_all_datasource_credentials_by_provider("t1", "prov", "org/plug")
@@ -666,7 +679,8 @@ class TestDatasourceProviderService:
             "services.data_source.credential_adapters.create_provider_encrypter", return_value=(self._enc, None)
         ):
             result = service.get_oauth_client("t1", make_id())
-        assert result == {"k": "dec"}
+        assert result is not None
+        assert result.credentials == {"k": "dec"}
 
     def test_should_fallback_to_system_credentials_when_tenant_config_missing(self, service, sqlite_session):
         persist(
@@ -682,7 +696,8 @@ class TestDatasourceProviderService:
             patch("services.data_source.credential_adapters.PluginService.is_plugin_verified", return_value=True),
         ):
             result = service.get_oauth_client("t1", make_id())
-        assert result == {"k": "sys"}
+        assert result is not None
+        assert result.credentials == {"k": "sys"}
 
     def test_should_raise_value_error_when_no_oauth_config_available(self, service, sqlite_session):
         """Neither tenant nor system credentials → raises ValueError."""

@@ -41,6 +41,7 @@ from core.tools.workflow_as_tool.tool import WorkflowTool
 from graphon.runtime import VariablePool
 from models.base import TypeBase
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 
 
 class _CallableSessionProxy:
@@ -418,7 +419,7 @@ def test_get_tool_runtime_builtin_with_credentials_decrypts_and_forks(
 @patch("core.plugin.impl.oauth.OAuthHandler")
 @patch(
     "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
-    return_value={"client_id": "id"},
+    return_value=PluginOAuthClientConfig("langgenius/time:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "id"}),
 )
 @patch("core.tools.tool_manager.time.time", return_value=1000)
 @patch("core.helper.credential_utils.check_credential_policy_compliance")
@@ -505,7 +506,9 @@ def test_get_tool_runtime_builtin_maps_oauth_refresh_failure_to_credential_error
         patch("core.tools.tool_manager.time.time", return_value=1000),
         patch(
             "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
-            return_value={"client_id": "id"},
+            return_value=PluginOAuthClientConfig(
+                "langgenius/time:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "id"}
+            ),
         ),
         patch("core.plugin.impl.oauth.OAuthHandler") as oauth_handler_cls,
     ):
