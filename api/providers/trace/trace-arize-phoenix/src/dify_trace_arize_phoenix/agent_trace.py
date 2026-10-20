@@ -45,7 +45,7 @@ def export_trace(provider: str, config: Mapping[str, Any], trace: CanonicalTrace
         {"service.name": "dify-application", "openinference.project.name": project, "model_id": project},
         attributes,
     )
-    headers = {"api_key": api_key, "authorization": f"Bearer {api_key}"}
+    headers = {"api_key": api_key, "authorization": f"Bearer {api_key}"} if api_key or provider == "arize" else {}
     if provider == "arize":
         headers["space_id"] = str(config.get("space_id") or "")
         export_grpc(provider, url, headers, payload)
