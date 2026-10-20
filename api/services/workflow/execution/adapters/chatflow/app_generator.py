@@ -5,7 +5,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
-from typing import Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -24,15 +24,15 @@ from core.app.entities.task_entities import (
     ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
 )
-from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
+from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.helper.trace_id_helper import extract_external_trace_id_from_args, extract_trace_session_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from factories import file_factory
-from graphon.filters import ResponseStreamFilter
-from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.engine.filter import ResponseStreamFilter
+from graphon.engine.layer import Layer
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, WorkflowNodeExecutionTriggeredFrom
@@ -58,6 +58,9 @@ from services.workflow.execution.adapters.workflow.active_workflow_tasks import 
 from services.workflow.execution.chatflow_ports import ChatflowRuntime
 from services.workflow.execution.generation_service import generate_response
 
+if TYPE_CHECKING:
+    from services.workflow.execution.contracts import WorkflowRunDriver
+
 logger = logging.getLogger(__name__)
 
 
@@ -68,6 +71,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
         self,
         *,
         runtime: ChatflowRuntime,
+        execution_driver: WorkflowRunDriver,
         draft_variable_loader: Callable[[WorkflowSnapshot, str], VariableLoader] | None = None,
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
     ) -> None:
@@ -76,6 +80,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
             draft_variable_saver=draft_variable_saver,
         )
         self._runtime = runtime
+        self._execution_driver = execution_driver
 
     @overload
     def generate(
@@ -272,7 +277,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
         application_generate_entity: AdvancedChatAppGenerateEntity,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        graph_runtime_state: GraphRuntimeState,
+        graph_runtime_state: RuntimeState,
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
     ):
@@ -485,8 +490,8 @@ class AdvancedChatAppGenerator(AppInputAdapter):
         stream: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         pause_state_config: PauseStateLayerConfig | None = None,
-        graph_runtime_state: GraphRuntimeState | None = None,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_runtime_state: RuntimeState | None = None,
+        graph_engine_layers: Sequence[Layer] = (),
         response_stream_filter: ResponseStreamFilter | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
@@ -536,19 +541,6 @@ class AdvancedChatAppGenerator(AppInputAdapter):
                 message_id=message.id,
             )
 
-            graph_layers: list[GraphEngineLayer] = list(graph_engine_layers)
-            resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
-            if pause_state_config is not None:
-                graph_layers.append(
-                    PauseStatePersistenceLayer(
-                        session_factory=pause_state_config.session_factory,
-                        generate_entity=application_generate_entity,
-                        human_form_reader=self._runtime.human_form_reader,
-                        state_owner_user_id=pause_state_config.state_owner_user_id,
-                        response_stream_filter=resolved_response_stream_filter,
-                    )
-                )
-
             # new thread with request context and contextvars
             context = contextvars.copy_context()
 
@@ -565,9 +557,10 @@ class AdvancedChatAppGenerator(AppInputAdapter):
                     "variable_loader": variable_loader,
                     "workflow_execution_repository": workflow_execution_repository,
                     "workflow_node_execution_repository": workflow_node_execution_repository,
-                    "graph_engine_layers": tuple(graph_layers),
+                    "pause_state_config": pause_state_config,
                     "graph_runtime_state": graph_runtime_state,
-                    "response_stream_filter": resolved_response_stream_filter,
+                    "graph_engine_layers": graph_engine_layers,
+                    "response_stream_filter": response_stream_filter,
                 },
             )
 
@@ -606,9 +599,10 @@ class AdvancedChatAppGenerator(AppInputAdapter):
         variable_loader: VariableLoader,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_runtime_state: RuntimeState | None = None,
+        graph_engine_layers: Sequence[Layer] = (),
         response_stream_filter: ResponseStreamFilter | None = None,
+        pause_state_config: PauseStateLayerConfig | None = None,
     ):
         """
         Generate worker in a new thread.
@@ -650,15 +644,15 @@ class AdvancedChatAppGenerator(AppInputAdapter):
                     workflow=workflow,
                     system_user_id=system_user_id,
                     app=app,
-                    workflow_execution_repository=workflow_execution_repository,
-                    workflow_node_execution_repository=workflow_node_execution_repository,
                     graph_engine_layers=graph_engine_layers,
                     graph_runtime_state=graph_runtime_state,
                     response_stream_filter=response_stream_filter,
                 )
 
                 with active_workflow_task(application_generate_entity.task_id):
-                    runner.run()
+                    self._execution_driver(
+                        runner, pause_state_config, workflow_execution_repository, workflow_node_execution_repository
+                    )
             except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:
@@ -719,7 +713,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
             return generate_task_pipeline.process()
         except ValueError as e:
             if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
-                raise GenerateTaskStoppedError()
+                raise GenerateTaskStoppedError() from e
             else:
                 logger.exception("Failed to process generate task pipeline, conversation_id: %s", conversation.id)
                 raise e

@@ -282,8 +282,8 @@ class DraftRagPipelineApi(Resource):
         elif "text/plain" in content_type:
             try:
                 payload = DraftWorkflowSyncPayload.model_validate_json(request.data)
-            except (ValueError, ValidationError):
-                raise InvalidArgumentError("Invalid JSON data")
+            except (ValueError, ValidationError) as caught_error:
+                raise InvalidArgumentError("Invalid JSON data") from caught_error
         else:
             raise UnsupportedMediaTypeError()
 
@@ -305,8 +305,8 @@ class DraftRagPipelineApi(Resource):
             )
         except WorkflowNotFoundError as exc:
             raise NotFoundError(str(exc)) from exc
-        except WorkflowHashNotEqualError:
-            raise DraftWorkflowNotSync()
+        except WorkflowHashNotEqualError as caught_error:
+            raise DraftWorkflowNotSync() from caught_error
 
         return {
             "result": "success",
@@ -344,15 +344,15 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFoundError("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFoundError("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logging.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/loop/nodes/<string:node_id>/run")
@@ -384,15 +384,15 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFoundError("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFoundError("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logging.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/run")
@@ -430,7 +430,7 @@ class DraftRagPipelineRunApi(Resource):
 
             return helper.compact_generate_response(response)
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/run")
@@ -467,7 +467,7 @@ class PublishedRagPipelineRunApi(Resource):
 
             return helper.compact_generate_response(response)
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/run")
@@ -689,8 +689,8 @@ class DefaultRagPipelineBlockConfigApi(Resource):
         if req_data.q:
             try:
                 filters = json.loads(req_data.q)
-            except json.JSONDecodeError:
-                raise ValueError("Invalid filters")
+            except json.JSONDecodeError as caught_error:
+                raise ValueError("Invalid filters") from caught_error
 
         # Get default block configs
         rag_pipeline_service = RagPipelineService(db.session())
@@ -831,7 +831,7 @@ class RagPipelineByIdApi(Resource):
                 context, WorkflowOwner(str(pipeline_id), "pipeline"), workflow_id
             )
         except (WorkflowInUseError, DraftWorkflowDeletionError) as error:
-            raise InvalidRequestError(str(error))
+            raise InvalidRequestError(str(error)) from error
         except WorkflowNotFoundError as error:
             raise NotFoundError(str(error)) from error
         return None, 204

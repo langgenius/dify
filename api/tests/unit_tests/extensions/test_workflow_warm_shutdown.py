@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from extensions import workflow_warm_shutdown
-from graphon.graph_engine.entities.commands import AbortCommand
+from graphon.engine.command import AbortCommand
 from services.workflow.execution.adapters.workflow.active_workflow_tasks import reset_active_workflow_tasks
 from services.workflow.execution.adapters.workflow.command_channels import CelerySignalCommandChannel
 

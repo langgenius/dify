@@ -17,8 +17,7 @@ class WorkflowAccessGateway:
     def accessible_app_ids(self, context: RequestContext, maintainers: dict[str, str | None]) -> set[str]:
         if not dify_config.RBAC_ENABLED:
             return set(maintainers)
-        with self._sessions() as session:
-            access = resolve_app_access_filter(context.active_workspace_id, context.account_id, session=session)
+        access = resolve_app_access_filter(context.active_workspace_id, context.account_id)
         return {
             app_id
             for app_id, maintainer in maintainers.items()

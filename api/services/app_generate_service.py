@@ -263,8 +263,10 @@ class AppGenerateService:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             try:
                 quota_charge = QuotaService.reserve(QuotaType.WORKFLOW, app_model.tenant_id)
-            except QuotaExceededError:
-                raise InvokeRateLimitError(f"Workflow execution quota limit reached for tenant {app_model.tenant_id}")
+            except QuotaExceededError as caught_error:
+                raise InvokeRateLimitError(
+                    f"Workflow execution quota limit reached for tenant {app_model.tenant_id}"
+                ) from caught_error
 
         # app level rate limiter
         max_active_request = cls._get_max_active_requests(app_model)
@@ -411,6 +413,7 @@ class AppGenerateService:
                 )
                 advanced_generator = AdvancedChatAppGenerator(
                     runtime=runtime,
+                    execution_driver=runtime.execution_driver,
                     draft_variable_loader=variables.workflow_loader,
                     draft_variable_saver=variables.saver_factory,
                 )
@@ -458,6 +461,7 @@ class AppGenerateService:
                     convert_to_event_stream(
                         WorkflowAppGenerator(
                             runtime=runtime,
+                            execution_driver=runtime.execution_driver,
                             draft_variable_loader=variables.workflow_loader,
                             draft_variable_saver=variables.saver_factory,
                         ).generate(
@@ -528,6 +532,7 @@ class AppGenerateService:
                 return convert_to_event_stream(
                     AdvancedChatAppGenerator(
                         runtime=runtime,
+                        execution_driver=runtime.execution_driver,
                         draft_variable_loader=variables.workflow_loader,
                         draft_variable_saver=variables.saver_factory,
                     ).single_iteration_generate(
@@ -543,6 +548,7 @@ class AppGenerateService:
                 return convert_to_event_stream(
                     WorkflowAppGenerator(
                         runtime=runtime,
+                        execution_driver=runtime.execution_driver,
                         draft_variable_loader=variables.workflow_loader,
                         draft_variable_saver=variables.saver_factory,
                     ).single_iteration_generate(
@@ -579,6 +585,7 @@ class AppGenerateService:
                 return convert_to_event_stream(
                     AdvancedChatAppGenerator(
                         runtime=runtime,
+                        execution_driver=runtime.execution_driver,
                         draft_variable_loader=variables.workflow_loader,
                         draft_variable_saver=variables.saver_factory,
                     ).single_loop_generate(
@@ -594,6 +601,7 @@ class AppGenerateService:
                 return convert_to_event_stream(
                     WorkflowAppGenerator(
                         runtime=runtime,
+                        execution_driver=runtime.execution_driver,
                         draft_variable_loader=variables.workflow_loader,
                         draft_variable_saver=variables.saver_factory,
                     ).single_loop_generate(

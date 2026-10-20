@@ -69,7 +69,7 @@ from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.nodes import BuiltinNodeTypes
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from models import Account, EndUser
 from models.enums import CreatorUserRole, MessageStatus
 from services.app.generation.adapters.message_cycle import MessageCycleManager
@@ -170,7 +170,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._recorded_files: list[Mapping[str, Any]] = []
         self._workflow_run_id: str = ""
         self._draft_var_saver_factory = draft_var_saver_factory
-        self._graph_runtime_state: GraphRuntimeState | None = None
+        self._graph_runtime_state: RuntimeState | None = None
         self._message_saved_on_pause = False
         self._seed_graph_runtime_state_from_queue_manager()
 
@@ -400,6 +400,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             workflow_run_id=run_id,
             workflow_id=self._workflow_id,
             reason=event.reason,
+            node_execution_snapshots=event.node_execution_snapshots,
         )
 
         yield workflow_start_resp
@@ -658,7 +659,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         for reason in event.reasons:
             if isinstance(reason, HumanInputRequired):
                 self._persist_human_input_extra_content(form_id=reason.form_id, node_id=reason.node_id)
-        resolved_state: GraphRuntimeState | None = None
+        resolved_state: RuntimeState | None = None
         try:
             resolved_state = self._ensure_graph_runtime_initialized()
         except ValueError:
@@ -699,7 +700,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         event: QueueStopEvent,
         *,
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_runtime_state: RuntimeState | None = None,
         trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse]:
@@ -736,7 +737,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         event: QueueAdvancedChatMessageEndEvent,
         *,
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_runtime_state: RuntimeState | None = None,
         **kwargs,
     ) -> Generator[StreamResponse]:
         """Handle advanced chat message end events."""
@@ -779,7 +780,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self, event: QueueHumanInputFormFilledEvent, **kwargs
     ) -> Generator[StreamResponse]:
         """Handle human input form filled events."""
-        self._persist_human_input_extra_content(node_id=event.node_id)
+        self._persist_human_input_extra_content(form_id=event.form_id, node_id=event.node_id)
         yield self._workflow_response_converter.human_input_form_filled_to_stream_response(
             event=event, task_id=self._application_generate_entity.task_id
         )
@@ -792,7 +793,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             event=event, task_id=self._application_generate_entity.task_id
         )
 
-    def _persist_human_input_extra_content(self, *, node_id: str | None = None, form_id: str | None = None) -> None:
+    def _persist_human_input_extra_content(self, *, form_id: str, node_id: str | None) -> None:
         if not self._workflow_run_id or not self._message_id:
             return
 
@@ -945,7 +946,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._chat_records.fail_message(self._message_identity, self._base_task_pipeline._error_to_desc(err))
         return err
 
-    def _save_message(self, *, graph_runtime_state: GraphRuntimeState | None = None, paused: bool = False):
+    def _save_message(self, *, graph_runtime_state: RuntimeState | None = None, paused: bool = False):
         usage = graph_runtime_state.llm_usage if graph_runtime_state else None
         self._task_state.metadata.usage = usage or LLMUsage.empty_usage()
         if self._task_state.is_streaming_response and self._task_state.first_token_time:

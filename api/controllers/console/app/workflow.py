@@ -381,8 +381,8 @@ class DraftWorkflowApi(Resource):
         elif "text/plain" in content_type:
             try:
                 args_model = SyncDraftWorkflowPayload.model_validate_json(request.data)
-            except (ValueError, ValidationError):
-                raise InvalidArgumentError("Invalid JSON data")
+            except (ValueError, ValidationError) as caught_error:
+                raise InvalidArgumentError("Invalid JSON data") from caught_error
         else:
             raise UnsupportedMediaTypeError()
 
@@ -755,7 +755,7 @@ class WorkflowTaskStopApi(Resource):
     @console_ns.response(403, "Permission denied")
     @console_workflow_admission(permission=RBACPermission.APP_TEST_AND_RUN)
     def post(self, request_context: RequestContext, app_id: UUID, task_id: str):
-        application_services().console_workflows.stop(task_id)
+        application_services().console_workflows.stop(request_context, str(app_id), task_id)
         return {"result": "success"}
 
 
@@ -977,7 +977,7 @@ class WorkflowByIdApi(Resource):
         try:
             application_services().console_workflows.delete(request_context, WorkflowOwner(str(app_id)), workflow_id)
         except (WorkflowInUseError, DraftWorkflowDeletionError) as error:
-            raise InvalidRequestError(str(error))
+            raise InvalidRequestError(str(error)) from error
         return None, 204
 
 

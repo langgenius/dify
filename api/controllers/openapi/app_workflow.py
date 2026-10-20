@@ -91,8 +91,8 @@ def _require_uuid(value: str, *, not_found: type[OpenApiError]) -> str:
     a UUID-typed database column and fail as a 500."""
     try:
         return str(UUID(value))
-    except ValueError:
-        raise not_found()
+    except ValueError as e:
+        raise not_found() from e
 
 
 def _require_run(ctx: Context, run_id: str) -> WorkflowRun:

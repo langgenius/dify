@@ -19,7 +19,7 @@ from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
 from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.node_events import (
-    NodeEventBase,
+    NodeEventPayload,
     NodeRunResult,
     StreamChunkEvent,
     StreamCompletedEvent,
@@ -51,7 +51,7 @@ class AgentMessageTransformer:
         node_type: NodeType,
         node_id: str,
         node_execution_id: str,
-    ) -> Generator[NodeEventBase]:
+    ) -> Generator[NodeEventPayload]:
         message_stream = ToolFileMessageTransformer.transform_tool_invoke_messages(
             messages=messages,
             user_id=user_id,

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.rag.models.document import Document as RetrievedDocument
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import SegmentStatus
 from repositories.knowledge.retrieval_repository import KnowledgeRetrievalRepository
 from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
 
@@ -45,7 +46,7 @@ def test_source_citations_do_not_fetch_unused_document_fields(
         tokens=3,
         created_by=creator_id,
         enabled=True,
-        status="completed",
+        status=SegmentStatus.COMPLETED,
         index_node_id="node-1",
         index_node_hash="hash-1",
     )

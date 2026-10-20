@@ -23,7 +23,7 @@ from core.workflow.system_variables import build_system_variables
 from extensions.application_services.workflow import build_workflow_execution_dependencies
 from graphon.model_runtime.entities import PromptMessage, PromptMessageTool
 from graphon.nodes.llm.entities import LLMNodeData
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from models.base import TypeBase
 from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
 from models.enums import ConversationFromSource
@@ -90,13 +90,14 @@ def factory(
     **system_variables: object,
 ) -> DifyNodeFactory:
     runtime = build_workflow_execution_dependencies(sessions)
-    state = GraphRuntimeState(
+    state = RuntimeState(
+        workflow_id="workflow",
         variable_pool=VariablePool.from_bootstrap(system_variables=build_system_variables(system_variables)),
         start_at=0,
     )
     result = DifyNodeFactory(
-        graph_init_params=build_test_graph_init_params(app_id=app_id),
-        graph_runtime_state=state,
+        init_params=build_test_graph_init_params(app_id=app_id),
+        runtime_state=state,
         workflow_runtime=runtime,
     )
     return result.with_runtime_state(state) if rebind else result

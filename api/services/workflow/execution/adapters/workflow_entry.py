@@ -1,11 +1,12 @@
 import logging
 import time
 from collections.abc import Callable, Generator, Mapping, Sequence
+from contextlib import ExitStack
+from contextvars import copy_context
 from typing import Any, TypedDict
 from uuid import uuid4
 
 from configs import dify_config
-from context import capture_current_context
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import (
@@ -14,6 +15,8 @@ from core.app.entities.app_invoke_entities import (
     build_dify_run_context,
 )
 from core.app.file_access import DatabaseFileAccessController
+from core.app.layers.execution_context_layer import ExecutionContextLayer
+from core.app.workflow.file_runtime import create_dify_workflow_file_runtime
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.credit_usage import CreditUsageAppType
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
@@ -26,19 +29,20 @@ from core.workflow.system_variables import (
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from extensions.otel.runtime import is_instrument_flag_enabled
 from factories.workflow_input import map_user_inputs_to_variable_pool
+from graphon.engine import Engine
+from graphon.engine.command import CommandChannel, InMemoryChannel
+from graphon.engine.filter import EngineEventFilterContext, ResponseStreamFilter, filter_engine_events
+from graphon.engine.layer import ExecutionLimitsLayer, Layer
+from graphon.engine_events import EngineEvent, GraphRunFailedEvent, NodeEvent, is_node_result_event
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File
-from graphon.filters import GraphEventFilterContext, ResponseStreamFilter, filter_graph_events
+from graphon.file.runtime import use_workflow_file_runtime
 from graphon.graph import Graph
-from graphon.graph_engine import GraphEngine, GraphEngineConfig
-from graphon.graph_engine.command_channels import CommandChannel, InMemoryChannel
-from graphon.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer, GraphEngineLayer
-from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent, is_node_result_event
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.nodes.container_effects import ContainerAwaitRequest
-from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models import Account
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
@@ -52,32 +56,33 @@ from services.workflow.execution.adapters.node_factory import (
     resolve_workflow_node_class,
 )
 from services.workflow.execution.ports import WorkflowRuntime
+from services.workflow_node_variables import load_additional_node_variables
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
 
 
 def iter_dify_graph_engine_events(
-    engine: GraphEngine,
+    engine: Engine,
     response_stream_filter: ResponseStreamFilter | None = None,
     *,
     human_form_reader: HumanInputFormReader,
-) -> Generator[GraphEngineEvent]:
+) -> Generator[EngineEvent]:
     """
-    Apply Dify's response streaming compatibility filter to GraphEngine events.
+    Apply Dify's response streaming compatibility filter to Engine events.
 
-    Graphon v0.5.0 emits raw variable stream chunks and requires callers to opt
+    Graphon emits raw variable stream chunks and requires callers to opt
     into the legacy response-ordered stream behavior that Dify exposes to its
     workflow runners and tests.
 
     ``response_stream_filter``, when supplied, must be the same instance a
-    caller intends to persist on pause (see ``PauseStatePersistenceLayer``) so
+    caller intends to persist on pause (see ``WorkflowRunAgg``) so
     the filter's ``paths_map`` reflects everything the engine has actually
     streamed for this run.
     """
-    yield from filter_graph_events(
+    yield from filter_engine_events(
         engine.run(),
-        context=GraphEventFilterContext.from_engine(engine),
+        context=EngineEventFilterContext.from_engine(engine),
         filters=[
             HumanInputFormEventFilter(form_repository=human_form_reader),
             response_stream_filter or ResponseStreamFilter(),
@@ -108,17 +113,10 @@ class SingleNodeGraphDict(TypedDict):
 class WorkflowEntry:
     def __init__(
         self,
-        tenant_id: str,
-        app_id: str,
-        workflow_id: str,
         graph_config: Mapping[str, Any],
         graph: Graph,
-        user_id: str,
-        user_from: UserFrom,
-        invoke_from: InvokeFrom,
         call_depth: int,
-        variable_pool: VariablePool,
-        graph_runtime_state: GraphRuntimeState,
+        graph_runtime_state: RuntimeState,
         *,
         human_form_reader: HumanInputFormReader,
         command_channel: CommandChannel | None = None,
@@ -126,22 +124,13 @@ class WorkflowEntry:
     ) -> None:
         """
         Init workflow entry
-        :param tenant_id: tenant id
-        :param app_id: app id
-        :param workflow_id: workflow id
-        :param workflow_type: workflow type
         :param graph_config: workflow graph config
         :param graph: workflow graph
-        :param user_id: user id
-        :param user_from: user from
-        :param invoke_from: invoke from
         :param call_depth: call depth
-        :param variable_pool: variable pool
         :param graph_runtime_state: pre-created graph runtime state
         :param command_channel: command channel for external control (optional, defaults to InMemoryChannel)
         :param response_stream_filter: pre-restored filter for resumed runs (optional, defaults to a fresh
             ResponseStreamFilter for runs with no prior pause)
-        :param thread_pool_id: thread pool id
         """
         # check call depth
         workflow_call_max_depth = dify_config.WORKFLOW_CALL_MAX_DEPTH
@@ -154,54 +143,40 @@ class WorkflowEntry:
 
         self._human_form_reader = human_form_reader
         self.command_channel = command_channel
+        self.graph_config = graph_config
         self._response_stream_filter = response_stream_filter or ResponseStreamFilter()
-        execution_context = capture_current_context()
-        # ponytail: Graphon snapshots omit process-local context; use a public rebind API when Graphon exposes one.
-        graph_runtime_state._execution_context = execution_context
-        self.graph_engine = GraphEngine(
-            workflow_id=workflow_id,
-            graph=graph,
-            graph_runtime_state=graph_runtime_state,
-            command_channel=command_channel,
-            config=GraphEngineConfig(
-                min_workers=dify_config.GRAPH_ENGINE_MIN_WORKERS,
-                max_workers=dify_config.GRAPH_ENGINE_MAX_WORKERS,
-                scale_up_threshold=dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD,
-                scale_down_idle_time=dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME,
-            ),
-        )
-
-        # Add debug logging layer when in debug mode
-        if dify_config.DEBUG:
-            logger.info("Debug mode enabled - adding DebugLoggingLayer to GraphEngine")
-            debug_layer = DebugLoggingLayer(
-                level="DEBUG",
-                include_inputs=True,
-                include_outputs=True,
-                include_process_data=False,  # Process data can be very verbose
-                logger_name=f"GraphEngine.Debug.{workflow_id[:8]}",  # Use workflow ID prefix for unique logger
-            )
-            self.graph_engine.layer(debug_layer)
-
-        # Add execution limits layer
+        file_runtime = create_dify_workflow_file_runtime()
+        execution_context_layer = ExecutionContextLayer()
         limits_layer = ExecutionLimitsLayer(
             max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
-        self.graph_engine.layer(limits_layer)
+        self.graph_engine = Engine(
+            graph=graph,
+            runtime_state=graph_runtime_state,
+            command_channel=command_channel,
+            workers=dify_config.GRAPH_ENGINE_MAX_WORKERS,
+            file_runtime=file_runtime,
+        )
+
+        self.graph_engine.add_layer(execution_context_layer)
+        # Add execution limits layer
+        self.graph_engine.add_layer(limits_layer)
 
         # Add observability layer when OTel is enabled
         if dify_config.ENABLE_OTEL or is_instrument_flag_enabled():
-            self.graph_engine.layer(ObservabilityLayer())
+            self.graph_engine.add_layer(ObservabilityLayer())
 
-    def run(self) -> Generator[GraphEngineEvent]:
-        graph_engine = self.graph_engine
+    @property
+    def response_stream_filter(self) -> ResponseStreamFilter:
+        return self._response_stream_filter
 
+    def run(self) -> Generator[EngineEvent]:
         try:
-            # Preserve Dify's response-stream semantics on top of Graphon 0.5.0.
-            generator = iter_dify_graph_engine_events(
-                graph_engine, self._response_stream_filter, human_form_reader=self._human_form_reader
+            yield from iter_dify_graph_engine_events(
+                self.graph_engine,
+                self._response_stream_filter,
+                human_form_reader=self._human_form_reader,
             )
-            yield from generator
         except GenerateTaskStoppedError:
             pass
         except Exception as e:
@@ -222,7 +197,7 @@ class WorkflowEntry:
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
         agent_binding_resolver: WorkflowAgentRuntimeBindings | None = None,
         workflow_runtime: WorkflowRuntime | None = None,
-    ) -> tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest]]:
+    ) -> tuple[Node, Generator[NodeEvent | ContainerAwaitRequest]]:
         """
         Single step run workflow node
         :param workflow: immutable workflow definition
@@ -262,10 +237,10 @@ class WorkflowEntry:
             run_context=run_context,
             call_depth=0,
         )
-        graph_runtime_state = GraphRuntimeState(
+        graph_runtime_state = RuntimeState(
             variable_pool=variable_pool,
             start_at=time.perf_counter(),
-            execution_context=capture_current_context(),
+            workflow_id=workflow.id,
         )
 
         if is_start_node_type(node_type):
@@ -302,6 +277,14 @@ class WorkflowEntry:
             variable_mapping=variable_mapping,
             user_inputs=user_inputs,
         )
+        variable_mapping = load_additional_node_variables(
+            node_config=node_config,
+            graph_config=workflow.graph_dict,
+            variable_mapping=variable_mapping,
+            variable_loader=variable_loader,
+            variable_pool=variable_pool,
+            user_inputs=user_inputs,
+        )
         if node_type != BuiltinNodeTypes.DATASOURCE:
             cls.mapping_user_inputs_to_variable_pool(
                 variable_mapping=variable_mapping,
@@ -313,7 +296,7 @@ class WorkflowEntry:
         # init workflow run state
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=graph_runtime_state,
             draft_variable_saver=draft_variable_saver,
             agent_binding_resolver=agent_binding_resolver,
             workflow_runtime=workflow_runtime,
@@ -321,7 +304,7 @@ class WorkflowEntry:
         node = node_factory.create_node(node_config)
 
         try:
-            generator = cls._run_node_with_layers(node, tenant_id=workflow.tenant_id)
+            generator = cls._run_node_with_layers(node)
         except Exception as e:
             logger.exception(
                 "error while running node, workflow_id=%s, node_id=%s, node_type=%s, node_version=%s",
@@ -330,7 +313,7 @@ class WorkflowEntry:
                 node.node_type,
                 node.version(),
             )
-            raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
+            raise WorkflowNodeRunFailedError(node=node, err_msg=str(e)) from e
         return node, generator
 
     @staticmethod
@@ -382,7 +365,7 @@ class WorkflowEntry:
     @classmethod
     def run_free_node(
         cls, node_data: dict[str, Any], node_id: str, tenant_id: str, user_id: str, user_inputs: dict[str, Any]
-    ) -> tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest]]:
+    ) -> tuple[Node, Generator[NodeEvent | ContainerAwaitRequest]]:
         """
         Run free node
 
@@ -425,17 +408,17 @@ class WorkflowEntry:
             run_context=run_context,
             call_depth=0,
         )
-        graph_runtime_state = GraphRuntimeState(
+        graph_runtime_state = RuntimeState(
             variable_pool=variable_pool,
             start_at=time.perf_counter(),
-            execution_context=capture_current_context(),
+            workflow_id="",
         )
 
         # init workflow run state
         node_config = NodeConfigDictAdapter.validate_python({"id": node_id, "data": node_data})
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=graph_runtime_state,
         )
         node = node_factory.create_node(node_config)
 
@@ -461,7 +444,7 @@ class WorkflowEntry:
                 tenant_id=tenant_id,
             )
 
-            generator = cls._run_node_with_layers(node, tenant_id=tenant_id)
+            generator = cls._run_node_with_layers(node)
 
             return node, generator
         except Exception as e:
@@ -471,7 +454,7 @@ class WorkflowEntry:
                 node.node_type,
                 node.version(),
             )
-            raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
+            raise WorkflowNodeRunFailedError(node=node, err_msg=str(e)) from e
 
     @staticmethod
     def handle_special_values(value: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
@@ -518,23 +501,29 @@ class WorkflowEntry:
         )
 
     @staticmethod
-    def _run_node_with_layers(node: Node, *, tenant_id: str) -> Generator[GraphNodeEventBase | ContainerAwaitRequest]:
+    def _run_node_with_layers(node: Node) -> Generator[NodeEvent | ContainerAwaitRequest]:
         """
-        Run a standalone node with the same quota and observability hooks as GraphEngine.
+        Run a standalone node with the execution-context and observability layers used by workflow runs.
         """
-        layers: Sequence[GraphEngineLayer] = (ObservabilityLayer(),)
+        file_runtime = create_dify_workflow_file_runtime()
         command_channel = InMemoryChannel()
-        runtime_state = ReadOnlyGraphRuntimeStateWrapper(node.graph_runtime_state)
-        for layer in layers:
-            layer.initialize(runtime_state, command_channel)
-            layer.on_graph_start()
+        runtime_state = ReadOnlyRuntimeStateWrapper(node.runtime_state)
+        with use_workflow_file_runtime(file_runtime):
+            layers: Sequence[Layer] = (ExecutionContextLayer(), ObservabilityLayer())
+            for layer in layers:
+                layer.initialize(runtime_state, command_channel)
+                layer.on_graph_start()
+            # Keep Flask and tracing scopes inside the snippet across suspension,
+            # without exposing them to callers interleaving multiple streams.
+            snippet_context = copy_context()
 
         node.bind_execution_id(str(uuid4()))
 
         def _gen():
             error: Exception | None = None
-            result_event: GraphNodeEventBase | None = None
+            result_event: NodeEvent | None = None
             layers_finished = False
+            node_contexts = ExitStack()
 
             def finish_layers() -> None:
                 nonlocal layers_finished
@@ -543,14 +532,17 @@ class WorkflowEntry:
                 layers_finished = True
                 for layer in layers:
                     layer.on_node_run_end(node, error, result_event)
+                node_contexts.close()
                 for layer in layers:
                     layer.on_graph_end(error)
 
             try:
                 for layer in layers:
+                    node_contexts.enter_context(layer.node_run_context(node))
+                for layer in layers:
                     layer.on_node_run_start(node)
                 for event in node.run():
-                    if isinstance(event, GraphNodeEventBase) and is_node_result_event(event):
+                    if isinstance(event, NodeEvent) and is_node_result_event(event):
                         result_event = event
                         finish_layers()
                     yield event
@@ -560,4 +552,26 @@ class WorkflowEntry:
             finally:
                 finish_layers()
 
-        return _gen()
+        def scoped_events():
+            events = _gen()
+            error: BaseException | None = None
+            try:
+                while True:
+                    try:
+                        event = (
+                            snippet_context.run(next, events)
+                            if error is None
+                            else snippet_context.run(events.throw, error)
+                        )
+                    except StopIteration:
+                        return
+                    try:
+                        yield event
+                    except BaseException as exc:
+                        error = exc
+                    else:
+                        error = None
+            finally:
+                snippet_context.run(events.close)
+
+        return scoped_events()

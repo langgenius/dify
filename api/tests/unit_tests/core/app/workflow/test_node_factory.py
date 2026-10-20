@@ -3,10 +3,9 @@ from collections.abc import Callable, Mapping
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
-from graphon.entities import GraphInitParams
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 from services.workflow.execution.ports import WorkflowRuntime
 
@@ -17,14 +16,14 @@ class DummyNode:
         *,
         node_id: str,
         data: dict[str, object],
-        graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
+        init_params: InitParams,
+        runtime_state: RuntimeState,
         **kwargs: object,
     ) -> None:
         self.id = node_id
         self.data = data
-        self.graph_init_params = graph_init_params
-        self.graph_runtime_state = graph_runtime_state
+        self.init_params = init_params
+        self.runtime_state = runtime_state
         self.kwargs = kwargs
 
     @classmethod
@@ -89,13 +88,17 @@ class TestDifyNodeFactory:
         )
 
         return DifyNodeFactory(
-            graph_init_params=GraphInitParams(
+            init_params=InitParams(
                 workflow_id="workflow-id",
                 graph_config={},
                 run_context=run_context,
                 call_depth=0,
             ),
-            graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0),
+            runtime_state=RuntimeState(
+                workflow_id="workflow-id",
+                variable_pool=VariablePool(),
+                start_at=0,
+            ),
         )
 
     def test_create_node_unknown_type(self) -> None:

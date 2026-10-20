@@ -188,8 +188,8 @@ class AppInputAdapter:  # noqa: B903
                             return float(value)
                         else:
                             return int(value)
-                    except ValueError:
-                        raise ValueError(f"{variable_entity.variable} in input form must be a valid number")
+                    except ValueError as exc:
+                        raise ValueError(f"{variable_entity.variable} in input form must be a valid number") from exc
                 case _:
                     raise TypeError(f"expected value type int, float or str, got {type(value)}, value: {value}")
 

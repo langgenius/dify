@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.rag.models.document import Document
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from models import Account
 from models.dataset import Dataset, DatasetQuery
 from services.hit_testing_service import HitTestingService
@@ -66,7 +67,12 @@ class _FakeRetrievalRecord:
 class TestHitTestingServiceRetrieveTransaction:
     """Regression tests for https://github.com/langgenius/dify/issues/38998."""
 
-    def test_retrieve_should_not_close_caller_managed_transaction(self, sqlite_session: Session) -> None:
+    def test_retrieve_should_not_close_caller_managed_transaction(
+        self,
+        sqlite_session: Session,
+        *,
+        workflow_runtime: WorkflowExecutionDependencies,
+    ) -> None:
         """retrieve() must not commit the caller-managed session mid-flow.
 
         When the caller manages the session inside a ``session.begin()`` block, an
@@ -92,7 +98,15 @@ class TestHitTestingServiceRetrieveTransaction:
             mock_format.return_value = [record]
 
             with sqlite_session.begin():
-                result = HitTestingService.retrieve(dataset, query, account, None, {}, session=sqlite_session)
+                result = HitTestingService.retrieve(
+                    dataset,
+                    query,
+                    account,
+                    None,
+                    {},
+                    session=sqlite_session,
+                    retrieval=workflow_runtime.retrieval,
+                )
 
         assert result["query"]["content"] == query
         query_log = sqlite_session.scalar(select(DatasetQuery))

@@ -112,6 +112,7 @@ class WorkflowTool(Tool):
         from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 
         generator = WorkflowAppGenerator(
+            execution_driver=self._workflow_runtime.execution_driver,
             runtime=self._workflow_runtime,
             draft_variable_saver=self._draft_variable_saver,
         )

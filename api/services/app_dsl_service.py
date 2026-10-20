@@ -204,8 +204,8 @@ class AppDslService:
         # Validate import mode
         try:
             mode = ImportMode(import_mode)
-        except ValueError:
-            raise ValueError(f"Invalid import_mode: {import_mode}")
+        except ValueError as caught_error:
+            raise ValueError(f"Invalid import_mode: {import_mode}") from caught_error
 
         # Get YAML content
         content: str = ""
@@ -840,7 +840,7 @@ class AppDslService:
                             self._sync_copied_workflow_bindings(workflow=workflow_row, account_id=account.id)
                         )
                         imported_graph = workflow_row.graph_dict
-                    return DraftImportResult(imported_graph, retired)
+                    return DraftImportResult(dict(imported_graph), retired)
 
                 self._drafts.sync(
                     RequestContext(str(uuid4()), None, account.id, app.tenant_id),

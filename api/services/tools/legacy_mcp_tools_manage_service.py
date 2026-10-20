@@ -101,8 +101,8 @@ class MCPToolManageService:
         """
         try:
             uuid.UUID(provider_id)
-        except (AttributeError, TypeError, ValueError):
-            raise ValueError("expected a valid UUID, but got: " + provider_id)
+        except (AttributeError, TypeError, ValueError) as exc:
+            raise ValueError("expected a valid UUID, but got: " + provider_id) from exc
 
         stmt = select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.id == provider_id)
         return self._scalar_one_provider(stmt)
@@ -383,7 +383,7 @@ class MCPToolManageService:
         try:
             tools = self._retrieve_remote_mcp_tools(server_url, headers, provider_entity)
         except MCPError as e:
-            raise ValueError(f"Failed to connect to MCP server: {e}")
+            raise ValueError(f"Failed to connect to MCP server: {e}") from e
 
         # Update database with retrieved tools (ensure description is a non-null string)
         tools_payload = []

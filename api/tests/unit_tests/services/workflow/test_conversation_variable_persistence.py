@@ -1,10 +1,10 @@
 from core.workflow.system_variables import build_system_variables
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
+from graphon.engine.command import InMemoryChannel
+from graphon.engine_events import NodeRunSucceededEvent, NodeRunVariableUpdatedEvent
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from graphon.graph_engine.command_channels import InMemoryChannel
-from graphon.graph_events import NodeRunSucceededEvent, NodeRunVariableUpdatedEvent
 from graphon.node_events import NodeRunResult
-from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from graphon.variables import StringVariable
 from graphon.variables.variables import VariableBase
 from libs.datetime_utils import naive_utc_now
@@ -21,9 +21,10 @@ class RecordingVariableWriter:
         self.updates.append((conversation_id, variable))
 
 
-def _build_graph_runtime_state(conversation_id: str) -> ReadOnlyGraphRuntimeState:
-    return ReadOnlyGraphRuntimeStateWrapper(
-        GraphRuntimeState(
+def _build_graph_runtime_state(conversation_id: str) -> ReadOnlyRuntimeStateWrapper:
+    return ReadOnlyRuntimeStateWrapper(
+        RuntimeState(
+            workflow_id="workflow-1",
             variable_pool=VariablePool.from_bootstrap(
                 system_variables=build_system_variables(conversation_id=conversation_id)
             ),
