@@ -162,6 +162,9 @@ const WorkspaceConnectionSelector = ({
             if (!canUseCredential) return
             onAuthorizationItemClick(credential.id)
           },
+          onCreated: (id) => {
+            if (canUseCredential) onAuthorizationItemClick(id)
+          },
           addOAuth: startOAuth,
           openOAuthClientSettings: openOAuthSettings,
         }}

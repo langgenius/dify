@@ -46,7 +46,8 @@ const chooseScope = async (user: ReturnType<typeof userEvent.setup>, option: str
 describe('SaveConnectionModal', () => {
   it('saves trimmed metadata with an initially unchecked workspace-default option', async () => {
     const user = userEvent.setup()
-    const { save } = renderModal()
+    const onCreated = vi.fn()
+    const { save } = renderModal({ onCreated })
     expect(screen.getByText('demo@gmail.com')).toBeVisible()
     expect(screen.getByRole('checkbox')).not.toBeChecked()
     await user.clear(nameInput())
@@ -58,6 +59,7 @@ describe('SaveConnectionModal', () => {
       setDefault: false,
     })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(onCreated).not.toHaveBeenCalled()
   })
 
   it('shows a required-name error for whitespace and prevents saving', async () => {

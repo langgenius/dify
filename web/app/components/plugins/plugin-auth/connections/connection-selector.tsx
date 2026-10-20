@@ -36,6 +36,7 @@ export type ConnectionSelectorDataSource = {
   providerName?: string
   subtitle: (credential?: Credential) => string
   select: (credential: Credential) => void
+  onCreated?: (credentialId: string) => void
   addOAuth: () => void
   openOAuthClientSettings: () => void
   // Workspace keeps its selection trigger while credentials refresh.
@@ -219,6 +220,7 @@ const ConnectionSelector = ({ dataSource }: { dataSource: ConnectionSelectorData
         <ApiKeyModal
           key={apiKeySession}
           dataSource={dataSource.apiKey}
+          onCreated={dataSource.canUse ? dataSource.onCreated : undefined}
           pluginPayload={dataSource.pluginPayload}
           open={apiKeyOpen}
           onOpenChange={setApiKeyOpen}

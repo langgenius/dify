@@ -9,7 +9,7 @@ import ConnectionDetailsForm from './connection-details-form'
 export type SaveConnectionValues = ConnectionDetailsValues
 
 export type SaveConnectionDataSource = {
-  save: (values: SaveConnectionValues) => Promise<void>
+  save: (values: SaveConnectionValues) => Promise<void | { credentialId: string }>
 }
 
 type Props = {
@@ -19,6 +19,7 @@ type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCloseComplete?: () => void
+  onCreated?: (credentialId: string) => void
   finalFocus?: DialogContentProps['finalFocus']
   disabled?: boolean
   canSetDefault?: boolean
@@ -34,6 +35,7 @@ export default function SaveConnectionModal({
   open,
   onOpenChange,
   onCloseComplete,
+  onCreated,
   finalFocus,
   disabled = false,
   canSetDefault = true,
@@ -68,7 +70,10 @@ export default function SaveConnectionModal({
           canEdit={!disabled}
           canSetDefault={canSetDefault}
           saveLabel={t(($) => $['auth.connection.save'], { ns: 'plugin' })}
-          onSave={dataSource.save}
+          onSave={async (values) => {
+            const result = await dataSource.save(values)
+            if (result?.credentialId) onCreated?.(result.credentialId)
+          }}
           onCancel={() => onOpenChange(false)}
           onSavingChange={(saving) => {
             savingRef.current = saving

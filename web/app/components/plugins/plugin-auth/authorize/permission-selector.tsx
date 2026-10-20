@@ -1,3 +1,4 @@
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { CredentialPermission } from '@/models/permission'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -15,18 +16,22 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { PermissionLevel } from '@/models/permission'
 import { getAvatarInitial } from '@/utils/avatar'
 
+export type PermissionProfile = Pick<GetAccountProfileResponse, 'name' | 'avatar_url'>
+
 type PermissionSelectorProps = {
   disabled?: boolean
   permission: CredentialPermission
   onChange: (permission: CredentialPermission) => void
+  profile?: PermissionProfile
 }
 
-const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelectorProps) => {
+const PermissionSelectorView = ({
+  disabled,
+  permission,
+  onChange,
+  profile: userProfile,
+}: Omit<PermissionSelectorProps, 'profile'> & { profile: PermissionProfile }) => {
   const { t } = useTranslation(['datasetSettings', 'plugin'])
-  const { data: userProfile } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile,
-  })
   const isOnlyMe = permission === PermissionLevel.onlyMe
   const isAllTeamMembers = permission === PermissionLevel.allTeamMembers
   const permissionLabel = t(($) => $['auth.whoCanUse'], { ns: 'plugin' })
@@ -117,5 +122,20 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
     </DropdownMenu>
   )
 }
+
+const WorkspacePermissionSelector = (props: Omit<PermissionSelectorProps, 'profile'>) => {
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
+  return <PermissionSelectorView {...props} profile={userProfile} />
+}
+
+const PermissionSelector = ({ profile, ...props }: PermissionSelectorProps) =>
+  profile ? (
+    <PermissionSelectorView {...props} profile={profile} />
+  ) : (
+    <WorkspacePermissionSelector {...props} />
+  )
 
 export default PermissionSelector

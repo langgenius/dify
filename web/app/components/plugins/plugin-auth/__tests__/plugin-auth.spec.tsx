@@ -481,7 +481,11 @@ describe('PluginAuth', () => {
       notAllowCustomCredential: false,
     })
     const AppUserDraftHarness = () => {
-      const [draft, setDraft] = useState<AppUserAuthDraft>()
+      const [draft, setDraft] = useState<AppUserAuthDraft>({
+        oauthEnabled: true,
+        apiKeyEnabled: false,
+        description: '',
+      })
       return (
         <PluginAuth
           pluginPayload={defaultPayload}
@@ -500,7 +504,9 @@ describe('PluginAuth', () => {
     })
     await user.type(description, 'Choose a connection for app users')
     const apiKey = appUserPanel.getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' })
+    expect(apiKey).not.toBeChecked()
     await user.click(apiKey)
+    expect(apiKey).toBeChecked()
     const testConnection = within(
       appUserPanel.getByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
     )
@@ -535,7 +541,7 @@ describe('PluginAuth', () => {
       }),
     ).toBeVisible()
     expect(description).toHaveValue('Choose a connection for app users')
-    expect(apiKey).not.toBeChecked()
+    expect(apiKey).toBeChecked()
 
     await user.click(screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' }))
     expect(screen.getByRole('button', { name: /^Personal connection/ })).toBeVisible()
@@ -546,7 +552,7 @@ describe('PluginAuth', () => {
       }),
     ).toBeVisible()
     expect(description).toHaveValue('Choose a connection for app users')
-    expect(apiKey).not.toBeChecked()
+    expect(apiKey).toBeChecked()
     expect(onAuthorizationItemClick).not.toHaveBeenCalled()
     expect(
       mockConsoleCall.mock.calls.filter(([path]) => Array.isArray(path) && path.at(-1) === 'post'),
@@ -932,7 +938,8 @@ describe('PluginAuth', () => {
     expect(
       within(panel).getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' }),
     ).not.toBeChecked()
-    expect(within(panel).getByText('plugin.auth.appUser.selectMethod')).toBeVisible()
+    const methodFields = within(panel).getByRole('group', { name: 'plugin.auth.authorization' })
+    expect(within(methodFields).getByText('plugin.auth.appUser.selectMethod')).toBeVisible()
     expect(
       within(panel).getByRole('textbox', { name: 'plugin.auth.appUser.connectionDescription' }),
     ).toHaveValue('Existing connection description')

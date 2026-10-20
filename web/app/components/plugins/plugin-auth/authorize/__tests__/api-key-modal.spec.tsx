@@ -28,7 +28,8 @@ beforeEach(() => {
 it('validates the API key and submits the entered name, secret and selected visibility', async () => {
   const user = userEvent.setup()
   const onClose = vi.fn()
-  render(<ApiKeyModal pluginPayload={payload} onClose={onClose} />)
+  const onCreated = vi.fn()
+  render(<ApiKeyModal pluginPayload={payload} onClose={onClose} onCreated={onCreated} />)
   await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
   expect(commands.add).not.toHaveBeenCalled()
   await user.type(screen.getByLabelText(/API Key/), 'sk-123')
@@ -47,6 +48,7 @@ it('validates the API key and submits the entered name, secret and selected visi
     type: 'api-key',
     visibility: 'only_me',
   })
+  expect(onCreated).not.toHaveBeenCalled()
 })
 
 it('uses the existing credential identity and preserves an unchanged secret on edit', async () => {
@@ -72,20 +74,36 @@ it('uses the existing credential identity and preserves an unchanged secret on e
   expect(commands.add).not.toHaveBeenCalled()
 })
 
-it('prevents duplicate submissions while the credential command is pending', async () => {
+it('prevents duplicate submission and dismissal while creation is pending, then reports its identity', async () => {
   const user = userEvent.setup()
-  const request = createDeferred<object>()
-  commands.add.mockReturnValue(request.promise)
+  const request = createDeferred<{ credentialId: string }>()
+  const saveCommand = vi.fn(() => request.promise)
   const onClose = vi.fn()
-  render(<ApiKeyModal pluginPayload={payload} onClose={onClose} />)
+  const onOpenChange = vi.fn()
+  const onCreated = vi.fn()
+  render(
+    <ApiKeyModal
+      dataSource={{ schemas, save: saveCommand }}
+      onClose={onClose}
+      onOpenChange={onOpenChange}
+      onCreated={onCreated}
+    />,
+  )
   await user.type(screen.getByLabelText(/API Key/), 'secret')
   const save = screen.getByRole('button', { name: 'common.operation.save' })
   await user.dblClick(save)
   expect(save).toBeDisabled()
-  expect(commands.add).toHaveBeenCalledOnce()
+  expect(saveCommand).toHaveBeenCalledOnce()
+  await user.keyboard('{Escape}')
+  expect(screen.getByRole('dialog', { name: 'plugin.auth.useApiAuth' })).toBeVisible()
+  expect(onOpenChange).not.toHaveBeenCalled()
   expect(onClose).not.toHaveBeenCalled()
-  request.resolve({})
-  await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+  expect(onCreated).not.toHaveBeenCalled()
+
+  request.resolve({ credentialId: 'new-api-key' })
+  await waitFor(() => expect(onCreated).toHaveBeenCalledExactlyOnceWith('new-api-key'))
+  expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
+  expect(onClose).toHaveBeenCalledOnce()
 })
 
 it('keeps the credentials popover open while editing inside its nested modal', async () => {
@@ -119,4 +137,27 @@ it('keeps the credentials popover open while editing inside its nested modal', a
   expect(screen.getByLabelText(/API Key/)).toHaveValue('secret')
   expect(onClose).not.toHaveBeenCalled()
   expect(onPopoverClose).not.toHaveBeenCalled()
+})
+
+it('does not report a new connection when an API key replacement returns an identity', async () => {
+  const user = userEvent.setup()
+  const save = vi.fn().mockResolvedValue({ credentialId: 'existing-key' })
+  const onCreated = vi.fn()
+  const onClose = vi.fn()
+  render(
+    <ApiKeyModal
+      dataSource={{ schemas, save }}
+      editValues={{
+        api_key: '[__HIDDEN__]',
+        __credential_id__: 'existing-key',
+        __name__: 'Existing',
+      }}
+      onCreated={onCreated}
+      onClose={onClose}
+    />,
+  )
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+  expect(save).toHaveBeenCalledOnce()
+  expect(onCreated).not.toHaveBeenCalled()
 })

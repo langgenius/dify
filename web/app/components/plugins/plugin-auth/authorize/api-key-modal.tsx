@@ -1,4 +1,6 @@
+import type { DialogChangeEventDetails } from '@langgenius/dify-ui/dialog'
 import type { PluginPayload } from '../types'
+import type { PermissionProfile } from './permission-selector'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import type { CredentialPermission } from '@/models/permission'
 import { Button } from '@langgenius/dify-ui/button'
@@ -32,12 +34,13 @@ export type ApiKeyModalDataSource = {
   schemas: FormSchema[]
   isLoading?: boolean
   defaultName?: string
+  permissionProfile?: PermissionProfile
   save: (values: {
     name: string
     credentialId?: string
     credentials: Record<string, unknown>
     visibility: CredentialPermission
-  }) => Promise<unknown>
+  }) => Promise<void | { credentialId: string }>
 }
 
 type ApiKeyModalCommonProps = {
@@ -48,6 +51,7 @@ type ApiKeyModalCommonProps = {
   onRemove?: () => void
   disabled?: boolean
   onUpdate?: () => void
+  onCreated?: (credentialId: string) => void
   formSchemas?: FormSchema[]
 }
 
@@ -67,12 +71,14 @@ const ApiKeyModalContent = ({
   onRemove,
   disabled,
   onUpdate,
+  onCreated,
 }: ApiKeyModalCommonProps & {
   pluginPayload?: PluginPayload
   dataSource: ApiKeyModalDataSource
 }) => {
   const { t } = useTranslation(['common', 'plugin'])
   const [doingAction, setDoingAction] = useState(false)
+  const [saveFailed, setSaveFailed] = useState(false)
   const doingActionRef = useRef(doingAction)
   const handleSetDoingAction = useCallback((value: boolean) => {
     doingActionRef.current = value
@@ -123,24 +129,42 @@ const ApiKeyModalContent = ({
       } = values
 
       handleSetDoingAction(true)
-      await dataSource.save({
+      setSaveFailed(false)
+      const result = await dataSource.save({
         credentials: restValues,
         credentialId: __credential_id__,
         name: __name__ || '',
         visibility: permission,
       })
 
+      if (!editValues && !__credential_id__ && result?.credentialId)
+        onCreated?.(result.credentialId)
       onOpenChange?.(false)
       onClose?.()
       onUpdate?.()
+    } catch {
+      setSaveFailed(true)
     } finally {
       handleSetDoingAction(false)
     }
-  }, [dataSource, onClose, onOpenChange, onUpdate, handleSetDoingAction, permission])
+  }, [
+    dataSource,
+    editValues,
+    onClose,
+    onCreated,
+    onOpenChange,
+    onUpdate,
+    handleSetDoingAction,
+    permission,
+  ])
 
   const isDisabled = disabled || isLoading || doingAction
   const handleOpenChange = useCallback(
-    (nextOpen: boolean) => {
+    (nextOpen: boolean, details?: DialogChangeEventDetails) => {
+      if (!nextOpen && doingActionRef.current) {
+        details?.cancel()
+        return
+      }
       onOpenChange?.(nextOpen)
       if (!nextOpen) onClose?.()
     },
@@ -183,8 +207,14 @@ const ApiKeyModalContent = ({
                 disabled={disabled}
                 permission={permission}
                 onChange={setPermission}
+                profile={dataSource.permissionProfile}
               />
             </div>
+          )}
+          {saveFailed && (
+            <p role="alert" className="system-sm-regular text-text-destructive">
+              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </p>
           )}
         </DialogBody>
         <DialogFooter>
@@ -227,13 +257,14 @@ const WorkspaceApiKeyModal = ({
       dataSource={{
         schemas: props.formSchemas?.length ? props.formSchemas : data,
         isLoading,
-        save: ({ name, credentialId, credentials, visibility }) => {
+        save: async ({ name, credentialId, credentials, visibility }) => {
           if (props.editValues) {
             const id = credentialId ?? props.editValues.__credential_id__
             if (typeof id !== 'string') return Promise.reject(new Error('Missing credential ID'))
-            return updatePluginCredential({ credentials, credential_id: id, name })
+            await updatePluginCredential({ credentials, credential_id: id, name })
+            return
           }
-          return addPluginCredential({
+          await addPluginCredential({
             credentials,
             type: CredentialTypeEnum.API_KEY,
             name,
