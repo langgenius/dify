@@ -19,7 +19,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import dump_response
 from libs.uuid_utils import uuidv7
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
-from services.workflow_draft_variable_service import WorkflowDraftVariableList
+from services.workflow.variable_contracts import WorkflowDraftVariableList
 
 _TEST_APP_ID = "test_app_id"
 _TEST_NODE_EXEC_ID = str(uuid.uuid4())

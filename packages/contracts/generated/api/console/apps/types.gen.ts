@@ -7847,7 +7847,7 @@ export type GetAppsByAppIdWorkflowsDraftConversationVariablesData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftConversationVariablesErrors = {
-  404: AppNotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -7871,7 +7871,6 @@ export type PostAppsByAppIdWorkflowsDraftConversationVariablesData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftConversationVariablesErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7895,7 +7894,7 @@ export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesErrors = {
-  404: AppNotFoundError | DraftWorkflowNotExistError | ErrorResponse
+  404: DraftWorkflowNotExistError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7919,7 +7918,6 @@ export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8371,7 +8369,6 @@ export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesData = {
 }
 
 export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8396,7 +8393,6 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8555,7 +8551,6 @@ export type GetAppsByAppIdWorkflowsDraftSystemVariablesData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftSystemVariablesErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8635,7 +8630,6 @@ export type DeleteAppsByAppIdWorkflowsDraftVariablesData = {
 }
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesErrors = {
-  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8662,7 +8656,7 @@ export type GetAppsByAppIdWorkflowsDraftVariablesData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftVariablesErrors = {
-  404: AppNotFoundError | DraftWorkflowNotExistError | ErrorResponse
+  404: DraftWorkflowNotExistError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8687,7 +8681,7 @@ export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: AppNotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -8712,7 +8706,7 @@ export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: AppNotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -8737,7 +8731,7 @@ export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: AppNotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -8762,7 +8756,7 @@ export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetData = {
 }
 
 export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetErrors = {
-  404: AppNotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
