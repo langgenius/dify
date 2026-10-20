@@ -141,11 +141,10 @@ stamp_http_fixtures(app_id: str, actor: Actor, *, base_app_revision: str,
 
 - [ ] Write failing typed/body/lineage/owner/state tests. Real existing SQLite fixtures only unit tests; do not claim PG race proof. Pin false source-mode inference and strict provenance:
 ```python
-assert prepare_inputs(source='mock', fixtures=()).mode == 'restricted'
-assert fixture.model_dump(mode='json')['status_code'] == 201
+assert prepare_inputs(source="mock", fixtures=()).mode == "restricted"
+assert fixture.model_dump(mode="json")["status_code"] == 201
 with pytest.raises(ValidationError):
-    HttpResponseFixtureV1(node_id='http', source='user_sample',
-                          status_code=True, content_type='text/plain', body='x')
+    HttpResponseFixtureV1(node_id="http", source="user_sample", status_code=True, content_type="text/plain", body="x")
 assert decode_legacy_test_input(old_row).http_fixtures is None
 ```
 Concrete test helper `prepare_inputs` must call actual service using owned session/app/workflow/test-input fixture, never a fake alternate policy. Cases: actor/account membership absent; foreign session owner/app/tenant/test-input; changed raw env/conversation/tracing; malformed persisted fixture envelope; stale submit and stale reuse; numerical effective vs submitted digest distinction; no revisions/decryption called after metadata refusal; mandatory state/claim/append binding; sealed append rejection; recorder failure makes healthy false monotonically; old TestInput roundtrip unchanged.
@@ -226,14 +225,15 @@ The barrier helper and mutation fixture belong to this test file and wrap the ex
 - [ ] Add an actual native harness in the new graph-engine test module. Follow `test_table_runner.py:151–246,316–360` for imports and bootstrap, but instantiate **DifyNodeFactory**, never MockNodeFactory. The harness returns real event objects and actual node instances; SQLite-backed recorder is the only Builder persistence test collaborator.
 
 ```python
-factory = DifyNodeFactory(graph_init_params=params,
-                          graph_runtime_state=state,
-                          execution_recorder=recorder)
-graph = Graph.init(graph_config=graph_config, node_factory=factory,
-                   root_node_id='start')
-engine = GraphEngine(workflow_id=params.workflow_id, graph=graph,
-                     graph_runtime_state=state, command_channel=InMemoryChannel(),
-                     config=GraphEngineConfig(min_workers=1, max_workers=1))
+factory = DifyNodeFactory(graph_init_params=params, graph_runtime_state=state, execution_recorder=recorder)
+graph = Graph.init(graph_config=graph_config, node_factory=factory, root_node_id="start")
+engine = GraphEngine(
+    workflow_id=params.workflow_id,
+    graph=graph,
+    graph_runtime_state=state,
+    command_channel=InMemoryChannel(),
+    config=GraphEngineConfig(min_workers=1, max_workers=1),
+)
 events = list(iter_dify_graph_engine_events(engine))
 ```
 
@@ -248,11 +248,14 @@ events = list(iter_dify_graph_engine_events(engine))
 # Inside RestrictedHttpClient._respond, after runtime argument validation:
 if fixture is None:
     recorder.record(blocked_observation)
-    raise PolicyTransportError('execution_policy: fixture_missing')
+    raise PolicyTransportError("execution_policy: fixture_missing")
 recorder.record(fixture_observation)
-return HttpResponse(status_code=fixture.status_code,
-                    headers={'content-type': fixture.content_type},
-                    content=fixture.body.encode('utf-8'), url=url)
+return HttpResponse(
+    status_code=fixture.status_code,
+    headers={"content-type": fixture.content_type},
+    content=fixture.body.encode("utf-8"),
+    url=url,
+)
 ```
 
 - [ ] Run new native harness tests plus both existing node-factory suites and HTTP executor tests. Check no Graphon lockfile/version delta. Commit and review; no runtime deployment until Task 4 authoritative sealing/publication and composed native evidence pass.
@@ -291,10 +294,11 @@ return HttpResponse(status_code=fixture.status_code,
 - [ ] Tests cover native success+blocked receipt; native success+fixture; unsupported prelaunch without native ID; incomplete stream/request; zero/missing native node evidence; older unknown mode; full revision changed; foreign session; valid restricted scalar. Assert no native/historical row gets rewritten and existing published version is untouched.
 
 ```python
-assert native_run.status == 'succeeded'
-assert result_card(builder_run).safety_outcome == 'execution_blocked'
-assert not publication_decision(builder_run, session_id=session_id,
-    current_revision=revision, current_graph_revision=graph_revision).allowed
+assert native_run.status == "succeeded"
+assert result_card(builder_run).safety_outcome == "execution_blocked"
+assert not publication_decision(
+    builder_run, session_id=session_id, current_revision=revision, current_graph_revision=graph_revision
+).allowed
 agent.diagnose.assert_not_called()  # blocked policy is not a business-code bug
 ```
 
@@ -329,10 +333,9 @@ Before Task 5 or Release A, complete the owned native bootstrap follow-up: restr
 
 ```python
 # Existing HTTP request stays in CodeExecutor; only policy propagation changes.
-data['enable_network'] = enable_network
+data["enable_network"] = enable_network
 # Dify's injected restricted adapter:
-return CodeExecutor.execute_workflow_code_template(
-    language=language, code=code, inputs=inputs, enable_network=False)
+return CodeExecutor.execute_workflow_code_template(language=language, code=code, inputs=inputs, enable_network=False)
 ```
 
 - [ ] Add native unit controls using actual CodeNode/TemplateTransformNode and a sandbox transport response fixture to assert transformation/output schemas and forwarding. Label them **transport contract tests**, not proof of code execution/isolation. Invalid code output type must fail native schema validation. Do not replace native nodes or execute code in a test-only competing executor.

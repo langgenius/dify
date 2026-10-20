@@ -88,39 +88,17 @@ export type DifyBuilderSubmitActionPayload = {
 
 export type DifyBuilderConversationPageResponse = {
   data: Array<
-    | ({
-        kind: 'user'
-      } & DifyBuilderUserConversationItemResponse)
-    | ({
-        kind: 'decision'
-      } & DifyBuilderDecisionConversationItemResponse)
-    | ({
-        kind: 'interaction_response'
-      } & DifyBuilderInteractionResponseConversationItemResponse)
-    | ({
-        kind: 'notice'
-      } & DifyBuilderNoticeConversationItemResponse)
-    | ({
-        kind: 'run_context'
-      } & DifyBuilderRunContextConversationItemResponse)
-    | ({
-        kind: 'preflight_context'
-      } & DifyBuilderPreflightContextConversationItemResponse)
-    | ({
-        kind: 'assistant_turn'
-      } & DifyBuilderAssistantTurnConversationItemResponse)
-    | ({
-        kind: 'plan'
-      } & DifyBuilderPlanConversationItemResponse)
-    | ({
-        kind: 'form'
-      } & DifyBuilderFormConversationItemResponse)
-    | ({
-        kind: 'resource_select'
-      } & DifyBuilderResourceSelectConversationItemResponse)
-    | ({
-        kind: 'test_result'
-      } & DifyBuilderTestResultConversationItemResponse)
+    | DifyBuilderUserConversationItemResponse
+    | DifyBuilderDecisionConversationItemResponse
+    | DifyBuilderInteractionResponseConversationItemResponse
+    | DifyBuilderNoticeConversationItemResponse
+    | DifyBuilderRunContextConversationItemResponse
+    | DifyBuilderPreflightContextConversationItemResponse
+    | DifyBuilderAssistantTurnConversationItemResponse
+    | DifyBuilderPlanConversationItemResponse
+    | DifyBuilderFormConversationItemResponse
+    | DifyBuilderResourceSelectConversationItemResponse
+    | DifyBuilderTestResultConversationItemResponse
   >
   first_seq: number | null
   has_more: boolean
@@ -1687,6 +1665,7 @@ export type HumanInputRequiredResponseData = {
 export type HumanInputFormFilledResponseData = {
   action_id: string
   action_text: string
+  form_id: string
   node_id: string
   node_title: string
   rendered_content: string
@@ -1697,6 +1676,7 @@ export type HumanInputFormFilledResponseData = {
 
 export type HumanInputFormTimeoutResponseData = {
   expiration_time: number
+  form_id: string
   node_id: string
   node_title: string
 }

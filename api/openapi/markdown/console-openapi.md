@@ -23384,6 +23384,7 @@ Data entity
 | ---- | ---- | ----------- | -------- |
 | action_id | string |  | Yes |
 | action_text | string |  | Yes |
+| form_id | string |  | Yes |
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
 | rendered_content | string |  | Yes |
@@ -23457,6 +23458,7 @@ Data entity
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | expiration_time | integer |  | Yes |
+| form_id | string |  | Yes |
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
 

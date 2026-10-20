@@ -355,9 +355,9 @@ export const zDifyBuilderConsoleForbiddenResponse = z.object({
  * Every HTTP 403 body a real-call consent route can return.
  */
 export const zDifyBuilderRealCallForbiddenResponse = z.discriminatedUnion('code', [
-  zDifyBuilderRealCallPermissionRefusalResponse.extend({ code: z.literal('needs_permission') }),
-  zDifyBuilderFeatureUnavailableResponse.extend({ code: z.literal('feature_unavailable') }),
-  zDifyBuilderConsoleForbiddenResponse.extend({ code: z.literal('forbidden') }),
+  zDifyBuilderRealCallPermissionRefusalResponse,
+  zDifyBuilderFeatureUnavailableResponse,
+  zDifyBuilderConsoleForbiddenResponse,
 ])
 
 /**
@@ -1518,6 +1518,7 @@ export const zWorkflowStreamDataEventLiteralAgentLogData = z.object({
 export const zHumanInputFormFilledResponseData = z.object({
   action_id: z.string(),
   action_text: z.string(),
+  form_id: z.string(),
   node_id: z.string(),
   node_title: z.string(),
   rendered_content: z.string(),
@@ -1541,6 +1542,7 @@ export const zWorkflowStreamEventLiteralHumanInputFormFilledData = z.object({
  */
 export const zHumanInputFormTimeoutResponseData = z.object({
   expiration_time: z.int(),
+  form_id: z.string(),
   node_id: z.string(),
   node_title: z.string(),
 })
@@ -1605,61 +1607,17 @@ export const zDifyBuilderAssistantTurnConversationItemResponse = z.object({
 export const zDifyBuilderConversationPageResponse = z.object({
   data: z.array(
     z.union([
-      z
-        .object({
-          kind: z.literal('user'),
-        })
-        .and(zDifyBuilderUserConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('decision'),
-        })
-        .and(zDifyBuilderDecisionConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('interaction_response'),
-        })
-        .and(zDifyBuilderInteractionResponseConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('notice'),
-        })
-        .and(zDifyBuilderNoticeConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('run_context'),
-        })
-        .and(zDifyBuilderRunContextConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('preflight_context'),
-        })
-        .and(zDifyBuilderPreflightContextConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('assistant_turn'),
-        })
-        .and(zDifyBuilderAssistantTurnConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('plan'),
-        })
-        .and(zDifyBuilderPlanConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('form'),
-        })
-        .and(zDifyBuilderFormConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('resource_select'),
-        })
-        .and(zDifyBuilderResourceSelectConversationItemResponse),
-      z
-        .object({
-          kind: z.literal('test_result'),
-        })
-        .and(zDifyBuilderTestResultConversationItemResponse),
+      zDifyBuilderUserConversationItemResponse,
+      zDifyBuilderDecisionConversationItemResponse,
+      zDifyBuilderInteractionResponseConversationItemResponse,
+      zDifyBuilderNoticeConversationItemResponse,
+      zDifyBuilderRunContextConversationItemResponse,
+      zDifyBuilderPreflightContextConversationItemResponse,
+      zDifyBuilderAssistantTurnConversationItemResponse,
+      zDifyBuilderPlanConversationItemResponse,
+      zDifyBuilderFormConversationItemResponse,
+      zDifyBuilderResourceSelectConversationItemResponse,
+      zDifyBuilderTestResultConversationItemResponse,
     ]),
   ),
   first_seq: z.int().nullable(),
@@ -1673,23 +1631,17 @@ export const zDifyBuilderConversationPageResponse = z.object({
 export const zDifyBuilderConversationItemAppendedEventData = z.object({
   command_id: z.string(),
   item: z.discriminatedUnion('kind', [
-    zDifyBuilderUserConversationItemResponse.extend({ kind: z.literal('user') }),
-    zDifyBuilderDecisionConversationItemResponse.extend({ kind: z.literal('decision') }),
-    zDifyBuilderInteractionResponseConversationItemResponse.extend({
-      kind: z.literal('interaction_response'),
-    }),
-    zDifyBuilderNoticeConversationItemResponse.extend({ kind: z.literal('notice') }),
-    zDifyBuilderRunContextConversationItemResponse.extend({ kind: z.literal('run_context') }),
-    zDifyBuilderPreflightContextConversationItemResponse.extend({
-      kind: z.literal('preflight_context'),
-    }),
-    zDifyBuilderAssistantTurnConversationItemResponse.extend({ kind: z.literal('assistant_turn') }),
-    zDifyBuilderPlanConversationItemResponse.extend({ kind: z.literal('plan') }),
-    zDifyBuilderFormConversationItemResponse.extend({ kind: z.literal('form') }),
-    zDifyBuilderResourceSelectConversationItemResponse.extend({
-      kind: z.literal('resource_select'),
-    }),
-    zDifyBuilderTestResultConversationItemResponse.extend({ kind: z.literal('test_result') }),
+    zDifyBuilderUserConversationItemResponse,
+    zDifyBuilderDecisionConversationItemResponse,
+    zDifyBuilderInteractionResponseConversationItemResponse,
+    zDifyBuilderNoticeConversationItemResponse,
+    zDifyBuilderRunContextConversationItemResponse,
+    zDifyBuilderPreflightContextConversationItemResponse,
+    zDifyBuilderAssistantTurnConversationItemResponse,
+    zDifyBuilderPlanConversationItemResponse,
+    zDifyBuilderFormConversationItemResponse,
+    zDifyBuilderResourceSelectConversationItemResponse,
+    zDifyBuilderTestResultConversationItemResponse,
   ]),
   session_id: z.string(),
 })
@@ -2145,10 +2097,10 @@ export const zSelectInputConfig = z.object({
 })
 
 export const zFormInputConfig = z.discriminatedUnion('type', [
-  zParagraphInputConfig.extend({ type: z.literal('paragraph') }),
-  zSelectInputConfig.extend({ type: z.literal('select') }),
-  zFileInputConfig.extend({ type: z.literal('file') }),
-  zFileListInputConfig.extend({ type: z.literal('file-list') }),
+  zParagraphInputConfig,
+  zSelectInputConfig,
+  zFileInputConfig,
+  zFileListInputConfig,
 ])
 
 /**
@@ -2187,42 +2139,28 @@ export const zDifyBuilderWorkflowEventData = z.object({
   at_version: z.int(),
   operation_id: z.string(),
   payload: z.discriminatedUnion('event', [
-    zWorkflowStreamEventLiteralWorkflowStartedData.extend({ event: z.literal('workflow_started') }),
-    zWorkflowStreamEventLiteralWorkflowFinishedData.extend({
-      event: z.literal('workflow_finished'),
-    }),
-    zWorkflowStreamEventLiteralWorkflowPausedData.extend({ event: z.literal('workflow_paused') }),
-    zWorkflowStreamEventLiteralNodeStartedData.extend({ event: z.literal('node_started') }),
-    zWorkflowStreamEventLiteralNodeFinishedData.extend({ event: z.literal('node_finished') }),
-    zWorkflowStreamEventLiteralNodeRetryData.extend({ event: z.literal('node_retry') }),
-    zWorkflowStreamEventLiteralIterationStartedData.extend({
-      event: z.literal('iteration_started'),
-    }),
-    zWorkflowStreamEventLiteralIterationNextData.extend({ event: z.literal('iteration_next') }),
-    zWorkflowStreamEventLiteralIterationCompletedData.extend({
-      event: z.literal('iteration_completed'),
-    }),
-    zWorkflowStreamEventLiteralLoopStartedData.extend({ event: z.literal('loop_started') }),
-    zWorkflowStreamEventLiteralLoopNextData.extend({ event: z.literal('loop_next') }),
-    zWorkflowStreamEventLiteralLoopCompletedData.extend({ event: z.literal('loop_completed') }),
-    zWorkflowStreamDataEventLiteralTextChunkData.extend({ event: z.literal('text_chunk') }),
-    zWorkflowStreamDataEventLiteralTextReplaceData.extend({ event: z.literal('text_replace') }),
-    zWorkflowStreamDataEventLiteralReasoningChunkData.extend({
-      event: z.literal('reasoning_chunk'),
-    }),
-    zWorkflowStreamDataEventLiteralAgentLogData.extend({ event: z.literal('agent_log') }),
-    zWorkflowStreamEventLiteralHumanInputRequiredData.extend({
-      event: z.literal('human_input_required'),
-    }),
-    zWorkflowStreamEventLiteralHumanInputFormFilledData.extend({
-      event: z.literal('human_input_form_filled'),
-    }),
-    zWorkflowStreamEventLiteralHumanInputFormTimeoutData.extend({
-      event: z.literal('human_input_form_timeout'),
-    }),
-    zWorkflowStreamMessage.extend({ event: z.literal('message') }),
-    zWorkflowStreamMessageReplace.extend({ event: z.literal('message_replace') }),
-    zWorkflowStreamError.extend({ event: z.literal('error') }),
+    zWorkflowStreamEventLiteralWorkflowStartedData,
+    zWorkflowStreamEventLiteralWorkflowFinishedData,
+    zWorkflowStreamEventLiteralWorkflowPausedData,
+    zWorkflowStreamEventLiteralNodeStartedData,
+    zWorkflowStreamEventLiteralNodeFinishedData,
+    zWorkflowStreamEventLiteralNodeRetryData,
+    zWorkflowStreamEventLiteralIterationStartedData,
+    zWorkflowStreamEventLiteralIterationNextData,
+    zWorkflowStreamEventLiteralIterationCompletedData,
+    zWorkflowStreamEventLiteralLoopStartedData,
+    zWorkflowStreamEventLiteralLoopNextData,
+    zWorkflowStreamEventLiteralLoopCompletedData,
+    zWorkflowStreamDataEventLiteralTextChunkData,
+    zWorkflowStreamDataEventLiteralTextReplaceData,
+    zWorkflowStreamDataEventLiteralReasoningChunkData,
+    zWorkflowStreamDataEventLiteralAgentLogData,
+    zWorkflowStreamEventLiteralHumanInputRequiredData,
+    zWorkflowStreamEventLiteralHumanInputFormFilledData,
+    zWorkflowStreamEventLiteralHumanInputFormTimeoutData,
+    zWorkflowStreamMessage,
+    zWorkflowStreamMessageReplace,
+    zWorkflowStreamError,
   ]),
   revision: z.int(),
   session_id: z.string(),
@@ -2242,18 +2180,16 @@ export const zDifyBuilderWorkflowEventResponse = z.object({
  * One JSON object carried by an SSE ``data:`` frame.
  */
 export const zDifyBuilderStreamEventResponse = z.discriminatedUnion('event', [
-  zDifyBuilderCommandStartedEventResponse.extend({ event: z.literal('command_started') }),
-  zDifyBuilderWorkflowEventResponse.extend({ event: z.literal('workflow') }),
-  zDifyBuilderCanvasEventResponse.extend({ event: z.literal('canvas') }),
-  zDifyBuilderAgentMessageEventResponse.extend({ event: z.literal('agent_message') }),
-  zDifyBuilderConversationItemAppendedEventResponse.extend({
-    event: z.literal('conversation_item_appended'),
-  }),
-  zDifyBuilderReasoningEventResponse.extend({ event: z.literal('reasoning') }),
-  zDifyBuilderProgressEventResponse.extend({ event: z.literal('progress') }),
-  zDifyBuilderProgressSnapshotEventResponse.extend({ event: z.literal('progress_snapshot') }),
-  zDifyBuilderCommandFinishedEventResponse.extend({ event: z.literal('command_finished') }),
-  zDifyBuilderErrorEventResponse.extend({ event: z.literal('error') }),
+  zDifyBuilderCommandStartedEventResponse,
+  zDifyBuilderWorkflowEventResponse,
+  zDifyBuilderCanvasEventResponse,
+  zDifyBuilderAgentMessageEventResponse,
+  zDifyBuilderConversationItemAppendedEventResponse,
+  zDifyBuilderReasoningEventResponse,
+  zDifyBuilderProgressEventResponse,
+  zDifyBuilderProgressSnapshotEventResponse,
+  zDifyBuilderCommandFinishedEventResponse,
+  zDifyBuilderErrorEventResponse,
 ])
 
 /**
