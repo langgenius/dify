@@ -80,7 +80,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             return generate_task_pipeline.process()
         except ValueError as e:
             if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
-                raise GenerateTaskStoppedError()
+                raise GenerateTaskStoppedError() from e
             else:
                 logger.exception("Failed to handle response, conversation_id: %s", conversation.id)
                 raise e

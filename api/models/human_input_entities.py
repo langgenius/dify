@@ -17,8 +17,7 @@ from enums.human_input import ButtonStyle, FormInputType, TimeoutUnit, ValueSour
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.file.enums import FileTransferMethod, FileType
-from graphon.nodes.base.variable_template_parser import VariableTemplateParser
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.consts import SELECTORS_LENGTH
 from graphon.variables.segments import Segment
 from models import _human_input_exc as exc
@@ -291,34 +290,12 @@ class HumanInputNodeData(BaseNodeData):
     def outputs_field_names(self) -> Sequence[str]:
         return [match.group("field_name") for match in _OUTPUT_VARIABLE_PATTERN.finditer(self.form_content)]
 
-    def extract_variable_selector_to_variable_mapping(
-        self,
-        node_id: str,
-    ) -> Mapping[str, Sequence[str]]:
-        variable_mappings: dict[str, Sequence[str]] = {}
-
-        def _add_variable_selectors(selectors: Sequence[Sequence[str]]) -> None:
-            for selector in selectors:
-                if len(selector) < SELECTORS_LENGTH:
-                    continue
-                qualified_variable_mapping_key = f"{node_id}.#{'.'.join(selector[:SELECTORS_LENGTH])}#"
-                variable_mappings[qualified_variable_mapping_key] = list(
-                    selector[:SELECTORS_LENGTH],
-                )
-
-        form_template_parser = VariableTemplateParser(template=self.form_content)
-        _add_variable_selectors(
-            [selector.value_selector for selector in form_template_parser.extract_variable_selectors()]
-        )
-
-        for form_input in self.inputs:
-            selectors = form_input.extract_variable_selectors()
-            for selector in selectors:
-                value_key = ".".join(selector)
-                qualified_variable_mapping_key = f"{node_id}.#{value_key}#"
-                variable_mappings[qualified_variable_mapping_key] = selector
-
-        return variable_mappings
+    def find_action_text(self, action_id: str) -> str:
+        """Resolve action display text by id."""
+        for action in self.user_actions:
+            if action.id == action_id:
+                return action.title
+        return action_id
 
     def must_resolve_action_value(self, action_id: str) -> str:
         """Resolve the selected action's workflow-facing value by id.

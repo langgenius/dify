@@ -180,7 +180,6 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
     )
 
     captured: dict[str, object] = {}
-    session = sqlite_session
 
     def fake_generate(self, **kwargs):
         captured.update(kwargs)
@@ -188,7 +187,9 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
 
     monkeypatch.setattr(AdvancedChatAppGenerator, "_generate", fake_generate)
 
-    result = AdvancedChatAppGenerator(runtime=workflow_runtime).generate(
+    result = AdvancedChatAppGenerator(
+        runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+    ).generate(
         app_model=app_model,
         workflow=workflow,
         user=user,

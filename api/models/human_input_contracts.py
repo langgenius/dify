@@ -71,6 +71,10 @@ class HumanInputFormRepository(Protocol):
 
     def create_form(self, params: FormCreateParams) -> HumanInputFormEntity: ...
 
+    def mark_timeout(self, node_id: str, *, form_id: str) -> HumanInputFormEntity:
+        """Time out an overdue waiting form and return its current state."""
+        ...
+
 
 @dataclasses.dataclass(frozen=True)
 class HumanInputFormRecord:
