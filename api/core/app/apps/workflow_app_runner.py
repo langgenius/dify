@@ -1,20 +1,13 @@
 import logging
 import time
-from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.agent_strategy import AgentStrategyInfo
-from core.app.entities.app_invoke_entities import (
-    AdvancedChatAppGenerateEntity,
-    InvokeFrom,
-    UserFrom,
-    WorkflowAppGenerateEntity,
-    build_dify_run_context,
-)
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     NodeExecutionSnapshot,
@@ -42,11 +35,8 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.credit_usage import CreditUsageAppType
 from core.rag.entities import RetrievalSourceMetadata
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-from core.repositories.human_input_repository import HumanInputFormRecord
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
@@ -99,13 +89,20 @@ from graphon.engine_events import (
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.entities.pause_reason import HitlRequired
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowType
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from graphon.graph import Graph
 from graphon.graph.scoping import resolve_container_id
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from graphon.variables.factory import build_segment
+from models.human_input_contracts import HumanInputFormRecord
 from models.workflow import Workflow
+from services.human_input.ports import HumanInputFormReader
+from services.workflow.execution.contracts import (
+    PreparedWorkflowRun,
+    WorkflowRunDriver,
+    WorkflowRunEntry,
+)
 from services.workflow_node_variables import load_additional_node_variables
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
@@ -172,29 +169,6 @@ def _merge_container_metadata(
     return {**lifecycle_metadata, **node_metadata}
 
 
-@dataclass(frozen=True, slots=True)
-class PreparedWorkflowRun:
-    """Prepared engine and workflow facts handed to the persistence-owning orchestrator."""
-
-    entry: WorkflowEntry
-    workflow_type: WorkflowType
-    workflow_version: str
-    generate_entity: AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity
-    application_layers: Sequence[Layer]
-    """Layers that also receive terminal failures raised after the engine closes."""
-
-
-type WorkflowRunDriver = Callable[
-    [
-        WorkflowBasedAppRunner,
-        PauseStateLayerConfig | None,
-        WorkflowExecutionRepository,
-        WorkflowNodeExecutionRepository,
-    ],
-    None,
-]
-
-
 class WorkflowBasedAppRunner:
     def __init__(
         self,
@@ -204,12 +178,23 @@ class WorkflowBasedAppRunner:
         app_id: str,
         graph_engine_layers: Sequence[Layer] = (),
         execution_driver: WorkflowRunDriver | None = None,
+        human_form_reader: HumanInputFormReader | None = None,
     ):
         self._queue_manager = queue_manager
         self._variable_loader = variable_loader
         self._app_id = app_id
         self._graph_engine_layers = graph_engine_layers
         self._execution_driver = execution_driver
+        self._human_form_reader = human_form_reader
+
+    @property
+    def human_form_reader(self) -> HumanInputFormReader:
+        """Return the injected reader, with a legacy fallback during runner migration."""
+        if self._human_form_reader is None:
+            from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
+
+            self._human_form_reader = cast(HumanInputFormReader, HumanInputFormSubmissionRepository())
+        return self._human_form_reader
 
     def prepare(self) -> PreparedWorkflowRun | None:
         raise NotImplementedError
@@ -530,7 +515,7 @@ class WorkflowBasedAppRunner:
 
     def publish_human_input_results(
         self,
-        workflow_entry: WorkflowEntry,
+        workflow_entry: WorkflowRunEntry,
         pending_forms: Mapping[str, HitlRequired],
         forms: Mapping[str, HumanInputFormRecord],
         published_form_ids: set[str],
@@ -557,7 +542,14 @@ class WorkflowBasedAppRunner:
                 )
                 if action is None:
                     raise ValueError(f"Submitted human input form has no matching action: {form_id}")
-                submitted_data = {name: build_segment(value) for name, value in (form.submitted_data or {}).items()}
+                from core.workflow.node_runtime import DifyHumanInputNodeRuntime, resolve_dify_run_context
+
+                run_context = resolve_dify_run_context(workflow_entry.graph_engine.graph.root_node.run_context)
+                restored_data = DifyHumanInputNodeRuntime(run_context).restore_submitted_data(
+                    inputs=form.definition.inputs,
+                    submitted_data=form.submitted_data or {},
+                )
+                submitted_data = {name: build_segment(value) for name, value in restored_data.items()}
                 self._publish_event(
                     QueueHumanInputFormFilledEvent(
                         form_id=form_id,
@@ -579,7 +571,7 @@ class WorkflowBasedAppRunner:
 
     def handle_event(
         self,
-        workflow_entry: WorkflowEntry,
+        workflow_entry: WorkflowRunEntry,
         event: EngineEvent,
         *,
         node_run_index: int = 1,

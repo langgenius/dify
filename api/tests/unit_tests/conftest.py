@@ -57,11 +57,13 @@ redis_mock.incr = MagicMock(return_value=1)
 
 if TYPE_CHECKING:
     from extensions.application_services.app import AppServices
+    from extensions.application_services.workflow import WorkflowExecutionDependencies
     from models.annotation_reply import AnnotationReplies
     from models.human_input_contracts import HumanInputFormFactory
     from repositories.app.generation_repository import AppGenerationRepository
     from repositories.tools.provider_repository import ToolProviderRepository
     from repositories.tools.workflow_repository import WorkflowToolRepository
+    from repositories.workflow.runtime_context_repository import WorkflowRuntimeContextRepository
     from services.tag_application_service import TagApplicationService
     from services.tools.workflow_tools_manage_service import WorkflowToolManageService
     from services.workflow.console_variable_service import ConsoleWorkflowVariableService
@@ -443,3 +445,17 @@ def human_forms(sqlite_session_factory: sessionmaker[Session]) -> HumanInputForm
     from repositories.human_input.form_repository import HumanInputFormRepositoryImpl
 
     return partial(HumanInputFormRepositoryImpl, sessions=sqlite_session_factory)
+
+
+@pytest.fixture
+def workflow_contexts(sqlite_session_factory: sessionmaker[Session]) -> WorkflowRuntimeContextRepository:
+    from repositories.workflow.runtime_context_repository import WorkflowRuntimeContextRepository
+
+    return WorkflowRuntimeContextRepository(sqlite_session_factory)
+
+
+@pytest.fixture
+def workflow_runtime(sqlite_session_factory: sessionmaker[Session]) -> WorkflowExecutionDependencies:
+    from extensions.application_services.workflow import build_workflow_execution_dependencies
+
+    return build_workflow_execution_dependencies(sqlite_session_factory)

@@ -9,13 +9,6 @@ from sqlalchemy import Engine, event
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from core.repositories.human_input_repository import (
-    FormNotFoundError,
-    HumanInputFormRecord,
-    HumanInputFormRepositoryImpl,
-    HumanInputFormSubmissionRepository,
-    _WorkspaceMemberInfo,
-)
 from enums.human_input import HumanInputFormKind, HumanInputFormStatus, RecipientType
 from libs.datetime_utils import naive_utc_now
 from models import Account, TenantAccountJoin
@@ -34,6 +27,13 @@ from models.human_input_delivery import (
     MemberRecipient,
 )
 from models.human_input_entities import FormDefinition, UserActionConfig
+from repositories.human_input.form_repository import (
+    FormNotFoundError,
+    HumanInputFormRecord,
+    HumanInputFormRepositoryImpl,
+    HumanInputFormSubmissionRepository,
+    _WorkspaceMemberInfo,
+)
 
 
 def _build_repository() -> HumanInputFormRepositoryImpl:
@@ -318,7 +318,6 @@ class TestHumanInputFormRepositoryImplPublicMethods:
 
         assert entity is not None
         assert entity.id == form.id
-        assert entity.submission_token == "token-123"
         assert len(entity.recipients) == 1
         assert entity.recipients[0].token == "token-123"
 
@@ -391,7 +390,7 @@ class TestHumanInputFormSubmissionRepository:
         sqlite_session: Session,
     ):
         fixed_now = datetime(2024, 1, 1, 0, 0, 0)
-        monkeypatch.setattr("core.repositories.human_input_repository.naive_utc_now", lambda: fixed_now)
+        monkeypatch.setattr("repositories.human_input.form_repository.naive_utc_now", lambda: fixed_now)
 
         form = _make_form(tenant_id="tenant-1", expiration_time=fixed_now)
         recipient = _make_recipient(form.id)

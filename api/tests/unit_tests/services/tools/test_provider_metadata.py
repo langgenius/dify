@@ -3,20 +3,23 @@
 import json
 from collections.abc import Generator, Mapping
 from datetime import datetime
-from typing import NoReturn
+from typing import Literal, NoReturn
 from uuid import uuid4
 
 import pytest
+from flask import has_app_context
 from sqlalchemy import Engine, Table, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.db import session_factory
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolProviderType
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from models.account import Account
+from models.agent_config_entities import AgentSoulToolsConfig
 from models.base import TypeBase
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, ToolLabelBinding, WorkflowToolProvider
 from repositories.tools.provider_repository import ToolProviderRepository
@@ -25,6 +28,10 @@ from services.tools.api.provider import ApiToolProviderController
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.tool_manager import ToolManager
 from services.tools.tools_transform_service import ToolTransformService
+from services.workflow.execution.adapters.agent_v2.dify_tools_builder import (
+    WorkflowAgentDifyToolsBuilder,
+    WorkflowAgentDifyToolsBuildError,
+)
 from tests.unit_tests.model_factories import make_account
 
 type Database = tuple[sessionmaker[Session], ToolProviderRepository]
@@ -313,6 +320,116 @@ def test_mcp_creation_reads_author_and_converts_response_after_commit(
     assert result.author == "Repository author"
     assert result.id == provider_id
     assert result.tools == []
+
+
+class TestAgentMCPToolsBuilder:
+    @pytest.fixture(autouse=True)
+    def _provide_app_context(self) -> None:
+        """Override the unit suite's Flask context to exercise production DI."""
+
+    @pytest.fixture
+    def mcp_builder(self, database: Database) -> WorkflowAgentDifyToolsBuilder:
+        from extensions.application_services.workflow import build_workflow_execution_dependencies
+
+        sessions, _ = database
+        runtime = build_workflow_execution_dependencies(sessions)
+        return WorkflowAgentDifyToolsBuilder(tool_providers=runtime.tool_providers, workflow_queries=runtime.tools)
+
+    @pytest.fixture
+    def mcp_provider(self, database: Database) -> MCPToolProvider:
+        sessions, _ = database
+        with sessions.begin() as session:
+            provider = MCPToolProvider(
+                tenant_id="tenant",
+                user_id="author",
+                name="mcp",
+                server_identifier="mcp-server",
+                server_url="encrypted",
+                server_url_hash="hash",
+                icon='{"content":"M","background":"#000"}',
+                tools=json.dumps(
+                    [
+                        {
+                            "name": name,
+                            "description": f"{name} the web",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {"query": {"type": "string", "description": "Query"}},
+                                "required": ["query"],
+                            },
+                        }
+                        for name in ["search", "browse"]
+                    ]
+                ),
+            )
+            session.add(provider)
+        return provider
+
+    @pytest.mark.parametrize("reference", ["id", "identifier", "uuid-identifier"])
+    @pytest.mark.parametrize("provider_entry", [False, True])
+    def test_default_builder_uses_injected_repository_without_flask(
+        self,
+        database: Database,
+        mcp_builder: WorkflowAgentDifyToolsBuilder,
+        mcp_provider: MCPToolProvider,
+        reference: Literal["id", "identifier", "uuid-identifier"],
+        provider_entry: bool,
+    ) -> None:
+        assert not has_app_context()
+        sessions, _ = database
+        if reference == "uuid-identifier":
+            mcp_provider.server_identifier = str(uuid4())
+            with sessions.begin() as session:
+                session.merge(mcp_provider)
+        provider_id = mcp_provider.id if reference == "id" else mcp_provider.server_identifier
+        config = {"provider_type": "mcp", "provider_id": provider_id, "credential_type": "unauthorized"}
+        if not provider_entry:
+            config["tool_name"] = "search"
+        layers = mcp_builder.build_layers(
+            tenant_id="tenant",
+            app_id="app",
+            user_id="user",
+            tools=AgentSoulToolsConfig.model_validate({"dify_tools": [config]}),
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+
+        assert layers.plugin_tools is None
+        assert layers.core_tools is not None
+        prepared = layers.core_tools.tools
+        assert [tool.tool_name for tool in prepared] == (["search", "browse"] if provider_entry else ["search"])
+        for tool in prepared:
+            assert tool.provider_type == "mcp"
+            assert tool.provider_id == mcp_provider.server_identifier
+            assert tool.description == f"{tool.tool_name} the web"
+            assert tool.parameters_json_schema["required"] == ["query"]
+        assert sessions.kw["bind"].pool.checkedout() == 0
+
+    @pytest.mark.parametrize("provider_entry", [False, True])
+    @pytest.mark.parametrize("tenant_id", ["tenant", "foreign"])
+    def test_missing_and_foreign_providers_cannot_build_tools(
+        self,
+        database: Database,
+        mcp_builder: WorkflowAgentDifyToolsBuilder,
+        mcp_provider: MCPToolProvider,
+        tenant_id: Literal["tenant", "foreign"],
+        provider_entry: bool,
+    ) -> None:
+        assert not has_app_context()
+        provider_id = str(uuid4()) if tenant_id == "tenant" else mcp_provider.id
+        config = {"provider_type": "mcp", "provider_id": provider_id, "credential_type": "unauthorized"}
+        if not provider_entry:
+            config["tool_name"] = "search"
+        error = WorkflowAgentDifyToolsBuildError if provider_entry else ToolProviderNotFoundError
+        with pytest.raises(error, match="not found"):
+            mcp_builder.build_layers(
+                tenant_id=tenant_id,
+                app_id="app",
+                user_id="user",
+                tools=AgentSoulToolsConfig.model_validate({"dify_tools": [config]}),
+                invoke_from=InvokeFrom.DEBUGGER,
+            )
+        sessions, _ = database
+        assert sessions.kw["bind"].pool.checkedout() == 0
 
 
 @pytest.mark.parametrize("provider_type", [ToolProviderType.API, ToolProviderType.WORKFLOW])
