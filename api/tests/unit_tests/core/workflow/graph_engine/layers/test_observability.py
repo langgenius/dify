@@ -25,6 +25,7 @@ from graphon.nodes.start import StartNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import RuntimeState, VariablePool
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
+from tests.unit_tests.workflow_execution import NO_HUMAN_INPUT_FORMS
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -75,6 +76,7 @@ def test_instrument_flag_enables_workflow_node_spans(memory_span_exporter, confi
         graph=Graph.new().add_root(node).build(),
         call_depth=0,
         graph_runtime_state=state,
+        human_form_reader=NO_HUMAN_INPUT_FORMS,
     )
 
     events = list(entry.run())
