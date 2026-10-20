@@ -3,6 +3,7 @@ Feature: Agent v2 configure persistence
   @prepared @configure-persistence
   Scenario: A new Agent shows the workspace default model in Configure
     Given I am signed in as the default E2E admin
+    And the workspace default chat model is configured
     And an Agent v2 test agent has been created via API
     When I open the Agent v2 configure page
     Then I should see the workspace default chat model in the Agent v2 model selector

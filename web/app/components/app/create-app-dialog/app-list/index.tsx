@@ -1,12 +1,14 @@
 'use client'
 
+import type { UpdateAppPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { AppType } from '@/app/components/apps/app-type'
-import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
+import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
@@ -14,10 +16,10 @@ import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { AppMetadataForm } from '@/app/components/app/app-metadata'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
 import AppTypeSelector from '@/app/components/app/type-selector'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { getTemplateImportSource } from '@/app/components/explore/template-import'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -126,14 +128,15 @@ const Apps = ({ onClose, templateMode }: AppsProps) => {
   const [currApp, setCurrApp] = React.useState<RecommendedAppResponse | null>(null)
   const [previewApp, setPreviewApp] = React.useState<RecommendedAppResponse | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
+  const createNameRef = React.useRef<HTMLInputElement>(null)
   const [showDSLConfirmModal, setShowDSLConfirmModal] = React.useState(false)
-  const onCreate: CreateAppModalProps['onConfirm'] = async ({
+  const onCreate = async ({
     name,
     icon_type,
     icon,
     icon_background,
     description,
-  }) => {
+  }: UpdateAppPayload) => {
     if (!currApp || !canCreateTemplate(currApp.app?.mode)) return
     try {
       const detail = await queryClient.query({
@@ -168,13 +171,19 @@ const Apps = ({ onClose, templateMode }: AppsProps) => {
             setIsShowCreateModal(false)
             onClose()
           },
-          onPending: () => setShowDSLConfirmModal(true),
+          onPending: () => {
+            setIsShowCreateModal(false)
+            setShowDSLConfirmModal(true)
+          },
         },
       )
     } catch {
       toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
   }
+  const submission = useMutation({ mutationFn: onCreate })
+  const isCreatePending = submission.isPending || isFetching
+
   const onConfirmDSL = async () => {
     await handleImportDSLConfirm({
       onSuccess: (response) => {
@@ -292,6 +301,7 @@ const Apps = ({ onClose, templateMode }: AppsProps) => {
                     onPreview={() => setPreviewApp(app)}
                     onCreate={() => {
                       setCurrApp(app)
+
                       setIsShowCreateModal(true)
                     }}
                   />
@@ -302,24 +312,39 @@ const Apps = ({ onClose, templateMode }: AppsProps) => {
           {(!searchFilteredList || searchFilteredList.length === 0) && <NoTemplateFound />}
         </div>
       </div>
-      {isShowCreateModal && (
-        <CreateAppModal
-          appIconType={
-            currApp?.app?.icon_type === 'image' || currApp?.app?.icon_type === 'link'
-              ? currApp.app.icon_type
-              : 'emoji'
-          }
-          appIcon={currApp?.app?.icon ?? ''}
-          appIconBackground={currApp?.app?.icon_background ?? ''}
-          appIconUrl={currApp?.app?.icon_url}
-          appName={currApp?.app?.name ?? ''}
-          appDescription=""
-          show={isShowCreateModal}
-          onConfirm={onCreate}
-          confirmLoading={isFetching}
-          onHide={() => setIsShowCreateModal(false)}
-        />
-      )}
+      <Dialog
+        open={isShowCreateModal}
+        disablePointerDismissal
+        onOpenChange={(open, details) => {
+          if (!open && isCreatePending) details.cancel()
+          else setIsShowCreateModal(open)
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open && !submission.isPending) submission.reset()
+        }}
+      >
+        <DialogContent initialFocus={createNameRef}>
+          {currApp && (
+            <AppMetadataForm
+              operation="create"
+              appDetail={{
+                name: currApp.app?.name ?? '',
+                description: '',
+                icon_type: zIconType.safeParse(currApp.app?.icon_type).data ?? 'emoji',
+                icon: currApp.app?.icon ?? null,
+                icon_background: currApp.app?.icon_background,
+                icon_url: currApp.app?.icon_url ?? null,
+              }}
+              nameInputRef={createNameRef}
+              isPending={isCreatePending}
+              error={submission.error?.message}
+              onSubmit={(body) => {
+                if (!isCreatePending) submission.mutate(body)
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
       {showDSLConfirmModal && (
         <DSLConfirmModal
           versions={versions}

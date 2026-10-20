@@ -1,4 +1,4 @@
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { EditorState } from 'lexical'
 import type { FC } from 'react'
 import type {
@@ -52,7 +52,7 @@ import {
 } from './plugins/workflow-variable-block'
 
 type ShortcutPopup = {
-  hotkey: Hotkey
+  hotkey: HotkeyChord
   displayMode?: ShortcutPopupDisplayMode
   Popup: React.ComponentType<{ onClose: () => void; onInsert: ShortcutPopupInsertHandler }>
 }
@@ -93,7 +93,7 @@ type PromptEditorContentProps = PromptEditorContentAriaProps & {
 }
 
 const getShortcutPopupKey = (
-  hotkey: Hotkey,
+  hotkey: HotkeyChord,
   displayMode: ShortcutPopupDisplayMode | undefined,
   Popup: React.ComponentType<{ onClose: () => void; onInsert: ShortcutPopupInsertHandler }>,
 ) => {

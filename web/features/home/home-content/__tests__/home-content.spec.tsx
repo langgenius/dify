@@ -1096,7 +1096,8 @@ describe('HomeContent', () => {
         const create = within(dialog).getByRole('button', { name: /common.operation.create/ })
         await user.click(create)
         await waitFor(() => expect(importDSL).toHaveBeenCalledOnce())
-        await waitFor(() => expect(dialog).not.toBeInTheDocument())
+        expect(dialog).toBeInTheDocument()
+        expect(name).toHaveAttribute('readonly')
         expect(importDSL).toHaveBeenCalledWith({
           body: expect.objectContaining({ name: 'My imported app', yaml_content: 'yaml-content' }),
         })
@@ -1120,11 +1121,11 @@ describe('HomeContent', () => {
         expect(push).not.toHaveBeenCalled()
         expect(checkDependencies).not.toHaveBeenCalled()
         expect(mockTrackEvent).not.toHaveBeenCalledWith('create_app', expect.anything())
-        await user.click(screen.getByRole('button', { name: 'Alpha' }))
+        expect(name).toHaveValue('My imported app')
         await user.click(await screen.findByRole('button', { name: /common.operation.create/ }))
         await waitFor(() => expect(push).toHaveBeenCalledWith('/app/created-app/configuration'))
         expect(importDSL).toHaveBeenLastCalledWith({
-          body: expect.objectContaining({ name: 'Alpha', yaml_content: 'yaml-content' }),
+          body: expect.objectContaining({ name: 'My imported app', yaml_content: 'yaml-content' }),
         })
       },
     )

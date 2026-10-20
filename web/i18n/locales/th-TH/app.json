@@ -41,7 +41,6 @@
   "duplicateTitle": "ชื่อซ้ำ",
   "editApp": "แก้ไขข้อมูล",
   "editAppTitle": "แก้ไขข้อมูลโปรเจกต์",
-  "editFailed": "อัปเดตข้อมูลโปรเจกต์ไม่สําเร็จ",
   "exportApp": "ส่งออกแอป",
   "exportFailed": "ส่งออกไม่สำเร็จ",
   "exportSecret.description": "หากเลือก ค่าลับจะรวมอยู่ในแพ็กเกจแอปที่ส่งออก",

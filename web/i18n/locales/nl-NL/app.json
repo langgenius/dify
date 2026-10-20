@@ -41,7 +41,6 @@
   "duplicateTitle": "Duplicate App",
   "editApp": "Edit Info",
   "editAppTitle": "Edit App Info",
-  "editFailed": "Failed to update app info",
   "exportApp": "App exporteren",
   "exportFailed": "Exporteren mislukt",
   "exportSecret.description": "Indien geselecteerd, worden geheime waarden opgenomen in het geëxporteerde app-pakket.",

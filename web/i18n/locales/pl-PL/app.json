@@ -41,7 +41,6 @@
   "duplicateTitle": "Duplikuj aplikację",
   "editApp": "Edytuj informacje",
   "editAppTitle": "Edytuj informacje o aplikacji",
-  "editFailed": "Nie udało się zaktualizować informacji o aplikacji",
   "exportApp": "Eksportuj aplikację",
   "exportFailed": "Eksport nie powiódł się",
   "exportSecret.description": "Po zaznaczeniu tajne wartości zostaną uwzględnione w eksportowanym pakiecie aplikacji.",

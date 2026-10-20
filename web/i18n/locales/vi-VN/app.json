@@ -41,7 +41,6 @@
   "duplicateTitle": "Sao chép ứng dụng",
   "editApp": "Chỉnh sửa thông tin",
   "editAppTitle": "Chỉnh sửa thông tin ứng dụng",
-  "editFailed": "Không thể cập nhật thông tin ứng dụng",
   "exportApp": "Xuất ứng dụng",
   "exportFailed": "Xuất thất bại",
   "exportSecret.description": "Nếu được chọn, các giá trị bí mật sẽ được đưa vào gói ứng dụng đã xuất.",
