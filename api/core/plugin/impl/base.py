@@ -11,6 +11,7 @@ import httpx
 from pydantic import BaseModel, ValidationError
 from yarl import URL
 
+from clients.plugin.errors import PluginNotImplementedError
 from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
 from core.plugin.endpoint.exc import EndpointSetupFailedError
@@ -401,6 +402,8 @@ class BasePluginClient:
                 error_object = json.loads(message)
                 invoke_error_type = error_object.get("error_type")
                 match invoke_error_type:
+                    case NotImplementedError.__name__:
+                        raise PluginNotImplementedError(description=message)
                     case InvokeRateLimitError.__name__:
                         raise InvokeRateLimitError(description=error_object.get("message"))
                     case InvokeAuthorizationError.__name__:

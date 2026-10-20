@@ -9,8 +9,9 @@ import pytest
 
 from clients.plugin.auth import PluginCredentialAuthClient
 from clients.plugin.auth_entities import CredentialCheckResult, OAuthRevokeResult
+from clients.plugin.errors import PluginNotImplementedError
 from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonInnerError
-from core.plugin.impl.exc import PluginDaemonClientSideError, PluginDaemonInternalServerError
+from core.plugin.impl.exc import PluginDaemonClientSideError, PluginDaemonInternalServerError, PluginInvokeError
 from core.plugin.impl.tool import PluginToolManager
 
 SECRET = "secret-that-must-not-escape"
@@ -56,6 +57,25 @@ def _revoke(client: PluginCredentialAuthClient) -> OAuthRevokeResult:
 
 
 Operation = Callable[[PluginCredentialAuthClient], CredentialCheckResult | OAuthRevokeResult]
+
+
+@pytest.mark.parametrize("operation", [_check, _revoke])
+@pytest.mark.parametrize(
+    ("error_type", "expected_error"),
+    [("NotImplementedError", PluginNotImplementedError), ("RuntimeError", PluginInvokeError)],
+)
+def test_unimplemented_operation_is_distinct_from_execution_failure(
+    operation: Operation, error_type: str, expected_error: type[PluginInvokeError]
+) -> None:
+    detail = "Provider operation is not implemented"
+    error = json.dumps({"error_type": error_type, "message": detail, "args": {}})
+    message = json.dumps({"error_type": "PluginInvokeError", "message": error})
+    with _daemon(lambda _: httpx.Response(200, text=_frame(None, code=-500, message=message))):
+        with pytest.raises(expected_error) as exc_info:
+            operation(PluginCredentialAuthClient())
+    assert type(exc_info.value) is expected_error
+    assert exc_info.value.get_error_type() == error_type
+    assert exc_info.value.get_error_message() == detail
 
 
 def test_shared_client_preserves_legacy_and_detailed_requests() -> None:
