@@ -322,6 +322,8 @@
   "tracing.run.viewTrace": "Lihat eksekusi ini",
   "tracing.supported": "Didukung",
   "tracing.tencent.description": "Tencent Application Performance Monitoring menyediakan pelacakan komprehensif dan analisis multi-dimensi untuk aplikasi LLM.",
+  "tracing.tencent.endpointHelp": "Salin endpoint untuk wilayah dan jaringan Anda dari Tencent Cloud LLM Observability → Aplikasi → Hubungkan aplikasi.",
+  "tracing.tencent.serviceNameHelp": "Maksimal 63 karakter: huruf kecil, angka, dan tanda hubung. Awali dengan huruf kecil dan akhiri dengan huruf atau angka.",
   "tracing.tencent.title": "Tencent APM",
   "tracing.title": "Melacak performa aplikasi",
   "tracing.tracing": "Menelusuri",

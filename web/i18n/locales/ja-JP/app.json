@@ -322,6 +322,8 @@
   "tracing.run.viewTrace": "この実行を表示",
   "tracing.supported": "対応",
   "tracing.tencent.description": "Tencent アプリケーションパフォーマンスモニタリングは、LLM アプリケーションに対して包括的なトレーシングと多次元分析を提供します。",
+  "tracing.tencent.endpointHelp": "Tencent Cloud の LLM 可観測性 → アプリ一覧 → アプリ接続から、リージョンとネットワークに合うエンドポイントをコピーしてください。",
+  "tracing.tencent.serviceNameHelp": "最大63文字。英小文字、数字、ハイフンのみ。英小文字で始め、英字または数字で終えてください。",
   "tracing.tencent.title": "テンセントAPM",
   "tracing.title": "アプリのパフォーマンスの追跡",
   "tracing.tracing": "追跡",

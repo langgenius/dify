@@ -322,6 +322,8 @@
   "tracing.run.viewTrace": "Bu icraya bax",
   "tracing.supported": "Dəstəklənir",
   "tracing.tencent.description": "Tencent Application Performance Monitoring LLM tətbiqləri üçün hərtərəfli izləmə və çoxölçülü təhlil təmin edir.",
+  "tracing.tencent.endpointHelp": "Tencent Cloud LLM Observability → Tətbiqlər → Tətbiqi qoş bölməsindən regionunuza və şəbəkənizə uyğun son nöqtəni kopyalayın.",
+  "tracing.tencent.serviceNameHelp": "Ən çox 63 simvol: kiçik latın hərfləri, rəqəmlər və defislər. Kiçik hərflə başlayıb hərf və ya rəqəmlə bitməlidir.",
   "tracing.tencent.title": "Tencent APM",
   "tracing.title": "Tətbiqin məhsuldarlığının izlənməsi",
   "tracing.tracing": "İzləmə",

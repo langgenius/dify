@@ -322,6 +322,8 @@
   "tracing.run.viewTrace": "Открыть этот запуск",
   "tracing.supported": "Поддерживается",
   "tracing.tencent.description": "Мониторинг производительности приложений Tencent предоставляет всестороннее отслеживание и многомерный анализ для приложений LLM.",
+  "tracing.tencent.endpointHelp": "Скопируйте адрес для своего региона и сети из Tencent Cloud LLM Observability → Приложения → Подключить приложение.",
+  "tracing.tencent.serviceNameHelp": "До 63 символов: строчные латинские буквы, цифры и дефисы. Начинайте со строчной буквы, заканчивайте буквой или цифрой.",
   "tracing.tencent.title": "Tencent APM",
   "tracing.title": "Отслеживание производительности приложения",
   "tracing.tracing": "Отслеживание",

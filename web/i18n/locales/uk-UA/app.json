@@ -322,6 +322,8 @@
   "tracing.run.viewTrace": "Переглянути цей запуск",
   "tracing.supported": "Підтримується",
   "tracing.tencent.description": "Сервіс моніторингу продуктивності додатків Tencent забезпечує комплексне трасування та багатовимірний аналіз додатків LLM.",
+  "tracing.tencent.endpointHelp": "Скопіюйте адресу для свого регіону й мережі з Tencent Cloud LLM Observability → Застосунки → Підключити застосунок.",
+  "tracing.tencent.serviceNameHelp": "До 63 символів: малі латинські літери, цифри та дефіси. Починайте з малої літери, завершуйте літерою або цифрою.",
   "tracing.tencent.title": "Tencent APM",
   "tracing.title": "Відстеження продуктивності додатку",
   "tracing.tracing": "Відстеження",

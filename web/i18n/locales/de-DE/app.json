@@ -322,6 +322,8 @@
   "tracing.run.viewTrace": "Diesen Lauf anzeigen",
   "tracing.supported": "Unterstützt",
   "tracing.tencent.description": "Tencent Application Performance Monitoring bietet umfassendes Tracing und multidimensionale Analyse für LLM-Anwendungen.",
+  "tracing.tencent.endpointHelp": "Kopieren Sie den Endpunkt für Ihre Region und Ihr Netzwerk aus Tencent Cloud LLM Observability → Anwendungen → Anwendung verbinden.",
+  "tracing.tencent.serviceNameHelp": "Maximal 63 Zeichen: Kleinbuchstaben, Ziffern und Bindestriche. Mit einem Kleinbuchstaben beginnen und mit einem Buchstaben oder einer Ziffer enden.",
   "tracing.tencent.title": "Tencent APM",
   "tracing.title": "Anwendungsleistung nachverfolgen",
   "tracing.tracing": "Nachverfolgung",

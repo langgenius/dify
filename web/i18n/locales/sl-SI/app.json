@@ -322,6 +322,8 @@
   "tracing.run.viewTrace": "Ogled tega zagona",
   "tracing.supported": "Podprto",
   "tracing.tencent.description": "Tencent Application Performance Monitoring zagotavlja celovito sledenje in večdimenzionalno analizo za aplikacije LLM.",
+  "tracing.tencent.endpointHelp": "Kopirajte končno točko za svojo regijo in omrežje iz Tencent Cloud LLM Observability → Aplikacije → Poveži aplikacijo.",
+  "tracing.tencent.serviceNameHelp": "Največ 63 znakov: male črke, števke in vezaji. Začnite z malo črko in končajte s črko ali števko.",
   "tracing.tencent.title": "Tencent APM",
   "tracing.title": "Sledenje uspešnosti aplikacije",
   "tracing.tracing": "Sledenje",

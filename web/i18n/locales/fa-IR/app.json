@@ -322,6 +322,8 @@
   "tracing.run.viewTrace": "مشاهده این اجرا",
   "tracing.supported": "پشتیبانی می‌شود",
   "tracing.tencent.description": "نظارت بر عملکرد برنامه‌های Tencent تحلیل‌های جامع و ردیابی چندبعدی برای برنامه‌های LLM ارائه می‌دهد.",
+  "tracing.tencent.endpointHelp": "نقطه پایانی مناسب منطقه و شبکه خود را از Tencent Cloud LLM Observability ← برنامه‌ها ← اتصال برنامه کپی کنید.",
+  "tracing.tencent.serviceNameHelp": "حداکثر ۶۳ نویسه: حروف کوچک لاتین، رقم و خط تیره. با حرف کوچک شروع و با حرف یا رقم تمام شود.",
   "tracing.tencent.title": "تنست ای‌پی‌ام",
   "tracing.title": "ردیابی عملکرد برنامه",
   "tracing.tracing": "ردیابی",

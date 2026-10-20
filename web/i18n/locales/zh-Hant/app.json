@@ -322,6 +322,8 @@
   "tracing.run.viewTrace": "檢視此次執行",
   "tracing.supported": "支援",
   "tracing.tencent.description": "騰訊應用性能監控為大型語言模型應用提供全面的追蹤和多維分析。",
+  "tracing.tencent.endpointHelp": "從騰訊雲 LLM 可觀測 → 應用程式列表 → 接入應用程式，依實際地域及內外網複製接入點。",
+  "tracing.tencent.serviceNameHelp": "最多 63 個字元，僅限小寫字母、數字和連字號；以小寫字母開頭，以字母或數字結尾。",
   "tracing.tencent.title": "騰訊 APM",
   "tracing.title": "追蹤應用程式效能",
   "tracing.tracing": "追蹤",

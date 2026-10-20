@@ -322,6 +322,8 @@
   "tracing.run.viewTrace": "यह रन देखें",
   "tracing.supported": "समर्थित",
   "tracing.tencent.description": "Tencent एप्लिकेशन परफॉर्मेंस मॉनिटरिंग LLM एप्लिकेशन के लिए व्यापक ट्रेसिंग और बहु-आयामी विश्लेषण प्रदान करता है।",
+  "tracing.tencent.endpointHelp": "Tencent Cloud LLM Observability → एप्लिकेशन → एप्लिकेशन कनेक्ट करें से अपने क्षेत्र और नेटवर्क का एंडपॉइंट कॉपी करें।",
+  "tracing.tencent.serviceNameHelp": "अधिकतम 63 वर्ण: अंग्रेज़ी के छोटे अक्षर, अंक और हाइफ़न। छोटे अक्षर से शुरू करें और अक्षर या अंक पर समाप्त करें।",
   "tracing.tencent.title": "टेनसेंट एपीएम",
   "tracing.title": "एप्लिकेशन प्रदर्शन ट्रेसिंग",
   "tracing.tracing": "ट्रेसिंग",

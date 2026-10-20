@@ -153,7 +153,7 @@ export function InheritedTracingSummary({
           </span>
         )}
       </div>
-      {enabled && agentTracingEnabled === false ? (
+      {agentTracingEnabled === false ? (
         <p className="flex gap-1 system-xs-regular text-text-warning">
           <span aria-hidden className="mt-px i-ri-error-warning-line size-3.5 shrink-0" />
           {t(($) => $['tracing.agentTracingUnavailable'], { ns: 'app' })}

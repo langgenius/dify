@@ -322,6 +322,8 @@
   "tracing.run.viewTrace": "Bu çalıştırmayı görüntüle",
   "tracing.supported": "Destekleniyor",
   "tracing.tencent.description": "Tencent Uygulama Performans İzleme, LLM uygulamaları için kapsamlı izleme ve çok boyutlu analiz sağlar.",
+  "tracing.tencent.endpointHelp": "Tencent Cloud LLM Observability → Uygulamalar → Uygulama bağla bölümünden bölgenize ve ağınıza uygun uç noktayı kopyalayın.",
+  "tracing.tencent.serviceNameHelp": "En fazla 63 karakter: küçük harfler, rakamlar ve tireler. Küçük harfle başlayıp harf veya rakamla bitmelidir.",
   "tracing.tencent.title": "Tencent APM",
   "tracing.title": "Uygulama performansını izleme",
   "tracing.tracing": "İzleme",
