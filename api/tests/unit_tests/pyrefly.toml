@@ -219,7 +219,6 @@ project-excludes = [
   "core/app/apps/workflow/test_generate_task_pipeline.py",
   "core/app/apps/workflow/test_generate_task_pipeline_core.py",
   "core/app/entities/test_app_invoke_entities.py",
-  "core/app/features/rate_limiting/conftest.py",
   "core/app/features/rate_limiting/test_rate_limit.py",
   "core/app/features/test_annotation_reply.py",
   "core/app/features/test_hosting_moderation.py",
