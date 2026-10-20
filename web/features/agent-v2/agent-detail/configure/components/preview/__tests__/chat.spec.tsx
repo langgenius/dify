@@ -41,10 +41,6 @@ vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   ssePost,
 }))
-vi.mock('@/service/common', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/common')>()),
-  uploadRemoteFileInfo: api.uploadRemote,
-}))
 // Audio capture/encoding is a platform boundary; keep VoiceInput and its service routing real.
 vi.mock('@/app/components/base/voice-input/recorder', () => ({ startVoiceRecorder: api.record }))
 vi.mock('@/service/console', async (importOriginal) => {
@@ -55,6 +51,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'agent.byAgentId.chatMessages.get': api.history,
+      'remoteFiles.upload.post': api.uploadRemote,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'agent.byAgentId.chatMessages.byMessageId.suggestedQuestions.get': api.suggestions,

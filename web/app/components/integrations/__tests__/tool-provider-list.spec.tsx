@@ -68,6 +68,16 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'remoteFiles.upload.post': async () => ({
+        id: 'favicon',
+        name: 'favicon.png',
+        size: 10,
+        mime_type: 'image/png',
+        url: '/favicon.png',
+        created_at: null,
+        created_by: null,
+        extension: null,
+      }),
       'workspaces.current.plugin.uninstall.post': api.uninstall,
       'workspaces.current.toolProviders.get': api.providers,
       'workspaces.current.plugin.list.installations.ids.post': api.installed,
@@ -117,17 +127,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
-  post: async (url: string) => {
-    if (url === '/remote-files/upload')
-      return {
-        id: 'favicon',
-        name: 'favicon.png',
-        size: 10,
-        mime_type: 'image/png',
-        url: '/favicon.png',
-      }
-    throw new Error(`Unexpected service request: ${url}`)
-  },
   get: async (url: string) => {
     if (
       url ===

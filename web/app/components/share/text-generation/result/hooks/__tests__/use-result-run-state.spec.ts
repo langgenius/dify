@@ -239,7 +239,7 @@ describe('useResultRunState', () => {
 
     expect(updateFeedbackMock).toHaveBeenCalledWith(
       {
-        url: '/messages/message-1/feedbacks',
+        messageId: 'message-1',
         body: {
           rating: 'like',
           content: undefined,

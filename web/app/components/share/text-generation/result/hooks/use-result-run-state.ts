@@ -158,9 +158,10 @@ export const useResultRunState = ({
 
   const handleFeedback = useCallback(
     async (nextFeedback: FeedbackType) => {
+      if (!messageId) return
       await updateFeedback(
         {
-          url: `/messages/${messageId}/feedbacks`,
+          messageId,
           body: {
             rating: nextFeedback.rating,
             content: nextFeedback.content,
