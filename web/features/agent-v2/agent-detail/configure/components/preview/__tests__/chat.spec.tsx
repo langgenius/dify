@@ -422,11 +422,14 @@ describe('Agent sends and interruptions', () => {
         await user.click(
           await screen.findByRole('button', { name: 'appDebug.operation.stopResponding' }),
         )
-      else act(() => controllerRef.current?.stop())
-      expect(api.stop).toHaveBeenCalledExactlyOnceWith({
-        params: { agent_id: 'agent-1', task_id: 'task-0' },
-      })
-      expect(abortControllers[0]?.signal.aborted).toBe(true)
+      else await act(async () => controllerRef.current?.stop())
+      expect(api.stop).toHaveBeenCalledExactlyOnceWith(
+        {
+          params: { agent_id: 'agent-1', task_id: 'task-0' },
+        },
+        { context: { silent: true } },
+      )
+      await waitFor(() => expect(abortControllers[0]?.signal.aborted).toBe(true))
       await act(async () => {
         stream().onError?.('Connection closed')
         await stream().onCompleted?.(true)
@@ -452,29 +455,6 @@ describe('Agent sends and interruptions', () => {
     expect(sendButton()).toBeEnabled()
   })
 
-  it('maps Agent error events at the transport boundary and ignores unrelated events', async () => {
-    const user = userEvent.setup()
-    renderChat()
-    await send(user)
-    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
-    expect(
-      stream().onUnhandledEvent?.({
-        event: 'error',
-        conversation_id: 'conversation-1',
-        message_id: 'message-0',
-        code: 'agent_run_failed',
-        message: 'Agent execution failed',
-      }),
-    ).toEqual({
-      conversationId: 'conversation-1',
-      messageId: 'message-0',
-      errorCode: 'agent_run_failed',
-      errorMessage: 'Agent execution failed',
-    })
-    expect(stream().onUnhandledEvent?.({ event: 'unknown', message: 'Ignored' })).toBeUndefined()
-    expect(api.error).not.toHaveBeenCalled()
-  })
-
   it.each([
     ['Agent run exceeded the configured limit of 3600 seconds', 'agentRunLimitExceeded'],
     ['The next request would exceed the request_limit of 500', 'agentModelRequestLimitExceeded'],
@@ -484,12 +464,7 @@ describe('Agent sends and interruptions', () => {
     await send(user)
     await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
     act(() => {
-      stream().onUnhandledEvent?.({
-        event: 'error',
-        code: 'agent_run_limit_exceeded',
-        status: 400,
-        message,
-      })
+      stream().onNotifyError?.(message, 'agent_run_limit_exceeded')
     })
     expect(api.error).toHaveBeenCalledExactlyOnceWith(
       `${prefix}.preview.errors.${errorKey}`,
@@ -623,3 +598,129 @@ describe('Agent attachments and notices', () => {
     },
   )
 })
+
+describe('Agent stop and failure ownership', () => {
+  it('stops thought-only execution, preserves its task across empty deltas, and never reuses it next turn', async () => {
+    const user = userEvent.setup()
+    renderChat()
+    await send(user)
+    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+    await act(async () => {
+      stream().onThought?.({
+        id: 'thought',
+        task_id: 'task-thought',
+        conversation_id: 'conversation-1',
+        message_id: 'message-0',
+        thought: 'Working',
+        tool: '',
+        tool_input: '',
+        observation: '',
+        position: 1,
+      })
+      stream().onData?.('', false, { messageId: '' })
+    })
+    await user.click(screen.getByRole('button', { name: 'appDebug.operation.stopResponding' }))
+    await waitFor(() => expect(abortControllers[0]?.signal.aborted).toBe(true))
+    expect(api.stop).toHaveBeenCalledExactlyOnceWith(
+      {
+        params: { agent_id: 'agent-1', task_id: 'task-thought' },
+      },
+      { context: { silent: true } },
+    )
+    await send(user, 'Next turn')
+    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+    await user.click(screen.getByRole('button', { name: 'appDebug.operation.stopResponding' }))
+    expect(api.stop).toHaveBeenCalledOnce()
+    expect(abortControllers[1]?.signal.aborted).toBe(false)
+    expect(api.error).toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', { name: 'appDebug.operation.stopResponding' }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps the stream active after a rejected stop and allows retrying', async () => {
+    const user = userEvent.setup()
+    api.stop.mockRejectedValueOnce(new Error('Forbidden'))
+    renderChat()
+    await send(user)
+    await receive()
+    await user.click(screen.getByRole('button', { name: 'appDebug.operation.stopResponding' }))
+    await waitFor(() => expect(api.error).toHaveBeenCalled())
+    expect(abortControllers[0]?.signal.aborted).toBe(false)
+    await user.click(screen.getByRole('button', { name: 'appDebug.operation.stopResponding' }))
+    await waitFor(() => expect(abortControllers[0]?.signal.aborted).toBe(true))
+    expect(api.stop).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it.each(['', 'Partial answer'])(
+    'retains a safe error alongside %s through history reload',
+    async (answer) => {
+      const user = userEvent.setup()
+      const view = renderChat()
+      await send(user)
+      await receive(0, answer)
+      messages.set('conversation-1', [
+        createMessage({ answer, status: 'error', error: 'SECRET provider detail' }),
+      ])
+      await act(async () => {
+        stream().onError?.('SECRET provider detail')
+        await stream().onCompleted?.(true)
+      })
+      expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+      expect(screen.queryByText('SECRET provider detail')).not.toBeInTheDocument()
+      if (answer) expect(await screen.findByText(answer)).toBeInTheDocument()
+      view.unmount()
+      renderChat({ conversationId: 'conversation-1' })
+      expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+      expect(screen.queryByText('SECRET provider detail')).not.toBeInTheDocument()
+    },
+  )
+})
+
+it.each(['sse', 'http'])(
+  'renders a persistent safe error from the real %s transport',
+  async (transport) => {
+    const actual = await vi.importActual<typeof import('@/service/base')>('@/service/base')
+    ssePost.mockImplementation(actual.ssePost)
+    const payload = {
+      event: 'error',
+      message: 'SECRET provider details',
+      code: 'agent_run_failed',
+      conversation_id: 'conversation-1',
+      message_id: 'message-0',
+    }
+    const response =
+      transport === 'http'
+        ? Response.json(payload, { status: 500 })
+        : new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n`))
+                controller.close()
+              },
+            }),
+            { headers: { 'Content-Type': 'text/event-stream' } },
+          )
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response)
+    try {
+      const user = userEvent.setup()
+      renderChat()
+      await send(user)
+      expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+      expect(screen.queryByText('SECRET provider details')).not.toBeInTheDocument()
+      expect(api.error).not.toHaveBeenCalled()
+      expect(
+        screen.queryByRole('button', { name: 'appDebug.operation.stopResponding' }),
+      ).not.toBeInTheDocument()
+      if (transport === 'sse')
+        await waitFor(() =>
+          expect(api.history).toHaveBeenCalledWith(
+            expect.objectContaining({ query: { conversation_id: 'conversation-1' } }),
+          ),
+        )
+    } finally {
+      fetch.mockRestore()
+    }
+  },
+)

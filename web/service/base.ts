@@ -122,7 +122,7 @@ type IOnFile = (file: VisionFile) => void
 type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
 export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
-export type IOnError = (msg: string, code?: string) => void
+export type IOnError = (msg: string, code?: string, identity?: IOnDataMoreInfo) => void
 
 const reportStreamResponseError = async (
   response: Response,
@@ -460,8 +460,8 @@ export const handleStream = (
               const hasErrorStatus = typeof bufferObj.status === 'number' && bufferObj.status >= 400
               if (bufferObj.event === 'error' || hasErrorStatus || !bufferObj.event) {
                 onData('', false, {
-                  conversationId: undefined,
-                  messageId: '',
+                  conversationId: bufferObj.conversation_id,
+                  messageId: bufferObj.message_id ?? '',
                   errorMessage: bufferObj?.message,
                   errorCode: bufferObj?.code,
                 })
@@ -757,7 +757,7 @@ export const ssePost = async (
         res,
         (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
           if (moreInfo.errorMessage) {
-            onError?.(moreInfo.errorMessage, moreInfo.errorCode)
+            onError?.(moreInfo.errorMessage, moreInfo.errorCode, moreInfo)
             // These errors can happen when a stream is intentionally stopped or its page is left.
             if (!silent && shouldNotifyStreamError(moreInfo.errorMessage)) {
               if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
@@ -912,7 +912,7 @@ export const sseGet = async (
         res,
         (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
           if (moreInfo.errorMessage) {
-            onError?.(moreInfo.errorMessage, moreInfo.errorCode)
+            onError?.(moreInfo.errorMessage, moreInfo.errorCode, moreInfo)
             // These errors can happen when a stream is intentionally stopped or its page is left.
             if (!silent && shouldNotifyStreamError(moreInfo.errorMessage)) {
               if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
