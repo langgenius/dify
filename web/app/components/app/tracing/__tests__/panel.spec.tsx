@@ -671,7 +671,7 @@ describe('Tracing overview panel', () => {
       'public-key',
     )
     await user.type(
-      screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
+      screen.getByLabelText('app.tracing.configProvider.secretKey', { exact: false }),
       'secret-key',
     )
     await user.type(screen.getByRole('textbox', { name: 'Host' }), 'https://cloud.langfuse.com')
@@ -709,7 +709,7 @@ describe('Tracing overview panel', () => {
     const { client } = renderPanel()
     const user = await openConfiguredPanel()
     await user.click(screen.getAllByText('app.tracing.config')[0]!)
-    const secret = screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' })
+    const secret = screen.getByLabelText('app.tracing.configProvider.secretKey', { exact: false })
     await user.clear(secret)
     await user.type(secret, 'new-secret')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -721,7 +721,7 @@ describe('Tracing overview panel', () => {
     await waitFor(() => expect(client.isFetching()).toBe(0))
     await user.click(screen.getAllByText('app.tracing.config')[0]!)
     expect(
-      screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
+      screen.getByLabelText('app.tracing.configProvider.secretKey', { exact: false }),
     ).toHaveValue('[__MASKED__]')
     expect(writes).toEqual([
       {
@@ -781,7 +781,7 @@ describe('Tracing overview panel', () => {
       'public-key',
     )
     await user.type(
-      screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
+      screen.getByLabelText('app.tracing.configProvider.secretKey', { exact: false }),
       'secret-key',
     )
     await user.type(screen.getByRole('textbox', { name: 'Host' }), 'https://cloud.langfuse.com')
