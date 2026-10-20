@@ -1,10 +1,10 @@
+import type { FileWithSignedUrl } from '@dify/contracts/api/console/remote-files/types.gen'
 import type { SsoProtocol } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ComponentProps } from 'react'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { AppToastHost } from '@/app/notifications/host'
-import { uploadRemoteFileInfo } from '@/service/common'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -12,7 +12,8 @@ import { mockEmojiData, renderWithEmoji } from '@/test/emoji-picker'
 import { createMcpProviderFixture as createProvider } from '@/test/fixtures/mcp'
 import MCPModal from '../modal'
 
-vi.mock('@/service/common', () => ({ uploadRemoteFileInfo: vi.fn() }))
+const request = vi.hoisted(() => vi.fn<typeof import('@/service/base').request>())
+vi.mock('@/service/base', () => ({ request }))
 
 const uploadedIcon = {
   id: 'favicon-id',
@@ -20,7 +21,10 @@ const uploadedIcon = {
   size: 100,
   mime_type: 'image/png',
   url: 'https://example.com/icon.png',
-} satisfies Awaited<ReturnType<typeof uploadRemoteFileInfo>>
+  created_at: null,
+  created_by: null,
+  extension: null,
+} satisfies FileWithSignedUrl
 
 const setup = (
   props: Partial<ComponentProps<typeof MCPModal>> = {},
@@ -69,7 +73,7 @@ const submitButton = (edit = false) =>
   screen.getByRole('button', { name: `tools.mcp.modal.${edit ? 'save' : 'confirm'}` })
 
 beforeEach(() => {
-  vi.mocked(uploadRemoteFileInfo).mockReset().mockResolvedValue(uploadedIcon)
+  request.mockReset().mockImplementation(async () => Response.json(uploadedIcon))
 })
 afterEach(() => toast.dismiss())
 mockEmojiData()
@@ -82,11 +86,15 @@ describe('MCP server configuration', () => {
     await waitFor(() => expect(submitButton()).toBeEnabled())
     await user.click(submitButton())
 
-    expect(uploadRemoteFileInfo).toHaveBeenCalledWith(
-      'https://www.google.com/s2/favicons?domain=example.co.uk&sz=128',
-      undefined,
-      true,
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/remote-files/upload'),
+      expect.anything(),
+      expect.objectContaining({ silent: true }),
     )
+    expect(request.mock.calls[0]?.[2]?.request?.method).toBe('POST')
+    expect(await request.mock.calls[0]?.[2]?.request?.json()).toEqual({
+      url: 'https://www.google.com/s2/favicons?domain=example.co.uk&sz=128',
+    })
     expect(onConfirm).toHaveBeenCalledWith({
       name: 'Test Server',
       server_url: 'https://api.example.co.uk/mcp',
@@ -121,7 +129,7 @@ describe('MCP server configuration', () => {
     await user.click(submitButton())
     expect(await screen.findByText(`tools.mcp.modal.${error}`)).toBeInTheDocument()
     expect(onConfirm).not.toHaveBeenCalled()
-    if (error === 'invalidServerUrl') expect(uploadRemoteFileInfo).not.toHaveBeenCalled()
+    if (error === 'invalidServerUrl') expect(request).not.toHaveBeenCalled()
   })
 
   it('preserves stored credentials, headers and timeouts without re-fetching the icon', async () => {
@@ -154,7 +162,7 @@ describe('MCP server configuration', () => {
         is_dynamic_registration: false,
       }),
     )
-    expect(uploadRemoteFileInfo).not.toHaveBeenCalled()
+    expect(request).not.toHaveBeenCalled()
     expect(onHide).not.toHaveBeenCalled()
   })
 
@@ -251,7 +259,7 @@ describe('MCP server configuration', () => {
     }),
     new TypeError('Failed to fetch'),
   ])('allows submission with the default icon after upload failure: $message', async (error) => {
-    vi.mocked(uploadRemoteFileInfo).mockRejectedValueOnce(error)
+    request.mockRejectedValueOnce(error)
     const { user, onConfirm } = setup()
     await fillRequiredFields(user)
     expect(await screen.findByText(error.message)).toBeInTheDocument()
@@ -266,23 +274,34 @@ describe('MCP server configuration', () => {
     )
   })
 
+  it('keeps the default icon when the upload has no preview URL', async () => {
+    request.mockResolvedValueOnce(Response.json({ ...uploadedIcon, url: null }))
+    const { user, onConfirm } = setup()
+    await fillRequiredFields(user)
+    await waitFor(() => expect(submitButton()).toBeEnabled())
+    await user.click(submitButton())
+    expect(onConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({ icon_type: 'emoji', icon: '🔗' }),
+    )
+  })
+
   it('keeps the newest URL icon when an earlier upload finishes last', async () => {
-    const first = createDeferred<Awaited<ReturnType<typeof uploadRemoteFileInfo>>>()
-    vi.mocked(uploadRemoteFileInfo).mockReturnValueOnce(first.promise)
+    const first = createDeferred<Response>()
+    request.mockReturnValueOnce(first.promise)
     const { user, onConfirm } = setup()
     await fillRequiredFields(user, 'https://first.example.com/mcp')
-    await waitFor(() => expect(uploadRemoteFileInfo).toHaveBeenCalledOnce())
+    await waitFor(() => expect(request).toHaveBeenCalledOnce())
     expect(submitButton()).toBeDisabled()
     await replaceField(user, 'serverUrl', 'https://second.example.org/mcp')
     await user.tab()
     await waitFor(() => expect(submitButton()).toBeEnabled())
-    expect(uploadRemoteFileInfo).toHaveBeenLastCalledWith(
-      'https://www.google.com/s2/favicons?domain=example.org&sz=128',
-      undefined,
-      true,
-    )
+    expect(await request.mock.calls.at(-1)?.[2]?.request?.json()).toEqual({
+      url: 'https://www.google.com/s2/favicons?domain=example.org&sz=128',
+    })
     await act(async () => {
-      first.resolve({ ...uploadedIcon, id: 'stale-icon', url: 'https://example.com/stale.png' })
+      first.resolve(
+        Response.json({ ...uploadedIcon, id: 'stale-icon', url: 'https://example.com/stale.png' }),
+      )
       await first.promise
     })
     await user.click(submitButton())

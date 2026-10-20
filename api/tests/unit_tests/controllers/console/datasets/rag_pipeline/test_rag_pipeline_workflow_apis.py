@@ -495,6 +495,43 @@ class TestDraftNodeRun:
 
 
 class TestPublishedPipelineApis:
+    def test_get_published_workflow_preserves_response_fields(self, app: Flask, workflow_author: Account) -> None:
+        pipeline = make_pipeline(is_published=True)
+        workflow = make_workflow(created_by=workflow_author.id)
+        service = MagicMock()
+        service.get_published_workflow.return_value = workflow
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                return_value=service,
+            ),
+        ):
+            result = unwrap(PublishedRagPipelineApi.get)(PublishedRagPipelineApi(), pipeline)
+
+        assert result["id"] == workflow.id
+        assert result["graph"] == {"nodes": [], "edges": []}
+        assert result["hash"] == workflow.unique_hash
+        assert result["created_by"]["id"] == workflow_author.id
+
+    @pytest.mark.parametrize("is_published", [False, True])
+    def test_get_without_published_workflow_returns_null(self, app: Flask, is_published: bool) -> None:
+        pipeline = make_pipeline(is_published=is_published)
+        service = MagicMock()
+        service.get_published_workflow.return_value = None
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                return_value=service,
+            ),
+        ):
+            result = unwrap(PublishedRagPipelineApi.get)(PublishedRagPipelineApi(), pipeline)
+
+        assert result is None
+
     def test_publish_success(self, app: Flask) -> None:
         api = PublishedRagPipelineApi()
         method = unwrap(api.post)
