@@ -209,10 +209,16 @@ def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[tra
             )
         else:
             phoenix_endpoint = f"{base_endpoint}{path}/v1/traces"
-            phoenix_headers = {
-                "api_key": arize_phoenix_config.api_key or "",
-                "authorization": f"Bearer {arize_phoenix_config.api_key or ''}",
-            }
+            # Keep headers nonempty so the SDK does not fall back to ambient
+            # OTEL exporter credentials for an anonymous Phoenix destination.
+            phoenix_headers = {"Content-Type": "application/x-protobuf"}
+            if arize_phoenix_config.api_key:
+                phoenix_headers.update(
+                    {
+                        "api_key": arize_phoenix_config.api_key,
+                        "authorization": f"Bearer {arize_phoenix_config.api_key}",
+                    }
+                )
             exporter = HttpOTLPSpanExporter(
                 endpoint=phoenix_endpoint,
                 headers=phoenix_headers,
