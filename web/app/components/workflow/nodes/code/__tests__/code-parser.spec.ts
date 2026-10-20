@@ -93,6 +93,11 @@ describe('extractFunctionParams', () => {
       ['label', 'count'],
     ],
     [
+      'signatures inside Python docstrings',
+      '"""Example:\ndef main(old_arg: str, wrong_arg: str):\n    pass\n"""\ndef main(config: dict[str, str]):\n    return {"config": config}',
+      ['config'],
+    ],
+    [
       'closing parentheses inside strings',
       'def main(label: str = "close ) here", count: int = 1):\n    return {"label": label}',
       ['label', 'count'],

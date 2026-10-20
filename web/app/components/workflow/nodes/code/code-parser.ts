@@ -47,12 +47,16 @@ const splitTopLevelParams = (rawParams: string, language: CodeLanguage) => {
   return params
 }
 
-const getMainParams = (code: string, language: Exclude<CodeLanguage, typeof CodeLanguage.json>) => {
+const getMainParams = (
+  code: string,
+  language: Exclude<CodeLanguage, typeof CodeLanguage.json>,
+  codeForSearch = code,
+) => {
   const patterns: Record<Exclude<CodeLanguage, typeof CodeLanguage.json>, RegExp> = {
     [CodeLanguage.python3]: /def\s+main\s*\(/,
     [CodeLanguage.javascript]: /function\s+main\s*\(/,
   }
-  const match = patterns[language].exec(code)
+  const match = patterns[language].exec(codeForSearch)
   if (!match) return undefined
 
   const start = match.index + match[0].length
@@ -108,10 +112,13 @@ export const extractFunctionParams = (code: string, language: CodeLanguage) => {
     (match: string, comment: string | undefined) =>
       comment ? comment.replace(/[^\r\n]/g, ' ') : match,
   )
+  const codeForSignatureSearch = codeWithoutComments.replace(commentPatterns[language], (match) =>
+    match.replace(/[^\r\n]/g, ' '),
+  )
 
   const params: string[] = []
 
-  const functionParams = getMainParams(codeWithoutComments, language)
+  const functionParams = getMainParams(codeWithoutComments, language, codeForSignatureSearch)
   if (functionParams) {
     // The JavaScript `main` is invoked as `main(inputs_obj)`, so its parameters are
     // usually written as a single destructuring pattern: `function main({ arg1, arg2 })`.
