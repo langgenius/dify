@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import pytest
-from sqlalchemy import Engine, select
+from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories.human_input_repository import (
@@ -40,6 +40,7 @@ from models.human_input import (
     HumanInputFormRecipient,
     RecipientType,
 )
+from repositories.human_input_errors import FormAlreadyHandledError
 
 
 @pytest.fixture
@@ -484,6 +485,39 @@ def test_submission_get_by_form_id_returns_none_on_missing(repository_session: S
     assert repo.get_by_form_id("f") is None
 
 
+def test_submission_batch_materializes_requested_forms_in_one_read(repository_session: Session) -> None:
+    _persist_form(repository_session, form_id="first", status=HumanInputFormStatus.SUBMITTED)
+    _persist_form(repository_session, form_id="second", status=HumanInputFormStatus.TIMEOUT)
+    _persist_form(repository_session, form_id="unrequested")
+    statements: list[str] = []
+
+    def record_statement(_connection, _cursor, statement: str, _parameters, _context, _executemany) -> None:
+        statements.append(statement)
+
+    engine = repository_session.get_bind()
+    event.listen(engine, "before_cursor_execute", record_statement)
+    try:
+        records = HumanInputFormSubmissionRepository().get_by_form_ids(
+            ["second", "missing", "first", "first"], tenant_id="tenant", app_id="app", workflow_run_id="run"
+        )
+        assert len(statements) == 1
+        assert set(records) == {"first", "second"}
+        assert records["first"].status == HumanInputFormStatus.SUBMITTED
+        assert records["second"].definition.user_actions[0].id == "submit"
+        assert records["second"].status == HumanInputFormStatus.TIMEOUT
+        # Materialized records remain usable after the repository's session closes.
+        assert len(statements) == 1
+        assert (
+            HumanInputFormSubmissionRepository().get_by_form_ids(
+                [], tenant_id="tenant", app_id="app", workflow_run_id="run"
+            )
+            == {}
+        )
+        assert len(statements) == 1
+    finally:
+        event.remove(engine, "before_cursor_execute", record_statement)
+
+
 def test_mark_submitted_updates_and_raises_when_missing(
     repository_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -524,6 +558,28 @@ def test_mark_submitted_updates_and_raises_when_missing(
     assert persisted.submitted_at == fixed_now
     assert persisted.completed_by_recipient_id == recipient.id
     assert record.submitted_data == {"k": "v"}
+
+
+@pytest.mark.parametrize("status", [HumanInputFormStatus.EXPIRED, HumanInputFormStatus.SUBMITTED])
+def test_mark_submitted_does_not_overwrite_a_concurrent_stop_or_submission(
+    repository_session: Session, status: HumanInputFormStatus
+) -> None:
+    form = _persist_form(repository_session, form_id="stopped-form", workflow_run_id=None)
+    form.status = status
+    repository_session.commit()
+    with pytest.raises(FormAlreadyHandledError) as error:
+        HumanInputFormSubmissionRepository().mark_submitted(
+            form_id=form.id,
+            recipient_id=None,
+            selected_action_id="approve",
+            form_data={"note": "late submission"},
+            submission_user_id=None,
+            submission_end_user_id=None,
+        )
+    assert error.value.status == status
+    repository_session.expire_all()
+    assert form.status == status
+    assert form.submitted_data is None
 
 
 def test_mark_submitted_serializes_select_and_file_payloads(
