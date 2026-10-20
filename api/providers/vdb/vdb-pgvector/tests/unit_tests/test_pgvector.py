@@ -321,7 +321,38 @@ def test_config_validation_parametrized(invalid_config_override):
     }
     config.update(invalid_config_override)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:1 validation error for PGVectorConfig\\\n  Value error, config "
+            "PGVECTOR_DATABASE is required \\[type=value_error, "
+            "input_value=\\{'host': 'localhost', 'po\\.\\.\\. 1, 'max_connection': "
+            "5\\}, input_type=dict\\]|1 validation error for PGVectorConfig\\\n  "
+            "Value error, config PGVECTOR_HOST is required \\[type=value_error, "
+            "input_value=\\{'host': '', 'port': 5432\\.\\.\\. 1, 'max_connection': "
+            "5\\}, input_type=dict\\]|1 validation error for PGVectorConfig\\\n  "
+            "Value error, config PGVECTOR_MAX_CONNECTION is required "
+            "\\[type=value_error, input_value=\\{'host': 'localhost', 'po\\.\\.\\. "
+            "1, 'max_connection': 0\\}, input_type=dict\\]|1 validation error for "
+            "PGVectorConfig\\\n  Value error, config PGVECTOR_MIN_CONNECTION is "
+            "required \\[type=value_error, input_value=\\{'host': 'localhost', "
+            "'po\\.\\.\\. 0, 'max_connection': 5\\}, input_type=dict\\]|1 "
+            "validation error for PGVectorConfig\\\n  Value error, config "
+            "PGVECTOR_MIN_CONNECTION should less than PGVECTOR_MAX_CONNECTION "
+            "\\[type=value_error, input_value=\\{'host': 'localhost', "
+            "'po\\.\\.\\.10, 'max_connection': 5\\}, input_type=dict\\]|1 "
+            "validation error for PGVectorConfig\\\n  Value error, config "
+            "PGVECTOR_PASSWORD is required \\[type=value_error, "
+            "input_value=\\{'host': 'localhost', 'po\\.\\.\\. 1, 'max_connection': "
+            "5\\}, input_type=dict\\]|1 validation error for PGVectorConfig\\\n  "
+            "Value error, config PGVECTOR_PORT is required \\[type=value_error, "
+            "input_value=\\{'host': 'localhost', 'po\\.\\.\\. 1, 'max_connection': "
+            "5\\}, input_type=dict\\]|1 validation error for PGVectorConfig\\\n  "
+            "Value error, config PGVECTOR_USER is required \\[type=value_error, "
+            "input_value=\\{'host': 'localhost', 'po\\.\\.\\. 1, 'max_connection': "
+            "5\\}, input_type=dict\\])"
+        ),
+    ):
         PGVectorConfig(**config)
 
 

@@ -1,4 +1,5 @@
 import type { NodeTracing } from '@/types/workflow'
+import { createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
 import format from '..'
 
 type ExecutionMetadata = NonNullable<NodeTracing['execution_metadata']>
@@ -19,12 +20,12 @@ const createTrace = (
 ): NodeTracing => {
   const { execution_metadata, ...rest } = overrides
 
-  return {
+  return createNodeTracing({
     node_id: 'node',
     status: 'succeeded',
     ...rest,
     execution_metadata: createExecutionMetadata(execution_metadata),
-  } as NodeTracing
+  })
 }
 
 describe('retry format log', () => {

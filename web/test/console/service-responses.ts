@@ -1,6 +1,42 @@
 import type { consoleQuery } from '@/service/console'
+import { skipToken } from '@tanstack/react-query'
 
 type ResponseHandler = (input: never) => unknown
+
+type QueryOverrides = Partial<
+  Record<'queryOptions' | 'infiniteOptions', (options: never) => object>
+>
+
+/** Keep generated keys and policies when a scenario supplies custom query functions/options. */
+export function withConsoleQueryOverrides(
+  query: typeof consoleQuery,
+  overrides: Record<string, QueryOverrides>,
+): typeof consoleQuery {
+  const paths = Object.keys(overrides)
+  const wrap = <T extends object>(target: T, path: string): T =>
+    new Proxy(target, {
+      get(current, property, receiver) {
+        const value = Reflect.get(current, property, receiver)
+        if (typeof property !== 'string') return value
+        const override =
+          property === 'queryOptions' || property === 'infiniteOptions'
+            ? overrides[path]?.[property]
+            : undefined
+        if (override) {
+          return (options: { input?: unknown } = {}) => {
+            const original = (value as (options: unknown) => { queryKey: unknown })(options)
+            if (options.input === skipToken) return original
+            return { ...original, ...override(options as never), queryKey: original.queryKey }
+          }
+        }
+        const nextPath = path ? `${path}.${property}` : property
+        if (paths.some((key) => key === nextPath || key.startsWith(`${nextPath}.`)))
+          return wrap(value as object, nextPath)
+        return value
+      },
+    })
+  return wrap(query, '')
+}
 
 /** Replace transport responses while retaining generated keys/options and real Query observers. */
 export function withConsoleResponses(
@@ -19,6 +55,8 @@ export function withConsoleResponses(
             const originalOptions = (value as (options: unknown) => object)(options)
             if (property === 'mutationOptions')
               return { ...originalOptions, mutationFn: (input: never) => handler(input) }
+            if ('queryFn' in originalOptions && originalOptions.queryFn === skipToken)
+              return originalOptions
             return {
               ...originalOptions,
               queryFn: ({ pageParam }: { pageParam?: unknown }) =>

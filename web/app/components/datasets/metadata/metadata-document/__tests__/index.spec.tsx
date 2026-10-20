@@ -1,774 +1,134 @@
-import type { MetadataItemWithValue } from '../../types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import type { DocumentDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { DataType } from '../../types'
 import MetadataDocument from '../index'
 
-type MockHookReturn = {
-  embeddingAvailable: boolean
-  isEdit: boolean
-  setIsEdit: ReturnType<typeof vi.fn>
-  list: MetadataItemWithValue[]
-  tempList: MetadataItemWithValue[]
-  setTempList: ReturnType<typeof vi.fn>
-  handleSelectMetaData: ReturnType<typeof vi.fn>
-  handleAddMetaData: ReturnType<typeof vi.fn>
-  hasData: boolean
-  builtList: MetadataItemWithValue[]
-  builtInEnabled: boolean
-  startToEdit: ReturnType<typeof vi.fn>
-  handleSave: ReturnType<typeof vi.fn>
-  handleCancel: ReturnType<typeof vi.fn>
-  originInfo: MetadataItemWithValue[]
-  technicalParameters: MetadataItemWithValue[]
-}
-
-// Mock useMetadataDocument hook - need to control state
-const mockUseMetadataDocument = vi.fn<() => MockHookReturn>()
-vi.mock('../../hooks/use-metadata-document', () => ({
-  default: () => mockUseMetadataDocument(),
-}))
-
-// Mock service calls
+const fields = [
+  { id: '1', name: 'title', type: DataType.string, value: 'Original' },
+  { id: '2', name: 'score', type: DataType.number, value: 42 },
+]
+const builtin = { id: 'built-in', name: 'created_at', type: DataType.time, value: 1609459200 }
+const state = { embeddingAvailable: true, metadata: [...fields, builtin], builtInEnabled: true }
+const save = vi.fn()
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.byDocumentId.get': async () => ({
+        id: 'doc-1',
+        doc_metadata: state.metadata,
+      }),
       'datasets.byDatasetId.metadata.get': async () => ({
+        built_in_field_enabled: state.builtInEnabled,
         doc_metadata: [],
       }),
+      'datasets.byDatasetId.documents.metadata.post': (input) => save(input),
     }),
   }
 })
-
-// Mock check name hook
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: vi.fn(),
-  }),
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContext: () => ({ dataset: { embedding_available: state.embeddingAvailable } }),
 }))
-
+vi.mock('@/app/notifications', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({
-    formatTime: (timestamp: number) => `formatted-${timestamp}`,
-  }),
+  default: () => ({ formatTime: (value: number) => `formatted-${value}` }),
 }))
 
-describe('MetadataDocument', () => {
-  const mockDocDetail = {
-    id: 'doc-1',
-    name: 'Test Document',
-    data_source_type: 'upload_file',
-    indexing_status: 'completed',
-    created_at: 1609459200,
-    word_count: 100,
-  }
+const docDetail: DocumentDetailResponse = {
+  id: 'doc-1',
+  name: 'Guide.txt',
+  data_source_type: 'upload_file',
+  hit_count: 5,
+  segment_count: 10,
+}
+const props = { datasetId: 'ds-1', documentId: 'doc-1', docDetail }
+beforeEach(() => {
+  state.embeddingAvailable = true
+  state.metadata = [...fields, builtin]
+  state.builtInEnabled = true
+  save.mockReset().mockResolvedValue({ result: 'success' })
+})
 
-  const mockList: MetadataItemWithValue[] = [
-    { id: '1', name: 'field_one', type: DataType.string, value: 'Value 1' },
-    { id: '2', name: 'field_two', type: DataType.number, value: 42 },
-  ]
-
-  const defaultHookReturn: MockHookReturn = {
-    embeddingAvailable: true,
-    isEdit: false,
-    setIsEdit: vi.fn(),
-    list: mockList,
-    tempList: mockList,
-    setTempList: vi.fn(),
-    handleSelectMetaData: vi.fn(),
-    handleAddMetaData: vi.fn(),
-    hasData: true,
-    builtList: [],
-    builtInEnabled: false,
-    startToEdit: vi.fn(),
-    handleSave: vi.fn(),
-    handleCancel: vi.fn(),
-    originInfo: [],
-    technicalParameters: [],
-  }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseMetadataDocument.mockReturnValue(defaultHookReturn)
+describe('Document metadata', () => {
+  it('edits and removes custom metadata while keeping builtin fields readonly', async () => {
+    const user = userEvent.setup()
+    render(<MetadataDocument {...props} canEdit />)
+    expect(await screen.findByText('Original')).toBeInTheDocument()
+    expect(await screen.findByText('formatted-1609459200')).toBeInTheDocument()
+    expect(screen.getByText('Guide.txt')).toBeInTheDocument()
+    expect(screen.getByText('50.00% (5/10)')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+    const title = screen.getByRole('textbox', { name: 'title' })
+    await user.clear(title)
+    await user.type(title, 'Updated')
+    await user.click(screen.getAllByRole('button', { name: 'common.operation.remove' })[1]!)
+    expect(screen.queryByRole('textbox', { name: 'score' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'created_at' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() =>
+      expect(save).toHaveBeenCalledWith({
+        params: { dataset_id: 'ds-1' },
+        body: {
+          operation_data: [
+            { document_id: 'doc-1', metadata_list: [{ ...fields[0], value: 'Updated' }] },
+          ],
+        },
+      }),
+    )
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.save' }),
+      ).not.toBeInTheDocument(),
+    )
   })
 
-  describe('Rendering', () => {
-    it('should render metadata fields when hasData is true', () => {
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-      expect(screen.getByText('field_one'))!.toBeInTheDocument()
-      expect(screen.getByText('field_two'))!.toBeInTheDocument()
-    })
-
-    it('should render no-data state when hasData is false and not in edit mode', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        hasData: false,
-        list: [],
-        tempList: [],
-        isEdit: false,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-      expect(screen.getAllByText(/metadata/i).length).toBeGreaterThan(0)
-    })
-
-    it('should render edit UI when in edit mode', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        isEdit: true,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      expect(screen.getByText(/save/i))!.toBeInTheDocument()
-      expect(screen.getByText(/cancel/i))!.toBeInTheDocument()
-    })
-
-    it('should render built-in section when builtInEnabled is true', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        builtInEnabled: true,
-        builtList: [{ id: 'built-in', name: 'created_at', type: DataType.time, value: 1609459200 }],
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      expect(screen.getByText('created_at'))!.toBeInTheDocument()
-    })
-
-    it('should render divider when builtInEnabled is true', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        builtInEnabled: true,
-        builtList: [{ id: 'built-in', name: 'created_at', type: DataType.time, value: 1609459200 }],
-      })
-
-      const { container } = render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      const divider = container.querySelector('.bg-linear-to-r')
-      expect(divider)!.toBeInTheDocument()
-    })
-
-    it('should render origin info section', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        originInfo: [{ id: 'origin-1', name: 'source', type: DataType.string, value: 'upload' }],
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      expect(screen.getByText('source'))!.toBeInTheDocument()
-    })
-
-    it('should render technical parameters section', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        technicalParameters: [
-          { id: 'tech-1', name: 'word_count', type: DataType.number, value: 100 },
-        ],
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      expect(screen.getByText('word_count'))!.toBeInTheDocument()
-    })
-
-    it('should render all sections together', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        builtInEnabled: true,
-        builtList: [{ id: 'built-1', name: 'created_at', type: DataType.time, value: 1609459200 }],
-        originInfo: [{ id: 'origin-1', name: 'source', type: DataType.string, value: 'upload' }],
-        technicalParameters: [
-          { id: 'tech-1', name: 'word_count', type: DataType.number, value: 100 },
-        ],
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      expect(screen.getByText('field_one'))!.toBeInTheDocument()
-      expect(screen.getByText('created_at'))!.toBeInTheDocument()
-      expect(screen.getByText('source'))!.toBeInTheDocument()
-      expect(screen.getByText('word_count'))!.toBeInTheDocument()
-    })
+  it('discards the draft when canceled and restores it from loaded data when reopened', async () => {
+    const user = userEvent.setup()
+    render(<MetadataDocument {...props} canEdit />)
+    await screen.findByText('Original')
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+    await user.type(screen.getByRole('textbox', { name: 'title' }), ' draft')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(screen.queryByRole('textbox', { name: 'title' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+    expect(screen.getByRole('textbox', { name: 'title' })).toHaveValue('Original')
+    expect(save).not.toHaveBeenCalled()
   })
 
-  describe('Edit Mode', () => {
-    it('should show edit button when not in edit mode, embedding available, and canEdit is true', () => {
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-      expect(screen.getByText(/edit/i))!.toBeInTheDocument()
-    })
+  it.each([undefined, false, true])(
+    'gates editing on the explicit ACL grant (%s)',
+    async (canEdit) => {
+      render(<MetadataDocument {...props} canEdit={canEdit} />)
+      await screen.findByText('Original')
+      const edit = screen.queryByRole('button', { name: 'common.operation.edit' })
+      if (canEdit) expect(edit).toBeInTheDocument()
+      else expect(edit).not.toBeInTheDocument()
+    },
+  )
 
-    it('should hide edit button by default when canEdit is omitted', () => {
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-      expect(screen.queryByText(/^edit$/i)).not.toBeInTheDocument()
-    })
-
-    it('should hide edit button when canEdit is false', () => {
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit={false}
-        />,
-      )
-      expect(screen.queryByText(/^edit$/i)).not.toBeInTheDocument()
-    })
-
-    it('should call startToEdit when edit button is clicked', () => {
-      const startToEdit = vi.fn()
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        isEdit: false,
-        startToEdit,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      fireEvent.click(screen.getByText(/edit/i))
-      expect(startToEdit).toHaveBeenCalled()
-    })
-
-    it('should call handleSave when save button is clicked', () => {
-      const handleSave = vi.fn()
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        isEdit: true,
-        handleSave,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      fireEvent.click(screen.getByText(/save/i))
-      expect(handleSave).toHaveBeenCalled()
-    })
-
-    it('should call handleCancel when cancel button is clicked', () => {
-      const handleCancel = vi.fn()
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        isEdit: true,
-        handleCancel,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      fireEvent.click(screen.getByText(/cancel/i))
-      expect(handleCancel).toHaveBeenCalled()
-    })
-
-    it('should call setIsEdit(true) when start button is clicked in no-data state', () => {
-      const setIsEdit = vi.fn()
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        hasData: false,
-        list: [],
-        tempList: [],
-        isEdit: false,
-        setIsEdit,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      const startBtn = screen.queryByText(/start/i)
-      if (startBtn) {
-        fireEvent.click(startBtn)
-        expect(setIsEdit).toHaveBeenCalledWith(true)
-      }
-    })
-
-    it('should show InfoGroup when in edit mode without data', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        hasData: false,
-        list: [],
-        tempList: [],
-        isEdit: true,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      // Should show save/cancel buttons
-      // Should show save/cancel buttons
-      expect(screen.getByText(/save/i))!.toBeInTheDocument()
-      expect(screen.getByText(/cancel/i))!.toBeInTheDocument()
-    })
+  it('withholds editing when embeddings are unavailable', async () => {
+    state.embeddingAvailable = false
+    render(<MetadataDocument {...props} canEdit />)
+    await screen.findByText('Original')
+    expect(screen.queryByRole('button', { name: 'common.operation.edit' })).not.toBeInTheDocument()
   })
 
-  describe('Data Operations', () => {
-    it('should call setTempList when field value changes', async () => {
-      const setTempList = vi.fn()
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        isEdit: true,
-        setTempList,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      const valueInput = screen.getByDisplayValue('Value 1')
-      fireEvent.change(valueInput, { target: { value: 'new value' } })
-
-      await waitFor(() => {
-        expect(setTempList).toHaveBeenCalled()
-      })
-    })
-
-    it('should pass onChange callback to InfoGroup', async () => {
-      const setTempList = vi.fn()
-      const tempList = [{ id: '1', name: 'field_one', type: DataType.string, value: 'Value 1' }]
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        isEdit: true,
-        tempList,
-        setTempList,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      const valueInput = screen.getByDisplayValue('Value 1')
-      fireEvent.change(valueInput, { target: { value: 'updated' } })
-      await waitFor(() => {
-        expect(setTempList).toHaveBeenCalled()
-      })
-    })
-
-    it('should pass onDelete callback to InfoGroup', async () => {
-      const setTempList = vi.fn()
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        isEdit: true,
-        tempList: mockList,
-        setTempList,
-      })
-
-      const { container } = render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      // Look for delete buttons - they are inside hover:bg-state-destructive-hover divs
-      const deleteContainers = container.querySelectorAll('.hover\\:bg-state-destructive-hover')
-      expect(deleteContainers.length).toBeGreaterThan(0)
-
-      if (deleteContainers.length > 0) {
-        const deleteIcon = deleteContainers[0]!.querySelector('svg')
-        if (deleteIcon) fireEvent.click(deleteIcon)
-
-        await waitFor(() => {
-          expect(setTempList).toHaveBeenCalled()
-        })
-      }
-    })
-  })
-
-  describe('Props', () => {
-    it('should use tempList when in edit mode', () => {
-      const tempList = [{ id: 'temp-1', name: 'temp_field', type: DataType.string, value: 'temp' }]
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        isEdit: true,
-        tempList,
-        list: mockList,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-        />,
-      )
-
-      expect(screen.getByText('temp_field'))!.toBeInTheDocument()
-    })
-
-    it('should use list when not in edit mode', () => {
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-        />,
-      )
-
-      expect(screen.getByText('field_one'))!.toBeInTheDocument()
-      expect(screen.getByText('field_two'))!.toBeInTheDocument()
-    })
-
-    it('should pass datasetId to child components', () => {
-      render(
-        <MetadataDocument
-          datasetId="custom-ds-id"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-        />,
-      )
-      // Component should render without errors
-      // Component should render without errors
-      expect(screen.getByText('field_one'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Embedding Availability', () => {
-    it('should not show edit button when embedding is not available', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        embeddingAvailable: false,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-        />,
-      )
-
-      expect(screen.queryByText(/^edit$/i)).not.toBeInTheDocument()
-    })
-
-    it('should not show NoData when embedding is not available', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        embeddingAvailable: false,
-        hasData: false,
-        list: [],
-        tempList: [],
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-        />,
-      )
-
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      expect(screen.queryByText(/start/i)).not.toBeInTheDocument()
-    })
-
-    it('should not show edit buttons in edit mode when embedding not available', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        embeddingAvailable: false,
-        isEdit: false,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-        />,
-      )
-
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      expect(screen.queryByText(/^edit$/i)).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle switching between view and edit mode', () => {
-      const { unmount } = render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      expect(screen.getByText(/edit/i))!.toBeInTheDocument()
-
-      unmount()
-
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        isEdit: true,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      expect(screen.getByText(/save/i))!.toBeInTheDocument()
-      expect(screen.getByText(/cancel/i))!.toBeInTheDocument()
-    })
-
-    it('should handle multiple items in all sections', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        list: [
-          { id: '1', name: 'user_field_1', type: DataType.string, value: 'v1' },
-          { id: '2', name: 'user_field_2', type: DataType.number, value: 42 },
-        ],
-        builtInEnabled: true,
-        builtList: [
-          { id: 'b1', name: 'created_at', type: DataType.time, value: 1609459200 },
-          { id: 'b2', name: 'modified_at', type: DataType.time, value: 1609459200 },
-        ],
-        originInfo: [
-          { id: 'o1', name: 'source', type: DataType.string, value: 'file' },
-          { id: 'o2', name: 'format', type: DataType.string, value: 'txt' },
-        ],
-        technicalParameters: [
-          { id: 't1', name: 'word_count', type: DataType.number, value: 100 },
-          { id: 't2', name: 'char_count', type: DataType.number, value: 500 },
-        ],
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-        />,
-      )
-
-      expect(screen.getByText('user_field_1'))!.toBeInTheDocument()
-      expect(screen.getByText('user_field_2'))!.toBeInTheDocument()
-      expect(screen.getByText('created_at'))!.toBeInTheDocument()
-      expect(screen.getByText('source'))!.toBeInTheDocument()
-      expect(screen.getByText('word_count'))!.toBeInTheDocument()
-    })
-
-    it('should handle null values in metadata', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        list: [{ id: '1', name: 'null_field', type: DataType.string, value: null }],
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-        />,
-      )
-
-      expect(screen.getByText('null_field'))!.toBeInTheDocument()
-    })
-
-    it('should handle undefined values in metadata', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        list: [
-          {
-            id: '1',
-            name: 'undefined_field',
-            type: DataType.string,
-            value: undefined as unknown as null,
-          },
-        ],
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-        />,
-      )
-
-      expect(screen.getByText('undefined_field'))!.toBeInTheDocument()
-    })
+  it('opens an empty metadata editor from the labeling prompt', async () => {
+    const user = userEvent.setup()
+    state.metadata = []
+    state.builtInEnabled = false
+    render(<MetadataDocument {...props} canEdit />)
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'dataset.metadata.documentMetadata.startLabeling',
+      }),
+    )
+    expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' })).toBeInTheDocument()
   })
 })

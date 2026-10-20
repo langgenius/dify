@@ -3,11 +3,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -77,7 +77,7 @@ const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
           <DialogDescription>
             {t(($) => $['stepOne.modal.tip'], { ns: 'datasetCreation' })}
           </DialogDescription>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <Form className="contents" onFormSubmit={() => void submit()}>
           <DialogBody>

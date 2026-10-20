@@ -104,8 +104,16 @@ Then('the published workflow Web App should be accessible', async function (this
 
 Then('the published workflow Web App should be unavailable', async function (this: DifyWorld) {
   if (!this.sharedAppPage) throw new Error('The anonymous visitor has not opened the Web App.')
-  await expect(this.sharedAppPage.getByRole('heading', { name: '404' })).toBeVisible({
+  await expect(
+    this.sharedAppPage.getByRole('heading', {
+      name: 'This app doesn’t exist or isn’t accessible from your network.',
+    }),
+  ).toBeVisible({
     timeout: 15_000,
   })
-  await expect(this.sharedAppPage.getByText('App is unavailable', { exact: true })).toBeVisible()
+  await expect(
+    this.sharedAppPage.getByText('Contact the app administrator if you need help.', {
+      exact: true,
+    }),
+  ).toBeVisible()
 })

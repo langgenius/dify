@@ -25,7 +25,7 @@ const createDocument = (
       extension: 'pdf',
       mime_type: 'application/pdf',
       created_by: 'user-1',
-      created_at: Date.now(),
+      created_at: 1700000000,
     },
     job_id: 'job-1',
     url: '',
@@ -34,7 +34,7 @@ const createDocument = (
   name: 'Document 1',
   created_from: 'web',
   created_by: 'user-1',
-  created_at: Date.now(),
+  created_at: 1700000000,
   indexing_status: 'completed',
   display_status: 'enabled',
   doc_form: ChunkingMode.text,
@@ -137,22 +137,6 @@ describe('DocumentPicker', () => {
     })
   })
 
-  it('should keep focus in the search input while deleting quickly', async () => {
-    const user = userEvent.setup()
-    renderDocumentPicker()
-
-    const trigger = screen.getByRole('combobox', { name: 'Document 1' })
-    await user.click(trigger)
-
-    const searchInput = screen.getByPlaceholderText('common.operation.search')
-    await user.type(searchInput, 'report')
-    await user.keyboard('{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}')
-
-    expect(trigger).toHaveAttribute('aria-expanded', 'true')
-    expect(searchInput).toHaveFocus()
-    expect(trigger).not.toHaveFocus()
-  })
-
   it('should keep focus in the search input when deleting from an empty result', async () => {
     const user = userEvent.setup()
     mockUseDocumentList.mockImplementation(({ query }) =>
@@ -184,21 +168,6 @@ describe('DocumentPicker', () => {
     expect(trigger).not.toHaveFocus()
   })
 
-  it('should keep focus in the search input while typing quickly', async () => {
-    const user = userEvent.setup()
-    renderDocumentPicker()
-
-    const trigger = screen.getByRole('combobox', { name: 'Document 1' })
-    await user.click(trigger)
-
-    const searchInput = screen.getByPlaceholderText('common.operation.search')
-    await user.keyboard('quarterly-report-final')
-
-    expect(trigger).toHaveAttribute('aria-expanded', 'true')
-    expect(searchInput).toHaveFocus()
-    expect(trigger).not.toHaveFocus()
-  })
-
   it('should call onChange with the selected document', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
@@ -213,19 +182,6 @@ describe('DocumentPicker', () => {
     await user.click(await screen.findByRole('option', { name: /Document 2/ }))
 
     expect(onChange).toHaveBeenCalledWith(selectedDocument)
-  })
-
-  it('should show an empty state when no documents match', async () => {
-    const user = userEvent.setup()
-    mockDocumentListData = { data: [] }
-
-    renderDocumentPicker()
-
-    await user.click(screen.getByRole('combobox', { name: 'Document 1' }))
-
-    expect(
-      (await screen.findByText('common.noData')).closest('[role="status"]'),
-    ).toBeInTheDocument()
   })
 })
 

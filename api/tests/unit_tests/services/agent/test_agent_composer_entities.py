@@ -32,7 +32,13 @@ def test_default_agent_soul_enables_file_upload_feature() -> None:
 
 
 def test_workflow_variant_rejects_agent_app_only_fields() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "1 validation error for ComposerSavePayload\\\n  Value error, Workflow "
+            "Variant must not include app variables"
+        ),
+    ):
         ComposerSavePayload.model_validate(
             {
                 "variant": ComposerVariant.WORKFLOW,
@@ -45,7 +51,13 @@ def test_workflow_variant_rejects_agent_app_only_fields() -> None:
 
 
 def test_agent_app_variant_rejects_workflow_node_job() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "1 validation error for ComposerSavePayload\\\n  Value error, Agent "
+            "App Variant must not include workflow node job config"
+        ),
+    ):
         ComposerSavePayload.model_validate(
             {
                 "variant": ComposerVariant.AGENT_APP,

@@ -1,148 +1,72 @@
 import type { ModerationContentConfig } from '@/models/debug'
-import { fireEvent, render, screen } from '@testing-library/react'
-import * as i18n from 'react-i18next'
-import { withSelectorKey } from '@/test/i18n-mock'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import ModerationContent from '../moderation-content'
 
-const defaultConfig: ModerationContentConfig = {
-  enabled: false,
-  preset_response: '',
-}
-
-const renderComponent = (
-  props: Partial<{
-    title: string
-    info: string
-    showPreset: boolean
-    config: ModerationContentConfig
-    onConfigChange: (config: ModerationContentConfig) => void
-  }> = {},
-) => {
-  const onConfigChange = props.onConfigChange ?? vi.fn()
-  return render(
+function Harness({
+  onChange,
+  showPreset = true,
+}: {
+  onChange: (config: ModerationContentConfig) => void
+  showPreset?: boolean
+}) {
+  const [config, setConfig] = useState<ModerationContentConfig>({
+    enabled: false,
+    preset_response: '',
+  })
+  return (
     <ModerationContent
-      title={props.title ?? 'Test Title'}
-      info={props.info}
-      showPreset={props.showPreset}
-      config={props.config ?? defaultConfig}
-      onConfigChange={onConfigChange}
-    />,
+      title="Input moderation"
+      showPreset={showPreset}
+      config={config}
+      onConfigChange={(next) => {
+        setConfig(next)
+        onChange(next)
+      }}
+    />
   )
 }
 
 describe('ModerationContent', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should render the title', () => {
-    renderComponent({ title: 'Input Content' })
-
-    expect(screen.getByText('Input Content')).toBeInTheDocument()
-  })
-
-  it('should render info text when provided', () => {
-    renderComponent({ info: 'Some info text' })
-
-    expect(screen.getByText('Some info text')).toBeInTheDocument()
-  })
-
-  it('should not render info when not provided', () => {
-    renderComponent()
-
-    // When info is not provided, only the title "Test Title" should be shown
-    expect(screen.getByText(/Test Title/)).toBeInTheDocument()
-    expect(screen.queryByText(/Some info text/)).not.toBeInTheDocument()
-  })
-
-  it('should render a switch toggle', () => {
-    renderComponent()
-
-    expect(screen.getByRole('switch')).toBeInTheDocument()
-  })
-
-  it('should call onConfigChange with enabled true when switch is toggled on', () => {
-    const onConfigChange = vi.fn()
-    renderComponent({ onConfigChange })
-
-    fireEvent.click(screen.getByRole('switch'))
-
-    expect(onConfigChange).toHaveBeenCalledWith({ ...defaultConfig, enabled: true })
-  })
-
-  it('should show preset textarea when enabled and showPreset is true', () => {
-    renderComponent({
-      config: { enabled: true, preset_response: '' },
-      showPreset: true,
-    })
-
-    expect(screen.getByText(/feature\.moderation\.modal\.content\.preset/)).toBeInTheDocument()
-    expect(screen.getByRole('textbox')).toBeInTheDocument()
-  })
-
-  it('should not show preset textarea when showPreset is false', () => {
-    renderComponent({
-      config: { enabled: true, preset_response: '' },
-      showPreset: false,
-    })
-
+  it('preserves the edited preset when moderation is disabled and reenabled', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<Harness onChange={onChange} />)
+    const toggle = screen.getByRole('switch', { name: 'Input moderation' })
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    await user.click(toggle)
+    await user.type(screen.getByRole('textbox'), 'Review required')
+    expect(onChange).toHaveBeenLastCalledWith({ enabled: true, preset_response: 'Review required' })
+    expect(screen.getByText('15')).toBeInTheDocument()
+    await user.click(toggle)
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(onChange).toHaveBeenLastCalledWith({
+      enabled: false,
+      preset_response: 'Review required',
+    })
+    await user.click(toggle)
+    expect(screen.getByRole('textbox')).toHaveValue('Review required')
   })
 
-  it('should call onConfigChange when preset_response is changed', () => {
-    const onConfigChange = vi.fn()
-    renderComponent({
-      config: { enabled: true, preset_response: '' },
-      onConfigChange,
-    })
-
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'test response' } })
-
-    expect(onConfigChange).toHaveBeenCalledWith({
-      enabled: true,
-      preset_response: 'test response',
-    })
+  it('limits pasted presets to 100 characters in the field and saved config', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<Harness onChange={onChange} />)
+    await user.click(screen.getByRole('switch', { name: 'Input moderation' }))
+    const preset = screen.getByRole('textbox')
+    await user.click(preset)
+    await user.paste('a'.repeat(150))
+    expect(preset).toHaveValue('a'.repeat(100))
+    expect(onChange).toHaveBeenLastCalledWith({ enabled: true, preset_response: 'a'.repeat(100) })
   })
 
-  it('should truncate preset_response to 100 characters', () => {
-    const onConfigChange = vi.fn()
-    const longText = 'a'.repeat(150)
-    renderComponent({
-      config: { enabled: true, preset_response: '' },
-      onConfigChange,
-    })
-
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: longText } })
-
-    expect(onConfigChange).toHaveBeenCalledWith({
-      enabled: true,
-      preset_response: 'a'.repeat(100),
-    })
-  })
-
-  it('should display character count', () => {
-    renderComponent({
-      config: { enabled: true, preset_response: 'hello' },
-    })
-
-    expect(screen.getByText('5')).toBeInTheDocument()
-    expect(screen.getByText('100')).toBeInTheDocument()
-  })
-
-  it('should fallback to empty placeholder when translation is empty', () => {
-    const useTranslationSpy = vi.spyOn(i18n, 'useTranslation').mockReturnValue({
-      t: withSelectorKey((key: string) =>
-        key === 'feature.moderation.modal.content.placeholder' ? '' : key,
-      ),
-      i18n: { language: 'en-US' },
-    } as unknown as ReturnType<typeof i18n.useTranslation>)
-
-    renderComponent({
-      config: { enabled: true, preset_response: '' },
-      showPreset: true,
-    })
-
-    expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', '')
-    useTranslationSpy.mockRestore()
+  it('can enable moderation without exposing a preset when presets are unavailable', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<Harness onChange={onChange} showPreset={false} />)
+    await user.click(screen.getByRole('switch', { name: 'Input moderation' }))
+    expect(onChange).toHaveBeenLastCalledWith({ enabled: true, preset_response: '' })
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 })

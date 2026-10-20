@@ -6,10 +6,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { isEqual } from 'es-toolkit/predicate'
@@ -331,7 +331,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       <DialogContent backdropProps={{ forceRender: true }}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
           {pluginDetail && <ReadmeEntrance pluginDetail={pluginDetail} presentation="dialog" />}

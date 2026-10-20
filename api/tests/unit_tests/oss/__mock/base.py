@@ -46,33 +46,33 @@ def get_example_filepath() -> str:
 
 class BaseStorageTest:
     @pytest.fixture(autouse=True)
-    def setup_method(self, *args, **kwargs):
+    def setup_method(self, *_args: object, **_kwargs: object) -> None:
         """Should be implemented in child classes to setup specific storage."""
         self.storage: BaseStorage
 
-    def test_save(self):
+    def test_save(self) -> None:
         """Test saving data."""
         self.storage.save(get_example_filename(), get_example_data())
 
-    def test_load_once(self):
+    def test_load_once(self) -> None:
         """Test loading data once."""
         assert self.storage.load_once(get_example_filename()) == get_example_data()
 
-    def test_load_stream(self):
+    def test_load_stream(self) -> None:
         """Test loading data as a stream."""
         generator = self.storage.load_stream(get_example_filename())
         assert isinstance(generator, Generator)
         assert next(generator) == get_example_data()
         assert list(generator) == []
 
-    def test_download(self):
+    def test_download(self) -> None:
         """Test downloading data."""
         self.storage.download(get_example_filename(), get_example_filepath())
 
-    def test_exists(self):
+    def test_exists(self) -> None:
         """Test checking if a file exists."""
         assert self.storage.exists(get_example_filename())
 
-    def test_delete(self):
+    def test_delete(self) -> None:
         """Test deleting a file."""
         self.storage.delete(get_example_filename())

@@ -6,10 +6,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -119,7 +119,7 @@ export default function ResourceAccessTokenDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
-      <DialogContent backdropProps={{ forceRender: true }} className="w-160">
+      <DialogContent backdropProps={{ forceRender: true }} className="w-168 overflow-hidden">
         <DialogHeader>
           <DialogTitle>
             {isEdit
@@ -128,7 +128,7 @@ export default function ResourceAccessTokenDialog({
                 ? t(($) => $['resourceAccessToken.createdToken'], { ns: 'accountSettings' })
                 : t(($) => $['resourceAccessToken.createTitle'], { ns: 'accountSettings' })}
           </DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
 
         {createdToken ? (
@@ -160,8 +160,8 @@ export default function ResourceAccessTokenDialog({
           </>
         ) : (
           <form className="contents" onSubmit={handleSubmit}>
-            <DialogBody className="grid gap-5">
-              <Field name="name">
+            <DialogBody className="grid gap-6">
+              <Field name="name" className="border-b border-divider-subtle pb-6">
                 <FieldLabel>{nameLabel}</FieldLabel>
                 <Input
                   required

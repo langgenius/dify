@@ -5,7 +5,7 @@ import type {
   WorkflowGeneratePayload,
   WorkflowGeneratePlanEventResponse,
 } from '@dify/contracts/api/console/workflow-generate/types.gen'
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { SelectorParam, TFunction } from 'i18next'
 import type { GeneratedGraph } from './types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -62,7 +62,7 @@ import useGenGraph from './use-gen-graph'
 // Mirrors the backend's instruction/ideal-output cap on /workflow-generate —
 // keeping the limit client-side turns an opaque 400 into a visible input stop.
 const MAX_INSTRUCTION_LENGTH = 10_000
-const WORKFLOW_GENERATOR_SUBMIT_HOTKEY = 'Mod+Enter' satisfies Hotkey
+const WORKFLOW_GENERATOR_SUBMIT_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
 // A single structured generation error. Mirrors the backend ``errors[]`` entry
 // (stable ``code`` + human ``detail`` + optional ``node_id``) so the error panel

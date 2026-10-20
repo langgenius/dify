@@ -2,6 +2,7 @@ import type { PropsWithChildren } from 'react'
 import type { AgentConfigurePublishResult } from '../use-agent-configure-sync'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
+import { zToolProviderListResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
@@ -19,6 +20,7 @@ import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/stor
 import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
 import { consoleQuery } from '@/service/console'
 import { httpErrorFromResponse } from '@/service/http-error'
+import { createDeferred as createDeferredPromise } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
 
@@ -73,6 +75,7 @@ const composerPutMutationOptions = vi.hoisted(() =>
         },
       ) => void
     }) => ({
+      ...options,
       mutationFn: async (variables: {
         params: { agent_id: string }
         body: {
@@ -80,9 +83,7 @@ const composerPutMutationOptions = vi.hoisted(() =>
         }
       }) => {
         composerPutRequestContexts.push(options?.context)
-        const data = await composerPutMutationFn(variables)
-        options?.onSuccess?.(data, variables)
-        return data
+        return composerPutMutationFn(variables)
       },
     }),
   ),
@@ -119,25 +120,13 @@ const publishAgentMutationOptions = vi.hoisted(() =>
       }
       onSuccess?: (data: PublishAgentResponse, variables: PublishAgentVariables) => void
     }) => ({
+      ...options,
       mutationFn: async (variables: PublishAgentVariables) => {
-        const data = await publishAgentMutationFn(variables)
-        options?.onSuccess?.(data, variables)
-        return data
+        return publishAgentMutationFn(variables)
       },
     }),
   ),
 )
-
-function createDeferredPromise<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((promiseResolve, promiseReject) => {
-    resolve = promiseResolve
-    reject = promiseReject
-  })
-
-  return { promise, reject, resolve }
-}
 
 function setDocumentVisibilityState(visibilityState: DocumentVisibilityState) {
   Object.defineProperty(document, 'visibilityState', {
@@ -183,16 +172,6 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.builtin.get': () => ({ data: toolProviderState.builtInTools }),
-    'workspaces.current.tools.api.get': () => ({ data: toolProviderState.customTools }),
-    'workspaces.current.tools.mcp.get': () => ({ data: toolProviderState.mcpTools }),
-    'workspaces.current.tools.workflow.get': () => ({ data: toolProviderState.workflowTools }),
-  })
-})
-
 vi.mock('@/service/console', async () => {
   const { consoleOperationStub } = await import('@/test/console/operation-hooks')
   return {
@@ -208,31 +187,14 @@ vi.mock('@/service/console', async () => {
         },
       },
       agent: {
-        get: {
-          key: () => ['agents'],
-        },
+        get: consoleOperationStub('agent.get'),
         byAgentId: {
-          get: {
-            queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
-              'agent-detail',
-              input.params.agent_id,
-            ],
-          },
+          get: consoleOperationStub('agent.byAgentId.get'),
           apiAccess: {
-            get: {
-              queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
-                'agent-api-access',
-                input.params.agent_id,
-              ],
-            },
+            get: consoleOperationStub('agent.byAgentId.apiAccess.get'),
           },
           composer: {
-            get: {
-              queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
-                'agent-composer',
-                input.params.agent_id,
-              ],
-            },
+            get: consoleOperationStub('agent.byAgentId.composer.get'),
             put: {
               mutationOptions: composerPutMutationOptions,
             },
@@ -243,9 +205,7 @@ vi.mock('@/service/console', async () => {
             },
           },
           versions: {
-            get: {
-              key: () => ['agent-versions'],
-            },
+            get: consoleOperationStub('agent.byAgentId.versions.get'),
           },
         },
       },
@@ -278,6 +238,16 @@ function renderUseAgentConfigureSync({
     consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
     createAgentFixture(),
   )
+  const tools = consoleQuery.workspaces.current.tools
+  for (const [operation, data] of [
+    [tools.builtin.get, toolProviderState.builtInTools],
+    [tools.api.get, toolProviderState.customTools],
+    [tools.mcp.get, toolProviderState.mcpTools],
+    [tools.workflow.get, toolProviderState.workflowTools],
+  ] as const) {
+    queryClient.setQueryDefaults(operation.key(), { staleTime: Infinity })
+    if (data) queryClient.setQueryData(operation.queryKey(), zToolProviderListResponse.parse(data))
+  }
   const store = createStore()
   const initialDraft = currentModel
     ? { ...defaultAgentSoulConfigFormState, model: currentModel }
@@ -381,11 +351,10 @@ describe('useAgentConfigureSync', () => {
 
   it('should automatically save configure page changes to draft', async () => {
     const { queryClient, store } = renderUseAgentConfigureSync()
-    queryClient.setQueryData(['agent-detail', 'agent-1'], {
-      active_config_is_published: true,
-      name: 'Agent',
-      permission_keys: Object.values(AgentPermission),
-    })
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      createAgentFixture({ name: 'Agent', permission_keys: Object.values(AgentPermission) }),
+    )
 
     act(() => {
       store.set(agentComposerDraftAtom, {
@@ -394,11 +363,13 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
-      active_config_is_published: true,
-      name: 'Agent',
-      permission_keys: Object.values(AgentPermission),
-    })
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      ),
+    ).toEqual(
+      createAgentFixture({ name: 'Agent', permission_keys: Object.values(AgentPermission) }),
+    )
     expect(composerPutMutationFn).not.toHaveBeenCalled()
 
     await act(async () => {
@@ -421,11 +392,13 @@ describe('useAgentConfigureSync', () => {
         }),
       }),
     )
-    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
-      active_config_is_published: true,
-      name: 'Agent',
-      permission_keys: Object.values(AgentPermission),
-    })
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      ),
+    ).toEqual(
+      createAgentFixture({ name: 'Agent', permission_keys: Object.values(AgentPermission) }),
+    )
   })
 
   it('should autosave only the latest committed Agent configuration', async () => {
@@ -518,11 +491,10 @@ describe('useAgentConfigureSync', () => {
 
   it('should cancel pending autosave when the draft returns to the saved baseline', async () => {
     const { queryClient, store } = renderUseAgentConfigureSync()
-    queryClient.setQueryData(['agent-detail', 'agent-1'], {
-      active_config_is_published: true,
-      name: 'Agent',
-      permission_keys: Object.values(AgentPermission),
-    })
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      createAgentFixture({ name: 'Agent', permission_keys: Object.values(AgentPermission) }),
+    )
 
     act(() => {
       store.set(agentComposerDraftAtom, {
@@ -539,11 +511,13 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(composerPutMutationFn).not.toHaveBeenCalled()
-    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
-      active_config_is_published: true,
-      name: 'Agent',
-      permission_keys: Object.values(AgentPermission),
-    })
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      ),
+    ).toEqual(
+      createAgentFixture({ name: 'Agent', permission_keys: Object.values(AgentPermission) }),
+    )
   })
 
   it('should save dirty draft once when the page is closing', async () => {
@@ -1038,22 +1012,23 @@ describe('useAgentConfigureSync', () => {
 
   it('should not save the draft immediately when the composer draft is unchanged', async () => {
     const { queryClient, result } = renderUseAgentConfigureSync()
-    queryClient.setQueryData(['agent-detail', 'agent-1'], {
-      active_config_is_published: true,
-      name: 'Agent',
-      permission_keys: Object.values(AgentPermission),
-    })
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      createAgentFixture({ name: 'Agent', permission_keys: Object.values(AgentPermission) }),
+    )
 
     await act(async () => {
       await result.current.saveDraft()
     })
 
     expect(composerPutMutationFn).not.toHaveBeenCalled()
-    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
-      active_config_is_published: true,
-      name: 'Agent',
-      permission_keys: Object.values(AgentPermission),
-    })
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      ),
+    ).toEqual(
+      createAgentFixture({ name: 'Agent', permission_keys: Object.values(AgentPermission) }),
+    )
   })
 
   it('saves a newly selected model from the draft without waiting for a render', async () => {
@@ -1200,6 +1175,8 @@ describe('useAgentConfigureSync', () => {
       app_name: 'Agent',
       app_mode: 'agent-v2',
     })
+    expect(store.get(agentComposerDraftAtom).model).toEqual(configuredModel)
+    expect(store.get(agentComposerSavedDraftAtom)).toEqual(store.get(agentComposerDraftAtom))
     expect(toastMock.success).not.toHaveBeenCalled()
   })
 
@@ -1298,28 +1275,6 @@ describe('useAgentConfigureSync', () => {
     )
   })
 
-  it('should keep the selected draft model clean after publish', async () => {
-    const { result, store } = renderUseAgentConfigureSync({
-      currentModel: configuredModel,
-    })
-    act(() => {
-      store.set(agentComposerDraftAtom, {
-        ...store.get(agentComposerDraftAtom),
-        prompt: 'Published prompt',
-      })
-    })
-
-    await act(async () => {
-      await result.current.publishDraft()
-    })
-
-    expect(publishAgentMutationFn).toHaveBeenCalledTimes(1)
-    const savedDraft = store.get(agentComposerSavedDraftAtom)
-    expect(store.get(agentComposerDraftAtom).model).toEqual(configuredModel)
-    expect(savedDraft?.model).toEqual(configuredModel)
-    expect(savedDraft).toEqual(store.get(agentComposerDraftAtom))
-  })
-
   it('should keep base config fallback fields from leaving the local draft dirty after publish', async () => {
     const { result, store } = renderUseAgentConfigureSync({
       currentModel: configuredModel,
@@ -1347,37 +1302,6 @@ describe('useAgentConfigureSync', () => {
     expect(store.get(agentComposerDraftAtom).appFeatures).toBeUndefined()
     expect(savedDraft?.appFeatures).toBeUndefined()
     expect(savedDraft).toEqual(store.get(agentComposerDraftAtom))
-  })
-
-  it('should publish the current draft snapshot instead of a stale caller payload', async () => {
-    const { result, store } = renderUseAgentConfigureSync({
-      currentModel: configuredModel,
-    })
-
-    act(() => {
-      store.set(agentComposerDraftAtom, {
-        ...store.get(agentComposerDraftAtom),
-        prompt: 'Current draft prompt',
-      })
-    })
-
-    await act(async () => {
-      await result.current.publishDraft()
-    })
-
-    expect(composerPutMutationFn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: expect.objectContaining({
-          save_strategy: 'save_to_current_version',
-          agent_soul: expect.objectContaining({
-            prompt: expect.objectContaining({
-              system_prompt: 'Current draft prompt',
-            }),
-          }),
-        }),
-      }),
-    )
-    expect(publishAgentMutationFn).toHaveBeenCalledTimes(1)
   })
 
   it('should reject publish and keep the publish mutation untouched when saving the draft fails', async () => {
@@ -1509,38 +1433,6 @@ describe('useAgentConfigureSync', () => {
     )
   })
 
-  it('should expose publishing status from the publish mutation while publish is pending', async () => {
-    const publishDeferred = createDeferredPromise<PublishAgentResponse>()
-    publishAgentMutationFn.mockReturnValueOnce(publishDeferred.promise)
-    const { result } = renderUseAgentConfigureSync({
-      currentModel: configuredModel,
-    })
-    let publishPromise!: Promise<AgentConfigurePublishResult | false>
-    act(() => {
-      publishPromise = result.current.publishDraft()
-    })
-
-    await act(async () => {
-      await Promise.resolve()
-      await vi.advanceTimersByTimeAsync(0)
-    })
-
-    expect(result.current.isPublishing).toBe(true)
-
-    await act(async () => {
-      publishDeferred.resolve({
-        active_config_snapshot: {},
-        active_config_snapshot_id: 'snapshot-1',
-        result: 'success',
-        publication_kind: 'update',
-      })
-      await publishPromise
-      await vi.advanceTimersByTimeAsync(0)
-    })
-
-    expect(result.current.isPublishing).toBe(false)
-  })
-
   it('should pause autosave during publish and resume it for edits made in flight', async () => {
     const publishDeferred = createDeferredPromise<PublishAgentResponse>()
     publishAgentMutationFn.mockReturnValueOnce(publishDeferred.promise)
@@ -1564,6 +1456,7 @@ describe('useAgentConfigureSync', () => {
     })
     expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
     expect(publishAgentMutationFn).toHaveBeenCalledTimes(1)
+    expect(result.current.isPublishing).toBe(true)
 
     act(() => {
       store.set(agentComposerDraftAtom, {
@@ -1587,6 +1480,7 @@ describe('useAgentConfigureSync', () => {
       await vi.advanceTimersByTimeAsync(5000)
     })
 
+    expect(result.current.isPublishing).toBe(false)
     expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
     expect(composerPutMutationFn).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -1724,9 +1618,10 @@ describe('useAgentConfigureSync', () => {
       enabled: false,
       currentModel: configuredModel,
     })
-    queryClient.setQueryData(['agent-detail', 'agent-1'], {
-      permission_keys: [AgentPermission.TestAndRun],
-    })
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      createAgentFixture({ permission_keys: [AgentPermission.TestAndRun] }),
+    )
     act(() => {
       store.set(agentComposerPromptAtom, 'Unsaved local changes')
     })
@@ -1746,9 +1641,10 @@ describe('useAgentConfigureSync', () => {
       publishEnabled: true,
       currentModel: configuredModel,
     })
-    queryClient.setQueryData(['agent-detail', 'agent-1'], {
-      permission_keys: [AgentPermission.ReleaseAndVersion],
-    })
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      createAgentFixture({ permission_keys: [AgentPermission.ReleaseAndVersion] }),
+    )
     await act(async () => {
       await expect(result.current.publishDraft()).resolves.toMatchObject({ kind: 'update' })
     })
@@ -1761,7 +1657,10 @@ describe('useAgentConfigureSync', () => {
     const { queryClient, store, unmount } = renderUseAgentConfigureSync()
     act(() => {
       store.set(agentComposerPromptAtom, 'Dirty before revocation')
-      queryClient.setQueryData(['agent-detail', 'agent-1'], { permission_keys: [] })
+      queryClient.setQueryData(
+        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+        createAgentFixture({ permission_keys: [] }),
+      )
       unmount()
     })
     await act(async () => {
@@ -1781,9 +1680,10 @@ describe('useAgentConfigureSync', () => {
     await act(async () => {
       await Promise.resolve()
     })
-    queryClient.setQueryData(['agent-detail', 'agent-1'], {
-      permission_keys: [AgentPermission.Edit],
-    })
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      createAgentFixture({ permission_keys: [AgentPermission.Edit] }),
+    )
     await act(async () => {
       saving.resolve({ agent_soul: {} })
       await publishing

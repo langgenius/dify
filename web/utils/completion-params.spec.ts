@@ -4,336 +4,102 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { mergeValidCompletionParams } from './completion-params'
 
-describe('completion-params', () => {
-  describe('mergeValidCompletionParams', () => {
-    it('returns empty params and removedDetails for undefined oldParams', () => {
-      const rules: ModelParameterRule[] = []
-      const result = mergeValidCompletionParams(undefined, rules)
+const createRule = (overrides: Partial<ModelParameterRule> = {}): ModelParameterRule => ({
+  name: 'value',
+  type: 'int',
+  label: { en_US: 'Value', zh_Hans: '值' },
+  required: false,
+  ...overrides,
+})
 
-      expect(result.params).toEqual({})
-      expect(result.removedDetails).toEqual({})
+describe('mergeValidCompletionParams', () => {
+  it.each([undefined, {}])('accepts an empty parameter set: %j', (params) => {
+    expect(mergeValidCompletionParams(params, [])).toEqual({ params: {}, removedDetails: {} })
+  })
+
+  it.each([
+    { type: 'int', value: 0, min: 0, max: 2 },
+    { type: 'int', value: 2, min: 0, max: 2 },
+    { type: 'int', value: 999999 },
+    { type: 'float', value: 0.7, min: 0, max: 2 },
+    { type: 'boolean', value: false },
+    { type: 'boolean', value: true },
+    { type: 'string', value: '' },
+    { type: 'text', value: 'Hello world' },
+    { type: 'string', value: 'gpt-4', options: ['gpt-4'] },
+    { type: 'text', value: 'unrestricted', options: [] },
+  ])('preserves $type value $value', ({ value, ...rule }) => {
+    expect(mergeValidCompletionParams({ value }, [createRule(rule)])).toEqual({
+      params: { value },
+      removedDetails: {},
     })
+  })
 
-    it('returns empty params and removedDetails for empty oldParams', () => {
-      const rules: ModelParameterRule[] = []
-      const result = mergeValidCompletionParams({}, rules)
-
-      expect(result.params).toEqual({})
-      expect(result.removedDetails).toEqual({})
+  it.each([
+    { type: 'int', value: '100' },
+    { type: 'int', value: 1.5 },
+    { type: 'int', value: Number.NaN },
+    { type: 'float', value: Number.NaN },
+    { type: 'float', value: Number.POSITIVE_INFINITY },
+    { type: 'float', value: Number.NEGATIVE_INFINITY },
+    { type: 'boolean', value: 'yes' },
+    { type: 'string', value: 1 },
+    { type: 'text', value: ['text'] },
+  ])('rejects invalid $type value $value even without range constraints', ({ type, value }) => {
+    expect(mergeValidCompletionParams({ value }, [createRule({ type })])).toEqual({
+      params: {},
+      removedDetails: { value: 'invalid type' },
     })
+  })
 
-    it('validates int type parameter within range', () => {
-      const rules: ModelParameterRule[] = [
-        {
-          name: 'max_tokens',
-          type: 'int',
-          min: 1,
-          max: 4096,
-          label: { en_US: 'Max Tokens', zh_Hans: '最大 Token 数' },
-          required: false,
-        },
-      ]
-      const oldParams: FormValue = { max_tokens: 100 }
-      const result = mergeValidCompletionParams(oldParams, rules)
-
-      expect(result.params).toEqual({ max_tokens: 100 })
-      expect(result.removedDetails).toEqual({})
+  it.each([-1, 3])('reports the allowed range for %s', (value) => {
+    expect(mergeValidCompletionParams({ value }, [createRule({ min: 0, max: 2 })])).toEqual({
+      params: {},
+      removedDetails: { value: 'out of range (0-2)' },
     })
+  })
 
-    it('removes int parameter below minimum', () => {
-      const rules: ModelParameterRule[] = [
-        {
-          name: 'max_tokens',
-          type: 'int',
-          min: 1,
-          max: 4096,
-          label: { en_US: 'Max Tokens', zh_Hans: '最大 Token 数' },
-          required: false,
-        },
-      ]
-      const oldParams: FormValue = { max_tokens: 0 }
-      const result = mergeValidCompletionParams(oldParams, rules)
-
-      expect(result.params).toEqual({})
-      expect(result.removedDetails).toEqual({ max_tokens: 'out of range (1-4096)' })
+  it.each(['string', 'text'])('rejects an unavailable %s option', (type) => {
+    expect(
+      mergeValidCompletionParams({ value: 'invalid' }, [createRule({ type, options: ['gpt-4'] })]),
+    ).toEqual({
+      params: {},
+      removedDetails: { value: 'unsupported option' },
     })
+  })
 
-    it('removes int parameter above maximum', () => {
-      const rules: ModelParameterRule[] = [
-        {
-          name: 'max_tokens',
-          type: 'int',
-          min: 1,
-          max: 4096,
-          label: { en_US: 'Max Tokens', zh_Hans: '最大 Token 数' },
-          required: false,
-        },
-      ]
-      const oldParams: FormValue = { max_tokens: 5000 }
-      const result = mergeValidCompletionParams(oldParams, rules)
+  it.each([true, false])('keeps unlisted stop sequences only in advanced mode (%s)', (advanced) => {
+    expect(mergeValidCompletionParams({ stop: ['END'] }, [], advanced)).toEqual(
+      advanced
+        ? { params: { stop: ['END'] }, removedDetails: {} }
+        : { params: {}, removedDetails: { stop: 'unsupported' } },
+    )
+  })
 
-      expect(result.params).toEqual({})
-      expect(result.removedDetails).toEqual({ max_tokens: 'out of range (1-4096)' })
+  it('keeps valid parameters while explaining each discarded parameter', () => {
+    const params: FormValue = {
+      temperature: 0.7,
+      max_tokens: 5000,
+      model: 'gpt-4',
+      unsupported: 'value',
+    }
+    const rules = [
+      createRule({ name: 'temperature', type: 'float', min: 0, max: 2 }),
+      createRule({ name: 'max_tokens', min: 1, max: 4096 }),
+      createRule({ name: 'model', type: 'string', options: ['gpt-4'] }),
+    ]
+    expect(mergeValidCompletionParams(params, rules)).toEqual({
+      params: { temperature: 0.7, model: 'gpt-4' },
+      removedDetails: { max_tokens: 'out of range (1-4096)', unsupported: 'unsupported' },
     })
+  })
 
-    it('removes int parameter with invalid type', () => {
-      const rules: ModelParameterRule[] = [
-        {
-          name: 'max_tokens',
-          type: 'int',
-          min: 1,
-          max: 4096,
-          label: { en_US: 'Max Tokens', zh_Hans: '最大 Token 数' },
-          required: false,
-        },
-      ]
-      const oldParams: FormValue = { max_tokens: 'not a number' as any }
-      const result = mergeValidCompletionParams(oldParams, rules)
-
-      expect(result.params).toEqual({})
-      expect(result.removedDetails).toEqual({ max_tokens: 'invalid type' })
-    })
-
-    it('validates float type parameter', () => {
-      const rules: ModelParameterRule[] = [
-        {
-          name: 'temperature',
-          type: 'float',
-          min: 0,
-          max: 2,
-          label: { en_US: 'Temperature', zh_Hans: '温度' },
-          required: false,
-        },
-      ]
-      const oldParams: FormValue = { temperature: 0.7 }
-      const result = mergeValidCompletionParams(oldParams, rules)
-
-      expect(result.params).toEqual({ temperature: 0.7 })
-      expect(result.removedDetails).toEqual({})
-    })
-
-    it('validates float at boundary values', () => {
-      const rules: ModelParameterRule[] = [
-        {
-          name: 'temperature',
-          type: 'float',
-          min: 0,
-          max: 2,
-          label: { en_US: 'Temperature', zh_Hans: '温度' },
-          required: false,
-        },
-      ]
-
-      const result1 = mergeValidCompletionParams({ temperature: 0 }, rules)
-      expect(result1.params).toEqual({ temperature: 0 })
-
-      const result2 = mergeValidCompletionParams({ temperature: 2 }, rules)
-      expect(result2.params).toEqual({ temperature: 2 })
-    })
-
-    it('validates boolean type parameter', () => {
-      const rules: ModelParameterRule[] = [
-        {
-          name: 'stream',
-          type: 'boolean',
-          label: { en_US: 'Stream', zh_Hans: '流' },
-          required: false,
-        },
-      ]
-      const oldParams: FormValue = { stream: true }
-      const result = mergeValidCompletionParams(oldParams, rules)
-
-      expect(result.params).toEqual({ stream: true })
-      expect(result.removedDetails).toEqual({})
-    })
-
-    it('removes boolean parameter with invalid type', () => {
-      const rules: ModelParameterRule[] = [
-        {
-          name: 'stream',
-          type: 'boolean',
-          label: { en_US: 'Stream', zh_Hans: '流' },
-          required: false,
-        },
-      ]
-      const oldParams: FormValue = { stream: 'yes' as any }
-      const result = mergeValidCompletionParams(oldParams, rules)
-
-      expect(result.params).toEqual({})
-      expect(result.removedDetails).toEqual({ stream: 'invalid type' })
-    })
-
-    it('validates string type parameter', () => {
-      const rules: ModelParameterRule[] = [
-        {
-          name: 'model',
-          type: 'string',
-          label: { en_US: 'Model', zh_Hans: '模型' },
-          required: false,
-        },
-      ]
-      const oldParams: FormValue = { model: 'gpt-4' }
-      const result = mergeValidCompletionParams(oldParams, rules)
-
-      expect(result.params).toEqual({ model: 'gpt-4' })
-      expect(result.removedDetails).toEqual({})
-    })
-
-    it('validates string parameter with options', () => {
-      const rules: ModelParameterRule[] = [
-        {
-          name: 'model',
-          type: 'string',
-          options: ['gpt-3.5-turbo', 'gpt-4'],
-          label: { en_US: 'Model', zh_Hans: '模型' },
-          required: false,
-        },
-      ]
-      const oldParams: FormValue = { model: 'gpt-4' }
-      const result = mergeValidCompletionParams(oldParams, rules)
-
-      expect(result.params).toEqual({ model: 'gpt-4' })
-      expect(result.removedDetails).toEqual({})
-    })
-
-    it('removes string parameter with invalid option', () => {
-      const rules: ModelParameterRule[] = [
-        {
-          name: 'model',
-          type: 'string',
-          options: ['gpt-3.5-turbo', 'gpt-4'],
-          label: { en_US: 'Model', zh_Hans: '模型' },
-          required: false,
-        },
-      ]
-      const oldParams: FormValue = { model: 'invalid-model' }
-      const result = mergeValidCompletionParams(oldParams, rules)
-
-      expect(result.params).toEqual({})
-      expect(result.removedDetails).toEqual({ model: 'unsupported option' })
-    })
-
-    it('validates text type parameter', () => {
-      const rules: ModelParameterRule[] = [
-        {
-          name: 'prompt',
-          type: 'text',
-          label: { en_US: 'Prompt', zh_Hans: '提示' },
-          required: false,
-        },
-      ]
-      const oldParams: FormValue = { prompt: 'Hello world' }
-      const result = mergeValidCompletionParams(oldParams, rules)
-
-      expect(result.params).toEqual({ prompt: 'Hello world' })
-      expect(result.removedDetails).toEqual({})
-    })
-
-    it('removes unsupported parameters', () => {
-      const rules: ModelParameterRule[] = [
-        {
-          name: 'temperature',
-          type: 'float',
-          min: 0,
-          max: 2,
-          label: { en_US: 'Temperature', zh_Hans: '温度' },
-          required: false,
-        },
-      ]
-      const oldParams: FormValue = { temperature: 0.7, unsupported_param: 'value' }
-      const result = mergeValidCompletionParams(oldParams, rules)
-
-      expect(result.params).toEqual({ temperature: 0.7 })
-      expect(result.removedDetails).toEqual({ unsupported_param: 'unsupported' })
-    })
-
-    it('keeps stop parameter in advanced mode even without rule', () => {
-      const rules: ModelParameterRule[] = []
-      const oldParams: FormValue = { stop: ['END'] }
-      const result = mergeValidCompletionParams(oldParams, rules, true)
-
-      expect(result.params).toEqual({ stop: ['END'] })
-      expect(result.removedDetails).toEqual({})
-    })
-
-    it('removes stop parameter in normal mode without rule', () => {
-      const rules: ModelParameterRule[] = []
-      const oldParams: FormValue = { stop: ['END'] }
-      const result = mergeValidCompletionParams(oldParams, rules, false)
-
-      expect(result.params).toEqual({})
-      expect(result.removedDetails).toEqual({ stop: 'unsupported' })
-    })
-
-    it('handles multiple parameters with mixed validity', () => {
-      const rules: ModelParameterRule[] = [
-        {
-          name: 'temperature',
-          type: 'float',
-          min: 0,
-          max: 2,
-          label: { en_US: 'Temperature', zh_Hans: '温度' },
-          required: false,
-        },
-        {
-          name: 'max_tokens',
-          type: 'int',
-          min: 1,
-          max: 4096,
-          label: { en_US: 'Max Tokens', zh_Hans: '最大 Token 数' },
-          required: false,
-        },
-        {
-          name: 'model',
-          type: 'string',
-          options: ['gpt-4'],
-          label: { en_US: 'Model', zh_Hans: '模型' },
-          required: false,
-        },
-      ]
-      const oldParams: FormValue = {
-        temperature: 0.7,
-        max_tokens: 5000,
-        model: 'gpt-4',
-        unsupported: 'value',
-      }
-      const result = mergeValidCompletionParams(oldParams, rules)
-
-      expect(result.params).toEqual({
-        temperature: 0.7,
-        model: 'gpt-4',
-      })
-      expect(result.removedDetails).toEqual({
-        max_tokens: 'out of range (1-4096)',
-        unsupported: 'unsupported',
-      })
-    })
-
-    it('handles parameters without min/max constraints', () => {
-      const rules: ModelParameterRule[] = [
-        { name: 'value', type: 'int', label: { en_US: 'Value', zh_Hans: '值' }, required: false },
-      ]
-      const oldParams: FormValue = { value: 999999 }
-      const result = mergeValidCompletionParams(oldParams, rules)
-
-      expect(result.params).toEqual({ value: 999999 })
-      expect(result.removedDetails).toEqual({})
-    })
-
-    it('removes parameter with unsupported rule type', () => {
-      const rules: ModelParameterRule[] = [
-        {
-          name: 'custom',
-          type: 'unknown_type',
-          label: { en_US: 'Custom', zh_Hans: '自定义' },
-          required: false,
-        },
-      ]
-      const oldParams: FormValue = { custom: 'value' }
-      const result = mergeValidCompletionParams(oldParams, rules)
-
-      expect(result.params).toEqual({})
-      expect(result.removedDetails.custom).toContain('unsupported rule type')
+  it('rejects a parameter with an unsupported rule type', () => {
+    expect(
+      mergeValidCompletionParams({ value: 'custom' }, [createRule({ type: 'unknown_type' })]),
+    ).toEqual({
+      params: {},
+      removedDetails: { value: 'unsupported rule type: unknown_type' },
     })
   })
 })

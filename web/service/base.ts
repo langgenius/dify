@@ -1,4 +1,5 @@
 import type { FetchOptionType } from './fetch'
+import type { RequestGuard } from './request-guard'
 import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
@@ -47,6 +48,7 @@ import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { httpErrorFromXhr, isHttpErrorStatus, isTransientHttpError } from './http-error'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
+import { captureRequestGuard } from './request-guard'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import {
   beginWebAppAuthorizationRecovery,
@@ -56,6 +58,9 @@ import {
 } from './webapp-auth'
 
 const TIME_OUT = 100000
+
+const canRecoverWebAppAuthorization = (guard: RequestGuard | undefined) =>
+  guard?.isActive() !== false
 
 const isWebAppAuthorizationEndpoint = (url: string) =>
   /\/(?:login(?:\/|\?|$)|passport(?:\?|$))/.test(url)
@@ -152,17 +157,51 @@ const reportStreamResponseError = async (
   }
 }
 
+const handleGuardedStreamResponseError = async (
+  response: Response,
+  guard: RequestGuard | undefined,
+  onError: IOnError | undefined,
+  onCompleted: IOnCompleted | undefined,
+) => {
+  if (!guard) return false
+  const data = await response
+    .clone()
+    .json()
+    .catch(() => undefined)
+  if (!guard.handleError(response.status, data, response) && canRecoverWebAppAuthorization(guard))
+    return false
+  const message =
+    typeof data?.message === 'string' ? data.message : 'The request is no longer active.'
+  if (onError) onError(message, typeof data?.code === 'string' ? data.code : undefined)
+  else onCompleted?.(true, message)
+  return true
+}
+
 const handlePublicStreamResponseError = async (
   response: Response,
   onError: IOnError | undefined,
   onNotifyError: IOnError | undefined,
   silent: boolean | undefined,
+  requestGuard: RequestGuard | undefined,
+  onCompleted: IOnCompleted | undefined,
 ) => {
   let data: { code?: string; message?: string; reason?: unknown } | undefined
   try {
     data = (await response.clone().json()) as typeof data
   } catch {}
 
+  if (data && requestGuard?.handleError(response.status, data, response)) {
+    const message = data.message || 'Server Error'
+    if (onError) onError(message, data.code)
+    else onCompleted?.(true, message)
+    return
+  }
+  if (!canRecoverWebAppAuthorization(requestGuard)) {
+    const message = data?.message || 'Server Error'
+    if (onError) onError(message, typeof data?.code === 'string' ? data.code : undefined)
+    else onCompleted?.(true, message)
+    return
+  }
   if (data) {
     if (handleWebAppAuthorizationError(data)) return
     if (data.code === 'web_sso_auth_required' || data.code === 'unauthorized') {
@@ -430,8 +469,10 @@ export const handleStream = (
         }
         buffer += decoder.decode(result.value, { stream: true })
         const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
         try {
           lines.forEach((message) => {
+            if (hasError) return
             if (message.startsWith('data: ')) {
               // check if it starts with data:
               try {
@@ -553,7 +594,6 @@ export const handleStream = (
               }
             }
           })
-          buffer = lines[lines.length - 1]!
         } catch (e) {
           onData('', false, {
             conversationId: undefined,
@@ -596,6 +636,12 @@ export const upload = async (
   url?: string,
   searchParams?: string,
 ): Promise<UploadResponse> => {
+  const requestGuard = captureRequestGuard(
+    options.url || url || '/files/upload',
+    isPublicAPI,
+    options.method || 'POST',
+  )
+  requestGuard?.beforeRequest()
   const address = resolveWebAppAddress()
   const shareCode = address?.code
   const publicApiPrefix = PUBLIC_API_PREFIX
@@ -630,6 +676,15 @@ export const upload = async (
       if (xhr.readyState === 4 && xhr.status !== 0) {
         if (!isHttpErrorStatus(xhr.status)) resolve(xhr.response)
         else {
+          const error = httpErrorFromXhr(xhr)
+          if (requestGuard?.handleError(xhr.status, xhr.response, error)) {
+            reject(error)
+            return
+          }
+          if (isPublicAPI && !canRecoverWebAppAuthorization(requestGuard)) {
+            reject(new DOMException('The upload is no longer active.', 'AbortError'))
+            return
+          }
           if (
             isPublicAPI &&
             (xhr.status === 401 || xhr.status === 403) &&
@@ -637,7 +692,7 @@ export const upload = async (
             xhr.response !== null
           )
             handleWebAppAuthorizationError(xhr.response)
-          reject(httpErrorFromXhr(xhr))
+          reject(error)
         }
       }
     }
@@ -694,6 +749,11 @@ export const ssePost = async (
     onUnhandledEvent,
     silent,
   } = otherOptions
+  const requestGuard = captureRequestGuard(url, isPublicAPI, 'POST')
+  if (requestGuard?.isActive() === false) {
+    onCompleted?.(true, 'The request is no longer active.')
+    return
+  }
   const abortController = new AbortController()
 
   // No need to get token from localStorage, cookies will be sent automatically
@@ -728,11 +788,19 @@ export const ssePost = async (
 
   globalThis
     .fetch(urlWithPrefix, options as RequestInit)
-    .then((res) => {
+    .then(async (res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
+        if (await handleGuardedStreamResponseError(res, requestGuard, onError, onCompleted)) return
         if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
-            void handlePublicStreamResponseError(res, onError, onNotifyError, silent)
+            void handlePublicStreamResponseError(
+              res,
+              onError,
+              onNotifyError,
+              silent,
+              requestGuard,
+              onCompleted,
+            )
           } else {
             refreshAccessTokenOrReLogin(TIME_OUT)
               .then(() => {
@@ -855,6 +923,11 @@ export const sseGet = async (
     onUnhandledEvent,
     silent,
   } = otherOptions
+  const requestGuard = captureRequestGuard(url, isPublicAPI, 'GET')
+  if (requestGuard?.isActive() === false) {
+    onCompleted?.(true, 'The request is no longer active.')
+    return
+  }
   const abortController = new AbortController()
 
   const baseOptions = getBaseOptions()
@@ -883,11 +956,19 @@ export const sseGet = async (
 
   globalThis
     .fetch(urlWithPrefix, options as RequestInit)
-    .then((res) => {
+    .then(async (res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
+        if (await handleGuardedStreamResponseError(res, requestGuard, onError, onCompleted)) return
         if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
-            void handlePublicStreamResponseError(res, onError, onNotifyError, silent)
+            void handlePublicStreamResponseError(
+              res,
+              onError,
+              onNotifyError,
+              silent,
+              requestGuard,
+              onCompleted,
+            )
           } else {
             refreshAccessTokenOrReLogin(TIME_OUT)
               .then(() => {
@@ -1077,13 +1158,26 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
   try {
     const otherOptionsForBaseFetch = otherOptions || {}
     const { isPublicAPI = false, silent } = otherOptionsForBaseFetch
+    const requestGuard = captureRequestGuard(
+      url,
+      isPublicAPI,
+      otherOptions?.request?.method || (options as RequestInit).method,
+    )
     const [err, resp] = await asyncRunSafe<T>(baseFetch(url, options, otherOptionsForBaseFetch))
     if (err === null) {
       const address = resolveWebAppAddress()
-      if (isPublicAPI && address?.kind === 'environment' && !isWebAppAuthorizationEndpoint(url))
+      if (
+        isPublicAPI &&
+        canRecoverWebAppAuthorization(requestGuard) &&
+        address?.kind === 'environment' &&
+        !isWebAppAuthorizationEndpoint(url)
+      )
         completeWebAppAuthorizationRecovery(address)
       return resp
     }
+    if (err instanceof ORPCError && requestGuard?.handleError(err.status, err.data, err))
+      return Promise.reject(err)
+    if (requestGuard?.isActive() === false) return Promise.reject(err)
     if (err instanceof ORPCError && (err.status === 401 || (err.status === 403 && isPublicAPI))) {
       if (!isClient) return Promise.reject(err)
 

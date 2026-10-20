@@ -26,24 +26,12 @@ vi.mock('@/service/share', () => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: {
-      ...actual.consoleQuery,
-      systemFeatures: actual.consoleQuery.systemFeatures,
-      enterprise: {
-        ...actual.consoleQuery.enterprise,
-        webAppAuth: {
-          ...actual.consoleQuery.enterprise.webAppAuth,
-          getWebAppWhitelistSubjects: {
-            queryOptions: ({ input }: { input: { query: { appId?: string } } }) => ({
-              queryKey: ['web-app-whitelist-subjects', input.query.appId],
-              queryFn: () => mockGetWebAppWhitelistSubjects(input),
-            }),
-          },
-        },
-      },
-    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'enterprise.webAppAuth.getWebAppWhitelistSubjects': mockGetWebAppWhitelistSubjects,
+    }),
   }
 })
 
@@ -144,11 +132,16 @@ describe('use-app-access-control', () => {
     it('should call share access check when webapp auth is enabled', async () => {
       mockSystemFeatures.webappAuthEnabled = true
 
-      renderHook(() => useGetUserCanAccessApp({ appId: 'app-1', isInstalledApp: false }), {
-        wrapper: createWrapper(),
-      })
+      vi.mocked(getUserCanAccess).mockResolvedValue({ result: false })
+      const { result } = renderHook(
+        () => useGetUserCanAccessApp({ appId: 'app-1', isInstalledApp: false }),
+        {
+          wrapper: createWrapper(),
+        },
+      )
 
       await waitFor(() => {
+        expect(result.current.data).toEqual({ result: false })
         expect(getUserCanAccess).toHaveBeenCalledWith('app-1', false)
       })
     })

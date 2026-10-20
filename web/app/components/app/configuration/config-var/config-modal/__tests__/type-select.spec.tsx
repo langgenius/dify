@@ -2,10 +2,6 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TypeSelector from '../type-select'
 
-vi.mock('@/app/components/workflow/nodes/_base/components/input-var-type-icon', () => ({
-  default: ({ type }: { type: string }) => <span>{type}</span>,
-}))
-
 describe('TypeSelector', () => {
   it('should select a new variable type when an option is clicked', async () => {
     const onSelect = vi.fn()
@@ -24,8 +20,7 @@ describe('TypeSelector', () => {
     )
 
     await user.click(screen.getByRole('combobox'))
-    const [, numberOption] = await screen.findAllByRole('option')
-    await user.click(numberOption!)
+    await user.click(await screen.findByRole('option', { name: /^Number/ }))
 
     expect(onSelect).toHaveBeenCalledWith({ value: 'number', name: 'Number' })
   })

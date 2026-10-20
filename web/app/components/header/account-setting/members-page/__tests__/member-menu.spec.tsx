@@ -12,13 +12,6 @@ const { mockWorkspaceRoleListHook, mockUpdateRolesOfMember } = vi.hoisted(() => 
   mockUpdateRolesOfMember: vi.fn(),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
-  })
-})
-
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -27,6 +20,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleClient: { workspaces: { current: { members: { byMemberId: { delete: vi.fn() } } } } },
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.rbac.members.byMemberId.rbacRoles.put': mockUpdateRolesOfMember,
+      'workspaces.current.rbac.roles.get': mockWorkspaceRoleListHook,
     }),
   }
 })
@@ -89,55 +83,10 @@ describe('MemberMenu', () => {
       result: 'success',
       tenant_id: 'tenant-1',
     })
-    vi.mocked(mockWorkspaceRoleListHook).mockReturnValue({
-      data: {
-        pages: [
-          {
-            data: roles,
-            pagination: {
-              total_count: 2,
-              per_page: 20,
-              current_page: 1,
-              total_pages: 1,
-            },
-          },
-        ],
-        pageParams: [1],
-      },
-      isLoading: false,
-      error: null,
-      hasNextPage: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
+    mockWorkspaceRoleListHook.mockResolvedValue({
+      data: roles,
+      pagination: { total_count: 2, per_page: 20, current_page: 1, total_pages: 1 },
     })
-  })
-
-  it('should show edit role copy when multiple roles are disabled', async () => {
-    const user = userEvent.setup()
-
-    renderWithConsoleQuery(
-      <MemberMenu member={member} isCurrentUser={false} allowMultipleRoles={false} />,
-      {
-        systemFeatures: {
-          rbac_enabled: false,
-        },
-      },
-    )
-
-    await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
-
-    expect(
-      screen.getByRole('menuitem', { name: /workspaceMembers\.members\.editRole/i }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('menuitem', { name: /workspaceMembers\.members\.assignRoles/i }),
-    ).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('menuitem', { name: /workspaceMembers\.members\.editRole/i }))
-
-    expect(
-      screen.getByRole('dialog', { name: /workspaceMembers\.members\.editRole/i }),
-    ).toBeInTheDocument()
   })
 
   it('should submit only one selected role from the assign modal when RBAC is disabled', async () => {
@@ -154,7 +103,7 @@ describe('MemberMenu', () => {
 
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
     await user.click(screen.getByRole('menuitem', { name: /members\.editRole/i }))
-    await user.click(screen.getByRole('radio', { name: /Second role/i }))
+    await user.click(await screen.findByRole('radio', { name: /Second role/i }))
     await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
 
     expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({

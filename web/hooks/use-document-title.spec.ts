@@ -2,13 +2,18 @@ import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import useDocumentTitle from './use-document-title'
 
 describe('useDocumentTitle', () => {
+  let originalTitle: string
+  beforeEach(() => {
+    originalTitle = document.title
+  })
   afterEach(() => {
-    document.head.querySelectorAll('link').forEach((link) => link.remove())
+    document.title = originalTitle
   })
 
-  it('keeps the title empty while system features are pending', () => {
+  it('preserves route metadata while system features are pending', () => {
+    document.title = 'Route title'
     renderHookWithConsoleQuery(() => useDocumentTitle('Settings'), { systemFeatures: null })
-    expect(document.title).toBe('')
+    expect(document.title).toBe('Route title')
   })
 
   it('uses the default product name', () => {
@@ -42,6 +47,7 @@ describe('useDocumentTitle', () => {
     favicon.rel = 'icon'
     favicon.href = '/favicon.ico'
     document.head.appendChild(favicon)
+    onTestFinished(() => favicon.remove())
 
     renderHookWithConsoleQuery(() => useDocumentTitle('Settings'), {
       systemFeatures: {

@@ -11,6 +11,7 @@ type NuqsOnUrlUpdateSpy = Mock<NuqsOnUrlUpdate>
 
 type NuqsTestOptions = {
   searchParams?: NuqsSearchParams
+  hasMemory?: boolean
   onUrlUpdate?: NuqsOnUrlUpdateSpy
 }
 
@@ -23,10 +24,14 @@ type NuqsWrapperProps = {
 }
 
 export const createNuqsTestWrapper = (options: NuqsTestOptions = {}) => {
-  const { searchParams = '', onUrlUpdate } = options
+  const { searchParams = '', onUrlUpdate, hasMemory = false } = options
   const urlUpdateSpy = onUrlUpdate ?? vi.fn<NuqsOnUrlUpdate>()
   const wrapper = ({ children }: NuqsWrapperProps) => (
-    <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={urlUpdateSpy}>
+    <NuqsTestingAdapter
+      searchParams={searchParams}
+      onUrlUpdate={urlUpdateSpy}
+      hasMemory={hasMemory}
+    >
       {children}
     </NuqsTestingAdapter>
   )

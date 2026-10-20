@@ -6,6 +6,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from elastic_transport import ApiResponseMeta, HttpHeaders, NodeConfig, TransportApiResponse
+from elasticsearch import ApiError, Elasticsearch, NotFoundError
 from pydantic import ValidationError
 
 from core.rag.models.document import Document
@@ -36,17 +38,23 @@ def _build_fake_elasticsearch_modules():
 
     elasticsearch.Elasticsearch = Elasticsearch
     elasticsearch.ConnectionError = ConnectionError
+    elasticsearch.__dict__["NotFoundError"] = NotFoundError
     return {"elasticsearch": elasticsearch}
 
 
 @pytest.fixture
 def elasticsearch_module(monkeypatch: pytest.MonkeyPatch):
-    for name, module in _build_fake_elasticsearch_modules().items():
-        monkeypatch.setitem(sys.modules, name, module)
-
     import dify_vdb_elasticsearch.elasticsearch_vector as module
 
-    return importlib.reload(module)
+    try:
+        with monkeypatch.context() as module_patch:
+            for name, fake_module in _build_fake_elasticsearch_modules().items():
+                module_patch.setitem(sys.modules, name, fake_module)
+            yield importlib.reload(module)
+    finally:
+        importlib.reload(module)
+        if "dify_vdb_elasticsearch.elasticsearch_ja_vector" in sys.modules:
+            importlib.reload(sys.modules["dify_vdb_elasticsearch.elasticsearch_ja_vector"])
 
 
 def _regular_config(module, **overrides):
@@ -226,6 +234,69 @@ def test_crud_methods_and_get_type(elasticsearch_module):
     vector.delete()
     vector._client.indices.delete.assert_called_once_with(index="collection_1")
     assert vector.get_type() == elasticsearch_module.VectorType.ELASTICSEARCH
+
+
+@pytest.mark.parametrize("japanese", [False, True], ids=["elasticsearch", "elasticsearch-ja"])
+@pytest.mark.parametrize(
+    ("status", "body", "missing_index"),
+    [
+        pytest.param(
+            404,
+            {"error": {"type": "index_not_found_exception", "reason": "no such index [collection_1]"}, "status": 404},
+            True,
+            id="missing-index",
+        ),
+        pytest.param(
+            404,
+            {"error": {"type": "resource_not_found_exception", "reason": "resource missing"}, "status": 404},
+            False,
+            id="other-not-found",
+        ),
+        pytest.param(404, "Not Found", False, id="proxy-not-found"),
+        pytest.param(404, "index_not_found_exception", False, id="unstructured-missing-index"),
+        pytest.param(
+            404,
+            {"error": "index_not_found_exception", "status": 404},
+            False,
+            id="string-error-missing-index",
+        ),
+        pytest.param(403, {"error": {"type": "security_exception"}, "status": 403}, False, id="permission-denied"),
+        pytest.param(500, {"error": {"type": "index_not_found_exception"}, "status": 500}, False, id="server-error"),
+    ],
+)
+def test_delete_only_ignores_missing_index(elasticsearch_module, japanese, status, body, missing_index):
+    if japanese:
+        import dify_vdb_elasticsearch.elasticsearch_ja_vector as ja_module
+
+        vector_class = importlib.reload(ja_module).ElasticSearchJaVector
+    else:
+        vector_class = elasticsearch_module.ElasticSearchVector
+    vector = vector_class.__new__(vector_class)
+    vector._collection_name = "collection_1"
+    response = TransportApiResponse(
+        ApiResponseMeta(
+            status=status,
+            http_version="1.1",
+            headers=HttpHeaders({"x-elastic-product": "Elasticsearch"}),
+            duration=0,
+            node=NodeConfig("http", "localhost", 9200),
+        ),
+        body,
+    )
+    with Elasticsearch("http://localhost:9200", max_retries=0) as client:
+        vector._client = client
+        # Keep SDK error parsing real; replace only the HTTP transport boundary.
+        with patch.object(client.transport, "perform_request", return_value=response) as request:
+            if missing_index:
+                vector.delete()
+                vector.delete()
+            else:
+                with pytest.raises(ApiError) as raised:
+                    vector.delete()
+                assert raised.value.status_code == status
+                assert raised.value.body == body
+        assert request.call_count == (2 if missing_index else 1)
+        assert request.call_args.args[:2] == ("DELETE", "/collection_1")
 
 
 def test_search_by_vector_and_full_text(elasticsearch_module):

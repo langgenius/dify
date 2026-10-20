@@ -3,9 +3,9 @@ import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -82,7 +82,7 @@ export const TagManagementModal = ({
       <DialogContent className="w-150">
         <DialogHeader>
           <DialogTitle>{t(($) => $['tag.manageTags'], { ns: 'common' })}</DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody className="flex flex-wrap gap-2">
           <input
@@ -90,6 +90,7 @@ export const TagManagementModal = ({
             className="w-25 shrink-0 appearance-none rounded-lg border border-dashed border-divider-regular bg-transparent px-2 py-1 text-sm/5 text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary focus:border-solid"
             placeholder={t(($) => $['tag.addNew'], { ns: 'common' }) || ''}
             value={name}
+            readOnly={createTagMutation.isPending}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && createNewTag()}
             onBlur={createNewTag}

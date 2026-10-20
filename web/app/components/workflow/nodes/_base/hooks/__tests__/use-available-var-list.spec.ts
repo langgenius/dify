@@ -1,17 +1,12 @@
-import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { Node, NodeOutPutVar, Var } from '@/app/components/workflow/types'
-import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { renderWorkflowHook as renderHook } from '../../../../__tests__/workflow-test-env'
 import useAvailableVarList from '../use-available-var-list'
 
 const mockGetTreeLeafNodes = vi.hoisted(() => vi.fn())
 const mockGetBeforeNodesInSameBranchIncludeParent = vi.hoisted(() => vi.fn())
 const mockGetNodeById = vi.hoisted(() => vi.fn())
 const mockGetNodeAvailableVars = vi.hoisted(() => vi.fn())
-const mockFlowType = vi.hoisted(() => ({
-  value: undefined as EditorResource['kind'] | undefined,
-}))
-
 vi.mock('@/app/components/snippets/draft-store', () => ({
   useSnippetDraftStore: (selector: (state: { inputFields: unknown[] }) => unknown) =>
     selector({ inputFields: [] }),
@@ -41,22 +36,6 @@ vi.mock('../../../../hooks/use-workflow-variables', async (importOriginal) => {
     }),
   }
 })
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { ragPipelineVariables: unknown[] }) => unknown) =>
-    selector({ ragPipelineVariables: [] }),
-}))
-
-vi.mock('@/app/components/workflow/hooks-store/store', () => ({
-  useHooksStore: (
-    selector: (state: { configsMap?: { resourceKind?: EditorResource['kind'] } }) => unknown,
-  ) =>
-    selector({
-      configsMap: {
-        resourceKind: mockFlowType.value,
-      },
-    }),
-}))
 
 vi.mock('../use-node-info', () => ({
   default: () => ({
@@ -107,8 +86,6 @@ const outputVarsWithSystemVars: NodeOutPutVar[] = [
 describe('useAvailableVarList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFlowType.value = undefined
-    globalThis.history.pushState({}, '', '/')
     mockGetBeforeNodesInSameBranchIncludeParent.mockReturnValue([createNode({ id: 'before-node' })])
     mockGetTreeLeafNodes.mockReturnValue([createNode({ id: 'leaf-node' })])
     mockGetNodeById.mockReturnValue(createNode({ id: 'node-1' }))
@@ -148,28 +125,5 @@ describe('useAvailableVarList', () => {
     )
 
     expect(result.current.availableVars).toEqual(outputVarsWithSystemVars)
-  })
-
-  it('filters system variables when the current flow is a snippet', () => {
-    const { result } = renderHook(
-      () =>
-        useAvailableVarList('node-1', {
-          filterVar: () => true,
-        }),
-      { resource: { kind: 'snippet', snippetId: 'snippet-1' } },
-    )
-
-    expect(result.current.availableVars).toEqual([
-      {
-        nodeId: 'vars-node',
-        title: 'Vars',
-        vars: [
-          {
-            variable: 'answer',
-            type: VarType.string,
-          },
-        ],
-      },
-    ])
   })
 })

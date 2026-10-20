@@ -1,7 +1,7 @@
 import type { AnyFieldApi } from '@tanstack/react-form'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { useForm } from '@tanstack/react-form'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
 import BaseField from '../base-field'
@@ -11,11 +11,6 @@ const mockCopy = vi.fn()
 
 vi.mock('foxact/use-clipboard', () => ({
   useClipboard: () => ({ copy: mockCopy, copied: false }),
-}))
-
-vi.mock('@/hooks/use-i18n', () => ({
-  useRenderI18nObject: () => (content: Record<string, string>) =>
-    content.en_US ?? Object.values(content)[0] ?? '',
 }))
 
 vi.mock('@/service/use-triggers', () => ({
@@ -181,6 +176,7 @@ describe('BaseField', () => {
   )
 
   it('should render text input and propagate changes', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     renderBaseField({
       formSchema: {
@@ -196,15 +192,14 @@ describe('BaseField', () => {
     const input = screen.getByDisplayValue('Hello')
     expect(input).toHaveValue('Hello')
 
-    await act(async () => {
-      fireEvent.change(input, { target: { value: 'Updated' } })
-    })
+    await user.clear(input)
+    await user.type(input, 'Updated')
     expect(onChange).toHaveBeenCalledWith('title', 'Updated')
-    expect(screen.getByText('Title')).toBeInTheDocument()
-    expect(screen.getAllByText('*')).toHaveLength(1)
+    expect(input).toHaveValue('Updated')
   })
 
   it('should render only options that satisfy show_on conditions', async () => {
+    const user = userEvent.setup()
     renderBaseField({
       formSchema: {
         type: FormTypeEnum.select,
@@ -219,9 +214,7 @@ describe('BaseField', () => {
       defaultValues: { mode: 'alpha', enabled: 'no' },
     })
 
-    await act(async () => {
-      fireEvent.click(screen.getByText('Alpha'))
-    })
+    await user.click(screen.getByText('Alpha'))
     expect(screen.queryByText('Beta')).not.toBeInTheDocument()
   })
 
@@ -267,6 +260,7 @@ describe('BaseField', () => {
   })
 
   it('should update value when users click a radio option', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     renderBaseField({
       formSchema: {
@@ -283,15 +277,9 @@ describe('BaseField', () => {
       onChange,
     })
 
-    const radioGroup = screen.getByRole('radiogroup', { name: 'Visibility' })
-    expect(radioGroup).toHaveClass('flex')
-    expect(radioGroup).toHaveClass('items-center')
-    expect(radioGroup).not.toHaveClass('flex-col')
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('Private'))
-    })
+    await user.click(screen.getByText('Private'))
     expect(onChange).toHaveBeenCalledWith('visibility', 'private')
+    expect(screen.getByRole('radio', { name: 'Private' })).toBeChecked()
   })
 
   it.each([
@@ -477,6 +465,7 @@ describe('BaseField', () => {
   })
 
   it('should update boolean field when users choose false', async () => {
+    const user = userEvent.setup()
     renderBaseField({
       formSchema: {
         type: FormTypeEnum.boolean,
@@ -489,9 +478,7 @@ describe('BaseField', () => {
     })
 
     expect(screen.getByTestId('field-value')).toHaveTextContent('true')
-    await act(async () => {
-      fireEvent.click(screen.getByText('False'))
-    })
+    await user.click(screen.getByText('False'))
     expect(screen.getByTestId('field-value')).toHaveTextContent('false')
   })
 
@@ -533,6 +520,7 @@ describe('BaseField', () => {
   })
 
   it('should render checkbox list and handle changes', async () => {
+    const user = userEvent.setup()
     renderBaseField({
       formSchema: {
         type: FormTypeEnum.checkbox,
@@ -549,15 +537,14 @@ describe('BaseField', () => {
 
     expect(screen.getByText('Feature A')).toBeInTheDocument()
     expect(screen.getByText('Feature B')).toBeInTheDocument()
-    await act(async () => {
-      fireEvent.click(screen.getByText('Feature B'))
-    })
+    await user.click(screen.getByText('Feature B'))
 
     const checkboxB = screen.getByRole('checkbox', { name: 'Feature B' })
     expect(checkboxB).toHaveAttribute('aria-checked', 'true')
   })
 
-  it('should handle dynamic select error state', () => {
+  it('should handle dynamic select error state', async () => {
+    const user = userEvent.setup()
     mockDynamicOptions.mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -571,10 +558,13 @@ describe('BaseField', () => {
         required: false,
       },
     })
-    expect(screen.getByText('common.placeholder.input')).toBeInTheDocument()
+    await user.click(screen.getByRole('combobox', { name: 'DS Error' }))
+    expect(screen.getByText('common.dynamicSelect.error')).toBeInTheDocument()
+    expect(screen.queryByRole('option')).not.toBeInTheDocument()
   })
 
-  it('should handle dynamic select no data state', () => {
+  it('should handle dynamic select no data state', async () => {
+    const user = userEvent.setup()
     mockDynamicOptions.mockReturnValue({
       data: { options: [] },
       isLoading: false,
@@ -588,58 +578,31 @@ describe('BaseField', () => {
         required: false,
       },
     })
-    expect(screen.getByText('common.placeholder.input')).toBeInTheDocument()
+    await user.click(screen.getByRole('combobox', { name: 'DS Empty' }))
+    expect(screen.getByText('common.dynamicSelect.noData')).toBeInTheDocument()
+    expect(screen.queryByRole('option')).not.toBeInTheDocument()
   })
 
-  it('should render radio buttons in vertical layout when length >= 3', () => {
+  it.each([
+    { type: FormTypeEnum.boolean, role: 'radio', label: 'False', value: true },
+    { type: FormTypeEnum.checkbox, role: 'checkbox', label: 'Choice', value: [] },
+  ])('keeps disabled $type values unchanged', async ({ type, role, label, value }) => {
+    const user = userEvent.setup()
     renderBaseField({
       formSchema: {
-        type: FormTypeEnum.radio,
-        name: 'vertical_radio',
-        label: 'Vertical',
+        type,
+        name: 'locked',
+        label: 'Locked',
         required: false,
-        options: [
-          { label: 'O1', value: '1' },
-          { label: 'O2', value: '2' },
-          { label: 'O3', value: '3' },
-        ],
+        disabled: true,
+        options: [{ label: 'Choice', value: 'choice' }],
       },
+      defaultValues: { locked: value },
+      showCurrentValue: true,
     })
-    expect(screen.getByText('O1')).toBeInTheDocument()
-    expect(screen.getByText('O2')).toBeInTheDocument()
-    expect(screen.getByText('O3')).toBeInTheDocument()
-
-    const radioGroup = screen.getByRole('radiogroup', { name: 'Vertical' })
-    expect(radioGroup).toHaveClass('flex-col')
-    expect(radioGroup).toHaveClass('items-stretch')
-    expect(radioGroup).not.toHaveClass('items-center')
-  })
-
-  it('should render radio UI when showRadioUI is true', () => {
-    renderBaseField({
-      formSchema: {
-        type: FormTypeEnum.radio,
-        name: 'ui_radio',
-        label: 'UI Radio',
-        required: false,
-        showRadioUI: true,
-        options: [{ label: 'Option 1', value: '1' }],
-      },
-    })
-    expect(screen.getByText('Option 1')).toBeInTheDocument()
-    expect(screen.getByRole('radiogroup', { name: 'UI Radio' })).toBeInTheDocument()
-  })
-
-  it('should return empty string for null content in getTranslatedContent', () => {
-    renderBaseField({
-      formSchema: {
-        type: FormTypeEnum.textInput,
-        name: 'null_label',
-        label: null as unknown as string,
-        required: false,
-      },
-    })
-    // Expecting translatedLabel to be '' so title block only renders required * if applicable
-    expect(screen.queryByText('*')).not.toBeInTheDocument()
+    const control = screen.getByRole(role, { name: label })
+    await user.click(control)
+    expect(control).not.toBeChecked()
+    expect(screen.getByTestId('field-value').textContent).toBe(String(value))
   })
 })

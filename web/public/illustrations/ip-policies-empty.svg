@@ -1,0 +1,35 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="48" height="48" fill="#A8A8A8"/>
+<g id="setting">
+<path d="M-1170 -1789C-1170 -1790.1 -1169.1 -1791 -1168 -1791H13439C13440.1 -1791 13441 -1790.1 13441 -1789V1757C13441 1758.1 13440.1 1759 13439 1759H-1168C-1169.1 1759 -1170 1758.1 -1170 1757V-1789Z" fill="#616161"/>
+<path d="M-1168 -1791V-1790H13439V-1791V-1792H-1168V-1791ZM13441 -1789H13440V1757H13441H13442V-1789H13441ZM13439 1759V1758H-1168V1759V1760H13439V1759ZM-1170 1757H-1169V-1789H-1170H-1171V1757H-1170ZM-1168 1759V1758C-1168.55 1758 -1169 1757.55 -1169 1757H-1170H-1171C-1171 1758.66 -1169.66 1760 -1168 1760V1759ZM13441 1757H13440C13440 1757.55 13439.6 1758 13439 1758V1759V1760C13440.7 1760 13442 1758.66 13442 1757H13441ZM13439 -1791V-1790C13439.6 -1790 13440 -1789.55 13440 -1789H13441H13442C13442 -1790.66 13440.7 -1792 13439 -1792V-1791ZM-1168 -1791V-1792C-1169.66 -1792 -1171 -1790.66 -1171 -1789H-1170H-1169C-1169 -1789.55 -1168.55 -1790 -1168 -1790V-1791Z" fill="black" fill-opacity="0.1"/>
+<g id="setting_2" clip-path="url(#clip0_1_47)">
+<rect width="1512" height="982" transform="translate(-844 -208)" fill="#F2F4F7"/>
+<g id="IP Policies">
+<rect width="1512" height="982" transform="translate(-844 -208)" fill="white" fill-opacity="0.8"/>
+<g id="Right">
+<rect width="824" height="982" transform="translate(-388 -208)" fill="white"/>
+<g id="Container">
+<g id="Container_2">
+<g id="Empty State &#194;&#183; No IP Policies">
+<g id="IP Policy &#194;&#183; Shield" clip-path="url(#clip1_1_47)">
+<path id="Vector" d="M36 0H12C5.37258 0 0 5.37258 0 12V36C0 42.6274 5.37258 48 12 48H36C42.6274 48 48 42.6274 48 36V12C48 5.37258 42.6274 0 36 0Z" fill="#F2F4F7"/>
+<path id="Vector_2" d="M24 11L34 15V23C34 30 29 34 24 37C19 34 14 30 14 23V15L24 11Z" stroke="#667085" stroke-width="1.8" stroke-linejoin="round"/>
+<path id="Vector_3" d="M24 19V27M20 23H28" stroke="#667085" stroke-width="1.8" stroke-linecap="round"/>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_1_47">
+<rect width="1512" height="982" fill="white" transform="translate(-844 -208)"/>
+</clipPath>
+<clipPath id="clip1_1_47">
+<rect width="48" height="48" fill="white"/>
+</clipPath>
+</defs>
+</svg>

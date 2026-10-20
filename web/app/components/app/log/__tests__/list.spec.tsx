@@ -1,260 +1,72 @@
-import type { MessageDetailResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { ReactNode } from 'react'
-import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import type {
+  ConversationDetail,
+  ConversationMessageDetail,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { ComponentProps } from 'react'
+import type { WorkflowRunDetailResponse } from '@/models/log'
+import type { consoleClient } from '@/service/console'
+import {
+  zConversationDetail,
+  zConversationMessageDetail,
+} from '@dify/contracts/api/console/apps/zod.gen'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { createAccountProfileQueryClient } from '@/test/console/account-profile'
-import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { render } from '@/test/console/render'
+import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import ConversationList from '../list'
 
-const mockFetchChatMessages = vi.fn()
-const mockUpdateLogMessageFeedbacks = vi.fn()
-const mockFeedbackResult = vi.fn()
-const mockUpdateLogMessageAnnotations = vi.fn()
-const mockOnRefresh = vi.fn()
-const mockCompletionRefetch = vi.fn()
-const mockDelAnnotation = vi.fn()
-
-let mockChatConversationDetail: Record<string, unknown> | undefined
-let mockCompletionConversationDetail: Record<string, unknown> | undefined
-vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({
-    formatTime: (timestamp: number) => `formatted-${timestamp}`,
-  }),
+const api = vi.hoisted(() => ({
+  messages: vi.fn<typeof consoleClient.apps.byAppId.chatMessages.get>(),
+  feedback: vi.fn<typeof consoleClient.apps.byAppId.feedbacks.post>(),
+  addAnnotation: vi.fn<typeof consoleClient.apps.byAppId.annotations.post>(),
+  editAnnotation: vi.fn<typeof consoleClient.apps.byAppId.annotations.byAnnotationId.post>(),
+  removeAnnotation: vi.fn<typeof consoleClient.apps.byAppId.annotations.byAnnotationId.delete>(),
+  chatDetail: vi.fn<typeof consoleClient.apps.byAppId.chatConversations.byConversationId.get>(),
+  completionDetail:
+    vi.fn<typeof consoleClient.apps.byAppId.completionConversations.byConversationId.get>(),
+  agentLog: vi.fn<typeof consoleClient.apps.byAppId.agent.logs.get>(),
+  run: vi.fn<typeof import('@/service/log').fetchRunDetail>(),
+  tracing: vi.fn<typeof import('@/service/log').fetchTracingList>(),
 }))
 
-vi.mock('@/hooks/use-breakpoints', () => ({
-  __esModule: true,
-  default: () => 'desktop',
-  MediaType: {
-    mobile: 'mobile',
-  },
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+  usePathname: () => '/app/app-1/logs',
 }))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+vi.mock('@/service/log', () => ({ fetchRunDetail: api.run, fetchTracingList: api.tracing }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
-    useQuery: (options: Parameters<typeof actual.useQuery>[0]) => {
-      const [path] = options.queryKey as [string[]]
-      if (Array.isArray(path) && path.includes('byConversationId')) {
-        if (path.includes('chatConversations')) return { data: mockChatConversationDetail }
-        return { data: mockCompletionConversationDetail, refetch: mockCompletionRefetch }
-      }
-      return actual.useQuery(options)
-    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.chatMessages.get': (input) => api.messages(input),
+      'apps.byAppId.chatConversations.byConversationId.get': (input) => api.chatDetail(input),
+      'apps.byAppId.completionConversations.byConversationId.get': (input) =>
+        api.completionDetail(input),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.chatMessages.get': (input) => api.messages(input),
+      'apps.byAppId.feedbacks.post': (input) => api.feedback(input),
+      'apps.byAppId.annotations.post': (input) => api.addAnnotation(input),
+      'apps.byAppId.annotations.byAnnotationId.post': (input) => api.editAnnotation(input),
+      'apps.byAppId.annotations.byAnnotationId.delete': (input) => api.removeAnnotation(input),
+      'apps.byAppId.agent.logs.get': (input) => api.agentLog(input),
+    }),
   }
 })
-
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: {
-    apps: {
-      byAppId: {
-        chatMessages: { get: (...args: unknown[]) => mockFetchChatMessages(...args) },
-        feedbacks: { post: (...args: unknown[]) => mockUpdateLogMessageFeedbacks(...args) },
-        annotations: {
-          post: (...args: unknown[]) => mockUpdateLogMessageAnnotations(...args),
-          byAnnotationId: { delete: (...args: unknown[]) => mockDelAnnotation(...args) },
-        },
-      },
-    },
-  },
-}))
-
-vi.mock('@/app/components/base/loading-placeholder', () => ({
-  LoadingPlaceholder: () => <div>loading</div>,
-}))
-
-vi.mock('@/app/components/app/log/model-info', () => ({
-  default: ({ model }: { model: { name: string } }) => (
-    <div data-testid="model-info">{model.name}</div>
-  ),
-}))
-
-vi.mock('@/app/components/app/log/var-panel', () => ({
-  default: ({ varList }: { varList: Array<{ label: string; value: string }> }) => (
-    <div data-testid="var-panel">
-      {varList.map((item) => `${item.label}:${item.value}`).join(',')}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/copy-icon', () => ({
-  default: ({ content }: { content: string }) => <div data-testid="copy-icon">{content}</div>,
-}))
-
-vi.mock('@/app/components/app/text-generate/item', () => ({
-  default: ({
-    content,
-    onOpenLog,
-    onFeedback,
-  }: {
-    content: string
-    onOpenLog?: (item: IChatItem) => void
-    onFeedback: (value: { rating: string; content?: string }) => void
-  }) => (
-    <div data-testid="text-generation" data-log-enabled={String(!!onOpenLog)}>
-      <div>{content}</div>
-      <button onClick={() => onFeedback({ rating: 'like', content: 'great' })}>
-        completion-feedback
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/chat/chat', () => ({
-  default: ({
-    chatList,
-    onFeedback,
-    onAnnotationAdded,
-    onAnnotationEdited,
-    onAnnotationRemoved,
-    switchSibling,
-    onOpenLog,
-  }: {
-    chatList: Array<{ id: string }>
-    onFeedback: (mid: string, value: { rating: string; content?: string }) => Promise<void>
-    onAnnotationAdded: (
-      annotationId: string,
-      authorName: string,
-      query: string,
-      answer: string,
-      index: number,
-    ) => void
-    onAnnotationEdited: (query: string, answer: string, index: number) => void
-    onAnnotationRemoved: (index: number) => Promise<boolean>
-    switchSibling: (siblingMessageId: string) => void
-    onOpenLog?: (item: IChatItem) => void
-  }) => (
-    <div data-testid="chat-panel" data-log-enabled={String(!!onOpenLog)}>
-      <div>{chatList.length}</div>
-      {onOpenLog && (
-        <>
-          <button
-            onClick={() =>
-              onOpenLog({
-                id: 'log-1',
-                content: 'answer',
-                isAnswer: true,
-                workflow_run_id: 'run-1',
-                agent_thoughts: [
-                  {
-                    id: 'thought',
-                    tool: '',
-                    thought: 'thinking',
-                    tool_input: '',
-                    message_id: 'log',
-                    conversation_id: 'conversation-1',
-                    observation: '',
-                    position: 0,
-                  },
-                ],
-                log: [],
-              })
-            }
-          >
-            open-workflow-log
-          </button>
-          <button
-            onClick={() =>
-              onOpenLog({
-                id: 'log-2',
-                content: 'answer',
-                isAnswer: true,
-                agent_thoughts: [
-                  {
-                    id: 'thought',
-                    tool: '',
-                    thought: 'thinking',
-                    tool_input: '',
-                    message_id: 'log',
-                    conversation_id: 'conversation-1',
-                    observation: '',
-                    position: 0,
-                  },
-                ],
-                log: [],
-              })
-            }
-          >
-            open-agent-log
-          </button>
-          <button
-            onClick={() =>
-              onOpenLog({
-                id: 'log-3',
-                content: 'answer',
-                isAnswer: true,
-                log: [{ role: 'user', text: 'prompt' }],
-              })
-            }
-          >
-            open-prompt-log
-          </button>
-          <button onClick={() => onOpenLog({ id: 'log-4', content: 'answer', isAnswer: true })}>
-            open-no-log
-          </button>
-        </>
-      )}
-      <button
-        onClick={() => {
-          void onFeedback('message-1', { rating: 'like', content: 'nice' }).then(
-            () => mockFeedbackResult(true),
-            () => mockFeedbackResult(false),
-          )
-        }}
-      >
-        chat-feedback
-      </button>
-      <button
-        onClick={() =>
-          onAnnotationAdded('annotation-2', 'Admin', 'Edited question', 'Edited answer', 1)
-        }
-      >
-        chat-add-annotation
-      </button>
-      <button onClick={() => onAnnotationEdited('Updated question', 'Updated answer', 1)}>
-        chat-edit-annotation
-      </button>
-      <button onClick={() => void onAnnotationRemoved(1)}>chat-remove-annotation</button>
-      <button onClick={() => switchSibling('message-2')}>chat-switch-sibling</button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/agent-log-modal', () => ({
-  default: ({ floating, onCancel }: { floating?: boolean; onCancel: () => void }) => (
-    <div data-testid="agent-log-modal" data-floating={String(floating)}>
-      <button onClick={onCancel}>close-agent-log-modal</button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/message-log-modal', () => ({
-  default: ({ onCancel }: { onCancel: () => void }) => (
-    <div data-testid="message-log-modal">
-      <button onClick={onCancel}>close-message-log-modal</button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/prompt-log-modal', () => ({
-  default: ({ onCancel }: { onCancel: () => void }) => (
-    <div data-testid="prompt-log-modal">
-      <button onClick={onCancel}>close-prompt-log-modal</button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/context', () => ({
-  WorkflowContextProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-}))
-
 const createLogs = () => ({
   has_more: false,
   limit: 20,
@@ -313,6 +125,10 @@ const createCompletionLogs = () => ({
   ],
 })
 
+type MessageDetailResponse = Awaited<
+  ReturnType<typeof consoleClient.apps.byAppId.chatMessages.get>
+>['data'][number]
+
 const createChatMessage = (
   id: string,
   overrides: Partial<MessageDetailResponse> = {},
@@ -339,541 +155,576 @@ const createChatMessage = (
   ...overrides,
 })
 
-const renderConversationList = ({
+const createChatDetail = (overrides: Partial<ConversationDetail> = {}): ConversationDetail =>
+  zConversationDetail.parse({
+    id: 'conversation-1',
+    from_source: 'console',
+    status: 'normal',
+    annotated: false,
+    created_at: 1710000000,
+    message_count: 1,
+    model_config: {
+      model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
+      user_input_form: [{ 'text-input': { variable: 'query', label: 'Topic' } }],
+    },
+    ...overrides,
+  })
+const createCompletionDetail = (answer = 'Generated output'): ConversationMessageDetail =>
+  zConversationMessageDetail.parse({
+    id: 'conversation-1',
+    from_source: 'console',
+    status: 'normal',
+    created_at: 1710000000,
+    model_config: createChatDetail().model_config,
+    message: createChatMessage('message-1', { answer, inputs: { query: 'Completion topic' } }),
+  })
+const run: WorkflowRunDetailResponse = {
+  id: 'run-1',
+  version: '1',
+  graph: { nodes: [], edges: [] },
+  inputs: '{}',
+  inputs_truncated: false,
+  outputs: '{}',
+  outputs_truncated: false,
+  status: 'succeeded',
+  elapsed_time: 1,
+  total_tokens: 15,
+  total_steps: 1,
+  created_by_role: 'account',
+  created_by_account: { id: 'account-1', name: 'Admin', email: 'admin@example.com' },
+  created_at: 1710000000,
+  finished_at: 1710000001,
+}
+const onRefresh = vi.fn()
+function createClient() {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [createCatalogModelFixture({ model: 'gpt-4o', label: { en_US: 'GPT-4o' } })],
+    }),
+  ])
+  return queryClient
+}
+function renderConversationList({
   appDetail = createAppDetailFixture({ id: 'app-1', mode: 'chat' }),
   logs = createLogs(),
   searchParams = '?page=2',
 }: {
-  appDetail?: React.ComponentProps<typeof ConversationList>['appDetail']
-  logs?: React.ComponentProps<typeof ConversationList>['logs']
+  appDetail?: ComponentProps<typeof ConversationList>['appDetail']
+  logs?: ComponentProps<typeof ConversationList>['logs']
   searchParams?: string
-} = {}) => {
-  const queryClient = createAccountProfileQueryClient({ timezone: 'Asia/Shanghai' })
-  return renderWithNuqs(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <ConversationList appDetail={appDetail} logs={logs} onRefresh={mockOnRefresh} />
-    </QueryClientTestProvider>,
-    { searchParams },
+} = {}) {
+  const { wrapper: UrlState, onUrlUpdate } = createNuqsTestWrapper({ searchParams })
+  const rendered = renderWithConsoleQuery(
+    <UrlState>
+      <ConversationList appDetail={appDetail} logs={logs} onRefresh={onRefresh} />
+      <AppToastHost />
+    </UrlState>,
+    { queryClient: createClient() },
   )
+  return { ...rendered, onUrlUpdate }
 }
 
-describe('ConversationList', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockChatConversationDetail = undefined
-    mockCompletionConversationDetail = undefined
-    mockDelAnnotation.mockResolvedValue(undefined)
-    mockFetchChatMessages.mockResolvedValue({
-      data: [],
-      has_more: false,
-    })
+beforeEach(() => {
+  for (const mock of Object.values(api)) mock.mockReset()
+  onRefresh.mockClear()
+  api.chatDetail.mockImplementation(async ({ params }) =>
+    createChatDetail({ id: params.conversation_id }),
+  )
+  api.completionDetail.mockResolvedValue(createCompletionDetail())
+  api.messages.mockResolvedValue({
+    data: [createChatMessage('message-1')],
+    has_more: false,
+    limit: 10,
   })
+  api.feedback.mockResolvedValue({ result: 'success' })
+  api.addAnnotation.mockResolvedValue({ id: 'annotation-1' })
+  api.editAnnotation.mockImplementation(async ({ body }) => ({ id: 'annotation-1', ...body }))
+  api.removeAnnotation.mockResolvedValue({ result: 'success' })
+  api.run.mockResolvedValue(run)
+  api.tracing.mockResolvedValue({ data: [] })
+  api.agentLog.mockResolvedValue({
+    iterations: [],
+    meta: {
+      status: 'succeeded',
+      executor: 'Admin',
+      start_time: '2024-03-09',
+      elapsed_time: 1,
+      total_tokens: 15,
+      agent_mode: 'function_call',
+      iterations: 0,
+    },
+  })
+})
+afterEach(() => toast.dismiss())
 
-  it('should render chat rows and push the conversation id into the url when a row is clicked', async () => {
+it('opens a conversation with push navigation while preserving the page', async () => {
+  const user = userEvent.setup()
+  const { onUrlUpdate } = renderConversationList()
+  await user.click(screen.getByText('hello world'))
+  expect(await screen.findByRole('dialog', { name: 'appLog.detail.conversationId' })).toBeVisible()
+  const update = onUrlUpdate.mock.calls.at(-1)![0]
+  expect(update.searchParams.get('page')).toBe('2')
+  expect(update.searchParams.get('conversation_id')).toBe('conversation-1')
+  expect(update.options.history).toBe('push')
+})
+
+it('exposes the unread marker only for unread conversations', () => {
+  const unreadLog = createLogs().data[0]!
+  renderConversationList({
+    logs: {
+      ...createLogs(),
+      total: 2,
+      data: [
+        unreadLog,
+        { ...unreadLog, id: 'conversation-2', name: 'read conversation', read_at: 1710000100 },
+      ],
+    },
+  })
+  expect(
+    within(screen.getByRole('row', { name: /hello world/ })).getByText('appLog.table.unread'),
+  ).toBeVisible()
+  expect(
+    within(screen.getByRole('row', { name: /read conversation/ })).queryByText(
+      'appLog.table.unread',
+    ),
+  ).not.toBeInTheDocument()
+})
+
+it.each(['keyboard', 'row'])(
+  'restores focus to the entry and refreshes after closing a conversation opened by %s',
+  async (opening) => {
+    const user = userEvent.setup()
     const { onUrlUpdate } = renderConversationList()
-
-    expect(screen.getByText('hello world')).toBeInTheDocument()
-    expect(screen.getAllByText('formatted-1710000000')).toHaveLength(2)
-
-    fireEvent.click(screen.getByText('hello world'))
-
-    await waitFor(() => {
-      expect(onUrlUpdate).toHaveBeenCalled()
-      expect(screen.getByRole('dialog', { name: 'appLog.runDetail.title' })).toBeInTheDocument()
-    })
-
+    const trigger = within(screen.getByRole('row', { name: /hello world/ })).getByRole('button')
+    if (opening === 'keyboard') {
+      trigger.focus()
+      await user.keyboard('{Enter}')
+    } else await user.click(screen.getByText('hello world'))
+    await screen.findByText('Assistant reply message-1')
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'appLog.detail.conversationId' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(trigger).toHaveFocus()
+    expect(onRefresh).toHaveBeenCalledTimes(1)
     const update = onUrlUpdate.mock.calls.at(-1)![0]
-    expect(update.searchParams.get('page')).toBe('2')
-    expect(update.searchParams.get('conversation_id')).toBe('conversation-1')
-    expect(update.options.history).toBe('push')
-  })
-
-  it('exposes the unread marker only for unread conversations', () => {
-    const unreadLog = createLogs().data[0]!
-    renderConversationList({
-      logs: {
-        has_more: false,
-        limit: 20,
-        page: 1,
-        total: 2,
-        data: [
-          unreadLog,
-          { ...unreadLog, id: 'conversation-2', name: 'read conversation', read_at: 1710000100 },
-        ],
-      },
-    })
-
-    const unreadRow = screen.getByRole('row', { name: /hello world/ })
-    const readRow = screen.getByRole('row', { name: /read conversation/ })
-    expect(within(unreadRow).getByText('appLog.table.unread')).toBeInTheDocument()
-    expect(within(readRow).queryByText('appLog.table.unread')).not.toBeInTheDocument()
-  })
-
-  it.each(['keyboard', 'row'])(
-    'restores focus to the conversation entry after %s opening',
-    async (opening) => {
-      const user = userEvent.setup()
-      const { onUrlUpdate } = renderConversationList()
-      const trigger = screen.getByRole('button', { name: 'formatted-1710000000' })
-      if (opening === 'keyboard') {
-        trigger.focus()
-        await user.keyboard('{Enter}')
-      } else {
-        await user.click(screen.getByText('hello world'))
-      }
-      await screen.findByRole('dialog')
-      await waitFor(() => {
-        expect(onUrlUpdate.mock.calls.at(-1)![0].searchParams.get('conversation_id')).toBe(
-          'conversation-1',
-        )
-      })
-      await user.keyboard('{Escape}')
-      await waitFor(() => {
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-        expect(trigger).toHaveFocus()
-      })
-      expect(mockOnRefresh).toHaveBeenCalledTimes(1)
-      expect(onUrlUpdate.mock.calls.at(-1)![0].searchParams.has('conversation_id')).toBe(false)
-    },
-  )
-
-  it('should close the drawer and refresh', async () => {
-    mockChatConversationDetail = {
-      id: 'conversation-1',
-      created_at: 1710000000,
-      introduction: 'Hello there',
-      model_config: {
-        model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
-        user_input_form: [],
-      },
-      message: {
-        inputs: {},
-      },
-    }
-
-    const { onUrlUpdate } = renderConversationList({
-      searchParams: '?page=2&conversation_id=conversation-1',
-    })
-
-    expect(
-      await screen.findByRole('dialog', { name: 'appLog.detail.conversationId' }),
-    ).toBeInTheDocument()
-    fireEvent.click(await screen.findByRole('button', { name: /(?:^|\.)operation\.close(?=$|:)/ }))
-
-    expect(mockOnRefresh).toHaveBeenCalledTimes(1)
-
-    await waitFor(() => {
-      expect(onUrlUpdate).toHaveBeenCalled()
-    })
-
-    const update = onUrlUpdate.mock.calls.at(-1)![0]
-    expect(update.searchParams.get('page')).toBe('2')
     expect(update.searchParams.has('conversation_id')).toBe(false)
+    expect(update.searchParams.get('page')).toBe('2')
     expect(update.options.history).toBe('replace')
-  })
+  },
+)
 
-  it.each([true, false])(
-    'settles admin feedback with the request outcome (success: %s)',
-    async (succeeded) => {
-      mockFeedbackResult.mockClear()
-      if (!succeeded)
-        mockUpdateLogMessageFeedbacks.mockRejectedValueOnce(new Error('Feedback failed'))
-      mockChatConversationDetail = {
-        id: 'conversation-1',
-        created_at: 1710000000,
-        introduction: 'Hello there',
-        model_config: {
-          model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
-          user_input_form: [
-            {
-              query: {
-                variable: 'query',
-              },
-            },
-          ],
-        },
-        message: {
-          inputs: {
-            query: 'Latest question',
-          },
-        },
-      }
-      mockFetchChatMessages.mockResolvedValue({
-        data: [
-          {
-            id: 'message-1',
-            answer: 'Assistant reply',
-            query: 'Latest question',
-            created_at: 1710000000,
-            inputs: {
-              query: 'Latest question',
-            },
-            feedbacks: [],
-            message: [],
-            message_files: [],
-          },
-        ],
-        has_more: false,
-      })
-
-      renderConversationList({
-        searchParams: '?page=2&conversation_id=conversation-1',
-      })
-
-      await waitFor(() => {
-        expect(mockFetchChatMessages).toHaveBeenCalledWith({
-          params: { app_id: 'app-1' },
-          query: { conversation_id: 'conversation-1', limit: 10 },
-        })
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('chat-panel')).toBeInTheDocument()
-      })
-
-      expect(screen.getByTestId('var-panel')).toHaveTextContent('query:Latest question')
-      expect(screen.getByTestId('model-info')).toHaveTextContent('gpt-4o')
-
-      fireEvent.click(screen.getByText('chat-feedback'))
-
-      await waitFor(() => {
-        expect(mockUpdateLogMessageFeedbacks).toHaveBeenCalledWith({
-          params: { app_id: 'app-1' },
-          body: {
-            message_id: 'message-1',
-            rating: 'like',
-            content: 'nice',
-          },
-        })
-      })
-      await waitFor(() => expect(mockFeedbackResult).toHaveBeenCalledWith(succeeded))
-    },
-  )
-
-  it.each([
-    ['chatbot', 'chat', 'false'],
-    ['agent', 'agent-chat', 'false'],
-    ['chatflow', 'advanced-chat', 'true'],
-  ] as const)(
-    'should expose run details only for %s conversation answers',
-    async (_, mode, expected) => {
-      mockChatConversationDetail = {
-        id: 'conversation-1',
-        created_at: 1710000000,
-        introduction: 'Hello there',
-        model_config: {
-          model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
-          user_input_form: [],
-        },
-        message: {
-          inputs: {},
-        },
-      }
-      mockFetchChatMessages.mockResolvedValue({
-        data: [createChatMessage('message-1')],
-        has_more: false,
-      })
-
-      renderConversationList({
-        appDetail: createAppDetailFixture({ id: 'app-1', mode }),
-        searchParams: '?conversation_id=conversation-1',
-      })
-
-      expect(await screen.findByTestId('chat-panel')).toHaveAttribute('data-log-enabled', expected)
-    },
-  )
-
-  it('should render completion details and refetch after feedback updates', async () => {
-    mockCompletionConversationDetail = {
-      id: 'conversation-1',
-      created_at: 1710000000,
-      model_config: {
-        model: { provider: 'openai', name: 'gpt-4o-mini', mode: 'chat', completion_params: {} },
-        user_input_form: [
-          {
-            query: {
-              variable: 'query',
-            },
-          },
-        ],
-      },
-      message: {
-        id: 'message-1',
-        answer: 'Generated output',
-        inputs: {
-          query: 'Question',
-        },
-        feedbacks: [],
-        message_files: [{ url: 'https://example.com/file.txt' }],
-      },
-    }
-
-    renderConversationList({
-      appDetail: createAppDetailFixture({ id: 'app-1', mode: 'completion' as const }),
-      logs: createCompletionLogs(),
-      searchParams: '?page=2&conversation_id=conversation-1',
+it.each([true, false])(
+  'settles admin feedback with the request outcome (success: %s)',
+  async (succeeded) => {
+    const user = userEvent.setup()
+    if (!succeeded) api.feedback.mockRejectedValueOnce(new Error('Feedback failed'))
+    renderConversationList({ searchParams: '?conversation_id=conversation-1' })
+    const drawer = await screen.findByRole('dialog', { name: 'appLog.detail.conversationId' })
+    expect(await within(drawer).findByText('GPT-4o')).toBeVisible()
+    expect(await within(drawer).findByText('query')).toBeVisible()
+    const like = await within(drawer).findByRole('button', {
+      name: 'appLog.table.header.adminRate: appLog.detail.operation.like',
     })
-
-    await waitFor(() => {
-      expect(screen.getByTestId('text-generation')).toBeInTheDocument()
-    })
-
-    expect(screen.getByTestId('var-panel')).toHaveTextContent('query:Question')
-    expect(screen.getByTestId('text-generation')).toHaveAttribute('data-log-enabled', 'false')
-    expect(screen.queryByTestId('prompt-log-modal')).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('completion-feedback'))
-
-    await waitFor(() => {
-      expect(mockUpdateLogMessageFeedbacks).toHaveBeenCalledWith({
+    await user.click(like)
+    await waitFor(() =>
+      expect(api.feedback).toHaveBeenCalledExactlyOnceWith({
         params: { app_id: 'app-1' },
-        body: {
-          message_id: 'message-1',
-          rating: 'like',
-          content: 'great',
-        },
-      })
-      expect(mockCompletionRefetch).toHaveBeenCalled()
-    })
-  })
+        body: { message_id: 'message-1', rating: 'like', content: undefined },
+      }),
+    )
+    await waitFor(() =>
+      expect(
+        within(drawer).getByRole('button', {
+          name: 'appLog.table.header.adminRate: appLog.detail.operation.like',
+        }),
+      ).toHaveAttribute('aria-pressed', String(succeeded)),
+    )
+  },
+)
 
-  it('should render chatflow status cells and feedback counters for advanced chat logs', () => {
+it.each(['chat', 'agent-chat', 'advanced-chat'] as const)(
+  'exposes run details only for chatflow answers (%s)',
+  async (mode) => {
     renderConversationList({
-      appDetail: createAppDetailFixture({ id: 'app-1', mode: 'advanced-chat' as const }),
-      logs: {
-        has_more: false,
-        limit: 20,
-        page: 1,
-        total: 4,
-        data: [
-          {
-            from_source: 'api',
-            status: 'normal',
-            summary: '',
-            annotated: false,
-            id: 'conversation-pending',
-            name: 'Pending row',
-            from_account_name: 'user-a',
-            read_at: 1710000001,
-            message_count: 3,
-            status_count: { paused: 1, success: 0, failed: 0, partial_success: 0 },
-            user_feedback_stats: { like: 2, dislike: 0 },
-            admin_feedback_stats: { like: 0, dislike: 1 },
-            updated_at: 1710000000,
-            created_at: 1710000000,
-          },
-          {
-            from_source: 'api',
-            status: 'normal',
-            summary: '',
-            annotated: false,
-            id: 'conversation-success',
-            name: 'Success row',
-            from_account_name: 'user-b',
-            read_at: 1710000001,
-            message_count: 4,
-            status_count: { paused: 0, success: 4, failed: 0, partial_success: 0 },
-            user_feedback_stats: { like: 0, dislike: 0 },
-            admin_feedback_stats: { like: 0, dislike: 0 },
-            updated_at: 1710000000,
-            created_at: 1710000000,
-          },
-          {
-            from_source: 'api',
-            status: 'normal',
-            summary: '',
-            annotated: false,
-            id: 'conversation-partial',
-            name: 'Partial row',
-            from_account_name: 'user-c',
-            read_at: 1710000001,
-            message_count: 5,
-            status_count: { paused: 0, success: 3, failed: 0, partial_success: 1 },
-            user_feedback_stats: { like: 0, dislike: 0 },
-            admin_feedback_stats: { like: 0, dislike: 0 },
-            updated_at: 1710000000,
-            created_at: 1710000000,
-          },
-          {
-            from_source: 'api',
-            status: 'normal',
-            summary: '',
-            annotated: false,
-            id: 'conversation-failure',
-            name: 'Failure row',
-            from_account_name: 'user-d',
-            read_at: 1710000001,
-            message_count: 1,
-            status_count: { paused: 0, success: 0, failed: 2, partial_success: 0 },
-            user_feedback_stats: { like: 0, dislike: 0 },
-            admin_feedback_stats: { like: 0, dislike: 0 },
-            updated_at: 1710000000,
-            created_at: 1710000000,
-          },
-        ],
-      },
-    })
-
-    expect(screen.getByText('Pending')).toBeInTheDocument()
-    expect(screen.getByText('Success')).toBeInTheDocument()
-    expect(screen.getByText('Partial Success')).toBeInTheDocument()
-    expect(screen.getByText('2 Failures')).toBeInTheDocument()
-    expect(screen.getByText('2')).toBeInTheDocument()
-    expect(screen.getAllByText('1').length).toBeGreaterThan(0)
-  })
-
-  it('should support annotation changes and paginated scroll loading in the detail drawer', async () => {
-    mockChatConversationDetail = {
-      id: 'conversation-1',
-      created_at: 1710000000,
-      introduction: 'Hello there',
-      model_config: {
-        model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
-        user_input_form: [
-          {
-            query: {
-              variable: 'query',
-            },
-          },
-        ],
-      },
-      message: {
-        inputs: {
-          query: 'Latest question',
-        },
-      },
-    }
-    mockFetchChatMessages
-      .mockResolvedValueOnce({
-        data: [
-          createChatMessage('message-1', {
-            annotation: {
-              id: 'annotation-1',
-              content: 'Annotated answer',
-              account: { id: 'account-1', name: 'Admin', email: 'admin@example.com' },
-            },
-          }),
-          createChatMessage('message-2', { parent_message_id: 'message-1' }),
-          createChatMessage('message-3', { parent_message_id: 'message-2' }),
-          createChatMessage('message-4', { parent_message_id: 'message-3' }),
-        ],
-        has_more: true,
-      })
-      .mockResolvedValueOnce({
-        data: [createChatMessage('message-5')],
-        has_more: false,
-      })
-
-    renderConversationList({
-      searchParams: '?page=2&conversation_id=conversation-1',
-    })
-
-    await waitFor(() => {
-      expect(screen.getByTestId('chat-panel')).toBeInTheDocument()
-      expect(screen.getByTestId('chat-panel')).toHaveTextContent('8')
-      expect(screen.getByText(/(?:^|\.)detail\.loading\.\.\.(?=$|:)/)).toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getByText('chat-add-annotation'))
-    fireEvent.click(screen.getByText('chat-edit-annotation'))
-    fireEvent.click(screen.getByText('chat-remove-annotation'))
-
-    await waitFor(() => {
-      expect(mockDelAnnotation).toHaveBeenCalledWith({
-        params: { app_id: 'app-1', annotation_id: 'annotation-2' },
-      })
-    })
-
-    const scrollableDiv = document.getElementById('scrollableDiv') as HTMLDivElement
-    Object.defineProperty(scrollableDiv, 'clientHeight', { configurable: true, value: 100 })
-    Object.defineProperty(scrollableDiv, 'scrollHeight', { configurable: true, value: 500 })
-    Object.defineProperty(scrollableDiv, 'scrollTop', { configurable: true, value: -400 })
-
-    await act(async () => {
-      fireEvent.scroll(scrollableDiv)
-    })
-
-    await waitFor(() => {
-      expect(mockFetchChatMessages).toHaveBeenCalledTimes(2)
-    })
-  })
-
-  it.each(['workflow', 'agent', 'prompt'] as const)(
-    'should open and close the selected %s log within the conversation',
-    async (kind) => {
-      mockChatConversationDetail = {
-        id: 'conversation-1',
-        model_config: { user_input_form: [] },
-        message: { inputs: {} },
-      }
-      renderConversationList({
-        appDetail: createAppDetailFixture({ id: 'app-1', mode: 'advanced-chat' as const }),
-        searchParams: '?conversation_id=conversation-1',
-      })
-      const user = userEvent.setup()
-      await user.click(await screen.findByRole('button', { name: `open-${kind}-log` }))
-      const modalKind = kind === 'workflow' ? 'message' : kind
-      expect(screen.getByTestId(`${modalKind}-log-modal`)).toBeInTheDocument()
-      for (const other of ['message', 'agent', 'prompt'].filter((value) => value !== modalKind))
-        expect(screen.queryByTestId(`${other}-log-modal`)).not.toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: `close-${modalKind}-log-modal` }))
-      expect(screen.queryByTestId(`${modalKind}-log-modal`)).not.toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'open-no-log' }))
-      expect(screen.queryByTestId('prompt-log-modal')).not.toBeInTheDocument()
-    },
-  )
-
-  it('should discard the selected log when the conversation drawer closes and reopens', async () => {
-    mockChatConversationDetail = {
-      id: 'conversation-1',
-      model_config: { user_input_form: [] },
-      message: { inputs: {} },
-    }
-    renderConversationList({
-      appDetail: createAppDetailFixture({ id: 'app-1', mode: 'advanced-chat' as const }),
+      appDetail: createAppDetailFixture({ id: 'app-1', mode }),
       searchParams: '?conversation_id=conversation-1',
     })
-    const user = userEvent.setup()
-    await user.click(await screen.findByRole('button', { name: 'open-workflow-log' }))
-    expect(screen.getByTestId('message-log-modal')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.close(?=$|:)/ }))
-    await waitFor(() => expect(screen.queryByTestId('message-log-modal')).not.toBeInTheDocument())
-    await user.click(screen.getByText('hello world'))
-    await screen.findByTestId('chat-panel')
-    expect(screen.queryByTestId('message-log-modal')).not.toBeInTheDocument()
+    await screen.findByText('Assistant reply message-1')
+    if (mode === 'advanced-chat')
+      expect(screen.getByRole('button', { name: 'common.operation.log' })).toBeVisible()
+    else
+      expect(screen.queryByRole('button', { name: 'common.operation.log' })).not.toBeInTheDocument()
+  },
+)
+
+it('refetches completion output after feedback', async () => {
+  const user = userEvent.setup()
+  renderConversationList({
+    appDetail: createAppDetailFixture({ id: 'app-1', mode: 'completion' }),
+    logs: createCompletionLogs(),
+    searchParams: '?conversation_id=conversation-1',
   })
-  it('should clear a selected log when URL navigation changes or closes the conversation', async () => {
-    const user = userEvent.setup()
-    const queryClient = createAccountProfileQueryClient({ timezone: 'Asia/Shanghai' })
-    const appDetail = createAppDetailFixture({ mode: 'advanced-chat' as const })
-    const view = (searchParams: string) => (
-      <NuqsTestingAdapter searchParams={searchParams} hasMemory>
-        <QueryClientTestProvider queryClient={queryClient}>
-          <ConversationList
-            appDetail={appDetail}
-            logs={{ data: [], has_more: false, limit: 20, page: 1, total: 0 }}
-            onRefresh={mockOnRefresh}
-          />
-        </QueryClientTestProvider>
-      </NuqsTestingAdapter>
-    )
-    mockChatConversationDetail = {
-      id: 'conversation-1',
-      model_config: { user_input_form: [] },
-      message: { inputs: {} },
-    }
-    const { rerender } = render(view('?conversation_id=conversation-1'))
-    await user.click(await screen.findByRole('button', { name: 'open-workflow-log' }))
-    expect(screen.getByTestId('message-log-modal')).toBeInTheDocument()
-    mockChatConversationDetail = { ...mockChatConversationDetail, id: 'conversation-2' }
-    rerender(view('?conversation_id=conversation-2'))
-    await waitFor(() => expect(screen.queryByTestId('message-log-modal')).not.toBeInTheDocument())
-    await user.click(await screen.findByRole('button', { name: 'open-agent-log' }))
-    expect(screen.getByTestId('agent-log-modal')).toBeInTheDocument()
-    rerender(view(''))
-    await waitFor(() => expect(screen.queryByTestId('agent-log-modal')).not.toBeInTheDocument())
-    rerender(view('?conversation_id=conversation-2'))
-    await screen.findByTestId('chat-panel')
-    expect(screen.queryByTestId('agent-log-modal')).not.toBeInTheDocument()
+  const drawer = await screen.findByRole('dialog', { name: 'appLog.detail.time' })
+  expect(await within(drawer).findByText('Generated output')).toBeVisible()
+  expect(within(drawer).getByText('Completion topic')).toBeVisible()
+  expect(
+    within(drawer).queryByRole('button', { name: 'common.operation.log' }),
+  ).not.toBeInTheDocument()
+  api.completionDetail.mockResolvedValue(createCompletionDetail('Updated generated output'))
+  await user.click(within(drawer).getByRole('button', { name: 'appDebug.operation.agree' }))
+  expect(await within(drawer).findByText('Updated generated output')).toBeVisible()
+  expect(api.feedback).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-1' },
+    body: { message_id: 'message-1', rating: 'like', content: undefined },
   })
+  expect(api.completionDetail).toHaveBeenCalledTimes(2)
+})
+
+it('adds, edits and removes an annotation from a conversation answer', async () => {
+  const user = userEvent.setup()
+  renderConversationList({ searchParams: '?conversation_id=conversation-1' })
+  await user.click(await screen.findByRole('button', { name: 'appDebug.feature.annotation.add' }))
+  expect(api.addAnnotation).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-1' },
+    body: {
+      message_id: 'message-1',
+      question: 'Question message-1',
+      answer: 'Assistant reply message-1',
+    },
+  })
+  await user.click(await screen.findByRole('button', { name: 'appDebug.feature.annotation.edit' }))
+  const editor = await screen.findByRole('dialog', { name: 'appAnnotation.editModal.title' })
+  await user.click(within(editor).getAllByRole('button', { name: 'common.operation.edit' })[1]!)
+  await user.type(
+    within(editor).getByRole('textbox', { name: 'appAnnotation.editModal.yourAnswer' }),
+    'Improved answer',
+  )
+  await user.click(within(editor).getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() =>
+    expect(api.editAnnotation).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-1', annotation_id: 'annotation-1' },
+      body: { question: 'Question message-1', answer: 'Improved answer' },
+    }),
+  )
+  await user.click(within(editor).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(editor).not.toBeInTheDocument())
+  expect(
+    await within(screen.getByRole('dialog', { name: 'appLog.detail.conversationId' })).findByText(
+      'Improved answer',
+    ),
+  ).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }))
+  const reopened = await screen.findByRole('dialog', { name: 'appAnnotation.editModal.title' })
+  await user.click(
+    within(reopened).getByRole('button', { name: 'appAnnotation.editModal.removeThisCache' }),
+  )
+  const confirm = await screen.findByRole('alertdialog')
+  await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() => expect(reopened).not.toBeInTheDocument())
+  expect(
+    await screen.findByRole('button', { name: 'appDebug.feature.annotation.add' }),
+  ).toBeVisible()
+  expect(api.removeAnnotation).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-1', annotation_id: 'annotation-1' },
+  })
+})
+
+it('removes the annotation of the displayed answer when the conversation has regenerated answers', async () => {
+  const user = userEvent.setup()
+  api.messages.mockResolvedValue({
+    data: [
+      createChatMessage('message-1'),
+      createChatMessage('message-2', { parent_message_id: 'message-1' }),
+      createChatMessage('message-3', {
+        parent_message_id: 'message-1',
+        annotation: {
+          id: 'annotation-3',
+          content: 'Annotated answer',
+          account: { id: 'account-1', email: 'admin@example.com', name: 'Admin' },
+          created_at: 1710000100,
+        },
+      }),
+    ],
+    has_more: false,
+    limit: 10,
+  })
+  renderConversationList({ searchParams: '?conversation_id=conversation-1' })
+  await user.click(await screen.findByRole('button', { name: 'appDebug.feature.annotation.edit' }))
+  const editor = await screen.findByRole('dialog', { name: 'appAnnotation.editModal.title' })
+  await user.click(
+    within(editor).getByRole('button', { name: 'appAnnotation.editModal.removeThisCache' }),
+  )
+  const confirm = await screen.findByRole('alertdialog')
+  await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() =>
+    expect(api.removeAnnotation).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-1', annotation_id: 'annotation-3' },
+    }),
+  )
+})
+
+it('loads older messages at the top using the oldest answer as the pagination cursor', async () => {
+  api.messages
+    .mockResolvedValueOnce({
+      data: [
+        createChatMessage('message-1', { parent_message_id: 'older-message' }),
+        createChatMessage('message-2', { parent_message_id: 'message-1' }),
+        createChatMessage('message-3', { parent_message_id: 'message-2' }),
+        createChatMessage('message-4', { parent_message_id: 'message-3' }),
+      ],
+      has_more: true,
+      limit: 10,
+    })
+    .mockResolvedValueOnce({
+      data: [createChatMessage('older-message')],
+      has_more: false,
+      limit: 10,
+    })
+  renderConversationList({ searchParams: '?conversation_id=conversation-1' })
+  const history = await screen.findByRole('log')
+  await within(history).findByText('Assistant reply message-4')
+  // happy-dom has no layout; these metrics describe the reverse-scrolling history at its top.
+  Object.defineProperties(history, {
+    clientHeight: { configurable: true, value: 100 },
+    scrollHeight: { configurable: true, value: 500 },
+    scrollTop: { configurable: true, value: -400 },
+  })
+  fireEvent.scroll(history)
+  expect(await within(history).findByText('Assistant reply older-message')).toBeVisible()
+  expect(api.messages).toHaveBeenLastCalledWith({
+    params: { app_id: 'app-1' },
+    query: { conversation_id: 'conversation-1', limit: 10, first_id: 'message-1' },
+  })
+  expect(api.messages).toHaveBeenCalledTimes(2)
+})
+
+it('opens and closes the workflow run selected from an answer', async () => {
+  api.messages.mockResolvedValue({
+    data: [createChatMessage('message-1', { workflow_run_id: 'run-1' })],
+    has_more: false,
+    limit: 10,
+  })
+  const user = userEvent.setup()
+  renderConversationList({
+    appDetail: createAppDetailFixture({ id: 'app-1', mode: 'advanced-chat' }),
+    searchParams: '?conversation_id=conversation-1',
+  })
+  const conversation = await screen.findByRole('dialog', { name: 'appLog.detail.conversationId' })
+  await user.click(
+    await within(conversation).findByRole('button', { name: 'common.operation.log' }),
+  )
+  const runDialog = await screen.findByRole('dialog', { name: 'appLog.runDetail.title' })
+  expect(await within(runDialog).findByRole('tab', { name: 'runLog.detail' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await waitFor(() => expect(api.run).toHaveBeenCalledWith('/apps/app-1/workflow-runs/run-1'))
+  expect(api.tracing).toHaveBeenCalledWith({
+    url: '/apps/app-1/workflow-runs/run-1/node-executions',
+  })
+  await user.click(within(runDialog).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(runDialog).not.toBeInTheDocument())
+})
+
+it('renders the prompt generated from the selected answer', async () => {
+  api.messages.mockResolvedValue({
+    data: [
+      createChatMessage('message-1', { message: [{ role: 'user', text: 'Prompt sent to model' }] }),
+    ],
+    has_more: false,
+    limit: 10,
+  })
+  const user = userEvent.setup()
+  renderConversationList({
+    appDetail: createAppDetailFixture({ id: 'app-1', mode: 'advanced-chat' }),
+    searchParams: '?conversation_id=conversation-1',
+  })
+  await user.click(await screen.findByRole('button', { name: 'common.operation.log' }))
+  expect(await screen.findByText('PROMPT LOG')).toBeVisible()
+  expect(screen.getByText('Prompt sent to model')).toBeVisible()
+})
+
+it('loads the selected agent trace using its conversation and message ids', async () => {
+  api.messages.mockResolvedValue({
+    data: [
+      createChatMessage('message-1', {
+        agent_thoughts: [
+          {
+            id: 'thought-1',
+            message_id: 'message-1',
+            tool_labels: {},
+            thought: 'Agent reasoning',
+            tool: '',
+            tool_input: '',
+            observation: '',
+            position: 0,
+            files: [],
+          },
+        ],
+      }),
+    ],
+    has_more: false,
+    limit: 10,
+  })
+  const user = userEvent.setup()
+  renderConversationList({
+    appDetail: createAppDetailFixture({ id: 'app-1', mode: 'advanced-chat' }),
+    searchParams: '?conversation_id=conversation-1',
+  })
+  await user.click(await screen.findByRole('button', { name: 'common.operation.log' }))
+  const dialog = await screen.findByRole('dialog', { name: 'appLog.runDetail.workflowTitle' })
+  expect(await within(dialog).findByText('Admin')).toBeVisible()
+  expect(api.agentLog).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-1' },
+    query: { conversation_id: 'conversation-1', message_id: 'message-1' },
+  })
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+})
+
+it('discards a selected log when URL navigation changes or closes the conversation', async () => {
+  const queryClient = createClient()
+  const appDetail = createAppDetailFixture({ id: 'app-1', mode: 'advanced-chat' })
+  const user = userEvent.setup()
+  const view = (searchParams: string) => (
+    <NuqsTestingAdapter searchParams={searchParams} hasMemory>
+      <ConversationList appDetail={appDetail} logs={createLogs()} onRefresh={onRefresh} />
+    </NuqsTestingAdapter>
+  )
+  const { rerender } = renderWithConsoleQuery(view('?conversation_id=conversation-1'), {
+    queryClient,
+  })
+  await user.click(await screen.findByRole('button', { name: 'common.operation.log' }))
+  expect(await screen.findByText('PROMPT LOG')).toBeVisible()
+  rerender(view('?conversation_id=conversation-2'))
+  await waitFor(() => expect(screen.queryByText('PROMPT LOG')).not.toBeInTheDocument())
+  expect(await screen.findByText('conversation-2')).toBeVisible()
+  await user.click(await screen.findByRole('button', { name: 'common.operation.log' }))
+  expect(await screen.findByText('PROMPT LOG')).toBeVisible()
+  rerender(view(''))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(screen.queryByText('PROMPT LOG')).not.toBeInTheDocument()
+  rerender(view('?conversation_id=conversation-1'))
+  await screen.findByText('Assistant reply message-1')
+  expect(screen.queryByText('PROMPT LOG')).not.toBeInTheDocument()
+})
+it('shows each chatflow status and its conversation feedback counts', () => {
+  const states = [
+    ['Paused conversation', { paused: 4, success: 0, failed: 0, partial_success: 0 }, 'Pending'],
+    [
+      'Successful conversation',
+      { paused: 0, success: 5, failed: 0, partial_success: 0 },
+      'Success',
+    ],
+    [
+      'Partial conversation',
+      { paused: 0, success: 6, failed: 0, partial_success: 1 },
+      'Partial Success',
+    ],
+    ['Failed conversation', { paused: 0, success: 6, failed: 2, partial_success: 0 }, '2 Failures'],
+  ] as const
+  const base = createLogs().data[0]!
+  renderConversationList({
+    appDetail: createAppDetailFixture({ id: 'app-1', mode: 'advanced-chat' }),
+    logs: {
+      ...createLogs(),
+      total: states.length,
+      data: states.map(([name, status_count]) => ({
+        ...base,
+        id: name,
+        name,
+        status_count,
+        message_count: Object.values(status_count).reduce<number>((sum, count) => sum + count, 0),
+        user_feedback_stats: { like: 2, dislike: 0 },
+        admin_feedback_stats: { like: 0, dislike: 3 },
+      })),
+    },
+  })
+  for (const [name, , status] of states) {
+    const row = within(screen.getByRole('row', { name: new RegExp(name) }))
+    expect(row.getByText(status)).toBeVisible()
+    expect(row.getByText('2')).toBeVisible()
+    expect(row.getByText('3')).toBeVisible()
+  }
+})
+
+it('keeps the table and close action available while conversation requests resolve independently', async () => {
+  const user = userEvent.setup()
+  const detail = createDeferred<ConversationDetail>()
+  const messages =
+    createDeferred<Awaited<ReturnType<typeof consoleClient.apps.byAppId.chatMessages.get>>>()
+  api.chatDetail.mockReturnValue(detail.promise)
+  api.messages.mockReturnValue(messages.promise)
+  renderConversationList()
+  await user.click(screen.getByText('hello world'))
+  const dialog = await screen.findByRole('dialog', { name: 'appLog.detail.conversationId' })
+  expect(within(dialog).getByRole('button', { name: 'common.operation.close' })).toBeVisible()
+  expect(screen.getByText('hello world')).toBeVisible()
+  expect(api.messages).toHaveBeenCalled()
+  await act(async () => {
+    detail.resolve(createChatDetail())
+  })
+  expect(screen.getByText('hello world')).toBeVisible()
+  expect(within(dialog).queryByText('Assistant reply message-1')).not.toBeInTheDocument()
+  await act(async () => {
+    messages.resolve({ data: [createChatMessage('message-1')], has_more: false, limit: 10 })
+  })
+  expect(await within(dialog).findByText('Assistant reply message-1')).toBeVisible()
+  expect(screen.getByText('hello world')).toBeVisible()
+})
+
+it('opens a deep-linked conversation while the list is still pending', async () => {
+  const { wrapper: UrlState } = createNuqsTestWrapper({
+    searchParams: '?conversation_id=conversation-1',
+  })
+  renderWithConsoleQuery(
+    <UrlState>
+      <ConversationList
+        appDetail={createAppDetailFixture({ id: 'app-1', mode: 'chat' })}
+        onRefresh={onRefresh}
+      />
+    </UrlState>,
+    { queryClient: createClient() },
+  )
+  expect(screen.getByText('appLog.table.header.summary')).toBeVisible()
+  expect(await screen.findByText('Assistant reply message-1')).toBeVisible()
+})
+
+it('keeps desktop details open while interacting outside and switching to another row', async () => {
+  const user = userEvent.setup()
+  const { wrapper: UrlState } = createNuqsTestWrapper({ searchParams: '' })
+  const logs = createLogs()
+  logs.data.push({ ...logs.data[0]!, id: 'conversation-2', name: 'another conversation' })
+  logs.total = 2
+  api.messages.mockImplementation(async ({ query }) => ({
+    data: [
+      createChatMessage(query.conversation_id === 'conversation-2' ? 'message-2' : 'message-1'),
+    ],
+    has_more: false,
+    limit: 10,
+  }))
+  renderWithConsoleQuery(
+    <UrlState>
+      <button type="button">Background action</button>
+      <ConversationList
+        appDetail={createAppDetailFixture({ id: 'app-1', mode: 'chat' })}
+        logs={logs}
+        onRefresh={onRefresh}
+      />
+    </UrlState>,
+    { queryClient: createClient() },
+  )
+  await user.click(screen.getByText('hello world'))
+  expect(await screen.findByText('Assistant reply message-1')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Background action' }))
+  expect(screen.getByRole('dialog')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Background action' })).toHaveFocus()
+  await user.click(screen.getByText('another conversation'))
+  expect(await screen.findByText('Assistant reply message-2')).toBeVisible()
+  expect(screen.queryByText('Assistant reply message-1')).not.toBeInTheDocument()
+  expect(onRefresh).not.toHaveBeenCalled()
 })

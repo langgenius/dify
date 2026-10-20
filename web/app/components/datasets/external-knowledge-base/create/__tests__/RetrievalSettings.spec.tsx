@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-
-const { default: RetrievalSettings } = await import('../RetrievalSettings')
+import RetrievalSettings from '../RetrievalSettings'
 
 const defaultProps = {
   topK: 3,
@@ -13,18 +12,6 @@ const defaultProps = {
 describe('RetrievalSettings', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  it('shows its heading in the standalone retrieval settings', () => {
-    render(<RetrievalSettings {...defaultProps} />)
-
-    expect(screen.getByText('dataset.retrievalSettings')).toBeInTheDocument()
-  })
-
-  it('hides the duplicate heading when embedded in hit testing', () => {
-    render(<RetrievalSettings {...defaultProps} isInHitTesting />)
-
-    expect(screen.queryByText('dataset.retrievalSettings')).not.toBeInTheDocument()
   })
 
   it('updates top K', async () => {

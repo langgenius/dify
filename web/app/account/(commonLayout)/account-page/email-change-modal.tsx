@@ -2,10 +2,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -212,7 +212,9 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
                 <DialogTitle>
                   {t(($) => $['account.changeEmail.title'], { ns: 'accountSettings' })}
                 </DialogTitle>
-                <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+                <DialogHeaderCloseButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                />
               </DialogHeader>
               <DialogBody>
                 <div className="space-y-0.5 pt-1 pb-2">
@@ -247,7 +249,9 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
                 <DialogTitle>
                   {t(($) => $['account.changeEmail.verifyEmail'], { ns: 'accountSettings' })}
                 </DialogTitle>
-                <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+                <DialogHeaderCloseButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                />
               </DialogHeader>
               <DialogBody>
                 <div className="space-y-0.5 pt-1 pb-2">
@@ -316,7 +320,9 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
                 <DialogTitle>
                   {t(($) => $['account.changeEmail.newEmail'], { ns: 'accountSettings' })}
                 </DialogTitle>
-                <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+                <DialogHeaderCloseButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                />
               </DialogHeader>
               <DialogBody>
                 <div className="space-y-0.5 pt-1 pb-2">
@@ -368,7 +374,9 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
                 <DialogTitle>
                   {t(($) => $['account.changeEmail.verifyNew'], { ns: 'accountSettings' })}
                 </DialogTitle>
-                <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+                <DialogHeaderCloseButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                />
               </DialogHeader>
               <DialogBody>
                 <div className="space-y-0.5 pt-1 pb-2">

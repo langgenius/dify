@@ -3,6 +3,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
@@ -10,6 +11,7 @@ import { TriggerAccessPointCard } from '../built-in-access-points/trigger-card'
 
 const mocks = vi.hoisted(() => ({
   setTriggerStatuses: vi.fn(),
+  getTriggers: vi.fn(),
   triggerQuery: {
     data: undefined as { data: WorkflowTriggerResponse[] } | undefined,
     isLoading: false,
@@ -37,41 +39,34 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
 }))
 
-vi.mock('@/service/console', async () => ({
-  consoleQuery: {
-    apps: {
-      byAppId: {
-        triggers: {
-          get: (await import('@/test/console/operation-hooks')).consoleOperationStub(
-            'apps.byAppId.triggers.get',
-          ),
-        },
-        triggerEnable: {
-          post: {
-            mutationOptions: (options = {}) => ({
-              mutationFn: mocks.updateTriggerStatus,
-              ...options,
-            }),
-          },
-        },
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.triggers.get': async (input) => {
+        mocks.getTriggers(input)
+        return mocks.triggerQuery.data ?? { data: [] }
       },
-    },
-  },
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'apps.byAppId.triggers.get': () => mocks.triggerQuery,
-  })
+      'apps.byAppId.triggerEnable.post': async (input) => {
+        await mocks.updateTriggerStatus(input)
+        const body = (input as { body: { trigger_id: string; enable_trigger: boolean } }).body
+        if (mocks.triggerQuery.data)
+          mocks.triggerQuery.data = {
+            data: mocks.triggerQuery.data.data.map((trigger) =>
+              trigger.id === body.trigger_id
+                ? { ...trigger, status: body.enable_trigger ? 'enabled' : 'disabled' }
+                : trigger,
+            ),
+          }
+      },
+    }),
+  }
 })
 
 vi.mock('@/service/use-triggers', () => ({
   useAllTriggerPlugins: () => ({ data: [] }),
-}))
-
-vi.mock('@/app/components/workflow/block-icon', () => ({
-  default: () => null,
 }))
 
 const appInfo = createAppDetailFixture({
@@ -96,14 +91,13 @@ function createTrigger(
   }
 }
 
-const triggersQueryKey = [
-  ['console', 'apps', 'byAppId', 'triggers', 'get'],
-  { type: 'query', input: { params: { app_id: 'app-1' } } },
-]
+const triggersQueryKey = consoleQuery.apps.byAppId.triggers.get.queryKey({
+  input: { params: { app_id: 'app-1' } },
+})
 
 function renderCard(availability: 'available' | 'loading' | 'unavailable') {
   const queryClient = createTestQueryClient()
-  queryClient.setQueryData(triggersQueryKey, { data: [] })
+  queryClient.setQueryData(triggersQueryKey, mocks.triggerQuery.data ?? { data: [] })
 
   render(
     <QueryClientProvider client={queryClient}>
@@ -126,7 +120,7 @@ function createDeferredPromise<T>() {
 
 describe('TriggerAccessPointCard', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     mocks.triggerQuery.data = undefined
     mocks.triggerQuery.isLoading = false
     mocks.updateTriggerStatus.mockResolvedValue(undefined)
@@ -202,24 +196,22 @@ describe('TriggerAccessPointCard', () => {
     mocks.triggerQuery.data = {
       data: [createTrigger('disabled', 'disabled')],
     }
-    const queryClient = renderCard('available')
+    renderCard('available')
 
     await user.click(screen.getByRole('switch', { name: 'Trigger disabled' }))
 
     await waitFor(() => {
-      expect(mocks.updateTriggerStatus).toHaveBeenCalledWith(
-        {
-          params: {
-            app_id: 'app-1',
-          },
-          body: {
-            trigger_id: 'disabled',
-            enable_trigger: true,
-          },
+      expect(mocks.updateTriggerStatus).toHaveBeenCalledWith({
+        params: {
+          app_id: 'app-1',
         },
-        expect.any(Object),
-      )
-      expect(queryClient.getQueryState(triggersQueryKey)?.isInvalidated).toBe(true)
+        body: {
+          trigger_id: 'disabled',
+          enable_trigger: true,
+        },
+      })
+      expect(mocks.getTriggers).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
+      expect(screen.getByRole('switch', { name: 'Trigger disabled' })).toBeChecked()
     })
     expect(toast.success).not.toHaveBeenCalled()
   })

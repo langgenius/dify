@@ -1,870 +1,244 @@
-import type { PropsWithChildren } from 'react'
 import type { FileEntity } from '../../types'
-import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { toast } from '@/app/notifications'
-import { FileContextProvider } from '../../store'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { FileContextProvider, useFileStoreWithSelector } from '../../store'
 import { useUpload } from '../use-upload'
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'files.upload.get': vi.fn(() => ({
-      data: {
-        image_file_batch_limit: 10,
-        single_chunk_attachment_limit: 20,
-        attachment_image_file_size_limit: 15,
-      },
-    })),
-  })
-})
-
-const { mockToastError } = vi.hoisted(() => ({
-  mockToastError: vi.fn(),
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    error: mockToastError,
-  },
-}))
-
-type FileUploadOptions = {
-  file: File
-  onProgressCallback?: (progress: number) => void
-  onSuccessCallback?: (res: {
-    id: string
-    extension: string
-    mime_type: string
-    size: number
-  }) => void
-  onErrorCallback?: (error?: Error) => void
-}
-
-const mockFileUpload = vi.fn<(options: FileUploadOptions) => void>()
-
+const { upload, error } = vi.hoisted(() => ({ upload: vi.fn(), error: vi.fn() }))
 vi.mock('@/app/components/base/file-uploader/utils', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/app/components/base/file-uploader/utils')>()),
-  fileUpload: (options: FileUploadOptions) => mockFileUpload(options),
+  fileUpload: (options: unknown) => upload(options),
 }))
-
-const createWrapper = () => {
-  return ({ children }: PropsWithChildren) => <FileContextProvider>{children}</FileContextProvider>
-}
-
-const createMockFile = (name = 'test.png', _size = 1024, type = 'image/png') => {
-  return new File(['test content'], name, { type })
-}
-
-// Mock FileReader
-type EventCallback = () => void
-
-class MockFileReader {
-  result: string | ArrayBuffer | null = null
-  onload: EventCallback | null = null
-  onerror: EventCallback | null = null
-  private listeners: Record<string, EventCallback[]> = {}
-
-  addEventListener(event: string, callback: EventCallback) {
-    if (!this.listeners[event]) this.listeners[event] = []
-    this.listeners[event].push(callback)
-  }
-
-  removeEventListener(event: string, callback: EventCallback) {
-    if (this.listeners[event])
-      this.listeners[event] = this.listeners[event].filter((cb) => cb !== callback)
-  }
-
-  readAsDataURL(_file: File) {
-    setTimeout(() => {
-      this.result = 'data:image/png;base64,mockBase64Data'
-      this.listeners.load?.forEach((cb) => cb())
-    }, 0)
-  }
-
-  triggerError() {
-    this.listeners.error?.forEach((cb) => cb())
-  }
-}
-
-describe('useUpload hook', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockFileUpload.mockImplementation(({ onSuccessCallback }) => {
-      setTimeout(() => {
-        onSuccessCallback?.({
-          id: 'uploaded-id',
-          extension: 'png',
-          mime_type: 'image/png',
-          size: 1024,
-        })
-      }, 0)
-    })
-    // Mock FileReader globally
-    vi.stubGlobal('FileReader', MockFileReader)
-  })
-
-  describe('Initialization', () => {
-    it('should initialize with default state', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      expect(result.current.dragging).toBe(false)
-      expect(result.current.uploaderRef).toBeDefined()
-      expect(result.current.dragRef).toBeDefined()
-      expect(result.current.dropRef).toBeDefined()
-    })
-
-    it('should return file upload config', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      expect(result.current.fileUploadConfig).toBeDefined()
-      expect(result.current.fileUploadConfig.imageFileBatchLimit).toBe(10)
-      expect(result.current.fileUploadConfig.singleChunkAttachmentLimit).toBe(20)
-      expect(result.current.fileUploadConfig.imageFileSizeLimit).toBe(15)
-    })
-  })
-
-  describe('File Validation', () => {
-    it('should show error toast for invalid file type', async () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      const mockEvent = {
-        target: {
-          files: [createMockFile('test.exe', 1024, 'application/x-msdownload')],
-        },
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-
-      act(() => {
-        result.current.fileChangeHandle(mockEvent)
-      })
-
-      await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith(expect.any(String))
-      })
-    })
-
-    it('should not reject valid image file types', async () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      const mockFile = createMockFile('test.png', 1024, 'image/png')
-
-      const mockEvent = {
-        target: {
-          files: [mockFile],
-        },
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-
-      // File type validation should pass for png files
-      // The actual upload will fail without proper FileReader mock,
-      // but we're testing that type validation doesn't reject valid files
-      act(() => {
-        result.current.fileChangeHandle(mockEvent)
-      })
-
-      // Should not show file-extension error for valid image type
-      type ToastCall = [string]
-      const mockNotify = vi.mocked(toast.error)
-      const calls = mockNotify.mock.calls as ToastCall[]
-      const typeErrorCalls = calls.filter((call) =>
-        call[0].includes('common.fileUploader.fileExtensionNotSupport'),
-      )
-      expect(typeErrorCalls.length).toBe(0)
-    })
-  })
-
-  describe('Drag and Drop Refs', () => {
-    it('should provide dragRef', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      expect(result.current.dragRef).toBeDefined()
-      expect(result.current.dragRef.current).toBeNull()
-    })
-
-    it('should provide dropRef', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      expect(result.current.dropRef).toBeDefined()
-      expect(result.current.dropRef.current).toBeNull()
-    })
-
-    it('should provide uploaderRef', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      expect(result.current.uploaderRef).toBeDefined()
-      expect(result.current.uploaderRef.current).toBeNull()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty file list', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      const mockEvent = {
-        target: {
-          files: [],
-        },
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-
-      act(() => {
-        result.current.fileChangeHandle(mockEvent)
-      })
-
-      // Should not throw and not show error
-      expect(toast.error).not.toHaveBeenCalled()
-    })
-
-    it('should respect batch limit from config', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      // Config should have batch limit of 10
-      expect(result.current.fileUploadConfig.imageFileBatchLimit).toBe(10)
-    })
-  })
-
-  describe('File Size Validation', () => {
-    it('should show error for files exceeding size limit', async () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      // Create a file larger than 15MB limit (15 * 1024 * 1024 bytes)
-      const largeFile = new File(['x'.repeat(16 * 1024 * 1024)], 'large.png', { type: 'image/png' })
-      Object.defineProperty(largeFile, 'size', { value: 16 * 1024 * 1024 })
-
-      const mockEvent = {
-        target: {
-          files: [largeFile],
-        },
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-
-      act(() => {
-        result.current.fileChangeHandle(mockEvent)
-      })
-
-      await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith(expect.any(String))
-      })
-    })
-  })
-
-  describe('handleRemoveFile', () => {
-    it('should remove file from store', async () => {
-      const onChange = vi.fn()
-      const initialFiles: Partial<FileEntity>[] = [
-        { id: 'file1', name: 'test1.png', progress: 100 },
-        { id: 'file2', name: 'test2.png', progress: 100 },
-      ]
-
-      const wrapper = ({ children }: PropsWithChildren) => (
-        <FileContextProvider value={initialFiles as FileEntity[]} onChange={onChange}>
-          {children}
-        </FileContextProvider>
-      )
-
-      const { result } = renderHook(() => useUpload(), { wrapper })
-
-      act(() => {
-        result.current.handleRemoveFile('file1')
-      })
-
-      expect(onChange).toHaveBeenCalledWith([{ id: 'file2', name: 'test2.png', progress: 100 }])
-    })
-  })
-
-  describe('handleReUploadFile', () => {
-    it('should re-upload file when called with valid fileId', async () => {
-      const onChange = vi.fn()
-      const initialFiles: Partial<FileEntity>[] = [
-        {
-          id: 'file1',
-          name: 'test1.png',
-          progress: -1,
-          originalFile: new File(['test'], 'test1.png'),
-        },
-      ]
-
-      const wrapper = ({ children }: PropsWithChildren) => (
-        <FileContextProvider value={initialFiles as FileEntity[]} onChange={onChange}>
-          {children}
-        </FileContextProvider>
-      )
-
-      const { result } = renderHook(() => useUpload(), { wrapper })
-
-      act(() => {
-        result.current.handleReUploadFile('file1')
-      })
-
-      await waitFor(() => {
-        expect(mockFileUpload).toHaveBeenCalled()
-      })
-    })
-
-    it('should not re-upload when fileId is not found', () => {
-      const onChange = vi.fn()
-      const initialFiles: Partial<FileEntity>[] = [
-        {
-          id: 'file1',
-          name: 'test1.png',
-          progress: -1,
-          originalFile: new File(['test'], 'test1.png'),
-        },
-      ]
-
-      const wrapper = ({ children }: PropsWithChildren) => (
-        <FileContextProvider value={initialFiles as FileEntity[]} onChange={onChange}>
-          {children}
-        </FileContextProvider>
-      )
-
-      const { result } = renderHook(() => useUpload(), { wrapper })
-
-      act(() => {
-        result.current.handleReUploadFile('nonexistent')
-      })
-
-      // fileUpload should not be called for nonexistent file
-      expect(mockFileUpload).not.toHaveBeenCalled()
-    })
-
-    it('should handle upload error during re-upload', async () => {
-      mockFileUpload.mockImplementation(({ onErrorCallback }: FileUploadOptions) => {
-        setTimeout(() => {
-          onErrorCallback?.(new Error('Upload failed'))
-        }, 0)
-      })
-
-      const onChange = vi.fn()
-      const initialFiles: Partial<FileEntity>[] = [
-        {
-          id: 'file1',
-          name: 'test1.png',
-          progress: -1,
-          originalFile: new File(['test'], 'test1.png'),
-        },
-      ]
-
-      const wrapper = ({ children }: PropsWithChildren) => (
-        <FileContextProvider value={initialFiles as FileEntity[]} onChange={onChange}>
-          {children}
-        </FileContextProvider>
-      )
-
-      const { result } = renderHook(() => useUpload(), { wrapper })
-
-      act(() => {
-        result.current.handleReUploadFile('file1')
-      })
-
-      await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith(
-          'common.fileUploader.uploadFromComputerUploadError',
-        )
-      })
-    })
-  })
-
-  describe('handleLocalFileUpload', () => {
-    it('should upload file and update progress', async () => {
-      mockFileUpload.mockImplementation(
-        ({ onProgressCallback, onSuccessCallback }: FileUploadOptions) => {
-          setTimeout(() => {
-            onProgressCallback?.(50)
-            setTimeout(() => {
-              onSuccessCallback?.({
-                id: 'uploaded-id',
-                extension: 'png',
-                mime_type: 'image/png',
-                size: 1024,
-              })
-            }, 10)
-          }, 0)
-        },
-      )
-
-      const onChange = vi.fn()
-      const wrapper = ({ children }: PropsWithChildren) => (
-        <FileContextProvider onChange={onChange}>{children}</FileContextProvider>
-      )
-
-      const { result } = renderHook(() => useUpload(), { wrapper })
-
-      const mockFile = createMockFile('test.png', 1024, 'image/png')
-
-      await act(async () => {
-        result.current.handleLocalFileUpload(mockFile)
-      })
-
-      await waitFor(() => {
-        expect(mockFileUpload).toHaveBeenCalled()
-      })
-    })
-
-    it('should handle upload error', async () => {
-      mockFileUpload.mockImplementation(({ onErrorCallback }: FileUploadOptions) => {
-        setTimeout(() => {
-          onErrorCallback?.(new Error('Upload failed'))
-        }, 0)
-      })
-
-      const onChange = vi.fn()
-      const wrapper = ({ children }: PropsWithChildren) => (
-        <FileContextProvider onChange={onChange}>{children}</FileContextProvider>
-      )
-
-      const { result } = renderHook(() => useUpload(), { wrapper })
-
-      const mockFile = createMockFile('test.png', 1024, 'image/png')
-
-      await act(async () => {
-        result.current.handleLocalFileUpload(mockFile)
-      })
-
-      await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith(
-          'common.fileUploader.uploadFromComputerUploadError',
-        )
-      })
-    })
-  })
-
-  describe('Attachment Limit', () => {
-    it('should show error when exceeding single chunk attachment limit', async () => {
-      const onChange = vi.fn()
-      // Pre-populate with 19 files (limit is 20)
-      const initialFiles: Partial<FileEntity>[] = Array.from({ length: 19 }, (_, i) => ({
-        id: `file${i}`,
-        name: `test${i}.png`,
-        progress: 100,
-      }))
-
-      const wrapper = ({ children }: PropsWithChildren) => (
-        <FileContextProvider value={initialFiles as FileEntity[]} onChange={onChange}>
-          {children}
-        </FileContextProvider>
-      )
-
-      const { result } = renderHook(() => useUpload(), { wrapper })
-
-      // Try to add 2 more files (would exceed limit of 20)
-      const mockEvent = {
-        target: {
-          files: [createMockFile('new1.png'), createMockFile('new2.png')],
-        },
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-
-      act(() => {
-        result.current.fileChangeHandle(mockEvent)
-      })
-
-      await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith(expect.any(String))
-      })
-    })
-  })
-
-  describe('selectHandle', () => {
-    it('should trigger click on uploader input when called', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      // Create a mock input element
-      const mockInput = document.createElement('input')
-      const clickSpy = vi.spyOn(mockInput, 'click')
-
-      // Manually set the ref
-      Object.defineProperty(result.current.uploaderRef, 'current', {
-        value: mockInput,
-        writable: true,
-      })
-
-      act(() => {
-        result.current.selectHandle()
-      })
-
-      expect(clickSpy).toHaveBeenCalled()
-    })
-
-    it('should not throw when uploaderRef is null', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      expect(() => {
-        act(() => {
-          result.current.selectHandle()
-        })
-      }).not.toThrow()
-    })
-  })
-
-  describe('FileReader Error Handling', () => {
-    it('should show error toast when FileReader encounters an error', async () => {
-      // Create a custom MockFileReader that triggers error
-      class ErrorFileReader {
-        result: string | ArrayBuffer | null = null
-        private listeners: Record<string, EventCallback[]> = {}
-
-        addEventListener(event: string, callback: EventCallback) {
-          if (!this.listeners[event]) this.listeners[event] = []
-          this.listeners[event].push(callback)
-        }
-
-        removeEventListener(event: string, callback: EventCallback) {
-          if (this.listeners[event])
-            this.listeners[event] = this.listeners[event].filter((cb) => cb !== callback)
-        }
-
-        readAsDataURL(_file: File) {
-          // Trigger error instead of load
-          setTimeout(() => {
-            this.listeners.error?.forEach((cb) => cb())
-          }, 0)
-        }
-      }
-
-      vi.stubGlobal('FileReader', ErrorFileReader)
-
-      const onChange = vi.fn()
-      const wrapper = ({ children }: PropsWithChildren) => (
-        <FileContextProvider onChange={onChange}>{children}</FileContextProvider>
-      )
-
-      const { result } = renderHook(() => useUpload(), { wrapper })
-
-      const mockFile = createMockFile('test.png', 1024, 'image/png')
-
-      await act(async () => {
-        result.current.handleLocalFileUpload(mockFile)
-      })
-
-      await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith(expect.any(String))
-      })
-
-      // Restore original MockFileReader
-      vi.stubGlobal('FileReader', MockFileReader)
-    })
-  })
-
-  describe('Drag and Drop Functionality', () => {
-    // Test component that renders the hook with actual DOM elements
-    const TestComponent = ({ onStateChange }: { onStateChange?: (dragging: boolean) => void }) => {
-      const { dragging, dragRef, dropRef } = useUpload()
-
-      // Report dragging state changes to parent
-      React.useEffect(() => {
-        onStateChange?.(dragging)
-      }, [dragging, onStateChange])
-
-      return (
-        <div ref={dropRef} data-testid="drop-zone">
-          <div ref={dragRef} data-testid="drag-boundary">
-            <span data-testid="dragging-state">{dragging ? 'dragging' : 'not-dragging'}</span>
-          </div>
+vi.mock('@/app/notifications', () => ({ toast: { error } }))
+
+function Uploader() {
+  const {
+    uploaderRef,
+    dropRef,
+    dragRef,
+    dragging,
+    fileChangeHandle,
+    selectHandle,
+    handleRemoveFile,
+    handleReUploadFile,
+  } = useUpload()
+  const files = useFileStoreWithSelector((state) => state.files)
+  return (
+    <div ref={dropRef} data-testid="drop-zone">
+      <div ref={dragRef} data-testid="drag-overlay">
+        {dragging ? 'Drop images' : 'Upload images'}
+      </div>
+      <input
+        type="file"
+        multiple
+        aria-label="Images"
+        ref={uploaderRef}
+        onChange={fileChangeHandle}
+      />
+      <button onClick={selectHandle}>Browse</button>
+      {files.map((file) => (
+        <div key={file.id}>
+          <output aria-label={file.name}>{file.progress}</output>
+          <button onClick={() => handleRemoveFile(file.id)}>Remove {file.name}</button>
+          <button onClick={() => handleReUploadFile(file.id)}>Retry {file.name}</button>
         </div>
-      )
-    }
+      ))}
+    </div>
+  )
+}
 
-    it('should set dragging to true on dragEnter when target is not dragRef', async () => {
-      const onStateChange = vi.fn()
-      render(
-        <FileContextProvider>
-          <TestComponent onStateChange={onStateChange} />
-        </FileContextProvider>,
-      )
+const savedFile = (id: string): FileEntity => ({
+  id,
+  name: `${id}.png`,
+  extension: 'png',
+  mimeType: 'image/png',
+  size: 10,
+  progress: 100,
+  uploadedId: id,
+})
+function setup(files: FileEntity[] = []) {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryOptions().queryKey,
+    createFileUploadConfigFixture({
+      image_file_batch_limit: 2,
+      single_chunk_attachment_limit: 3,
+      attachment_image_file_size_limit: 15,
+    }),
+  )
+  const onChange = vi.fn()
+  renderWithConsoleQuery(
+    <FileContextProvider value={files} onChange={onChange}>
+      <Uploader />
+    </FileContextProvider>,
+    { queryClient },
+  )
+  return { onChange }
+}
+const image = () => new File(['image'], 'New.png', { type: 'image/png' })
+beforeEach(() => upload.mockReset())
 
-      const dropZone = screen.getByTestId('drop-zone')
+it('persists progress and server metadata for the selected image', async () => {
+  const user = userEvent.setup()
+  const { onChange } = setup()
+  const file = image()
+  await user.upload(screen.getByLabelText('Images'), file)
+  await waitFor(() => expect(upload).toHaveBeenCalledTimes(1))
+  const callbacks = upload.mock.lastCall![0]
+  expect(callbacks.file).toBe(file)
+  act(() => callbacks.onProgressCallback(53))
+  expect(screen.getByLabelText('New.png')).toHaveTextContent('53')
+  act(() =>
+    callbacks.onSuccessCallback({
+      id: 'uploaded-id',
+      extension: 'webp',
+      mime_type: 'image/webp',
+      size: 123,
+    }),
+  )
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({
+      name: 'New.png',
+      originalFile: file,
+      uploadedId: 'uploaded-id',
+      progress: 100,
+      extension: 'webp',
+      mimeType: 'image/webp',
+      size: 123,
+      base64Url: expect.stringMatching(/^data:image\/png;base64,/),
+    }),
+  ])
+})
 
-      // Fire dragenter event on dropZone (not dragRef)
-      await act(async () => {
-        fireEvent.dragEnter(dropZone, {
-          dataTransfer: { items: [] },
-        })
-      })
+it('keeps a failed image available for retry and updates the same attachment', async () => {
+  const user = userEvent.setup()
+  const { onChange } = setup([savedFile('existing')])
+  const file = image()
+  await user.upload(screen.getByLabelText('Images'), file)
+  await waitFor(() => expect(upload).toHaveBeenCalledTimes(1))
+  act(() => upload.mock.lastCall![0].onErrorCallback(new Error('offline')))
+  expect(screen.getByLabelText('New.png')).toHaveTextContent('-1')
+  expect(error).toHaveBeenCalledWith('common.fileUploader.uploadFromComputerUploadError')
+  await user.click(screen.getByRole('button', { name: 'Retry New.png' }))
+  expect(screen.getByLabelText('New.png')).toHaveTextContent('0')
+  expect(upload.mock.lastCall![0].file).toBe(file)
+  act(() => upload.mock.lastCall![0].onSuccessCallback({ id: 'retry-id' }))
+  expect(onChange).toHaveBeenLastCalledWith([
+    savedFile('existing'),
+    expect.objectContaining({ uploadedId: 'retry-id', progress: 100, originalFile: file }),
+  ])
+  await user.click(screen.getByRole('button', { name: 'Remove New.png' }))
+  expect(onChange).toHaveBeenLastCalledWith([savedFile('existing')])
+})
 
-      // Verify dragging state changed to true
-      expect(screen.getByTestId('dragging-state')).toHaveTextContent('dragging')
-    })
+it.each(['extension', 'size'])(
+  'rejects an image with invalid %s before uploading',
+  async (reason) => {
+    const user = userEvent.setup()
+    setup()
+    const file = reason === 'extension' ? new File(['bad'], 'malware.exe') : image()
+    if (reason === 'size') Object.defineProperty(file, 'size', { value: 16 * 1024 * 1024 })
+    await user.upload(screen.getByLabelText('Images'), file)
+    expect(error).toHaveBeenCalledWith(
+      reason === 'extension'
+        ? 'common.fileUploader.fileExtensionNotSupport'
+        : expect.stringContaining('dataset.imageUploader.fileSizeLimitExceeded'),
+    )
+    expect(upload).not.toHaveBeenCalled()
+  },
+)
 
-    it('should set dragging to false on dragLeave when target matches dragRef', async () => {
-      render(
-        <FileContextProvider>
-          <TestComponent />
-        </FileContextProvider>,
-      )
+it('limits a selection to the configured batch size', async () => {
+  const user = userEvent.setup()
+  setup()
+  const files = ['one', 'two', 'three'].map(
+    (name) => new File(['image'], `${name}.png`, { type: 'image/png' }),
+  )
+  await user.upload(screen.getByLabelText('Images'), files)
+  await waitFor(() => expect(upload).toHaveBeenCalledTimes(2))
+  expect(upload.mock.calls.map(([options]) => options.file)).toEqual(files.slice(0, 2))
+})
 
-      const dropZone = screen.getByTestId('drop-zone')
-      const dragBoundary = screen.getByTestId('drag-boundary')
+it('rejects a batch that would exceed the total attachment limit', async () => {
+  const user = userEvent.setup()
+  const { onChange } = setup([savedFile('one'), savedFile('two')])
+  await user.upload(screen.getByLabelText('Images'), [
+    image(),
+    new File(['image'], 'Other.png', { type: 'image/png' }),
+  ])
+  expect(error).toHaveBeenCalledWith(
+    expect.stringContaining('datasetHitTesting.imageUploader.singleChunkAttachmentLimitTooltip'),
+  )
+  expect(upload).not.toHaveBeenCalled()
+  expect(onChange).not.toHaveBeenCalled()
+})
 
-      // First trigger dragenter to set dragging to true
-      await act(async () => {
-        fireEvent.dragEnter(dropZone, {
-          dataTransfer: { items: [] },
-        })
-      })
+it('opens the file chooser from the browse action', async () => {
+  const user = userEvent.setup()
+  setup()
+  const click = vi.spyOn(screen.getByLabelText('Images'), 'click')
+  await user.click(screen.getByRole('button', { name: 'Browse' }))
+  expect(click).toHaveBeenCalledTimes(1)
+})
 
-      expect(screen.getByTestId('dragging-state')).toHaveTextContent('dragging')
-
-      // Then trigger dragleave on dragBoundary to set dragging to false
-      await act(async () => {
-        fireEvent.dragLeave(dragBoundary, {
-          dataTransfer: { items: [] },
-        })
-      })
-
-      expect(screen.getByTestId('dragging-state')).toHaveTextContent('not-dragging')
-    })
-
-    it('should handle drop event with files and reset dragging state', async () => {
-      const onChange = vi.fn()
-
-      render(
-        <FileContextProvider onChange={onChange}>
-          <TestComponent />
-        </FileContextProvider>,
-      )
-
-      const dropZone = screen.getByTestId('drop-zone')
-      const mockFile = new File(['test content'], 'test.png', { type: 'image/png' })
-
-      // First trigger dragenter
-      await act(async () => {
-        fireEvent.dragEnter(dropZone, {
-          dataTransfer: { items: [] },
-        })
-      })
-
-      expect(screen.getByTestId('dragging-state')).toHaveTextContent('dragging')
-
-      // Then trigger drop with files
-      await act(async () => {
-        fireEvent.drop(dropZone, {
-          dataTransfer: {
-            items: [
-              {
-                webkitGetAsEntry: () => null,
-                getAsFile: () => mockFile,
-              },
-            ],
-          },
-        })
-      })
-
-      // Dragging should be reset to false after drop
-      expect(screen.getByTestId('dragging-state')).toHaveTextContent('not-dragging')
-    })
-
-    it('should return early when dataTransfer is null on drop', async () => {
-      render(
-        <FileContextProvider>
-          <TestComponent />
-        </FileContextProvider>,
-      )
-
-      const dropZone = screen.getByTestId('drop-zone')
-
-      // Fire dragenter first
-      await act(async () => {
-        fireEvent.dragEnter(dropZone)
-      })
-
-      // Fire drop without dataTransfer
-      await act(async () => {
-        fireEvent.drop(dropZone)
-      })
-
-      // Should still reset dragging state
-      expect(screen.getByTestId('dragging-state')).toHaveTextContent('not-dragging')
-    })
-
-    it('should not trigger file upload for invalid file types on drop', async () => {
-      render(
-        <FileContextProvider>
-          <TestComponent />
-        </FileContextProvider>,
-      )
-
-      const dropZone = screen.getByTestId('drop-zone')
-      const invalidFile = new File(['test'], 'test.exe', { type: 'application/x-msdownload' })
-
-      await act(async () => {
-        fireEvent.drop(dropZone, {
-          dataTransfer: {
-            items: [
-              {
-                webkitGetAsEntry: () => null,
-                getAsFile: () => invalidFile,
-              },
-            ],
-          },
-        })
-      })
-
-      // Should show error toast for invalid file type
-      await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith(expect.any(String))
-      })
-    })
-
-    it('should handle drop with webkitGetAsEntry for file entries', async () => {
-      const onChange = vi.fn()
-      const mockFile = new File(['test'], 'test.png', { type: 'image/png' })
-
-      render(
-        <FileContextProvider onChange={onChange}>
-          <TestComponent />
-        </FileContextProvider>,
-      )
-
-      const dropZone = screen.getByTestId('drop-zone')
-
-      // Create a mock file entry that simulates webkitGetAsEntry behavior
-      const mockFileEntry = {
-        isFile: true,
-        isDirectory: false,
-        file: (callback: (file: File) => void) => callback(mockFile),
-      }
-
-      await act(async () => {
-        fireEvent.drop(dropZone, {
-          dataTransfer: {
-            items: [
-              {
-                webkitGetAsEntry: () => mockFileEntry,
-                getAsFile: () => mockFile,
-              },
-            ],
-          },
-        })
-      })
-
-      // Dragging should be reset
-      expect(screen.getByTestId('dragging-state')).toHaveTextContent('not-dragging')
-    })
+it('reports a FileReader failure without adding an attachment', async () => {
+  const user = userEvent.setup()
+  const read = vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementation(function (
+    this: FileReader,
+  ) {
+    this.dispatchEvent(new Event('error'))
   })
+  try {
+    const { onChange } = setup()
+    await user.upload(screen.getByLabelText('Images'), image())
+    expect(error).toHaveBeenCalledWith('common.fileUploader.uploadFromComputerReadError')
+    expect(upload).not.toHaveBeenCalled()
+    expect(onChange).not.toHaveBeenCalled()
+  } finally {
+    read.mockRestore()
+  }
+})
 
-  describe('Drag Events', () => {
-    const TestComponent = () => {
-      const { dragging, dragRef, dropRef } = useUpload()
-      return (
-        <div ref={dropRef} data-testid="drop-zone">
-          <div ref={dragRef} data-testid="drag-boundary">
-            <span data-testid="dragging-state">{dragging ? 'dragging' : 'not-dragging'}</span>
-          </div>
-        </div>
-      )
-    }
-
-    it('should handle dragEnter event and update dragging state', async () => {
-      render(
-        <FileContextProvider>
-          <TestComponent />
-        </FileContextProvider>,
-      )
-
-      const dropZone = screen.getByTestId('drop-zone')
-
-      // Initially not dragging
-      expect(screen.getByTestId('dragging-state')).toHaveTextContent('not-dragging')
-
-      // Fire dragEnter
-      await act(async () => {
-        fireEvent.dragEnter(dropZone, {
-          dataTransfer: { items: [] },
-        })
-      })
-
-      // Should be dragging now
-      expect(screen.getByTestId('dragging-state')).toHaveTextContent('dragging')
+it.each([false, true])(
+  'uploads dropped files through the file-entry API when available (%s)',
+  async (hasEntry) => {
+    setup()
+    const file = image()
+    const zone = screen.getByTestId('drop-zone')
+    fireEvent.dragEnter(zone)
+    expect(screen.getByTestId('drag-overlay')).toHaveTextContent('Drop images')
+    fireEvent.drop(zone, {
+      dataTransfer: {
+        items: [
+          {
+            getAsFile: () => file,
+            webkitGetAsEntry: () =>
+              hasEntry
+                ? {
+                    isFile: true,
+                    isDirectory: false,
+                    file: (callback: (file: File) => void) => callback(file),
+                  }
+                : null,
+          },
+        ],
+      },
     })
+    expect(screen.getByTestId('drag-overlay')).toHaveTextContent('Upload images')
+    await waitFor(() => expect(upload).toHaveBeenCalledWith(expect.objectContaining({ file })))
+  },
+)
 
-    it('should handle dragOver event without changing state', async () => {
-      render(
-        <FileContextProvider>
-          <TestComponent />
-        </FileContextProvider>,
-      )
-
-      const dropZone = screen.getByTestId('drop-zone')
-
-      // First trigger dragenter to set dragging
-      await act(async () => {
-        fireEvent.dragEnter(dropZone)
-      })
-
-      expect(screen.getByTestId('dragging-state')).toHaveTextContent('dragging')
-
-      // dragOver should not change the dragging state
-      await act(async () => {
-        fireEvent.dragOver(dropZone)
-      })
-
-      // Should still be dragging
-      expect(screen.getByTestId('dragging-state')).toHaveTextContent('dragging')
-    })
-
-    it('should not set dragging to true when dragEnter target is dragRef', async () => {
-      render(
-        <FileContextProvider>
-          <TestComponent />
-        </FileContextProvider>,
-      )
-
-      const dragBoundary = screen.getByTestId('drag-boundary')
-
-      // Fire dragEnter directly on dragRef
-      await act(async () => {
-        fireEvent.dragEnter(dragBoundary)
-      })
-
-      // Should not be dragging when target is dragRef itself
-      expect(screen.getByTestId('dragging-state')).toHaveTextContent('not-dragging')
-    })
-
-    it('should not set dragging to false when dragLeave target is not dragRef', async () => {
-      render(
-        <FileContextProvider>
-          <TestComponent />
-        </FileContextProvider>,
-      )
-
-      const dropZone = screen.getByTestId('drop-zone')
-
-      // First trigger dragenter on dropZone to set dragging
-      await act(async () => {
-        fireEvent.dragEnter(dropZone)
-      })
-
-      expect(screen.getByTestId('dragging-state')).toHaveTextContent('dragging')
-
-      // dragLeave on dropZone (not dragRef) should not change dragging state
-      await act(async () => {
-        fireEvent.dragLeave(dropZone)
-      })
-
-      // Should still be dragging (only dragLeave on dragRef resets)
-      expect(screen.getByTestId('dragging-state')).toHaveTextContent('dragging')
-    })
-  })
+it('keeps the drag overlay open while moving inside the drop zone and closes it when leaving the overlay', () => {
+  setup()
+  const zone = screen.getByTestId('drop-zone')
+  const overlay = screen.getByTestId('drag-overlay')
+  fireEvent.dragEnter(zone)
+  fireEvent.dragLeave(zone)
+  expect(overlay).toHaveTextContent('Drop images')
+  fireEvent.dragLeave(overlay)
+  expect(overlay).toHaveTextContent('Upload images')
 })
