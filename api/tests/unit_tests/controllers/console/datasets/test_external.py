@@ -146,6 +146,7 @@ def test_external_dataset_duplicate_name_maps_to_409(external):
 )
 def test_retrieval_maps_application_errors(external, error, http_error, status, code):
     external.hit_testing.side_effect = error
+    message = InternalServerError.description if isinstance(error, ExternalHitTestingError) else str(error)
     with pytest.raises(http_error) as failure:
         unwrap(controller.ExternalKnowledgeHitTestingApi.post)(
             controller.ExternalKnowledgeHitTestingApi(),
@@ -154,7 +155,7 @@ def test_retrieval_maps_application_errors(external, error, http_error, status, 
             ID,
         )
     assert failure.value.code == status
-    assert failure.value.data == {"code": code, "message": str(error), "status": status}
+    assert failure.value.data == {"code": code, "message": message, "status": status}
     assert failure.value.__cause__ is error
     external.hit_testing.assert_called_once_with(
         CONTEXT, dataset_id=str(ID), query="query", retrieval_model=None, metadata_filters=None
@@ -176,7 +177,7 @@ def test_retrieval_maps_application_errors(external, error, http_error, status, 
     api.add_resource(ExternalHitTestingResource, "/external-hit-testing")
     response = app.test_client().post("/external-hit-testing")
     assert response.status_code == status
-    assert response.get_json() == {"code": code, "message": str(error), "status": status}
+    assert response.get_json() == {"code": code, "message": message, "status": status}
 
 
 def test_retrieval_response_is_serialized(external):

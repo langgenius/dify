@@ -119,5 +119,5 @@ def raise_hit_testing_error(error: Exception) -> Never:
     if isinstance(error, HitTestingInvocationError):
         raise CompletionRequestError(str(error)) from error
     if isinstance(error, HitTestingFailedError):
-        raise InternalServerError(description=str(error)) from error
+        raise InternalServerError() from error
     raise error

@@ -121,12 +121,15 @@ def test_invocation_failure_is_neutral_and_does_not_record_history(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    invocation_error = InvokeError("provider unavailable")
+
     def retrieve(*_args: object) -> list[Document]:
-        raise InvokeError("provider unavailable")
+        raise invocation_error
 
     monkeypatch.setattr(DatasetHitTestingGateway, "_retrieve_documents", staticmethod(retrieve))
-    with pytest.raises(HitTestingInvocationError, match="provider unavailable"):
+    with pytest.raises(HitTestingInvocationError, match="provider unavailable") as failure:
         service.hit_testing(CONTEXT, dataset_id=REF.dataset_id, request=HitTestingRequest("query", None, None))
+    assert failure.value.__cause__ is invocation_error
     with sqlite_session_factory() as session:
         assert session.scalar(select(func.count()).select_from(DatasetQuery)) == 0
 

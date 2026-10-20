@@ -3132,6 +3132,57 @@ Check if app name is available
 | 200 | Name availability checked | **application/json**: [AppDetail](#appdetail)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /apps/{app_id}/network-access-group
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App network access group binding retrieved successfully | **application/json**: [AppNetworkAccessGroupResponse](#appnetworkaccessgroupresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /apps/{app_id}/network-access-group
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AppNetworkAccessGroupUpdatePayload](#appnetworkaccessgroupupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App network access group binding updated successfully | **application/json**: [AppNetworkAccessGroupMutationResponse](#appnetworkaccessgroupmutationresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/network-access-group/status
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App network access control entry status retrieved successfully | **application/json**: [AppNetworkAccessGroupStatusResponse](#appnetworkaccessgroupstatusresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /apps/{app_id}/publish-to-creators-platform
 #### Parameters
 
@@ -9428,10 +9479,7 @@ Generate structured output rules using LLM
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflow-runs/tasks/{task_id}/stop
-**Stop a running snippet workflow task**
-
-Uses both the legacy stop flag mechanism and the graph engine
-command channel for backward compatibility.
+**Stop a running or paused task belonging to this snippet**
 
 #### Parameters
 
@@ -12075,6 +12123,101 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Available models retrieved successfully | **application/json**: [AvailableModelListResponse](#availablemodellistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/network-access-groups
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace network access groups retrieved successfully | **application/json**: [NetworkAccessGroupListResponse](#networkaccessgrouplistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/network-access-groups
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NetworkAccessGroupCreatePayload](#networkaccessgroupcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Workspace network access group created successfully | **application/json**: [NetworkAccessGroupMutationResponse](#networkaccessgroupmutationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/network-access-groups/current-ip
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Trusted current client IP retrieved without requiring an existing network access group | **application/json**: [NetworkAccessGroupCurrentIPResponse](#networkaccessgroupcurrentipresponse)<br> |
+| 403 | The workspace role does not allow network access policy reads | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | A trusted current client IP is unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /workspaces/current/network-access-groups/{group_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| expected_version | query | Current group version used for optimistic concurrency | Yes | integer |
+| group_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace network access group deleted successfully | **application/json**: [NetworkAccessGroupDeleteResponse](#networkaccessgroupdeleteresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/network-access-groups/{group_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| group_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace network access group retrieved successfully | **application/json**: [NetworkAccessGroupMutationResponse](#networkaccessgroupmutationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /workspaces/current/network-access-groups/{group_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| group_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NetworkAccessGroupUpdatePayload](#networkaccessgroupupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace network access group updated successfully | **application/json**: [NetworkAccessGroupMutationResponse](#networkaccessgroupmutationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/network-access-groups/{group_id}/check-current-ip
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| group_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Current client IP checked against the workspace network access group | **application/json**: [NetworkAccessGroupCurrentIPCheckResponse](#networkaccessgroupcurrentipcheckresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/permission
@@ -18379,6 +18522,59 @@ The 'More like this' feature is disabled. Please refresh your page.
 | ---- | ---- | ----------- | -------- |
 | name | string | Name to check | Yes |
 
+#### AppNetworkAccessGroupBindingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_points | [ string, <br>**Available values:** "mcp", "service_api", "trigger", "webapp" ] |  | Yes |
+| app_id | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| enabled | boolean |  | Yes |
+| group_id | string |  | No |
+| id | string |  | Yes |
+| tenant_id | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+| updated_by_account_id | string |  | No |
+| version | integer |  | Yes |
+
+#### AppNetworkAccessGroupMutationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available_access_points | [ string, <br>**Available values:** "mcp", "service_api", "trigger", "webapp" ] |  | Yes |
+| binding | [AppNetworkAccessGroupBindingResponse](#appnetworkaccessgroupbindingresponse) |  | Yes |
+| effective_enabled | boolean |  | Yes |
+
+#### AppNetworkAccessGroupResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| available_access_points | [ string, <br>**Available values:** "mcp", "service_api", "trigger", "webapp" ] |  | Yes |
+| binding | [AppNetworkAccessGroupBindingResponse](#appnetworkaccessgroupbindingresponse) |  | Yes |
+| effective_enabled | boolean |  | Yes |
+| entitled | boolean |  | Yes |
+| tenant_id | string |  | Yes |
+
+#### AppNetworkAccessGroupStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available_count | integer |  | Yes |
+| configured | boolean |  | Yes |
+| covered_count | integer |  | Yes |
+| enabled | boolean |  | Yes |
+| entitled | boolean |  | Yes |
+
+#### AppNetworkAccessGroupUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_points | [ string, <br>**Available values:** "mcp", "service_api", "trigger", "webapp" ] |  | Yes |
+| enabled | boolean |  | Yes |
+| expected_version | integer |  | Yes |
+| group_id | string |  | Yes |
+
 #### AppNotFoundError
 
 App not found.
@@ -23385,6 +23581,87 @@ Need to add ids.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | NeedAddIdsError |  | Need to add ids. |  |
+
+#### NetworkAccessGroupAppResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bound_agent_id | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| id | string |  | Yes |
+| mode | string |  | Yes |
+| name | string |  | Yes |
+
+#### NetworkAccessGroupCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_cidrs | [ string ] |  | Yes |
+| description | string |  | No |
+| name | string |  | Yes |
+
+#### NetworkAccessGroupCurrentIPCheckResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed | boolean |  | Yes |
+| client_ip | string |  | Yes |
+| policy_version | integer |  | Yes |
+
+#### NetworkAccessGroupCurrentIPResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_ip | string |  | Yes |
+
+#### NetworkAccessGroupDeleteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deleted | boolean |  | Yes |
+
+#### NetworkAccessGroupListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| entitled | boolean |  | Yes |
+| groups | [ [NetworkAccessGroupResponse](#networkaccessgroupresponse) ] |  | Yes |
+| tenant_id | string |  | Yes |
+
+#### NetworkAccessGroupMutationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| group | [NetworkAccessGroupResponse](#networkaccessgroupresponse) |  | Yes |
+
+#### NetworkAccessGroupResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_cidrs | [ string ] |  | Yes |
+| app_ids | [ string ] |  | Yes |
+| apps | [ [NetworkAccessGroupAppResponse](#networkaccessgroupappresponse) ] |  | Yes |
+| created_at | dateTime |  | Yes |
+| description | string |  | No |
+| enforcing_count | integer |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| tenant_id | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+| updated_by_account_id | string |  | No |
+| used_by_count | integer |  | Yes |
+| version | integer |  | Yes |
+
+#### NetworkAccessGroupUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_cidrs | [ string ] |  | Yes |
+| description | string |  | No |
+| expected_version | integer |  | Yes |
+| name | string |  | Yes |
 
 #### NewAppResponse
 

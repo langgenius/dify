@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -22,22 +22,24 @@ def _credentials(
 
 class TestFirecrawlAuth:
     @pytest.fixture
-    def valid_credentials(self):
+    def valid_credentials(self) -> DataSourceApiKeyAuthCredentials:
         """Fixture for valid bearer credentials"""
         return _credentials()
 
     @pytest.fixture
-    def auth_instance(self, valid_credentials):
+    def auth_instance(self, valid_credentials: DataSourceApiKeyAuthCredentials) -> FirecrawlAuth:
         """Fixture for FirecrawlAuth instance with valid credentials"""
         return FirecrawlAuth(valid_credentials)
 
-    def test_should_initialize_with_valid_bearer_credentials(self, valid_credentials):
+    def test_should_initialize_with_valid_bearer_credentials(
+        self, valid_credentials: DataSourceApiKeyAuthCredentials
+    ) -> None:
         """Test successful initialization with valid bearer credentials"""
         auth = FirecrawlAuth(valid_credentials)
         assert auth.api_key == "test_api_key_123"
         assert auth.base_url == "https://api.firecrawl.dev"
 
-    def test_should_initialize_with_custom_base_url(self):
+    def test_should_initialize_with_custom_base_url(self) -> None:
         """Test initialization with custom base URL"""
         credentials = _credentials(base_url="https://custom.firecrawl.dev")
         auth = FirecrawlAuth(credentials)
@@ -52,19 +54,21 @@ class TestFirecrawlAuth:
             ("", "Invalid auth type, Firecrawl auth type must be Bearer"),
         ],
     )
-    def test_should_raise_error_for_invalid_auth_type(self, auth_type, expected_error):
+    def test_should_raise_error_for_invalid_auth_type(self, auth_type: str, expected_error: str) -> None:
         """Test that non-bearer auth types raise a credential error."""
         credentials = _credentials(auth_type=auth_type)
         with pytest.raises(InvalidDataSourceApiKeyAuthCredentialsError) as exc_info:
             FirecrawlAuth(credentials)
         assert str(exc_info.value) == expected_error
 
-    def test_should_raise_error_for_empty_api_key(self):
+    def test_should_raise_error_for_empty_api_key(self) -> None:
         with pytest.raises(InvalidDataSourceApiKeyAuthCredentialsError, match="No API key provided"):
             FirecrawlAuth(_credentials(api_key=""))
 
     @patch("services.data_source.auth.firecrawl.firecrawl.ssrf_proxy.post", autospec=True)
-    def test_should_validate_valid_credentials_successfully(self, mock_post, auth_instance: FirecrawlAuth):
+    def test_should_validate_valid_credentials_successfully(
+        self, mock_post: MagicMock, auth_instance: FirecrawlAuth
+    ) -> None:
         """Test successful credential validation"""
         mock_response = httpx.Response(200)
         mock_post.return_value = mock_response
@@ -72,7 +76,7 @@ class TestFirecrawlAuth:
         result = auth_instance.validate_credentials()
 
         assert result is True
-        expected_data = {
+        expected_data: dict[str, object] = {
             "url": "https://example.com",
             "includePaths": [],
             "excludePaths": [],
@@ -95,7 +99,9 @@ class TestFirecrawlAuth:
         ],
     )
     @patch("services.data_source.auth.firecrawl.firecrawl.ssrf_proxy.post", autospec=True)
-    def test_should_handle_http_errors(self, mock_post, status_code, error_message, auth_instance: FirecrawlAuth):
+    def test_should_handle_http_errors(
+        self, mock_post: MagicMock, status_code: int, error_message: str, auth_instance: FirecrawlAuth
+    ) -> None:
         """Test handling of various HTTP error codes"""
         mock_response = httpx.Response(status_code, json={"error": error_message})
         mock_post.return_value = mock_response
@@ -108,10 +114,10 @@ class TestFirecrawlAuth:
     @patch("services.data_source.auth.firecrawl.firecrawl.ssrf_proxy.post", autospec=True)
     def test_should_map_upstream_failure_to_provider_unavailable(
         self,
-        mock_post,
+        mock_post: MagicMock,
         status_code: int,
         auth_instance: FirecrawlAuth,
-    ):
+    ) -> None:
         mock_response = httpx.Response(status_code)
         mock_post.return_value = mock_response
 
@@ -122,31 +128,26 @@ class TestFirecrawlAuth:
         assert exc_info.value.status_code == status_code
 
     @pytest.mark.parametrize(
-        ("status_code", "response_text", "has_json_error", "expected_error_contains"),
+        ("status_code", "response_text", "expected_error_contains"),
         [
-            (403, '{"error": "Forbidden"}', False, "Failed to authorize. Status code: 403. Error: Forbidden"),
+            (403, '{"error": "Forbidden"}', "Failed to authorize. Status code: 403. Error: Forbidden"),
             # empty body falls back to generic message
-            (404, "", True, "Failed to authorize. Status code: 404. Error: Unknown error occurred"),
+            (404, "", "Failed to authorize. Status code: 404. Error: Unknown error occurred"),
             # non-JSON body is surfaced directly
-            (401, "Not JSON", True, "Failed to authorize. Status code: 401. Error: Not JSON"),
+            (401, "Not JSON", "Failed to authorize. Status code: 401. Error: Not JSON"),
         ],
     )
     @patch("services.data_source.auth.firecrawl.firecrawl.ssrf_proxy.post", autospec=True)
     def test_should_handle_unexpected_errors(
         self,
-        mock_post,
-        status_code,
-        response_text,
-        has_json_error,
-        expected_error_contains,
+        mock_post: MagicMock,
+        status_code: int,
+        response_text: str,
+        expected_error_contains: str,
         auth_instance: FirecrawlAuth,
-    ):
+    ) -> None:
         """Test handling of unexpected errors with various response formats"""
-        if has_json_error:
-            mock_response = httpx.Response(status_code, text=response_text)
-        else:
-            mock_response = httpx.Response(status_code, json={"error": "Forbidden"})
-        mock_post.return_value = mock_response
+        mock_post.return_value = httpx.Response(status_code, text=response_text)
 
         with pytest.raises(DataSourceApiKeyAuthCredentialValidationError) as exc_info:
             auth_instance.validate_credentials()
@@ -163,8 +164,12 @@ class TestFirecrawlAuth:
     )
     @patch("services.data_source.auth.firecrawl.firecrawl.ssrf_proxy.post", autospec=True)
     def test_should_handle_network_errors(
-        self, mock_post, exception_type, exception_message, auth_instance: FirecrawlAuth
-    ):
+        self,
+        mock_post: MagicMock,
+        exception_type: type[httpx.TransportError],
+        exception_message: str,
+        auth_instance: FirecrawlAuth,
+    ) -> None:
         """Test handling of various network-related errors including timeouts"""
         mock_post.side_effect = exception_type(exception_message)
 
@@ -172,7 +177,7 @@ class TestFirecrawlAuth:
             auth_instance.validate_credentials()
         assert exception_message in str(exc_info.value)
 
-    def test_should_not_expose_api_key_in_error_messages(self):
+    def test_should_not_expose_api_key_in_error_messages(self) -> None:
         """Test that API key is not exposed in error messages"""
         credentials = _credentials(api_key="super_secret_key_12345")
         auth = FirecrawlAuth(credentials)
@@ -186,7 +191,7 @@ class TestFirecrawlAuth:
         assert "super_secret_key_12345" not in str(exc_info.value)
 
     @patch("services.data_source.auth.firecrawl.firecrawl.ssrf_proxy.post", autospec=True)
-    def test_should_use_custom_base_url_in_validation(self, mock_post):
+    def test_should_use_custom_base_url_in_validation(self, mock_post: MagicMock) -> None:
         """Test that custom base URL is used in validation and normalized"""
         mock_response = httpx.Response(200)
         mock_post.return_value = mock_response
@@ -200,7 +205,9 @@ class TestFirecrawlAuth:
             assert mock_post.call_args[0][0] == "https://custom.firecrawl.dev/v1/crawl"
 
     @patch("services.data_source.auth.firecrawl.firecrawl.ssrf_proxy.post", autospec=True)
-    def test_should_handle_timeout_with_retry_suggestion(self, mock_post, auth_instance: FirecrawlAuth):
+    def test_should_handle_timeout_with_retry_suggestion(
+        self, mock_post: MagicMock, auth_instance: FirecrawlAuth
+    ) -> None:
         """Test that timeout errors are handled gracefully with appropriate error message"""
         mock_post.side_effect = httpx.TimeoutException("The request timed out after 30 seconds")
 

@@ -171,7 +171,12 @@ def test_maps_domain_failures(hit_testing, error, http_error):
             "dataset_access_denied",
             "You do not have permission to access this dataset",
         ),
-        (HitTestingFailedError("failed"), 500, "internal_server_error", "failed"),
+        (
+            HitTestingFailedError("sensitive failure details"),
+            500,
+            "internal_server_error",
+            InternalServerError.description,
+        ),
     ],
 )
 def test_serializes_dataset_failures(hit_testing, error, status, code, message):

@@ -557,8 +557,8 @@ class DatasetListApi(DatasetApiResource):
                 retrieval_model=payload.retrieval_model,
                 summary_index_setting=payload.summary_index_setting,
             )
-        except services.errors.dataset.DatasetNameDuplicateError:
-            raise DatasetNameDuplicateError()
+        except services.errors.dataset.DatasetNameDuplicateError as caught_error:
+            raise DatasetNameDuplicateError() from caught_error
 
         if dify_config.RBAC_ENABLED:
             enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
@@ -613,7 +613,7 @@ class DatasetApi(DatasetApiResource):
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
         except services.errors.base.NoPermissionError as e:
-            raise Forbidden(str(e))
+            raise Forbidden(str(e)) from e
         data = _dump_service_dataset_detail(load_dataset_detail(dataset, session=session))
         # check embedding setting
         assert isinstance(current_user, Account)
@@ -799,8 +799,8 @@ class DatasetApi(DatasetApiResource):
                 return "", 204
             else:
                 raise NotFound("Dataset not found.")
-        except services.errors.dataset.DatasetInUseError:
-            raise DatasetInUseError()
+        except services.errors.dataset.DatasetInUseError as caught_error:
+            raise DatasetInUseError() from caught_error
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/status/<string:action>")
@@ -877,7 +877,7 @@ class DocumentStatusApi(DatasetApiResource):
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
         except services.errors.base.NoPermissionError as e:
-            raise Forbidden(str(e))
+            raise Forbidden(str(e)) from e
 
         # Check dataset model setting
         DatasetService.check_dataset_model_setting(dataset)
@@ -889,9 +889,9 @@ class DocumentStatusApi(DatasetApiResource):
         try:
             DocumentService.batch_update_document_status(dataset, document_ids, action, current_user, session)
         except services.errors.document.DocumentIndexingError as e:
-            raise InvalidActionError(str(e))
+            raise InvalidActionError(str(e)) from e
         except ValueError as e:
-            raise InvalidActionError(str(e))
+            raise InvalidActionError(str(e)) from e
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 

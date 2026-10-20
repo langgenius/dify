@@ -2,7 +2,7 @@ import pytest
 from yarl import URL
 
 
-def test_yarl_urls():
+def test_yarl_urls() -> None:
     expected_1 = "https://dify.ai/api"
     assert str(URL("https://dify.ai") / "api") == expected_1
     assert str(URL("https://dify.ai/") / "api") == expected_1

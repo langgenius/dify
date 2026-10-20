@@ -127,6 +127,7 @@ describe('HumanInputFormList', () => {
     expect(screen.getByText('Need Approval')).toBeInTheDocument()
     expect(screen.queryByText('Hidden Form')).not.toBeInTheDocument()
     expect(screen.getByDisplayValue('prefill')).toBeInTheDocument()
+    expect(screen.getByText('workflow.common.humanInputEmailTipInDebugMode')).toBeInTheDocument()
     expect(screen.getByText('workflow.common.humanInputWebappTip')).toBeInTheDocument()
 
     await user.clear(screen.getByDisplayValue('prefill'))
@@ -152,7 +153,7 @@ describe('HumanInputFormList', () => {
 
     render(<HumanInputFormList humanInputFormDataList={[createFormData()]} />)
 
-    expect(screen.queryByTestId('tips')).not.toBeInTheDocument()
+    expect(screen.queryByText(/workflow\.common\.humanInput.*Tip/)).not.toBeInTheDocument()
   })
 
   it('should reset inputs when the same node produces a new form', async () => {

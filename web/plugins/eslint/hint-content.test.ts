@@ -228,3 +228,25 @@ it('keeps centered dialog layout owned by the surface', () => {
     }
   }
 })
+
+it('allows disabling dialog transitions without allowing surface or animation restyling', () => {
+  const diagnostics = lintFixture(`
+    import { DialogContent as Content } from '@langgenius/dify-ui/dialog'
+    import { AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
+    const examples = <>
+      <Content className="w-160 data-open:transition-none" />
+      <AlertDialogContent className="transition-none" />
+      <Content className="motion-reduce:transition-none" />
+      <Content className="data-open:scale-95 bg-transparent transition-all" />
+      <AlertDialogContent className="data-open:opacity-0" />
+    </>
+  `)
+  expect(diagnostics).toHaveLength(4)
+  for (const className of [
+    'data-open:scale-95',
+    'bg-transparent',
+    'transition-all',
+    'data-open:opacity-0',
+  ])
+    expect(diagnostics.some(({ message }) => message.includes(`"${className}"`))).toBe(true)
+})

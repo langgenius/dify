@@ -17,11 +17,13 @@ import {
 } from '@/app/components/base/file-uploader/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { isAppAccessError } from '@/features/app-access-error/state'
 import { useParams, usePathname } from '@/next/navigation'
 import { uploadRemoteFileInfo } from '@/service/common'
 import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } from '@/service/share'
 import { TransferMethod } from '@/types/app'
 import { formatFileSize } from '@/utils/format'
+import { isAbortError } from '@/utils/is-abort-error'
 import { useFileStore } from './store'
 import { useFileUploadContext } from './upload-context'
 import {
@@ -191,7 +193,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
               t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
               t,
             )
-            toast.error(errorMessage)
+            if (!isAppAccessError(error) && !isAbortError(error)) toast.error(errorMessage)
             handleUpdateFile({ ...uploadingFile, progress: -1 })
           },
         }
@@ -278,8 +280,9 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             handleRemoveFile(uploadingFile.id)
           else handleUpdateFile(newFile)
         })
-        .catch(() => {
-          toast.error(t(($) => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' }))
+        .catch((error: unknown) => {
+          if (!isAppAccessError(error) && !isAbortError(error))
+            toast.error(t(($) => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' }))
           handleRemoveFile(uploadingFile.id)
         })
     },
@@ -372,7 +375,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
                 t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
                 t,
               )
-              toast.error(errorMessage)
+              if (!isAppAccessError(error) && !isAbortError(error)) toast.error(errorMessage)
               handleUpdateFile({ ...uploadingFile, progress: -1 })
             },
           }
