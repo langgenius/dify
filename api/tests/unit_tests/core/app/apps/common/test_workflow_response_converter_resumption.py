@@ -15,10 +15,14 @@ from graphon.entities import WorkflowStartReason
 from graphon.enums import BuiltinNodeTypes
 from models.account import Account
 from models.model import AppMode
+from services.tools.provider_queries import ToolProviderIcons
 from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
+from services.workflow.execution.ports import ExecutionContexts
 
 
-def _build_converter(*, workflow_contexts, tool_providers) -> WorkflowResponseConverter:
+def _build_converter(
+    *, workflow_contexts: ExecutionContexts, tool_providers: ToolProviderIcons
+) -> WorkflowResponseConverter:
     """Construct a minimal WorkflowResponseConverter for testing."""
     system_variables = build_system_variables(
         files=[],
@@ -51,7 +55,9 @@ def _build_converter(*, workflow_contexts, tool_providers) -> WorkflowResponseCo
     )
 
 
-def test_workflow_start_stream_response_carries_resumption_reason(*, workflow_contexts, tool_providers) -> None:
+def test_workflow_start_stream_response_carries_resumption_reason(
+    *, workflow_contexts: ExecutionContexts, tool_providers: ToolProviderIcons
+) -> None:
     converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     resp = converter.workflow_start_to_stream_response(
         task_id="task-1",
@@ -62,7 +68,9 @@ def test_workflow_start_stream_response_carries_resumption_reason(*, workflow_co
     assert resp.data.reason is WorkflowStartReason.RESUMPTION
 
 
-def test_workflow_start_stream_response_carries_initial_reason(*, workflow_contexts, tool_providers) -> None:
+def test_workflow_start_stream_response_carries_initial_reason(
+    *, workflow_contexts: ExecutionContexts, tool_providers: ToolProviderIcons
+) -> None:
     converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     resp = converter.workflow_start_to_stream_response(
         task_id="task-1",
@@ -73,8 +81,10 @@ def test_workflow_start_stream_response_carries_initial_reason(*, workflow_conte
     assert resp.data.reason is WorkflowStartReason.INITIAL
 
 
-def test_node_start_preserves_the_allocated_index_when_events_arrive_out_of_order():
-    converter = _build_converter()
+def test_node_start_preserves_the_allocated_index_when_events_arrive_out_of_order(
+    *, workflow_contexts: ExecutionContexts, tool_providers: ToolProviderIcons
+) -> None:
+    converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     converter.workflow_start_to_stream_response(
         task_id="task-1", workflow_run_id="run-1", workflow_id="wf-1", reason=WorkflowStartReason.INITIAL
     )
@@ -97,14 +107,19 @@ def test_node_start_preserves_the_allocated_index_when_events_arrive_out_of_orde
 
 
 @pytest.mark.parametrize("next_node_already_persisted", [False, True])
-def test_resumed_node_metadata_and_sequence(next_node_already_persisted):
+def test_resumed_node_metadata_and_sequence(
+    next_node_already_persisted: bool,
+    *,
+    workflow_contexts: ExecutionContexts,
+    tool_providers: ToolProviderIcons,
+) -> None:
     started_at = datetime(2026, 9, 7)
-    converter = _build_converter()
+    converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     converter.workflow_start_to_stream_response(
         task_id="task-1", workflow_run_id="run-1", workflow_id="wf-1", reason=WorkflowStartReason.INITIAL
     )
 
-    def node_start(execution_id, title, node_type, index):
+    def node_start(execution_id: str, title: str, node_type: str, index: int) -> QueueNodeStartedEvent:
         return QueueNodeStartedEvent(
             node_execution_id=execution_id,
             node_id=execution_id,
@@ -134,7 +149,7 @@ def test_resumed_node_metadata_and_sequence(next_node_already_persisted):
         QueueWorkflowStartedEvent(node_execution_snapshots=tuple(snapshots)).model_dump_json()
     )
 
-    converter = _build_converter()
+    converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     converter.workflow_start_to_stream_response(
         task_id="task-1",
         workflow_run_id="run-1",

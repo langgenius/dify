@@ -45,8 +45,8 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowPauseStoppedError
 from services.workflow.execution.adapters.human_input_events import build_human_input_pause_reason
 from services.workflow.execution.adapters.node_runtime import resolve_dify_run_context
+from services.workflow.execution.adapters.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow.execution.contracts import PreparedWorkflowRun, WorkflowRunRunner
-from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 
 logger = logging.getLogger(__name__)

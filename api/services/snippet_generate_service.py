@@ -24,8 +24,6 @@ from collections.abc import Generator, Mapping, Sequence
 from dataclasses import replace
 from typing import Any, Protocol, cast
 
-from sqlalchemy.orm import make_transient
-
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
@@ -227,18 +225,6 @@ class SnippetGenerateService:
         )
 
         return replace(workflow, graph=json.dumps(modified_graph))
-
-    @classmethod
-    def ensure_start_node_for_worker(cls, workflow: Workflow, snippet: CustomizedSnippet) -> Workflow:
-        """Inject the virtual Start node after a worker reloads a snippet workflow."""
-        snapshot = workflow_snapshot(workflow)
-        updated_snapshot = cls._ensure_start_node(snapshot, snippet)
-        if updated_snapshot.graph == snapshot.graph:
-            return workflow
-
-        make_transient(workflow)
-        workflow.graph = updated_snapshot.graph
-        return workflow
 
     @classmethod
     def _inject_virtual_start_node(

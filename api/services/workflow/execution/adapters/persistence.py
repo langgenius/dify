@@ -25,6 +25,7 @@ from graphon.engine_events import (
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
+    GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunExceptionEvent,
@@ -116,6 +117,8 @@ class WorkflowPersistenceLayer(Layer):
                 self._handle_graph_run_failed(event)
             case GraphRunAbortedEvent():
                 self._handle_graph_run_aborted(event)
+            case GraphRunPausedEvent():
+                self._handle_graph_run_paused(event)
             case NodeRunRetryEvent():
                 self._handle_node_retry(event)
             case NodeRunStartedEvent():
@@ -183,6 +186,13 @@ class WorkflowPersistenceLayer(Layer):
         self._workflow_execution_repository.save_synchronously(execution)
         self._enqueue_trace_task(execution)
         _inspector_publish_workflow_completed(workflow_run_id=execution.id_, status=str(execution.status.value))
+
+    def _handle_graph_run_paused(self, event: GraphRunPausedEvent) -> None:
+        execution = self._get_workflow_execution()
+        execution.status = WorkflowExecutionStatus.PAUSED
+        execution.outputs = event.outputs
+        self._populate_completion_statistics(execution, update_finished=False)
+        self._workflow_execution_repository.save(execution)
 
     # ------------------------------------------------------------------
     # Node-level handlers
@@ -366,9 +376,10 @@ class WorkflowPersistenceLayer(Layer):
         merged_process_data[RETRY_HISTORY_PROCESS_DATA_KEY] = raw_history
         return merged_process_data
 
-    def _populate_completion_statistics(self, execution: WorkflowExecution) -> None:
+    def _populate_completion_statistics(self, execution: WorkflowExecution, *, update_finished: bool = True) -> None:
         execution.accumulated_elapsed_time = self._application_generate_entity.workflow_execution_timing.finish()
-        execution.finished_at = naive_utc_now()
+        if update_finished:
+            execution.finished_at = naive_utc_now()
         runtime_state = self.runtime_state
         execution.total_tokens = runtime_state.total_tokens
         execution.total_steps = runtime_state.node_run_steps

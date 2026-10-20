@@ -11,7 +11,6 @@ import pytest
 from pydantic import ValidationError
 
 from core.app.apps.execution_coordinator import AppExecutionState
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
@@ -65,6 +64,7 @@ from graphon.variables.variables import StringVariable
 from models.workflow import Workflow
 from services.workflow.execution.adapters.events import WorkflowEventPublisher, enqueue_human_input_notifications
 from services.workflow.execution.adapters.graph import WorkflowGraphBuilder
+from services.workflow.execution.adapters.workflow.app_queue_manager import WorkflowAppQueueManager
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
 from services.workflow_run_index import WorkflowRunIndex
 from tests.unit_tests.model_factories import make_workflow

@@ -1,5 +1,4 @@
 import logging
-import time
 from collections.abc import Callable, Generator
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -219,7 +218,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 status=WorkflowExecutionStatus.PAUSED,
                 outputs={},
                 error=None,
-                elapsed_time=time.perf_counter() - self._base_task_pipeline.start_at,
+                elapsed_time=self._application_generate_entity.workflow_execution_timing.finish(),
                 total_tokens=runtime_state.total_tokens,
                 total_steps=runtime_state.node_run_steps,
                 created_at=created_at,
