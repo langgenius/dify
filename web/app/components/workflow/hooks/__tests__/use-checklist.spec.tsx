@@ -329,7 +329,61 @@ const validAppUserDraft = {
   description: 'Find repositories',
 }
 
+function buildReusableToolGraph() {
+  const graph = buildUnauthorizedToolGraph()
+  const tool = graph.nodes.find((node) => node.id === 'tool')!
+  return {
+    ...graph,
+    nodes: [
+      ...graph.nodes,
+      createNode({ id: 'auth-source', data: { ...tool.data, tool_name: 'different-tool' } }),
+      createNode({ id: 'middle', data: { ...tool.data, tool_name: 'third-tool' } }),
+    ],
+    edges: [
+      createEdge({ source: 'start', target: 'auth-source' }),
+      createEdge({ source: 'auth-source', target: 'middle' }),
+      createEdge({ source: 'middle', target: 'tool' }),
+    ],
+  }
+}
+
+function setReusableAppUserAuth(store: ReturnType<typeof createTestWorkflowStore>) {
+  store.getState().setNodeAppUserAuthDraft('auth-source', 'google', 'google', validAppUserDraft)
+  store.getState().setNodeAuthorizationTab('auth-source', 'google', 'google', 'app-user-auth')
+  for (const [id, sourceId] of [
+    ['tool', 'middle'],
+    ['middle', 'auth-source'],
+  ] as const) {
+    store.getState().setNodeReuseFromNode(id, 'google', 'google', { id: sourceId, title: sourceId })
+    store.getState().setNodeAuthorizationTab(id, 'google', 'google', 'reuse-from-node')
+  }
+}
+
 describe('useChecklist', () => {
+  it('validates Reuse using its terminal authorization and updates every dependent node immediately', () => {
+    const { nodes, edges, options } = buildReusableToolGraph()
+    const { result, store } = renderChecklist(nodes, edges, options)
+    act(() => setReusableAppUserAuth(store))
+    expect(result.current).toEqual([])
+    act(() =>
+      store.getState().setNodeAppUserAuthDraft('auth-source', 'google', 'google', {
+        ...validAppUserDraft,
+        description: ' ',
+      }),
+    )
+    for (const id of ['auth-source', 'middle', 'tool'])
+      expect(result.current.find((item) => item.id === id)?.errorMessages).toEqual([
+        'plugin.auth.appUser.descriptionRequired',
+      ])
+    act(() =>
+      store.getState().setNodeAuthorizationTab('auth-source', 'google', 'google', 'workspace-auth'),
+    )
+    for (const id of ['auth-source', 'middle', 'tool'])
+      expect(result.current.find((item) => item.id === id)?.errorMessages).toEqual([
+        'workflow.errorMsg.authRequired',
+      ])
+  })
+
   it.each(['workspace-auth', 'reuse-from-node'] as const)(
     'uses App user authorization errors and restores Workspace errors in %s',
     (nextTab) => {
@@ -792,6 +846,18 @@ describe('useChecklist', () => {
 })
 
 describe('useChecklistBeforePublish', () => {
+  it('checks multi-hop Reuse against the terminal App user or Workspace authorization', async () => {
+    const { nodes, edges, options } = buildReusableToolGraph()
+    const { wrapper, store } = createChecklistWrapper({ nodes, edges }, options)
+    const { result } = renderHook(() => useChecklistBeforePublish(), { wrapper })
+    act(() => setReusableAppUserAuth(store))
+    await act(async () => expect(await result.current.handleCheckBeforePublish()).toBe(true))
+    act(() =>
+      store.getState().setNodeAuthorizationTab('auth-source', 'google', 'google', 'workspace-auth'),
+    )
+    await act(async () => expect(await result.current.handleCheckBeforePublish()).toBe(false))
+  })
+
   it('does not reject valid App user authorization as missing Workspace authorization', async () => {
     const { nodes, edges, options } = buildUnauthorizedToolGraph()
     const { wrapper, store } = createChecklistWrapper({ nodes, edges }, options)

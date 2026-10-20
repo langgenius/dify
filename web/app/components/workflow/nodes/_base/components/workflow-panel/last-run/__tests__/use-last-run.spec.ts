@@ -2,7 +2,7 @@ import type { IterationNodeType } from '@/app/components/workflow/nodes/iteratio
 import type { ListFilterNodeType } from '@/app/components/workflow/nodes/list-operator/types'
 import type { Node } from '@/app/components/workflow/types'
 import { act } from '@testing-library/react'
-import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderWorkflowFlowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, ErrorHandleMode, VarType } from '@/app/components/workflow/types'
 import useLastRun from '../use-last-run'
 
@@ -115,7 +115,7 @@ describe('useLastRun', () => {
       _children: [{ nodeId: 'list', nodeType: BlockEnum.ListFilter }],
       _isShowTips: false,
     }
-    const { result } = renderWorkflowHook(() =>
+    const { result } = renderWorkflowFlowHook(() =>
       useLastRun({
         id: 'iteration',
         resource: { kind: 'app', appId: 'flow-id', mode: 'workflow' },

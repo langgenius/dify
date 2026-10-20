@@ -2,7 +2,8 @@ import type { ToolNodeType } from '../types'
 import { act, screen } from '@testing-library/react'
 import { createAppUserAuthDraft } from '@/app/components/plugins/plugin-auth/app-user-auth/draft'
 import { CollectionType } from '@/app/components/tools/types'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent as renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
 
@@ -181,4 +182,55 @@ describe('ToolNode', () => {
     expect(screen.queryByText('plugin.auth.appUser.descriptionRequired')).not.toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeInTheDocument()
   })
+})
+
+it('inherits live App user errors through multiple Reuse sources and restores Workspace checks at the terminal', () => {
+  mockUseCurrentToolCollection.mockReturnValue({
+    currentTools: [],
+    currCollection: { name: 'google', allow_delete: true, is_team_authorization: false },
+  })
+  const data = createNodeData()
+  const source = createNode({
+    id: 'auth-source',
+    data: createNodeData({ tool_name: 'another-tool' }),
+  })
+  const middle = createNode({ id: 'middle', data: createNodeData() })
+  const { store } = renderWorkflowComponent(<Node id="tool-node-1" data={data} />, {
+    nodes: [source, middle],
+  })
+  act(() => {
+    for (const [id, target] of [
+      ['tool-node-1', middle],
+      ['middle', source],
+    ] as const) {
+      store.getState().setNodeReuseFromNode(id, 'google', data.provider_id, {
+        id: target.id,
+        title: target.data.title,
+      })
+      store.getState().setNodeAuthorizationTab(id, 'google', data.provider_id, 'reuse-from-node')
+    }
+    store.getState().setNodeAppUserAuthDraft('auth-source', 'google', data.provider_id, {
+      ...createAppUserAuthDraft({ canOAuth: false, canApiKey: true }),
+      description: '',
+    })
+    store
+      .getState()
+      .setNodeAuthorizationTab('auth-source', 'google', data.provider_id, 'app-user-auth')
+  })
+  expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeVisible()
+  expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()
+  act(() => {
+    store.getState().setNodeAppUserAuthDraft('auth-source', 'google', data.provider_id, {
+      ...createAppUserAuthDraft({ canOAuth: false, canApiKey: true }),
+      description: 'Find repositories',
+    })
+  })
+  expect(screen.queryByText('plugin.auth.appUser.descriptionRequired')).not.toBeInTheDocument()
+  expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()
+  act(() =>
+    store
+      .getState()
+      .setNodeAuthorizationTab('auth-source', 'google', data.provider_id, 'workspace-auth'),
+  )
+  expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeVisible()
 })

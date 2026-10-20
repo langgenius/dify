@@ -1,13 +1,15 @@
 import type { FC } from 'react'
 import type { ToolNodeType } from './types'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { CommonNodeType, NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNodes } from 'reactflow'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { useStore } from '@/app/components/workflow/store'
 import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
 import { isToolAuthorizationRequired } from './auth'
+import { resolveToolAuthorization } from './authorization'
 import useCurrentToolCollection from './hooks/use-current-tool-collection'
 
 const Node: FC<NodeProps<ToolNodeType>> = ({ id, data }) => {
@@ -18,9 +20,19 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ id, data }) => {
     useNodePluginInstallation(data)
   const { currCollection } = useCurrentToolCollection(data.provider_type, data.provider_id)
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
-  const authDraft = useStore((state) => state.nodeAuthDrafts[id])
-  const isAppUserAuth =
-    authDraft?.authorizationTab === 'app-user-auth' && authDraft.providerId === data.provider_id
+  const nodes = useNodes<CommonNodeType>()
+  const nodeAuthDrafts = useStore((state) => state.nodeAuthDrafts)
+  const authorization = resolveToolAuthorization({
+    node: { id, data },
+    nodes,
+    nodeAuthDrafts,
+    provider: currCollection?.name,
+  })
+  const authDraft =
+    authorization?.status === 'resolved' && authorization.authorizationTab === 'app-user-auth'
+      ? authorization.appUserDraft
+      : undefined
+  const isAppUserAuth = !!authDraft
   const authErrors = isAppUserAuth ? authDraft.errors : undefined
   const authorizationWarnings: string[] = []
   if (!isAppUserAuth && isToolAuthorizationRequired(data.provider_type, currCollection))

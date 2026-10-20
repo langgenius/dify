@@ -838,3 +838,58 @@ it('closes nested tool execution details with Escape and restores canvas focus',
   expect(screen.queryByRole('region', { name: /workflow.panel.nodePanel/ })).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: /Search tool/ })).toHaveFocus()
 })
+
+it('uses the terminal Reuse source for test-connection gating and executes without Workspace authorization', async () => {
+  const user = userEvent.setup()
+  const source = createNode({ id: 'auth-source', data: { ...toolData, tool_name: 'another-tool' } })
+  const middle = createNode({ id: 'middle', data: { ...toolData, tool_name: 'third-tool' } })
+  const { store } = renderPanel({
+    data: toolData,
+    tools: [toolProvider()],
+    otherNodes: [source, middle],
+    edges: [
+      createEdge({ source: 'auth-source', target: 'middle' }),
+      createEdge({ source: 'middle', target: 'node-1' }),
+    ],
+    initialStoreState: {
+      nodeAuthDrafts: {
+        'node-1': {
+          provider: 'Tool',
+          providerId: 'provider/tool',
+          authorizationTab: 'reuse-from-node',
+          reuseFromNode: { source: { id: 'middle', title: 'Middle' } },
+        },
+        middle: {
+          provider: 'Tool',
+          providerId: 'provider/tool',
+          authorizationTab: 'reuse-from-node',
+          reuseFromNode: { source: { id: 'auth-source', title: 'Source' } },
+        },
+        'auth-source': {
+          provider: 'Tool',
+          providerId: 'provider/tool',
+          authorizationTab: 'app-user-auth',
+          draft: appUserDraft,
+        },
+      },
+    },
+  })
+  const run = panel().getByRole('button', { name: 'workflow.panel.runThisStep' })
+  expect(run).toHaveAttribute('aria-disabled', 'true')
+  await user.hover(run)
+  expect(await screen.findByText('workflow.panel.configureTestRunConnection')).toBeVisible()
+  act(() =>
+    store.getState().setNodeAppUserAuthDraft('auth-source', 'Tool', 'provider/tool', {
+      ...appUserDraft,
+      testConnection: undefined,
+    }),
+  )
+  await waitFor(() =>
+    expect(panel().getByRole('button', { name: 'workflow.panel.runThisStep' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    ),
+  )
+  await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
+  await waitFor(() => expect(api.run).toHaveBeenCalledOnce())
+})

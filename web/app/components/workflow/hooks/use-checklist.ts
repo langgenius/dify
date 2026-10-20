@@ -58,6 +58,7 @@ import {
   LLMModelIssueCode,
   resolveLLMNodeModel,
 } from '../nodes/llm/utils'
+import { resolveToolAuthorization } from '../nodes/tool/authorization'
 import { useStore, useWorkflowStore } from '../store'
 import { BlockEnum } from '../types'
 import {
@@ -101,13 +102,12 @@ const EMPTY_ENVIRONMENT_VARIABLES: EnvironmentVariable[] = []
 
 const getAppUserAuthDraft = (
   node: Node,
+  nodes: Node[],
   nodeAuthDrafts: AppUserAuthSliceShape['nodeAuthDrafts'],
 ) => {
-  const authDraft = nodeAuthDrafts[node.id]
-  return node.data.type === BlockEnum.Tool &&
-    authDraft?.authorizationTab === 'app-user-auth' &&
-    authDraft.providerId === (node.data as ToolNodeType).provider_id
-    ? authDraft
+  const authorization = resolveToolAuthorization({ node, nodes, nodeAuthDrafts })
+  return authorization?.status === 'resolved' && authorization.authorizationTab === 'app-user-auth'
+    ? authorization.appUserDraft
     : undefined
 }
 
@@ -391,7 +391,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
-      const appUserAuthDraft = getAppUserAuthDraft(node!, nodeAuthDrafts)
+      const appUserAuthDraft = getAppUserAuthDraft(node!, nodes, nodeAuthDrafts)
       let moreDataForCheckValid: CheckValidExtraData
       let usedVars: ValueSelector[] = []
 
@@ -826,7 +826,7 @@ export const useChecklistBeforePublish = () => {
           workflowTools || [],
           language,
         )
-        if (getAppUserAuthDraft(node!, nodeAuthDrafts))
+        if (getAppUserAuthDraft(node!, nodes, nodeAuthDrafts))
           moreDataForCheckValid = { ...moreDataForCheckValid, notAuthed: false }
       }
 
