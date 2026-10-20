@@ -1,6 +1,7 @@
 """Unit tests for built-in tool management and its persisted credential state."""
 
 import json
+from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -186,6 +187,146 @@ class TestIsOauthCustomClientEnabled:
         _persist_tenant_oauth_client(repository_session, tenant_id="tenant-2", enabled=True)
 
         assert BuiltinToolManageService.is_oauth_custom_client_enabled("tenant-1", "google") is False
+
+
+class _RecordingLock:
+    """Redis lock stand-in that records when it is held and runs a hook just before release."""
+
+    def __init__(self, events: list[str], on_release: Callable[[], None] | None = None) -> None:
+        self._events = events
+        self._on_release = on_release
+
+    def __enter__(self) -> "_RecordingLock":
+        self._events.append("acquire")
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        if self._on_release is not None:
+            self._on_release()
+        self._events.append("release")
+
+
+class TestAddBuiltinToolProvider:
+    @pytest.fixture
+    def events(self) -> list[str]:
+        return []
+
+    @pytest.fixture
+    def controller(self, monkeypatch: pytest.MonkeyPatch, events: list[str]) -> MagicMock:
+        controller = MagicMock(need_credentials=True)
+        controller.get_credentials_schema_by_type.return_value = []
+        controller.validate_credentials.side_effect = lambda *_: events.append("validate")
+        monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", MagicMock(return_value=controller))
+        encrypter = MagicMock()
+        encrypter.encrypt.side_effect = lambda credentials: credentials
+        monkeypatch.setattr(service_module, "create_provider_encrypter", MagicMock(return_value=(encrypter, None)))
+        return controller
+
+    def _install_lock(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        events: list[str],
+        on_release: Callable[[], None] | None = None,
+    ) -> None:
+        lock = _RecordingLock(events, on_release)
+        monkeypatch.setattr(service_module, "redis_client", SimpleNamespace(lock=MagicMock(return_value=lock)))
+
+    def _count_providers(self, repository_session: Session) -> int:
+        with Session(repository_session.get_bind()) as session:
+            return len(session.scalars(select(BuiltinToolProvider)).all())
+
+    def test_validates_credentials_before_acquiring_lock(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+        controller: MagicMock,
+        events: list[str],
+    ) -> None:
+        self._install_lock(monkeypatch, events)
+
+        result = BuiltinToolManageService.add_builtin_tool_provider(
+            "u", CredentialType.API_KEY, "tenant-1", "google", {"key": "value"}, name="Google 1"
+        )
+
+        assert result["result"] == "success"
+        assert events == ["validate", "acquire", "release"]
+        controller.validate_credentials.assert_called_once_with("u", {"key": "value"})
+        provider = repository_session.get(BuiltinToolProvider, result["id"])
+        assert provider is not None
+        assert provider.credentials == {"key": "value"}
+
+    def test_commits_credential_before_releasing_lock(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+        controller: MagicMock,
+        events: list[str],
+    ) -> None:
+        counts_at_release: list[int] = []
+        self._install_lock(
+            monkeypatch, events, on_release=lambda: counts_at_release.append(self._count_providers(repository_session))
+        )
+
+        BuiltinToolManageService.add_builtin_tool_provider(
+            "u", CredentialType.API_KEY, "tenant-1", "google", {"key": "value"}, name="Google 1"
+        )
+
+        assert counts_at_release == [1]
+
+    def test_does_not_lock_or_save_when_validation_fails(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+        controller: MagicMock,
+        events: list[str],
+    ) -> None:
+        self._install_lock(monkeypatch, events)
+        controller.validate_credentials.side_effect = ValueError("invalid api key")
+
+        with pytest.raises(ValueError, match="invalid api key"):
+            BuiltinToolManageService.add_builtin_tool_provider(
+                "u", CredentialType.API_KEY, "tenant-1", "google", {"key": "bad"}
+            )
+
+        assert events == []
+        assert self._count_providers(repository_session) == 0
+
+    def test_checks_count_limit_inside_lock(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+        controller: MagicMock,
+        events: list[str],
+    ) -> None:
+        _persist_provider(repository_session, credential_id="cred-1")
+        monkeypatch.setattr(BuiltinToolManageService, "__MAX_BUILTIN_TOOL_PROVIDER_COUNT__", 1)
+        self._install_lock(monkeypatch, events)
+
+        with pytest.raises(ValueError, match="maximum number of providers"):
+            BuiltinToolManageService.add_builtin_tool_provider(
+                "u", CredentialType.API_KEY, "tenant-1", "google", {"key": "value"}
+            )
+
+        assert events == ["validate", "acquire", "release"]
+        assert self._count_providers(repository_session) == 1
+
+    def test_rejects_duplicate_name_inside_lock(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+        controller: MagicMock,
+        events: list[str],
+    ) -> None:
+        _persist_provider(repository_session, credential_id="cred-1", name="Google 1")
+        self._install_lock(monkeypatch, events)
+
+        with pytest.raises(ValueError, match="already used"):
+            BuiltinToolManageService.add_builtin_tool_provider(
+                "u", CredentialType.API_KEY, "tenant-1", "google", {"key": "value"}, name="Google 1"
+            )
+
+        assert events == ["validate", "acquire", "release"]
+        assert self._count_providers(repository_session) == 1
 
 
 class TestDeleteBuiltinToolProvider:

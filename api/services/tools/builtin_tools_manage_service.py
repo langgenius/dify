@@ -230,14 +230,21 @@ class BuiltinToolManageService:
         """
         add builtin tool provider
         """
-        with sessionmaker(bind=db.engine).begin() as session:
-            try:
-                lock = f"builtin_tool_provider_create_lock:{tenant_id}_{provider}"
-                with redis_client.lock(lock, timeout=20):
-                    provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
-                    if not provider_controller.need_credentials:
-                        raise ValueError(f"provider {provider} does not need credentials")
+        try:
+            provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
+            if not provider_controller.need_credentials:
+                raise ValueError(f"provider {provider} does not need credentials")
 
+            # Validation may call external services, so it runs before the lock is taken
+            # to keep its duration independent of the lock timeout.
+            if CredentialType.of(api_type).is_validate_allowed():
+                provider_controller.validate_credentials(user_id, credentials)
+
+            lock = f"builtin_tool_provider_create_lock:{tenant_id}_{provider}"
+            # The transaction commits before the lock is released, so concurrent requests
+            # see this credential when they check the count limit and the name.
+            with redis_client.lock(lock, timeout=20):
+                with sessionmaker(bind=db.engine).begin() as session:
                     provider_count = (
                         session.scalar(
                             select(func.count(BuiltinToolProvider.id)).where(
@@ -251,10 +258,6 @@ class BuiltinToolManageService:
                     # check if the provider count is reached the limit
                     if provider_count >= BuiltinToolManageService.__MAX_BUILTIN_TOOL_PROVIDER_COUNT__:
                         raise ValueError(f"you have reached the maximum number of providers for {provider}")
-
-                    # validate credentials if allowed
-                    if CredentialType.of(api_type).is_validate_allowed():
-                        provider_controller.validate_credentials(user_id, credentials)
 
                     # generate name if not provided
                     if name is None or name == "":
@@ -304,8 +307,8 @@ class BuiltinToolManageService:
                     session.add(db_provider)
                     session.flush()
                     credential_id = db_provider.id
-            except Exception as e:
-                raise ValueError(str(e)) from e
+        except Exception as e:
+            raise ValueError(str(e)) from e
 
         return {"result": "success", "id": credential_id}
 
