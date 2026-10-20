@@ -1,10 +1,14 @@
 import json
+from dataclasses import replace
 
 import pytest
 
 from errors.workflow import WorkflowDataError
 from graphon.entities.graph_config import NodeConfigDictAdapter
+from models.workflow import WorkflowKind
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.contracts import WorkflowBindingScope, WorkflowSnapshot, WorkflowTriggerError
+from tests.unit_tests.model_factories import make_workflow
 
 
 def test_binding_scope_graph_dict_returns_independent_parsed_data() -> None:
@@ -39,6 +43,45 @@ def test_binding_scope_graph_dict_propagates_invalid_json() -> None:
 
     with pytest.raises(json.JSONDecodeError):
         _ = scope.graph_dict
+
+
+def test_workflow_snapshot_preserves_empty_graph_semantics() -> None:
+    workflow = make_workflow(graph="")
+    snapshot = workflow_snapshot(workflow)
+
+    assert snapshot.graph_dict == workflow.graph_dict == {}
+
+
+def test_workflow_snapshot_matches_legacy_image_feature_normalization_without_mutating_source() -> None:
+    raw_features = {
+        "file_upload": {
+            "image": {
+                "enabled": True,
+                "number_limits": 7,
+                "transfer_methods": ["local_file"],
+            },
+            "allowed_file_types": ["document"],
+        },
+        "opening_statement": "hello",
+    }
+    workflow = make_workflow(features=raw_features)
+    snapshot = workflow_snapshot(workflow)
+    serialized = snapshot.features
+
+    assert snapshot.features_dict == workflow.features_dict
+    assert snapshot.features == serialized
+
+
+@pytest.mark.parametrize("invalid_kind", ["", "unknown"])
+def test_workflow_snapshot_kind_validation_matches_workflow_model(invalid_kind: str) -> None:
+    workflow = make_workflow(kind=WorkflowKind.STANDARD)
+    workflow.kind = invalid_kind  # type: ignore[assignment]
+    snapshot = replace(workflow_snapshot(make_workflow()), kind=invalid_kind)
+
+    with pytest.raises(ValueError, match=f"invalid workflow kind value {invalid_kind}"):
+        _ = workflow.kind_or_standard
+    with pytest.raises(ValueError, match=f"invalid workflow kind value {invalid_kind}"):
+        _ = snapshot.kind_or_standard
 
 
 @pytest.mark.parametrize("node_type", ["start", "custom-node"])

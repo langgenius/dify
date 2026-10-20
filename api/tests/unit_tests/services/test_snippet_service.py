@@ -780,11 +780,11 @@ def test_delete_snippet_releases_last_owner_and_retries_archived_agent_cleanup_a
     cleanup_delay = Mock(side_effect=lambda **_kwargs: events.append("cleanup-hidden-app"))
     enqueue_collection = Mock(side_effect=lambda **_kwargs: events.append("enqueue-agent-purge"))
     monkeypatch.setattr(
-        "services.agent.retirement_service.remove_app_and_related_data_task.delay",
+        "services.agent.legacy_retirement_service.remove_app_and_related_data_task.delay",
         cleanup_delay,
     )
     monkeypatch.setattr(
-        "services.agent.retirement_service.enqueue_agent_resource_collection",
+        "services.agent.legacy_retirement_service.enqueue_agent_resource_collection",
         enqueue_collection,
     )
 
@@ -878,7 +878,7 @@ def test_delete_snippet_keeps_agent_with_persisted_external_owner(
     sqlite_session.flush()
     cleanup_delay = Mock()
     monkeypatch.setattr(
-        "services.agent.retirement_service.remove_app_and_related_data_task.delay",
+        "services.agent.legacy_retirement_service.remove_app_and_related_data_task.delay",
         cleanup_delay,
     )
 

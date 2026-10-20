@@ -24,7 +24,7 @@ from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
-from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.agent.legacy_retirement_service import WorkflowAgentRetirementService
 from services.agent.workspace_service import AgentWorkspaceService
 
 
@@ -32,7 +32,7 @@ def test_retire_unowned_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> N
     context = MagicMock()
     error = RuntimeError("retirement failed")
     monkeypatch.setattr(
-        "services.agent.retirement_service.session_factory.create_session",
+        "services.agent.legacy_retirement_service.session_factory.create_session",
         lambda: context,
     )
     monkeypatch.setattr(
@@ -133,7 +133,7 @@ def test_retire_unowned_requires_an_exact_persisted_workflow_owner_key(
     sqlite_session.add_all([agent, app, workflow, binding])
     sqlite_session.commit()
     monkeypatch.setattr(
-        "services.agent.retirement_service.session_factory.create_session",
+        "services.agent.legacy_retirement_service.session_factory.create_session",
         lambda: nullcontext(sqlite_session),
     )
     celery_delay = MagicMock()
@@ -205,14 +205,14 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
     sqlite_session.add_all([agent, hidden_app, home, workspace, binding])
     sqlite_session.commit()
     monkeypatch.setattr(
-        "services.agent.retirement_service.session_factory.create_session",
+        "services.agent.legacy_retirement_service.session_factory.create_session",
         lambda: nullcontext(sqlite_session),
     )
     cleanup_app = MagicMock()
     enqueue_collection = MagicMock()
-    monkeypatch.setattr("services.agent.retirement_service.remove_app_and_related_data_task.delay", cleanup_app)
+    monkeypatch.setattr("services.agent.legacy_retirement_service.remove_app_and_related_data_task.delay", cleanup_app)
     monkeypatch.setattr(
-        "services.agent.retirement_service.enqueue_agent_resource_collection",
+        "services.agent.legacy_retirement_service.enqueue_agent_resource_collection",
         enqueue_collection,
     )
 
@@ -263,7 +263,7 @@ def test_hidden_app_enqueue_failure_prevents_agent_purge_enqueue(monkeypatch: py
         SimpleNamespace(all=MagicMock(return_value=[])),
     ]
     monkeypatch.setattr(
-        "services.agent.retirement_service.session_factory.create_session",
+        "services.agent.legacy_retirement_service.session_factory.create_session",
         lambda: context,
     )
     monkeypatch.setattr(
@@ -275,10 +275,10 @@ def test_hidden_app_enqueue_failure_prevents_agent_purge_enqueue(monkeypatch: py
     monkeypatch.setattr(AgentHomeSnapshotService, "retire_all_for_agent", MagicMock(return_value=[]))
     error = RuntimeError("broker unavailable")
     cleanup_app = MagicMock(side_effect=[None, error])
-    monkeypatch.setattr("services.agent.retirement_service.remove_app_and_related_data_task.delay", cleanup_app)
+    monkeypatch.setattr("services.agent.legacy_retirement_service.remove_app_and_related_data_task.delay", cleanup_app)
     enqueue_collection = MagicMock()
     monkeypatch.setattr(
-        "services.agent.retirement_service.enqueue_agent_resource_collection",
+        "services.agent.legacy_retirement_service.enqueue_agent_resource_collection",
         enqueue_collection,
     )
 
@@ -348,9 +348,9 @@ def test_retire_unowned_retry_after_hidden_app_enqueue_failure_preserves_full_co
     error = RuntimeError("broker unavailable")
     cleanup_app = MagicMock(side_effect=[error, None])
     enqueue_collection = MagicMock()
-    monkeypatch.setattr("services.agent.retirement_service.remove_app_and_related_data_task.delay", cleanup_app)
+    monkeypatch.setattr("services.agent.legacy_retirement_service.remove_app_and_related_data_task.delay", cleanup_app)
     monkeypatch.setattr(
-        "services.agent.retirement_service.enqueue_agent_resource_collection",
+        "services.agent.legacy_retirement_service.enqueue_agent_resource_collection",
         enqueue_collection,
     )
 
