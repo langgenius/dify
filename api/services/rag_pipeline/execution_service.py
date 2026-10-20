@@ -17,10 +17,18 @@ from core.datasource.entities.datasource_entities import (
     OnlineDriveBrowseFilesResponse,
     WebsiteCrawlMessage,
 )
-from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
+from core.datasource.online_document.online_document_plugin import (
+    OnlineDocumentDatasourcePlugin,
+)
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
-from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
-from core.rag.entities import DatasourceCompletedEvent, DatasourceErrorEvent, DatasourceProcessingEvent
+from core.datasource.website_crawl.website_crawl_plugin import (
+    WebsiteCrawlDatasourcePlugin,
+)
+from core.rag.entities import (
+    DatasourceCompletedEvent,
+    DatasourceErrorEvent,
+    DatasourceProcessingEvent,
+)
 from core.repositories.factory import WorkflowNodeExecutionRepository
 from core.workflow.system_variables import (
     SystemVariableKey,
@@ -31,10 +39,15 @@ from core.workflow.system_variables import (
 )
 from core.workflow.variable_pool_initializer import add_variables_to_pool
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
+from graphon.engine_events import (
+    NodeEvent,
+    NodeRunFailedEvent,
+    NodeRunStartedEvent,
+    NodeRunSucceededEvent,
+)
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import ErrorStrategy, WorkflowNodeExecutionStatus
 from graphon.errors import WorkflowNodeRunFailedError
-from graphon.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
 from graphon.nodes.container_effects import ContainerAwaitRequest
@@ -127,30 +140,22 @@ class RagPipelineExecutionService:
         else:
             enclosing_node_id = None
 
-        workflow_node_execution = self._handle_node_run_result(
-            getter=lambda: WorkflowEntry.single_step_run(
-                agent_binding_resolver=self._runtime.agent_bindings,
-                workflow_runtime=self._runtime,
-                draft_variable_saver=self._variables.saver_factory,
-                workflow=draft_workflow,
-                node_id=node_id,
-                user_inputs=user_inputs,
-                user_id=account.id,
-                variable_pool=_build_seeded_variable_pool(
-                    build_bootstrap_variables(
-                        system_variables=default_system_variables(),
-                        environment_variables=draft_workflow.environment_variables,
-                    )
-                ),
-                variable_loader=self._variables.workflow_loader(draft_workflow, account.id),
-            ),
-            start_at=start_at,
-            tenant_id=pipeline.tenant_id,
+        run = WorkflowEntry.single_step_run(
+            agent_binding_resolver=self._runtime.agent_bindings,
+            workflow_runtime=self._runtime,
+            draft_variable_saver=self._variables.saver_factory,
+            workflow=draft_workflow,
             node_id=node_id,
+            user_inputs=user_inputs,
+            user_id=account.id,
+            variable_pool=_build_seeded_variable_pool(
+                build_bootstrap_variables(
+                    system_variables=default_system_variables(),
+                    environment_variables=draft_workflow.environment_variables,
+                )
+            ),
+            variable_loader=self._variables.workflow_loader(draft_workflow, account.id),
         )
-        workflow_node_execution.workflow_id = draft_workflow.id
-
-        # Create repository and save the node execution
 
         repository = self._writer_factory(
             tenant_id=pipeline.tenant_id,
@@ -158,9 +163,14 @@ class RagPipelineExecutionService:
             app_id=pipeline.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        # Debug responses and variable saves need a committed execution even when
-        # the configured repository normally dispatches writes asynchronously.
-        repository.save_synchronously(workflow_node_execution)
+        workflow_node_execution = self._persist_single_step_run(
+            run=run,
+            repository=repository,
+            workflow_id=draft_workflow.id,
+            start_at=start_at,
+            tenant_id=pipeline.tenant_id,
+            node_id=node_id,
+        )
 
         # Convert node_execution to WorkflowNodeExecution after save
         workflow_node_execution_db_model = self._node_execution_service_repo.get_execution_by_id(
@@ -198,7 +208,7 @@ class RagPipelineExecutionService:
         credential_id: str | None = None,
         *,
         datasource_providers: DatasourceProviderService,
-    ) -> Generator[Mapping[str, Any], None, None]:
+    ) -> Generator[Mapping[str, Any]]:
         """
         Run published workflow datasource
         """
@@ -266,7 +276,7 @@ class RagPipelineExecutionService:
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
-                    online_document_result: Generator[OnlineDocumentPagesMessage, None, None] = (
+                    online_document_result: Generator[OnlineDocumentPagesMessage] = (
                         datasource_runtime.get_online_document_pages(
                             user_id=account.id,
                             datasource_parameters=user_inputs,
@@ -291,7 +301,7 @@ class RagPipelineExecutionService:
                         yield DatasourceErrorEvent(error=str(e)).model_dump()
                 case DatasourceProviderType.ONLINE_DRIVE:
                     datasource_runtime = cast(OnlineDriveDatasourcePlugin, datasource_runtime)
-                    online_drive_result: Generator[OnlineDriveBrowseFilesResponse, None, None] = (
+                    online_drive_result: Generator[OnlineDriveBrowseFilesResponse] = (
                         datasource_runtime.online_drive_browse_files(
                             user_id=account.id,
                             request=OnlineDriveBrowseFilesRequest(
@@ -320,7 +330,7 @@ class RagPipelineExecutionService:
                         yield online_drive_event.model_dump()
                 case DatasourceProviderType.WEBSITE_CRAWL:
                     datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
-                    website_crawl_result: Generator[WebsiteCrawlMessage, None, None] = (
+                    website_crawl_result: Generator[WebsiteCrawlMessage] = (
                         datasource_runtime.get_website_crawl(
                             user_id=account.id,
                             datasource_parameters=variables_map,
@@ -410,7 +420,7 @@ class RagPipelineExecutionService:
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
-                    online_document_result: Generator[DatasourceMessage, None, None] = (
+                    online_document_result: Generator[DatasourceMessage] = (
                         datasource_runtime.get_online_document_page_content(
                             user_id=account.id,
                             datasource_parameters=GetOnlineDocumentPageContentRequest(
@@ -439,19 +449,76 @@ class RagPipelineExecutionService:
                         return variables
                     except Exception as e:
                         logger.exception("Error during get online document content.")
-                        raise RuntimeError(str(e))
+                        raise RuntimeError(str(e)) from e
                 # TODO Online Drive
                 case _:
                     raise ValueError(f"Unsupported datasource provider: {datasource_runtime.datasource_provider_type}")
         except Exception as e:
             logger.exception("Error in run_datasource_node_preview.")
-            raise RuntimeError(str(e))
+            raise RuntimeError(str(e)) from e
+
+    def _persist_single_step_run(
+        self,
+        *,
+        run: tuple[Node, Generator[NodeEvent | ContainerAwaitRequest]],
+        repository: WorkflowNodeExecutionRepository,
+        workflow_id: str,
+        start_at: float,
+        tenant_id: str,
+        node_id: str,
+    ) -> WorkflowNodeExecution:
+        """Persist the running row before the node body and its terminal state afterward."""
+        node, node_events = run
+        started_event: NodeRunStartedEvent | None = None
+
+        def persist_node_start() -> Generator[NodeEvent | ContainerAwaitRequest]:
+            nonlocal started_event
+            for event in node_events:
+                if isinstance(event, NodeRunStartedEvent) and event.node_id == node_id:
+                    started_event = event
+                    # Agent workspace allocation requires the caller row before
+                    # the node body materializes runtime participants.
+                    repository.save_synchronously(
+                        WorkflowNodeExecution(
+                            id=event.id,
+                            node_execution_id=event.id,
+                            workflow_id=workflow_id,
+                            index=1,
+                            predecessor_node_id=event.predecessor_node_id,
+                            node_id=event.node_id,
+                            node_type=event.node_type,
+                            title=event.node_title,
+                            process_data=event.node_run_result.process_data or None,
+                            metadata=event.node_run_result.metadata,
+                            created_at=event.start_at,
+                        )
+                    )
+                yield event
+
+        execution = self._handle_node_run_result(
+            getter=lambda: (node, persist_node_start()),
+            start_at=start_at,
+            tenant_id=tenant_id,
+            node_id=node_id,
+        )
+        execution.workflow_id = workflow_id
+        if started_event is not None:
+            execution.id = started_event.id
+            execution.node_execution_id = started_event.id
+            execution.created_at = started_event.start_at
+            execution.predecessor_node_id = started_event.predecessor_node_id
+
+        # Keep the caller row committed for immediate debug reads, then publish
+        # the terminal append for asynchronous/log-store repository backends.
+        repository.save_synchronously(execution)
+        repository.save(execution)
+        return execution
 
     def _handle_node_run_result(
         self,
         getter: Callable[
             [],
-            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+            tuple[Node, Generator[NodeEvent | ContainerAwaitRequest]],
         ],
         start_at: float,
         tenant_id: str,
@@ -510,10 +577,10 @@ class RagPipelineExecutionService:
             )
             error = node_run_result.error if not run_succeeded else None
         except WorkflowNodeRunFailedError as e:
-            node_instance = e._node  # type: ignore
+            node_instance = e.node
             run_succeeded = False
             node_run_result = None
-            error = e._error  # type: ignore
+            error = e.error
 
         workflow_node_execution = WorkflowNodeExecution(
             id=str(uuid4()),
@@ -550,21 +617,20 @@ class RagPipelineExecutionService:
             workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED
             workflow_node_execution.error = error
             # update document status
-            variable_pool = node_instance.graph_runtime_state.variable_pool
+            variable_pool = node_instance.runtime_state.variable_pool
             invoke_from = get_system_segment(variable_pool, SystemVariableKey.INVOKE_FROM)
-            if invoke_from:
-                if invoke_from.value == InvokeFrom.PUBLISHED_PIPELINE:
-                    document_id = get_system_segment(variable_pool, SystemVariableKey.DOCUMENT_ID)
-                    dataset_id = get_system_segment(variable_pool, SystemVariableKey.DATASET_ID)
-                    pipeline_id = get_system_segment(variable_pool, SystemVariableKey.APP_ID)
-                    if document_id and dataset_id and pipeline_id:
-                        self._documents.mark_failed(
-                            workspace_id=tenant_id,
-                            dataset_id=str(dataset_id.value),
-                            document_id=str(document_id.value),
-                            pipeline_id=str(pipeline_id.value),
-                            error=error or "Node execution failed",
-                        )
+            if invoke_from and invoke_from.value == InvokeFrom.PUBLISHED_PIPELINE:
+                document_id = get_system_segment(variable_pool, SystemVariableKey.DOCUMENT_ID)
+                dataset_id = get_system_segment(variable_pool, SystemVariableKey.DATASET_ID)
+                pipeline_id = get_system_segment(variable_pool, SystemVariableKey.APP_ID)
+                if document_id and dataset_id and pipeline_id:
+                    self._documents.mark_failed(
+                        workspace_id=tenant_id,
+                        dataset_id=str(dataset_id.value),
+                        document_id=str(document_id.value),
+                        pipeline_id=str(pipeline_id.value),
+                        error=error or "Node execution failed",
+                    )
 
         return workflow_node_execution
 
@@ -596,37 +662,37 @@ class RagPipelineExecutionService:
             datasource_info=args.get("datasource_info", {}),
         )
 
-        workflow_node_execution = self._handle_node_run_result(
-            getter=lambda: WorkflowEntry.single_step_run(
-                agent_binding_resolver=self._runtime.agent_bindings,
-                workflow_runtime=self._runtime,
-                draft_variable_saver=self._variables.saver_factory,
-                workflow=draft_workflow,
-                node_id=node_id,
-                user_inputs={},
-                user_id=current_user.id,
-                variable_pool=_build_seeded_variable_pool(
-                    build_bootstrap_variables(
-                        system_variables=system_inputs,
-                        rag_pipeline_variables=(),
-                    )
-                ),
-                variable_loader=self._variables.workflow_loader(draft_workflow, current_user.id),
-            ),
-            start_at=start_at,
-            tenant_id=pipeline.tenant_id,
+        run = WorkflowEntry.single_step_run(
+            agent_binding_resolver=self._runtime.agent_bindings,
+            workflow_runtime=self._runtime,
+            draft_variable_saver=self._variables.saver_factory,
+            workflow=draft_workflow,
             node_id=node_id,
+            user_inputs={},
+            user_id=current_user.id,
+            variable_pool=_build_seeded_variable_pool(
+                build_bootstrap_variables(
+                    system_variables=system_inputs,
+                    rag_pipeline_variables=(),
+                )
+            ),
+            variable_loader=self._variables.workflow_loader(draft_workflow, current_user.id),
         )
-        workflow_node_execution.workflow_id = draft_workflow.id
 
-        # Create repository and save the node execution
         repository = self._writer_factory(
             tenant_id=pipeline.tenant_id,
             user=current_user,
             app_id=pipeline.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        repository.save_synchronously(workflow_node_execution)
+        workflow_node_execution = self._persist_single_step_run(
+            run=run,
+            repository=repository,
+            workflow_id=draft_workflow.id,
+            start_at=start_at,
+            tenant_id=pipeline.tenant_id,
+            node_id=node_id,
+        )
 
         # Convert node_execution to WorkflowNodeExecution after save
         workflow_node_execution_db_model = self._node_execution_service_repo.get_execution_by_id(

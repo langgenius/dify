@@ -496,7 +496,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             self.langfuse_client.ingestion.batch(batch=[event])
             logger.debug("LangFuse Trace created successfully")
         except Exception as e:
-            raise ValueError(f"LangFuse Failed to create trace: {str(e)}")
+            raise ValueError(f"LangFuse Failed to create trace: {str(e)}") from e
 
     def add_span(self, langfuse_span_data: LangfuseSpan | None = None):
         data = filter_none_values(langfuse_span_data.model_dump()) if langfuse_span_data else {}
@@ -523,7 +523,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             self.langfuse_client.ingestion.batch(batch=[event])
             logger.debug("LangFuse Span created successfully")
         except Exception as e:
-            raise ValueError(f"LangFuse Failed to create span: {str(e)}")
+            raise ValueError(f"LangFuse Failed to create span: {str(e)}") from e
 
     def update_span(self, span, langfuse_span_data: LangfuseSpan | None = None):
         format_span_data = filter_none_values(langfuse_span_data.model_dump()) if langfuse_span_data else {}
@@ -572,7 +572,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             self.langfuse_client.ingestion.batch(batch=[event])
             logger.debug("LangFuse Generation created successfully")
         except Exception as e:
-            raise ValueError(f"LangFuse Failed to create generation: {str(e)}")
+            raise ValueError(f"LangFuse Failed to create generation: {str(e)}") from e
 
     def update_generation(self, generation, langfuse_generation_data: LangfuseGeneration | None = None):
         format_generation_data = (
@@ -586,7 +586,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             projects = self.langfuse_client.projects.get()
         except Exception as e:
             logger.debug("LangFuse API check failed", exc_info=True)
-            raise ValueError(f"LangFuse API check failed: {str(e)}")
+            raise ValueError(f"LangFuse API check failed: {str(e)}") from e
         if not projects.data:
             raise ValueError("LangFuse API check failed: no project found for the provided credentials")
         return True
@@ -597,4 +597,4 @@ class LangFuseDataTrace(BaseTraceInstance):
             return projects.data[0].id
         except Exception as e:
             logger.debug("LangFuse get project key failed", exc_info=True)
-            raise ValueError(f"LangFuse get project key failed: {str(e)}")
+            raise ValueError(f"LangFuse get project key failed: {str(e)}") from e

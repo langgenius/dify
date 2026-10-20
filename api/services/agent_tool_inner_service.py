@@ -36,6 +36,7 @@ from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from models.model import App
 from services.entities.agent_tool_inner import AgentToolInvokeRequest, AgentToolInvokeResponse
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
+from services.workflow_run_agg import WorkflowRunAgg
 
 
 class AgentToolInnerService:
@@ -65,6 +66,7 @@ class AgentToolInnerService:
         )
         try:
             tool_runtime = ToolManager.get_agent_tool_runtime(
+                execution_driver=WorkflowRunAgg.run,
                 tenant_id=request.caller.tenant_id,
                 app_id=request.caller.app_id,
                 agent_tool=agent_tool,
