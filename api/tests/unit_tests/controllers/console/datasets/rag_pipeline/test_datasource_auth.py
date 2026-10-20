@@ -230,6 +230,30 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
 
 
 class TestDatasourceOAuthCallback:
+    def test_callback_rejects_replaced_package_before_dispatch(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        plugin_id = "langgenius/notion_datasource"
+        context = {
+            "user_id": "user-1",
+            "tenant_id": "tenant-1",
+            "plugin_id": plugin_id,
+            "provider": "notion",
+            "plugin_unique_identifier": f"{plugin_id}:1.0.0@{'a' * 64}",
+        }
+        config = PluginOAuthClientConfig(f"{plugin_id}:2.0.0@{'b' * 64}", {"client_secret": "test-secret"})
+        monkeypatch.setattr(OAuthProxyService, "use_proxy_context", lambda _context_id: context)
+        monkeypatch.setattr(DatasourceProviderService, "get_oauth_client", lambda *_args, **_kwargs: config)
+
+        def unexpected_dispatch(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("Changed packages must not receive OAuth credentials")
+
+        monkeypatch.setattr(OAuthHandler, "get_credentials", unexpected_dispatch)
+        api = DatasourceOAuthCallback()
+        with app.test_request_context("/?context_id=ctx"):
+            with pytest.raises(Forbidden, match="Plugin changed"):
+                inspect.unwrap(api.get)(api, _PROVIDER_ID)
+
     def test_callback_success_new_credential(self, app: Flask):
         api = DatasourceOAuthCallback()
         method = inspect.unwrap(api.get)

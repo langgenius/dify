@@ -62,3 +62,13 @@ def test_dispatch_rejects_cross_plugin_identity() -> None:
         prepare_dispatch_identity(
             "plugin/tenant-a/dispatch/tool/invoke", {"X-Plugin-ID": "langgenius/other"}, IDENTIFIER
         )
+
+
+def test_pinned_dispatch_requires_plugin_id() -> None:
+    with pytest.raises(ValueError, match="X-Plugin-ID is required"):
+        prepare_dispatch_identity("plugin/tenant-a/dispatch/tool/invoke", {}, IDENTIFIER)
+
+
+def test_explicit_empty_identifier_cannot_fall_back_to_legacy_dispatch() -> None:
+    with pytest.raises(ValueError, match="must not be empty"):
+        BasePluginClient(plugin_unique_identifier="")

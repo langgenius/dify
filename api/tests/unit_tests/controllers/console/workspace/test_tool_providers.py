@@ -15,6 +15,7 @@ import pytest
 from flask import Flask
 from flask.views import MethodView
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from werkzeug.exceptions import Forbidden
 
 from core.tools.entities.api_entities import ToolProviderApiEntity as CoreToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
@@ -916,6 +917,32 @@ def _invoke_oauth_callback(
     ):
         with patch.object(controller_module.OAuthProxyService, "use_proxy_context", return_value=ctx):
             return unwrap(api.get)(api, provider=provider)
+
+
+def test_tool_oauth_callback_rejects_replaced_package_before_dispatch(
+    app: Flask, controller_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    context = {
+        "user_id": "user-oauth",
+        "tenant_id": "tenant-oauth",
+        "plugin_id": "langgenius/github",
+        "provider": "github",
+        "plugin_unique_identifier": f"langgenius/github:1.0.0@{'a' * 64}",
+    }
+    config = PluginOAuthClientConfig(f"langgenius/github:2.0.0@{'b' * 64}", {"client_secret": "test-secret"})
+    monkeypatch.setattr(controller_module.OAuthProxyService, "use_proxy_context", lambda _context_id: context)
+    monkeypatch.setattr(
+        controller_module.BuiltinToolManageService, "get_oauth_client", lambda *_args, **_kwargs: config
+    )
+
+    def unexpected_dispatch(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("Changed packages must not receive OAuth credentials")
+
+    monkeypatch.setattr(controller_module.OAuthHandler, "get_credentials", unexpected_dispatch)
+    api = controller_module.ToolOAuthCallback()
+    with app.test_request_context("/", headers={"Cookie": "context_id=ctx-id"}):
+        with pytest.raises(Forbidden, match="Plugin changed"):
+            unwrap(api.get)(api, provider=_OAUTH_PROVIDER_PATH)
 
 
 @contextmanager
