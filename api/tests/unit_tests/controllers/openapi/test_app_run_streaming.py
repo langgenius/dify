@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 import uuid
+from dataclasses import replace
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -12,8 +13,12 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 from pydantic import BaseModel, ValidationError
+from sqlalchemy import event
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
+from werkzeug.exceptions import NotFound
 
+from constants.oauth_bearer import TokenType
 from controllers.openapi import app_run
 from controllers.openapi._errors import AppModeMismatch
 from controllers.openapi._models import (
@@ -24,11 +29,19 @@ from controllers.openapi._models import (
     WorkflowRunPayload,
 )
 from controllers.openapi.app_run import AdvancedChatRunApi, AppRunTaskStopApi, ChatRunApi, CompletionRunApi
+from controllers.openapi.auth.subjects import Subject, subject_from_auth
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_application_services import ApplicationServices
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.file import FileType
+from libs.oauth_bearer import AuthContext
 from models import Account
-from models.enums import CreatorUserRole
-from models.model import App, AppMode
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.model import App, AppMode, EndUser, UploadFile
+from models.workflow import WorkflowRun
+from services.app_task_service import AppTaskControlService
+from tests.unit_tests.model_factories import make_upload_file
+from tests.unit_tests.services.test_app_task_service import _StopRedis
 
 _TEST_APP_ID = str(uuid.uuid4())
 _TEST_TENANT_ID = str(uuid.uuid4())
@@ -52,6 +65,20 @@ def _make_account() -> Account:
     return account
 
 
+def _subject(token_type: TokenType = TokenType.OAUTH_ACCOUNT) -> Subject:
+    return subject_from_auth(
+        AuthContext(
+            token_type=token_type,
+            subject_email="sso@example.com" if token_type == TokenType.OAUTH_EXTERNAL_SSO else None,
+            subject_issuer=None,
+            account_id=uuid.UUID(_TEST_ACCOUNT_ID) if token_type == TokenType.OAUTH_ACCOUNT else None,
+            client_id=None,
+            token_id=uuid.uuid4(),
+            expires_at=None,
+        )
+    )
+
+
 @pytest.mark.parametrize(
     ("model", "payload"),
     [
@@ -73,29 +100,69 @@ def test_chat_payload_normalizes_conversation_id():
     assert ChatRunPayload(inputs={}, query="hi", conversation_id=cid).conversation_id == cid
 
 
-def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    queue_mock = Mock()
-    graph_mock = Mock()
-    graph_instance = Mock()
-    graph_mock.return_value = graph_instance
+@pytest.mark.parametrize(
+    "token_type", [TokenType.OAUTH_ACCOUNT, TokenType.OAUTH_EXTERNAL_SSO, TokenType.RESOURCE_ACCESS]
+)
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT, AppMode.COMPLETION])
+@pytest.mark.parametrize("owns_task", [False, True])
+def test_stop_task_enforces_resolved_caller_ownership(
+    app: Flask,
+    account_application_services: ApplicationServices,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    token_type: TokenType,
+    mode: AppMode,
+    owns_task: bool,
+):
+    import services.app_task_service as task_module
 
-    run_module = sys.modules["controllers.openapi.app_run"]
-    monkeypatch.setattr(run_module, "AppQueueManager", queue_mock)
-    monkeypatch.setattr(run_module, "GraphEngineManager", graph_mock)
-    monkeypatch.setattr(run_module, "redis_client", object())
-
-    api = AppRunTaskStopApi()
-    with app.test_request_context("/openapi/v1/apps/app-1/tasks/task-1:stop", method="POST"):
-        result = api.post.__handler__(
-            api,
-            _SealableContext(subject=SimpleNamespace(caller_role=CreatorUserRole.ACCOUNT)),
-            app_id="app-1",
-            task_id="task-1",
+    subject = _subject(token_type)
+    caller = _make_account() if subject.caller_role == CreatorUserRole.ACCOUNT else EndUser(id="user-1")
+    owner_id = caller.id if owns_task else "another-user"
+    task_id = str(uuid.uuid4())
+    redis = _StopRedis(values={f"generate_task_belong:{task_id}": f"end-user-{owner_id}".encode()})
+    if mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
+        sqlite_session.add(
+            WorkflowRun(
+                id="run-1",
+                tenant_id="tenant-1",
+                app_id="app-1",
+                workflow_id="workflow-1",
+                task_id=task_id,
+                type=WorkflowType.CHAT if mode == AppMode.ADVANCED_CHAT else WorkflowType.WORKFLOW,
+                version="1",
+                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+                status=WorkflowExecutionStatus.RUNNING,
+                created_by_role=CreatorUserRole.END_USER,
+                created_by=owner_id,
+            )
         )
-
-    queue_mock.set_stop_flag_no_user_check.assert_called_once_with("task-1")
-    graph_instance.send_stop_command.assert_called_once_with("task-1")
-    assert result == TaskStopResponse(result="success")
+        sqlite_session.commit()
+    monkeypatch.setattr(type(task_module.db), "engine", property(lambda _: sqlite_session.get_bind()))
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi.app_run"],
+        "application_services",
+        lambda: replace(account_application_services, app_tasks=AppTaskControlService(redis_client=redis)),
+    )
+    ctx = _SealableContext(
+        subject=subject,
+        caller=caller,
+        app=App(id="app-1", tenant_id="tenant-1", mode=mode),
+    )
+    api = AppRunTaskStopApi()
+    allowed = owns_task or subject.caller_role == CreatorUserRole.ACCOUNT
+    with app.test_request_context(f"/openapi/v1/apps/app-1/tasks/{task_id}:stop", method="POST"):
+        if allowed:
+            assert api.post.__handler__(api, ctx, app_id="app-1", task_id=task_id) == TaskStopResponse(result="success")
+        else:
+            with pytest.raises(NotFound, match="Task not found"):
+                api.post.__handler__(api, ctx, app_id="app-1", task_id=task_id)
+    if allowed:
+        assert redis.values[f"generate_task_stopped:{task_id}"] == b"1"
+        assert bool(redis.commands) == (mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT))
+    else:
+        assert redis.operations == []
+        assert redis.commands == {}
 
 
 class _SealableContext:
@@ -128,14 +195,14 @@ def _generate_stub(monkeypatch: pytest.MonkeyPatch, chunks: list[str]) -> Mock:
     return generate_mock
 
 
-def _ctx(mode: AppMode, session: Mock | None = None) -> _SealableContext:
+def _ctx(mode: AppMode, session: Session | Mock | None = None) -> _SealableContext:
     app_model = _make_app()
     app_model.mode = mode
     return _SealableContext(
         app=app_model,
         caller=_make_account(),
-        session=session or Mock(),
-        subject=SimpleNamespace(caller_role=CreatorUserRole.ACCOUNT),
+        session=session or Session(),
+        subject=_subject(),
     )
 
 
@@ -165,12 +232,25 @@ def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: 
     generate_mock.assert_not_called()
 
 
-def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     generate_mock = _generate_stub(monkeypatch, [])
     upload_service = Mock()
-    upload_service.upload_file.side_effect = lambda **kw: SimpleNamespace(
-        id=f"uf-{kw['filename']}", extension=kw["filename"].rsplit(".", 1)[-1], mime_type=kw["mimetype"]
-    )
+    operations: list[str] = []
+    sqlite_session.begin()
+    event.listen(sqlite_session, "after_commit", lambda _session: operations.append("commit"))
+
+    def upload_file(*, filename: str, content: bytes, mimetype: str, user: Account) -> UploadFile:
+        assert not sqlite_session.in_transaction()
+        operations.append("upload")
+        return make_upload_file(
+            file_id=f"uf-{filename}",
+            extension=filename.rsplit(".", 1)[-1],
+            mime_type=mimetype,
+        )
+
+    upload_service.upload_file.side_effect = upload_file
     monkeypatch.setattr(
         sys.modules["controllers.openapi._files"], "application_services", lambda: SimpleNamespace(files=upload_service)
     )
@@ -179,17 +259,12 @@ def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(app: F
         files={"doc": FileStorage(stream=BytesIO(b"pdf"), filename="r.pdf", content_type="application/pdf")},
         attachments=[FileStorage(stream=BytesIO(b"jpg"), filename="p.jpg", content_type="image/jpeg")],
     )
-    order = Mock()
-    session = Mock()
-    order.attach_mock(session, "session")
-    order.attach_mock(upload_service, "uploads")
-
     api = CompletionRunApi()
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/completion:run", method="POST"):
-        api.post.__handler__(api, _ctx(AppMode.COMPLETION, session), app_id=_TEST_APP_ID, body=body)
+        api.post.__handler__(api, _ctx(AppMode.COMPLETION, sqlite_session), app_id=_TEST_APP_ID, body=body)
 
     # The read transaction ends before the first object-storage write (api/AGENTS.md).
-    assert [call[0] for call in order.mock_calls][:2] == ["session.commit", "uploads.upload_file"]
+    assert operations == ["commit", "upload", "upload"]
     args = generate_mock.call_args.kwargs["args"]
     assert args["inputs"]["doc"] == {
         "transfer_method": "local_file",

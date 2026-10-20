@@ -3172,7 +3172,47 @@ def _zip_payload(files: dict[str, str]) -> bytes:
     return buffer.getvalue()
 
 
-def test_build_assistant_attachment_context_extracts_docx_text() -> None:
+@pytest.mark.parametrize(
+    ("body", "expected_text"),
+    [
+        pytest.param(
+            "<w:p><w:r><w:t>Escalate urgent tickets</w:t></w:r></w:p>",
+            "Escalate urgent tickets",
+            id="plain",
+        ),
+        pytest.param(
+            '<w:p><w:r><w:t xml:space="preserve">Keep </w:t></w:r>'
+            "<w:r><w:rPr><w:b/></w:rPr><w:t>customer_</w:t></w:r>"
+            "<w:r><w:t>id unchanged.</w:t></w:r></w:p>"
+            "<w:p><w:r><w:t>Next paragraph</w:t></w:r></w:p>",
+            "Keep customer_id unchanged.\nNext paragraph",
+            id="formatted-runs",
+        ),
+        pytest.param(
+            '<w:p><w:pPr><w:tabs><w:tab w:val="left" w:pos="720"/></w:tabs></w:pPr>'
+            "<w:r><w:t>left</w:t><w:tab/><w:t>middle</w:t><w:br/>"
+            "<w:t>right</w:t><w:cr/><w:t>soft</w:t><w:softHyphen/>"
+            "<w:t>hyphen</w:t><w:noBreakHyphen/><w:t>end</w:t></w:r></w:p>",
+            "left\tmiddle\nright\nsoft\u00adhyphen\u2011end",
+            id="inline-controls",
+        ),
+        pytest.param(
+            '<w:p><w:r><w:t>Before</w:t><w:pict><v:shape id="box"><v:textbox><w:txbxContent>'
+            '<w:p><w:r><w:t>Inside</w:t></w:r><w:r><w:t xml:space="preserve"> box</w:t></w:r></w:p>'
+            "</w:txbxContent></v:textbox></v:shape></w:pict><w:t>After</w:t></w:r></w:p>",
+            "Before\nInside box\nAfter",
+            id="nested-paragraphs",
+        ),
+        pytest.param(
+            "<w:tbl><w:tr><w:tc><w:p><w:r><w:t>First</w:t></w:r>"
+            '<w:r><w:t xml:space="preserve"> cell</w:t></w:r></w:p></w:tc>'
+            "<w:tc><w:p><w:r><w:t>Second cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl>",
+            "First cell\nSecond cell",
+            id="table-paragraphs",
+        ),
+    ],
+)
+def test_build_assistant_attachment_context_extracts_docx_text(body: str, expected_text: str) -> None:
     attachment = SkillAssistAttachmentPayload(
         tool_file_id="docx-file-1",
         name="guide.docx",
@@ -3182,8 +3222,9 @@ def test_build_assistant_attachment_context_extracts_docx_text() -> None:
     payload = _zip_payload(
         {
             "word/document.xml": (
-                '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
-                "<w:body><w:p><w:r><w:t>Escalate urgent tickets</w:t></w:r></w:p></w:body>"
+                '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+                'xmlns:v="urn:schemas-microsoft-com:vml">'
+                f"<w:body>{body}</w:body>"
                 "</w:document>"
             )
         }
@@ -3199,7 +3240,7 @@ def test_build_assistant_attachment_context_extracts_docx_text() -> None:
         )
 
     assert "--- guide.docx" in context
-    assert "Escalate urgent tickets" in context
+    assert context.split("\n", 1)[1] == expected_text
     assert "Binary attachment available" not in context
 
 
@@ -3374,27 +3415,52 @@ def test_pptx_extraction_ignores_unreferenced_external_and_missing_slide_parts()
     assert SkillManagementService._extract_pptx_text(payload, max_chars=1000) == "keep"
 
 
-def test_build_assistant_attachment_context_extracts_rtf_text() -> None:
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        pytest.param(
+            rb"{\rtf1\ansi Skill Builder\par reads RTF notes.}", "Skill Builder\nreads RTF notes.", id="ascii"
+        ),
+        pytest.param(rb"{\rtf1\ansi \u945? followed}", "α followed", id="default-uc1"),
+        pytest.param(rb"{\rtf1\ansi\uc0\u20320\u22909!}", "你好!", id="uc0-adjacent-unicode"),
+        pytest.param(rb"{\rtf1\ansi\uc2\u945?? followed}", "α followed", id="uc2-plain-fallback"),
+        pytest.param(rb"{\rtf1\ansi\uc2\u945\'3f\'3f followed}", "α followed", id="uc2-hex-fallback"),
+        pytest.param(rb"{\rtf1\ansi\u945\{ followed}", "α followed", id="escaped-brace-fallback"),
+        pytest.param(rb"{\rtf1\ansi\u945\tab followed}", "αfollowed", id="control-word-fallback"),
+        pytest.param(rb"{\rtf1\ansi\uc2\u945??{\uc0\u946!}\u947?? end}", "αβ!γ end", id="group-scope"),
+        pytest.param(rb"{\rtf1\ansi\uc2{\u945?}\u946?? end}", "αβ end", id="group-ends-fallback"),
+        pytest.param(b"{\\rtf1\\ansi\\uc2\\u945?\r\n? followed}", "α followed", id="newline-in-fallback"),
+        pytest.param(rb"{\rtf1\ansi\uc0\u-255!}", "！!", id="signed-unicode"),
+        pytest.param(rb"{\rtf1\ansi\u945\bin3 abc followed}", "α followed", id="binary-fallback"),
+        pytest.param(rb"{\rtf1\ansi{\*\hidden\uc0 discarded}\u945? kept}", "α kept", id="ignored-group"),
+        pytest.param(b"{\\rtf1\\u945\\bin2 \xc3\xa9OK}", "αOK", id="utf8-binary-fallback"),
+        pytest.param(b"{\\rtf1\\u945\\bin2 \xc3\xa9OK{\\*\\hidden \xff}}", "αOK", id="latin1-binary-fallback"),
+        pytest.param(b"{\\rtf1\\u945\\bin4 \xf0\x9f\x98\x80OK}", "αOK", id="utf8-four-byte-binary-fallback"),
+        pytest.param(b"{\\rtf1\\u945\\bin6 \xc3\xa9\xf0\x9f\x98\x80OK}", "αOK", id="utf8-mixed-binary-fallback"),
+        pytest.param("{\\rtf1 Café 中文}".encode(), "Café 中文", id="utf8-literal-text"),
+        pytest.param(b"{\\rtf1 Caf\xe9}", "Café", id="latin1-literal-text"),
+        pytest.param(rb"{\rtf1\ansi caf\'e9}", "café", id="hex-literal-text"),
+        pytest.param(rb"{\rtf1\ansi \{notes\} \\ path}", r"{notes} \ path", id="escaped-literal-text"),
+    ],
+)
+def test_build_assistant_attachment_context_extracts_rtf_text(payload: bytes, expected: str) -> None:
     attachment = SkillAssistAttachmentPayload(
         tool_file_id="rtf-file-1",
         name="notes.rtf",
         mime_type="application/rtf",
-        size=74,
+        size=len(payload),
     )
 
     with patch(
         "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
-        return_value=b"{\\rtf1\\ansi Skill Builder\\par reads RTF notes.}",
+        return_value=payload,
     ):
         context = SkillManagementService._build_assistant_attachment_context(
             tenant_id=TENANT,
             attachments=[attachment],
         )
 
-    assert "--- notes.rtf" in context
-    assert "Skill Builder" in context
-    assert "reads RTF notes." in context
-    assert "Binary attachment available" not in context
+    assert context == f"--- notes.rtf (application/rtf, {len(payload)} bytes) ---\n{expected}"
 
 
 def test_build_assistant_image_contents_encodes_images_for_vision_models() -> None:
