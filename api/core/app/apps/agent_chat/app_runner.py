@@ -23,7 +23,7 @@ from graphon.model_runtime.model_providers.base.large_language_model import Larg
 from models.model import App, Conversation, Message
 
 if TYPE_CHECKING:
-    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from runtime_contracts.workflow_driver import WorkflowRunDriver
 
 logger = logging.getLogger(__name__)
 

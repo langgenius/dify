@@ -239,6 +239,14 @@ def test_card_shapes_round_trip() -> None:
         "safety_outcome": None,
         "simulated_node_ids": [],
         "blocked_node_ids": [],
+        "policy_version": None,
+        "consent_id": None,
+        "action_state": None,
+        "action_reason_code": None,
+        "failure_phase": None,
+        "failure_code": None,
+        "failure_resource": None,
+        "failure_node_ids": [],
     }
 
     # assistant_turn keeps model reasoning separate from observable execution.
@@ -291,7 +299,11 @@ def test_card_shapes_round_trip() -> None:
 def test_create_request_requires_edit_goal_and_one_fix_input() -> None:
     from pydantic import ValidationError
 
-    from controllers.console.dify_builder_fields import DifyBuilderCreateSessionPayload
+    from controllers.console.dify_builder_fields import (
+        DifyBuilderCreateChecklistFixSessionPayload,
+        DifyBuilderCreateFixSessionPayload,
+        DifyBuilderCreateSessionPayload,
+    )
 
     edit = DifyBuilderCreateSessionPayload.model_validate(
         {"app_id": "app-1", "scenario": "edit", "goal_text": "Tighten risk handling"}
@@ -302,6 +314,7 @@ def test_create_request_requires_edit_goal_and_one_fix_input() -> None:
     failed_run_fix = DifyBuilderCreateSessionPayload.model_validate(
         {"app_id": "app-1", "scenario": "fix", "failed_run_id": "run-1"}
     ).root
+    assert isinstance(failed_run_fix, DifyBuilderCreateFixSessionPayload)
     assert failed_run_fix.failed_run_id == "run-1"
 
     checklist_fix = DifyBuilderCreateSessionPayload.model_validate(
@@ -320,6 +333,7 @@ def test_create_request_requires_edit_goal_and_one_fix_input() -> None:
             ],
         }
     ).root
+    assert isinstance(checklist_fix, DifyBuilderCreateChecklistFixSessionPayload)
     assert checklist_fix.checklist_errors[0].node_id == "n1"
 
     invalid_payloads: tuple[dict[str, object], ...] = (
@@ -396,6 +410,7 @@ def test_transport_json_schema_contains_request_and_sse_unions() -> None:
         "command_started",
         "conversation_item_appended",
         "error",
+        "native_execution",
         "progress",
         "progress_snapshot",
         "reasoning",

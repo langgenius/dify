@@ -1,10 +1,9 @@
 from datetime import datetime
 
 from core.dify_builder.contract import RecoveryClass
-from core.dify_builder.handlers_build import build_registry
-from core.dify_builder.handlers_fix import fix_registry
 from core.dify_builder.models import (
     Action,
+    Actor,
     ChecklistError,
     ConversationItem,
     Diagnosis,
@@ -14,13 +13,15 @@ from core.dify_builder.models import (
     Session,
     Turn,
 )
-from core.dify_builder.placeholder_agent import PlaceholderAgent
-from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState, is_waiting, is_working
+from services.dify_builder.application.handlers_build import build_registry
+from services.dify_builder.application.handlers_fix import fix_registry
+from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+from services.dify_builder.application.runner import Env, Runner
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
 
 
-def _actor():
+def _actor() -> Actor:
     from core.dify_builder.models import Actor
 
     return Actor(account_id="a", tenant_id="t")
@@ -29,7 +30,7 @@ def _actor():
 # ---- entry_state_for -------------------------------------------------------
 
 
-def test_entry_state_for_all_modes():
+def test_entry_state_for_all_modes() -> None:
     """Parity test for entry_state_for's docstring claim ("mirrors
     service.create_*_session; a parity test guards drift"). The expected
     mapping below is exactly what services.dify_builder.service assigns
@@ -44,7 +45,7 @@ def test_entry_state_for_all_modes():
     a fresh session would start somewhere entry_state_for doesn't expect,
     which is exactly the drift this test guards against.
     """
-    from core.dify_builder import recovery
+    from services.dify_builder.application import recovery
 
     assert recovery.entry_state_for(EntryMode.FIX) == PcState.FIX_DIAGNOSE
     assert recovery.entry_state_for(EntryMode.FIX_CHECKLIST) == PcState.CHECKLIST_DIAGNOSE
@@ -55,8 +56,8 @@ def test_entry_state_for_all_modes():
 # ---- target_node_ids -------------------------------------------------------
 
 
-def test_target_node_ids_per_mode():
-    from core.dify_builder import recovery
+def test_target_node_ids_per_mode() -> None:
+    from services.dify_builder.application import recovery
 
     build_fc = DifyBuilderContext(built_node_ids=["n1", "n2"])
     assert recovery.target_node_ids(build_fc, EntryMode.BUILD) == ["n1", "n2"]
@@ -75,8 +76,8 @@ def test_target_node_ids_per_mode():
     assert recovery.target_node_ids(checklist_fc, EntryMode.FIX_CHECKLIST) == ["k1", "k2"]
 
 
-def test_target_node_ids_fix_guard_branches():
-    from core.dify_builder import recovery
+def test_target_node_ids_fix_guard_branches() -> None:
+    from services.dify_builder.application import recovery
 
     # no diagnosis yet (e.g. recovery checked before diagnose ever ran).
     assert recovery.target_node_ids(DifyBuilderContext(), EntryMode.FIX) == []
@@ -89,22 +90,22 @@ def test_target_node_ids_fix_guard_branches():
 # ---- classify --------------------------------------------------------------
 
 
-def test_classify_unchanged():
-    from core.dify_builder import recovery
+def test_classify_unchanged() -> None:
+    from services.dify_builder.application import recovery
 
     fc = DifyBuilderContext(last_snapshot_hash="h1", last_structure_fingerprint="fp1")
     assert recovery.classify("h1", "fp-anything", [], fc, EntryMode.BUILD) == RecoveryClass.UNCHANGED
 
 
-def test_classify_config_only():
-    from core.dify_builder import recovery
+def test_classify_config_only() -> None:
+    from services.dify_builder.application import recovery
 
     fc = DifyBuilderContext(last_snapshot_hash="h1", last_structure_fingerprint="fp1")
     assert recovery.classify("h2", "fp1", [], fc, EntryMode.BUILD) == RecoveryClass.CONFIG_ONLY
 
 
-def test_classify_structural_compatible():
-    from core.dify_builder import recovery
+def test_classify_structural_compatible() -> None:
+    from services.dify_builder.application import recovery
 
     fc = DifyBuilderContext(
         last_snapshot_hash="h1",
@@ -115,8 +116,8 @@ def test_classify_structural_compatible():
     assert recovery.classify("h2", "fp2", ["n1", "n2"], fc, EntryMode.BUILD) == RecoveryClass.STRUCTURAL_COMPATIBLE
 
 
-def test_classify_structural_invalidating():
-    from core.dify_builder import recovery
+def test_classify_structural_invalidating() -> None:
+    from services.dify_builder.application import recovery
 
     fc = DifyBuilderContext(
         last_snapshot_hash="h1",
@@ -130,13 +131,13 @@ def test_classify_structural_invalidating():
 # ---- apply_recovery_action via the runner ----------------------------------
 
 
-def _seed(repo, entry_mode, state, fc):
+def _seed(repo: InMemoryRepository, entry_mode: EntryMode, state: PcState, fc: DifyBuilderContext) -> Session:
     s = Session(app_id="app", tenant_id="t", owner_account_id="a", entry_mode=entry_mode, current_state=state)
     repo.create_session(s, fc, [ConversationItem(kind="user", seq=0)])
     return s
 
 
-def test_check_recovery_sets_class_without_appending_notice():
+def test_check_recovery_sets_class_without_appending_notice() -> None:
     dify = FakeDifyPort()
     dify.graph = {"nodes": [{"id": "n1", "data": {"type": "llm"}}], "edges": []}
     dify.hash = "h-new"
@@ -161,7 +162,7 @@ def test_check_recovery_sets_class_without_appending_notice():
     assert fc2.next_seq == 1
 
 
-def test_check_recovery_classifies_unchanged_via_runner():
+def test_check_recovery_classifies_unchanged_via_runner() -> None:
     """The remaining classify() classes, exercised end-to-end through the
     runner's check_recovery path (test_check_recovery_sets_class_without_appending_notice
     above already covers CONFIG_ONLY)."""
@@ -178,7 +179,7 @@ def test_check_recovery_classifies_unchanged_via_runner():
     assert fc2.recovery_class == "unchanged"
 
 
-def test_check_recovery_classifies_structural_compatible_via_runner():
+def test_check_recovery_classifies_structural_compatible_via_runner() -> None:
     dify = FakeDifyPort()
     dify.graph = {"nodes": [{"id": "n1", "data": {"type": "llm"}}, {"id": "n2", "data": {"type": "llm"}}], "edges": []}
     dify.hash = "h-new"
@@ -199,7 +200,7 @@ def test_check_recovery_classifies_structural_compatible_via_runner():
     assert fc2.recovery_class == "structural_compatible"
 
 
-def test_check_recovery_classifies_structural_invalidating_via_runner():
+def test_check_recovery_classifies_structural_invalidating_via_runner() -> None:
     dify = FakeDifyPort()
     dify.graph = {"nodes": [{"id": "n2", "data": {"type": "llm"}}], "edges": []}
     dify.hash = "h-new"
@@ -220,7 +221,7 @@ def test_check_recovery_classifies_structural_invalidating_via_runner():
     assert fc2.recovery_class == "structural_invalidating"
 
 
-def test_recovery_continue_clears_class():
+def test_recovery_continue_clears_class() -> None:
     dify = FakeDifyPort()
     repo = InMemoryRepository()
     fc = DifyBuilderContext(recovery_class="config_only", next_seq=1)
@@ -238,7 +239,7 @@ def test_recovery_continue_clears_class():
     assert fc2.next_seq == 1
 
 
-def test_recovery_restart_resets_to_entry_state_and_preserves_conversation():
+def test_recovery_restart_resets_to_entry_state_and_preserves_conversation() -> None:
     dify = FakeDifyPort()
     repo = InMemoryRepository()
     fc = DifyBuilderContext(
@@ -281,7 +282,7 @@ def _engine_env() -> tuple[Env, InMemoryRepository, FakeDifyPort]:
     return env, repo, dify
 
 
-def test_recovery_restart_in_fix_mode_drives_working_entry_state_to_waiting():
+def test_recovery_restart_in_fix_mode_drives_working_entry_state_to_waiting() -> None:
     """FINDING 1 regression: before the runner fix, the check_recovery /
     recovery_continue / recovery_restart short-circuit committed the
     transition into fix.diagnose (a WORKING state) and then returned
@@ -318,7 +319,7 @@ def test_recovery_restart_in_fix_mode_drives_working_entry_state_to_waiting():
     assert dify.applied, "the drive must have reached fix.apply and applied the repair"
 
 
-def test_recovery_restart_in_fix_checklist_mode_drives_working_entry_state_to_waiting():
+def test_recovery_restart_in_fix_checklist_mode_drives_working_entry_state_to_waiting() -> None:
     """FINDING 1 regression, checklist entry mode: recovery_restart must not
     strand the session at checklist.diagnose (also a WORKING state). Mirrors
     the FIX test above; the checklist flow instead rests at

@@ -17,7 +17,6 @@ from sqlalchemy import create_engine, delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.models import Actor
 from core.dify_builder.real_call_consent import CredentialReference
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -27,6 +26,7 @@ from models.credential_permission import CredentialPermission
 from models.credential_permission import CredentialType as CredentialPermissionType
 from models.enums import PermissionEnum
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
+from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 from services.tools.builder_credential_reference import (
     OAuthClientSource,
     credential_revision,

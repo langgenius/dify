@@ -8,7 +8,7 @@ from typing import Literal
 
 from core.dify_builder.contract import ExecutionActivity, ExecutionProgress, ProgressEventData
 from core.dify_builder.models import NodeEvent, Session
-from services.dify_builder.presentation import BuilderText
+from runtime_contracts.builder.presentation import BuilderText
 
 __all__ = ["ProgressReporter"]
 

@@ -14,19 +14,19 @@ throwaway conformer.
 """
 
 from core.dify_builder.models import ChecklistError, Graph, NodeOutput, Run
-from core.dify_builder.placeholder_agent import FIXED_CODE, PlaceholderAgent
-from core.dify_builder.ports import DifyBuilderAgent
+from services.dify_builder.application.placeholder_agent import FIXED_CODE, PlaceholderAgent
+from services.dify_builder.application.ports import DifyBuilderAgent
 
 
-def test_placeholder_agent_satisfies_dify_builder_agent_protocol():
+def test_placeholder_agent_satisfies_dify_builder_agent_protocol() -> None:
     assert isinstance(PlaceholderAgent(), DifyBuilderAgent)
 
 
-def test_fixed_code_matches_the_go_fixture_byte_for_byte():
+def test_fixed_code_matches_the_go_fixture_byte_for_byte() -> None:
     assert FIXED_CODE == 'def main() -> dict:\n    return {"result": "ok"}'
 
 
-def test_diagnose_points_at_first_failed_node():
+def test_diagnose_points_at_first_failed_node() -> None:
     a = PlaceholderAgent()
     outputs = [
         NodeOutput(node_id="start", status="success"),
@@ -39,13 +39,13 @@ def test_diagnose_points_at_first_failed_node():
     assert d.severity == "high"
 
 
-def test_diagnose_falls_back_to_output_when_nothing_failed():
+def test_diagnose_falls_back_to_output_when_nothing_failed() -> None:
     a = PlaceholderAgent()
     d = a.diagnose(Run(), Graph(), [NodeOutput(node_id="start", status="success")])
     assert d.culprit_node_id == "output"
 
 
-def test_propose_repair_replaces_culprit_code():
+def test_propose_repair_replaces_culprit_code() -> None:
     a = PlaceholderAgent()
     outputs = [NodeOutput(node_id="code-1", status="failed", error="boom")]
     d = a.diagnose(Run(), Graph(), outputs)
@@ -65,7 +65,7 @@ def test_propose_repair_replaces_culprit_code():
     assert risk.has_external_side_effect is False
 
 
-def test_diagnose_checklist_picks_first_error_with_messages():
+def test_diagnose_checklist_picks_first_error_with_messages() -> None:
     a = PlaceholderAgent()
     errors = [
         ChecklistError(node_id="n1", unconnected=True),  # no messages, skipped
@@ -78,7 +78,7 @@ def test_diagnose_checklist_picks_first_error_with_messages():
     assert d.severity == "medium"
 
 
-def test_diagnose_checklist_no_messages_anywhere_returns_generic_cause():
+def test_diagnose_checklist_no_messages_anywhere_returns_generic_cause() -> None:
     a = PlaceholderAgent()
     errors = [ChecklistError(node_id="n1", unconnected=True)]
     d = a.diagnose_checklist(errors, Graph())
@@ -87,7 +87,7 @@ def test_diagnose_checklist_no_messages_anywhere_returns_generic_cause():
     assert d.severity == "medium"
 
 
-def test_diagnose_checklist_empty_errors_returns_generic_cause():
+def test_diagnose_checklist_empty_errors_returns_generic_cause() -> None:
     a = PlaceholderAgent()
     d = a.diagnose_checklist([], Graph())
     assert d.culprit_node_id == ""
@@ -95,13 +95,13 @@ def test_diagnose_checklist_empty_errors_returns_generic_cause():
     assert d.severity == "medium"
 
 
-def test_generate_mock_inputs_returns_canned_query():
+def test_generate_mock_inputs_returns_canned_query() -> None:
     a = PlaceholderAgent()
     assert a.generate_mock_inputs({}, {}) == {"query": "mock"}
 
 
-def test_analyze_goal_returns_full_requirements_shape():
-    from core.dify_builder.placeholder_agent import PlaceholderAgent
+def test_analyze_goal_returns_full_requirements_shape() -> None:
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
 
     analysis = PlaceholderAgent().analyze_goal("Build a quarterly report workflow")
     assert set(analysis.keys()) == {"fields", "values"}
@@ -125,8 +125,8 @@ def test_analyze_goal_returns_full_requirements_shape():
     assert analysis["values"]["prefer_audited"] is True
 
 
-def test_propose_plan_v1_and_bind_resources_return_ordered_strings():
-    from core.dify_builder.placeholder_agent import PlaceholderAgent
+def test_propose_plan_v1_and_bind_resources_return_ordered_strings() -> None:
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
 
     a = PlaceholderAgent()
     v1 = a.propose_plan_v1({"currency": "USD"}, goal_text="Build a report")
@@ -137,8 +137,8 @@ def test_propose_plan_v1_and_bind_resources_return_ordered_strings():
     assert all(isinstance(x, str) for x in v2)
 
 
-def test_discover_resources_returns_one_ready_option():
-    from core.dify_builder.placeholder_agent import PlaceholderAgent
+def test_discover_resources_returns_one_ready_option() -> None:
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
 
     opts = PlaceholderAgent().discover_resources(["Retrieve", "Summarize"], goal_text="Build a report", requirements={})
     assert len(opts) == 1
@@ -146,8 +146,8 @@ def test_discover_resources_returns_one_ready_option():
     assert opts[0].kind == "knowledge"
 
 
-def test_build_nodes_emits_start_knowledge_llm_end_with_valid_connects():
-    from core.dify_builder.placeholder_agent import (
+def test_build_nodes_emits_start_knowledge_llm_end_with_valid_connects() -> None:
+    from services.dify_builder.application.placeholder_agent import (
         BUILD_END_ID,
         BUILD_KNOWLEDGE_ID,
         BUILD_LLM_ID,
@@ -182,8 +182,8 @@ def test_build_nodes_emits_start_knowledge_llm_end_with_valid_connects():
     assert creates[2].args["config"]["model"]["mode"] == "chat"
 
 
-def test_placeholder_learn_from_build_returns_descriptor():
-    from core.dify_builder.placeholder_agent import PlaceholderAgent
+def test_placeholder_learn_from_build_returns_descriptor() -> None:
+    from services.dify_builder.application.placeholder_agent import PlaceholderAgent
 
     out = PlaceholderAgent().learn_from_build("summarize a PDF", {}, ["step"], ["llm"])
     assert isinstance(out, str)

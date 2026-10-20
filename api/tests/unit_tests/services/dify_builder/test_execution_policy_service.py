@@ -12,13 +12,13 @@ from sqlalchemy import create_engine, delete, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from core.dify_builder import execution_policy as domain
 from core.dify_builder.models import Actor
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import Base, TypeBase
 from models.dify_builder import DifyBuilderSession, DifyBuilderTestInput
 from models.model import App
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
+from services.dify_builder.application import execution_policy as domain
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph, policy
 
 _PRE_EXTRACTION_GOLDENS = (
@@ -492,12 +492,12 @@ def test_sealed_append_and_tampered_full_context_refused(owned):
 def test_all_handlers_persist_actual_server_stamp(owned, monkeypatch, handler_name):
     from datetime import datetime
 
-    from core.dify_builder import handlers_build, handlers_edit, handlers_fix
     from core.dify_builder.models import Action, DifyBuilderContext, EntryMode, Turn
     from core.dify_builder.models import Session as BuilderSession
-    from core.dify_builder.runner import Env
     from core.dify_builder.state import PcState
     from services.dify_builder import dify_port
+    from services.dify_builder.application import handlers_build, handlers_edit, handlers_fix
+    from services.dify_builder.application.runner import Env
     from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
 
     factory, actor, app, workflow, sid, tid = owned

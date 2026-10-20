@@ -4,7 +4,6 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.dataset import Pipeline
 from models.enums import IndexingStatus
@@ -14,6 +13,7 @@ from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
 from services.knowledge.dataset_service import DocumentService
 from services.knowledge.resource_scope import DatasetRef, DocumentRef
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.workflow_runtime.pipeline_generator import PipelineGenerator
 
 
 class PipelineGenerateService:

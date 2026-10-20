@@ -35,6 +35,14 @@ class DifyCoreToolConfig(BaseModel):
     parameters: list[DifyPluginToolParameter] = Field(default_factory=list)
     parameters_json_schema: dict[str, JsonValue] = Field(default_factory=_default_parameters_json_schema)
 
+    @property
+    def uses_plugin_parameters(self) -> bool:
+        """Match the existing API builder's installed-plugin declaration shape."""
+        parts = self.provider_id.split("/")
+        return self.provider_type == "plugin" or (
+            self.provider_type == "builtin" and len(parts) == 3 and all(parts)
+        )
+
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
 
@@ -42,6 +50,7 @@ class DifyCoreToolsLayerConfig(BaseModel):
     """Public config for the Dify core-tools layer."""
 
     execution_context: str = "execution_context"
+    shell: str | None = None
 
     tools: list[DifyCoreToolConfig] = Field(default_factory=list)
 

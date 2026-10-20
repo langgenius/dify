@@ -19,7 +19,6 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -47,6 +46,7 @@ from repositories.sqlalchemy_api_workflow_run_repository import (
     WorkflowRunNotPausedError,
     _WorkflowRunError,
 )
+from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 from tasks import async_workflow_tasks
 from tasks.app_generate import workflow_execute_task as workflow_execute_task_module
 from tasks.app_generate.workflow_execute_task import (
@@ -954,7 +954,7 @@ def test_app_runner_streaming_failure_keeps_existing_pre_runtime_helper_behavior
     monkeypatch.setattr(runner, "_setup_flask_context", lambda _user: nullcontext())
     monkeypatch.setattr(runner, "_run_app", lambda **_kwargs: (_ for _ in ()).throw(ValueError("Invalid upload file")))
     monkeypatch.setattr(
-        "core.workflow.workflow_entry.WorkflowEntry.handle_special_values",
+        "services.workflow_runtime.entry.WorkflowEntry.handle_special_values",
         lambda value: (_ for _ in ()).throw(AssertionError("pre-runtime helper should not normalize inputs")),
     )
 

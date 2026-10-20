@@ -46,6 +46,43 @@ class AgentWorkspaceService:
     participant lookup keys.
     """
 
+    @staticmethod
+    def finalize_native_binding(*, session: Session, allocation) -> None:
+        """Finalize an already allocated native resource, with no physical I/O.
+
+        The native owner reserves the same IDs under its invocation/root lock
+        before allocation and calls this only after exact backend confirmation.
+        """
+        from models.agent import AgentWorkspaceOwnerType
+
+        session.add(
+            AgentWorkspace(
+                id=allocation.workspace_id,
+                tenant_id=allocation.tenant_id,
+                app_id=allocation.app_id,
+                owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
+                owner_id=allocation.owner_run_id,
+                owner_scope_key=f"native:{allocation.invocation_id}",
+                backend_workspace_ref=allocation.backend_ref,
+                status=AgentWorkingResourceStatus.ACTIVE,
+                active_guard=1,
+            )
+        )
+        session.add(
+            AgentWorkspaceBinding(
+                id=allocation.binding_id,
+                tenant_id=allocation.tenant_id,
+                app_id=allocation.app_id,
+                workspace_id=allocation.workspace_id,
+                agent_id=allocation.agent_id,
+                base_home_snapshot_id=allocation.home_snapshot_id,
+                agent_config_version_id=allocation.pinned_snapshot_id,
+                agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+                backend_binding_ref=allocation.backend_ref,
+                status=AgentWorkingResourceStatus.ACTIVE,
+            )
+        )
+
     @classmethod
     def resolve_active_workspace(cls, *, session: Session, scope: WorkspaceOwnerScope) -> AgentWorkspace | None:
         return session.scalar(

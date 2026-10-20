@@ -14,7 +14,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.db.session_factory import get_session_maker
@@ -30,6 +29,7 @@ from repositories.knowledge.document_repository import SQLAlchemyDocumentReposit
 from services.file_scan.admission import reject_dataset_upload_file
 from services.file_service import FileService
 from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_runtime.pipeline_generator import PipelineGenerator
 
 logger = logging.getLogger(__name__)
 

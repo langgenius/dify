@@ -32,7 +32,11 @@ def context_to_dict(fc: DifyBuilderContext) -> dict[str, Any]:
     ``ChecklistError``), turning each into a plain dict; every field is a
     str/int/bool/list/dict/None -- so the result is JSON-safe as-is.
     """
-    return asdict(fc)
+    from services.dify_builder.code_risk_assessment import validated_assessments
+
+    result = asdict(fc)
+    result["code_risk_assessments"] = validated_assessments(fc.code_risk_assessments)
+    return result
 
 
 def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
@@ -43,6 +47,8 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
     default matching the field default) so an older or partial dict still
     yields a valid ``DifyBuilderContext``.
     """
+    from services.dify_builder.code_risk_assessment import validated_assessments
+
     diagnosis = Diagnosis(**d["diagnosis"]) if d.get("diagnosis") else None
     staged_repair = [MutationIntent(**m) for m in d.get("staged_repair", [])]
     risk = Risk(**d["risk"]) if d.get("risk") else None
@@ -61,11 +67,13 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
         checkpoint_id=d.get("checkpoint_id", ""),
         verify_run_id=d.get("verify_run_id", ""),
         test_input_ref=d.get("test_input_ref", ""),
+        retained_test_input_ref=d.get("retained_test_input_ref", ""),
         last_snapshot_hash=d.get("last_snapshot_hash", ""),
         next_seq=d.get("next_seq", 0),
         source=d.get("source", ""),
         checklist_errors=checklist_errors,
         goal_text=d.get("goal_text", ""),
+        active_entry_mode=d.get("active_entry_mode", ""),
         requirements=dict(d.get("requirements") or {}),
         plan_items=list(d.get("plan_items") or []),
         plan_title=d.get("plan_title", ""),
@@ -87,6 +95,13 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
         last_command_id=d.get("last_command_id", ""),
         confirmed_consent_id=d.get("confirmed_consent_id", ""),
         confirmed_command_id=d.get("confirmed_command_id", ""),
+        effect_confirmation={
+            str(node_id): str(signature) for node_id, signature in (d.get("effect_confirmation") or {}).items()
+        },
+        effect_confirmation_form={
+            str(node_id): str(signature) for node_id, signature in (d.get("effect_confirmation_form") or {}).items()
+        },
+        code_risk_assessments=validated_assessments(d.get("code_risk_assessments")),
         skill_learning_policy=d.get("skill_learning_policy", "ask"),
         model_config=dict(d.get("model_config") or {}),
         reply_language=d.get("reply_language", ""),
@@ -95,7 +110,7 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
 
 def test_input_from_dict(d: dict[str, Any]) -> TestInput:
     """Decode historical inputs without inventing fixture provenance."""
-    from core.dify_builder.execution_policy import decode_http_fixture_set
+    from services.dify_builder.application.execution_policy import decode_http_fixture_set
 
     return TestInput(
         id=d.get("id", ""),

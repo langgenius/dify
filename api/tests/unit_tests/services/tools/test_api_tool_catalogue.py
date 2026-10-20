@@ -336,7 +336,7 @@ def test_native_api_catalogue_hydration_preserves_runtime_keyword_and_fixed_para
 ) -> None:
     engine, forbidden, _sql = public_inventory
     _add_provider(engine)
-    from core.workflow.generator.runner import WorkflowGenerator
+    from services.workflow_generation.runner import WorkflowGenerator
 
     parameters = {
         "query": {"type": "variable", "value": ["start", "keyword"]},
