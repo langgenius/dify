@@ -1,11 +1,12 @@
 """Unit coverage for Dify's in-memory ResponseStreamFilter boundary behavior."""
 
-from core.workflow.workflow_entry import iter_dify_graph_engine_events
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.engine_events import GraphRunSucceededEvent, NodeRunStreamChunkEvent
+from services.workflow.execution.adapters.workflow_entry import iter_dify_graph_engine_events
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder
 from tests.unit_tests.core.workflow.graph_engine.test_table_runner import WorkflowRunner
+from tests.unit_tests.workflow_execution import NO_HUMAN_INPUT_FORMS
 
 
 def _build_issue_170_mock_config() -> tuple[WorkflowRunner, MockConfig]:
@@ -59,7 +60,7 @@ def test_dify_response_stream_filter_handles_issue_170_shape() -> None:
         runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
     )
-    events = list(iter_dify_graph_engine_events(engine))
+    events = list(iter_dify_graph_engine_events(engine, human_form_reader=NO_HUMAN_INPUT_FORMS))
 
     stream_chunk_events = [event for event in events if isinstance(event, NodeRunStreamChunkEvent)]
     success_events = [event for event in events if isinstance(event, GraphRunSucceededEvent)]

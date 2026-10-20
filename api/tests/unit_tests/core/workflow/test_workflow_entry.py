@@ -10,13 +10,14 @@ from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
-from core.workflow.workflow_entry import WorkflowEntry
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.nodes.code.code_node import CodeNode
 from graphon.nodes.code.limits import CodeNodeLimits
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow, WorkflowType
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
+from services.workflow.execution.ports import WorkflowRuntime
 
 
 @pytest.fixture(autouse=True)
@@ -168,7 +169,9 @@ class TestWorkflowEntry:
             ),
         ],
     )
-    def test_single_step_loads_explicit_inputs_for_nodes_without_graphon_extractors(self, data, inputs, expected):
+    def test_single_step_loads_explicit_inputs_for_nodes_without_graphon_extractors(
+        self, data, inputs, expected, workflow_runtime: WorkflowRuntime
+    ):
         workflow = Workflow.new(
             tenant_id="tenant",
             app_id="app",
@@ -190,7 +193,7 @@ class TestWorkflowEntry:
             user_id="user",
             user_inputs=inputs,
             variable_pool=variable_pool,
-            execution_driver=None,
+            workflow_runtime=workflow_runtime,
         )
 
         variable = variable_pool.get(["source", "value"])
@@ -246,7 +249,7 @@ class TestWorkflowEntry:
         assert output_var is not None
         assert output_var.value == "system_user"
 
-    def test_single_step_run_injects_code_limits(self):
+    def test_single_step_run_injects_code_limits(self, workflow_runtime: WorkflowRuntime):
         """Ensure single-step CodeNode execution configures limits."""
         # Arrange
         node_id = "code_node"
@@ -293,7 +296,7 @@ class TestWorkflowEntry:
             user_id="user",
             user_inputs={},
             variable_pool=variable_pool,
-            execution_driver=None,
+            workflow_runtime=workflow_runtime,
         )
 
         # Assert

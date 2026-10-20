@@ -9,7 +9,6 @@ from pytest_mock import MockerFixture
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.credit_usage import CreditUsageAppType
-from core.workflow import workflow_entry
 from core.workflow.system_variables import default_system_variables
 from graphon.engine.filter import ResponseStreamFilter
 from graphon.engine_events import GraphRunFailedEvent, NodeRunSucceededEvent
@@ -23,7 +22,10 @@ from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow
+from services.workflow.execution.adapters import workflow_entry
+from services.workflow.execution.ports import WorkflowRuntime
 from tests.unit_tests.model_factories import make_workflow
+from tests.unit_tests.workflow_execution import NO_HUMAN_INPUT_FORMS
 
 
 def _build_typed_node_config(node_type: NodeType):
@@ -54,6 +56,7 @@ def _build_minimal_workflow_entry(
         call_depth=0,
         graph_runtime_state=graph_runtime_state,
         response_stream_filter=response_stream_filter,
+        human_form_reader=NO_HUMAN_INPUT_FORMS,
     )
 
 
@@ -67,6 +70,7 @@ class TestWorkflowEntryInit:
                 graph=sentinel.graph,
                 call_depth=call_depth,
                 graph_runtime_state=sentinel.graph_runtime_state,
+                human_form_reader=NO_HUMAN_INPUT_FORMS,
             )
 
     def test_workflow_entry_stores_supplied_response_stream_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -84,6 +88,7 @@ class TestWorkflowEntryInit:
 class TestWorkflowEntryRun:
     def test_run_swallows_generate_task_stopped_errors(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
+        entry._human_form_reader = NO_HUMAN_INPUT_FORMS
         entry.graph_engine = MagicMock()
         entry.graph_engine.run.side_effect = GenerateTaskStoppedError()
         entry._response_stream_filter = ResponseStreamFilter()
@@ -116,7 +121,9 @@ class TestWorkflowEntryRun:
                 return_value=iter([sentinel.filtered_event]),
             ) as filter_engine_events,
         ):
-            events = list(workflow_entry.iter_dify_graph_engine_events(graph_engine))
+            events = list(
+                workflow_entry.iter_dify_graph_engine_events(graph_engine, human_form_reader=NO_HUMAN_INPUT_FORMS)
+            )
 
         assert events == [sentinel.filtered_event]
         from_engine.assert_called_once_with(graph_engine)
@@ -129,6 +136,7 @@ class TestWorkflowEntryRun:
 
     def test_run_delegates_to_dify_event_iterator(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
+        entry._human_form_reader = NO_HUMAN_INPUT_FORMS
         entry.graph_engine = sentinel.graph_engine
         entry._response_stream_filter = sentinel.response_stream_filter
 
@@ -140,10 +148,13 @@ class TestWorkflowEntryRun:
             events = list(entry.run())
 
         assert events == [sentinel.filtered_event]
-        iter_dify_graph_engine_events.assert_called_once_with(sentinel.graph_engine, sentinel.response_stream_filter)
+        iter_dify_graph_engine_events.assert_called_once_with(
+            sentinel.graph_engine, sentinel.response_stream_filter, human_form_reader=NO_HUMAN_INPUT_FORMS
+        )
 
     def test_run_emits_failed_event_for_unexpected_errors(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
+        entry._human_form_reader = NO_HUMAN_INPUT_FORMS
         entry.graph_engine = MagicMock()
         entry.graph_engine.run.side_effect = RuntimeError("boom")
         entry._response_stream_filter = ResponseStreamFilter()
@@ -157,7 +168,7 @@ class TestWorkflowEntryRun:
 
 class TestWorkflowEntrySingleStepRun:
     @pytest.mark.parametrize("node_type", [BuiltinNodeTypes.LOOP, BuiltinNodeTypes.ITERATION])
-    def test_rejects_container_nodes(self, node_type):
+    def test_rejects_container_nodes(self, node_type, workflow_runtime: WorkflowRuntime):
         workflow = _workflow()
 
         with (
@@ -170,10 +181,12 @@ class TestWorkflowEntrySingleStepRun:
                 user_id="user-id",
                 user_inputs={},
                 variable_pool=sentinel.variable_pool,
-                execution_driver=None,
+                workflow_runtime=workflow_runtime,
             )
 
-    def test_preloads_constructor_variables_before_creating_memory_node(self):
+    def test_preloads_constructor_variables_before_creating_memory_node(
+        self, workflow_runtime: WorkflowRuntime
+    ):
         class FakeLLMNode:
             id = "node-id"
             title = "Node Title"
@@ -235,14 +248,16 @@ class TestWorkflowEntrySingleStepRun:
                 user_inputs={},
                 variable_pool=variable_pool,
                 variable_loader=variable_loader,
-                execution_driver=None,
+                workflow_runtime=workflow_runtime,
             )
 
         assert node.id == "node-id"
         assert list(generator) == ["event"]
         variable_loader.load_variables.assert_called_once_with([["sys", "conversation_id"]])
 
-    def test_uses_empty_mapping_when_selector_extraction_is_not_implemented(self):
+    def test_uses_empty_mapping_when_selector_extraction_is_not_implemented(
+        self, workflow_runtime: WorkflowRuntime
+    ):
         class FakeNode:
             id = "node-id"
             title = "Node Title"
@@ -288,7 +303,7 @@ class TestWorkflowEntrySingleStepRun:
                 user_id="user-id",
                 user_inputs={"question": "hello"},
                 variable_pool=sentinel.variable_pool,
-                execution_driver=None,
+                workflow_runtime=workflow_runtime,
             )
 
         assert node.id == "node-id"
@@ -311,7 +326,7 @@ class TestWorkflowEntrySingleStepRun:
             tenant_id="tenant-id",
         )
 
-    def test_skips_user_input_mapping_for_datasource_nodes(self):
+    def test_skips_user_input_mapping_for_datasource_nodes(self, workflow_runtime: WorkflowRuntime):
         class FakeDatasourceNode:
             id = "node-id"
             node_type = "datasource"
@@ -356,7 +371,7 @@ class TestWorkflowEntrySingleStepRun:
                 user_id="user-id",
                 user_inputs={"question": "hello"},
                 variable_pool=sentinel.variable_pool,
-                execution_driver=None,
+                workflow_runtime=workflow_runtime,
             )
 
         assert node.id == "node-id"
@@ -369,7 +384,7 @@ class TestWorkflowEntrySingleStepRun:
         )
         mapping_user_inputs_to_variable_pool.assert_not_called()
 
-    def test_wraps_layered_node_run_failures(self):
+    def test_wraps_layered_node_run_failures(self, workflow_runtime: WorkflowRuntime):
         class FakeNode:
             id = "node-id"
             title = "Node Title"
@@ -413,7 +428,7 @@ class TestWorkflowEntrySingleStepRun:
                     user_id="user-id",
                     user_inputs={},
                     variable_pool=sentinel.variable_pool,
-                    execution_driver=None,
+                    workflow_runtime=workflow_runtime,
                 )
 
 

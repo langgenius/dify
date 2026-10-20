@@ -3,7 +3,6 @@ from unittest.mock import patch
 from core.entities.provider_entities import CustomProviderConfiguration
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import PluginModelAssembly
-from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import (
     AIModelEntity,
@@ -14,6 +13,7 @@ from graphon.model_runtime.entities.model_entities import (
     ParameterRule,
     ParameterType,
 )
+from services.workflow.execution.adapters.agent_runtime import AgentRuntimeSupport
 from tests.unit_tests.core.model_fixtures import make_model_config
 
 
@@ -27,7 +27,7 @@ def test_fetch_model_reuses_single_model_assembly():
 
     with (
         patch(
-            "core.workflow.nodes.agent.runtime_support.create_plugin_model_assembly",
+            "services.workflow.execution.adapters.agent_runtime.create_plugin_model_assembly",
             return_value=assembly,
         ) as mock_assembly,
         patch.object(

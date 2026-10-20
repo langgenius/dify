@@ -14,9 +14,13 @@ from enums.human_input import DeliveryMethodType
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from graphon.runtime import VariablePool
-from models.human_input_delivery import EmailDeliveryConfig, EmailDeliveryMethod, EmailRecipients
-from models.human_input_delivery import InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod
-from models.human_input_delivery import _InteractiveSurfaceDeliveryConfig as _WebAppDeliveryConfig
+from models.human_input_delivery import (
+    EmailDeliveryConfig,
+    EmailDeliveryMethod,
+    EmailRecipients,
+    InteractiveSurfaceDeliveryMethod,
+    _InteractiveSurfaceDeliveryConfig,
+)
 
 
 def test_adapt_legacy_variable_aggregator_without_changing_saved_data() -> None:
@@ -272,7 +276,7 @@ def test_adapt_human_input_node_data_for_graph_accepts_models() -> None:
                 {
                     "type": DeliveryMethodType.WEBAPP,
                     "enabled": True,
-                    "config": _WebAppDeliveryConfig().model_dump(mode="python"),
+                    "config": _InteractiveSurfaceDeliveryConfig().model_dump(mode="python"),
                 }
             ]
         )
@@ -364,7 +368,7 @@ def test_email_delivery_method_extracts_variable_selectors_skips_short_selectors
 
 
 def test_webapp_delivery_method_uses_empty_selector_set() -> None:
-    method = WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())
+    method = InteractiveSurfaceDeliveryMethod(enabled=True, config=_InteractiveSurfaceDeliveryConfig())
 
     assert method.extract_variable_selectors() == ()
 

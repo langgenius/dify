@@ -2,17 +2,8 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
-from core.repositories.human_input_repository import (
-    FormCreateParams,
-    HumanInputFormEntity,
-    HumanInputFormRepository,
-)
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime
-from core.workflow.nodes.human_input.callback import (
-    DifyHITLCallback,
-)
 from core.workflow.system_variables import build_system_variables
 from enums.human_input import HumanInputFormStatus, ValueSourceType
 from graphon.engine import Engine
@@ -29,11 +20,18 @@ from graphon.graph import Graph
 from graphon.nodes.base.entities import OutputVariableEntity
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.human_input.entities import HumanInputNodeData as GraphonHumanInputNodeData
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
+from models.human_input_contracts import (
+    FormCreateParams,
+    HumanInputFormEntity,
+    HumanInputFormRecipientEntity,
+    HumanInputFormRepository,
+)
 from models.human_input_entities import (
     FileInputConfig,
     FileListInputConfig,
@@ -42,6 +40,10 @@ from models.human_input_entities import (
     StringListSource,
     UserActionConfig,
 )
+from services.workflow.execution.adapters.human_input import (
+    DifyHITLCallback,
+)
+from services.workflow.execution.adapters.node_runtime import DifyFileReferenceFactory
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -94,11 +96,7 @@ class StaticForm(HumanInputFormEntity):
         return self.form_id
 
     @property
-    def submission_token(self) -> str | None:
-        return "token"
-
-    @property
-    def recipients(self) -> list:
+    def recipients(self) -> list[HumanInputFormRecipientEntity]:
         return []
 
     @property
@@ -134,7 +132,8 @@ class StaticRepo(HumanInputFormRepository):
     def __init__(self, forms_by_node_id: Mapping[str, HumanInputFormEntity]) -> None:
         self._forms_by_node_id = dict(forms_by_node_id)
 
-    def get_form(self, node_id: str) -> HumanInputFormEntity | None:
+    def get_form(self, node_id: str, *, form_id: str | None = None) -> HumanInputFormEntity | None:
+        _ = form_id
         return self._forms_by_node_id.get(node_id)
 
     def set_forms(self, forms_by_node_id: Mapping[str, HumanInputFormEntity]) -> None:
@@ -197,32 +196,28 @@ def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) ->
     )
 
     human_a_config = {"id": "human_a", "data": human_data.model_dump()}
-    human_a_runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
-    human_a_runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
     human_a_callback = DifyHITLCallback(
         form_repository=repo,
         node_data=human_data,
-        file_reference_factory=_TestFileReferenceFactory(),
+        file_reference_factory=cast(DifyFileReferenceFactory, _TestFileReferenceFactory()),
     )
     human_a = HumanInputNode(
         node_id=human_a_config["id"],
-        data=human_data,
+        data=GraphonHumanInputNodeData.model_validate(human_data.model_dump()),
         init_params=graph_init_params,
         runtime_state=runtime_state,
         hitl_callback=human_a_callback,
     )
 
     human_b_config = {"id": "human_b", "data": human_data.model_dump()}
-    human_b_runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
-    human_b_runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
     human_b_callback = DifyHITLCallback(
         form_repository=repo,
         node_data=human_data,
-        file_reference_factory=_TestFileReferenceFactory(),
+        file_reference_factory=cast(DifyFileReferenceFactory, _TestFileReferenceFactory()),
     )
     human_b = HumanInputNode(
         node_id=human_b_config["id"],
-        data=human_data,
+        data=GraphonHumanInputNodeData.model_validate(human_data.model_dump()),
         init_params=graph_init_params,
         runtime_state=runtime_state,
         hitl_callback=human_b_callback,

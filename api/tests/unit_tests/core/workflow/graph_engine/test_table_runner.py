@@ -21,10 +21,8 @@ from typing import Any
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.tools.utils.yaml_utils import _load_yaml_file
-from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
-from core.workflow.workflow_entry import iter_dify_graph_engine_events
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.engine_events import (
@@ -43,6 +41,9 @@ from graphon.variables import (
     ObjectVariable,
     StringVariable,
 )
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory, get_default_root_node_id
+from services.workflow.execution.adapters.workflow_entry import iter_dify_graph_engine_events
+from tests.unit_tests.workflow_execution import NO_HUMAN_INPUT_FORMS
 
 from .test_mock_config import MockConfig
 from .test_mock_factory import MockNodeFactory
@@ -108,7 +109,7 @@ class TestSuiteResult:
 class WorkflowRunner:
     """Core workflow execution engine for tests."""
 
-    def __init__(self, fixtures_dir: Path | None = None):
+    def __init__(self, fixtures_dir: Path | None = None) -> None:
         """Initialize the workflow runner."""
         if fixtures_dir is None:
             # Use the new central fixtures location
@@ -253,7 +254,7 @@ class TableTestRunner:
         enable_logging: bool = False,
         log_level: str = "INFO",
         graph_engine_max_workers: int = 1,
-    ):
+    ) -> None:
         """
         Initialize the table test runner.
 
@@ -307,6 +308,8 @@ class TableTestRunner:
     def _execute_test_case(self, test_case: WorkflowTestCase) -> WorkflowTestResult:
         """Internal method to execute a single test case."""
         start_time = time.perf_counter()
+        graph: Graph | None = None
+        graph_runtime_state: RuntimeState | None = None
 
         try:
             graph, graph_runtime_state = self._create_graph_runtime_state(test_case)
@@ -321,7 +324,7 @@ class TableTestRunner:
 
             # Execute and collect events
             events: list[EngineEvent] = []
-            for event in iter_dify_graph_engine_events(engine):
+            for event in iter_dify_graph_engine_events(engine, human_form_reader=NO_HUMAN_INPUT_FORMS):
                 events.append(event)
 
             # Check execution success
@@ -387,8 +390,8 @@ class TableTestRunner:
                 success=False,
                 error=e,
                 execution_time=time.perf_counter() - start_time,
-                graph=graph if "graph" in locals() else None,
-                graph_runtime_state=graph_runtime_state if "graph_runtime_state" in locals() else None,
+                graph=graph,
+                graph_runtime_state=graph_runtime_state,
             )
 
     def _create_graph_runtime_state(self, test_case: WorkflowTestCase) -> tuple[Graph, RuntimeState]:
@@ -454,7 +457,7 @@ class TableTestRunner:
         return True, None
 
     def _validate_event_sequence(
-        self, expected_sequence: list[type[EngineEvent]], actual_events: list[EngineEvent]
+        self, expected_sequence: Sequence[type[EngineEvent]], actual_events: list[EngineEvent]
     ) -> tuple[bool, str | None]:
         """
         Validate that actual events match the expected event sequence.
@@ -510,7 +513,7 @@ class TableTestRunner:
             )
 
         start_time = time.perf_counter()
-        results = []
+        results: list[WorkflowTestResult] = []
 
         if parallel and self.max_workers > 1:
             results = self._run_parallel(test_cases, fail_fast)

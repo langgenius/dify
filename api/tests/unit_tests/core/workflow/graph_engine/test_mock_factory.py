@@ -8,10 +8,10 @@ implementations before instantiation.
 from typing import TYPE_CHECKING, Any, override
 
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
-from core.workflow.node_factory import DifyNodeFactory
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.nodes.base.node import Node
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 
 from .test_mock_nodes import (
     MockAgentNode,

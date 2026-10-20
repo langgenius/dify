@@ -6,7 +6,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
@@ -14,16 +13,6 @@ from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
-from core.repositories.human_input_repository import (
-    FormCreateParams,
-    HumanInputFormEntity,
-    HumanInputFormRecipientEntity,
-    HumanInputFormRepository,
-)
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime
-from core.workflow.nodes.human_input.callback import (
-    DifyHITLCallback,
-)
 from core.workflow.system_variables import build_system_variables
 from enums.human_input import (
     ButtonStyle,
@@ -43,15 +32,22 @@ from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from libs.datetime_utils import naive_utc_now
 from models.account import TenantAccountJoin, TenantAccountRole
+from models.human_input_contracts import (
+    FormCreateParams,
+    HumanInputFormEntity,
+    HumanInputFormFactory,
+    HumanInputFormRecipientEntity,
+    HumanInputFormRepository,
+)
 from models.human_input_delivery import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
+    InteractiveSurfaceDeliveryMethod,
     MemberRecipient,
+    _InteractiveSurfaceDeliveryConfig,
 )
-from models.human_input_delivery import InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod
-from models.human_input_delivery import _InteractiveSurfaceDeliveryConfig as _WebAppDeliveryConfig
 from models.human_input_entities import (
     FileInputConfig,
     FileListInputConfig,
@@ -62,6 +58,10 @@ from models.human_input_entities import (
     StringSource,
     UserActionConfig,
 )
+from services.workflow.execution.adapters.human_input import (
+    DifyHITLCallback,
+)
+from services.workflow.execution.adapters.node_runtime import DifyHumanInputNodeRuntime
 from tests.unit_tests.model_factories import make_account, make_tenant
 
 
@@ -69,7 +69,6 @@ from tests.unit_tests.model_factories import make_account, make_tenant
 class _InMemoryFormEntity(HumanInputFormEntity):
     form_id: str
     rendered: str
-    token: str | None = None
     action_id: str | None = None
     data: Mapping[str, Any] | None = None
     is_submitted: bool = False
@@ -80,10 +79,6 @@ class _InMemoryFormEntity(HumanInputFormEntity):
     @property
     def id(self) -> str:
         return self.form_id
-
-    @property
-    def submission_token(self) -> str | None:
-        return self.token
 
     @property
     def recipients(self) -> list[HumanInputFormRecipientEntity]:
@@ -134,7 +129,6 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
         entity = _InMemoryFormEntity(
             form_id=form_id,
             rendered=params.rendered_content,
-            token=f"token-{form_id}",
         )
         self.created_forms.append(entity)
         self._forms_by_node_id[params.node_id] = entity
@@ -206,11 +200,11 @@ class TestDeliveryMethod:
 
     def test_webapp_delivery_method(self):
         """Test webapp delivery method creation."""
-        delivery_method = WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())
+        delivery_method = InteractiveSurfaceDeliveryMethod(enabled=True, config=_InteractiveSurfaceDeliveryConfig())
 
         assert delivery_method.type == DeliveryMethodType.WEBAPP
         assert delivery_method.enabled is True
-        assert isinstance(delivery_method.config, _WebAppDeliveryConfig)
+        assert isinstance(delivery_method.config, _InteractiveSurfaceDeliveryConfig)
 
     def test_email_delivery_method(self):
         """Test email delivery method creation."""
@@ -317,7 +311,7 @@ class TestHumanInputNodeData:
 
     def test_valid_node_data_creation(self):
         """Test creating valid human input node data."""
-        delivery_methods = [WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())]
+        delivery_methods = [InteractiveSurfaceDeliveryMethod(enabled=True, config=_InteractiveSurfaceDeliveryConfig())]
 
         inputs = [
             ParagraphInputConfig(
@@ -351,7 +345,7 @@ class TestHumanInputNodeData:
     def test_node_data_with_multiple_delivery_methods(self):
         """Test node data with multiple delivery methods."""
         delivery_methods = [
-            WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig()),
+            InteractiveSurfaceDeliveryMethod(enabled=True, config=_InteractiveSurfaceDeliveryConfig()),
             EmailDeliveryMethod(
                 enabled=False,  # Disabled method should be fine
                 config=EmailDeliveryConfig(
@@ -473,11 +467,7 @@ class TestHumanInputNodeVariableResolution:
     """Tests for resolving variable-based defaults in HumanInputNode."""
 
     @pytest.fixture(autouse=True)
-    def _bind_repository(self, sqlite_session_factory: sessionmaker[Session], mocker: MockerFixture) -> None:
-        mocker.patch(
-            "core.repositories.human_input_repository.session_factory.create_session",
-            side_effect=sqlite_session_factory,
-        )
+    def _bind_repository(self, sqlite_session_factory: sessionmaker[Session]) -> None:
         with sqlite_session_factory.begin() as session:
             session.add_all(
                 [
@@ -487,7 +477,7 @@ class TestHumanInputNodeVariableResolution:
                 ]
             )
 
-    def test_resolves_variable_defaults(self, mocker: MockerFixture):
+    def test_resolves_variable_defaults(self, mocker: MockerFixture, human_forms: HumanInputFormFactory):
         variable_pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(
                 user_id="user",
@@ -534,11 +524,16 @@ class TestHumanInputNodeVariableResolution:
 
         runtime = DifyHumanInputNodeRuntime(
             graph_init_params.run_context,
+            forms=human_forms,
             workflow_execution_id_getter=lambda: "exec-1",
         )
         repository = runtime.build_form_repository()
         create = mocker.spy(repository, "create_form")
-        runtime = runtime.with_form_repository(repository)
+        runtime = DifyHumanInputNodeRuntime(
+            graph_init_params.run_context,
+            forms=lambda **_kwargs: repository,
+            workflow_execution_id_getter=lambda: "exec-1",
+        )
         node = _build_human_input_node(
             node_id=config["id"],
             node_data=config["data"],
@@ -558,7 +553,7 @@ class TestHumanInputNodeVariableResolution:
         params = create.call_args.args[0]
         assert params.resolved_default_values == expected_values
 
-    def test_debugger_falls_back_to_recipient_token_when_webapp_disabled(self, mocker: MockerFixture):
+    def test_debugger_falls_back_to_recipient_token_when_webapp_disabled(self, human_forms: HumanInputFormFactory):
         variable_pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(
                 user_id="user",
@@ -595,11 +590,9 @@ class TestHumanInputNodeVariableResolution:
 
         runtime = DifyHumanInputNodeRuntime(
             graph_init_params.run_context,
+            forms=human_forms,
             workflow_execution_id_getter=lambda: "exec-2",
         )
-        repository = runtime.build_form_repository()
-        mocker.spy(repository, "create_form")
-        runtime = runtime.with_form_repository(repository)
         node = _build_human_input_node(
             node_id=config["id"],
             node_data=config["data"],
@@ -614,7 +607,9 @@ class TestHumanInputNodeVariableResolution:
         assert isinstance(pause_event, PauseRequestedEvent)
         assert not hasattr(pause_event.reason, "form_token")
 
-    def test_webapp_runtime_keeps_form_visible_in_ui_when_webapp_delivery_is_enabled(self, mocker: MockerFixture):
+    def test_webapp_runtime_keeps_form_visible_in_ui_when_webapp_delivery_is_enabled(
+        self, mocker: MockerFixture, human_forms: HumanInputFormFactory
+    ):
         variable_pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(
                 user_id="user",
@@ -655,11 +650,16 @@ class TestHumanInputNodeVariableResolution:
 
         runtime = DifyHumanInputNodeRuntime(
             graph_init_params.run_context,
+            forms=human_forms,
             workflow_execution_id_getter=lambda: "exec-4",
         )
         repository = runtime.build_form_repository()
         create = mocker.spy(repository, "create_form")
-        runtime = runtime.with_form_repository(repository)
+        runtime = DifyHumanInputNodeRuntime(
+            graph_init_params.run_context,
+            forms=lambda **_kwargs: repository,
+            workflow_execution_id_getter=lambda: "exec-4",
+        )
         node = _build_human_input_node(
             node_id=config["id"],
             node_data=config["data"],
@@ -675,7 +675,9 @@ class TestHumanInputNodeVariableResolution:
         params = create.call_args.args[0]
         assert params.display_in_ui is True
 
-    def test_debugger_debug_mode_overrides_email_recipients(self, mocker: MockerFixture):
+    def test_debugger_debug_mode_overrides_email_recipients(
+        self, mocker: MockerFixture, human_forms: HumanInputFormFactory
+    ):
         variable_pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(
                 user_id="user-123",
@@ -726,11 +728,16 @@ class TestHumanInputNodeVariableResolution:
 
         runtime = DifyHumanInputNodeRuntime(
             graph_init_params.run_context,
+            forms=human_forms,
             workflow_execution_id_getter=lambda: "exec-3",
         )
         repository = runtime.build_form_repository()
         create = mocker.spy(repository, "create_form")
-        runtime = runtime.with_form_repository(repository)
+        runtime = DifyHumanInputNodeRuntime(
+            graph_init_params.run_context,
+            forms=lambda **_kwargs: repository,
+            workflow_execution_id_getter=lambda: "exec-3",
+        )
         node = _build_human_input_node(
             node_id=config["id"],
             node_data=config["data"],
@@ -825,8 +832,7 @@ class TestHumanInputNodeRenderedContent:
         config = {"id": "human", "data": node_data.model_dump()}
 
         form_repository = InMemoryHumanInputFormRepository()
-        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
-        runtime._build_form_repository = MagicMock(return_value=form_repository)  # type: ignore[attr-defined]
+        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context, forms=lambda **_kwargs: form_repository)
         node = _build_human_input_node(
             node_id=config["id"],
             node_data=config["data"],
@@ -898,8 +904,7 @@ class TestHumanInputNodeRenderedContent:
         config = {"id": "human", "data": node_data.model_dump()}
 
         form_repository = InMemoryHumanInputFormRepository()
-        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
-        runtime._build_form_repository = MagicMock(return_value=form_repository)  # type: ignore[attr-defined]
+        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context, forms=lambda **_kwargs: form_repository)
         node = _build_human_input_node(
             node_id=config["id"],
             node_data=config["data"],

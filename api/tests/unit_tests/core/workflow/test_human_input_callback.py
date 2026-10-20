@@ -1,26 +1,20 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
 from datetime import timedelta
 
 import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.repositories.human_input_repository import (
-    FormCreateParams,
-    HumanInputFormEntity,
-    HumanInputFormRepositoryImpl,
-    HumanInputFormSubmissionRepository,
-)
-from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.session_binding import SessionBinding
 from enums.human_input import HumanInputFormStatus, ValueSourceType
+from graphon.nodes.human_input.entities import Completed, Expired, HITLContext, PauseRequested
 from graphon.runtime import VariablePool
 from graphon.variables.factory import build_segment
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputForm
+from models.human_input_contracts import FormCreateParams, HumanInputFormEntity
 from models.human_input_entities import (
     HumanInputNodeData,
     ParagraphInputConfig,
@@ -28,29 +22,32 @@ from models.human_input_entities import (
     StringListSource,
     UserActionConfig,
 )
+from repositories.human_input.form_repository import (
+    HumanInputFormRepositoryImpl,
+    HumanInputFormSubmissionRepository,
+)
+from services.workflow.execution.adapters.human_input import DifyHITLCallback
 
 
-@dataclass(frozen=True, slots=True)
-class _Context:
-    workflow_execution_id: str
-    node_id: str
-    node_title: str = "Human Input"
-    variable_pool: VariablePool = field(default_factory=VariablePool)
-
-
-def _ctx(workflow_execution_id: str, node_id: str, node_title: str = "Human Input") -> _Context:
-    return _Context(workflow_execution_id=workflow_execution_id, node_id=node_id, node_title=node_title)
+def _ctx(workflow_execution_id: str, node_id: str, node_title: str = "Human Input") -> HITLContext:
+    return HITLContext(
+        workflow_execution_id=workflow_execution_id,
+        node_id=node_id,
+        node_title=node_title,
+        variable_pool=VariablePool(),
+    )
 
 
 @pytest.fixture
 def repository(
     sqlite_session_factory: sessionmaker[Session],
-    mocker: MockerFixture,
 ) -> HumanInputFormRepositoryImpl:
-    mocker.patch(
-        "core.repositories.human_input_repository.session_factory.create_session", side_effect=sqlite_session_factory
+    return HumanInputFormRepositoryImpl(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_execution_id="run-1",
+        sessions=sqlite_session_factory,
     )
-    return HumanInputFormRepositoryImpl(tenant_id="tenant-1", app_id="app-1", workflow_execution_id="run-1")
 
 
 def test_session_binding_identity_mapping() -> None:
@@ -77,6 +74,7 @@ def test_dify_hitl_callback_creates_pause_requested_for_new_form(
 
     decision = callback(_ctx("run-1", "node-1"))
 
+    assert isinstance(decision, PauseRequested)
     assert decision == callback.pause_requested_type(session_id=create.spy_return.id)
     form = repository.get_form("node-1")
     assert form is not None
@@ -108,7 +106,11 @@ def test_dify_hitl_callback_persists_variable_select_options(
         ),
     )
 
-    callback(_Context(workflow_execution_id="run-1", node_id="node-1", variable_pool=variable_pool))
+    callback(
+        HITLContext(
+            workflow_execution_id="run-1", node_id="node-1", node_title="Human Input", variable_pool=variable_pool
+        )
+    )
 
     params: FormCreateParams = create.call_args.args[0]
     select_input = params.form_config.inputs[0]
@@ -175,6 +177,7 @@ def test_dify_hitl_callback_returns_completed_for_submitted_form(
 
     decision = callback(_ctx("run-1", "node-1"))
 
+    assert isinstance(decision, Completed)
     assert decision.selected_handle == "approve"
     assert decision.inputs == {"answer": build_segment("yes")}
     assert decision.outputs == {
@@ -212,6 +215,7 @@ def test_dify_hitl_callback_returns_timeout_for_explicit_timeout_form(
 
     decision = callback(_ctx("run-1", "node-1"))
 
+    assert isinstance(decision, Expired)
     assert decision.selected_handle == "__timeout"
     assert decision.outputs == {
         "__action_id": build_segment(""),
@@ -222,8 +226,14 @@ def test_dify_hitl_callback_returns_timeout_for_explicit_timeout_form(
 
 def _past_deadline_callback(
     session: Session,
+    sessions: sessionmaker[Session],
 ) -> tuple[DifyHITLCallback, HumanInputFormRepositoryImpl]:
-    repository = HumanInputFormRepositoryImpl(tenant_id="tenant-1", app_id="app-1", workflow_execution_id="run-1")
+    repository = HumanInputFormRepositoryImpl(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_execution_id="run-1",
+        sessions=sessions,
+    )
     callback = DifyHITLCallback(
         form_repository=repository,
         node_data=HumanInputNodeData(
@@ -242,8 +252,10 @@ def _past_deadline_callback(
     return callback, repository
 
 
-def test_dify_hitl_callback_persists_timeout_for_waiting_form_past_node_deadline(sqlite_session: Session) -> None:
-    callback, _ = _past_deadline_callback(sqlite_session)
+def test_dify_hitl_callback_persists_timeout_for_waiting_form_past_node_deadline(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    callback, _ = _past_deadline_callback(sqlite_session, sqlite_session_factory)
 
     decision = callback(_ctx("run-1", "node-1"))
 
@@ -251,6 +263,7 @@ def test_dify_hitl_callback_persists_timeout_for_waiting_form_past_node_deadline
     form = sqlite_session.get(HumanInputForm, "form-1")
     assert form is not None
     assert form.status == HumanInputFormStatus.TIMEOUT
+    assert isinstance(decision, Expired)
     assert decision.selected_handle == "__timeout"
     assert decision.outputs == {
         "__action_id": build_segment(""),
@@ -261,16 +274,19 @@ def test_dify_hitl_callback_persists_timeout_for_waiting_form_past_node_deadline
 
 @pytest.mark.parametrize("terminal_status", [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.EXPIRED])
 def test_dify_hitl_callback_timeout_uses_concurrent_terminal_state(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, terminal_status: HumanInputFormStatus
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    terminal_status: HumanInputFormStatus,
 ) -> None:
-    callback, repository = _past_deadline_callback(sqlite_session)
+    callback, repository = _past_deadline_callback(sqlite_session, sqlite_session_factory)
     get_form = repository.get_form
 
     def finish_after_read(node_id: str, *, form_id: str | None = None) -> HumanInputFormEntity | None:
         waiting_form = get_form(node_id, form_id=form_id)
         monkeypatch.setattr(repository, "get_form", get_form)
         if terminal_status == HumanInputFormStatus.SUBMITTED:
-            HumanInputFormSubmissionRepository().mark_submitted(
+            HumanInputFormSubmissionRepository(sessions=sqlite_session_factory).mark_submitted(
                 form_id="form-1",
                 recipient_id=None,
                 selected_action_id="approve",
@@ -288,6 +304,7 @@ def test_dify_hitl_callback_timeout_uses_concurrent_terminal_state(
     monkeypatch.setattr(repository, "get_form", finish_after_read)
     if terminal_status == HumanInputFormStatus.SUBMITTED:
         decision = callback(_ctx("run-1", "node-1"))
+        assert isinstance(decision, Completed)
         assert decision.selected_handle == "approve"
         assert decision.inputs == {"answer": build_segment("accepted before timeout")}
     else:

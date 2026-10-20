@@ -1035,7 +1035,7 @@ def test_agent_node_selects_the_configured_success_exit(enabled, count, output, 
 def test_agent_routes_initialize_through_workflow_node_factory(
     enabled, error_strategy, expected_execution_type, config_overrides
 ):
-    from core.workflow.node_factory import DifyNodeFactory
+    from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 
     config_overrides(AGENT_BACKEND_USE_FAKE=True)
     template = _node()
