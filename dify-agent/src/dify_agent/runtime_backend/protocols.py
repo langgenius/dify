@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from dify_agent.adapters.shell.protocols import ShellCommandProtocol
+from shellctl.shared.schemas import NativeScopeSpec
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +47,8 @@ class ExecutionBindingCreateSpec:
     workspace_id: str
     existing_workspace_ref: str | None
     home_snapshot_ref: str | None = None
+    native_test_scope: NativeScopeSpec | None = None
+    native_scope_reconcile: bool = False
 
 
 @dataclass(frozen=True, slots=True)

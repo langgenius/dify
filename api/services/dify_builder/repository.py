@@ -1,6 +1,6 @@
 """SQL-backed implementation of the Dify Builder ``Repository`` port.
 
-Implements ``core.dify_builder.ports.Repository`` against the tables in
+Implements ``services.dify_builder.application.ports.Repository`` against the tables in
 ``models.dify_builder`` (P3a Task 1) via a caller-provided
 ``sessionmaker``. Every public method opens exactly one transaction:
 ``with self._session_factory() as session, session.begin(): ...``.
@@ -550,7 +550,7 @@ class SqlDifyBuilderRepository:
 
     @staticmethod
     def _to_domain_run(row: DifyBuilderRun) -> Run:
-        from core.dify_builder.execution_policy import ExecutionEvidenceSummary
+        from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
 
         evidence = row.verification
         verification = None

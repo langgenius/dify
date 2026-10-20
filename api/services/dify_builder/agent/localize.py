@@ -4,6 +4,7 @@ import logging
 import re
 from collections.abc import Callable
 
+from services.dify_builder import trace_diagnostics
 from services.dify_builder.agent import llm
 
 logger = logging.getLogger(__name__)
@@ -21,8 +22,28 @@ _LANG_CODE_RE = re.compile(r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$")
 
 
 class LanguageDetector:
-    def __init__(self, model_provider: Callable[[], object | None]) -> None:
+    def __init__(self, model_provider: Callable[[], object | None], *, prior_language: str = "") -> None:
         self._model_provider = model_provider
+        self._prior_language = prior_language if _LANG_CODE_RE.fullmatch(prior_language) else ""
+
+    def _fallback(self, text: str) -> str:
+        """Use clear script evidence, then the persisted conversation locale.
+
+        This is a presentation fallback, not a model, resource or risk decision.
+        Short/ambiguous acknowledgements must not reset the conversation locale.
+        """
+        trace_diagnostics.report("deterministic_fallback", fallback_used=True)
+        # An explicit English request can switch away from the prior locale
+        # even when the language-detection provider is unavailable.
+        if re.search(r"\b(?:in|use|speak|reply in|respond in) English\b", text, re.IGNORECASE):
+            return "en"
+        if re.search(r"[\u3040-\u30ff]", text):
+            return "ja"
+        if re.search(r"[\uac00-\ud7af]", text):
+            return "ko"
+        if re.search(r"[\u4e00-\u9fff]", text):
+            return self._prior_language if self._prior_language.startswith("zh") else "zh-Hans"
+        return self._prior_language or "en"
 
     def detect_language(self, text: str) -> str:
         if not text or not text.strip():
@@ -30,17 +51,17 @@ class LanguageDetector:
         try:
             model = self._model_provider()
             if model is None:
-                return "en"
+                return self._fallback(text)
             raw = llm.invoke_text(model, system=_DETECT_SYSTEM, user=text[:2000]).strip()
         except Exception:
-            logger.exception("dify_builder: language detection failed; defaulting to en")
-            return "en"
+            logger.exception("dify_builder: language detection failed; using conversation fallback")
+            return self._fallback(text)
         # Reject anything that isn't a single short, code-shaped token: the model
         # disobeying "reply with ONLY the code" (e.g. "The language is Japanese.")
-        # must fall back to en rather than silently becoming the target language.
+        # must use the conversation fallback instead of becoming a language tag.
         if not raw or re.search(r"\s", raw) or len(raw) > 35:
-            return "en"
+            return self._fallback(text)
         code = raw.strip('."')
         if not code or not _LANG_CODE_RE.match(code):
-            return "en"
+            return self._fallback(text)
         return code

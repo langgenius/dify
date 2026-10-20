@@ -24,6 +24,10 @@ from jwcrypto import jwe, jwk
 from jwcrypto.common import JWException
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from dify_agent.adapters.native_testing.transport import AgentRuntimeTransportError, current_runtime_identity
+from dify_agent.protocol.native_testing import AgentRuntimeIdentity
+from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
+from dify_agent.runtime.native_effects import current_native_dispatch
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
 
@@ -65,6 +69,8 @@ class AgentStubTokenClaims(BaseModel):
     scope: list[str]
     execution_context: DifyExecutionContextLayerConfig
     shell: AgentStubShellClaims | None = None
+    runtime: AgentRuntimeIdentity | None = None
+    native_dispatch: AgentPhysicalDispatchPayload | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -77,6 +83,9 @@ class AgentStubPrincipal:
     session_id: str | None
     scope: list[str]
     token_id: str
+    runtime: AgentRuntimeIdentity | None = None
+    native_dispatch: AgentPhysicalDispatchPayload | None = None
+    expires_at: int | None = None
 
 
 class AgentStubTokenCodec:
@@ -129,12 +138,39 @@ class AgentStubTokenCodec:
         """Encode one fixed-five-minute Agent Stub compact JWE bearer token."""
         return self.encode_claims(self.build_connection_claims(execution_context, session_id=session_id, now=now))
 
+    def encode_runtime_token(
+        self, execution_context: DifyExecutionContextLayerConfig, *, run_id: str, session_id: str | None
+    ) -> str:
+        """Issue inside the actual scheduler owner and bounded shell dispatch."""
+        identity = current_runtime_identity()
+        if identity.run_id != run_id:
+            raise AgentRuntimeTransportError("agent_stub_runtime_owner_unavailable")
+        claims = self.build_connection_claims(execution_context, session_id=session_id)
+        claims.runtime = identity
+        if identity.execution_mode == "builder_test":
+            if identity.native_test_profile != "confirmed":
+                raise AgentRuntimeTransportError("agent_stub_confirmed_owner_required")
+            envelope = current_native_dispatch()
+            if (
+                envelope is None
+                or identity.parent_node is None
+                or envelope.ref != identity.parent_node.ref
+                or envelope.intent.key.occurrence_path[0] != identity.parent_node.execution_id
+                or envelope.intent.key.occurrence_path[-2] not in {"config_pull", "shell_run", "shell_input"}
+            ):
+                raise AgentRuntimeTransportError("agent_stub_runtime_owner_unavailable")
+            claims.native_dispatch = AgentPhysicalDispatchPayload.model_validate(envelope.wire())
+        return self.encode_claims(claims)
+
     def encode_claims(self, claims: AgentStubTokenClaims) -> str:
         """Encrypt one validated Agent Stub claim set as compact JWE."""
+        payload = claims.model_dump(mode="json", exclude_none=True)
+        if claims.runtime is not None:
+            payload["runtime"] = claims.runtime.model_dump(mode="json")
+        if claims.native_dispatch is not None:
+            payload["native_dispatch"] = claims.native_dispatch.model_dump(mode="json")
         token = jwe.JWE(
-            plaintext=json.dumps(claims.model_dump(mode="json", exclude_none=True), separators=(",", ":")).encode(
-                "utf-8"
-            ),
+            plaintext=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
             protected=json.dumps({"alg": "dir", "enc": "A256GCM"}),
         )
         token.add_recipient(self._jwe_key)
@@ -169,6 +205,9 @@ class AgentStubTokenCodec:
             session_id=claims.shell.session_id if claims.shell is not None else None,
             scope=list(claims.scope),
             token_id=claims.jti,
+            runtime=claims.runtime,
+            native_dispatch=claims.native_dispatch,
+            expires_at=claims.exp,
         )
 
 

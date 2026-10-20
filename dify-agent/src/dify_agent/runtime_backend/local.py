@@ -11,10 +11,13 @@ import logging
 import posixpath
 import re
 import shlex
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import cast
+
+import httpx2 as httpx
 
 from dify_agent.adapters.shell.protocols import ShellCommandProtocol
-from dify_agent.adapters.shell.shellctl import ShellctlClientFactory
+from dify_agent.adapters.shell.shellctl import ShellctlClientFactory, ShellctlClientProtocol
 from dify_agent.runtime_backend.errors import (
     BindingAcquireError,
     BindingCreateError,
@@ -22,6 +25,7 @@ from dify_agent.runtime_backend.errors import (
     BindingLostError,
     HomeSnapshotCreateError,
 )
+from dify_agent.runtime_backend.native_test_scope import NativeScopeCommands, NativeScopeLease, native_binding_identity
 from dify_agent.runtime_backend.protocols import (
     ExecutionBindingAllocation,
     ExecutionBindingCreateSpec,
@@ -35,6 +39,8 @@ from dify_agent.runtime_backend.shellctl import (
     create_shellctl_lease,
     run_shellctl_control_command,
 )
+from shellctl.client.sdk import ShellctlClient, ShellctlClientError
+from shellctl.shared.schemas import NativeScopeHandle, NativeScopeSpec
 
 _SAFE_REF_PART = re.compile(r"^[A-Za-z0-9._-]+$")
 _BINDING_REF_SEPARATOR = ":"
@@ -115,8 +121,28 @@ class LocalExecutionBindingBackend:
     workspace_root: str = "/workspace"
     snapshot_root: str = "/home/dify/.snapshots"
     client_factory: ShellctlClientFactory | None = None
+    native_scope_client: LocalNativeScopeClient | None = None
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
+        if spec.native_test_scope is not None:
+            scope = spec.native_test_scope
+            if (
+                self.native_scope_client is None
+                or spec.existing_workspace_ref is not None
+                or scope.binding_ref != spec.binding_id
+                or scope.scope_id != spec.binding_id
+                or scope.base_snapshot_ref != spec.home_snapshot_ref
+            ):
+                raise BindingCreateError("native_scope_unavailable")
+            try:
+                if spec.native_scope_reconcile:
+                    await self.native_scope_client.inspect(scope.scope_id, scope.generation)
+                else:
+                    await self.native_scope_client.create(scope)
+            except ShellctlClientError as exc:
+                raise BindingCreateError("native_scope_unavailable") from exc
+            ref = f"native:{scope.scope_id}:{scope.generation}"
+            return ExecutionBindingAllocation(binding_ref=ref, workspace_ref=ref)
         binding_id = _validated_ref_part(spec.binding_id)
         workspace_id = _validated_ref_part(spec.workspace_id)
         workspace_ref = workspace_id
@@ -168,6 +194,23 @@ class LocalExecutionBindingBackend:
             await _close_best_effort(lease, resource_ref=binding_ref)
 
     async def acquire(self, binding_ref: str) -> RuntimeLease:
+        identity = native_binding_identity(binding_ref)
+        if identity is not None:
+            if self.native_scope_client is None:
+                raise BindingAcquireError("native_scope_unavailable")
+            scope_id, generation = identity
+            try:
+                handle = await self.native_scope_client.inspect(scope_id, generation)
+            except ShellctlClientError as exc:
+                raise BindingLostError("native_scope_unavailable") from exc
+            client = cast(ShellctlClientProtocol, self.native_scope_client.job_client(handle))
+            return NativeScopeLease(
+                handle=binding_ref,
+                layout=RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace"),
+                client=client,
+                commands=NativeScopeCommands(client=client),
+                workspace_generation=generation,
+            )
         lease = self._lease(binding_ref)
         try:
             result = await run_shellctl_control_command(
@@ -201,6 +244,15 @@ class LocalExecutionBindingBackend:
             raise BindingAcquireError(str(exc)) from exc
 
     async def destroy_binding(self, spec: ExecutionBindingDestroySpec) -> None:
+        identity = native_binding_identity(spec.binding_ref)
+        if identity is not None:
+            if self.native_scope_client is None or not spec.destroy_workspace or spec.workspace_ref != spec.binding_ref:
+                raise BindingDestroyError("native_scope_cleanup_unavailable")
+            try:
+                await self.native_scope_client.destroy(*identity)
+            except ShellctlClientError as exc:
+                raise BindingDestroyError("native_scope_cleanup_unavailable") from exc
+            return
         binding_id, workspace_id = _parse_local_binding_ref(spec.binding_ref)
         if spec.destroy_workspace:
             workspace_ref = _validated_ref_part(spec.workspace_ref or "")
@@ -313,4 +365,53 @@ async def _close_best_effort(lease: ShellctlRuntimeLease, *, resource_ref: str) 
         logger.warning("failed to close local RuntimeLease", exc_info=True, extra={"resource_ref": resource_ref})
 
 
-__all__ = ["LocalExecutionBindingBackend", "LocalHomeSnapshotBackend"]
+__all__ = ["LocalExecutionBindingBackend", "LocalHomeSnapshotBackend", "LocalNativeScopeClient"]
+
+
+@dataclass(slots=True)
+class LocalNativeScopeClient:
+    """Private native scope transport. Lost scopes are never recreated by inspect."""
+
+    endpoint: str
+    auth_token: str = field(repr=False)
+
+    async def _request(
+        self, method: str, path: str, *, generation: int | None = None, spec: NativeScopeSpec | None = None
+    ) -> dict[str, object]:
+        headers = {"Authorization": f"Bearer {self.auth_token}"}
+        if generation is not None:
+            headers["X-Scope-Generation"] = str(generation)
+        async with httpx.AsyncClient(base_url=self.endpoint, follow_redirects=False, timeout=15.0) as client:
+            response = await client.request(
+                method, path, headers=headers, json=spec.model_dump(mode="json") if spec else None
+            )
+        if response.status_code not in (200, 201):
+            raise ShellctlClientError(response.status_code, "native_scope_unavailable", "Native scope request failed")
+        result: object = response.json()
+        if not isinstance(result, dict):
+            raise ShellctlClientError(502, "native_scope_invalid_response", "Invalid native scope response")
+        return result
+
+    async def create(self, spec: NativeScopeSpec) -> NativeScopeHandle:
+        handle = NativeScopeHandle.model_validate(await self._request("POST", "/v1/test-scopes", spec=spec))
+        if handle.scope_id != spec.scope_id or handle.generation != spec.generation:
+            raise ShellctlClientError(502, "native_scope_identity_mismatch", "Scope identity mismatch")
+        return handle
+
+    async def inspect(self, scope_id: str, generation: int) -> NativeScopeHandle:
+        scope_id = _validated_ref_part(scope_id)
+        handle = NativeScopeHandle.model_validate(
+            await self._request("GET", f"/v1/test-scopes/{scope_id}", generation=generation)
+        )
+        if handle.scope_id != scope_id or handle.generation != generation:
+            raise ShellctlClientError(502, "native_scope_identity_mismatch", "Scope identity mismatch")
+        return handle
+
+    async def destroy(self, scope_id: str, generation: int) -> None:
+        scope_id = _validated_ref_part(scope_id)
+        result = await self._request("DELETE", f"/v1/test-scopes/{scope_id}", generation=generation)
+        if result.get("status") != "destroyed":
+            raise ShellctlClientError(502, "native_scope_cleanup_unconfirmed", "Scope cleanup is unconfirmed")
+
+    def job_client(self, handle: NativeScopeHandle) -> ShellctlClient:
+        return ShellctlClient(base_url=self.endpoint, token=self.auth_token, native_scope=handle)

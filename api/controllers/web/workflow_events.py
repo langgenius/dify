@@ -13,11 +13,8 @@ from controllers.common.fields import EventStreamResponse
 from controllers.common.schema import register_response_schema_model
 from controllers.web import api, web_ns
 from controllers.web.wraps import WebApiResource
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.workflow.human_input_policy import HumanInputSurface
 from extensions.ext_database import db
 from libs.external_api import error_responses
@@ -25,6 +22,9 @@ from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream
+from services.workflow_runtime.chatflow_generator import AdvancedChatAppGenerator
+from services.workflow_runtime.response_converter import WorkflowResponseConverter
+from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 
 register_response_schema_model(web_ns, EventStreamResponse)
 

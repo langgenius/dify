@@ -415,6 +415,8 @@ class OpenShellExecutionBindingBackend:
         deliberately ignored rather than honored approximately, so a new
         Binding always starts from the deployment image's default Home.
         """
+        if spec.native_test_scope is not None:
+            raise BindingCreateError("native_scope_unavailable")
         if spec.existing_workspace_ref is not None:
             raise SharedWorkspaceUnsupportedError("current OpenShell backend cannot attach to an existing Workspace")
         name = _binding_sandbox_name(spec.binding_id)
@@ -455,6 +457,8 @@ class OpenShellExecutionBindingBackend:
         A failed acquisition closes only the attempt's lease-local clients; it
         does not stop the shared sandbox or interrupt other leases on it.
         """
+        if binding_ref.startswith("native:"):
+            raise BindingAcquireError("native_scope_unavailable")
         data_plane: ShellctlRuntimeLease | None = None
         try:
             await self.control_plane.start_sandbox(binding_ref)
@@ -508,6 +512,8 @@ class OpenShellExecutionBindingBackend:
             raise BindingAcquireError(str(exc)) from exc
 
     async def destroy_binding(self, spec: ExecutionBindingDestroySpec) -> None:
+        if spec.binding_ref.startswith("native:"):
+            raise BindingDestroyError("native_scope_cleanup_unavailable")
         """Destroy the coupled physical Binding and Workspace idempotently."""
         if not spec.destroy_workspace:
             raise WorkspacePreservationUnsupportedError(

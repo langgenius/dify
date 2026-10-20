@@ -17,24 +17,28 @@ from alembic.runtime.migration import RevisionStep
 from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
 
-from core.dify_builder.execution_policy import (
+from dify_app import DifyApp
+from models.dify_builder import DifyBuilderExecutionRequest
+from models.workflow import Workflow
+from runtime_contracts.builder.execution import BuilderExecutionContext, JsonToolExecutionContext
+from services.dify_builder.application.execution_policy import (
     BuilderExecutionObservation,
     BuilderExecutionPolicyError,
     TrustedExecutionCompletion,
 )
-from models.dify_builder import DifyBuilderExecutionRequest
-from models.workflow import Workflow
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
-from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import configure
+from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import NativeOwner, configure
 from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
     native_owner as native_owner,  # noqa: PLC0414 - shared pytest fixture
 )
 
 if TYPE_CHECKING:
-    from dify_app import DifyApp
+    pass
 
 
-def prepare(owner, http=False):
+def prepare(
+    owner: NativeOwner, http: bool = False
+) -> tuple[BuilderExecutionPolicyService, BuilderExecutionContext | JsonToolExecutionContext]:
     inputs = configure(owner, "http_text.yml" if http else "scalar.yml")
     factory, actor, app, workflow, sid, tid = owner
     with factory() as session:
@@ -53,10 +57,10 @@ def prepare(owner, http=False):
     return service, context
 
 
-def race(*calls):
+def race[T](*calls: Callable[[], T]) -> list[T | str]:
     barrier = Barrier(len(calls))
 
-    def run(call):
+    def run(call: Callable[[], T]) -> T | str:
         barrier.wait(timeout=10)
         try:
             return call()
@@ -67,23 +71,23 @@ def race(*calls):
         return list(pool.map(run, calls))
 
 
-def test_postgres_duplicate_claim_has_one_winner(native_owner):
+def test_postgres_duplicate_claim_has_one_winner(native_owner: NativeOwner) -> None:
     service, context = prepare(native_owner)
     run_id = str(uuid4())
 
-    def claim():
+    def claim() -> str:
         service.claim_launch(context=context, native_run_id=run_id, task_id="task")
         return "claimed"
 
     assert sorted(race(claim, claim)) == ["claimed", "execution_already_claimed"]
 
 
-def test_postgres_append_race_preserves_both_receipts(native_owner):
+def test_postgres_append_race_preserves_both_receipts(native_owner: NativeOwner) -> None:
     service, context = prepare(native_owner, http=True)
     run_id = str(uuid4())
     service.claim_launch(context=context, native_run_id=run_id, task_id="task")
 
-    def append(identity):
+    def append(identity: str) -> str:
         service.record(
             context=context,
             native_run_id=run_id,
@@ -102,12 +106,12 @@ def test_postgres_append_race_preserves_both_receipts(native_owner):
 
     assert race(lambda: append("a"), lambda: append("b")) == ["recorded", "recorded"]
     with native_owner[0]() as session:
-        assert {
-            o["observation_id"] for o in session.get(DifyBuilderExecutionRequest, context.request_id).observations
-        } == {"a", "b"}
+        _loaded_dify_builder_execution_request2 = session.get(DifyBuilderExecutionRequest, context.request_id)
+        assert _loaded_dify_builder_execution_request2 is not None
+        assert {o["observation_id"] for o in _loaded_dify_builder_execution_request2.observations} == {"a", "b"}
 
 
-def test_postgres_append_seal_and_duplicate_seal_are_serialized(native_owner):
+def test_postgres_append_seal_and_duplicate_seal_are_serialized(native_owner: NativeOwner) -> None:
     service, context = prepare(native_owner, http=True)
     run_id = str(uuid4())
     service.claim_launch(context=context, native_run_id=run_id, task_id="task")
@@ -130,11 +134,11 @@ def test_postgres_append_seal_and_duplicate_seal_are_serialized(native_owner):
         reason_code="test",
     )
 
-    def append():
+    def append() -> str:
         service.record(context=context, native_run_id=run_id, task_id="task", observation=observation)
         return "recorded"
 
-    def seal():
+    def seal() -> str:
         return service.seal(request_id=context.request_id, completion=done).safety_outcome
 
     results = race(append, seal)
@@ -145,11 +149,12 @@ def test_postgres_append_seal_and_duplicate_seal_are_serialized(native_owner):
         append()
     with native_owner[0]() as session:
         row = session.get(DifyBuilderExecutionRequest, context.request_id)
+        assert row is not None
         assert row.state == "sealed"
         assert len(row.observations) == (1 if results[0] == "recorded" else 0)
 
 
-def test_real_postgres_execution_migration_upgrade_downgrade(flask_app_with_containers):
+def test_real_postgres_execution_migration_upgrade_downgrade(flask_app_with_containers: DifyApp) -> None:
     """Exercise the actual Task1 migration in an isolated PG schema, preserving old input rows."""
     from extensions.ext_database import db
 
@@ -198,14 +203,34 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     from extensions.ext_database import db
 
     merge_revision = "f9a3c62de418"
-    current_head = "a61e9b2c7d40"
+    current_head = "7d2b9c4e61a8"
+    dispatch_head = "e59b7d32a6c1"
+    owner_head = "f47a1c90d2e8"
+    continuation_head = "d28f0e3c912a"
+    native_head = "c67e12a904bf"
+    previous_merge = "a61e9b2c7d40"
     branch_heads = {"d82f9a6c31e0", "a8c9e2f1b704"}
     predecessor = "733e4c46f90e"
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[4] / "migrations"))
     scripts = ScriptDirectory.from_config(config)
     assert scripts.get_heads() == [current_head]
-    current_merge = scripts.get_revision(current_head)
+    code_revision = scripts.get_revision(current_head)
+    assert code_revision is not None
+    assert code_revision.down_revision == dispatch_head
+    dispatch_revision = scripts.get_revision(dispatch_head)
+    assert dispatch_revision is not None
+    assert dispatch_revision.down_revision == owner_head
+    owner_revision = scripts.get_revision(owner_head)
+    assert owner_revision is not None
+    assert owner_revision.down_revision == continuation_head
+    continuation_revision = scripts.get_revision(continuation_head)
+    assert continuation_revision is not None
+    assert continuation_revision.down_revision == native_head
+    native_revision = scripts.get_revision(native_head)
+    assert native_revision is not None
+    assert native_revision.down_revision == previous_merge
+    current_merge = scripts.get_revision(previous_merge)
     assert current_merge is not None
     assert isinstance(current_merge.down_revision, tuple)
     assert set(current_merge.down_revision) == {merge_revision, "f1d3c5b7a902"}
@@ -310,11 +335,46 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             "resource_access_tokens_relation",
         )
 
-        def witness(*, include_archive: bool = False) -> dict[str, object]:
+        native_tables = {
+            "dify_builder_native_" + suffix
+            for suffix in (
+                "scopes",
+                "invocations",
+                "grants",
+                "operations",
+                "attempts",
+                "outcomes",
+                "continuations",
+                "pending_actions",
+            )
+        }
+
+        continuation_tables = {
+            "dify_builder_native_payload_objects",
+            "dify_builder_native_invocation_states",
+            "dify_builder_native_dispatches",
+        }
+
+        def witness(
+            *,
+            include_archive: bool = False,
+            include_native: bool = False,
+            include_continuation: bool = False,
+            include_dispatch_claims: bool = False,
+            include_code_physical: bool = False,
+        ) -> dict[str, object]:
             inspector = inspect(connection)
             expected_tables = {*tables, "alembic_version"}
             if include_archive:
                 expected_tables.add("workflow_run_archive_bundles")
+            if include_native:
+                expected_tables.update(native_tables)
+            if include_continuation:
+                expected_tables.update(continuation_tables)
+            if include_dispatch_claims:
+                expected_tables.add("dify_builder_native_effect_dispatch_claims")
+            if include_code_physical:
+                expected_tables.add("dify_builder_native_code_physical_operations")
             assert set(inspector.get_table_names(schema=schema)) == expected_tables
             return {
                 table: {
@@ -377,7 +437,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
 
         archive_before = archive_witness()
         assert witness(include_archive=True) == before
-        assert migrate("head") == (current_head,)
+        assert migrate(previous_merge) == (previous_merge,)
         assert witness(include_archive=True) == before
         assert archive_witness() == archive_before
         archive_after_columns = inspect(connection).get_columns(archive_table, schema=schema)
@@ -392,6 +452,111 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             ).scalar_one()
             is None
         )
+        assert migrate(native_head) == (native_head,)
+        after_native = witness(include_archive=True, include_native=True)
+        request_table = "dify_builder_execution_requests"
+        previous_request = before[request_table]
+        current_request = after_native[request_table]
+        waiting_indexes = [
+            index for index in current_request["indexes"] if index["name"] == "builder_native_waiting_idx"
+        ]
+        assert len(waiting_indexes) == 1
+        assert waiting_indexes[0]["column_names"] == ["tenant_id", "app_id", "state"]
+        assert "waiting" in waiting_indexes[0]["dialect_options"]["postgresql_where"]
+        assert len(current_request["checks"]) == len(previous_request["checks"]) == 1
+        assert "waiting" in current_request["checks"][0]["sqltext"]
+        assert "builder-native-test-v1" in current_request["checks"][0]["sqltext"]
+        # Only the reviewed native waiting CHECK/index may change on the old
+        # request table; all preexisting rows/columns/other constraints persist.
+        current_request["indexes"] = [index for index in current_request["indexes"] if index not in waiting_indexes]
+        current_request["checks"] = previous_request["checks"]
+        assert after_native == before
+        assert archive_witness() == archive_before
+
+        def native_ledger_witness() -> dict[str, object]:
+            inspector = inspect(connection)
+            result = {}
+            for table in sorted(native_tables):
+                primary_key = inspector.get_pk_constraint(table, schema=schema)
+                order = ",".join(f'"{name}"' for name in primary_key["constrained_columns"])
+                result[table] = {
+                    "columns": [
+                        (column["name"], str(column["type"]), column["nullable"], column["default"])
+                        for column in inspector.get_columns(table, schema=schema)
+                    ],
+                    "primary_key": primary_key,
+                    "indexes": inspector.get_indexes(table, schema=schema),
+                    "unique": inspector.get_unique_constraints(table, schema=schema),
+                    "checks": inspector.get_check_constraints(table, schema=schema),
+                    "rows": list(connection.execute(text(f"SELECT * FROM {table} ORDER BY {order}")).tuples()),
+                }
+            return result
+
+        before_continuation = witness(include_archive=True, include_native=True)
+        ledger_before = native_ledger_witness()
+        assert migrate(continuation_head) == (continuation_head,)
+        assert witness(include_archive=True, include_native=True, include_continuation=True) == before_continuation
+        assert native_ledger_witness() == ledger_before
+        assert archive_witness() == archive_before
+
+        # An acknowledged pre-provenance invocation remains explicitly unowned;
+        # the forward migration must not invent app/workflow authority for it.
+        connection.execute(
+            text(
+                "INSERT INTO dify_builder_native_invocation_states "
+                "(id,tenant_id,request_id,invocation_id,context_object_id,generation,state,pending_ids,resolution) "
+                "VALUES (:id,:id,:id,'legacy-native',:id,0,'waiting','[]','{}')"
+            ),
+            {"id": identity},
+        )
+        continuation_before = {
+            table: {
+                "columns": [
+                    (column["name"], str(column["type"]), column["nullable"], column["default"])
+                    for column in inspect(connection).get_columns(table, schema=schema)
+                ],
+                "rows": list(connection.execute(text(f"SELECT * FROM {table} ORDER BY id")).tuples()),
+            }
+            for table in sorted(continuation_tables)
+        }
+        assert migrate("head") == (current_head,)
+        assert (
+            witness(
+                include_archive=True,
+                include_native=True,
+                include_continuation=True,
+                include_dispatch_claims=True,
+                include_code_physical=True,
+            )
+            == before_continuation
+        )
+        assert connection.scalar(text("SELECT count(*) FROM dify_builder_native_effect_dispatch_claims")) == 0
+        assert native_ledger_witness() == ledger_before
+        assert archive_witness() == archive_before
+        for table, previous in continuation_before.items():
+            columns = inspect(connection).get_columns(table, schema=schema)
+            names = {column["name"] for column in columns}
+            old_names = [column[0] for column in previous["columns"]]
+            additions = {"app_id", "workflow_id"} if table.endswith("invocation_states") else set()
+            assert names == {*old_names, *additions}
+            assert [
+                (column["name"], str(column["type"]), column["nullable"], column["default"])
+                for column in columns
+                if column["name"] not in additions
+            ] == previous["columns"]
+            for column in columns:
+                if column["name"] in additions:
+                    assert column["nullable"] is True
+                    assert column["default"] is None
+            projection = ",".join(f'"{name}"' for name in old_names)
+            assert (
+                list(connection.execute(text(f"SELECT {projection} FROM {table} ORDER BY id")).tuples())
+                == previous["rows"]
+            )
+        assert connection.execute(
+            text("SELECT app_id,workflow_id FROM dify_builder_native_invocation_states WHERE id=:id"),
+            {"id": identity},
+        ).one() == (None, None)
         connection.execute(text("SET LOCAL search_path TO public"))
         connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
 
@@ -399,10 +564,12 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
 @pytest.mark.parametrize(
     "field", ["tenant_id", "app_id", "workflow_id", "actor_id", "session_id", "test_input_id", "request_id"]
 )
-def test_postgres_context_owner_replay_is_rejected(native_owner, field):
+def test_postgres_context_owner_replay_is_rejected(native_owner: NativeOwner, field: str) -> None:
     service, context = prepare(native_owner)
     forged = context.model_copy(update={field: str(uuid4())})
     with pytest.raises(BuilderExecutionPolicyError):
         service.claim_launch(context=forged, native_run_id=str(uuid4()), task_id="replay")
     with native_owner[0]() as session:
-        assert session.get(DifyBuilderExecutionRequest, context.request_id).state == "prepared"
+        _loaded_dify_builder_execution_request1 = session.get(DifyBuilderExecutionRequest, context.request_id)
+        assert _loaded_dify_builder_execution_request1 is not None
+        assert _loaded_dify_builder_execution_request1.state == "prepared"

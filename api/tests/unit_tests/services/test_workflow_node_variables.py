@@ -6,7 +6,6 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
-from core.workflow.workflow_entry import WorkflowEntry
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.nodes.list_operator.entities import FilterOperator
 from graphon.runtime import VariablePool
@@ -15,6 +14,7 @@ from graphon.variables import StringSegment, VariableBase
 from models.workflow import WorkflowDraftVariable
 from services.workflow_draft_variable_service import DraftVarLoader
 from services.workflow_node_variables import get_human_input_form_variable_mapping, load_additional_node_variables
+from services.workflow_runtime.entry import WorkflowEntry
 
 
 @pytest.mark.parametrize("container_type", [None, "iteration", "loop"])

@@ -31,7 +31,8 @@ from core.dify_builder.contract import (
 from core.dify_builder.real_call_consent import ConsentState
 from fields.base import ResponseModel
 from fields.workflow_stream_fields import WorkflowStreamPayload
-from services.dify_builder.presentation import BuilderText
+from runtime_contracts.builder.presentation import BuilderText
+from services.dify_builder.native_testing.public_contracts import NativeTestInputBinding, NativeTestPublicReceipt
 
 NonEmptyString = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 ClientTurnId = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
@@ -280,6 +281,7 @@ class DifyBuilderAppRevisionResponse(ResponseModel):
 
 
 class DifyBuilderSessionStateResponse(ResponseModel):
+    diagnostics: list[dict[str, Any]] = Field(default_factory=list, max_length=33)
     session_id: str
     reply_language: str = Field(
         description="Detected user-input language (BCP-47); empty until a user language is detected."
@@ -464,6 +466,17 @@ class DifyBuilderErrorEventResponse(ResponseModel):
     data: DifyBuilderErrorEventData
 
 
+class DifyBuilderNativeExecutionEventData(ResponseModel):
+    session_id: str
+    cursor: ScopeDigest
+    receipt: NativeTestPublicReceipt
+
+
+class DifyBuilderNativeExecutionEventResponse(ResponseModel):
+    event: Literal["native_execution"]
+    data: DifyBuilderNativeExecutionEventData
+
+
 class DifyBuilderStreamEventResponse(
     RootModel[
         Annotated[
@@ -476,7 +489,8 @@ class DifyBuilderStreamEventResponse(
             | DifyBuilderProgressEventResponse
             | DifyBuilderProgressSnapshotEventResponse
             | DifyBuilderCommandFinishedEventResponse
-            | DifyBuilderErrorEventResponse,
+            | DifyBuilderErrorEventResponse
+            | DifyBuilderNativeExecutionEventResponse,
             Field(discriminator="event"),
         ]
     ]
@@ -662,3 +676,13 @@ class DifyBuilderRealCallForbiddenResponse(
     ]
 ):
     """Every HTTP 403 body a real-call consent route can return."""
+
+
+class DifyBuilderNativeTestResponse(ResponseModel):
+    """Strict public native receipt; domain DTO also owns generated schemas."""
+
+    data: NativeTestPublicReceipt
+
+
+class DifyBuilderNativeTestInputResponse(ResponseModel):
+    data: NativeTestInputBinding

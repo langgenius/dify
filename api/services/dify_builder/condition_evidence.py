@@ -19,7 +19,7 @@ from services.dify_builder.credentials import REDACTED
 from services.dify_builder.revision import executable_graph_revision
 
 if TYPE_CHECKING:
-    from core.dify_builder.runner import Env
+    from services.dify_builder.application.runner import Env
 
 MAX_CONTEXT_BYTES = 16_000
 _MAX_CONDITIONS = 32
@@ -249,7 +249,7 @@ def build_evidence(
         else []
     )
     native_type = target_nodes[0]["data"].get("type") if len(target_nodes) == 1 else None
-    from core.workflow.node_factory import get_node_type_classes_mapping
+    from services.workflow_runtime.node_factory import get_node_type_classes_mapping
 
     known_type = isinstance(native_type, str) and native_type in get_node_type_classes_mapping()
     identity = "unavailable"

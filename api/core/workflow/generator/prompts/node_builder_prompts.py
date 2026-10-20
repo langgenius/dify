@@ -154,9 +154,10 @@ def format_node_outputs_section(
     structured-output SCHEMA FIELDS, and the engine publishes those under one
     ``structured_output`` object. Listing them flat would hand every consumer
     ``{{#<id>.<field>#}}`` — precisely the reference the engine can never
-    resolve. A node whose type we don't know is listed as-is; only the four
-    declaring types ever reach here, and the other three name their outputs
-    flat.
+    resolve. Native Agent caller declarations are top-level outputs too;
+    they belong in ``agent_declared_outputs``, not an invented published schema.
+    A node whose type we don't know is listed as-is. These plan names are
+    promises; final output validation still checks each actual node config.
 
     Returns an empty string when there is nothing to say, keeping the prompt
     identical to the one a plan without the key has always produced.
@@ -171,7 +172,9 @@ def format_node_outputs_section(
             "This node MUST expose exactly these output names, spelled exactly: "
             + _quoted_names(own)
             + " (a code node's ``outputs`` keys, a parameter-extractor's parameter names, a "
-            "human-input input's ``output_variable_name``, an llm's ``structured_output`` schema fields)."
+            "human-input input's ``output_variable_name``, an llm's ``structured_output`` schema fields, "
+            "or a native New Agent caller's custom ``agent_declared_outputs``). "
+            "Agent custom declarations do not rename system text or route-dependent switch outputs."
         )
     others = [(node_id, names) for node_id, names in node_outputs.items() if node_id != target_node_id and names]
     if others:
