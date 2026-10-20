@@ -321,6 +321,8 @@
   "tracing.run.viewTrace": "Xem lần chạy này",
   "tracing.supported": "Hỗ trợ",
   "tracing.tencent.description": "Giám sát hiệu suất ứng dụng của Tencent cung cấp khả năng theo dõi toàn diện và phân tích đa chiều cho các ứng dụng LLM.",
+  "tracing.tencent.endpointHelp": "Sao chép điểm cuối cho khu vực và mạng của bạn từ Tencent Cloud LLM Observability → Ứng dụng → Kết nối ứng dụng.",
+  "tracing.tencent.serviceNameHelp": "Tối đa 63 ký tự: chữ thường, chữ số và dấu gạch nối. Bắt đầu bằng chữ thường và kết thúc bằng chữ hoặc số.",
   "tracing.tencent.title": "Tencent APM",
   "tracing.title": "Theo dõi hiệu suất ứng dụng",
   "tracing.tracing": "Theo dõi",

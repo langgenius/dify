@@ -209,3 +209,19 @@ describe('InheritedTracingSummary', () => {
     ).toBeInTheDocument()
   })
 })
+
+describe('Deployment availability', () => {
+  it.each([null, 'langfuse'])(
+    'shows the deployment gate with disabled policy and provider %s',
+    async (provider) => {
+      const { sent } = setup({
+        policy: { enabled: false, tracing_provider: provider },
+        agentTracingEnabled: false,
+        permissions: [AppACLPermission.ViewLayout],
+      })
+      expect(await screen.findByText('app.tracing.agentTracingUnavailable')).toBeVisible()
+      expect(screen.queryByRole('link')).not.toBeInTheDocument()
+      expect(sent.some((path) => path.endsWith('/trace-capabilities'))).toBe(false)
+    },
+  )
+})

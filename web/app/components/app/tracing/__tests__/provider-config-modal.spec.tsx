@@ -1,5 +1,6 @@
 import type { TraceConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { ConfigurableTracingProvider } from '../providers'
+import type { TracingResource } from '../resource'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -16,11 +17,15 @@ const { request } = vi.hoisted(() => ({
 }))
 vi.mock('@/service/base', () => ({ request }))
 
-const expectRequest = async (method: string, body?: unknown) => {
+const expectRequest = async (
+  method: string,
+  body?: unknown,
+  path = '/apps/app-id/trace-config',
+) => {
   expect(request).toHaveBeenCalledOnce()
   const sent = request.mock.calls[0]![2].request
   expect(sent.method).toBe(method)
-  expect(new URL(sent.url).pathname).toMatch(/\/apps\/app-id\/trace-config$/)
+  expect(new URL(sent.url).pathname).toBe(`/console/api${path}`)
   if (body) expect(await sent.clone().json()).toEqual(body)
   else expect(new URL(sent.url).searchParams.get('tracing_provider')).toBe('langfuse')
 }
@@ -80,8 +85,8 @@ const validConfigs = {
   },
   tencent: {
     token: 'tencent-token',
-    endpoint: 'https://your-region.cls.tencentcs.com',
-    service_name: 'dify_app',
+    endpoint: 'https://ap-guangzhou.apm.tencentcs.com:4320',
+    service_name: 'dify-app',
   },
 } satisfies Record<ConfigurableTracingProvider, TraceConfigPayload['tracing_config']>
 
@@ -104,11 +109,6 @@ const invalidConfigCases: Array<{
     provider: 'arize',
     payload: { ...validConfigs.arize, project: '' },
     missingField: 'app.tracing.configProvider.project',
-  },
-  {
-    provider: 'phoenix',
-    payload: { ...validConfigs.phoenix, api_key: '' },
-    missingField: 'API Key',
   },
   {
     provider: 'phoenix',
@@ -201,10 +201,12 @@ const renderProviderConfigModal = ({
   type = 'langfuse',
   payload,
   inUse = false,
+  resource = { kind: 'app', appId: 'app-id', mode: 'chat' },
 }: {
   type?: ConfigurableTracingProvider
   payload?: TraceConfigPayload['tracing_config'] | null
   inUse?: boolean
+  resource?: TracingResource
 } = {}) => {
   const callbacks = {
     onCancel: vi.fn(),
@@ -223,7 +225,7 @@ const renderProviderConfigModal = ({
     >
       <DialogContent initialFocus={firstInputRef}>
         <ProviderConfigModal
-          resource={{ kind: 'app', appId: 'app-id', mode: 'chat' }}
+          resource={resource}
           type={type}
           payload={payload}
           inUse={inUse}
@@ -249,6 +251,27 @@ describe('ProviderConfigModal', () => {
   })
 
   describe('Saving', () => {
+    it('creates an anonymous Phoenix destination without a key', async () => {
+      const user = userEvent.setup()
+      const callbacks = renderProviderConfigModal({ type: 'phoenix' })
+      await user.type(
+        screen.getByRole('textbox', { name: 'app.tracing.configProvider.project' }),
+        'local-project',
+      )
+      await user.type(screen.getByRole('textbox', { name: 'Endpoint' }), 'http://localhost:6006')
+      await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
+      await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+      await expectRequest('POST', {
+        tracing_provider: 'phoenix',
+        activate: true,
+        tracing_config: {
+          api_key: '',
+          project: 'local-project',
+          endpoint: 'http://localhost:6006',
+        },
+      })
+    })
+
     it('submits a new config with Enter and chooses the provider', async () => {
       const user = userEvent.setup()
       const callbacks = renderProviderConfigModal({ type: 'langfuse' })
@@ -521,3 +544,47 @@ describe('ProviderConfigModal', () => {
     })
   })
 })
+
+it.each(['app', 'agent'] as const)(
+  'validates Tencent service names at the shared %s configuration boundary',
+  async (kind) => {
+    request.mockImplementation(async () => Response.json({ result: 'success' }))
+    const user = userEvent.setup()
+    renderProviderConfigModal({
+      type: 'tencent',
+      resource:
+        kind === 'agent'
+          ? { kind, agentId: 'agent-1' }
+          : { kind, appId: 'app-1', mode: 'workflow' },
+    })
+    const endpoint = screen.getByRole('textbox', { name: 'Endpoint' })
+    const service = screen.getByRole('textbox', { name: 'Service Name' })
+    expect(endpoint).toHaveAttribute('placeholder', 'https://ap-guangzhou.apm.tencentcs.com:4320')
+    expect(endpoint).toHaveValue('')
+    expect(endpoint).toHaveAccessibleDescription('app.tracing.tencent.endpointHelp')
+    expect(service).toHaveAccessibleDescription('app.tracing.tencent.serviceNameHelp')
+    await user.type(screen.getByRole('textbox', { name: 'Token' }), 'synthetic-token')
+    await user.type(endpoint, 'https://ap-guangzhou.apm.tencentcs.com:4320')
+    await user.type(service, 'dify_app')
+    await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
+    expect(request).not.toHaveBeenCalled()
+    expect(service).toHaveAttribute('aria-invalid', 'true')
+    await user.clear(service)
+    await user.type(service, 'dify-app')
+    await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
+    await waitFor(() => expect(request).toHaveBeenCalledOnce())
+    await expectRequest(
+      'POST',
+      {
+        tracing_provider: 'tencent',
+        activate: true,
+        tracing_config: {
+          token: 'synthetic-token',
+          endpoint: 'https://ap-guangzhou.apm.tencentcs.com:4320',
+          service_name: 'dify-app',
+        },
+      },
+      kind === 'agent' ? '/agent/agent-1/trace-config' : '/apps/app-1/trace-config',
+    )
+  },
+)

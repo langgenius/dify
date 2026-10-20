@@ -375,7 +375,7 @@ describe('Tracing overview panel', () => {
   })
 
   it.each([true, false])(
-    'shows no Agent tracing section before a provider is selected (Agent tracing enabled: %s)',
+    'shows deployment availability before a provider is selected (Agent tracing enabled: %s)',
     async (enabled) => {
       agentTracingEnabled = enabled
       mockServer(false)
@@ -383,7 +383,8 @@ describe('Tracing overview panel', () => {
       expect(
         await screen.findByRole('group', { name: 'app.tracing.langfuse.title' }),
       ).toBeInTheDocument()
-      expect(screen.queryByRole('note')).not.toBeInTheDocument()
+      if (enabled) expect(screen.queryByRole('note')).not.toBeInTheDocument()
+      else expect(screen.getByRole('note')).toHaveTextContent('app.tracing.agentTracingUnavailable')
       expect(
         screen.queryByRole('button', { name: 'app.tracing.captureTitle' }),
       ).not.toBeInTheDocument()
