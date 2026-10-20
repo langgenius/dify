@@ -29,7 +29,11 @@ class EndUserAuthConfig(BaseModel):
 
 
 class ToolCredentialConfig(BaseModel):
-    """Only references are persisted; personal Connection IDs belong to the user's App selection."""
+    """Static per-node requirements; active Connections belong to the user's Session selections.
+
+    Independent nodes can select different Connections for the same provider. Only an explicit
+    reuse reference shares another node's authentication; personal Connection IDs stay out of the graph.
+    """
 
     model_config = ConfigDict(frozen=True)
 
@@ -144,45 +148,27 @@ def check_tool_credentials(graph: Mapping[str, Any], *, complete: bool) -> list[
         issues.extend(_configuration_issues(node_id, nodes[node_id], config))
     invalid_nodes = {issue.node_id for issue in issues}
 
-    provider_methods: dict[tuple[str, str], set[str]] = {}
     for node_id, config in configs.items():
-        if node_id in invalid_nodes:
+        if node_id in invalid_nodes or config.credential_source != "reuse_node":
             continue
         data = nodes[node_id]
-        if config.credential_source == "end_user" and config.end_user_auth is not None:
-            # Preserve the provider-wide compatibility policy while allowing either authentication method.
-            methods: set[str] = set(config.end_user_auth.allowed_credential_types or ())
-            key = (str(data["provider_type"]), str(data["provider_id"]))
-            common = provider_methods.setdefault(key, methods)
-            common.intersection_update(methods)
-            if not common:
-                issues.append(
-                    ToolCredentialIssue(
-                        node_id,
-                        ("end_user_auth", "allowed_credential_types"),
-                        "No authentication method is shared by all EndUser nodes for this provider.",
-                    )
-                )
-        elif config.credential_source == "reuse_node":
-            target_id = config.reuse_node_id
-            target = configs.get(target_id) if target_id is not None else None
-            target_data = nodes.get(target_id) if target_id is not None else None
-            if target_id == node_id:
-                message = "A node cannot reuse its own authentication."
-            elif target_data is None:
-                message = f"Reuse target {target_id!r} does not exist."
-            elif target is None:
-                message = f"Reuse target {target_id!r} must be a tool node with valid authentication settings."
-            elif target.credential_source == "reuse_node":
-                message = f"Reuse target {target_id!r} must configure authentication directly."
-            elif target_id in invalid_nodes:
-                message = f"Reuse target {target_id!r} has incomplete authentication settings."
-            # The qualified provider ID identifies both the plugin and its provider.
-            elif any(
-                data.get(field) != target_data.get(field) for field in ("provider_type", "provider_id", "tool_name")
-            ):
-                message = f"Reuse target {target_id!r} must use the same plugin, provider, and tool."
-            else:
-                continue
-            issues.append(ToolCredentialIssue(node_id, ("reuse_node_id",), message))
+        target_id = config.reuse_node_id
+        target = configs.get(target_id) if target_id is not None else None
+        target_data = nodes.get(target_id) if target_id is not None else None
+        if target_id == node_id:
+            message = "A node cannot reuse its own authentication."
+        elif target_data is None:
+            message = f"Reuse target {target_id!r} does not exist."
+        elif target is None:
+            message = f"Reuse target {target_id!r} must be a tool node with valid authentication settings."
+        elif target.credential_source == "reuse_node":
+            message = f"Reuse target {target_id!r} must configure authentication directly."
+        elif target_id in invalid_nodes:
+            message = f"Reuse target {target_id!r} has incomplete authentication settings."
+        # The qualified provider ID identifies both the plugin and its provider.
+        elif any(data.get(field) != target_data.get(field) for field in ("provider_type", "provider_id", "tool_name")):
+            message = f"Reuse target {target_id!r} must use the same plugin, provider, and tool."
+        else:
+            continue
+        issues.append(ToolCredentialIssue(node_id, ("reuse_node_id",), message))
     return issues

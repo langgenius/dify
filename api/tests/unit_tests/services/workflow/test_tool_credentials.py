@@ -138,46 +138,55 @@ def test_end_user_nodes_allow_one_or_both_authentication_methods(methods: list[s
 
 
 @pytest.mark.parametrize(
-    ("first_methods", "second_methods", "valid"),
+    ("first_methods", "second_methods"),
     [
-        (["oauth2"], ["api-key"], False),
-        (["oauth2", "api-key"], ["api-key"], True),
-        (["oauth2", "api-key"], ["api-key", "oauth2"], True),
+        (["oauth2"], ["api-key"]),
+        (["oauth2", "api-key"], ["api-key"]),
+        (["oauth2", "api-key"], ["api-key", "oauth2"]),
     ],
 )
-def test_provider_wide_compatibility_policy_is_preserved(
-    first_methods: list[str], second_methods: list[str], valid: bool
+def test_same_provider_nodes_have_independent_authentication_requirements(
+    first_methods: list[str], second_methods: list[str]
 ) -> None:
     first = tool_node("first")
     second = tool_node("second")
     cast(dict[str, object], first["data"]["end_user_auth"])["allowed_credential_types"] = first_methods
     cast(dict[str, object], second["data"]["end_user_auth"])["allowed_credential_types"] = second_methods
 
-    issues = check_tool_credentials({"nodes": [first, second]}, complete=True)
+    graph = {"nodes": [first, second]}
+    original = deepcopy(graph)
 
-    if valid:
-        assert issues == []
-    else:
-        [issue] = issues
-        assert issue.node_id == "second"
-        assert issue.path == ("end_user_auth", "allowed_credential_types")
+    assert check_tool_credentials(graph, complete=True) == []
+    assert check_graph(graph, mode=AppMode.WORKFLOW) == []
+    assert graph == original
 
 
-def test_all_provider_requirements_must_share_a_method_under_the_current_policy() -> None:
+def test_provider_grouping_does_not_merge_node_requirements_or_test_credentials() -> None:
     nodes = [tool_node("both"), tool_node("oauth"), tool_node("api-key")]
     for node, methods in zip(nodes, (["oauth2", "api-key"], ["oauth2"], ["api-key"]), strict=True):
         cast(dict[str, object], node["data"]["end_user_auth"])["allowed_credential_types"] = methods
+        node["data"]["test_credential_id"] = f"test-{node['id']}"
 
-    [issue] = check_tool_credentials({"nodes": nodes}, complete=True)
+    graph = {"nodes": nodes}
+    original = deepcopy(graph)
 
-    assert issue.node_id == "api-key"
-    assert issue.path == ("end_user_auth", "allowed_credential_types")
+    assert check_graph(graph, mode=AppMode.WORKFLOW) == []
+    assert graph == original
 
 
 def reuse_node(node_id: str, target: str | None) -> ToolNodeFixture:
     node = tool_node(node_id, credential_source="reuse_node", reuse_node_id=target)
     del node["data"]["end_user_auth"]
     return node
+
+
+def test_explicit_reuse_does_not_constrain_other_nodes_of_the_same_provider() -> None:
+    oauth = tool_node("oauth")
+    api_key = tool_node("api-key")
+    cast(dict[str, object], api_key["data"]["end_user_auth"])["allowed_credential_types"] = ["api-key"]
+    graph = {"nodes": [oauth, api_key, reuse_node("reuse", "oauth")]}
+
+    assert check_graph(graph, mode=AppMode.WORKFLOW) == []
 
 
 @pytest.mark.parametrize("source", ["workspace", "end_user"])
