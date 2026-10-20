@@ -67,7 +67,7 @@ def test_unfinished_drafts_can_be_saved_but_are_not_ready(auth: object) -> None:
         ({"test_credential_id": ""}, ("test_credential_id",)),
         ({"end_user_auth": {"credential_type": "unauthorized"}}, ("end_user_auth", "credential_type")),
         ({"end_user_auth": {"selection_mode": "default"}}, ("end_user_auth", "selection_mode")),
-        ({"end_user_auth": {"purpose": "x" * 1001}}, ("end_user_auth", "purpose")),
+        ({"end_user_auth": {"purpose": "x" * 51}}, ("end_user_auth", "purpose")),
         ({"end_user_auth": {"connection_id": "personal-connection"}}, ("end_user_auth", "connection_id")),
     ],
 )
@@ -76,6 +76,20 @@ def test_malformed_draft_fields_are_located(overrides: dict[str, object], path: 
     [issue] = check_tool_credentials(graph, complete=False)
 
     assert (issue.node_id, issue.path) == ("tool", path)
+
+
+def test_purpose_limit_counts_characters_not_utf8_bytes() -> None:
+    node = tool_node()
+    auth = cast(dict[str, object], node["data"]["end_user_auth"])
+    auth["purpose"] = "\u4e2d" * 50
+    graph = {"nodes": [node]}
+
+    assert check_tool_credentials(graph, complete=True) == []
+
+    auth["purpose"] = "\u4e2d" * 51
+    [issue] = check_tool_credentials(graph, complete=False)
+
+    assert issue.path == ("end_user_auth", "purpose")
 
 
 def test_mixed_sources_and_missing_test_credentials_are_valid() -> None:

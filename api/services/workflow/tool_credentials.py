@@ -18,7 +18,7 @@ class EndUserAuthConfig(BaseModel):
     credential_type: Literal["api-key", "oauth2"] | None = None
     selection_mode: Literal["independent", "reuse_node"] | None = None
     reuse_node_id: str | None = Field(default=None, min_length=1)
-    purpose: str | None = Field(default=None, max_length=1000)
+    purpose: str | None = Field(default=None, max_length=50)
 
 
 class ToolCredentialConfig(BaseModel):
