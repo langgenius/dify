@@ -13,12 +13,18 @@ This module tests the dataset cleanup task functionality including:
 
 import json
 import uuid
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from datetime import UTC, datetime, timedelta
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from threading import Thread
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
+from celery.exceptions import Retry
+from flask import Flask
 from sqlalchemy import Engine, event
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -26,6 +32,7 @@ from extensions.storage.storage_type import StorageType
 from models.base import TypeBase
 from models.dataset import (
     AppDatasetJoin,
+    ChildChunk,
     DatasetMetadata,
     DatasetMetadataBinding,
     DatasetProcessRule,
@@ -79,6 +86,7 @@ def orm_session_maker(
     models = (
         Document,
         DocumentSegment,
+        ChildChunk,
         SegmentAttachmentBinding,
         UploadFile,
         DatasetProcessRule,
@@ -124,6 +132,55 @@ def mock_get_image_upload_file_ids() -> Iterator[MagicMock]:
     with patch("tasks.clean_dataset_task.get_image_upload_file_ids", autospec=True) as mock_func:
         mock_func.return_value = []
         yield mock_func
+
+
+@pytest.fixture
+def elasticsearch_delete_endpoint() -> Iterator[tuple[int, list[int], list[tuple[str, int]]]]:
+    """Serve real SDK requests with Elasticsearch's missing-index response shape."""
+    pytest.importorskip("elasticsearch")
+    pytest.importorskip("dify_vdb_elasticsearch.elasticsearch_vector")
+    responses: list[int] = []
+    requests: list[tuple[str, int]] = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def respond(self, status: int, payload: dict[str, object]) -> None:
+            body = json.dumps(payload).encode()
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("X-Elastic-Product", "Elasticsearch")
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(body)
+
+        def do_HEAD(self) -> None:
+            self.respond(200, {})
+
+        def do_GET(self) -> None:
+            self.respond(200, {"version": {"number": "8.14.0"}})
+
+        def do_DELETE(self) -> None:
+            status = responses.pop(0) if responses else 500
+            requests.append((self.path, status))
+            if status == 200:
+                self.respond(status, {"acknowledged": True})
+            else:
+                error = {"type": "index_not_found_exception", "reason": "no such index [cleanup-index]"}
+                self.respond(status, {"error": {**error, "root_cause": [error]}, "status": status})
+
+        @override
+        def log_message(self, format: str, *args: object) -> None:
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+    thread.start()
+    try:
+        yield server.server_port, responses, requests
+    finally:
+        server.shutdown()
+        thread.join(timeout=1)
+        server.server_close()
 
 
 def _run_clean_dataset(
@@ -219,6 +276,29 @@ def _persist_attachment(
     return binding, attachment_file
 
 
+def _persist_segment(
+    session_maker: sessionmaker[Session],
+    *,
+    dataset_id: str,
+    tenant_id: str,
+    document_id: str,
+    position: int = 1,
+) -> DocumentSegment:
+    segment = DocumentSegment(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=document_id,
+        position=position,
+        content="segment",
+        word_count=1,
+        tokens=1,
+        created_by=str(uuid.uuid4()),
+    )
+    with session_maker.begin() as session:
+        session.add(segment)
+    return segment
+
+
 # ============================================================================
 # Test Basic Cleanup
 # ============================================================================
@@ -268,15 +348,17 @@ class TestErrorHandling:
 
         # Act
         try:
-            _run_clean_dataset(
-                dataset_id=dataset_id,
-                tenant_id=tenant_id,
-                collection_binding_id=collection_binding_id,
-            )
+            with patch.object(clean_dataset_task, "retry", side_effect=Retry()) as retry, pytest.raises(Retry):
+                _run_clean_dataset(
+                    dataset_id=dataset_id,
+                    tenant_id=tenant_id,
+                    collection_binding_id=collection_binding_id,
+                )
         finally:
             event.remove(orm_session_maker.class_, "before_commit", fail_commit)
             event.remove(orm_session_maker.class_, "after_rollback", fail_rollback)
 
+        retry.assert_called_once()
         # Assert: rollback happened before its hook failed, and the closed task
         # session did not prevent a new real session from reading the row.
         with orm_session_maker() as session:
@@ -372,6 +454,82 @@ class TestPipelineAndWorkflowDeletion:
 
 class TestSegmentAttachmentCleanup:
     """Test cases for segment attachment cleanup."""
+
+    @pytest.mark.parametrize("storage_fails", [False, True])
+    def test_inline_image_attachment_binding_is_deleted_after_its_file(
+        self,
+        storage_fails: bool,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        orm_session_maker: sessionmaker[Session],
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+    ) -> None:
+        """Inline images, source files and attachments can share an uploaded file."""
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segment = _persist_segment(
+            orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id
+        )
+        binding, attachment_file = _persist_attachment(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segment.content = f"![image](https://example.com/files/{attachment_file.id}/file-preview)"
+        document.data_source_type = "upload_file"
+        document.data_source_info = json.dumps({"upload_file_id": attachment_file.id})
+        binding.document_id = document.id
+        binding.segment_id = segment.id
+        with orm_session_maker.begin() as session:
+            session.add_all([document, segment, binding])
+        unrelated_attachments = [
+            _persist_attachment(orm_session_maker, dataset_id=str(uuid.uuid4()), tenant_id=tenant_id),
+            _persist_attachment(orm_session_maker, dataset_id=dataset_id, tenant_id=str(uuid.uuid4())),
+        ]
+        if storage_fails:
+            failure = TimeoutError("shared source and inline image storage unavailable")
+            mock_storage.delete.side_effect = failure
+            with pytest.raises(Retry) as retried:
+                clean_dataset_task.apply(
+                    kwargs={
+                        "dataset_id": dataset_id,
+                        "tenant_id": tenant_id,
+                        "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
+                        "index_struct": None,
+                        "collection_binding_id": collection_binding_id,
+                        "doc_form": IndexStructureType.PARAGRAPH_INDEX,
+                    },
+                    throw=True,
+                )
+            assert retried.value.exc is failure
+            with orm_session_maker() as session:
+                assert session.get(Document, document.id) is not None
+                assert session.get(DocumentSegment, segment.id) is not None
+                assert session.get(SegmentAttachmentBinding, binding.id) is not None
+                retained_file = session.get(UploadFile, attachment_file.id)
+                assert retained_file is not None
+                assert retained_file.key == attachment_file.key
+            # celery-stubs omits the signature stored on Retry at runtime.
+            retry_signature = retried.value.sig  # pyrefly: ignore[missing-attribute]
+            assert retry_signature is not None
+            assert retry_signature.kwargs["index_cleanup_done"] is True
+            mock_storage.delete.side_effect = None
+            assert retry_signature.apply(throw=True).successful()
+        else:
+            _run_clean_dataset(
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                collection_binding_id=collection_binding_id,
+            )
+
+        assert mock_storage.delete.call_count == (2 if storage_fails else 1)
+        mock_storage.delete.assert_called_with(attachment_file.key)
+        mock_index_processor_factory["processor"].clean.assert_called_once()
+        with orm_session_maker() as session:
+            assert session.get(Document, document.id) is None
+            assert session.get(DocumentSegment, segment.id) is None
+            assert session.get(UploadFile, attachment_file.id) is None
+            assert session.get(SegmentAttachmentBinding, binding.id) is None
+            for other_binding, other_file in unrelated_attachments:
+                assert session.get(SegmentAttachmentBinding, other_binding.id) is not None
+                assert session.get(UploadFile, other_file.id) is not None
 
     def test_clean_dataset_task_with_attachments(
         self,
@@ -501,6 +659,103 @@ class TestEdgeCases:
 class TestIndexProcessorParameters:
     """Test cases for IndexProcessor clean method parameters."""
 
+    @pytest.mark.parametrize("commit_fails", [False, True])
+    def test_missing_elasticsearch_index_allows_parent_child_cleanup_after_retry(
+        self,
+        commit_fails: bool,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        elasticsearch_delete_endpoint: tuple[int, list[int], list[tuple[str, int]]],
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        orm_session_maker: sessionmaker[Session],
+        mock_storage: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        port, responses, requests = elasticsearch_delete_endpoint
+        expected_statuses = [200, 404] if commit_fails else [404]
+        responses.extend(expected_statuses)
+        for key, value in {
+            "ELASTICSEARCH_USE_CLOUD": False,
+            "ELASTICSEARCH_HOST": "http://127.0.0.1",
+            "ELASTICSEARCH_PORT": port,
+            "ELASTICSEARCH_USERNAME": "elastic",
+            "ELASTICSEARCH_PASSWORD": "test",
+            "ELASTICSEARCH_REQUEST_TIMEOUT": 2,
+            "ELASTICSEARCH_MAX_RETRIES": 0,
+            "ELASTICSEARCH_RETRY_ON_TIMEOUT": False,
+        }.items():
+            monkeypatch.setitem(app.config, key, value)
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segment = _persist_segment(
+            orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id
+        )
+        child = ChildChunk(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_id=document.id,
+            segment_id=segment.id,
+            position=1,
+            content="child",
+            word_count=1,
+            created_by=str(uuid.uuid4()),
+        )
+        with orm_session_maker.begin() as session:
+            session.add(child)
+        task_kwargs = {
+            "dataset_id": dataset_id,
+            "tenant_id": tenant_id,
+            "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
+            "index_struct": json.dumps({"type": "elasticsearch", "vector_store": {"class_prefix": "cleanup-index"}}),
+            "collection_binding_id": collection_binding_id,
+            "doc_form": IndexStructureType.PARENT_CHILD_INDEX,
+        }
+        failure = OperationalError("commit", {}, RuntimeError("temporary index commit failure"))
+        injected_failures: list[OperationalError] = []
+
+        def fail_first_index_commit(session: Session) -> None:
+            if requests == [("/cleanup-index", 200)] and not injected_failures:
+                assert session.get(ChildChunk, child.id) is None
+                injected_failures.append(failure)
+                raise failure
+
+        with (
+            patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh,
+            caplog.at_level("INFO", logger="tasks.clean_dataset_task"),
+        ):
+            if commit_fails:
+                event.listen(orm_session_maker, "before_commit", fail_first_index_commit)
+                try:
+                    with pytest.raises(Retry) as retried:
+                        clean_dataset_task.apply(kwargs=task_kwargs, throw=True)
+                finally:
+                    event.remove(orm_session_maker, "before_commit", fail_first_index_commit)
+                assert injected_failures == [failure]
+                assert retried.value.exc is failure
+                with orm_session_maker() as session:
+                    assert session.get(ChildChunk, child.id) is not None
+                    assert session.get(DocumentSegment, segment.id) is not None
+                    assert session.get(Document, document.id) is not None
+                schedule_refresh.assert_not_called()
+                assert not any("Cleaned dataset when dataset deleted:" in message for message in caplog.messages)
+                # celery-stubs omits the signature stored on Retry at runtime.
+                retry_signature = retried.value.sig  # pyrefly: ignore[missing-attribute]
+                assert retry_signature is not None
+                assert retry_signature.kwargs["index_cleanup_done"] is False
+                result = retry_signature.apply(throw=True)
+            else:
+                result = clean_dataset_task.apply(kwargs=task_kwargs, throw=True)
+            assert result.successful()
+            schedule_refresh.assert_called_once_with(tenant_id)
+
+        assert requests == [("/cleanup-index", status) for status in expected_statuses]
+        with orm_session_maker() as session:
+            assert session.get(ChildChunk, child.id) is None
+            assert session.get(DocumentSegment, segment.id) is None
+            assert session.get(Document, document.id) is None
+        mock_storage.delete.assert_not_called()
+
     def test_clean_dataset_task_passes_correct_parameters_to_index_processor(
         self,
         dataset_id: str,
@@ -557,7 +812,7 @@ class TestIndexProcessorParameters:
         assert call_args[1]["delete_child_chunks"] is True
         schedule_refresh.assert_called_once_with(tenant_id)
 
-    def test_vector_cleanup_failure_does_not_schedule_billing_refresh(
+    def test_vector_cleanup_failure_preserves_documents_and_does_not_schedule_billing_refresh(
         self,
         dataset_id: str,
         tenant_id: str,
@@ -567,9 +822,17 @@ class TestIndexProcessorParameters:
         mock_index_processor_factory: dict[str, MagicMock],
         mock_get_image_upload_file_ids: MagicMock,
     ) -> None:
-        mock_index_processor_factory["processor"].clean.side_effect = RuntimeError("vector cleanup failed")
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segment = _persist_segment(
+            orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id
+        )
+        failure = RuntimeError("vector cleanup failed")
+        mock_index_processor_factory["processor"].clean.side_effect = failure
 
-        with patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh:
+        with (
+            patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh,
+            pytest.raises(RuntimeError, match="vector cleanup failed") as raised,
+        ):
             clean_dataset_task(
                 dataset_id=dataset_id,
                 tenant_id=tenant_id,
@@ -579,7 +842,531 @@ class TestIndexProcessorParameters:
                 doc_form=IndexStructureType.PARAGRAPH_INDEX,
             )
 
+        assert raised.value is failure
         schedule_refresh.assert_not_called()
+        with orm_session_maker() as session:
+            assert session.get(Document, document.id) is not None
+            assert session.get(DocumentSegment, segment.id) is not None
+
+    @pytest.mark.parametrize("failure_phase", ["flush", "commit"])
+    def test_index_database_failure_preserves_parent_and_child_rows_until_retry(
+        self,
+        failure_phase: str,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        orm_session_maker: sessionmaker[Session],
+        sqlite_engine: Engine,
+        mock_storage: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """An index rollback must not strand its child rows after parent deletion."""
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segment = _persist_segment(
+            orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id
+        )
+        child = ChildChunk(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_id=document.id,
+            segment_id=segment.id,
+            position=1,
+            content="child",
+            word_count=1,
+            created_by=str(uuid.uuid4()),
+        )
+        with orm_session_maker.begin() as session:
+            session.add(child)
+        failure = OperationalError(failure_phase, {}, RuntimeError("temporary index database failure"))
+        child_deletes: list[str] = []
+        injected_failures: list[OperationalError] = []
+
+        def record_child_delete(statement: str, **_kwargs: object) -> None:
+            if statement.lower().startswith("delete from child_chunks"):
+                child_deletes.append(statement)
+
+        def fail_first_index_commit(_session: Session) -> None:
+            if failure_phase == "commit" and child_deletes and not injected_failures:
+                injected_failures.append(failure)
+                raise failure
+
+        original_flush = Session.flush
+
+        def fail_first_index_flush(session: Session, objects: Sequence[object] | None = None) -> None:
+            if failure_phase == "flush" and child_deletes and not injected_failures:
+                injected_failures.append(failure)
+                raise failure
+            original_flush(session, objects)
+
+        with (
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Vector", autospec=True) as vector,
+            patch.object(Session, "flush", autospec=True, side_effect=fail_first_index_flush),
+            patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh,
+            caplog.at_level("INFO", logger="tasks.clean_dataset_task"),
+        ):
+            event.listen(sqlite_engine, "after_cursor_execute", record_child_delete, named=True)
+            event.listen(orm_session_maker, "before_commit", fail_first_index_commit)
+            try:
+                with pytest.raises(Retry) as retried:
+                    clean_dataset_task.apply(
+                        kwargs={
+                            "dataset_id": dataset_id,
+                            "tenant_id": tenant_id,
+                            "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
+                            "index_struct": None,
+                            "collection_binding_id": collection_binding_id,
+                            "doc_form": IndexStructureType.PARENT_CHILD_INDEX,
+                        },
+                        throw=True,
+                    )
+            finally:
+                event.remove(sqlite_engine, "after_cursor_execute", record_child_delete)
+                event.remove(orm_session_maker, "before_commit", fail_first_index_commit)
+
+            assert len(child_deletes) == 1
+            assert injected_failures == [failure]
+            assert retried.value.exc is failure
+            # celery-stubs omits the signature stored on Retry at runtime.
+            retry_signature = retried.value.sig  # pyrefly: ignore[missing-attribute]
+            assert retry_signature is not None
+            assert retry_signature.kwargs["index_cleanup_done"] is False
+            with orm_session_maker() as session:
+                assert session.get(ChildChunk, child.id) is not None
+                assert session.get(DocumentSegment, segment.id) is not None
+                assert session.get(Document, document.id) is not None
+            schedule_refresh.assert_not_called()
+            assert not any("Cleaned dataset when dataset deleted:" in message for message in caplog.messages)
+
+            assert retry_signature.apply(throw=True).successful()
+            assert vector.return_value.delete.call_count == 2
+            schedule_refresh.assert_called_once_with(tenant_id)
+
+        with orm_session_maker() as session:
+            assert session.get(ChildChunk, child.id) is None
+            assert session.get(DocumentSegment, segment.id) is None
+            assert session.get(Document, document.id) is None
+        mock_storage.delete.assert_not_called()
+
+
+# ============================================================================
+# Test Step Isolation and Batching
+# ============================================================================
+
+
+class TestStepIsolation:
+    """Committed batches survive failure, while dependent cleanup waits for retry."""
+
+    def test_source_file_failure_keeps_batch_references_and_retries_missing_blob(
+        self,
+        orm_session_maker: sessionmaker[Session],
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Retry a partially deleted source-file batch without losing its storage keys."""
+        documents = [_persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id) for _ in range(2)]
+        source_files = [
+            UploadFile(
+                tenant_id=tenant_id,
+                storage_type=StorageType.LOCAL,
+                key=f"upload_files/{uuid.uuid4()}.pdf",
+                name="source.pdf",
+                size=10,
+                extension="pdf",
+                mime_type="application/pdf",
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=str(uuid.uuid4()),
+                created_at=datetime.now(UTC),
+                used=False,
+            )
+            for _ in documents
+        ]
+        with orm_session_maker.begin() as session:
+            for document, source_file in zip(documents, source_files, strict=True):
+                document.data_source_type = "upload_file"
+                document.data_source_info = json.dumps({"upload_file_id": source_file.id})
+                session.add_all([document, source_file])
+
+        remaining_blobs = {source_file.key for source_file in source_files}
+        attempted_keys: list[str] = []
+        failure = TimeoutError("source storage unavailable")
+
+        def delete_blob(key: str) -> None:
+            attempted_keys.append(key)
+            if len(attempted_keys) == 2:
+                raise failure
+            if key not in remaining_blobs:
+                raise FileNotFoundError(key)
+            remaining_blobs.remove(key)
+
+        mock_storage.delete.side_effect = delete_blob
+        with (
+            patch("tasks.clean_dataset_task._DELETE_BATCH_SIZE", 2),
+            patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh,
+            caplog.at_level("INFO", logger="tasks.clean_dataset_task"),
+        ):
+            with pytest.raises(Retry) as retried:
+                clean_dataset_task.apply(
+                    kwargs={
+                        "dataset_id": dataset_id,
+                        "tenant_id": tenant_id,
+                        "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
+                        "index_struct": None,
+                        "collection_binding_id": collection_binding_id,
+                        "doc_form": IndexStructureType.PARAGRAPH_INDEX,
+                    },
+                    throw=True,
+                )
+
+            assert len(attempted_keys) == 2
+            assert remaining_blobs == {attempted_keys[1]}
+            with orm_session_maker() as session:
+                for document, source_file in zip(documents, source_files, strict=True):
+                    retained_document = session.get(Document, document.id)
+                    retained_file = session.get(UploadFile, source_file.id)
+                    assert retained_document is not None
+                    assert retained_document.data_source_info_dict["upload_file_id"] == source_file.id
+                    assert retained_file is not None
+                    assert retained_file.key == source_file.key
+            assert retried.value.exc is failure
+            assert not any("Cleaned dataset when dataset deleted:" in message for message in caplog.messages)
+            # celery-stubs omits the signature stored on Retry at runtime.
+            retry_signature = retried.value.sig  # pyrefly: ignore[missing-attribute]
+            assert retry_signature is not None
+            assert retry_signature.kwargs["index_cleanup_done"] is True
+            schedule_refresh.assert_called_once_with(tenant_id)
+
+            assert retry_signature.apply(throw=True).successful()
+            mock_index_processor_factory["processor"].clean.assert_called_once()
+            schedule_refresh.assert_called_once_with(tenant_id)
+
+        assert not remaining_blobs
+        assert all(attempted_keys.count(source_file.key) == 2 for source_file in source_files)
+        with orm_session_maker() as session:
+            assert all(session.get(Document, document.id) is None for document in documents)
+            assert all(session.get(UploadFile, source_file.id) is None for source_file in source_files)
+
+    def test_cleanup_commits_more_than_once(
+        self,
+        orm_session_maker: sessionmaker[Session],
+        sqlite_session_factory: sessionmaker[Session],
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+        mock_get_image_upload_file_ids: MagicMock,
+    ):
+        """A single commit at the end is what strands data when any step fails."""
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        _persist_segment(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id)
+
+        commits: list[int] = []
+
+        def _count_commit(_session: Session) -> None:
+            commits.append(1)
+
+        event.listen(sqlite_session_factory, "after_commit", _count_commit)
+        try:
+            _run_clean_dataset(
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                collection_binding_id=collection_binding_id,
+            )
+        finally:
+            event.remove(sqlite_session_factory, "after_commit", _count_commit)
+
+        assert len(commits) > 1, (
+            f"Cleanup still runs as one transaction ({len(commits)} commit); a failure anywhere rolls back everything"
+        )
+
+    def test_document_failure_keeps_segments_deleted_and_preserves_metadata(
+        self,
+        orm_session_maker: sessionmaker[Session],
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+        mock_get_image_upload_file_ids: MagicMock,
+    ) -> None:
+        """A document failure must preserve later cleanup inputs for the retry."""
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segment = _persist_segment(
+            orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id
+        )
+        metadata = DatasetMetadata(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            type="string",
+            name="meta",
+            created_by=str(uuid.uuid4()),
+        )
+        with orm_session_maker.begin() as session:
+            session.add(metadata)
+
+        with (
+            patch("tasks.clean_dataset_task._delete_documents", side_effect=RuntimeError("deadlock on documents")),
+            pytest.raises(RuntimeError, match="deadlock on documents"),
+        ):
+            _run_clean_dataset(
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                collection_binding_id=collection_binding_id,
+            )
+
+        with orm_session_maker() as session:
+            assert session.get(DocumentSegment, segment.id) is None, (
+                "The committed segment deletion was rolled back by a later failure"
+            )
+            assert session.get(DatasetMetadata, metadata.id) is not None
+            assert session.get(Document, document.id) is not None, (
+                "Sanity check: the failing step should not have deleted its own rows"
+            )
+
+    @pytest.mark.parametrize("call_style", ["positional", "keywords"])
+    def test_second_segment_batch_failure_preserves_cleanup_inputs_and_resumes(
+        self,
+        call_style: str,
+        orm_session_maker: sessionmaker[Session],
+        sqlite_engine: Engine,
+        dataset_id: str,
+        tenant_id: str,
+        pipeline_id: str,
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segments = [
+            _persist_segment(
+                orm_session_maker,
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                document_id=document.id,
+                position=position,
+            )
+            for position in range(5)
+        ]
+        binding, attachment_file = _persist_attachment(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        metadata = DatasetMetadata(
+            tenant_id=tenant_id, dataset_id=dataset_id, type="string", name="meta", created_by=str(uuid.uuid4())
+        )
+        with orm_session_maker.begin() as session:
+            session.add(metadata)
+        task_kwargs = {
+            "dataset_id": dataset_id,
+            "tenant_id": tenant_id,
+            "indexing_technique": None,
+            "index_struct": None,
+            "collection_binding_id": None,
+            "doc_form": IndexStructureType.PARAGRAPH_INDEX,
+            "pipeline_id": pipeline_id,
+        }
+        failure = RuntimeError("second segment batch commit failed")
+        segment_deletes: list[str] = []
+
+        def record_segment_delete(statement: str, **_kwargs: object) -> None:
+            if statement.lower().startswith("delete from document_segments"):
+                segment_deletes.append(statement)
+
+        def fail_second_segment_commit(_session: Session) -> None:
+            if len(segment_deletes) == 2:
+                raise failure
+
+        retry_task = clean_dataset_task.retry
+
+        def retry_after_transaction_ends(
+            *, exc: Exception, args: tuple[object, ...], kwargs: dict[str, object], countdown: int
+        ) -> Retry:
+            cleanup_session = mock_index_processor_factory["processor"].clean.call_args.kwargs["session"]
+            assert not cleanup_session.in_transaction()
+            return retry_task(exc=exc, args=args, kwargs=kwargs, countdown=countdown)
+
+        with (
+            patch("tasks.clean_dataset_task._DELETE_BATCH_SIZE", 2),
+            patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh,
+            patch.object(clean_dataset_task, "retry", side_effect=retry_after_transaction_ends),
+            caplog.at_level("INFO", logger="tasks.clean_dataset_task"),
+        ):
+            event.listen(sqlite_engine, "after_cursor_execute", record_segment_delete, named=True)
+            event.listen(orm_session_maker, "before_commit", fail_second_segment_commit)
+            try:
+                with pytest.raises(Retry) as retried:
+                    clean_dataset_task.apply(
+                        args=tuple(task_kwargs.values()) if call_style == "positional" else (),
+                        kwargs=task_kwargs if call_style == "keywords" else {},
+                        throw=True,
+                    )
+            finally:
+                event.remove(sqlite_engine, "after_cursor_execute", record_segment_delete)
+                event.remove(orm_session_maker, "before_commit", fail_second_segment_commit)
+
+            assert len(segment_deletes) == 2
+            assert not any("Cleaned dataset when dataset deleted:" in message for message in caplog.messages)
+            with orm_session_maker() as session:
+                assert sum(session.get(DocumentSegment, segment.id) is not None for segment in segments) == 3
+                assert session.get(Document, document.id) is not None
+                assert session.get(SegmentAttachmentBinding, binding.id) is not None
+                assert session.get(UploadFile, attachment_file.id) is not None
+                assert session.get(DatasetMetadata, metadata.id) is not None
+            mock_storage.delete.assert_not_called()
+            schedule_refresh.assert_called_once_with(tenant_id)
+            assert retried.value.exc is failure
+            assert retried.value.when == 30
+            retry_signature = retried.value.sig
+            assert retry_signature is not None
+            assert retry_signature.args == ()
+            assert retry_signature.kwargs == {**task_kwargs, "index_cleanup_done": True}
+            assert retry_signature.apply(throw=True).successful()
+            mock_index_processor_factory["processor"].clean.assert_called_once()
+            schedule_refresh.assert_called_once_with(tenant_id)
+
+        with orm_session_maker() as session:
+            assert all(session.get(DocumentSegment, segment.id) is None for segment in segments)
+            assert session.get(Document, document.id) is None
+            assert session.get(SegmentAttachmentBinding, binding.id) is None
+            assert session.get(UploadFile, attachment_file.id) is None
+            assert session.get(DatasetMetadata, metadata.id) is None
+        mock_storage.delete.assert_called_once_with(attachment_file.key)
+
+    @pytest.mark.parametrize(("retries", "delay"), [(1, 60), (2, 120), (3, None)])
+    def test_crawl_cache_failure_retries_before_index_cleanup_and_stops_at_limit(
+        self,
+        retries: int,
+        delay: int | None,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_index_processor_factory: dict[str, MagicMock],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        failure = RuntimeError("crawl cache unavailable")
+        with (
+            patch("tasks.clean_dataset_task.cleanup_dataset_crawl_cache", side_effect=failure),
+            patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh,
+            caplog.at_level("INFO", logger="tasks.clean_dataset_task"),
+            pytest.raises(Retry if delay is not None else RuntimeError) as raised,
+        ):
+            clean_dataset_task.apply(
+                kwargs={
+                    "dataset_id": dataset_id,
+                    "tenant_id": tenant_id,
+                    "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
+                    "index_struct": '{"type": "paragraph"}',
+                    "collection_binding_id": collection_binding_id,
+                    "doc_form": IndexStructureType.PARAGRAPH_INDEX,
+                },
+                retries=retries,
+                throw=True,
+            )
+
+        if delay is None:
+            assert raised.value is failure
+        else:
+            assert isinstance(raised.value, Retry)
+            assert raised.value.exc is failure
+            assert raised.value.when == delay
+            # celery-stubs omits the signature stored on Retry at runtime.
+            retry_signature = raised.value.sig  # pyrefly: ignore[missing-attribute]
+            assert retry_signature is not None
+            assert retry_signature.kwargs["index_cleanup_done"] is False
+        assert not any("Cleaned dataset when dataset deleted:" in message for message in caplog.messages)
+        mock_index_processor_factory["processor"].clean.assert_not_called()
+        schedule_refresh.assert_not_called()
+
+
+class TestBatchedDeletes:
+    """Large child tables are deleted in bounded batches."""
+
+    def test_text_segments_use_bounded_transactions_without_image_file_queries(
+        self,
+        orm_session_maker: sessionmaker[Session],
+        sqlite_engine: Engine,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+    ) -> None:
+        """Text-only cleanup must not run no-op file SQL or retain the full dataset."""
+        document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        segments = [
+            _persist_segment(
+                orm_session_maker,
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                document_id=document.id,
+                position=position,
+            )
+            for position in range(5)
+        ]
+        file_queries: list[str] = []
+        committed_segment_loads: list[int] = []
+        loaded_segment_ids: list[str] = []
+
+        def record_file_query(statement: str, **_kwargs: object) -> None:
+            if "from upload_files" in statement.lower():
+                file_queries.append(statement)
+
+        def record_segment_load(_session: Session, instance: object) -> None:
+            if isinstance(instance, DocumentSegment):
+                loaded_segment_ids.append(instance.id)
+
+        def record_commit(_session: Session) -> None:
+            if loaded_segment_ids:
+                committed_segment_loads.append(len(loaded_segment_ids))
+                loaded_segment_ids.clear()
+
+        event.listen(sqlite_engine, "before_cursor_execute", record_file_query, named=True)
+        event.listen(orm_session_maker, "loaded_as_persistent", record_segment_load)
+        event.listen(orm_session_maker, "after_commit", record_commit)
+        try:
+            with patch("tasks.clean_dataset_task._DELETE_BATCH_SIZE", 2):
+                _run_clean_dataset(
+                    dataset_id=dataset_id,
+                    tenant_id=tenant_id,
+                    collection_binding_id=collection_binding_id,
+                )
+        finally:
+            event.remove(sqlite_engine, "before_cursor_execute", record_file_query)
+            event.remove(orm_session_maker, "loaded_as_persistent", record_segment_load)
+            event.remove(orm_session_maker, "after_commit", record_commit)
+
+        assert file_queries == [], "Text-only segments issued unnecessary UploadFile SQL"
+        assert sum(committed_segment_loads) == len(segments)
+        assert max(committed_segment_loads) <= 2, "Segment cleanup exceeded the transaction batch size"
+        mock_storage.delete.assert_not_called()
+        with orm_session_maker() as session:
+            assert all(session.get(DocumentSegment, segment.id) is None for segment in segments)
+
+    def test_documents_are_deleted_across_multiple_batches(
+        self,
+        orm_session_maker: sessionmaker[Session],
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+        mock_get_image_upload_file_ids: MagicMock,
+    ):
+        """With a batch size smaller than the row count the loop must still drain the
+        table, rather than stopping after the first batch."""
+        documents = [_persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id) for _ in range(5)]
+
+        with patch("tasks.clean_dataset_task._DELETE_BATCH_SIZE", 2):
+            _run_clean_dataset(
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                collection_binding_id=collection_binding_id,
+            )
+
+        with orm_session_maker() as session:
+            remaining = [document.id for document in documents if session.get(Document, document.id) is not None]
+        assert not remaining, f"Batched delete left {len(remaining)} of 5 documents behind"
 
 
 def test_dataset_cleanup_keeps_a_leased_legacy_source_file(

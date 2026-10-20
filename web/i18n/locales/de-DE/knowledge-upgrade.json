@@ -10,8 +10,6 @@
   "upgrade.failedDescription": "Upgrade fehlgeschlagen – es wurde nichts geändert. Ihre klassische Wissensdatenbank ist weiterhin verfügbar.",
   "upgrade.failedTitle": "Upgrade fehlgeschlagen",
   "upgrade.failedToastDescription": "„{{name}}“ bleibt eine klassische Wissensdatenbank; keine Daten wurden geändert",
-  "upgrade.guideDescription": "Das Upgrade überführt diese klassische Wissensdatenbank in eine Agent-Wissensdatenbank. Dokumente aus verbundenen Quellen bleiben synchron und werden automatisch indiziert. Dokumente, Einstellungen und App-Verknüpfungen werden übernommen. Verknüpfte Apps funktionieren weiter.",
-  "upgrade.guideTitle": "Upgrade von einer klassischen Wissensdatenbank auf eine Agent-Wissensdatenbank",
   "upgrade.justNow": "Gerade eben",
   "upgrade.menuLabel": "Upgrade auf Agent-Wissensdatenbank",
   "upgrade.migratingDocuments": "Dokumente werden migriert…",

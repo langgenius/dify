@@ -10,8 +10,6 @@
   "upgrade.failedDescription": "La actualización falló; no se cambió nada. Tu base de conocimientos clásica sigue disponible.",
   "upgrade.failedTitle": "Error en la actualización",
   "upgrade.failedToastDescription": "«{{name}}» sigue siendo una base de conocimientos clásica; no se modificaron datos",
-  "upgrade.guideDescription": "La actualización lleva esta base de conocimientos clásica a una base de conocimientos Agent. Conecta una fuente y sus documentos se mantendrán sincronizados e indexados automáticamente. Los documentos, ajustes y conexiones de aplicaciones se transfieren, y las aplicaciones vinculadas siguen funcionando.",
-  "upgrade.guideTitle": "Actualizar de una base de conocimientos clásica a una base de conocimientos Agent",
   "upgrade.justNow": "Ahora mismo",
   "upgrade.menuLabel": "Actualizar a una base de conocimientos Agent",
   "upgrade.migratingDocuments": "Migrando documentos…",

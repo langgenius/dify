@@ -4,6 +4,7 @@
 @source '../features';
 @source '../context';
 @source '../hooks';
+@source '../features';
 @source '.';
 @source '../../packages/dify-ui/src';
 @source '../node_modules/streamdown/dist';

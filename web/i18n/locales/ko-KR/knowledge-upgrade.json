@@ -10,8 +10,6 @@
   "upgrade.failedDescription": "업그레이드 실패 — 변경된 내용이 없습니다. 기본형 지식 베이스는 계속 사용할 수 있습니다.",
   "upgrade.failedTitle": "업그레이드 실패",
   "upgrade.failedToastDescription": "“{{name}}”은(는) 기본형 지식 베이스로 유지되며 데이터가 변경되지 않았습니다",
-  "upgrade.guideDescription": "업그레이드하면 이 기본형 지식 베이스가 Agent 지식 베이스로 이동합니다. 소스를 연결하면 문서가 동기화되고 자동으로 인덱싱됩니다. 모든 항목이 이전되며 연결된 앱도 계속 작동합니다.",
-  "upgrade.guideTitle": "기본형 지식 베이스에서 Agent 지식 베이스로 업그레이드",
   "upgrade.justNow": "방금",
   "upgrade.menuLabel": "Agent 지식 베이스로 업그레이드",
   "upgrade.migratingDocuments": "문서 마이그레이션 중…",

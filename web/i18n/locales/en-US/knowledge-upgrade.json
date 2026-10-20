@@ -10,8 +10,6 @@
   "upgrade.failedDescription": "Upgrade failed. Nothing was changed, and your Classic Knowledge Base is still available.",
   "upgrade.failedTitle": "Upgrade failed",
   "upgrade.failedToastDescription": "“{{name}}” remains a Classic Knowledge Base. No data was changed",
-  "upgrade.guideDescription": "Upgrading moves this Classic Knowledge Base to an Agent Knowledge Base. Connect a source and its documents stay in sync, indexed automatically. Documents, settings, and app connections carry over, and linked apps keep working.",
-  "upgrade.guideTitle": "Upgrade from the Classic Knowledge Base to an Agent Knowledge Base",
   "upgrade.justNow": "Just now",
   "upgrade.menuLabel": "Upgrade to Agent Knowledge Base",
   "upgrade.migratingDocuments": "Migrating documents…",

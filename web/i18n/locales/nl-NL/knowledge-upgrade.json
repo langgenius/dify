@@ -10,8 +10,6 @@
   "upgrade.failedDescription": "Upgrade mislukt — er is niets gewijzigd. Je klassieke kennisbank blijft beschikbaar.",
   "upgrade.failedTitle": "Upgrade mislukt",
   "upgrade.failedToastDescription": "‘{{name}}’ blijft een klassieke kennisbank; er zijn geen gegevens gewijzigd",
-  "upgrade.guideDescription": "De upgrade zet deze klassieke kennisbank over naar een Agent-kennisbank. Koppel een bron en de documenten blijven gesynchroniseerd en worden automatisch geïndexeerd. Documenten, instellingen en app-koppelingen worden overgenomen en gekoppelde apps blijven werken.",
-  "upgrade.guideTitle": "Upgraden van een klassieke kennisbank naar een Agent-kennisbank",
   "upgrade.justNow": "Zojuist",
   "upgrade.menuLabel": "Upgraden naar Agent-kennisbank",
   "upgrade.migratingDocuments": "Documenten migreren…",

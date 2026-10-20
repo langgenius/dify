@@ -10,8 +10,6 @@
   "upgrade.failedDescription": "升级失败，未进行任何更改。经典知识库仍可继续使用。",
   "upgrade.failedTitle": "升级失败",
   "upgrade.failedToastDescription": "“{{name}}”仍保留为经典知识库，数据未发生变化",
-  "upgrade.guideDescription": "升级会将此经典知识库迁移为 Agent 知识库。连接数据源后，文档会保持同步并自动建立索引。文档、设置和应用连接都会迁移，已连接的应用也会继续工作。",
-  "upgrade.guideTitle": "从经典知识库升级到 Agent 知识库",
   "upgrade.justNow": "刚刚",
   "upgrade.menuLabel": "升级为 Agent 知识库",
   "upgrade.migratingDocuments": "正在迁移文档…",

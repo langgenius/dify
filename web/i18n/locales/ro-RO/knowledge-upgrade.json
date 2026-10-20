@@ -10,8 +10,6 @@
   "upgrade.failedDescription": "Actualizarea a eșuat — nu s-a schimbat nimic. Baza de cunoștințe clasică rămâne disponibilă.",
   "upgrade.failedTitle": "Actualizarea a eșuat",
   "upgrade.failedToastDescription": "„{{name}}” rămâne o bază de cunoștințe clasică; nu au fost modificate date",
-  "upgrade.guideDescription": "Actualizarea mută această bază de cunoștințe clasică într-o bază de cunoștințe Agent. Conectează o sursă, iar documentele rămân sincronizate și sunt indexate automat. Documentele, setările și conexiunile aplicațiilor sunt transferate, iar aplicațiile conectate continuă să funcționeze.",
-  "upgrade.guideTitle": "Actualizarea unei baze de cunoștințe clasice la o bază de cunoștințe Agent",
   "upgrade.justNow": "Chiar acum",
   "upgrade.menuLabel": "Actualizează la o bază de cunoștințe Agent",
   "upgrade.migratingDocuments": "Se migrează documentele…",

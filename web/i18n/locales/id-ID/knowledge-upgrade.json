@@ -10,8 +10,6 @@
   "upgrade.failedDescription": "Peningkatan gagal — tidak ada yang berubah. Basis pengetahuan klasik Anda masih tersedia.",
   "upgrade.failedTitle": "Peningkatan gagal",
   "upgrade.failedToastDescription": "“{{name}}” tetap menjadi basis pengetahuan klasik; tidak ada data yang berubah",
-  "upgrade.guideDescription": "Peningkatan memindahkan basis pengetahuan klasik ini ke basis pengetahuan Agent. Hubungkan sumber agar dokumennya tetap sinkron dan diindeks otomatis. Semuanya dipindahkan dan aplikasi tertaut tetap berfungsi.",
-  "upgrade.guideTitle": "Tingkatkan basis pengetahuan klasik ke basis pengetahuan Agent",
   "upgrade.justNow": "Baru saja",
   "upgrade.menuLabel": "Tingkatkan ke basis pengetahuan Agent",
   "upgrade.migratingDocuments": "Memigrasikan dokumen…",

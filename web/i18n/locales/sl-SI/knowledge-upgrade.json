@@ -10,8 +10,6 @@
   "upgrade.failedDescription": "Nadgradnja ni uspela — nič se ni spremenilo. Klasična zbirka znanja je še vedno na voljo.",
   "upgrade.failedTitle": "Nadgradnja ni uspela",
   "upgrade.failedToastDescription": "»{{name}}« ostane klasična zbirka znanja; podatki niso bili spremenjeni",
-  "upgrade.guideDescription": "Nadgradnja premakne to klasično zbirko znanja v zbirko znanja Agent. Povežite vir in dokumenti bodo samodejno sinhronizirani ter indeksirani. Dokumenti, nastavitve in povezave aplikacij se prenesejo, povezane aplikacije pa delujejo naprej.",
-  "upgrade.guideTitle": "Nadgradnja klasične zbirke znanja v zbirko znanja Agent",
   "upgrade.justNow": "Pravkar",
   "upgrade.menuLabel": "Nadgradi v zbirko znanja Agent",
   "upgrade.migratingDocuments": "Selitev dokumentov…",

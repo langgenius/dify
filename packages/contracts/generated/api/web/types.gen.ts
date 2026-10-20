@@ -1895,6 +1895,8 @@ export type GetLoginStatusData = {
 
 export type GetLoginStatusErrors = {
   401: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
   default: ErrorResponse
 }
 

@@ -10,8 +10,6 @@
   "upgrade.failedDescription": "فشلت الترقية — لم يتغير شيء. ما زالت قاعدة المعرفة الكلاسيكية متاحة.",
   "upgrade.failedTitle": "فشلت الترقية",
   "upgrade.failedToastDescription": "تبقى «{{name}}» قاعدة معرفة كلاسيكية، ولم تتغير أي بيانات",
-  "upgrade.guideDescription": "تعمل الترقية على نقل قاعدة المعرفة الكلاسيكية إلى قاعدة معرفة Agent. اربط مصدرًا لتظل مستنداته متزامنة ومفهرسة تلقائيًا. يتم نقل كل شيء وتستمر التطبيقات المرتبطة في العمل.",
-  "upgrade.guideTitle": "الترقية من قاعدة المعرفة الكلاسيكية إلى قاعدة معرفة Agent",
   "upgrade.justNow": "الآن",
   "upgrade.menuLabel": "الترقية إلى قاعدة معرفة Agent",
   "upgrade.migratingDocuments": "جارٍ نقل المستندات…",

@@ -10,8 +10,6 @@
   "upgrade.failedDescription": "Yükseltme başarısız oldu — hiçbir şey değişmedi. Klasik bilgi tabanınız kullanılabilir durumda.",
   "upgrade.failedTitle": "Yükseltme başarısız",
   "upgrade.failedToastDescription": "“{{name}}” klasik bilgi tabanı olarak kalır; hiçbir veri değiştirilmedi",
-  "upgrade.guideDescription": "Yükseltme, bu klasik bilgi tabanını Agent bilgi tabanına taşır. Bir kaynak bağladığınızda belgeler senkronize edilir ve otomatik olarak dizine eklenir. Her şey aktarılır ve bağlı uygulamalar çalışmaya devam eder.",
-  "upgrade.guideTitle": "Klasik bilgi tabanından Agent bilgi tabanına yükseltme",
   "upgrade.justNow": "Az önce",
   "upgrade.menuLabel": "Agent bilgi tabanına yükselt",
   "upgrade.migratingDocuments": "Belgeler taşınıyor…",

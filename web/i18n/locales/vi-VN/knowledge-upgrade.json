@@ -10,8 +10,6 @@
   "upgrade.failedDescription": "Nâng cấp thất bại — không có gì thay đổi. Cơ sở tri thức truyền thống của bạn vẫn hoạt động.",
   "upgrade.failedTitle": "Nâng cấp thất bại",
   "upgrade.failedToastDescription": "“{{name}}” vẫn là cơ sở tri thức truyền thống; không có dữ liệu nào thay đổi",
-  "upgrade.guideDescription": "Việc nâng cấp đưa cơ sở tri thức truyền thống này sang cơ sở tri thức Agent. Kết nối một nguồn để tài liệu luôn đồng bộ và tự động được lập chỉ mục. Mọi thứ được chuyển sang và các ứng dụng đã liên kết tiếp tục hoạt động.",
-  "upgrade.guideTitle": "Nâng cấp từ cơ sở tri thức truyền thống lên cơ sở tri thức Agent",
   "upgrade.justNow": "Vừa xong",
   "upgrade.menuLabel": "Nâng cấp lên cơ sở tri thức Agent",
   "upgrade.migratingDocuments": "Đang di chuyển tài liệu…",

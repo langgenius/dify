@@ -1,5 +1,6 @@
 import type { AfterResponseHook, BeforeRequestHook, Hooks } from 'ky'
 import type { IOtherOptions } from './base'
+import type { RequestGuard } from './request-guard'
 import Cookies from 'js-cookie'
 import ky from 'ky'
 import {
@@ -16,6 +17,7 @@ import {
 import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
 import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
+import { captureRequestGuard } from './request-guard'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
@@ -45,11 +47,16 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
   }
 }
 
-const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
+const afterResponseErrorCode = (
+  otherOptions: IOtherOptions,
+  requestGuard: RequestGuard | undefined,
+): AfterResponseHook => {
   return async ({ request, response }) => {
     if (isHttpErrorStatus(response.status)) {
       const error = await httpErrorFromResponse(response)
       const errorData = error.data
+      const handled = requestGuard?.handleError(response.status, errorData, error)
+      if (handled || requestGuard?.isActive() === false) throw error
       const shouldNotifyError =
         response.status >= 400 &&
         response.status !== 401 &&
@@ -136,6 +143,8 @@ async function base<T>(
     fetchCompat = false,
     request,
   } = otherOptions
+  const requestGuard = captureRequestGuard(url, isPublicAPI, request?.method || init.method)
+  requestGuard?.beforeRequest()
 
   const headers = new Headers(headersFromProps || {})
 
@@ -167,7 +176,10 @@ async function base<T>(
         ...(baseHooks.beforeRequest || []),
         isPublicAPI && beforeRequestPublicWithCode,
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
-      afterResponse: [...(baseHooks.afterResponse || []), afterResponseErrorCode(otherOptions)],
+      afterResponse: [
+        ...(baseHooks.afterResponse || []),
+        afterResponseErrorCode(otherOptions, requestGuard),
+      ],
     },
   })
 

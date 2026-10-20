@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import type {
   ModelSelectorModel,
   ModelSelectorModelPredicate,
@@ -34,6 +35,7 @@ type ModelSelectorBaseProps = {
   ariaInvalid?: boolean
   ariaLabelledBy?: string
   ariaRequired?: boolean
+  triggerRef?: Ref<HTMLButtonElement>
   'aria-labelledby'?: string
   value?: ModelSelectorValue
   models: ModelSelectorProvider[]
@@ -67,6 +69,7 @@ function ModelSelectorRoot({
   ariaInvalid,
   ariaLabelledBy,
   ariaRequired,
+  triggerRef,
   'aria-labelledby': labelledBy,
   value,
   models,
@@ -157,6 +160,7 @@ function ModelSelectorRoot({
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <ModelSelectorTrigger
+        ref={triggerRef}
         aria-describedby={ariaDescribedBy}
         aria-invalid={ariaInvalid || undefined}
         aria-labelledby={ariaLabelledBy || labelledBy}
