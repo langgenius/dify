@@ -1,8 +1,8 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
-import { createTestQueryClient } from '@/test/query-client'
 import { ServiceApi } from '../index'
 
 let mockPermissionKeys = ['dataset.api_key.manage']
@@ -18,7 +18,7 @@ vi.mock('@/context/permission-state', async () => {
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: {
     call: async (path: string[]) => {
-      if (path.join('.') === 'datasets.apiKeys.get') return { data: [] }
+      if (path.join('.') === 'datasets.apiKeys.get') return { data: [], max_keys: 10 }
       throw new Error(`Unexpected API call: ${path.join('.')}`)
     },
   },
@@ -40,7 +40,7 @@ describe('ServiceApi', () => {
   it('opens secret-key management from the service API details', async () => {
     const user = userEvent.setup()
     render(
-      <QueryClientProvider client={createTestQueryClient()}>
+      <QueryClientProvider client={createAccountProfileQueryClient()}>
         <ServiceApi apiBaseUrl="https://api.example.com" />
       </QueryClientProvider>,
     )
@@ -66,7 +66,7 @@ describe('ServiceApi', () => {
     const user = userEvent.setup()
     mockPermissionKeys = []
     render(
-      <QueryClientProvider client={createTestQueryClient()}>
+      <QueryClientProvider client={createAccountProfileQueryClient()}>
         <ServiceApi apiBaseUrl="https://api.example.com" />
       </QueryClientProvider>,
     )
