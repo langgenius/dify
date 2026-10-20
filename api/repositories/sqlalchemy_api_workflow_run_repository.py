@@ -23,7 +23,7 @@ import json
 import logging
 import uuid
 from collections.abc import Callable, Mapping, Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, NamedTuple, cast, override
 
@@ -33,6 +33,7 @@ from sqlalchemy import and_, delete, func, null, or_, select, tuple_, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, load_only, selectinload, sessionmaker
 
+from configs import dify_config
 from core.workflow.human_input_forms import load_form_tokens_by_form_id
 from core.workflow.nodes.human_input.pause_reason import (
     HumanInputRequired,
@@ -81,6 +82,7 @@ from repositories.types import (
     DailyTerminalsStats,
     DailyTokenCostStats,
 )
+from repositories.workflow.execution_write_repository import DebugLease, read_debug_lease, write_debug_lease
 from services.retention.workflow_run.tenant_prefix import tenant_prefix_condition
 
 logger = logging.getLogger(__name__)
@@ -1339,7 +1341,12 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         """
         with self._session_maker() as session:
             # Query workflow run with pause and state file
-            stmt = select(WorkflowRun).options(selectinload(WorkflowRun.pause)).where(WorkflowRun.id == workflow_run_id)
+            stmt = (
+                select(WorkflowRun)
+                .options(selectinload(WorkflowRun.pause))
+                .where(WorkflowRun.id == workflow_run_id)
+                .with_for_update()
+            )
             workflow_run = session.scalar(stmt)
 
             if workflow_run is None:
@@ -1566,6 +1573,16 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             # Mark as resumed
             pause_model.resumed_at = naive_utc_now()
             workflow_run.status = WorkflowExecutionStatus.RUNNING
+            reservation = read_debug_lease(session, workflow_run)
+            if reservation is not None:
+                write_debug_lease(
+                    session,
+                    workflow_run,
+                    DebugLease(
+                        naive_utc_now() + timedelta(seconds=dify_config.WORKFLOW_DEBUG_RESERVATION_TIMEOUT),
+                        reservation.started_at,
+                    ),
+                )
 
             session.add(pause_model)
             session.add(workflow_run)
