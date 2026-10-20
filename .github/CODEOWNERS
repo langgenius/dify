@@ -47,7 +47,6 @@
 /api/tests/*/core/plugin/ @WH-2099
 /api/tests/*/services/plugin/ @WH-2099
 /api/tests/*/controllers/inner_api/plugin/ @WH-2099
-/api/tests/*/plugin/ @WH-2099
 /api/tests/*/controllers/trigger/ @CourTeous33
 /api/tests/*/core/trigger/ @CourTeous33
 /api/tests/*/trigger/ @CourTeous33
@@ -59,7 +58,6 @@
 /api/core/rag/ @JohnJyong
 /api/services/knowledge/ @JohnJyong
 /api/services/rag_pipeline/ @JohnJyong
-/api/services/knowledge_service.py @JohnJyong
 /api/services/hit_testing_service.py @JohnJyong
 /api/services/entities/knowledge_entities/ @JohnJyong
 /api/services/entities/external_knowledge_entities/ @JohnJyong
@@ -181,10 +179,6 @@
 /web/app/components/app/create-app-modal/ @JzoNgKVO @iamjoel
 /web/app/components/app/create-from-dsl-modal/ @JzoNgKVO @iamjoel
 
-# Frontend - App - API Documentation
-/web/app/components/develop/ @JzoNgKVO @iamjoel
-/web/app/components/develop/template/*.mdx @JzoNgKVO @iamjoel @RiskeyL
-
 # Frontend - App - Logs and Annotations
 /web/app/components/app/workflow-log/ @JzoNgKVO @iamjoel
 /web/app/components/app/log/ @JzoNgKVO @iamjoel
@@ -293,7 +287,6 @@
 /web/service/console/ @lyzno1 @hyoban
 
 # Frontend - Browser Mode Tests
-/web/app/**/*.browser.spec.ts @lyzno1 @hyoban
 /web/app/**/*.browser.spec.tsx @lyzno1 @hyoban
 
 # Docker
