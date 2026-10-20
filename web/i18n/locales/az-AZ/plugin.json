@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "Bütün iş sahəsi üzvləri",
   "auth.connection.apiKey": "API açarı",
   "auth.connection.edit": "Bağlantını redaktə et",
+  "auth.connection.loadError": "Bağlantıları yükləmək mümkün olmadı",
   "auth.connection.name": "Bağlantının adı",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "OAuth müştərisinin parametrləri",

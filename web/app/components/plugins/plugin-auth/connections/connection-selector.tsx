@@ -1,7 +1,7 @@
 import type { ApiKeyModalDataSource } from '../authorize/api-key-modal'
 import type { Credential, PluginPayload } from '../types'
 import type { ConnectionActionsDataSource } from './connection-actions'
-import type { ConnectionPickerOption } from './connection-picker'
+import type { ConnectionPickerLoadError, ConnectionPickerOption } from './connection-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import { createDropdownMenuHandle } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -23,6 +23,7 @@ export type ConnectionSelectorDataSource = {
   }
   fallbackName: string
   unavailable?: boolean
+  loadError?: ConnectionPickerLoadError
   canUse: boolean
   canCreate: boolean
   canOAuth: boolean
@@ -116,6 +117,7 @@ const ConnectionSelector = ({ dataSource }: { dataSource: ConnectionSelectorData
           selected={selectedOption}
           fallbackName={dataSource.fallbackName}
           unavailable={dataSource.unavailable}
+          loadError={dataSource.loadError}
           onSelect={(id) => {
             if (workspaceDefault && id === workspaceDefault.option.id) {
               if (!dataSource.canUse || workspaceDefault.option.disabled) return

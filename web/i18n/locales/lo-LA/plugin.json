@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "ສະມາຊິກທຸກຄົນໃນພື້ນທີ່ເຮັດວຽກ",
   "auth.connection.apiKey": "ລະຫັດ API",
   "auth.connection.edit": "ແກ້ໄຂການເຊື່ອມຕໍ່",
+  "auth.connection.loadError": "ບໍ່ສາມາດໂຫຼດການເຊື່ອມຕໍ່ໄດ້",
   "auth.connection.name": "ຊື່ການເຊື່ອມຕໍ່",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "ການຕັ້ງຄ່າ OAuth Client",

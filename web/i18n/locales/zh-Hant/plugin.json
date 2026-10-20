@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "所有工作區成員",
   "auth.connection.apiKey": "API 金鑰",
   "auth.connection.edit": "編輯連線",
+  "auth.connection.loadError": "無法載入連線",
   "auth.connection.name": "連線名稱",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "OAuth 用戶端設定",

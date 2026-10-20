@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "Wszyscy członkowie obszaru roboczego",
   "auth.connection.apiKey": "Klucz API",
   "auth.connection.edit": "Edytuj połączenie",
+  "auth.connection.loadError": "Nie można wczytać połączeń",
   "auth.connection.name": "Nazwa połączenia",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "Ustawienia klienta OAuth",

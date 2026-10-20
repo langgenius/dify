@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "Tất cả thành viên không gian làm việc",
   "auth.connection.apiKey": "Khóa API",
   "auth.connection.edit": "Chỉnh sửa kết nối",
+  "auth.connection.loadError": "Không thể tải các kết nối",
   "auth.connection.name": "Tên kết nối",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "Cài đặt ứng dụng khách OAuth",

@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "Tüm çalışma alanı üyeleri",
   "auth.connection.apiKey": "API anahtarı",
   "auth.connection.edit": "Bağlantıyı düzenle",
+  "auth.connection.loadError": "Bağlantılar yüklenemedi",
   "auth.connection.name": "Bağlantı adı",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "OAuth istemci ayarları",

@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "वर्कस्पेस के सभी सदस्य",
   "auth.connection.apiKey": "API कुंजी",
   "auth.connection.edit": "कनेक्शन संपादित करें",
+  "auth.connection.loadError": "कनेक्शन लोड नहीं हो सके",
   "auth.connection.name": "कनेक्शन का नाम",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "OAuth क्लाइंट सेटिंग्स",

@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "Alle werkruimteleden",
   "auth.connection.apiKey": "API-sleutel",
   "auth.connection.edit": "Verbinding bewerken",
+  "auth.connection.loadError": "Kan verbindingen niet laden",
   "auth.connection.name": "Verbindingsnaam",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "OAuth-clientinstellingen",

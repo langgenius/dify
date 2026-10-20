@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "Усі учасники робочого простору",
   "auth.connection.apiKey": "Ключ API",
   "auth.connection.edit": "Редагувати підключення",
+  "auth.connection.loadError": "Не вдалося завантажити підключення",
   "auth.connection.name": "Назва підключення",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "Налаштування клієнта OAuth",

@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "Todos os membros do espaço de trabalho",
   "auth.connection.apiKey": "Chave da API",
   "auth.connection.edit": "Editar conexão",
+  "auth.connection.loadError": "Não foi possível carregar as conexões",
   "auth.connection.name": "Nome da conexão",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "Configurações do cliente OAuth",

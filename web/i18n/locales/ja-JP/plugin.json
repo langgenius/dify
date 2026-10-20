@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "すべてのワークスペースメンバー",
   "auth.connection.apiKey": "APIキー",
   "auth.connection.edit": "接続を編集",
+  "auth.connection.loadError": "接続を読み込めませんでした",
   "auth.connection.name": "接続名",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "OAuthクライアント設定",

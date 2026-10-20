@@ -189,6 +189,48 @@ describe('WorkspaceConnectionSelector', () => {
     expect(screen.queryByRole('button', { name: /Team API connection/ })).not.toBeInTheDocument()
   })
 
+  it('retries loading the list without changing the selected connection', async () => {
+    const user = userEvent.setup()
+    const onRetry = vi.fn()
+    const onAuthorizationItemClick = vi.fn()
+    const RetryingSelector = () => {
+      const [loadError, setLoadError] = useState(true)
+      return (
+        <WorkspaceConnectionSelector
+          pluginPayload={pluginPayload}
+          credentialId="personal-oauth"
+          authorization={createAuthorization({
+            loadError: loadError
+              ? {
+                  isRetrying: false,
+                  onRetry: () => {
+                    onRetry()
+                    setLoadError(false)
+                  },
+                }
+              : undefined,
+          })}
+          onAuthorizationItemClick={onAuthorizationItemClick}
+        />
+      )
+    }
+    renderSelector({}, undefined, <RetryingSelector />)
+
+    const trigger = screen.getByRole('button', { name: /^Personal OAuth connection/ })
+    await user.click(trigger)
+    expect(screen.getByRole('status')).toHaveTextContent('plugin.auth.connection.loadError')
+    expect(screen.queryByRole('button', { name: /^Team API connection/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'plugin.auth.addOAuth' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(onRetry).toHaveBeenCalledOnce()
+    expect(onAuthorizationItemClick).not.toHaveBeenCalled()
+    expect(trigger).toHaveTextContent('Personal OAuth connection')
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Team API connection/ })).toBeVisible()
+  })
+
   it('groups connections by visibility and closes the popup after selecting a connection', async () => {
     const user = userEvent.setup()
     const onAuthorizationItemClick = vi.fn()

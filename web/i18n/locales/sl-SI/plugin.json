@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "Vsi člani delovnega prostora",
   "auth.connection.apiKey": "Ključ API",
   "auth.connection.edit": "Uredi povezavo",
+  "auth.connection.loadError": "Povezav ni bilo mogoče naložiti",
   "auth.connection.name": "Ime povezave",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "Nastavitve odjemalca OAuth",

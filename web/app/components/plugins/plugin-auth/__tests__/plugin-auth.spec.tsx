@@ -144,6 +144,30 @@ describe('PluginAuth', () => {
     expect(screen.queryByTestId('authorized')).not.toBeInTheDocument()
   })
 
+  it('offers a retry instead of treating a failed connection request as an empty list', async () => {
+    const user = userEvent.setup()
+    const onRetry = vi.fn()
+    const onAuthorizationItemClick = vi.fn()
+    mockUsePluginAuth.mockReturnValue({
+      isAuthorized: false,
+      canOAuth: false,
+      canApiKey: false,
+      credentials: [],
+      loadError: { onRetry },
+      invalidPluginCredentialInfo: vi.fn(),
+      notAllowCustomCredential: false,
+    })
+    render(<PluginAuth pluginPayload={defaultPayload} nodeAuth={{ onAuthorizationItemClick }} />, {
+      wrapper: createConnectionQueryWrapper(),
+    })
+
+    await user.click(screen.getByRole('button', { name: /^plugin.auth.workspaceDefault/ }))
+    expect(screen.getByRole('status')).toHaveTextContent('plugin.auth.connection.loadError')
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(onRetry).toHaveBeenCalledOnce()
+    expect(onAuthorizationItemClick).not.toHaveBeenCalled()
+  })
+
   it('renders Authorized component when authorized without node auth configuration', () => {
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: true,

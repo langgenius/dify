@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "所有工作空间成员",
   "auth.connection.apiKey": "API 密钥",
   "auth.connection.edit": "编辑连接",
+  "auth.connection.loadError": "无法加载连接",
   "auth.connection.name": "连接名称",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "OAuth 客户端设置",

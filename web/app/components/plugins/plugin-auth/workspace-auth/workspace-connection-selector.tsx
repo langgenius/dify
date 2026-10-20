@@ -71,12 +71,14 @@ const WorkspaceConnectionSelector = ({
   const selectedCredential = credentialId
     ? credentials.find((credential) => credential.id === credentialId)
     : defaultCredential
-  const unavailable = selectedCredential?.not_allowed_to_use || (!isLoading && !selectedCredential)
+  const unavailable =
+    selectedCredential?.not_allowed_to_use ||
+    (!authorization.loadError && !isLoading && !selectedCredential)
   const selectedName =
     selectedCredential?.name ||
     (isLoading
       ? t(($) => $.loading, { ns: 'common' })
-      : credentialId
+      : credentialId && !authorization.loadError
         ? t(($) => $['auth.authRemoved'], { ns: 'plugin' })
         : t(($) => $['auth.workspaceDefault'], { ns: 'plugin' }))
 
@@ -143,6 +145,7 @@ const WorkspaceConnectionSelector = ({
           },
           fallbackName: selectedName,
           unavailable,
+          loadError: authorization.loadError,
           canUse: canUseCredential,
           canCreate: canCreateCredential,
           canOAuth: !!canOAuth,

@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "Semua anggota ruang kerja",
   "auth.connection.apiKey": "Kunci API",
   "auth.connection.edit": "Edit koneksi",
+  "auth.connection.loadError": "Tidak dapat memuat koneksi",
   "auth.connection.name": "Nama koneksi",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "Pengaturan klien OAuth",

@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "جميع أعضاء مساحة العمل",
   "auth.connection.apiKey": "مفتاح API",
   "auth.connection.edit": "تعديل الاتصال",
+  "auth.connection.loadError": "تعذر تحميل الاتصالات",
   "auth.connection.name": "اسم الاتصال",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "إعدادات عميل OAuth",

@@ -44,16 +44,16 @@ const WorkspaceAuth = ({
     pluginPayload.category === AuthCategory.tool &&
     (canOAuth || canApiKey)
 
-  if (isAuthorized) {
-    if (nodeAuth)
-      return (
-        <WorkspaceConnectionSelector
-          pluginPayload={pluginPayload}
-          authorization={authorization}
-          {...nodeAuth}
-        />
-      )
+  if (nodeAuth && (isAuthorized || authorization.loadError))
+    return (
+      <WorkspaceConnectionSelector
+        pluginPayload={pluginPayload}
+        authorization={authorization}
+        {...nodeAuth}
+      />
+    )
 
+  if (isAuthorized) {
     return (
       <Authorized
         pluginPayload={pluginPayload}

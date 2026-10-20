@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "모든 워크스페이스 멤버",
   "auth.connection.apiKey": "API 키",
   "auth.connection.edit": "연결 편집",
+  "auth.connection.loadError": "연결을 불러오지 못했습니다",
   "auth.connection.name": "연결 이름",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "OAuth 클라이언트 설정",

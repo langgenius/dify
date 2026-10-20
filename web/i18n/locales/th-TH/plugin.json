@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "สมาชิกทุกคนในพื้นที่ทำงาน",
   "auth.connection.apiKey": "คีย์ API",
   "auth.connection.edit": "แก้ไขการเชื่อมต่อ",
+  "auth.connection.loadError": "ไม่สามารถโหลดการเชื่อมต่อได้",
   "auth.connection.name": "ชื่อการเชื่อมต่อ",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "การตั้งค่าไคลเอนต์ OAuth",

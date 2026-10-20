@@ -3635,6 +3635,7 @@ export default interface Resources {
     'auth.connection.allWorkspaceMembers': 'All workspace members'
     'auth.connection.apiKey': 'API key'
     'auth.connection.edit': 'Edit connection'
+    'auth.connection.loadError': "Couldn't load connections"
     'auth.connection.name': 'Connection name'
     'auth.connection.oauth': 'OAuth'
     'auth.connection.oauthClientSettings': 'OAuth client settings'

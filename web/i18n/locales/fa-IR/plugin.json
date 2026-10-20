@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "همه اعضای فضای کاری",
   "auth.connection.apiKey": "کلید API",
   "auth.connection.edit": "ویرایش اتصال",
+  "auth.connection.loadError": "بارگیری اتصال‌ها ممکن نشد",
   "auth.connection.name": "نام اتصال",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "تنظیمات کلاینت OAuth",

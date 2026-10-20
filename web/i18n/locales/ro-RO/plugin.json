@@ -46,6 +46,7 @@
   "auth.connection.allWorkspaceMembers": "Toți membrii spațiului de lucru",
   "auth.connection.apiKey": "Cheie API",
   "auth.connection.edit": "Editează conexiunea",
+  "auth.connection.loadError": "Nu s-au putut încărca conexiunile",
   "auth.connection.name": "Numele conexiunii",
   "auth.connection.oauth": "OAuth",
   "auth.connection.oauthClientSettings": "Setările clientului OAuth",
