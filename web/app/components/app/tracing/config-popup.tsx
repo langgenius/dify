@@ -75,11 +75,13 @@ export function ConfigPopup({
       select: (features) => features.agent_tracing_api_collection_enabled,
     }),
   )
-  // Agent tracing settings only matter once traces have a destination.
+  // Deployment availability is independent of the application destination.
   const agentTracingSection =
-    usesAgentTracePipeline(resource) && chosenProvider && agentTracingEnabled !== undefined
+    usesAgentTracePipeline(resource) && agentTracingEnabled !== undefined
       ? agentTracingEnabled
-        ? 'settings'
+        ? chosenProvider
+          ? 'settings'
+          : null
         : 'unavailable'
       : null
   const groups = [

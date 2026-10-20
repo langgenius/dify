@@ -321,6 +321,8 @@
   "tracing.run.viewTrace": "Vezi această rulare",
   "tracing.supported": "Acceptat",
   "tracing.tencent.description": "Monitorizarea Performanței Aplicațiilor Tencent oferă trasabilitate cuprinzătoare și analiză multidimensională pentru aplicațiile LLM.",
+  "tracing.tencent.endpointHelp": "Copiați endpoint-ul regiunii și rețelei dvs. din Tencent Cloud LLM Observability → Aplicații → Conectare aplicație.",
+  "tracing.tencent.serviceNameHelp": "Cel mult 63 de caractere: litere mici, cifre și cratime. Începeți cu o literă mică și terminați cu o literă sau cifră.",
   "tracing.tencent.title": "Tencent APM",
   "tracing.title": "Urmărirea performanței aplicației",
   "tracing.tracing": "Urmărire",

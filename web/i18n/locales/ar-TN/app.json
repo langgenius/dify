@@ -321,6 +321,8 @@
   "tracing.run.viewTrace": "عرض هذا التشغيل",
   "tracing.supported": "مدعوم",
   "tracing.tencent.description": "تُوفر مراقبة أداء التطبيقات من Tencent تتبعًا شاملاً وتحليلاً متعدد الأبعاد لتطبيقات LLM.",
+  "tracing.tencent.endpointHelp": "انسخ نقطة النهاية المناسبة لمنطقتك وشبكتك من Tencent Cloud LLM Observability ← التطبيقات ← ربط تطبيق.",
+  "tracing.tencent.serviceNameHelp": "حتى 63 حرفًا: أحرف لاتينية صغيرة وأرقام وشرطات. ابدأ بحرف صغير وأنهِ بحرف أو رقم.",
   "tracing.tencent.title": "Tencent APM",
   "tracing.title": "تتبع أداء التطبيق",
   "tracing.tracing": "تتبع",
