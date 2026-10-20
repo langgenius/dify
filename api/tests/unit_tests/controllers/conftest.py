@@ -3,16 +3,14 @@
 import sys
 from collections.abc import Iterator
 from dataclasses import dataclass
-from functools import cache
-from types import SimpleNamespace
 from unittest.mock import create_autospec
 
 import pytest
 from flask import Flask, Response, request_finished
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from extensions.application_services.app import AppServices
+from extensions.application_services.tools import ToolServices, build_tool_services
 from extensions.ext_application_services import (
     _batch_get_enterprise_webapp_access_modes,
     _batch_get_enterprise_webapp_user_permissions,
@@ -25,10 +23,13 @@ from services.app.query_service import AppDiscoveryService
 from services.credentials.query import CredentialQuery
 from services.data_source.provider_service import DatasourceProviderService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.rag_pipeline.execution_service import RagPipelineExecutionService
 from services.tag_application_service import TagApplicationService
 from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService
 from services.workflow.dsl_import import DslImportService
+from services.workflow.execution.adapters.pipeline.pipeline_generator import PipelineGenerator
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 from tests.unit_tests.controllers.error_contract import check_response, track_external_apis
 
 track_external_apis()
@@ -62,17 +63,22 @@ def error_response_contract(request: pytest.FixtureRequest) -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
-def datasource_application_dependencies(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Most controller tests never use these services. Build the mock on demand,
-    # with a fresh cache for each test to preserve mock isolation.
-    @cache
-    def application_services() -> SimpleNamespace:
-        return SimpleNamespace(
-            data_sources=SimpleNamespace(
-                providers=create_autospec(DatasourceProviderService, instance=True, spec_set=True)
-            )
-        )
-
+def datasource_application_dependencies(
+    monkeypatch: pytest.MonkeyPatch,
+    workflow_variables: WorkflowExecutionVariables,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    registry = DatasourceApplicationStub(
+        tools=build_tool_services(sqlite_session_factory),
+        workflow_variables=workflow_variables,
+        knowledge=PipelineKnowledgeStub(
+            pipeline_generator=create_autospec(PipelineGenerator, instance=True, spec_set=True),
+            pipeline_execution=create_autospec(RagPipelineExecutionService, instance=True, spec_set=True),
+        ),
+        data_sources=PipelineDataSourceStub(
+            providers=create_autospec(DatasourceProviderService, instance=True, spec_set=True)
+        ),
+    )
     for name in (
         "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow",
         "controllers.console.datasets.rag_pipeline.datasource_content_preview",
@@ -80,12 +86,13 @@ def datasource_application_dependencies(monkeypatch: pytest.MonkeyPatch) -> None
     ):
         module = sys.modules.get(name)
         if module is not None:
-            monkeypatch.setattr(module, "application_services", application_services)
+            monkeypatch.setattr(module, "application_services", lambda: registry)
 
 
 @dataclass(frozen=True)
 class PipelineKnowledgeStub:
     pipeline_generator: PipelineGenerator
+    pipeline_execution: RagPipelineExecutionService
 
 
 @dataclass(frozen=True)
@@ -94,20 +101,39 @@ class PipelineDataSourceStub:
 
 
 @dataclass(frozen=True)
+class DatasourceApplicationStub:
+    tools: ToolServices
+    data_sources: PipelineDataSourceStub
+    workflow_variables: WorkflowExecutionVariables
+    knowledge: PipelineKnowledgeStub
+
+
+@dataclass(frozen=True)
 class PipelineApplicationStub:
+    tools: ToolServices
+    workflow_variables: WorkflowExecutionVariables
     knowledge: PipelineKnowledgeStub
     credential_queries: CredentialQuery
     data_sources: PipelineDataSourceStub
 
 
 @pytest.fixture
-def pipeline_application(monkeypatch: pytest.MonkeyPatch) -> PipelineGenerator:
+def pipeline_application(
+    monkeypatch: pytest.MonkeyPatch,
+    workflow_variables: WorkflowExecutionVariables,
+    sqlite_session_factory: sessionmaker[Session],
+) -> PipelineGenerator:
     from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as console_workflow
     from controllers.service_api.dataset.rag_pipeline import rag_pipeline_workflow as service_api_workflow
 
     generator = create_autospec(PipelineGenerator, instance=True, spec_set=True)
     registry = PipelineApplicationStub(
-        knowledge=PipelineKnowledgeStub(pipeline_generator=generator),
+        tools=build_tool_services(sqlite_session_factory),
+        workflow_variables=workflow_variables,
+        knowledge=PipelineKnowledgeStub(
+            pipeline_generator=generator,
+            pipeline_execution=create_autospec(RagPipelineExecutionService, instance=True, spec_set=True),
+        ),
         credential_queries=create_autospec(CredentialQuery, instance=True, spec_set=True),
         data_sources=PipelineDataSourceStub(
             providers=create_autospec(DatasourceProviderService, instance=True, spec_set=True)

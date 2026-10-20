@@ -164,7 +164,7 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
     topic_client = Redis()
     monkeypatch.setattr(topic_client, "publish", publish)
     topic = Topic(topic_client, "workflow-events")
-    monkeypatch.setattr(task_module.MessageBasedAppGenerator, "get_response_topic", lambda *_: topic)
+    monkeypatch.setattr(task_module.WorkflowEventStream, "get_response_topic", lambda *_: topic)
 
     assert run.task_id is not None
     AppTaskService.stop_workflow_task(

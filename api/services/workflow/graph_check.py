@@ -9,7 +9,6 @@ from enum import StrEnum
 from typing import Any, Final
 
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
 
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
@@ -20,6 +19,7 @@ from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.variables import VariableBase
 from models import AppMode
+from services.credentials.query import CredentialQuery
 from services.workflow.node_defaults import complete_sub_models, editor_defaults, node_data_type
 from services.workflow_service import WorkflowService
 from services.workflow_variable_reference_validator import SOURCE_HANDLE, branch_handles
@@ -74,14 +74,16 @@ def refused_node_types(mode: AppMode) -> frozenset[str]:
     return frozenset({BuiltinNodeTypes.ANSWER})
 
 
-def credential_check(workspace_id: str, environment: Mapping[str, VariableBase], session: Session) -> ResourceCheck:
+def credential_check(
+    workspace_id: str, environment: Mapping[str, VariableBase], credentials: CredentialQuery
+) -> ResourceCheck:
     """A `ResourceCheck` reporting what publish's credential check would refuse for one node."""
 
     service = WorkflowService()
 
     def check(node: Mapping[str, Any]) -> str | None:
         try:
-            service.validate_node_credentials(workspace_id, node, environment, session=session)
+            service.validate_node_credentials(workspace_id, node, environment, credentials=credentials)
         except ValueError as error:
             return str(error)
         return None

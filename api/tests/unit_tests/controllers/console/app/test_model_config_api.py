@@ -863,6 +863,12 @@ def test_post_encrypts_agent_tool_parameters(
             },
         },
     )
+    tool_services = SimpleNamespace(tool_providers=object(), workflow_queries=object())
+    monkeypatch.setattr(
+        model_config_module,
+        "application_services",
+        lambda: SimpleNamespace(tools=tool_services),
+    )
     monkeypatch.setattr(model_config_module.ToolManager, "get_agent_tool_runtime", lambda **_kwargs: object())
 
     class _ParamManager:

@@ -29,7 +29,6 @@ from core.helper import encrypter
 from core.plugin.plugin_service import PluginService
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolParameter
-from core.tools.tool_manager import ToolManager
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
@@ -54,6 +53,8 @@ from models.provider_ids import GenericProviderID
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
+from repositories.tools.provider_repository import ToolProviderRepository
+from repositories.tools.workflow_repository import WorkflowToolRepository
 from repositories.trial_app_repository import TrialAppRepository
 from services.app_preview_details_adapters import AppPreviewDetailsRuntime
 from services.app_preview_query_service import AppPreviewQueryService
@@ -63,6 +64,7 @@ from services.recommended_app_query_service import (
     RecommendedAppDetailRecord,
     RecommendedAppQueryService,
 )
+from services.tools.tool_manager import ToolManager
 
 _Endpoint = Literal["detail", "workflows"]
 _CREATED_AT = datetime(2024, 1, 1)
@@ -115,7 +117,17 @@ class _ExternalIO:
         assert tenant_id == self.viewer_workspace_id
         return "tool-secret"
 
-    def tool_runtime(self, *, tenant_id: str, app_id: str, agent_tool: AgentToolEntity, user_id: str) -> Tool:
+    def tool_runtime(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        agent_tool: AgentToolEntity,
+        user_id: str,
+        tool_providers: ToolProviderRepository,
+        workflow_queries: WorkflowToolRepository,
+    ) -> Tool:
+        del workflow_queries, tool_providers
         assert isinstance(self.engine.pool, QueuePool)
         assert self.engine.pool.checkedout() == 0
         assert tenant_id == self.viewer_workspace_id
@@ -214,7 +226,14 @@ class _Harness:
             app = session.get(App, self.target.id)
             assert app is not None
             return trial_module.TrialAppDetailResponse.model_validate(
-                AppResponseView(app, session=session, account=self.viewer), from_attributes=True
+                AppResponseView(
+                    app,
+                    session=session,
+                    account=self.viewer,
+                    tool_providers=ToolProviderRepository(self.factory),
+                    workflow_queries=WorkflowToolRepository(self.factory),
+                ),
+                from_attributes=True,
             ).model_dump(mode="json")
 
 
@@ -224,6 +243,9 @@ def harness(
     config_overrides: Callable[..., None],
     sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
 ) -> _Harness:
     config_overrides(
         LOGIN_DISABLED=False,
@@ -353,7 +375,11 @@ def harness(
         app_previews=AppPreviewQueryService(
             apps=AppPreviewQueryRepository(session_factory=factory), is_previewable=recommendations.is_previewable
         ),
-        app_preview_details=AppPreviewDetailsRuntime(details=AppPreviewQueryRepository(session_factory=factory)),
+        app_preview_details=AppPreviewDetailsRuntime(
+            details=AppPreviewQueryRepository(session_factory=factory),
+            tool_providers=tool_providers,
+            workflow_queries=workflow_queries,
+        ),
         recommended_app_queries=recommendations,
     )
     for module in (trial_module, admission_module):
@@ -514,10 +540,25 @@ def test_invalid_builtin_config_does_not_break_detail_or_valid_tool_masking(
             return object()
         raise KeyError(provider_id)
 
-    def tool_runtime(*, tenant_id: str, app_id: str, agent_tool: AgentToolEntity, user_id: str) -> Tool:
+    def tool_runtime(
+        *,
+        tenant_id: str,
+        app_id: str,
+        agent_tool: AgentToolEntity,
+        user_id: str,
+        tool_providers: ToolProviderRepository,
+        workflow_queries: WorkflowToolRepository,
+    ) -> Tool:
         if agent_tool.provider_id != "example":
             raise ValueError("Invalid historical provider ID")
-        return harness.io.tool_runtime(tenant_id=tenant_id, app_id=app_id, agent_tool=agent_tool, user_id=user_id)
+        return harness.io.tool_runtime(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            agent_tool=agent_tool,
+            user_id=user_id,
+            tool_providers=tool_providers,
+            workflow_queries=workflow_queries,
+        )
 
     plugin_queries: list[str] = []
 
@@ -593,9 +634,24 @@ def test_unmaskable_tool_parameters_are_removed_from_detail_without_changing_sto
         SimpleNamespace(parameters=[parameter], identity=SimpleNamespace(name="broken"))
     )
 
-    def tool_runtime(*, tenant_id: str, app_id: str, agent_tool: AgentToolEntity, user_id: str) -> Tool:
+    def tool_runtime(
+        *,
+        tenant_id: str,
+        app_id: str,
+        agent_tool: AgentToolEntity,
+        user_id: str,
+        tool_providers: ToolProviderRepository,
+        workflow_queries: WorkflowToolRepository,
+    ) -> Tool:
         if agent_tool.provider_id == "example":
-            return harness.io.tool_runtime(tenant_id=tenant_id, app_id=app_id, agent_tool=agent_tool, user_id=user_id)
+            return harness.io.tool_runtime(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                agent_tool=agent_tool,
+                user_id=user_id,
+                tool_providers=tool_providers,
+                workflow_queries=workflow_queries,
+            )
         if failure == "runtime":
             raise RuntimeError("Tool provider is unavailable")
         return cast(Tool, broken_runtime)

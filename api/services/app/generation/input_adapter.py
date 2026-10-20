@@ -26,7 +26,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class AppInputAdapter:
+# This behavior-rich base is subclassed by generators; dataclass equality and repr would alter their semantics.
+class AppInputAdapter:  # noqa: B903
     _file_access_controller: DatabaseFileAccessController = DatabaseFileAccessController()
 
     def __init__(
@@ -187,8 +188,8 @@ class AppInputAdapter:
                             return float(value)
                         else:
                             return int(value)
-                    except ValueError:
-                        raise ValueError(f"{variable_entity.variable} in input form must be a valid number")
+                    except ValueError as exc:
+                        raise ValueError(f"{variable_entity.variable} in input form must be a valid number") from exc
                 case _:
                     raise TypeError(f"expected value type int, float or str, got {type(value)}, value: {value}")
 

@@ -16,13 +16,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 
 from configs import dify_config
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.app.layers.timeslice_layer import TimeSliceLayer
 from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.db.session_factory import session_factory
 from core.repositories import DifyCoreRepositoryFactory
+from extensions.application_services.workflow import build_workflow_execution_dependencies
 from extensions.ext_database import db
 from graphon.runtime import RuntimeState
 from models.account import Account
@@ -32,6 +32,7 @@ from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.app_task_service import AppTaskService
 from services.errors.app import WorkflowNotFoundError
 from services.workflow.entities import (
@@ -39,6 +40,7 @@ from services.workflow.entities import (
     WorkflowResumeTaskData,
     WorkflowTaskData,
 )
+from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 from services.workflow_run_agg import WorkflowRunAgg
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity, AsyncWorkflowCFSPlanScheduler
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue, AsyncWorkflowSystemStrategy
@@ -141,14 +143,18 @@ def _execute_workflow_common(
             if not app_model:
                 raise WorkflowNotFoundError(f"App not found: {trigger_log.app_id}")
 
-            workflow = session.scalar(select(Workflow).where(Workflow.id == trigger_log.workflow_id))
-            if not workflow:
+            workflow_model = session.scalar(select(Workflow).where(Workflow.id == trigger_log.workflow_id))
+            if not workflow_model:
                 raise WorkflowNotFoundError(f"Workflow not found: {trigger_log.workflow_id}")
+            workflow = workflow_snapshot(workflow_model)
 
             user = _get_user(session, trigger_log)
 
             # Execute workflow using WorkflowAppGenerator
-            generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+            generator = WorkflowAppGenerator(
+                runtime=build_workflow_execution_dependencies(session_factory.get_session_maker()),
+                execution_driver=WorkflowRunAgg.run,
+            )
 
             # Adapt trigger inputs and files for the generator.
             args = _build_generator_args(trigger_data)
@@ -254,11 +260,12 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
     response_stream_filter = resumption_context.get_response_stream_filter()
 
     with session_factory() as session:
-        workflow = session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
-        if workflow is None:
+        workflow_model = session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
+        if workflow_model is None:
             raise WorkflowNotFoundError(
                 f"Workflow not found: workflow_run_id={workflow_run.id}, workflow_id={workflow_run.workflow_id}"
             )
+        workflow = workflow_snapshot(workflow_model)
         user = _get_user(session, workflow_run)
         app_model = session.scalar(select(App).where(App.id == workflow_run.app_id))
         if app_model is None:
@@ -284,7 +291,10 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         state_owner_user_id=workflow.created_by,
     )
 
-    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = WorkflowAppGenerator(
+        runtime=build_workflow_execution_dependencies(session_factory),
+        execution_driver=WorkflowRunAgg.run,
+    )
     start_time = datetime.now(UTC)
     graph_engine_layers = []
     trigger_log = _query_trigger_log_info(session_factory, task_data.workflow_run_id)

@@ -12,14 +12,15 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
-from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.system_variables import build_system_variables
-from core.workflow.workflow_entry import WorkflowEntry
+from extensions.application_services.workflow import (
+    WorkflowExecutionDependencies,
+    build_workflow_execution_dependencies,
+)
 from extensions.ext_storage import storage
 from graphon.engine.command import InMemoryChannel, PauseCommand
 from graphon.engine_events import GraphRunFailedEvent, GraphRunPausedEvent, GraphRunStartedEvent, GraphRunSucceededEvent
@@ -27,12 +28,18 @@ from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import RuntimeState, VariablePool
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models import Account
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.workflow.definition_repository import workflow_snapshot
+from services.workflow.execution.adapters.workflow.app_queue_manager import WorkflowAppQueueManager
+from services.workflow.execution.adapters.workflow.app_runner import WorkflowAppRunner
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
+from services.workflow.execution.contracts import PreparedWorkflowRun
 from services.workflow_run_agg import WorkflowRunAgg
 
 
@@ -43,6 +50,7 @@ class WorkflowCase:
     account: Account
     workflow: Workflow
     run_id: str
+    runtime: WorkflowExecutionDependencies
 
     def prepare(
         self,
@@ -69,7 +77,14 @@ class WorkflowCase:
             workflow_execution_id=self.run_id,
         )
         queue = WorkflowAppQueueManager(entity.task_id, self.account.id, entity.invoke_from, AppMode.WORKFLOW)
-        runner = WorkflowBasedAppRunner(queue_manager=queue, app_id=self.workflow.app_id)
+        runner = WorkflowAppRunner(
+            runtime=self.runtime,
+            application_generate_entity=entity,
+            queue_manager=queue,
+            variable_loader=DUMMY_VARIABLE_LOADER,
+            workflow=workflow_snapshot(self.workflow),
+            system_user_id=self.account.id,
+        )
         variable_pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(
                 app_id=self.workflow.app_id, workflow_id=self.workflow.id, workflow_execution_id=self.run_id
@@ -87,7 +102,7 @@ class WorkflowCase:
             outputs=dict(outputs or {}),
             node_run_steps=node_run_steps,
         )
-        graph = runner._init_graph(
+        graph = runner._graphs.build(
             graph_config=self.workflow.graph_dict,
             graph_runtime_state=runtime,
             workflow_id=self.workflow.id,
@@ -115,6 +130,7 @@ class WorkflowCase:
         if pause:
             commands.send_command(PauseCommand(reason="integration pause"))
         entry = WorkflowEntry(
+            human_form_reader=runner.human_form_reader,
             graph=graph,
             graph_config=self.workflow.graph_dict,
             call_depth=0,
@@ -166,7 +182,14 @@ def workflow_case(db_session_with_containers: Session) -> WorkflowCase:
     )
     session.add(workflow)
     session.commit()
-    return WorkflowCase(session, engine, account, workflow, str(uuid4()))
+    return WorkflowCase(
+        session,
+        engine,
+        account,
+        workflow,
+        str(uuid4()),
+        build_workflow_execution_dependencies(sessionmaker(engine)),
+    )
 
 
 def test_complete_pause_flow_with_real_dependencies(workflow_case: WorkflowCase) -> None:

@@ -1,28 +1,37 @@
+import json
 from datetime import datetime, timedelta
 
 import pytest
 
 from controllers.openapi.app_release import passed_on_draft
 from graphon.enums import WorkflowExecutionStatus
-from models.workflow import Workflow, WorkflowRun, WorkflowType
+from models.workflow import WorkflowRun
+from services.workflow.contracts import WorkflowRecord
 
 _GRAPH = '{"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []}'
 _OTHER_GRAPH = '{"nodes": [{"id": "llm", "data": {"type": "llm"}}], "edges": []}'
 _RUN_STARTED = datetime(2026, 10, 15, 12, 0, 0)
 
 
-def _draft(*, saved_at: datetime, graph: str = _GRAPH) -> Workflow:
-    draft = Workflow(
-        tenant_id="workspace-1",
-        app_id="app-1",
-        type=WorkflowType.WORKFLOW,
-        version=Workflow.VERSION_DRAFT,
-        graph=graph,
-        features="{}",
-        created_by="account-1",
+def _draft(*, saved_at: datetime, graph: str = _GRAPH) -> WorkflowRecord:
+    return WorkflowRecord(
+        id="draft-1",
+        graph=json.loads(graph),
+        features={},
+        hash="draft-hash",
+        version="draft",
+        version_number=None,
+        marked_name="",
+        marked_comment="",
+        created_by=None,
+        created_at=saved_at,
+        updated_by=None,
+        updated_at=saved_at,
+        tool_published=False,
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
     )
-    draft.updated_at = saved_at
-    return draft
 
 
 def _run(*, status: WorkflowExecutionStatus = WorkflowExecutionStatus.SUCCEEDED, graph: str = _GRAPH) -> WorkflowRun:

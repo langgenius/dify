@@ -253,9 +253,7 @@ class TestChatAppGenerator:
         with (
             patch.object(ChatAppGenerator, "_get_app_model_config", return_value=AppModelConfig(app_id="app-1")),
             patch("services.app.generation.adapters.chat.ChatAppConfigManager.config_validate", return_value={"x": 1}),
-            patch(
-                "services.app.generation.adapters.chat.ChatAppConfigManager.get_app_config", return_value=app_config
-            ),
+            patch("services.app.generation.adapters.chat.ChatAppConfigManager.get_app_config", return_value=app_config),
             patch("services.app.generation.adapters.chat.ModelConfigConverter.convert", return_value=SimpleNamespace()),
             patch("services.app.generation.adapters.chat.FileUploadConfigManager.convert", return_value=None),
             patch("services.app.generation.adapters.chat.ChatAppGenerateEntity", Mock(side_effect=DummyGenerateEntity)),

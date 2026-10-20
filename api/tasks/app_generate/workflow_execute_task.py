@@ -1,7 +1,8 @@
 import contextlib
 import logging
 import uuid
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
+from dataclasses import replace
 from enum import StrEnum
 from functools import partial
 from typing import Annotated, Any
@@ -12,10 +13,7 @@ from pydantic import BaseModel, Discriminator, Field, Tag
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.execution_coordinator import clear_app_task_cancellation_signals
-from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -24,6 +22,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.entities.task_entities import WorkflowFinishStreamResponse, WorkflowStartStreamResponse
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.repositories import DifyCoreRepositoryFactory
+from extensions.application_services.workflow import build_workflow_execution_dependencies
 from extensions.ext_database import db
 from graphon.engine.filter import ResponseStreamFilter
 from graphon.entities import WorkflowStartReason
@@ -38,7 +37,19 @@ from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
+from repositories.workflow.debug_reservation_repository import WorkflowDebugReservationRepository
+from repositories.workflow.definition_repository import workflow_snapshot
+from repositories.workflow.execution_write_repository import WorkflowExecutionWriteRepository
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app_task_service import AppTaskService
+from services.errors.workflow_service import WorkflowDebugReservationExpiredError
+from services.workflow.contracts import WorkflowSnapshot
+from services.workflow.debug_cancellation import DebugExecutionCancellation
+from services.workflow.execution.adapters.chatflow.app_generator import AdvancedChatAppGenerator
+from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
+from services.workflow.execution.adapters.response_stream import WorkflowEventStream
+from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
@@ -98,13 +109,15 @@ class AppExecutionParams(BaseModel):
     streaming: bool = True
     call_depth: int = 0
     root_node_id: str | None = None
+    # Only trigger debugging pins a consumed event to a detached draft revision.
+    workflow_snapshot: WorkflowSnapshot | None = None
     workflow_run_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
     @classmethod
     def new(
         cls,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
@@ -112,6 +125,7 @@ class AppExecutionParams(BaseModel):
         call_depth: int = 0,
         root_node_id: str | None = None,
         workflow_run_id: str | None = None,
+        workflow_snapshot: WorkflowSnapshot | None = None,
     ):
         user_params: _Account | _EndUser
         match user:
@@ -132,16 +146,31 @@ class AppExecutionParams(BaseModel):
             streaming=streaming,
             call_depth=call_depth,
             root_node_id=root_node_id,
+            workflow_snapshot=workflow_snapshot,
             workflow_run_id=workflow_run_id or str(uuid.uuid4()),
         )
 
 
 class _AppRunner:
-    def __init__(self, session_factory: sessionmaker | Engine, exec_params: AppExecutionParams):
+    def __init__(
+        self,
+        session_factory: sessionmaker | Engine,
+        exec_params: AppExecutionParams,
+        *,
+        variables: WorkflowExecutionVariables,
+    ):
         if isinstance(session_factory, Engine):
             session_factory = sessionmaker(bind=session_factory)
         self._session_factory = session_factory
         self._exec_params = exec_params
+        self._variables = variables
+        self._runtime = build_workflow_execution_dependencies(session_factory)
+        self._validated_snapshot = False
+        self._execution_finalized = False
+        self._cancellation: DebugExecutionCancellation | None = None
+
+    def _mark_execution_finalized(self) -> None:
+        self._execution_finalized = True
 
     @contextlib.contextmanager
     def _session(self):
@@ -156,66 +185,167 @@ class _AppRunner:
             yield
 
     def run(self):
+        try:
+            return self._run()
+        except WorkflowDebugReservationExpiredError as exc:
+            # claim() runs only after validating the persisted owner and snapshot.
+            # An expired request needs to close SSE; duplicate delivery must not
+            # emit a failure into the stream owned by an already running worker.
+            if self._exec_params.streaming and not self._execution_finalized:
+                _publish_failed_workflow_terminal_events(exc=exc, exec_params=self._exec_params)
+            raise
+        finally:
+            snapshot = self._exec_params.workflow_snapshot
+            if (
+                not self._execution_finalized
+                and self._validated_snapshot
+                and snapshot is not None
+                and snapshot.execution_id is not None
+            ):
+                WorkflowAgentRetirementService.finish_execution(
+                    sessions=self._session_factory,
+                    tenant_id=snapshot.tenant_id,
+                    app_id=snapshot.app_id,
+                    workflow_id=snapshot.id,
+                    execution_id=snapshot.execution_id,
+                    account_id=snapshot.created_by,
+                )
+
+    def _run(self):
         exec_params = self._exec_params
+        completed_run: WorkflowRun | None = None
+        completed_creator: Account | EndUser | None = None
         with self._session() as session:
-            workflow = session.get(Workflow, exec_params.workflow_id)
-            if workflow is None:
+            snapshot = exec_params.workflow_snapshot
+            reserved_run = None
+            if snapshot is not None and snapshot.execution_id is not None:
+                reserved_run = session.scalar(
+                    select(WorkflowRun)
+                    .where(
+                        WorkflowRun.id == exec_params.workflow_run_id,
+                        WorkflowRun.tenant_id == exec_params.tenant_id,
+                        WorkflowRun.app_id == exec_params.app_id,
+                        WorkflowRun.workflow_id == exec_params.workflow_id,
+                    )
+                    .with_for_update()
+                )
+                if reserved_run is None or (
+                    snapshot.execution_id,
+                    snapshot.tenant_id,
+                    snapshot.app_id,
+                    snapshot.id,
+                ) != (reserved_run.id, reserved_run.tenant_id, reserved_run.app_id, reserved_run.workflow_id):
+                    raise ValueError("Workflow snapshot does not belong to this debugger invocation")
+            persisted_workflow = session.get(Workflow, exec_params.workflow_id)
+            if persisted_workflow is None:
                 logger.warning("Workflow %s not found for execution", exec_params.workflow_id)
                 return None
-            app = session.get(App, workflow.app_id)
+            app = session.get(App, persisted_workflow.app_id)
             if app is None:
-                logger.warning("App %s not found for workflow %s", workflow.app_id, exec_params.workflow_id)
+                logger.warning("App %s not found for workflow %s", persisted_workflow.app_id, exec_params.workflow_id)
                 return None
 
-        pause_config = PauseStateLayerConfig(
-            session_factory=self._session_factory,
-            state_owner_user_id=workflow.created_by,
-        )
+            snapshot = exec_params.workflow_snapshot
+            if snapshot is not None:
+                if (
+                    (snapshot.execution_id is not None and snapshot.execution_id != exec_params.workflow_run_id)
+                    or exec_params.invoke_from != InvokeFrom.DEBUGGER
+                    or exec_params.app_mode != AppMode.WORKFLOW
+                    or app.mode != AppMode.WORKFLOW
+                    or (persisted_workflow.id, persisted_workflow.tenant_id, persisted_workflow.app_id)
+                    != (exec_params.workflow_id, exec_params.tenant_id, exec_params.app_id)
+                    or (snapshot.id, snapshot.tenant_id, snapshot.app_id)
+                    != (persisted_workflow.id, app.tenant_id, app.id)
+                ):
+                    raise ValueError("Workflow snapshot does not belong to this debugger invocation")
+                workflow = snapshot
+                if reserved_run is not None:
+                    workflow = replace(snapshot, graph=reserved_run.graph or snapshot.graph)
+                    if WorkflowDebugReservationRepository.claim(session, reserved_run, naive_utc_now()):
+                        self._validated_snapshot = True
+                    else:
+                        completed_run = reserved_run
+                        self._mark_execution_finalized()
+                        if exec_params.streaming:
+                            completed_creator = _resolve_user_for_run(session, reserved_run)
+            else:
+                workflow = workflow_snapshot(persisted_workflow)
 
-        user = self._resolve_user()
-
-        with self._setup_flask_context(user), self._session_factory(expire_on_commit=False) as session:
-            try:
-                response = self._run_app(
-                    app=app,
-                    workflow=workflow,
-                    user=user,
-                    pause_state_config=pause_config,
-                    session=session,
+        if completed_run is not None:
+            # Redelivery never claims a lease, runs the engine, or repeats cleanup.
+            # Replay the stored outcome after releasing the read transaction,
+            # including failures recorded by expiry recovery before worker startup.
+            if completed_creator is not None and completed_run.finished_at is not None:
+                response = WorkflowResponseConverter.workflow_run_result_to_finish_response(
+                    task_id=exec_params.workflow_run_id,
+                    workflow_run=completed_run,
+                    creator_user=completed_creator,
                 )
-            except Exception as exc:
-                if exec_params.streaming:
-                    _publish_failed_workflow_terminal_events(
-                        exc=exc,
-                        exec_params=exec_params,
-                    )
-                raise
+                topic = WorkflowEventStream.get_response_topic(exec_params.app_mode, exec_params.workflow_run_id)
+                topic.publish(json.dumps(response.model_dump(mode="json"), ensure_ascii=False).encode())
+            return None
 
-            if not exec_params.streaming:
-                return response
-
-            assert isinstance(response, Generator)
-            _publish_streaming_response(
-                response,
-                exec_params.workflow_run_id,
-                exec_params.app_mode,
-                exec_params.workflow_id,
-                exec_params.args.get("inputs", {}),
-                WorkflowStartReason.INITIAL,
+        with contextlib.nullcontext() if self._validated_snapshot else contextlib.nullcontext() as self._cancellation:
+            pause_config = PauseStateLayerConfig(
+                session_factory=self._session_factory,
+                state_owner_user_id=workflow.created_by,
             )
+
+            user = self._resolve_user()
+
+            with self._setup_flask_context(user):
+                try:
+                    response = self._run_app(
+                        app=app,
+                        workflow=workflow,
+                        user=user,
+                        pause_state_config=pause_config,
+                    )
+                except Exception as exc:
+                    if exec_params.streaming:
+                        _publish_failed_workflow_terminal_events(
+                            exc=exc,
+                            exec_params=exec_params,
+                        )
+                    raise
+
+                if not exec_params.streaming:
+                    return response
+
+                assert isinstance(response, Generator)
+                _publish_streaming_response(
+                    response,
+                    exec_params.workflow_run_id,
+                    exec_params.app_mode,
+                    exec_params.workflow_id,
+                    exec_params.args.get("inputs", {}),
+                    WorkflowStartReason.INITIAL,
+                    sessions=self._session_factory,
+                    tenant_id=app.tenant_id,
+                    app_id=app.id,
+                    agent_snapshot=exec_params.workflow_snapshot is not None
+                    and exec_params.workflow_snapshot.execution_id is not None,
+                    on_finalized=self._mark_execution_finalized,
+                    on_terminal=self._cancellation.finish if self._cancellation is not None else None,
+                )
 
     def _run_app(
         self,
         *,
         app: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         pause_state_config: PauseStateLayerConfig,
-        session: Session,
     ):
+        variables = self._variables
         exec_params = self._exec_params
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
-            return AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+            return AdvancedChatAppGenerator(
+                runtime=self._runtime,
+                execution_driver=WorkflowRunAgg.run,
+                draft_variable_loader=variables.workflow_loader,
+                draft_variable_saver=variables.saver_factory,
+            ).generate(
                 app_model=app,
                 workflow=workflow,
                 user=user,
@@ -224,10 +354,15 @@ class _AppRunner:
                 streaming=exec_params.streaming,
                 workflow_run_id=exec_params.workflow_run_id,
                 pause_state_config=pause_state_config,
-                session=session,
             )
         if exec_params.app_mode == AppMode.WORKFLOW:
-            return WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+            return WorkflowAppGenerator(
+                runtime=self._runtime,
+                execution_driver=WorkflowRunAgg.run,
+                draft_variable_loader=variables.workflow_loader,
+                draft_variable_saver=variables.saver_factory,
+                cancellation=self._cancellation,
+            ).generate(
                 app_model=app,
                 workflow=workflow,
                 user=user,
@@ -280,7 +415,7 @@ def _publish_failed_workflow_terminal_events(exc: Exception, exec_params: AppExe
     timestamp = to_timestamp(naive_utc_now())
     assert timestamp is not None
 
-    topic = MessageBasedAppGenerator.get_response_topic(exec_params.app_mode, exec_params.workflow_run_id)
+    topic = WorkflowEventStream.get_response_topic(exec_params.app_mode, exec_params.workflow_run_id)
     started_payload = WorkflowStartStreamResponse(
         task_id=exec_params.workflow_run_id,
         workflow_run_id=exec_params.workflow_run_id,
@@ -362,13 +497,24 @@ def _publish_streaming_response(
     workflow_id: str,
     inputs: Mapping[str, Any],
     started_reason: WorkflowStartReason,
+    *,
+    sessions: sessionmaker[Session],
+    tenant_id: str,
+    app_id: str,
+    agent_snapshot: bool,
+    on_finalized: Callable[[], None] | None = None,
+    on_terminal: Callable[[], None] | None = None,
 ) -> None:
-    """Publish workflow stream events and close broken streams with a failed terminal event.
+    """Publish engine outcomes, using synthetic failures only before an outcome is known.
 
-    `_AppRunner.run()` only handles failures before the generator is returned.
-    Once we start iterating the runtime stream, this helper becomes the last
-    place that can guarantee SSE consumers eventually see a terminal workflow
-    lifecycle event.
+    `_AppRunner.run()` provides fallback execution cleanup until this helper
+    commits the execution state. Resource cleanup runs after terminal delivery
+    and remains independently retryable. An observed pause or completion remains authoritative even when
+    delivery fails; retry its actual event once without inventing a failed result.
+
+    Notify the initial runner after execution finalization succeeds, even when
+    streaming raises. Its fallback must not infer a second outcome from database
+    state that asynchronous persistence may have changed in the meantime.
     """
     normalized_workflow_run_id = str(workflow_run_id)
 
@@ -418,74 +564,137 @@ def _publish_streaming_response(
 
     terminal_events = {"workflow_finished", "workflow_paused"}
     unexpected_stream_end_message = "Workflow stream ended without a terminal event"
-    topic = MessageBasedAppGenerator.get_response_topic(app_mode, normalized_workflow_run_id)
+    topic = WorkflowEventStream.get_response_topic(app_mode, normalized_workflow_run_id)
     started_published = False
     terminal_published = False
     last_task_id = normalized_workflow_run_id
     stream_error_message: str | None = None
 
+    terminal_status: WorkflowExecutionStatus | None = None
+    terminal_payload: str | None = None
+    finalized = False
+
+    def finalize() -> None:
+        nonlocal finalized
+        if agent_snapshot and not finalized:
+            WorkflowExecutionWriteRepository(sessions).finish(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                workflow_id=workflow_id,
+                execution_id=normalized_workflow_run_id,
+                status=terminal_status,
+            )
+            finalized = True
+            if on_finalized is not None:
+                on_finalized()
+
     try:
-        for event in response_stream:
-            event_name = _get_event_name(event)
-            task_id = _get_task_id(event)
-            if task_id is not None:
-                last_task_id = task_id
+        try:
+            for event in response_stream:
+                event_name = _get_event_name(event)
+                task_id = _get_task_id(event)
+                if task_id is not None:
+                    last_task_id = task_id
 
-            try:
-                if isinstance(event, BaseModel):
-                    payload = json.dumps(event.model_dump(mode="json"), ensure_ascii=False)
-                else:
-                    payload = json.dumps(event, ensure_ascii=False, default=str)
-            except (TypeError, ValueError):
-                logger.exception("error while encoding event")
-                continue
+                # Engine outcomes own execution state. Serialization and Redis
+                # delivery can fail while a paused execution still needs its Agents.
+                if event_name == "workflow_paused":
+                    terminal_status = WorkflowExecutionStatus.PAUSED
+                elif event_name == "workflow_finished":
+                    data = _get_event_data(event) or {}
+                    terminal_status = WorkflowExecutionStatus(data.get("data", {}).get("status", "failed"))
 
-            topic.publish(payload.encode())
+                if event_name in terminal_events:
+                    if on_terminal is not None:
+                        on_terminal()
+                    # A subscriber can resume immediately on receiving PAUSED.
+                    # Commit and acknowledge this worker's outcome first; neither
+                    # this helper nor the outer runner may finalize it again.
+                    finalize()
 
-            if event_name == "workflow_started":
-                started_published = True
-            elif event_name in terminal_events:
-                terminal_published = True
-            elif event_name == "error":
-                stream_error_message = _get_error_message(event) or stream_error_message
-    except Exception as exc:
-        if not terminal_published:
-            logger.exception(
-                "Workflow stream for run %s failed before terminal event; publishing fallback terminal event",
+                try:
+                    if isinstance(event, BaseModel):
+                        payload = json.dumps(event.model_dump(mode="json"), ensure_ascii=False)
+                    else:
+                        payload = json.dumps(event, ensure_ascii=False, default=str)
+                except (TypeError, ValueError):
+                    logger.exception("error while encoding event")
+                    continue
+
+                if event_name in terminal_events:
+                    terminal_payload = payload
+                topic.publish(payload.encode())
+
+                if event_name == "workflow_started":
+                    started_published = True
+                elif event_name in terminal_events:
+                    terminal_published = True
+                elif event_name == "error":
+                    stream_error_message = _get_error_message(event) or stream_error_message
+        except Exception as exc:
+            if not terminal_published and terminal_payload is not None:
+                logger.exception("Retrying engine terminal event publication for run %s", normalized_workflow_run_id)
+                topic.publish(terminal_payload.encode())
+            elif not terminal_published and terminal_status is None:
+                logger.exception(
+                    "Workflow stream for run %s failed before terminal event; publishing fallback terminal event",
+                    normalized_workflow_run_id,
+                )
+                _publish_failed_terminal_event(
+                    error_message=str(exc) or exc.__class__.__name__,
+                    task_id=last_task_id,
+                    publish_started=not started_published,
+                )
+            raise
+
+        if not terminal_published and terminal_status is None:
+            logger.warning(
+                "Workflow stream for run %s ended without a terminal event; publishing fallback terminal event",
                 normalized_workflow_run_id,
             )
             _publish_failed_terminal_event(
-                error_message=str(exc) or exc.__class__.__name__,
+                error_message=stream_error_message or unexpected_stream_end_message,
                 task_id=last_task_id,
                 publish_started=not started_published,
             )
-        raise
-
-    if not terminal_published:
-        logger.warning(
-            "Workflow stream for run %s ended without a terminal event; publishing fallback terminal event",
-            normalized_workflow_run_id,
-        )
-        _publish_failed_terminal_event(
-            error_message=stream_error_message or unexpected_stream_end_message,
-            task_id=last_task_id,
-            publish_started=not started_published,
-        )
+    finally:
+        try:
+            if isinstance(response_stream, Generator):
+                response_stream.close()
+        finally:
+            finalize()
+            if agent_snapshot and finalized:
+                # Cleanup dispatch is independent of the engine outcome and SSE.
+                # Retain durable retry evidence if the resource broker is down.
+                try:
+                    WorkflowAgentRetirementService.retire_finished_execution(
+                        delete_unstarted=False,
+                        sessions=sessions,
+                        tenant_id=tenant_id,
+                        app_id=app_id,
+                        workflow_id=workflow_id,
+                        execution_id=normalized_workflow_run_id,
+                        account_id=None,
+                    )
+                except Exception:
+                    logger.exception("Failed to dispatch Agent cleanup for run %s", normalized_workflow_run_id)
 
 
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE)
 def workflow_based_app_execution_task(
     payload: str,
 ) -> Mapping[str, Any] | None:
+    from extensions.ext_application_services import application_services
+
     exec_params = AppExecutionParams.model_validate_json(payload)
 
     logger.info("workflow_based_app_execution_task run with params: %s", exec_params)
 
-    runner = _AppRunner(db.engine, exec_params=exec_params)
+    runner = _AppRunner(db.engine, exec_params=exec_params, variables=application_services().workflow_variables)
     return runner.run()
 
 
-def _resume_app_execution(payload: dict[str, Any]) -> None:
+def _resume_app_execution(payload: dict[str, Any], *, variables: WorkflowExecutionVariables) -> None:
     workflow_run_id = payload["workflow_run_id"]
 
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
@@ -515,8 +724,8 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
             logger.warning("Workflow run %s not found during resume", workflow_run_id)
             return
 
-        workflow = session.get(Workflow, workflow_run.workflow_id)
-        if workflow is None:
+        workflow_model = session.get(Workflow, workflow_run.workflow_id)
+        if workflow_model is None:
             logger.warning("Workflow %s not found during resume", workflow_run.workflow_id)
             return
 
@@ -554,6 +763,13 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
             if message is None:
                 logger.warning("Message not found for workflow run %s", workflow_run_id)
                 return
+
+        workflow = workflow_snapshot(workflow_model)
+
+    binding_snapshot = workflow_run.graph_dict.get("_agent_bindings", {})
+    if binding_snapshot.get("execution_id") == workflow_run.id and workflow_run.graph is not None:
+        # The resumed graph and its Agent generations belong to the original execution.
+        workflow = replace(workflow, graph=workflow_run.graph)
 
     if not isinstance(generate_entity, (AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity)):
         logger.error(
@@ -609,24 +825,24 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         case AdvancedChatAppGenerateEntity():
             assert conversation is not None
             assert message is not None
-            with session_factory() as session:
-                _resume_advanced_chat(
-                    app_model=app_model,
-                    workflow=workflow,
-                    user=user,
-                    conversation=conversation,
-                    message=message,
-                    generate_entity=generate_entity,
-                    graph_runtime_state=graph_runtime_state,
-                    response_stream_filter=response_stream_filter,
-                    session_factory=session_factory,
-                    pause_state_config=pause_config,
-                    workflow_run_id=workflow_run_id,
-                    workflow_run=workflow_run,
-                    session=session,
-                )
+            _resume_advanced_chat(
+                variables=variables,
+                app_model=app_model,
+                workflow=workflow,
+                user=user,
+                conversation=conversation,
+                message=message,
+                generate_entity=generate_entity,
+                graph_runtime_state=graph_runtime_state,
+                response_stream_filter=response_stream_filter,
+                session_factory=session_factory,
+                pause_state_config=pause_config,
+                workflow_run_id=workflow_run_id,
+                workflow_run=workflow_run,
+            )
         case WorkflowAppGenerateEntity():
             _resume_workflow(
+                variables=variables,
                 app_model=app_model,
                 workflow=workflow,
                 user=user,
@@ -644,8 +860,9 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
 
 def _resume_advanced_chat(
     *,
+    variables: WorkflowExecutionVariables,
     app_model: App,
-    workflow: Workflow,
+    workflow: WorkflowSnapshot,
     user: Account | EndUser,
     conversation: Conversation,
     message: Message,
@@ -656,7 +873,6 @@ def _resume_advanced_chat(
     pause_state_config: PauseStateLayerConfig,
     workflow_run_id: str,
     workflow_run: WorkflowRun,
-    session: Session,
 ) -> None:
     resumed_generate_entity = generate_entity.model_copy(update={"stream": True})
 
@@ -680,7 +896,12 @@ def _resume_advanced_chat(
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = AdvancedChatAppGenerator(
+        runtime=build_workflow_execution_dependencies(session_factory),
+        execution_driver=WorkflowRunAgg.run,
+        draft_variable_loader=variables.workflow_loader,
+        draft_variable_saver=variables.saver_factory,
+    )
 
     try:
         response = generator.resume(
@@ -695,7 +916,6 @@ def _resume_advanced_chat(
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
-            session=session,
         )
     except Exception:
         logger.exception("Failed to resume chatflow execution for workflow run %s", workflow_run_id)
@@ -709,13 +929,18 @@ def _resume_advanced_chat(
         workflow.id,
         generate_entity.inputs,
         WorkflowStartReason.RESUMPTION,
+        sessions=session_factory,
+        tenant_id=workflow.tenant_id,
+        app_id=workflow.app_id,
+        agent_snapshot="_agent_bindings" in workflow_run.graph_dict,
     )
 
 
 def _resume_workflow(
     *,
+    variables: WorkflowExecutionVariables,
     app_model: App,
-    workflow: Workflow,
+    workflow: WorkflowSnapshot,
     user: Account | EndUser,
     generate_entity: WorkflowAppGenerateEntity,
     graph_runtime_state: RuntimeState,
@@ -749,33 +974,48 @@ def _resume_workflow(
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
-
-    try:
-        response = generator.resume(
-            app_model=app_model,
-            workflow=workflow,
-            user=user,
-            application_generate_entity=resumed_generate_entity,
-            graph_runtime_state=graph_runtime_state,
-            workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
-            pause_state_config=pause_state_config,
-            response_stream_filter=response_stream_filter,
+    with (
+        contextlib.nullcontext()
+        if workflow_run.graph_dict.get("_agent_bindings", {}).get("execution_id") == workflow_run_id
+        else contextlib.nullcontext()
+    ) as cancellation:
+        generator = WorkflowAppGenerator(
+            runtime=build_workflow_execution_dependencies(session_factory),
+            execution_driver=WorkflowRunAgg.run,
+            draft_variable_loader=variables.workflow_loader,
+            draft_variable_saver=variables.saver_factory,
+            cancellation=cancellation,
         )
-    except Exception:
-        logger.exception("Failed to resume workflow execution for workflow run %s", workflow_run_id)
-        raise
+        try:
+            response = generator.resume(
+                app_model=app_model,
+                workflow=workflow,
+                user=user,
+                application_generate_entity=resumed_generate_entity,
+                graph_runtime_state=graph_runtime_state,
+                workflow_execution_repository=workflow_execution_repository,
+                workflow_node_execution_repository=workflow_node_execution_repository,
+                pause_state_config=pause_state_config,
+                response_stream_filter=response_stream_filter,
+            )
+        except Exception:
+            logger.exception("Failed to resume workflow execution for workflow run %s", workflow_run_id)
+            raise
 
-    assert isinstance(response, Generator)
-    _publish_streaming_response(
-        response,
-        workflow_run_id,
-        AppMode.WORKFLOW,
-        workflow.id,
-        generate_entity.inputs,
-        WorkflowStartReason.RESUMPTION,
-    )
+        assert isinstance(response, Generator)
+        _publish_streaming_response(
+            response,
+            workflow_run_id,
+            AppMode.WORKFLOW,
+            workflow.id,
+            generate_entity.inputs,
+            WorkflowStartReason.RESUMPTION,
+            sessions=session_factory,
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            agent_snapshot="_agent_bindings" in workflow_run.graph_dict,
+            on_terminal=cancellation.finish if cancellation is not None else None,
+        )
 
     try:
         workflow_run_repo.delete_workflow_pause(pause_entity)
@@ -790,4 +1030,6 @@ def _resume_workflow(
 
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE, name="resume_app_execution")
 def resume_app_execution(payload: dict[str, Any]) -> None:
-    _resume_app_execution(payload)
+    from extensions.ext_application_services import application_services
+
+    _resume_app_execution(payload, variables=application_services().workflow_variables)

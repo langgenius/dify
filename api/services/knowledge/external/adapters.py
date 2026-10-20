@@ -1,5 +1,3 @@
-from repositories.knowledge.external_retrieval_repository import prepare_external_retrieval
-
 """External knowledge persistence and network adapters with bounded sessions."""
 
 from collections.abc import Mapping
@@ -17,6 +15,7 @@ from repositories.knowledge.dataset_read_repository import (
     get_external_api_bindings_batch,
     get_external_api_dataset_bindings,
 )
+from repositories.knowledge.external_retrieval_repository import prepare_external_retrieval
 from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
 from services.hit_testing_service import HitTestingService
 from services.knowledge.dataset_read_service import load_dataset_detail

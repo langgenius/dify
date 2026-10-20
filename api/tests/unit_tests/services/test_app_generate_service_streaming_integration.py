@@ -5,10 +5,9 @@ from typing import Any
 
 import pytest
 
-from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
-from core.app.apps.message_generator import MessageGenerator
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
+from services.workflow.execution.adapters.response_stream import WorkflowEventStream
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -111,10 +110,14 @@ def _patch_get_channel_streams(monkeypatch: pytest.MonkeyPatch):
     def _get_channel():
         return chan
 
-    # Patch the source and the imported aliases used by MessageGenerator / MessageBasedAppGenerator
+    # Patch the source and the imported aliases used by WorkflowEventStream / MessageBasedAppGenerator
     monkeypatch.setattr("extensions.ext_redis.get_pubsub_broadcast_channel", lambda: chan)
-    monkeypatch.setattr("core.app.apps.message_generator.get_pubsub_broadcast_channel", lambda: chan)
-    monkeypatch.setattr("core.app.apps.message_based_app_generator.get_pubsub_broadcast_channel", lambda: chan)
+    monkeypatch.setattr(
+        "services.workflow.execution.adapters.response_stream.get_pubsub_broadcast_channel", lambda: chan
+    )
+    monkeypatch.setattr(
+        "services.workflow.execution.adapters.response_stream.get_pubsub_broadcast_channel", lambda: chan
+    )
     apply_config_overrides(monkeypatch, PUBSUB_REDIS_CHANNEL_TYPE="streams")
 
 
@@ -129,15 +132,17 @@ def _patch_get_channel_pubsub(monkeypatch: pytest.MonkeyPatch):
     def _get_channel():
         return chan
 
-    # Patch both the source and the imported alias used by MessageGenerator
+    # Patch both the source and the imported alias used by WorkflowEventStream
     monkeypatch.setattr("extensions.ext_redis.get_pubsub_broadcast_channel", lambda: chan)
-    monkeypatch.setattr("core.app.apps.message_generator.get_pubsub_broadcast_channel", lambda: chan)
+    monkeypatch.setattr(
+        "services.workflow.execution.adapters.response_stream.get_pubsub_broadcast_channel", lambda: chan
+    )
     apply_config_overrides(monkeypatch, PUBSUB_REDIS_CHANNEL_TYPE="pubsub")
 
 
 def _publish_events(app_mode: AppMode, run_id: str, events: list[dict]):
-    # Publish events to the same topic used by MessageGenerator
-    topic = MessageGenerator.get_response_topic(app_mode, run_id)
+    # Publish events to the same topic used by WorkflowEventStream
+    topic = WorkflowEventStream.get_response_topic(app_mode, run_id)
     for ev in events:
         topic.publish(json.dumps(ev).encode())
 
@@ -164,7 +169,7 @@ def test_streams_full_flow_prepublish_and_replay():
     # ADVANCED_CHAT streaming runs through in production.
     on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(start_task)
 
-    gen = MessageBasedAppGenerator.retrieve_events(app_mode, run_id, idle_timeout=2.0, on_subscribe=on_subscribe)
+    gen = WorkflowEventStream.retrieve_events(app_mode, run_id, idle_timeout=2.0, on_subscribe=on_subscribe)
 
     received = []
     for msg in gen:
@@ -199,7 +204,7 @@ def test_pubsub_full_flow_start_on_subscribe_gated(monkeypatch: pytest.MonkeyPat
     # Producer not started yet; only when subscribe happens
     assert published_order == []
 
-    gen = MessageGenerator.retrieve_events(app_mode, run_id, idle_timeout=2.0, on_subscribe=on_subscribe)
+    gen = WorkflowEventStream.retrieve_events(app_mode, run_id, idle_timeout=2.0, on_subscribe=on_subscribe)
 
     received = []
     for msg in gen:

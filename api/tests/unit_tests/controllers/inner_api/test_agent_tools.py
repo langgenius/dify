@@ -2,12 +2,15 @@
 
 from collections.abc import Generator
 from contextlib import contextmanager
-from unittest.mock import patch
+from dataclasses import dataclass
+from unittest.mock import Mock, create_autospec, patch
 
+import pytest
 from flask import Flask
 
 from controllers.inner_api import bp as inner_api_bp
-from services.entities.agent_tool_inner import AgentToolInvokeResponse
+from services.agent.tool_invocation_service import AgentToolInnerService
+from services.entities.agent_tool_inner import AgentToolInvokeRequest, AgentToolInvokeResponse
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
 from tests.unit_tests.config_override import config_overrides_context
 
@@ -54,6 +57,24 @@ def _agent_inner_auth() -> Generator[None]:
         yield
 
 
+@dataclass(frozen=True)
+class _AgentApps:
+    tools: AgentToolInnerService
+
+
+@dataclass(frozen=True)
+class _ApplicationServices:
+    agent_apps: _AgentApps
+
+
+@contextmanager
+def _tool_service() -> Generator[Mock]:
+    service = create_autospec(AgentToolInnerService, instance=True, spec_set=True)
+    services = _ApplicationServices(agent_apps=_AgentApps(tools=service))
+    with patch("controllers.inner_api.agent.tools.application_services", return_value=services):
+        yield service.invoke
+
+
 def test_post_returns_service_response() -> None:
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -61,7 +82,7 @@ def test_post_returns_service_response() -> None:
 
     with (
         _agent_inner_auth(),
-        patch("controllers.inner_api.agent.tools.AgentToolInnerService.invoke") as mock_invoke,
+        _tool_service() as mock_invoke,
     ):
         mock_invoke.return_value = AgentToolInvokeResponse(
             messages=[{"type": "text", "message": {"text": "ok"}}],
@@ -79,6 +100,7 @@ def test_post_returns_service_response() -> None:
     body = response.get_json()
     assert body["observation"] == "ok"
     assert body["metadata"]["provider_type"] == "plugin"
+    mock_invoke.assert_called_once_with(request=AgentToolInvokeRequest.model_validate(_payload()))
 
 
 def test_post_returns_400_for_invalid_body() -> None:
@@ -105,7 +127,7 @@ def test_post_preserves_service_error_status_code_and_description() -> None:
 
     with (
         _agent_inner_auth(),
-        patch("controllers.inner_api.agent.tools.AgentToolInnerService.invoke") as mock_invoke,
+        _tool_service() as mock_invoke,
     ):
         mock_invoke.side_effect = AgentToolInnerServiceError(
             error_code="app_tenant_mismatch",
@@ -122,3 +144,14 @@ def test_post_preserves_service_error_status_code_and_description() -> None:
     body = response.get_json()
     assert body["code"] == "app_tenant_mismatch"
     assert body["message"] == "App does not belong to the caller tenant."
+
+
+@pytest.mark.parametrize("api_key", [None, "incorrect-key"])
+def test_post_rejects_untrusted_callers_before_service_invocation(api_key: str | None) -> None:
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.register_blueprint(inner_api_bp)
+    with _agent_inner_auth(), _tool_service() as invoke:
+        response = app.test_client().post("/inner/api/agent/tools/invoke", json=_payload(), headers=_headers(api_key))
+    assert response.status_code == 404
+    invoke.assert_not_called()

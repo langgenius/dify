@@ -20,6 +20,7 @@ from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
 from services.trigger.webhook_service import WebhookService
+from services.trigger.workflow_policy import MAX_WEBHOOK_NODES_PER_WORKFLOW
 
 
 class _EndUserServiceStub:
@@ -457,30 +458,13 @@ class TestWebhookServiceRelationshipSyncWithContainers:
         factory = WebhookServiceRelationshipFactory
         account, tenant = factory.create_account_and_tenant(db_session_with_containers)
         app = factory.create_app(db_session_with_containers, tenant, account)
-        node_ids = [f"node-{index}" for index in range(WebhookService.MAX_WEBHOOK_NODES_PER_WORKFLOW + 1)]
+        node_ids = [f"node-{index}" for index in range(MAX_WEBHOOK_NODES_PER_WORKFLOW + 1)]
         workflow = factory.create_workflow(
             db_session_with_containers, app=app, account=account, node_ids=node_ids, version=Workflow.VERSION_DRAFT
         )
 
         with pytest.raises(ValueError, match="maximum webhook node limit"):
             WebhookService.sync_webhook_relationships(app, workflow)
-
-    def test_sync_webhook_relationships_raises_when_lock_not_acquired(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
-    ):
-        del flask_app_with_containers
-        factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
-        workflow = factory.create_workflow(
-            db_session_with_containers, app=app, account=account, node_ids=["node-1"], version=Workflow.VERSION_DRAFT
-        )
-        lock = MagicMock()
-        lock.acquire.return_value = False
-
-        with patch("services.trigger.webhook_service.redis_client.lock", return_value=lock):
-            with pytest.raises(RuntimeError, match="Failed to acquire lock"):
-                WebhookService.sync_webhook_relationships(app, workflow)
 
     def test_sync_webhook_relationships_creates_missing_records_and_deletes_stale_records(
         self, db_session_with_containers: Session, flask_app_with_containers: Flask
@@ -506,7 +490,8 @@ class TestWebhookServiceRelationshipSyncWithContainers:
         )
 
         with patch(
-            "services.trigger.webhook_service.WebhookService.generate_webhook_id", return_value="new-webhook-id-000001"
+            "repositories.trigger.workflow_repository.WorkflowTriggerRepository.generate_webhook_id",
+            return_value="new-webhook-id-000001",
         ):
             WebhookService.sync_webhook_relationships(app, workflow)
 
@@ -518,66 +503,3 @@ class TestWebhookServiceRelationshipSyncWithContainers:
         assert [record.node_id for record in records] == ["node-new"]
         assert records[0].webhook_id == "new-webhook-id-000001"
         assert db_session_with_containers.get(WorkflowWebhookTrigger, stale_trigger_id) is None
-
-    def test_sync_webhook_relationships_sets_redis_cache_for_new_record(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
-    ):
-        del flask_app_with_containers
-        factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
-        workflow = factory.create_workflow(
-            db_session_with_containers,
-            app=app,
-            account=account,
-            node_ids=["node-cache"],
-            version=Workflow.VERSION_DRAFT,
-        )
-        cache_key = f"{WebhookService.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:node-cache"
-
-        with patch(
-            "services.trigger.webhook_service.WebhookService.generate_webhook_id", return_value="cache-webhook-id-00001"
-        ):
-            WebhookService.sync_webhook_relationships(app, workflow)
-
-        cached_payload = WebhookServiceRelationshipFactory._read_cache(cache_key)
-        assert cached_payload is not None
-        assert cached_payload["node_id"] == "node-cache"
-        assert cached_payload["webhook_id"] == "cache-webhook-id-00001"
-
-    def test_sync_webhook_relationships_logs_when_lock_release_fails(
-        self,
-        db_session_with_containers: Session,
-        flask_app_with_containers: Flask,
-        caplog: pytest.LogCaptureFixture,
-    ):
-        del flask_app_with_containers
-        factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
-        workflow = factory.create_workflow(
-            db_session_with_containers, app=app, account=account, node_ids=[], version=Workflow.VERSION_DRAFT
-        )
-        lock = MagicMock()
-        lock.acquire.return_value = True
-        lock.release.side_effect = RuntimeError("release failed")
-        caplog.set_level(logging.ERROR, logger="services.trigger.webhook_service")
-
-        with patch("services.trigger.webhook_service.redis_client.lock", return_value=lock):
-            WebhookService.sync_webhook_relationships(app, workflow)
-
-        assert caplog.messages.count(f"Failed to release lock for webhook sync, app {app.id}") == 1
-
-
-def _read_cache(cache_key: str) -> dict[str, str] | None:
-    from extensions.ext_redis import redis_client
-
-    cached = redis_client.get(cache_key)
-    if not cached:
-        return None
-    if isinstance(cached, bytes):
-        cached = cached.decode("utf-8")
-    return json.loads(cached)
-
-
-WebhookServiceRelationshipFactory._read_cache = staticmethod(_read_cache)

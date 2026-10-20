@@ -1,22 +1,18 @@
 """Published Agent App references use the canonical roster query."""
 
+from unittest.mock import create_autospec
+
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.agent import WorkflowAgentBindingType
 from extensions.application_services.agent import build_agent_app_services
 from machinery.context import RequestContext
-from models.agent import (
-    Agent,
-    AgentKind,
-    AgentScope,
-    AgentSource,
-    AgentStatus,
-    WorkflowAgentBindingType,
-    WorkflowAgentNodeBinding,
-)
+from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import AppMode
 from services.app.agent_app_contracts import AgentAppNotFoundError
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 from tests.unit_tests.model_factories import make_app
 
 
@@ -62,7 +58,10 @@ def test_access_only_lists_current_published_workflow_references(
             )
         )
     sqlite_session.commit()
-    service = build_agent_app_services(database_client=sqlite_session_factory).access
+    service = build_agent_app_services(
+        database_client=sqlite_session_factory,
+        variables=create_autospec(WorkflowExecutionVariables, instance=True, spec_set=True),
+    ).access
     context = RequestContext("request", None, "account", "tenant-1")
     [reference] = service.list_referencing_workflows(context, "agent")
     assert reference["app_id"] == "workflow-app"
@@ -97,6 +96,9 @@ def test_access_requires_public_agent_app(
         agent.app_id = "missing"
     sqlite_session.add_all([make_app(app_id="agent-app", mode=AppMode.AGENT), agent])
     sqlite_session.commit()
-    service = build_agent_app_services(database_client=sqlite_session_factory).access
+    service = build_agent_app_services(
+        database_client=sqlite_session_factory,
+        variables=create_autospec(WorkflowExecutionVariables, instance=True, spec_set=True),
+    ).access
     with pytest.raises(AgentAppNotFoundError):
         service.list_referencing_workflows(RequestContext("request", None, "account", "tenant-1"), "agent")

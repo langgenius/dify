@@ -11,10 +11,9 @@ from typing import override
 
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
-from services.workflow.execution.chatflow_ports import ConversationVariableWriter
-
 from graphon.engine.layer import Layer
 from graphon.engine_events import EngineEvent, NodeRunVariableUpdatedEvent
+from services.workflow.execution.chatflow_ports import ConversationVariableWriter
 
 logger = logging.getLogger(__name__)
 

@@ -10,6 +10,7 @@ from redis import Redis
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
+from extensions.application_services.snippets import build_snippet_dsl_service
 from graphon.nodes import BuiltinNodeTypes
 from models import Account
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
@@ -39,7 +40,7 @@ type PendingCache = tuple[Redis[bytes], dict[str, bytes], list[tuple[object, ...
 @pytest.fixture
 def service(sqlite_session: Session) -> SnippetDslService:
     """Create the service with a real caller-owned SQLite session."""
-    return SnippetDslService(session=sqlite_session)
+    return build_snippet_dsl_service(session=sqlite_session)
 
 
 @pytest.fixture
@@ -683,10 +684,16 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(
     retirement_calls: list[dict[str, object]] = []
     original_retire = WorkflowAgentRetirementService.retire_unowned
 
-    def retire_unowned(*, tenant_id: str, agent_ids: Iterable[str], account_id: str | None) -> None:
+    def retire_unowned(
+        retirement: WorkflowAgentRetirementService,
+        *,
+        tenant_id: str,
+        agent_ids: Iterable[str],
+        account_id: str | None,
+    ) -> None:
         assert not sqlite_session.in_transaction()
         retirement_calls.append({"tenant_id": tenant_id, "agent_ids": set(agent_ids), "account_id": account_id})
-        original_retire(tenant_id=tenant_id, agent_ids=agent_ids, account_id=account_id)
+        original_retire(retirement, tenant_id=tenant_id, agent_ids=agent_ids, account_id=account_id)
 
     monkeypatch.setattr(WorkflowAgentRetirementService, "retire_unowned", retire_unowned)
 
@@ -710,6 +717,10 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(
     assert snippet.type == "node"
     assert snippet.icon_info == {"icon": "x"}
     assert not sqlite_session.in_transaction()
+    persisted_draft = sqlite_session.scalar(select(Workflow).where(Workflow.app_id == result.id))
+    assert persisted_draft is not None
+    assert persisted_draft.kind == "snippet"
+    assert persisted_draft.graph_dict == {"nodes": [], "edges": []}
     persisted = sqlite_session.get(CustomizedSnippet, snippet.id)
     assert persisted is not None
     assert persisted.name == "New"

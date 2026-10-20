@@ -184,9 +184,7 @@ class TestWorkflowEntrySingleStepRun:
                 workflow_runtime=workflow_runtime,
             )
 
-    def test_preloads_constructor_variables_before_creating_memory_node(
-        self, workflow_runtime: WorkflowRuntime
-    ):
+    def test_preloads_constructor_variables_before_creating_memory_node(self, workflow_runtime: WorkflowRuntime):
         class FakeLLMNode:
             id = "node-id"
             title = "Node Title"
@@ -255,9 +253,7 @@ class TestWorkflowEntrySingleStepRun:
         assert list(generator) == ["event"]
         variable_loader.load_variables.assert_called_once_with([["sys", "conversation_id"]])
 
-    def test_uses_empty_mapping_when_selector_extraction_is_not_implemented(
-        self, workflow_runtime: WorkflowRuntime
-    ):
+    def test_uses_empty_mapping_when_selector_extraction_is_not_implemented(self, workflow_runtime: WorkflowRuntime):
         class FakeNode:
             id = "node-id"
             title = "Node Title"

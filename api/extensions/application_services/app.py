@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from extensions.application_services.workflow import build_app_dsl_service
 from libs.datetime_utils import naive_utc_now
+from models.tool_runtime_contracts import WorkflowToolQueries
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.api_key_repository import AppApiKeyRepository
 from repositories.app.console_repository import ConsoleAppRepository
@@ -32,6 +34,7 @@ from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.oauth_server_service import OAuthServerService
 from services.rbac.members import MemberService
 from services.recommended_app_package_service import RecommendedAppPackageService
+from services.tools.provider_queries import ToolProviders
 from services.workflow.dsl_import import DslImportService
 
 
@@ -49,13 +52,15 @@ def build_app_services(
     *,
     database_client: sessionmaker[Session],
     oauth: OAuthServerService,
+    tool_providers: ToolProviders,
+    workflow_queries: WorkflowToolQueries,
     recommended_packages: RecommendedAppPackageService,
     repository: ConsoleAppRepository,
     rbac_members: MemberService,
 ) -> AppServices:
     transfers = AppTransferGateway(
         session_factory=database_client,
-        dsl_factory=AppDslService,
+        dsl_factory=build_app_dsl_service,
         packages=AppPackageService(),
         agent_packages=RosterAgentPackageExporter(),
         agent_importer=RosterAgentPackageImporter(),
@@ -78,7 +83,9 @@ def build_app_services(
             transfers=transfers,
             creators=CreatorsPlatformGateway(oauth=oauth),
             tracing=OpsTraceManagerGateway(),
-            lifecycle=AppLifecycleGateway(session_factory=database_client),
+            lifecycle=AppLifecycleGateway(
+                session_factory=database_client, tool_providers=tool_providers, workflow_queries=workflow_queries
+            ),
         ),
         enterprise=EnterpriseAppService(
             apps=EnterpriseAppRepository(

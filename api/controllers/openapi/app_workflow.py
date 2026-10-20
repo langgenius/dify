@@ -3,9 +3,9 @@ publishing and versions, and draft environment variables."""
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from http import HTTPStatus
-from typing import Any, Final
+from typing import Any, Final, cast
 from uuid import UUID
 
 from flask_restx import Resource
@@ -57,23 +57,20 @@ from fields.workflow_run_fields import (
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
     WorkflowRunNodeExecutionResponse,
-    node_execution_response_source,
     workflow_run_pagination_response_source,
     workflow_run_response_source,
 )
 from graphon.variables import SecretVariable, VariableBase
 from graphon.variables.exc import VariableError
-from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
-from models import App, AppMode
-from models.workflow import Workflow, WorkflowDataError, WorkflowRun
+from models import AppMode
+from models.workflow import Workflow, WorkflowRun
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from services.workflow.contracts import DraftWorkflowMissingError, WorkflowRecord
 from services.workflow.dsl_import import stored_secret_ids
 from services.workflow.graph_check import CONTAINER_NODE_TYPES, GRAPH_MODES
 from services.workflow.graph_diff import draft_token
 from services.workflow_run_service import WorkflowRunListArgs
-from services.workflow_service import WorkflowService
-from services.workflow_variable_reference_validator import advisory_variable_reference_warning
 
 _RUN_READ_GUARDS: Final = account_app_guards(
     RBACPermission.APP_CREATE_AND_MANAGEMENT, scope=Scope.APPS_READ, roles=None, modes=GRAPH_MODES
@@ -201,24 +198,21 @@ class AppPublishApi(Resource):
     )
     def post(self, ctx: Context, app_id: str, *, body: PublishPayload):
         try:
-            workflow = WorkflowService().publish_workflow(
-                session=ctx.session,
-                app_model=ctx.app,
-                account=ctx.account,
+            publication, warning = application_services().console_workflows.publish(
+                ctx.request_context,
+                ctx.app.id,
                 marked_name=body.marked_name,
                 marked_comment=body.marked_comment,
             )
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
-        app_in_session = ctx.session.get(App, ctx.app.id)
-        if app_in_session:
-            app_in_session.workflow_id = workflow.id
-            app_in_session.updated_by = ctx.account.id
-            app_in_session.updated_at = naive_utc_now()
+        workflow = application_services().console_workflows.published(ctx.request_context, ctx.app.id)
+        if workflow is None:
+            raise RuntimeError("Published workflow is missing after publication")
         return PublishResponse(
             version_id=workflow.id,
-            created_at=to_timestamp(workflow.created_at),
-            warning=advisory_variable_reference_warning(workflow.graph),
+            created_at=to_timestamp(publication.created_at),
+            warning=warning,
         )
 
 
@@ -237,21 +231,28 @@ class AppVersionListApi(Resource):
         returns=(HTTPStatus.OK, VersionListResponse, "Version list"),
     )
     def get(self, ctx: Context, app_id: str, *, query: VersionListQuery):
-        workflows, has_more = WorkflowService().get_all_published_workflow(
-            session=ctx.session,
-            app_model=ctx.app,
+        workflows, has_more = application_services().console_workflows.versions(
+            ctx.request_context,
+            ctx.app.id,
             page=query.page,
             limit=query.limit,
             user_id=None,
             named_only=query.named_only,
-            include_draft=False,
         )
+        workflows = [workflow for workflow in workflows if workflow.version != Workflow.VERSION_DRAFT]
         page = VersionListResponse(
             page=query.page,
             limit=query.limit,
             has_more=has_more,
             data=[
-                VersionRow.model_validate(workflow).model_copy(update={"current": workflow.id == ctx.app.workflow_id})
+                VersionRow(
+                    id=workflow.id,
+                    marked_name=workflow.marked_name,
+                    marked_comment=workflow.marked_comment,
+                    created_by=workflow.created_by["id"] if workflow.created_by is not None else None,
+                    created_at=to_timestamp(workflow.created_at),
+                    current=workflow.id == ctx.app.workflow_id,
+                )
                 for workflow in workflows
             ],
         )
@@ -279,16 +280,14 @@ class AppVersionRestoreApi(Resource):
     def post(self, ctx: Context, app_id: str, version_id: str):
         version_id = _require_uuid(version_id, not_found=VersionNotFound)
         try:
-            draft = WorkflowService().restore_published_workflow_to_draft(
-                app_model=ctx.app, workflow_id=version_id, account=ctx.account, session=ctx.session
-            )
+            application_services().console_workflows.restore(ctx.request_context, ctx.app.id, version_id)
         except IsDraftWorkflowError as exc:
             raise VersionNotRestorable() from exc
         except WorkflowNotFoundError as exc:
             raise VersionNotFound() from exc
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
-        return RestoreResponse(result="success", draft_hash=draft_token(draft))
+        return RestoreResponse(result="success", draft_hash=_draft_token(require_draft(ctx)))
 
 
 def env_variable_rows(variables: Iterable[VariableBase]) -> list[EnvVariableRow]:
@@ -306,22 +305,37 @@ def env_variable_rows(variables: Iterable[VariableBase]) -> list[EnvVariableRow]
     ]
 
 
-def require_draft(ctx: Context) -> Workflow:
-    draft = WorkflowService().get_draft_workflow(app_model=ctx.app, session=ctx.session)
-    if draft is None:
-        raise DraftNotFound()
-    return draft
+def require_draft(ctx: Context) -> WorkflowRecord:
+    try:
+        return application_services().console_workflows.draft(ctx.request_context, ctx.app.id)
+    except DraftWorkflowMissingError as exc:
+        raise DraftNotFound() from exc
+
+
+class _DraftTokenView:
+    """Expose the immutable workflow projection in the shape the legacy token helper reads."""
+
+    def __init__(self, workflow: WorkflowRecord) -> None:
+        self.graph_dict = workflow.graph
+        self.features_dict = workflow.features
+        self.environment_variables = workflow.environment_variables
+        self.conversation_variables = workflow.conversation_variables
+
+
+def _draft_token(draft: WorkflowRecord) -> str:
+    return draft_token(cast(Any, _DraftTokenView(draft)))
 
 
 def _patch_env(ctx: Context, *, upserts: list[VariableBase], deletions: list[str]) -> None:
     try:
-        WorkflowService().patch_draft_workflow_environment_variables(
-            app_model=ctx.app,
-            environment_variables=upserts,
-            deleted_environment_variable_ids=deletions,
-            account=ctx.account,
-            session=ctx.session,
+        application_services().console_workflow_variables.update_environment(
+            ctx.request_context,
+            ctx.app.id,
+            [variable.model_dump(mode="json") for variable in upserts],
+            deleted_ids=deletions,
         )
+    except DraftWorkflowMissingError as exc:
+        raise DraftNotFound() from exc
     except ValueError as exc:
         raise BadRequest(str(exc)) from exc
 
@@ -401,33 +415,35 @@ def _node_run_guards(mode: AppMode) -> tuple[Requirement, ...]:
 def run_draft_node(
     ctx: Context, node_id: str, *, inputs: dict[str, Any], query: str, files: UploadParts | None = None
 ) -> WorkflowRunNodeExecutionResponse:
-    workflow_service = WorkflowService()
     draft = require_draft(ctx)
     try:
-        node = draft.get_node_config_by_id(node_id)
-    except WorkflowDataError as exc:
+        nodes = draft.graph.get("nodes")
+        if not isinstance(nodes, list):
+            raise LookupError
+        node = next(node for node in nodes if isinstance(node, Mapping) and node.get("id") == node_id)
+        data = node.get("data")
+        if not isinstance(data, Mapping):
+            raise LookupError
+        node_type = data.get("type")
+        if not isinstance(node_type, str):
+            raise LookupError
+    except (LookupError, StopIteration) as exc:
         raise NodeNotFound() from exc
-    except ValueError as exc:
-        raise BadRequest(str(exc)) from exc
-    if Workflow.get_node_type_from_node_config(node) in CONTAINER_NODE_TYPES:
+    if node_type in CONTAINER_NODE_TYPES:
         raise BadRequest("Loop and iteration nodes can't run alone; test them with a full draft run")
     if files:
         end_read_transaction(ctx.session)
     user_inputs = merge_files(inputs, files, ctx.caller)
     try:
-        execution = workflow_service.run_draft_workflow_node(
-            app_model=ctx.app,
-            draft_workflow=draft,
-            node_id=node_id,
-            user_inputs=user_inputs,
-            account=ctx.account,
-            query=query,
+        execution = application_services().console_workflows.run_node(
+            ctx.request_context,
+            ctx.app.id,
+            node_id,
+            {"inputs": user_inputs, "query": query},
         )
     except ValueError as exc:
         raise BadRequest(str(exc)) from exc
-    return WorkflowRunNodeExecutionResponse.model_validate(
-        node_execution_response_source(execution, session=ctx.session), from_attributes=True
-    )
+    return WorkflowRunNodeExecutionResponse.model_validate(execution)
 
 
 @openapi_ns.route("/apps/<string:app_id>/draft/workflow/nodes/<string:node_id>:run")

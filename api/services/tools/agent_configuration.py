@@ -1,6 +1,3 @@
-from models.tool_runtime_contracts import WorkflowToolQueries
-from services.tools.provider_queries import ToolProviders
-
 """Build agent tool configuration for responses without changing stored config."""
 
 import logging
@@ -12,6 +9,8 @@ from pydantic import JsonValue, ValidationError
 
 from core.agent.entities import AgentToolEntity
 from core.tools.utils.configuration import ToolParameterConfigurationManager
+from models.tool_runtime_contracts import WorkflowToolQueries
+from services.tools.provider_queries import ToolProviders
 from services.tools.tool_manager import ToolManager
 
 logger = logging.getLogger(__name__)

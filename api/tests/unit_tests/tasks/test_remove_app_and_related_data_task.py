@@ -10,10 +10,11 @@ from sqlalchemy.orm import Session
 
 import tasks.remove_app_and_related_data_task as remove_app_task_module
 from enums import DeploymentEdition
+from enums.agent import WorkflowAgentBindingType
 from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorageNotConfiguredError
 from models import AppStar
-from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.agent import WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowArchiveLog
 from tasks.remove_app_and_related_data_task import (

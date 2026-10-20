@@ -36,7 +36,9 @@ class TestRagPipelineRunTasks:
     @pytest.fixture
     def mock_pipeline_generator(self):
         """Mock PipelineGenerator._generate method."""
-        with patch("core.app.apps.pipeline.pipeline_generator.PipelineGenerator._generate") as mock_generate:
+        with patch(
+            "services.workflow.execution.adapters.pipeline.pipeline_generator.PipelineGenerator._generate"
+        ) as mock_generate:
             # Mock the _generate method to return a simple response
             mock_generate.return_value = {"answer": "Test response", "metadata": {"test": "data"}}
             yield mock_generate

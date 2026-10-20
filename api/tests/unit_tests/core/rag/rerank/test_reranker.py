@@ -1,7 +1,3 @@
-from sqlalchemy.orm import sessionmaker
-
-from tests.unit_tests.model_factories import upload_reader
-
 """Comprehensive unit tests for Reranker functionality.
 
 This test module covers all aspects of the reranking system including:
@@ -21,7 +17,7 @@ from operator import itemgetter
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.entities.provider_configuration import ProviderModelBundle
 from core.model_manager import ModelInstance
@@ -42,6 +38,7 @@ from graphon.model_runtime.model_providers.base.rerank_model import RerankModel
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from tests.unit_tests.core.model_fixtures import make_model_config
+from tests.unit_tests.model_factories import upload_reader
 
 
 def create_model_instance() -> ModelInstance:

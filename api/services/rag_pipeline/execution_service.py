@@ -62,10 +62,11 @@ from models.workflow import (
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionTriggeredFrom,
 )
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.data_source.provider_service import DatasourceProviderService
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from services.workflow.execution.ports import WorkflowRuntime
-from services.workflow.variable_contracts import WorkflowExecutionVariables
+from services.workflow.variable_contracts import WorkflowExecutionVariables, environment_variable_values
 
 logger = logging.getLogger(__name__)
 
@@ -126,9 +127,10 @@ class RagPipelineExecutionService:
         Run draft workflow node
         """
         # fetch draft workflow by app_model
-        draft_workflow = self._workflows.get_draft_workflow(pipeline=pipeline)
-        if not draft_workflow:
+        draft_workflow_model = self._workflows.get_draft_workflow(pipeline=pipeline)
+        if not draft_workflow_model:
             raise ValueError("Workflow not initialized")
+        draft_workflow = workflow_snapshot(draft_workflow_model)
 
         # run draft workflow node
         start_at = time.perf_counter()
@@ -151,7 +153,7 @@ class RagPipelineExecutionService:
             variable_pool=_build_seeded_variable_pool(
                 build_bootstrap_variables(
                     system_variables=default_system_variables(),
-                    environment_variables=draft_workflow.environment_variables,
+                    environment_variables=environment_variable_values(draft_workflow),
                 )
             ),
             variable_loader=self._variables.workflow_loader(draft_workflow, account.id),
@@ -330,12 +332,10 @@ class RagPipelineExecutionService:
                         yield online_drive_event.model_dump()
                 case DatasourceProviderType.WEBSITE_CRAWL:
                     datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
-                    website_crawl_result: Generator[WebsiteCrawlMessage] = (
-                        datasource_runtime.get_website_crawl(
-                            user_id=account.id,
-                            datasource_parameters=variables_map,
-                            provider_type=datasource_runtime.datasource_provider_type(),
-                        )
+                    website_crawl_result: Generator[WebsiteCrawlMessage] = datasource_runtime.get_website_crawl(
+                        user_id=account.id,
+                        datasource_parameters=variables_map,
+                        provider_type=datasource_runtime.datasource_provider_type(),
                     )
                     start_time = time.time()
                     try:
@@ -640,9 +640,10 @@ class RagPipelineExecutionService:
         """
 
         # fetch draft workflow by app_model
-        draft_workflow = self._workflows.get_draft_workflow(pipeline=pipeline)
-        if not draft_workflow:
+        draft_workflow_model = self._workflows.get_draft_workflow(pipeline=pipeline)
+        if not draft_workflow_model:
             raise ValueError("Workflow not initialized")
+        draft_workflow = workflow_snapshot(draft_workflow_model)
 
         # run draft workflow node
         start_at = time.perf_counter()

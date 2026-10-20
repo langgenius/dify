@@ -10,16 +10,15 @@ from typing import Any, Final
 
 from flask_restx import Resource
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import (
-    BadRequest,
-    HTTPException,
-    InternalServerError,
-    NotFound,
-    TooManyRequests,
-)
 
 import services
 from constants.oauth_bearer import Scope
+from controllers.common.errors import (
+    InvalidRequestError,
+    NotFoundError,
+    TooManyRequestsError,
+    raise_unexpected_error,
+)
 from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
@@ -97,13 +96,13 @@ def _translate_service_errors() -> Generator[None]:
     try:
         yield
     except WorkflowNotFoundError as ex:
-        raise NotFound(str(ex)) from ex
+        raise NotFoundError(str(ex)) from ex
     except (IsDraftWorkflowError, WorkflowIdFormatError) as ex:
-        raise BadRequest(str(ex)) from ex
+        raise InvalidRequestError(str(ex)) from ex
     except TriggerWorkflowServiceModeUnavailableServiceError as caught_error:
         raise TriggerWorkflowServiceModeUnavailableError() from caught_error
     except services.errors.conversation.ConversationNotExistsError as caught_error:
-        raise NotFound("Conversation Not Exists.") from caught_error
+        raise NotFoundError("Conversation Not Exists.") from caught_error
     except services.errors.conversation.ConversationCompletedError as caught_error:
         raise ConversationCompletedError() from caught_error
     except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
@@ -119,19 +118,16 @@ def _translate_service_errors() -> Generator[None]:
         # App concurrency limit. Without this it falls through to the bare `except Exception`
         # below and surfaces as a 500. Render as the canonical 429 (code "too_many_requests");
         # the source message is dropped since it carries internal detail (client_id / limits).
-        raise TooManyRequests() from caught_error
+        raise TooManyRequestsError() from caught_error
     except InvokeRateLimitError as ex:
         raise InvokeRateLimitHttpError(ex.description) from ex
     except InvokeError as e:
         raise CompletionRequestError(e.description) from e
     except ValueError as caught_error:
         logger.warning("run input refused by the service.", exc_info=True)
-        raise BadRequest(_INVALID_RUN_INPUT) from caught_error
-    except HTTPException:
-        raise
-    except Exception as caught_error:
-        logger.exception("internal server error.")
-        raise InternalServerError() from caught_error
+        raise InvalidRequestError(_INVALID_RUN_INPUT) from caught_error
+    except Exception as error:
+        raise_unexpected_error(error, message="App execution failed")
 
 
 _RUN_GUARDS: Final = (
@@ -148,6 +144,8 @@ _STREAM_RESULT: Final = (200, EventStreamResponse, "Run result (SSE stream)")
 
 def _generate(app: App, caller: Any, args: dict[str, Any], session: Session, invoke_from: InvokeFrom):
     return AppGenerateService.generate(
+        variables=application_services().workflow_variables,
+        runtime=application_services().workflow_runtime,
         session=session,
         app_model=app,
         user=caller,
@@ -459,5 +457,5 @@ class AppRunTaskStopApi(Resource):
             caller_role=ctx.subject.caller_role,
             caller_id=ctx.caller.id,
         ):
-            raise NotFound("Task not found")
+            raise NotFoundError("Task not found")
         return TaskStopResponse(result="success")

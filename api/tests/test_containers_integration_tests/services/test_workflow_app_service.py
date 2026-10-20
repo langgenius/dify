@@ -13,8 +13,8 @@ from graphon.enums import WorkflowExecutionStatus
 from models import EndUser, Workflow, WorkflowAppLog, WorkflowRun
 from models.enums import CreatorUserRole, EndUserType
 from models.workflow import WorkflowAppLogCreatedFrom
-from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
-from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+from repositories.workflow.app_log_repository import WorkflowAppLogRepository
+from services.workflow.app_log_query_service import WorkflowAppLogQueryService
 from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -23,7 +23,7 @@ class _WorkflowAppLogTestClient:
     def __init__(self, session: Session) -> None:
         session_factory = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
         self._service = WorkflowAppLogQueryService(
-            logs=WorkflowAppLogQueryRepository(session_factory=session_factory),
+            logs=WorkflowAppLogRepository(session_factory=session_factory),
         )
 
     def get_paginate_workflow_app_logs(self, *, session: Session, app_model, **kwargs):

@@ -2,9 +2,9 @@ import logging
 from unittest.mock import patch
 
 import pytest
-from werkzeug.exceptions import NotFound
 
 import controllers.trigger.trigger as module
+from controllers.common.errors import NotFoundError
 
 
 @pytest.fixture(autouse=True)
@@ -23,7 +23,7 @@ INVALID_UUID = "not-a-uuid"
 
 class TestTriggerEndpoint:
     def test_invalid_uuid(self):
-        with pytest.raises(NotFound):
+        with pytest.raises(NotFoundError):
             module.trigger_endpoint(INVALID_UUID)
 
     @patch.object(module.TriggerService, "process_endpoint")

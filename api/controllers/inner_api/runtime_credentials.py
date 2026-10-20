@@ -26,11 +26,11 @@ from core.helper import encrypter
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.helper.provider_encryption import create_provider_encrypter
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
-from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from models.provider import ProviderCredential
 from models.tools import BuiltinToolProvider
+from services.tools.tool_manager import ToolManager
 
 logger = logging.getLogger(__name__)
 

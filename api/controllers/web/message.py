@@ -4,9 +4,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, TypeAdapter
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
+from controllers.common.errors import InternalServerError, NotFoundError
 from controllers.common.fields import GeneratedAppResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
@@ -15,6 +15,7 @@ from controllers.web import web_ns
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
     AppSuggestedQuestionsAfterAnswerDisabledError,
+    AppUnavailableError,
     CompletionRequestError,
     NotChatAppError,
     NotCompletionAppError,
@@ -25,6 +26,7 @@ from controllers.web.error import (
 from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination, WebMessageListItem
@@ -35,6 +37,7 @@ from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
+from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
     FirstMessageNotExistsError,
@@ -100,9 +103,9 @@ class MessageListApi(WebApiResource):
                 data=items,
             ).model_dump(mode="json")
         except ConversationNotExistsError as caught_error:
-            raise NotFound("Conversation Not Exists.") from caught_error
+            raise NotFoundError("Conversation Not Exists.") from caught_error
         except FirstMessageNotExistsError as caught_error:
-            raise NotFound("First Message Not Exists.") from caught_error
+            raise NotFoundError("First Message Not Exists.") from caught_error
 
 
 @web_ns.route("/messages/<uuid:message_id>/feedbacks")
@@ -146,7 +149,7 @@ class MessageFeedbackApi(WebApiResource):
                 session=db.session(),
             )
         except MessageNotExistsError as caught_error:
-            raise NotFound("Message Not Exists.") from caught_error
+            raise NotFoundError("Message Not Exists.") from caught_error
 
         return ResultResponse(result="success").model_dump(mode="json")
 
@@ -194,6 +197,9 @@ class MessageMoreLikeThisApi(WebApiResource):
 
         try:
             response = AppGenerateService.generate_more_like_this(
+                retrieval=application_services().workflow_runtime.retrieval,
+                annotations=application_services().workflow_runtime.annotation_replies,
+                records=application_services().workflow_runtime.chat_records,
                 session=session,
                 app_model=app_model,
                 user=end_user,
@@ -205,7 +211,9 @@ class MessageMoreLikeThisApi(WebApiResource):
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except MessageNotExistsError as caught_error:
-            raise NotFound("Message Not Exists.") from caught_error
+            raise NotFoundError("Message Not Exists.") from caught_error
+        except AppModelConfigBrokenError as error:
+            raise AppUnavailableError() from error
         except MoreLikeThisDisabledError as caught_error:
             raise AppMoreLikeThisDisabledError() from caught_error
         except ProviderTokenNotInitError as ex:
@@ -264,9 +272,9 @@ class MessageSuggestedQuestionApi(WebApiResource):
             )
             # questions is a list of strings, not a list of Message objects
         except MessageNotExistsError as caught_error:
-            raise NotFound("Message not found") from caught_error
+            raise NotFoundError("Message not found") from caught_error
         except ConversationNotExistsError as caught_error:
-            raise NotFound("Conversation not found") from caught_error
+            raise NotFoundError("Conversation not found") from caught_error
         except SuggestedQuestionsAfterAnswerDisabledError as caught_error:
             raise AppSuggestedQuestionsAfterAnswerDisabledError() from caught_error
         except ProviderTokenNotInitError as ex:

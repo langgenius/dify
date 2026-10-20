@@ -21,11 +21,11 @@ from core.tools.entities.tool_entities import (
     ToolInvokeMeta,
     ToolProviderType,
 )
+from extensions.application_services.workflow import build_workflow_execution_dependencies
 from graphon.model_runtime.entities import PromptMessage
 from models.model import Message
 from services.agent.chat.cot_runner import CotAgentRunner
 from services.agent.chat.ports import AgentToolInvoker
-from services.app.generation.adapters.agent_chat import _SessionBoundAgentToolInvoker
 from services.app.generation.ports import AgentMessageRecords, MessageFileWriter
 from tests.unit_tests.model_factories import make_message
 
@@ -69,7 +69,7 @@ class _LazyTool(Tool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         assert isinstance(session, _TrackingSession)
         self.sessions.append(session)
         assert not session.was_closed
@@ -98,7 +98,7 @@ def test_session_bound_invoker_consumes_lazy_messages_before_closing_session(
     fail_after_first_message: bool,
 ) -> None:
     tool_sessions: sessionmaker[Session] = sessionmaker(class_=_TrackingSession)
-    invoker = _SessionBoundAgentToolInvoker(tool_sessions)
+    invoker = build_workflow_execution_dependencies(tool_sessions).agent_tool_invoker
     tool = _LazyTool(fail_after_first_message=fail_after_first_message)
 
     text, files, meta = invoker(

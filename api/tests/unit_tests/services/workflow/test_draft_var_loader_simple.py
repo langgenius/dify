@@ -6,8 +6,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.file_access import DatabaseFileAccessController
 from core.workflow.file_reference import build_file_reference
 from extensions.storage.storage_type import StorageType
 from graphon.file import File, FileTransferMethod, FileType
@@ -16,7 +17,9 @@ from graphon.variables.types import SegmentType
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
-from services.workflow_draft_variable_service import DraftVarLoader
+from repositories.workflow.draft_variable_repository import WorkflowDraftVariableRepository
+from services.workflow.draft_variable_service import DraftVarLoader
+from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
 
 
 def _persist_offloaded_variable(
@@ -67,11 +70,16 @@ class TestDraftVarLoaderSimple:
     def draft_var_loader(self, sqlite_engine: Engine):
         """Create DraftVarLoader instance for testing."""
         return DraftVarLoader(
-            engine=sqlite_engine,
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=sqlite_engine, expire_on_commit=False), DatabaseFileAccessController()
+            ),
+            load_file=Mock(),
+            repository=WorkflowDraftVariableRepository(
+                sessions=sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+            ),
             app_id="test-app-id",
             tenant_id="test-tenant-id",
             user_id="test-user-id",
-            fallback_variables=[],
         )
 
     def test_load_offloaded_variable_object_type_unit(self, draft_var_loader):
@@ -114,8 +122,8 @@ class TestDraftVarLoaderSimple:
         test_object = {"key1": "value1", "key2": 42}
         test_json_content = json.dumps(test_object, ensure_ascii=False, separators=(",", ":"))
 
-        with patch("services.workflow_draft_variable_service.storage") as mock_storage:
-            mock_storage.load.return_value = test_json_content.encode()
+        with patch.object(draft_var_loader, "_load_file") as load_file:
+            load_file.return_value = test_json_content.encode()
 
             # Execute the method
             selector_tuple, variable = draft_var_loader._load_offloaded_variable(draft_var)
@@ -128,7 +136,7 @@ class TestDraftVarLoaderSimple:
             assert variable.value == test_object
 
             # Verify method calls
-            mock_storage.load.assert_called_once_with("storage/key/test.json")
+            load_file.assert_called_once_with("storage/key/test.json")
 
     def test_load_offloaded_variable_missing_variable_file_unit(self, draft_var_loader):
         """Test that assertion error is raised when variable_file is None."""
@@ -210,8 +218,8 @@ class TestDraftVarLoaderSimple:
         test_array = ["item1", 2, True]
         test_json_content = json.dumps(test_array)
 
-        with patch("services.workflow_draft_variable_service.storage") as mock_storage:
-            mock_storage.load.return_value = test_json_content.encode()
+        with patch.object(draft_var_loader, "_load_file") as load_file:
+            load_file.return_value = test_json_content.encode()
             # Execute the method
             selector_tuple, variable = draft_var_loader._load_offloaded_variable(draft_var)
 
@@ -222,7 +230,7 @@ class TestDraftVarLoaderSimple:
             assert variable.description == "test array description"
 
             # Verify method calls
-            mock_storage.load.assert_called_once_with("storage/key/test_array.json")
+            load_file.assert_called_once_with("storage/key/test_array.json")
 
     def test_load_offloaded_variable_file_type_rebuilds_storage_backed_payload(self, draft_var_loader):
         upload_file = UploadFile(
@@ -288,11 +296,10 @@ class TestDraftVarLoaderSimple:
         }
 
         with (
-            patch("services.workflow_draft_variable_service.storage") as mock_storage,
-            patch("models.workflow._resolve_workflow_app_tenant_id", return_value="tenant-1"),
-            patch("models.workflow.build_file_from_stored_mapping", return_value=rebuilt_file) as rebuild_file,
+            patch.object(draft_var_loader, "_load_file") as load_file,
+            patch.object(draft_var_loader._file_inputs, "restore", return_value=rebuilt_file) as rebuild_file,
         ):
-            mock_storage.load.return_value = json.dumps(raw_file).encode()
+            load_file.return_value = json.dumps(raw_file).encode()
 
             selector_tuple, variable = draft_var_loader._load_offloaded_variable(draft_var)
 
@@ -301,7 +308,7 @@ class TestDraftVarLoaderSimple:
         assert variable.name == "test_file"
         assert variable.description == "test file description"
         assert variable.value == rebuilt_file
-        rebuild_file.assert_called_once_with(file_mapping=raw_file, tenant_id="tenant-1")
+        rebuild_file.assert_called_once_with(mapping=raw_file, tenant_id="test-tenant-id")
 
     @pytest.mark.parametrize(
         "sqlite_session",
@@ -345,13 +352,12 @@ class TestDraftVarLoaderSimple:
         offloaded_variable.selector = ["node2", "offloaded_var"]
 
         with (
-            patch("services.workflow_draft_variable_service.StorageKeyLoader"),
             patch.object(
                 draft_var_loader,
                 "_load_offloaded_variable",
                 return_value=(("node2", "offloaded_var"), offloaded_variable),
             ) as load_offloaded,
-            patch("services.workflow_draft_variable_service.ThreadPoolExecutor") as executor_cls,
+            patch("services.workflow.draft_variable_service.ThreadPoolExecutor") as executor_cls,
         ):
             executor = executor_cls.return_value.__enter__.return_value
             executor.map.side_effect = lambda function, values: [function(value) for value in values]
@@ -392,8 +398,7 @@ class TestDraftVarLoaderSimple:
         sqlite_session.commit()
 
         with (
-            patch("services.workflow_draft_variable_service.StorageKeyLoader"),
-            patch("services.workflow_draft_variable_service.ThreadPoolExecutor") as executor_cls,
+            patch("services.workflow.draft_variable_service.ThreadPoolExecutor") as executor_cls,
         ):
             executor = executor_cls.return_value.__enter__.return_value
             executor.map.return_value = [

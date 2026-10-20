@@ -1048,10 +1048,7 @@ export const post15 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftResponse)
-  .errors({
-    draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError } })
 
 export const draft = {
   get: get20,
@@ -1085,7 +1082,7 @@ export const get21 = oc
   .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 /**
- * Publish workflow
+ * Publish a prepared Pipeline and its dataset settings atomically
  */
 export const post16 = oc
   .route({
@@ -1093,12 +1090,11 @@ export const post16 = oc
     method: 'POST',
     operationId: 'postRagPipelinesByPipelineIdWorkflowsPublish',
     path: '/rag/pipelines/{pipeline_id}/workflows/publish',
-    summary: 'Publish workflow',
+    summary: 'Publish a prepared Pipeline and its dataset settings atomically',
     tags: ['console'],
   })
   .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsPublishPath }))
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishResponse)
-  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const publish2 = {
   get: get21,
@@ -1271,15 +1267,11 @@ export const post20 = oc
   })
   .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestorePath }))
   .output(zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse)
-  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const restore = {
   post: post20,
 }
 
-/**
- * Delete a published workflow version that is not currently active on the pipeline
- */
 export const delete5 = oc
   .route({
     inputStructure: 'detailed',
@@ -1287,12 +1279,10 @@ export const delete5 = oc
     operationId: 'deleteRagPipelinesByPipelineIdWorkflowsByWorkflowId',
     path: '/rag/pipelines/{pipeline_id}/workflows/{workflow_id}',
     successStatus: 204,
-    summary: 'Delete a published workflow version that is not currently active on the pipeline',
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath }))
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse)
-  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 /**
  * Update workflow attributes

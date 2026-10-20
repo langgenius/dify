@@ -118,3 +118,6 @@ class TestWorkflowTaskStopApi:
         stop.assert_called_once_with(
             tenant_id="tenant-1", app_id="app-1", task_id="task-1", app_mode=AppMode.WORKFLOW, owner=None
         )
+
+
+pytestmark = pytest.mark.usefixtures("workflow_application")

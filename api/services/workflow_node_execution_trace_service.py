@@ -14,7 +14,9 @@ from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, Work
 from libs.helper import to_timestamp
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
+from services.tools.provider_queries import ToolProviderIcons
 from services.variable_truncator import VariableTruncator
+from services.workflow.node_execution_extras import node_execution_extras
 
 logger = logging.getLogger(__name__)
 
@@ -61,11 +63,12 @@ def assemble_workflow_node_execution_traces(
     repository: DifyAPIWorkflowNodeExecutionRepository,
     *,
     session: Session,
+    tool_providers: ToolProviderIcons,
 ) -> list[WorkflowNodeExecutionTrace]:
     """Expand valid persisted retry attempts before each terminal execution."""
     traces: list[WorkflowNodeExecutionTrace] = []
     for execution in executions:
-        traces.extend(_expand_execution(execution, repository, session=session))
+        traces.extend(_expand_execution(execution, repository, session=session, tool_providers=tool_providers))
     return traces
 
 
@@ -74,12 +77,16 @@ def _expand_execution(
     repository: DifyAPIWorkflowNodeExecutionRepository,
     *,
     session: Session,
+    tool_providers: ToolProviderIcons,
 ) -> list[WorkflowNodeExecutionTrace]:
     full_process_data = _load_full_process_data(execution, repository)
     retry_attempts = _parse_retry_attempts(execution, full_process_data)
     terminal_metadata = execution.execution_metadata_dict
-    traces = [_retry_trace(execution, attempt, terminal_metadata, session=session) for attempt in retry_attempts]
-    traces.append(_terminal_trace(execution, session=session))
+    traces = [
+        _retry_trace(execution, attempt, terminal_metadata, session=session, tool_providers=tool_providers)
+        for attempt in retry_attempts
+    ]
+    traces.append(_terminal_trace(execution, session=session, tool_providers=tool_providers))
     return traces
 
 
@@ -140,6 +147,7 @@ def _retry_trace(
     terminal_metadata: Mapping[str, Any],
     *,
     session: Session,
+    tool_providers: ToolProviderIcons,
 ) -> WorkflowNodeExecutionTrace:
     truncator = VariableTruncator.default()
     inputs, inputs_truncated = truncator.truncate_variable_mapping(attempt.inputs)
@@ -166,7 +174,7 @@ def _retry_trace(
         error=attempt.error,
         elapsed_time=attempt.elapsed_time,
         execution_metadata=execution_metadata,
-        extras=execution.extras,
+        extras=node_execution_extras(execution, tool_providers=tool_providers),
         created_at=attempt.created_at,
         created_by_role=_enum_value(execution.created_by_role),
         created_by=execution.created_by,
@@ -180,7 +188,9 @@ def _retry_trace(
     )
 
 
-def _terminal_trace(execution: WorkflowNodeExecutionModel, *, session: Session) -> WorkflowNodeExecutionTrace:
+def _terminal_trace(
+    execution: WorkflowNodeExecutionModel, *, session: Session, tool_providers: ToolProviderIcons
+) -> WorkflowNodeExecutionTrace:
     process_data = execution.process_data_dict
     if process_data is not None and RETRY_HISTORY_PROCESS_DATA_KEY in process_data:
         process_data = dict(process_data)
@@ -205,7 +215,7 @@ def _terminal_trace(execution: WorkflowNodeExecutionModel, *, session: Session) 
         error=execution.error,
         elapsed_time=execution.elapsed_time,
         execution_metadata=execution.execution_metadata_dict,
-        extras=execution.extras,
+        extras=node_execution_extras(execution, tool_providers=tool_providers),
         created_at=to_timestamp(execution.created_at),
         created_by_role=_enum_value(execution.created_by_role),
         created_by=execution.created_by,

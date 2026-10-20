@@ -1,4 +1,5 @@
 import logging
+from types import SimpleNamespace
 
 import pytest
 
@@ -12,7 +13,7 @@ from models.workflow import Workflow
 def test_missing_tool_provider_does_not_log_error_traceback(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
-):
+) -> None:
     app = App(
         id="workflow-id",
         tenant_id="tenant-id",
@@ -55,6 +56,12 @@ def test_missing_tool_provider_does_not_log_error_traceback(
         },
     )
     monkeypatch.setattr(handler_module.ToolEntity, "model_validate", lambda _data: tool_entity)
+    tool_services = SimpleNamespace(tool_providers=object(), workflow_queries=object())
+    monkeypatch.setattr(
+        handler_module,
+        "application_services",
+        lambda: SimpleNamespace(tools=tool_services),
+    )
     monkeypatch.setattr(
         handler_module.ToolManager,
         "get_tool_runtime",

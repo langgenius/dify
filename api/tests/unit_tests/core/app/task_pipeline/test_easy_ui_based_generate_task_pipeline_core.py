@@ -1408,8 +1408,6 @@ class TestEasyUiBasedGenerateTaskPipeline:
             message=message,
             stream=False,
         )
-        session = sqlite_session
-
         with pytest.raises(MessageNotExistsError):
             pipeline._save_message()
 

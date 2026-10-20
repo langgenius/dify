@@ -62,7 +62,7 @@ def recovery_service(
     monkeypatch.setattr("tasks.collect_agent_resources_task.enqueue_agent_resource_collection", lambda **_kwargs: None)
     topic = Topic(Redis(), "recovery-test")
     monkeypatch.setattr(topic, "publish", lambda _payload: None)
-    monkeypatch.setattr(task_module.MessageBasedAppGenerator, "get_response_topic", lambda *_: topic)
+    monkeypatch.setattr(task_module.WorkflowEventStream, "get_response_topic", lambda *_: topic)
     return AppTaskControlService(redis_client=recovery_redis)
 
 

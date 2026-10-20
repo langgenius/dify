@@ -681,11 +681,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> (
-        ChatbotAppBlockingResponse
-        | AdvancedChatPausedBlockingResponse
-        | Generator[ChatbotAppStreamResponse]
-    ):
+    ) -> ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse | Generator[ChatbotAppStreamResponse]:
         """
         Handle response.
         :param application_generate_entity: application generate entity

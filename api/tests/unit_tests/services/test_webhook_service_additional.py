@@ -5,7 +5,6 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import RequestEntityTooLarge
 
 from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
@@ -16,6 +15,7 @@ from core.workflow.nodes.trigger_webhook.entities import (
 from graphon.variables.types import SegmentType
 from models.trigger import WorkflowWebhookTrigger
 from services.trigger import webhook_service as service_module
+from services.trigger.errors import WebhookBodyTooLargeError
 from services.trigger.webhook_service import WebhookService
 
 
@@ -67,7 +67,7 @@ class TestWebhookServiceExtractionFallbacks:
         apply_config_overrides(monkeypatch, WEBHOOK_REQUEST_BODY_MAX_SIZE=1)
 
         with flask_app.test_request_context("/webhook", method="POST", data="ab"):
-            with pytest.raises(RequestEntityTooLarge):
+            with pytest.raises(WebhookBodyTooLargeError):
                 WebhookService.extract_webhook_data(_workflow_trigger())
 
     def test_extract_octet_stream_body_should_return_none_when_empty_payload(self, flask_app: Flask) -> None:
@@ -276,7 +276,9 @@ class TestWebhookServiceUtilities:
         assert "message" in body
 
     def test_generate_webhook_id_should_return_24_character_identifier(self) -> None:
-        webhook_id = WebhookService.generate_webhook_id()
+        from repositories.trigger.workflow_repository import WorkflowTriggerRepository
+
+        webhook_id = WorkflowTriggerRepository.generate_webhook_id()
 
         assert isinstance(webhook_id, str)
         assert len(webhook_id) == 24

@@ -9,8 +9,8 @@ from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.dataset import Dataset
 from models.enums import CollectionBindingType, ConversationFromSource
 from models.model import AnnotationReplyEnabledConfig, App, Message, MessageAnnotation, load_annotation_reply_config
+from repositories.knowledge.collection_binding_repository import DatasetCollectionBindingRepository
 from services.annotation_service import AppAnnotationService
-from services.knowledge.dataset_service import DatasetCollectionBindingService
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class AnnotationReplyFeature:
             embedding_provider_name = enabled_config["embedding_model"]["embedding_provider_name"]
             embedding_model_name = enabled_config["embedding_model"]["embedding_model_name"]
 
-            dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
+            dataset_collection_binding = DatasetCollectionBindingRepository.get_dataset_collection_binding(
                 embedding_provider_name, embedding_model_name, session, CollectionBindingType.ANNOTATION
             )
 

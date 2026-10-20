@@ -7,18 +7,19 @@ import httpx
 import pytest
 from flask.testing import FlaskClient
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 import services.remote_file_service as remote_file_service_module
 from enums.human_input import HumanInputFormKind
+from extensions.application_services.human_input import build_human_input_debug_service
 from graphon.enums import BuiltinNodeTypes
+from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.human_input import HumanInputForm, HumanInputFormRecipient, HumanInputFormUploadFile
 from models.human_input_delivery import EmailDeliveryConfig, EmailDeliveryMethod, EmailRecipients, ExternalRecipient
 from models.human_input_entities import FileInputConfig, HumanInputNodeData
 from models.model import App, AppMode, UploadFile
 from models.workflow import Workflow, WorkflowType
-from services.workflow_service import WorkflowService
 
 
 def _create_app_with_draft_workflow(
@@ -97,6 +98,17 @@ def _create_app_with_draft_workflow(
     return app, account
 
 
+def _test_delivery(
+    *, app_model: App, account: Account, node_id: str, delivery_method_id: str, session: Session
+) -> None:
+    gateway = build_human_input_debug_service(database_client=sessionmaker(session.get_bind(), expire_on_commit=False))
+    context = RequestContext("delivery-test", None, account.id, app_model.tenant_id)
+    app_id = app_model.id
+    session.expunge_all()
+    session.rollback()
+    gateway.test_delivery(context, app_id, node_id, delivery_method_id=delivery_method_id, inputs={})
+
+
 def test_human_input_delivery_test_sends_email(
     db_session_with_containers,
     monkeypatch: pytest.MonkeyPatch,
@@ -108,8 +120,7 @@ def test_human_input_delivery_test_sends_email(
     monkeypatch.setattr("services.human_input_delivery_test_service.mail.is_inited", lambda: True)
     monkeypatch.setattr("services.human_input_delivery_test_service.mail.send", send_mock)
 
-    service = WorkflowService()
-    service.test_human_input_delivery(
+    _test_delivery(
         app_model=app,
         account=account,
         node_id="human-node",
@@ -136,7 +147,7 @@ def test_human_input_delivery_test_form_accepts_file_upload(
     monkeypatch.setattr("services.human_input_delivery_test_service.mail.is_inited", lambda: True)
     monkeypatch.setattr("services.human_input_delivery_test_service.mail.send", MagicMock())
 
-    WorkflowService().test_human_input_delivery(
+    _test_delivery(
         app_model=app,
         account=account,
         node_id="human-node",
@@ -205,7 +216,7 @@ def test_human_input_delivery_test_form_accepts_remote_file_upload(
     monkeypatch.setattr("services.human_input_delivery_test_service.mail.is_inited", lambda: True)
     monkeypatch.setattr("services.human_input_delivery_test_service.mail.send", MagicMock())
 
-    WorkflowService().test_human_input_delivery(
+    _test_delivery(
         app_model=app,
         account=account,
         node_id="human-node",

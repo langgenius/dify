@@ -202,9 +202,7 @@ def test_worker_executes_and_persists_a_workflow_through_the_injected_driver(
 def test_generate_includes_parent_trace_context_in_extras(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, *, workflow_runtime: WorkflowRuntime
 ) -> None:
-    generator = WorkflowAppGenerator(
-        runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
-    )
+    generator = WorkflowAppGenerator(runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver)
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
 
     monkeypatch.setattr(
@@ -287,9 +285,7 @@ def test_resume_delegates_to_generate(
     *,
     workflow_runtime: WorkflowRuntime,
 ) -> None:
-    generator = WorkflowAppGenerator(
-        runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
-    )
+    generator = WorkflowAppGenerator(runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver)
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
     mock_generate = MagicMock(return_value="ok")
     monkeypatch.setattr(generator, "_generate", mock_generate)
@@ -338,9 +334,7 @@ def test_generate_forwards_pause_configuration_and_state(
     *,
     workflow_runtime: WorkflowRuntime,
 ) -> None:
-    generator = WorkflowAppGenerator(
-        runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
-    )
+    generator = WorkflowAppGenerator(runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver)
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
 
     queue_manager = MagicMock()
@@ -431,9 +425,7 @@ def test_resume_path_runs_worker_with_runtime_state(
     *,
     workflow_runtime: WorkflowRuntime,
 ) -> None:
-    generator = WorkflowAppGenerator(
-        runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
-    )
+    generator = WorkflowAppGenerator(runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver)
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
     workflow_run = WorkflowRun(
         id="run",

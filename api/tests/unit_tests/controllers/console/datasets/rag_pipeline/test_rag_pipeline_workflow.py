@@ -13,8 +13,8 @@ import pytest
 from flask import Flask
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
 
+from controllers.common.errors import AccessDeniedError, NotFoundError
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as module
 from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     NodeIdQuery,
@@ -25,7 +25,6 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     WorkflowUpdatePayload,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from models.account import Account, TenantAccountRole
 from models.dataset import Dataset, Pipeline
 from models.engine import db
@@ -35,6 +34,7 @@ from models.workflow import Workflow, WorkflowType
 from services.errors.llm import InvokeRateLimitError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.workflow.execution.adapters.pipeline.pipeline_generator import PipelineGenerator
 from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.model_factories import make_account, make_dataset, make_tenant
 
@@ -282,7 +282,7 @@ def test_rag_pipeline_transform_rejects_read_only_member(sqlite_engine: Engine) 
 
         with (
             config_overrides_context(RBAC_ENABLED=False),
-            pytest.raises(Forbidden),
+            pytest.raises(AccessDeniedError),
         ):
             handler(api, session, DEFAULT_WORKFLOW_TENANT_ID, account, UUID(DEFAULT_DATASET_ID))
 
@@ -298,7 +298,7 @@ def test_rag_pipeline_transform_rejects_dataset_from_another_tenant_before_servi
 
         with (
             patch.object(module.RagPipelineTransformService, "transform_dataset") as transform_dataset,
-            pytest.raises(NotFound),
+            pytest.raises(NotFoundError),
         ):
             handler(api, session, DEFAULT_WORKFLOW_TENANT_ID, _account(), UUID(DEFAULT_DATASET_ID))
 
@@ -317,7 +317,7 @@ def test_rag_pipeline_transform_enforces_legacy_dataset_permission_before_servic
         with (
             config_overrides_context(RBAC_ENABLED=False),
             patch.object(module.RagPipelineTransformService, "transform_dataset") as transform_dataset,
-            pytest.raises(Forbidden),
+            pytest.raises(AccessDeniedError),
         ):
             handler(api, session, DEFAULT_WORKFLOW_TENANT_ID, _account(), UUID(DEFAULT_DATASET_ID))
 
@@ -361,7 +361,7 @@ def test_rag_pipeline_transform_maps_missing_pipeline_to_not_found(sqlite_engine
                 "transform_dataset",
                 side_effect=RagPipelineResourceNotFoundError("Pipeline not found"),
             ),
-            pytest.raises(NotFound, match="Pipeline not found"),
+            pytest.raises(NotFoundError, match="Pipeline not found"),
         ):
             handler(api, session, DEFAULT_WORKFLOW_TENANT_ID, _account(), UUID(DEFAULT_DATASET_ID))
 
@@ -405,7 +405,7 @@ def test_rag_pipeline_transform_skips_legacy_acl_when_rbac_is_enabled(sqlite_eng
         ),
     ],
 )
-def test_rag_pipeline_run_uses_sqlite_session(
+def test_rag_pipeline_run_uses_injected_generator(
     app: Flask,
     sqlite_engine: Engine,
     pipeline_application: PipelineGenerator,
@@ -432,7 +432,8 @@ def test_rag_pipeline_run_uses_sqlite_session(
 
     assert response == {"ok": True}
     load_pipeline.assert_called_once_with(session, pipeline.id)
-    assert generate.call_args.kwargs["session"] is session
+    assert generate.call_args.kwargs["pipeline"] is pipeline
+    assert generate.call_args.kwargs["streaming"] is (api_type is module.DraftRagPipelineRunApi)
     assert generate.call_args.kwargs["generator"] is pipeline_application
     assert session.get_bind() is sqlite_engine
 
@@ -468,5 +469,5 @@ def test_rag_pipeline_run_translates_rate_limit(
     ):
         handler(api, req_data, session, _account(), pipeline.id)
 
-    assert generate.call_args.kwargs["session"] is session
+    assert generate.call_args.kwargs["pipeline"] is pipeline
     assert generate.call_args.kwargs["generator"] is pipeline_application

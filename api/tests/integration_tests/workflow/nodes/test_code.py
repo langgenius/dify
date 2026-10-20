@@ -7,15 +7,14 @@ import pytest
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.graph import Graph
 from graphon.node_events import NodeRunResult
 from graphon.nodes.code.code_node import CodeNode
 from graphon.nodes.code.entities import CodeNodeData
 from graphon.nodes.code.limits import CodeNodeLimits
 from graphon.runtime import RuntimeState, VariablePool
+from services.workflow.execution.adapters.node_factory import DefaultWorkflowCodeExecutor
 from tests.workflow_test_utils import build_test_graph_init_params
 
 pytest_plugins = ("tests.integration_tests.workflow.nodes.__mock.code_executor",)
@@ -47,14 +46,12 @@ def _init_code_node(code_config: dict) -> CodeNode:
     graph_runtime_state = RuntimeState(
         workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter()
     )
-    node_factory = DifyNodeFactory(init_params=init_params, runtime_state=graph_runtime_state)
-    Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
     return CodeNode(
         node_id=str(uuid.uuid4()),
         data=CodeNodeData.model_validate(code_config["data"]),
         init_params=init_params,
         runtime_state=graph_runtime_state,
-        code_executor=node_factory._code_executor,
+        code_executor=DefaultWorkflowCodeExecutor(),
         code_limits=CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
             max_number=dify_config.CODE_MAX_NUMBER,

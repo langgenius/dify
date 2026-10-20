@@ -14,7 +14,6 @@ from sqlalchemy.orm import sessionmaker
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.execution_coordinator import send_abort_command, set_app_task_stop_flag
-from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import WorkflowFinishStreamResponse
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
@@ -35,6 +34,7 @@ from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
     WorkflowTaskOwnerMismatchError,
 )
+from services.workflow.execution.adapters.response_stream import WorkflowEventStream
 
 logger = logging.getLogger(__name__)
 
@@ -261,7 +261,7 @@ class AppTaskService:
                 files=[],
             ),
         )
-        topic = MessageBasedAppGenerator.get_response_topic(app_mode, run.id)
+        topic = WorkflowEventStream.get_response_topic(app_mode, run.id)
         topic.publish(json.dumps(event.model_dump(mode="json"), ensure_ascii=False).encode())
         return True
 

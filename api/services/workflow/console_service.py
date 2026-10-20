@@ -94,7 +94,7 @@ class WorkflowRuntime(Protocol):
     def poll_trigger(
         self, context: RequestContext, app_id: str, node_ids: list[str], *, single_node: bool, select_all: bool
     ) -> WorkflowTriggerEvent | None: ...
-    def stop(self, task_id: str) -> None: ...
+    def stop(self, context: RequestContext, app_id: str, task_id: str) -> None: ...
     def default_blocks(self) -> Sequence[Mapping[str, object]]: ...
     def default_block(self, block_type: str, filters: dict[str, Any] | None) -> Mapping[str, object] | None: ...
     def retire_agents(self, context: RequestContext, agent_ids: list[str]) -> None: ...
@@ -253,8 +253,8 @@ class ConsoleWorkflowService[BindingStore]:
                 "An unexpected error occurred while running the node." if single_node else None
             ) from None
 
-    def stop(self, task_id: str) -> None:
-        self._runtime.stop(task_id)
+    def stop(self, context: RequestContext, app_id: str, task_id: str) -> None:
+        self._runtime.stop(context, app_id, task_id)
 
     def default_blocks(self) -> Sequence[Mapping[str, object]]:
         return self._runtime.default_blocks()

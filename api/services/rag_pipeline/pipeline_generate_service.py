@@ -3,17 +3,15 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from configs import dify_config
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.dataset import Pipeline
 from models.enums import IndexingStatus
-from models.model import Account, App, EndUser
-from models.workflow import Workflow
+from models.model import Account, EndUser
 from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
+from services.app.generation.response import convert_to_event_stream
 from services.knowledge.dataset_service import DocumentService
 from services.knowledge.resource_scope import DatasetRef, DocumentRef
-from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.workflow.execution.adapters.pipeline.pipeline_generator import PipelineGenerator
 
 
 class PipelineGenerateService:
@@ -39,17 +37,17 @@ class PipelineGenerateService:
         :return:
         """
         try:
-            workflow = cls._get_workflow(pipeline, invoke_from, session)
+            workflow = generator.load_workflow(pipeline, invoke_from)
             if original_document_id := args.get("original_document_id"):
                 dataset = get_pipeline_dataset(pipeline, session)
                 if dataset is None or dataset.tenant_id != pipeline.tenant_id:
                     raise ValueError("Pipeline dataset is required")
-                dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
-                document_ref = dataset_ref.document(original_document_id)
+                document_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id).document(
+                    original_document_id
+                )
                 cls.update_document_status(document_ref, session=session)
-            return PipelineGenerator.convert_to_event_stream(
+            return convert_to_event_stream(
                 generator.generate(
-                    session=session,
                     pipeline=pipeline,
                     workflow=workflow,
                     user=user,
@@ -64,13 +62,16 @@ class PipelineGenerateService:
         except Exception:
             raise
 
-    @staticmethod
-    def _get_max_active_requests(app_model: App) -> int:
-        app_limit = app_model.max_active_requests or dify_config.APP_DEFAULT_ACTIVE_REQUESTS
-        config_limit = dify_config.APP_MAX_ACTIVE_REQUESTS
-        # Filter out infinite (0) values and return the minimum, or 0 if both are infinite
-        limits = [limit for limit in [app_limit, config_limit] if limit > 0]
-        return min(limits) if limits else 0
+    @classmethod
+    def update_document_status(cls, document_ref: DocumentRef, *, session: Session) -> None:
+        """Set an owner-bound pipeline document to waiting before regeneration."""
+        document = next(
+            iter(DocumentService.get_documents_by_ids(document_ref.dataset, [document_ref.document_id], session)), None
+        )
+        if document is None:
+            raise ValueError("Pipeline document not found")
+        document.indexing_status = IndexingStatus.WAITING
+        session.add(document)
 
     @classmethod
     def generate_single_iteration(
@@ -79,13 +80,12 @@ class PipelineGenerateService:
         user: Account,
         node_id: str,
         args: Any,
-        session: Session,
         streaming: bool = True,
         *,
         generator: PipelineGenerator,
     ):
-        workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
-        return PipelineGenerator.convert_to_event_stream(
+        workflow = generator.load_workflow(pipeline, InvokeFrom.DEBUGGER)
+        return convert_to_event_stream(
             generator.single_iteration_generate(
                 pipeline=pipeline,
                 workflow=workflow,
@@ -93,7 +93,6 @@ class PipelineGenerateService:
                 user=user,
                 args=args,
                 streaming=streaming,
-                session=session,
             )
         )
 
@@ -104,13 +103,12 @@ class PipelineGenerateService:
         user: Account,
         node_id: str,
         args: Any,
-        session: Session,
         streaming: bool = True,
         *,
         generator: PipelineGenerator,
     ):
-        workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
-        return PipelineGenerator.convert_to_event_stream(
+        workflow = generator.load_workflow(pipeline, InvokeFrom.DEBUGGER)
+        return convert_to_event_stream(
             generator.single_loop_generate(
                 pipeline=pipeline,
                 workflow=workflow,
@@ -118,41 +116,5 @@ class PipelineGenerateService:
                 user=user,
                 args=args,
                 streaming=streaming,
-                session=session,
             )
         )
-
-    @classmethod
-    def _get_workflow(cls, pipeline: Pipeline, invoke_from: InvokeFrom, session: Session) -> Workflow:
-        """
-        Get workflow
-        :param pipeline: pipeline
-        :param invoke_from: invoke from
-        :return:
-        """
-        rag_pipeline_service = RagPipelineService(session)
-        if invoke_from == InvokeFrom.DEBUGGER:
-            # fetch draft workflow by app_model
-            workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
-
-            if not workflow:
-                raise ValueError("Workflow not initialized")
-        else:
-            # fetch published workflow by app_model
-            workflow = rag_pipeline_service.get_published_workflow(pipeline=pipeline)
-
-            if not workflow:
-                raise ValueError("Workflow not published")
-
-        return workflow
-
-    @classmethod
-    def update_document_status(cls, document_ref: DocumentRef, *, session: Session) -> None:
-        """Set a document in the owner-bound dataset to waiting."""
-        document = next(
-            iter(DocumentService.get_documents_by_ids(document_ref.dataset, [document_ref.document_id], session)), None
-        )
-        if document is None:
-            raise ValueError("Pipeline document not found")
-        document.indexing_status = IndexingStatus.WAITING
-        session.add(document)

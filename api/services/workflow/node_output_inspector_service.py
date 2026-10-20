@@ -26,7 +26,7 @@ Design constraints baked into this version:
    Cross-tenant / cross-app rows still 404 via the standard tenant/app scope.
 3. **Declared outputs by node kind**:
    * Agent v2 nodes resolve their declared list via
-     :class:`WorkflowAgentBindingResolver` (the binding owns custom declarations;
+     :class:`WorkflowAgentRuntimeBindings` (the binding owns custom declarations;
      the system ``text`` output is derived for display).
    * Other node kinds don't have a declared-output schema yet; we surface the
      keys present in the execution payload as a best-effort list typed
@@ -55,16 +55,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.file_access import DatabaseFileAccessController
-from core.workflow.nodes.agent_v2.binding_resolver import (
-    WorkflowAgentBindingError,
-    WorkflowAgentBindingResolver,
-)
 from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from factories.file_factory.builders import build_from_mapping
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import helpers as file_helpers
 from models import App
 from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType, effective_declared_outputs
+from models.agent_runtime_contracts import WorkflowAgentBindingError, WorkflowAgentRuntimeBindings
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 
 logger = logging.getLogger(__name__)
@@ -396,7 +393,7 @@ class NodeOutputInspectorService:
     """Read-only Inspector for draft + published workflow runs.
 
     The service is dependency-light: it holds a single
-    :class:`WorkflowAgentBindingResolver` so agent v2 nodes can map to their
+    :class:`WorkflowAgentRuntimeBindings` so agent v2 nodes can map to their
     declared outputs without re-implementing binding lookup. All other I/O
     receives an explicit SQLAlchemy session from its caller so transaction
     ownership stays at the controller/task boundary.
@@ -405,8 +402,8 @@ class NodeOutputInspectorService:
     every load — the same scope guard regardless of trigger source.
     """
 
-    def __init__(self, binding_resolver: WorkflowAgentBindingResolver | None = None) -> None:
-        self._binding_resolver = binding_resolver or WorkflowAgentBindingResolver()
+    def __init__(self, binding_resolver: WorkflowAgentRuntimeBindings) -> None:
+        self._binding_resolver = binding_resolver
 
     # ── public API ────────────────────────────────────────────────────────
 

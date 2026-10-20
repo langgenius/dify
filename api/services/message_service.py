@@ -7,7 +7,6 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.entities.app_invoke_entities import InvokeFrom, get_credit_usage_app_type
 from core.llm_generator.llm_generator import LLMGenerator
@@ -38,6 +37,7 @@ from repositories.execution_extra_content_repository import ExecutionExtraConten
 from repositories.sqlalchemy_execution_extra_content_repository import (
     SQLAlchemyExecutionExtraContentRepository,
 )
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.conversation_service import ConversationService
 from services.errors.message import (
     FirstMessageNotExistsError,
@@ -45,6 +45,7 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
+from services.workflow.execution.adapters.chatflow.app_config_manager import AdvancedChatAppConfigManager
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -384,7 +385,8 @@ class MessageService:
             if workflow is None:
                 return None
 
-            app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
+            workflow_definition = workflow_snapshot(workflow)
+            app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow_definition)
 
             if not app_config.additional_features:
                 raise ValueError("Additional features not found")
@@ -392,7 +394,7 @@ class MessageService:
             if not app_config.additional_features.suggested_questions_after_answer:
                 raise SuggestedQuestionsAfterAnswerDisabledError()
 
-            suggested_questions_after_answer = workflow.features_dict.get("suggested_questions_after_answer")
+            suggested_questions_after_answer = workflow_definition.features_dict.get("suggested_questions_after_answer")
             if isinstance(suggested_questions_after_answer, dict):
                 suggested_questions_after_answer_config = cast(
                     SuggestedQuestionsAfterAnswerConfig, suggested_questions_after_answer

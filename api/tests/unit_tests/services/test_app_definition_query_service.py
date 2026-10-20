@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, create_autospec, patch
 import pytest
 
 import services.app_definition_query_service as module
-from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from services.app.generation.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from services.app_definition_query_service import (
     AppDefinitionNotPublishedError,
     AppDefinitionQuery,

@@ -598,9 +598,7 @@ class TestWorkflowExecutionAdapters:
             def publish(self, event, publish_from):
                 published.append((event, publish_from))
 
-        runner = WorkflowEventPublisher(
-            queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications
-        )
+        runner = WorkflowEventPublisher(queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications)
         graph_runtime_state = RuntimeState(
             workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
@@ -651,9 +649,7 @@ class TestWorkflowExecutionAdapters:
                 del publish_from
                 published.append(event)
 
-        runner = WorkflowEventPublisher(
-            queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications
-        )
+        runner = WorkflowEventPublisher(queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications)
         workflow_entry = _workflow_entry(runner)
 
         runner.publish(workflow_entry, GraphRunAbortedEvent(reason="User requested stop", outputs={}))
@@ -669,9 +665,7 @@ class TestWorkflowExecutionAdapters:
             def publish(self, event, publish_from):
                 published.append(event)
 
-        runner = WorkflowEventPublisher(
-            queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications
-        )
+        runner = WorkflowEventPublisher(queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications)
         graph_runtime_state = RuntimeState(
             workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
@@ -877,9 +871,7 @@ class TestWorkflowExecutionAdapters:
             def publish(self, event, publish_from):
                 published.append(event)
 
-        runner = WorkflowEventPublisher(
-            queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications
-        )
+        runner = WorkflowEventPublisher(queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications)
         workflow_entry = _workflow_entry(runner)
 
         runner.publish(
@@ -911,9 +903,7 @@ class TestWorkflowExecutionAdapters:
             def publish(self, event, publish_from):
                 published.append(event)
 
-        runner = WorkflowEventPublisher(
-            queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications
-        )
+        runner = WorkflowEventPublisher(queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications)
         workflow_entry = _workflow_entry(runner)
 
         runner.publish(
@@ -992,9 +982,7 @@ class TestWorkflowExecutionAdapters:
             def publish(self, event, publish_from):
                 published.append(event)
 
-        runner = WorkflowEventPublisher(
-            queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications
-        )
+        runner = WorkflowEventPublisher(queue_manager=_QueueManager(), notify_pause=enqueue_human_input_notifications)
         graph_runtime_state = RuntimeState(
             workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),

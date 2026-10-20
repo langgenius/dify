@@ -5,6 +5,7 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError
 
+from enums.agent import WorkflowAgentBindingType
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -17,7 +18,6 @@ from models.agent import (
     AgentScope,
     AgentSource,
     AgentStatus,
-    WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig

@@ -9,7 +9,6 @@ from zipfile import ZipFile
 
 import pytest
 import yaml
-from blinker import Namespace
 from sqlalchemy import Engine, event, select
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session, sessionmaker
@@ -18,6 +17,7 @@ from core.plugin.entities.plugin import PluginDependency, PluginInstallation
 from core.plugin.impl.plugin import PluginInstaller
 from enums import CloudPlan, DeploymentEdition
 from extensions.application_services.app import AppServices
+from extensions.application_services.workflow import build_app_dsl_service
 from machinery.context import AppRequestContext, RequestContext
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.agent import (
@@ -33,6 +33,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, IconType
+from models.tool_runtime_contracts import WorkflowToolQueries
 from models.workflow import Workflow, WorkflowType
 from repositories.app.export_repository import AppExportRepository
 from services.agent.dsl_entities import AGENT_PACKAGE_REF_KEY
@@ -62,7 +63,7 @@ from services.entities.dsl_entities import (
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
-from services.workflow_service import WorkflowService
+from services.tools.provider_queries import ToolProviders
 from tests.unit_tests.audio_runtime_fixtures import record_calls
 from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
 from tests.unit_tests.rbac_fakes import RBACDomain
@@ -188,10 +189,6 @@ def test_copy_preserves_shared_roster_bindings_and_clones_owned_inline_agents(
             )
     monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
     monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", lambda: False)
-    workflow_service = WorkflowService(session_maker=sqlite_session_factory)
-    monkeypatch.setattr(
-        "services.app_dsl_service.WorkflowService", Mock(wraps=WorkflowService, return_value=workflow_service)
-    )
 
     exported = app_services.console.export(context, app_id, AppExportOptions(format="yaml"))
     assert isinstance(exported, str)
@@ -585,7 +582,7 @@ def test_real_dsl_export_releases_connection_before_plugin_request(
     monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", fetch_plugins)
     gateway = AppTransferGateway(
         session_factory=factory,
-        dsl_factory=AppDslService,
+        dsl_factory=build_app_dsl_service,
         packages=AppPackageService(),
         agent_packages=RosterAgentPackageExporter(),
         agent_importer=RosterAgentPackageImporter(),
@@ -759,6 +756,8 @@ def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
     sqlite_session_factory: sessionmaker[Session],
     copy_source: tuple[RequestContext, str],
     monkeypatch: pytest.MonkeyPatch,
+    tool_providers: ToolProviders,
+    workflow_queries: WorkflowToolQueries,
     mode: AppMode,
 ) -> None:
     context, app_id = copy_source
@@ -768,12 +767,15 @@ def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
         app.mode = mode
     syncs: list[dict[str, object]] = []
     monkeypatch.setattr(
-        WorkflowService, "sync_draft_workflow", record_calls(WorkflowService.sync_draft_workflow, syncs)
+        console_gateway.WorkflowDefinitionStore,
+        "sync_draft_workflow",
+        record_calls(console_gateway.WorkflowDefinitionStore.sync_draft_workflow, syncs),
     )
-    # The app event handlers reach the Flask-bound database; this test only checks the saved draft.
-    monkeypatch.setattr("services.workflow_service.app_draft_workflow_was_synced", Namespace().signal("synced"))
-
-    AppLifecycleGateway(session_factory=sqlite_session_factory).create_draft(context, app_id)
+    AppLifecycleGateway(
+        session_factory=sqlite_session_factory,
+        tool_providers=tool_providers,
+        workflow_queries=workflow_queries,
+    ).create_draft(context, app_id)
 
     assert [sync["graph"] for sync in syncs] == [console_gateway._STARTER_DRAFT_GRAPHS[mode]]
     assert syncs[0]["graph"] is not console_gateway._STARTER_DRAFT_GRAPHS[mode]
