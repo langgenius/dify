@@ -148,10 +148,7 @@ export function ProviderConfigModal({
                     </span>
                   </FieldLabel>
                   <Input
-                    type="password"
                     autoComplete="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
                     ref={firstInputRef}
                     required
                     defaultValue={payload?.api_key ?? ''}
@@ -213,10 +210,7 @@ export function ProviderConfigModal({
                 <Field disabled={pending} name="api_key">
                   <FieldLabel>API Key</FieldLabel>
                   <Input
-                    type="password"
                     autoComplete="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
                     ref={firstInputRef}
                     defaultValue={payload?.api_key ?? ''}
                     placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
@@ -265,10 +259,7 @@ export function ProviderConfigModal({
                     </span>
                   </FieldLabel>
                   <Input
-                    type="password"
                     autoComplete="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
                     pattern=".*\S.*"
                     ref={firstInputRef}
                     required
@@ -318,10 +309,7 @@ export function ProviderConfigModal({
                     </span>
                   </FieldLabel>
                   <Input
-                    type="password"
                     autoComplete="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
                     pattern=".*\S.*"
                     ref={firstInputRef}
                     required
@@ -383,10 +371,7 @@ export function ProviderConfigModal({
                     </span>
                   </FieldLabel>
                   <Input
-                    type="password"
                     autoComplete="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
                     ref={firstInputRef}
                     required
                     defaultValue={payload?.api_key ?? ''}
@@ -457,10 +442,7 @@ export function ProviderConfigModal({
                     </span>
                   </FieldLabel>
                   <Input
-                    type="password"
                     autoComplete="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
                     ref={firstInputRef}
                     required
                     defaultValue={payload?.api_key ?? ''}
@@ -510,10 +492,7 @@ export function ProviderConfigModal({
                     </span>
                   </FieldLabel>
                   <Input
-                    type="password"
                     autoComplete="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
                     ref={firstInputRef}
                     defaultValue={payload?.secret_key ?? ''}
                     required
@@ -564,10 +543,7 @@ export function ProviderConfigModal({
                 <Field disabled={pending} name="api_key">
                   <FieldLabel>API Key</FieldLabel>
                   <Input
-                    type="password"
                     autoComplete="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
                     ref={firstInputRef}
                     defaultValue={payload?.api_key ?? ''}
                     placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
@@ -657,10 +633,7 @@ export function ProviderConfigModal({
                 <Field disabled={pending} name="password">
                   <FieldLabel>{t(($) => $[`${I18N_PREFIX}.password`], { ns: 'app' })}</FieldLabel>
                   <Input
-                    type="password"
                     autoComplete="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
                     defaultValue={payload?.password ?? ''}
                     placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                       ns: 'app',
@@ -728,10 +701,7 @@ export function ProviderConfigModal({
                     {t(($) => $[`${I18N_PREFIX}.clientSecret`], { ns: 'app' })}
                   </FieldLabel>
                   <Input
-                    type="password"
                     autoComplete="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
                     defaultValue={payload?.client_secret ?? ''}
                     placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                       ns: 'app',
@@ -745,10 +715,7 @@ export function ProviderConfigModal({
                     {t(($) => $[`${I18N_PREFIX}.personalAccessToken`], { ns: 'app' })}
                   </FieldLabel>
                   <Input
-                    type="password"
                     autoComplete="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
                     defaultValue={payload?.personal_access_token ?? ''}
                     placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                       ns: 'app',

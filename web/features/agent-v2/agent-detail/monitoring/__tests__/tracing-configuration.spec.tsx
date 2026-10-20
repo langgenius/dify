@@ -355,7 +355,7 @@ describe('Agent tracing configuration', () => {
       'public',
     )
     await user.type(
-      screen.getByLabelText('app.tracing.configProvider.secretKey', { exact: false }),
+      screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
       'secret',
     )
     const host = screen.getByRole('textbox', { name: 'Host' })
@@ -435,7 +435,7 @@ describe('Agent tracing configuration', () => {
       return server(...args)
     })
     await user.type(
-      screen.getByLabelText('app.tracing.configProvider.secretKey', { exact: false }),
+      screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
       'secret',
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
