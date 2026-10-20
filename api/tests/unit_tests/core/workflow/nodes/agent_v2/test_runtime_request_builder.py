@@ -123,7 +123,6 @@ class CapturingPluginLayerBuilder:
                         runtime_parameters={},
                         parameters=[],
                         parameters_json_schema={"type": "object", "properties": {}, "required": []},
-                        plugin_unique_identifier="langgenius/time:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                     )
                 ]
             ),

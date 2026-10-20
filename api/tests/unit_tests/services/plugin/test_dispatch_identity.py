@@ -1,7 +1,7 @@
 """Dispatch identity remains bound to the caller across installation changes."""
 
 import json
-from unittest.mock import Mock
+from typing import Never
 
 import httpx
 import pytest
@@ -15,14 +15,16 @@ PLUGIN_ID = "langgenius/example"
 IDENTIFIER = f"{PLUGIN_ID}:1.0.0@{'a' * 32}"
 
 
+def _unexpected_configuration_access(*_args: object, **_kwargs: object) -> Never:
+    raise AssertionError("Dispatch must not discover installations or invalidate configuration")
+
+
 @pytest.mark.parametrize("stream", [False, True])
 def test_dispatch_keeps_declared_version_without_refetch_or_invalidation(
     monkeypatch: pytest.MonkeyPatch, stream: bool
 ) -> None:
-    lookup = Mock(side_effect=AssertionError("Pinned calls must not resolve the current installation"))
-    invalidate = Mock(side_effect=AssertionError("Dispatch must not invalidate configuration"))
-    monkeypatch.setattr(PluginService, "list_installations_from_ids", lookup)
-    monkeypatch.setattr(PluginService, "invalidate_plugin_model_providers_cache", invalidate)
+    monkeypatch.setattr(PluginService, "list_installations_from_ids", _unexpected_configuration_access)
+    monkeypatch.setattr(PluginService, "invalidate_plugin_model_providers_cache", _unexpected_configuration_access)
     requests: list[httpx.Request] = []
 
     def handle(request: httpx.Request) -> httpx.Response:
@@ -44,18 +46,14 @@ def test_dispatch_keeps_declared_version_without_refetch_or_invalidation(
     assert requests[0].headers["X-Plugin-ID"] == PLUGIN_ID
     assert requests[0].headers[PLUGIN_IDENTIFIER_HEADER] == IDENTIFIER
     assert json.loads(requests[0].content)["data"]["credentials"] == {"api_key": "secret"}
-    lookup.assert_not_called()
-    invalidate.assert_not_called()
 
 
 def test_unbound_dispatch_keeps_legacy_headers_without_refetch(monkeypatch: pytest.MonkeyPatch) -> None:
-    lookup = Mock(side_effect=AssertionError("Legacy calls must let the daemon resolve installation"))
-    monkeypatch.setattr(PluginService, "list_installations_from_ids", lookup)
+    monkeypatch.setattr(PluginService, "list_installations_from_ids", _unexpected_configuration_access)
     headers = {"X-Plugin-ID": PLUGIN_ID}
 
     prepare_dispatch_identity("plugin/tenant-a/dispatch/oauth/get_credentials", headers, None)
 
-    lookup.assert_not_called()
     assert headers == {"X-Plugin-ID": PLUGIN_ID}
 
 

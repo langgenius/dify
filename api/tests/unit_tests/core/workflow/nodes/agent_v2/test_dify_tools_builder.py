@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -76,17 +77,20 @@ class FakeTool(PluginTool):
     def __init__(self, entity: ToolEntity, runtime: ToolRuntime) -> None:
         super().__init__(entity, runtime, runtime.tenant_id, "icon.svg", self.plugin_unique_identifier)
 
-    def tool_provider_type(self):
+    @override
+    def tool_provider_type(self) -> ToolProviderType:
         raise NotImplementedError
 
+    @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage]:
+    ) -> Generator[ToolInvokeMessage]:
         raise NotImplementedError
 
 
