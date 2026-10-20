@@ -168,14 +168,19 @@ class RequestBodyTooLargeError(BaseHTTPException):
     code = 413
 
 
+def reraise_http_error(error: Exception) -> None:
+    """Preserve framework and application HTTP errors at a transport boundary."""
+    if isinstance(error, HTTPException):
+        raise error
+
+
 def raise_unexpected_error(error: Exception, *, message: str) -> NoReturn:
     """Keep HTTP failures intact and sanitize unclassified failures at the transport boundary.
 
     Framework request parsing and project HTTP errors may both reach a route's
     error translator. Neither should be converted to a generic server error.
     """
-    if isinstance(error, HTTPException):
-        raise error
+    reraise_http_error(error)
     logging.getLogger(__name__).exception(message)
     raise InternalServerError() from error
 

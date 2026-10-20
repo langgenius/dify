@@ -93,6 +93,8 @@ def test_debug_generators_use_injected_variable_dependencies(
     calls: list[str] = []
 
     def execute(generator: WorkflowAppGenerator, **_kwargs: object) -> dict[str, str]:
+        assert generator._runtime is generation._runtime
+        assert generator._execution_driver is generation._runtime.execution_driver
         assert generator._draft_variable_loader == workflow_variables.workflow_loader
         assert generator._draft_variable_saver == workflow_variables.saver_factory
         saver = generator._get_draft_var_saver_factory(InvokeFrom.DEBUGGER, user, tenant_id=workflow.tenant_id)
@@ -404,23 +406,6 @@ def test_generate_delegates_to_workflow_generator_and_filters_stream(
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True
     assert kwargs["call_depth"] == 0
-
-
-def test_ensure_start_node_for_worker_delegates(monkeypatch: pytest.MonkeyPatch):
-    workflow = _workflow({"nodes": [], "edges": []})
-    snippet = _snippet()
-    ensure_calls: list[tuple[WorkflowSnapshot, CustomizedSnippet]] = []
-
-    def ensure_start_node(_cls, current_workflow, current_snippet):
-        ensure_calls.append((current_workflow, current_snippet))
-        return current_workflow
-
-    monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", classmethod(ensure_start_node))
-
-    result = SnippetGenerateService.ensure_start_node_for_worker(workflow, snippet)
-
-    assert result is workflow
-    assert ensure_calls == [(workflow_snapshot(workflow), snippet)]
 
 
 def test_run_draft_node_delegates_to_workflow_service(

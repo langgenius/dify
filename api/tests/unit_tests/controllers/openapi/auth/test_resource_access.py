@@ -10,6 +10,7 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
+from controllers.common.errors import NotFoundError
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import CheckScope, CheckSubject
@@ -259,8 +260,6 @@ def test_stop_task_rejects_other_token_owner(
 ) -> None:
     import inspect
 
-    from werkzeug.exceptions import NotFound
-
     from controllers.openapi.app_run import AppRunTaskStopApi
 
     flask_app, app_id, _, _, end_user = resource_fixture
@@ -274,8 +273,9 @@ def test_stop_task_rejects_other_token_owner(
         "controllers.openapi.app_run.application_services",
         return_value=replace(account_application_services, app_tasks=AppTaskControlService(redis_client=redis)),
     ):
-        with pytest.raises(NotFound):
+        with pytest.raises(NotFoundError) as error:
             inspect.unwrap(AppRunTaskStopApi.post)(AppRunTaskStopApi(), data, app_id, "task")
+        assert error.value.code == 404
         assert redis.operations == []
         redis.values["generate_task_belong:task"] = b"end-user-machine-user"
         inspect.unwrap(AppRunTaskStopApi.post)(AppRunTaskStopApi(), data, app_id, "task")

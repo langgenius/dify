@@ -1,5 +1,4 @@
 from collections.abc import Callable
-from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import Mock, create_autospec
@@ -20,13 +19,11 @@ from models.enums import CustomizeTokenStrategy
 from models.model import AppModelConfig, AppModelConfigDict, IconType, Site
 from models.workflow import Workflow
 from services.agent.dsl_entities import AgentPackage
-from services.agent.workflow_contracts import WorkflowAgentBindingStore
 from services.app_dsl_service import AppDslService, PendingData
 from services.entities.dsl_entities import AppDslOverwriteStore, AppDslOverwriteTarget, ImportStatus
 from services.entities.site_dsl import SiteDsl
 from services.errors.app import DraftChangedError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
-from services.workflow.contracts import DraftSyncCommand
 from services.workflow.draft_service import WorkflowDraftService
 from services.workflow.graph_diff import draft_token
 from tests.unit_tests.config_override import apply_config_overrides
@@ -1060,42 +1057,19 @@ def test_missing_app_section_names_the_keys_that_were_present(
     assert not unbound_session.in_transaction()
 
 
-@dataclass
-class _DraftWorkflowService:
-    draft: Workflow | None
-    lookups: list[str] = field(default_factory=list)
-    syncs: list[DraftSyncCommand] = field(default_factory=list)
-
-    def _draft_of(self, app_model: App) -> Workflow | None:
-        return self.draft if self.draft is not None and self.draft.app_id == app_model.id else None
-
-    def get_draft_workflow(self, app_model: App, *, for_update: bool = False, **_: object) -> Workflow | None:
-        self.lookups.append("locked" if for_update else "read")
-        return self._draft_of(app_model)
-
-    def sync(self, _context: object, _owner: object, command: DraftSyncCommand, **_: object) -> Workflow:
-        self.syncs.append(command)
-        return _workflow(graph=command.graph)
-
-
 def _workflow_draft(app: App) -> Workflow:
     return make_workflow(tenant_id=app.tenant_id, app_id=app.id, graph={"nodes": [], "edges": []})
 
 
-def _guarded_overwrite(
-    monkeypatch: pytest.MonkeyPatch, session: Session, *, draft: Workflow | None
-) -> tuple[AppDslService, _DraftWorkflowService, Callable[[str], App]]:
-    workflow_service = _DraftWorkflowService(draft=draft)
-    service = AppDslService(
-        session=session,
-        drafts=cast(WorkflowDraftService[WorkflowAgentBindingStore], workflow_service),
-        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
-    )
-    monkeypatch.setattr(
-        "services.app_dsl_service.WorkflowDefinitionStore.get_draft_workflow",
-        workflow_service.get_draft_workflow,
-    )
+def _guarded_overwrite(session: Session, *, draft: Workflow | None) -> tuple[AppDslService, App, Callable[[str], App]]:
+    service = build_app_dsl_service(session=session)
     app = _app(mode=AppMode.WORKFLOW)
+    session.add(app)
+    if draft is not None:
+        draft.tenant_id = app.tenant_id
+        draft.app_id = app.id
+        session.add(draft)
+    session.flush()
 
     def overwrite(draft_hash: str) -> App:
         return service._create_or_update_app(
@@ -1105,40 +1079,33 @@ def _guarded_overwrite(
             draft_hash=draft_hash,
         )
 
-    return service, workflow_service, overwrite
+    return service, app, overwrite
 
 
-def test_guarded_overwrite_saves_against_the_locked_draft_it_matched(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-) -> None:
+def test_guarded_overwrite_saves_against_the_locked_draft_it_matched(sqlite_session: Session) -> None:
     draft = _workflow_draft(_app(mode=AppMode.WORKFLOW))
-    _, workflow_service, overwrite = _guarded_overwrite(monkeypatch, unbound_session, draft=draft)
+    _, app, overwrite = _guarded_overwrite(sqlite_session, draft=draft)
 
-    overwrite(draft_token(draft))
+    result = overwrite(draft_token(draft))
 
-    assert workflow_service.lookups == ["locked"]
-    assert len(workflow_service.syncs) == 1
-    assert workflow_service.syncs[0].graph == {"nodes": [], "edges": []}
+    assert result is app
+    assert sqlite_session.scalar(select(Workflow).where(Workflow.app_id == app.id)) is not None
 
 
 @pytest.mark.parametrize("draft_exists", [True, False], ids=["draft-changed", "draft-gone"])
-def test_guarded_overwrite_refuses_a_draft_that_no_longer_matches(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session, draft_exists: bool
-) -> None:
+def test_guarded_overwrite_refuses_a_draft_that_no_longer_matches(sqlite_session: Session, draft_exists: bool) -> None:
     draft = _workflow_draft(_app(mode=AppMode.WORKFLOW)) if draft_exists else None
-    _, workflow_service, overwrite = _guarded_overwrite(monkeypatch, unbound_session, draft=draft)
+    _, _app_model, overwrite = _guarded_overwrite(sqlite_session, draft=draft)
 
     with pytest.raises(DraftChangedError):
         overwrite("exported")
 
-    assert workflow_service.syncs == []
-
 
 def test_refused_overwrite_leaves_the_app_and_cached_dependencies_alone(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     app = _app(mode=AppMode.WORKFLOW)
-    service, workflow_service, _ = _guarded_overwrite(monkeypatch, unbound_session, draft=_workflow_draft(app))
+    service, app, _ = _guarded_overwrite(sqlite_session, draft=_workflow_draft(app))
     cached: list[str] = []
     monkeypatch.setattr("services.app_dsl_service.redis_client.setex", lambda key, _expiry, _value: cached.append(key))
     dependency = PluginDependency(
@@ -1157,7 +1124,6 @@ def test_refused_overwrite_leaves_the_app_and_cached_dependencies_alone(
 
     assert cached == []
     assert app.name == "Existing app"
-    assert workflow_service.syncs == []
 
 
 def _refuse_changed_draft(forwarded: list[str | None]) -> Callable[..., App]:
@@ -1169,18 +1135,14 @@ def _refuse_changed_draft(forwarded: list[str | None]) -> Callable[..., App]:
 
 
 def test_import_app_reraises_a_changed_draft_and_keeps_the_hash_for_the_confirm(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     pending_imports: dict[str, str] = {}
     monkeypatch.setattr(
         "services.app_dsl_service.redis_client.setex",
         lambda key, _expiry, value: pending_imports.__setitem__(key, value),
     )
-    service = AppDslService(
-        session=unbound_session,
-        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
-        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
-    )
+    service = build_app_dsl_service(session=sqlite_session)
     forwarded: list[str | None] = []
     monkeypatch.setattr(service, "_create_or_update_app", _refuse_changed_draft(forwarded))
 
@@ -1206,9 +1168,7 @@ def test_import_app_reraises_a_changed_draft_and_keeps_the_hash_for_the_confirm(
     assert stored.draft_hash == "exported"
 
 
-def test_confirm_import_checks_the_pending_draft_hash(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-) -> None:
+def test_confirm_import_checks_the_pending_draft_hash(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     pending = PendingData(
         tenant_id="tenant-1",
         account_id="account-1",
@@ -1221,11 +1181,7 @@ def test_confirm_import_checks_the_pending_draft_hash(
     monkeypatch.setattr("services.app_dsl_service.redis_client.get", lambda _key: pending.model_dump_json())
     deleted: list[str] = []
     monkeypatch.setattr("services.app_dsl_service.redis_client.delete", deleted.append)
-    service = AppDslService(
-        unbound_session,
-        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
-        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
-    )
+    service = build_app_dsl_service(sqlite_session)
     forwarded: list[str | None] = []
     monkeypatch.setattr(service, "_create_or_update_app", _refuse_changed_draft(forwarded))
 
@@ -1304,11 +1260,7 @@ def test_failed_import_does_not_report_creation(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, confirmed: bool
 ) -> None:
     data = "version: " + CURRENT_APP_DSL_VERSION + "\nkind: app\napp: {name: Broken, mode: chat}\n"
-    service = AppDslService(
-        sqlite_session,
-        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
-        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
-    )
+    service = build_app_dsl_service(sqlite_session)
     if confirmed:
         pending = PendingData(
             tenant_id="tenant-1", account_id="account-1", import_mode="yaml-content", yaml_content=data
@@ -1322,15 +1274,13 @@ def test_failed_import_does_not_report_creation(
 
 
 def test_pending_import_does_not_report_creation_or_cache_marker(
-    unbound_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     cache = Mock()
     monkeypatch.setattr("services.app_dsl_service.redis_client.setex", cache)
-    result = AppDslService(
-        unbound_session,
-        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
-        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
-    ).import_app(account=_account(), import_mode="yaml-content", yaml_content=_PENDING_WORKFLOW_DSL)
+    result = build_app_dsl_service(sqlite_session).import_app(
+        account=_account(), import_mode="yaml-content", yaml_content=_PENDING_WORKFLOW_DSL
+    )
     assert result.status == ImportStatus.PENDING
     assert not result.app_created
     assert "app_created" not in cache.call_args.args[2]

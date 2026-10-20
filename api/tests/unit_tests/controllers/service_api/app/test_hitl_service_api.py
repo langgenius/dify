@@ -600,10 +600,7 @@ class TestHitlServiceApi:
         assert response.data.reasons[0]["form_id"] == "form-1"
         assert response.data.reasons[0]["expiration_time"] == 123
 
-    def test_workflow_blocking_pipeline_pause_payload_contract(
-        self, monkeypatch: pytest.MonkeyPatch, *, workflow_runtime, tool_providers
-    ) -> None:
-        from services.workflow.execution.adapters.workflow import generate_task_pipeline as workflow_pipeline_module
+    def test_workflow_blocking_pipeline_pause_payload_contract(self, *, workflow_runtime, tool_providers) -> None:
         from services.workflow.execution.adapters.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 
         app_config = WorkflowUIBasedAppConfig(
@@ -638,7 +635,6 @@ class TestHitlServiceApi:
             draft_var_saver_factory=lambda **kwargs: None,
             tool_providers=tool_providers,
         )
-        monkeypatch.setattr(workflow_pipeline_module.time, "time", lambda: 1700000000)
 
         def _gen():
             yield HumanInputRequiredResponse(

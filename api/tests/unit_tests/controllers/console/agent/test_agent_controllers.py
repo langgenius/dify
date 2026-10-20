@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from dataclasses import replace
 from datetime import datetime
 from inspect import getsource, unwrap
 from types import SimpleNamespace
@@ -85,8 +86,13 @@ from tests.unit_tests.rbac_fakes import RBACDomain
 
 
 @pytest.fixture(autouse=True)
-def rbac_services(monkeypatch: pytest.MonkeyPatch, rbac_domain: RBACDomain) -> None:
-    monkeypatch.setattr(roster_controller, "application_services", lambda: rbac_domain)
+def rbac_services(
+    monkeypatch: pytest.MonkeyPatch,
+    rbac_domain: RBACDomain,
+    account_application_services: ApplicationServices,
+) -> None:
+    services = replace(account_application_services, rbac=rbac_domain.rbac)
+    monkeypatch.setattr(roster_controller, "application_services", lambda: services)
 
 
 def _persist_conversation_message(
