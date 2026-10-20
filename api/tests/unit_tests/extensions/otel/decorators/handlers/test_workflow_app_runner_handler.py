@@ -12,6 +12,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 from opentelemetry.trace import StatusCode
 from sqlalchemy import Engine
 
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from extensions.otel.decorators.handlers.workflow_app_runner_handler import WorkflowAppRunnerHandler
 from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
 from services.workflow_run_agg import WorkflowRunAgg
@@ -19,8 +20,10 @@ from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.services.workflow.test_workflow_run_agg import make_workflow_runner
 
 
-def test_service_driver_emits_workflow_span(sqlite_engine: Engine) -> None:
-    runner, runs, nodes = make_workflow_runner(sqlite_engine)
+def test_service_driver_emits_workflow_span(
+    sqlite_engine: Engine, workflow_runtime: WorkflowExecutionDependencies
+) -> None:
+    runner, runs, nodes = make_workflow_runner(sqlite_engine, workflow_runtime)
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))

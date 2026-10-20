@@ -16,9 +16,9 @@ from pydantic import BaseModel, ValidationError
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import NotFound
 
 from constants.oauth_bearer import TokenType
+from controllers.common.errors import NotFoundError
 from controllers.openapi import app_run
 from controllers.openapi._errors import AppModeMismatch
 from controllers.openapi._models import (
@@ -155,7 +155,7 @@ def test_stop_task_enforces_resolved_caller_ownership(
         if allowed:
             assert api.post.__handler__(api, ctx, app_id="app-1", task_id=task_id) == TaskStopResponse(result="success")
         else:
-            with pytest.raises(NotFound, match="Task not found"):
+            with pytest.raises(NotFoundError, match="Task not found"):
                 api.post.__handler__(api, ctx, app_id="app-1", task_id=task_id)
     if allowed:
         assert redis.values[f"generate_task_stopped:{task_id}"] == b"1"
