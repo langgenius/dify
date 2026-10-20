@@ -1,5 +1,5 @@
 import type { PluginPayload } from '@/app/components/plugins/plugin-auth/types'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -289,7 +289,7 @@ it.each(categories)(
         )
         expect(options?.request?.method).toBe('GET')
       }
-      expect(result.current.isPending).toBe(false)
+      await waitFor(() => expect(result.current.isPending).toBe(false))
     } finally {
       unmount()
       queryClient.clear()
