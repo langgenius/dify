@@ -82,8 +82,8 @@ jobs:
         working-directory: ./e2e
         run: vp run e2e:install:ci:chromium
 
+      # wait steps do not support conditions; keep the condition on the API install.
       - name: Wait for API dependencies
-        if: ${{ inputs.page != 'app-deploy' }}
         wait: install-api-dependencies
 
       - name: Run automated WCAG Level ${{ inputs.level == 'a' && 'A' || 'AA' }} checks
