@@ -119,7 +119,7 @@ class CodeExecutor:
                 "Failed to execute code, which is likely a network issue,"
                 " please check if the sandbox service is running."
                 f" ( Error: {str(e)} )"
-            )
+            ) from e
 
         try:
             response_data = response.json()

@@ -25,15 +25,17 @@ from core.app.entities.queue_entities import (
 from core.app.entities.task_entities import StreamEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import build_system_variables
-from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.base import TypeBase
-from models.enums import MessageStatus
+from models.enums import CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm, HumanInputFormRecipient
 from models.model import App, AppMode, Conversation, Message, MessageFile
+from models.workflow import WorkflowNodeExecutionModel, WorkflowPause, WorkflowRun
 from repositories.app.generation_repository import AppGenerationRepository
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.workflow.runtime_context_repository import WorkflowRuntimeContextRepository
 from services.app.generation.ports import ChatRecordSeed, ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
 from services.errors.message import MessageNotExistsError
@@ -67,6 +69,9 @@ def message_store():
                 HumanInputForm,
                 HumanInputFormRecipient,
                 HumanInputContent,
+                WorkflowRun,
+                WorkflowPause,
+                WorkflowNodeExecutionModel,
             )
         ],
     )
@@ -169,7 +174,8 @@ def message_case(app_records, message_store, *, tool_providers) -> MessageCase:
         chat_records=app_records,
         tool_providers=tool_providers,
     )
-    pipeline._graph_runtime_state = GraphRuntimeState(
+    pipeline._graph_runtime_state = RuntimeState(
+        workflow_id="workflow-1",
         variable_pool=VariablePool.from_bootstrap(
             system_variables=build_system_variables(workflow_execution_id="run-1")
         ),
@@ -204,15 +210,34 @@ def test_process_passes_message_id_to_conversation_name_generation(message_case,
 def test_human_input_association_is_persisted_once(message_case, form_exists):
     pipeline = message_case.pipeline
     node = "node-1" if form_exists else "missing"
-    pipeline._persist_human_input_extra_content(node_id=node)
-    pipeline._persist_human_input_extra_content(node_id=node)
+    form_id = "form-1" if form_exists else None
+    pipeline._persist_human_input_extra_content(form_id=form_id, node_id=node)
+    pipeline._persist_human_input_extra_content(form_id=form_id, node_id=node)
     with message_case.sessions() as session:
         rows = list(session.scalars(select(HumanInputContent)))
         assert [(row.message_id, row.form_id) for row in rows] == ([("message-1", "form-1")] if form_exists else [])
 
 
-def test_pause_is_committed_before_client_observes_event(message_case):
+@pytest.mark.parametrize("stop_after_pause", [False, True])
+def test_pause_does_not_overwrite_a_concurrent_stop(message_case, stop_after_pause):
     pipeline = message_case.pipeline
+    pipeline._workflow_response_converter.workflow_pause_to_stream_response = lambda **_kwargs: ["pause"]
+    with message_case.sessions.begin() as session:
+        session.add(
+            WorkflowRun(
+                id="run-1",
+                tenant_id="tenant-1",
+                app_id="app-1",
+                workflow_id="workflow-1",
+                task_id="task-1",
+                type=WorkflowType.CHAT,
+                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+                version="1",
+                status=WorkflowExecutionStatus.PAUSED,
+                created_by_role=CreatorUserRole.END_USER,
+                created_by="user-1",
+            )
+        )
     list(pipeline._handle_workflow_started_event(QueueWorkflowStartedEvent()))
     pipeline._task_state.answer = "before"
     reason = HumanInputRequired(
@@ -227,12 +252,15 @@ def test_pause_is_committed_before_client_observes_event(message_case):
     responses = pipeline._handle_workflow_paused_event(
         QueueWorkflowPausedEvent(reasons=[reason], outputs={}, paused_nodes=["node-1"])
     )
-    next(responses)
-    assert message_case.message().status == MessageStatus.PAUSED
+    assert next(responses) == "pause"
+    if stop_after_pause:
+        repository = DifyAPISQLAlchemyWorkflowRunRepository(message_case.sessions)
+        repository.stop_paused_workflow_task(tenant_id="tenant-1", app_id="app-1", task_id="task-1", owner=None)
+    assert list(responses) == []
+    assert message_case.message().status == (MessageStatus.NORMAL if stop_after_pause else MessageStatus.PAUSED)
     assert message_case.message().answer == "before"
     with message_case.sessions() as session:
         assert session.scalar(select(HumanInputContent.form_id)) == "form-1"
-    responses.close()
 
 
 def test_resume_appends_chunks_and_resets_paused_status(message_case):

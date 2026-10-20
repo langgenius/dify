@@ -19,7 +19,7 @@ from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
 from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.node_events import (
-    NodeEventBase,
+    NodeEventPayload,
     NodeRunResult,
     StreamChunkEvent,
     StreamCompletedEvent,
@@ -42,7 +42,7 @@ class AgentMessageTransformer:
     def transform(
         self,
         *,
-        messages: Generator[ToolInvokeMessage, None, None],
+        messages: Generator[ToolInvokeMessage],
         tool_info: Mapping[str, Any],
         parameters_for_log: dict[str, Any],
         user_id: str,
@@ -51,7 +51,8 @@ class AgentMessageTransformer:
         node_type: NodeType,
         node_id: str,
         node_execution_id: str,
-    ) -> Generator[NodeEventBase, None, None]:
+    ) -> Generator[NodeEventPayload]:
+
         message_stream = ToolFileMessageTransformer.transform_tool_invoke_messages(
             messages=messages,
             user_id=user_id,
@@ -290,7 +291,7 @@ class AgentMessageTransformer:
         )
 
     @staticmethod
-    def _close_open_think(*, think_state: ThinkStreamState, node_id: str) -> Generator[StreamChunkEvent, None, None]:
+    def _close_open_think(*, think_state: ThinkStreamState, node_id: str) -> Generator[StreamChunkEvent]:
         closed = think_state.close_if_open()
         if closed is None:
             return

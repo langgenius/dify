@@ -14,11 +14,13 @@ from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.plugin.entities.plugin_daemon import PluginLLMNumTokensResponse
 from core.plugin.impl.model import PluginModelClient
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from models.annotation_reply import AnnotationReplies
 from models.model import App, Conversation, Message, MessageAgentThought, MessageAnnotation
+from repositories.app.generation_repository import AppGenerationRepository
 from services.agent.chat.cot_chat_runner import CotChatAgentRunner
 from services.agent.chat.cot_completion_runner import CotCompletionAgentRunner
 from services.agent.chat.cot_runner import CotAgentRunner
@@ -41,8 +43,8 @@ def _assert_direct_output(agent_queue_manager: MessageBasedAppQueueManager, text
 def runner(
     agent_records: tuple[Conversation, Message],
     *,
-    app_records,
-    workflow_runtime,
+    app_records: AppGenerationRepository,
+    workflow_runtime: WorkflowExecutionDependencies,
 ) -> AgentChatAppRunner:
     assert agent_records[0].id == "conv"
     return AgentChatAppRunner(
@@ -127,6 +129,7 @@ class TestAgentChatAppRunnerRun:
         )
 
         event_message = agent_queue_manager._q.get_nowait()
+        assert event_message is not None
         assert isinstance(event_message.event, QueueAnnotationReplyEvent)
         assert event_message.event.message_annotation_id == annotation.id
         assert calls[0]["tenant_id"] == "tenant"

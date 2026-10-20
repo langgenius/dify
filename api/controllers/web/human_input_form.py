@@ -139,8 +139,8 @@ class HumanInputFormUploadTokenApi(Resource):
 
         try:
             token = application_services().human_input_file_uploads.issue_upload_token(form_token)
-        except FormNotFoundError:
-            raise NotFoundError("Form not found")
+        except FormNotFoundError as caught_error:
+            raise NotFoundError("Form not found") from caught_error
 
         return HumanInputUploadTokenResponse(
             upload_token=token.upload_token, expires_at=to_timestamp(token.expires_at)
@@ -271,8 +271,8 @@ class HumanInputFormApi(Resource):
                 form_data=payload.inputs,
                 submission_end_user_id=None,
             )
-        except FormNotFoundError:
-            raise NotFoundError("Form not found")
+        except FormNotFoundError as caught_error:
+            raise NotFoundError("Form not found") from caught_error
 
         return HumanInputFormSubmitResponse().model_dump(mode="json"), 200
 

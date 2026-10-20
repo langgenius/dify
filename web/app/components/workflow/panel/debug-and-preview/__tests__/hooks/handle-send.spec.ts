@@ -1,19 +1,10 @@
 import type { useWorkflowRun } from '@/app/components/workflow/hooks/use-workflow-run'
-import type { VisionFile } from '@/types/app'
 import { act } from '@testing-library/react'
-import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderWorkflowCanvasHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { fullWorkflowAccessControl } from '@/app/components/workflow/hooks-store/store'
 import { useChat } from '../../hooks'
 
-type WorkflowRunCallbacks = NonNullable<
-  Parameters<ReturnType<typeof useWorkflowRun>['handleRun']>[1]
->
-
-type WorkflowRunParams = Omit<Parameters<ReturnType<typeof useChat>['handleSend']>[0], 'files'> & {
-  files?: VisionFile[]
-}
-
-const mockHandleRun = vi.fn<(params: WorkflowRunParams, callbacks: WorkflowRunCallbacks) => void>()
+const handleRun = vi.fn<ReturnType<typeof useWorkflowRun>['handleRun']>()
 const mockNotify = vi.fn()
 vi.mock('@/app/notifications', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/app/notifications')>()
@@ -27,33 +18,33 @@ vi.mock('@/service/use-workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/use-workflow')>()),
   useInvalidateAllLastRun: () => mockInvalidAllLastRun,
 }))
-const mockFetchInspectVars = vi.fn()
+const fetchInspectVars = vi.fn(async () => undefined)
 
-vi.mock('../../../../hooks/use-workflow-run', () => ({
-  useWorkflowRun: () => ({ handleRun: mockHandleRun }),
-}))
-
-vi.mock('../../../../hooks/use-set-workflow-vars-with-value', () => ({
-  useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
-}))
+const renderChat = (canRun = true) =>
+  renderHook(() => useChat({}), {
+    hooksStoreProps: {
+      accessControl: { ...fullWorkflowAccessControl, canRun },
+      fetchInspectVars,
+      handleRun,
+    },
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+  })
 
 describe('useChat – handleSend', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockHandleRun.mockReset()
+    handleRun.mockReset()
   })
 
   it('should call handleRun with processed params', () => {
-    const { result } = renderHook(() => useChat({}), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    })
+    const { result } = renderChat()
 
     act(() => {
       result.current.handleSend({ query: 'hello', inputs: {} }, {})
     })
 
-    expect(mockHandleRun).toHaveBeenCalledTimes(1)
-    const [bodyParams] = mockHandleRun.mock.calls[0]!
+    expect(handleRun).toHaveBeenCalledTimes(1)
+    const [bodyParams] = handleRun.mock.calls[0]!
     expect(bodyParams.query).toBe('hello')
     expect(result.current.isResponding).toBe(true)
     expect(result.current.chatList).toEqual([
@@ -63,10 +54,7 @@ describe('useChat – handleSend', () => {
   })
 
   it('should return false and skip handleRun when test/run permission is missing', () => {
-    const { result } = renderHook(() => useChat({}), {
-      hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canRun: false } },
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    })
+    const { result } = renderChat(false)
 
     let returned: unknown
     act(() => {
@@ -74,16 +62,15 @@ describe('useChat – handleSend', () => {
     })
 
     expect(returned).toBe(false)
-    expect(mockHandleRun).not.toHaveBeenCalled()
+    expect(handleRun).not.toHaveBeenCalled()
+    expect(result.current.isResponding).toBe(false)
     expect(result.current.chatList).toHaveLength(0)
   })
 
   it('should show notification and return false when already responding', () => {
-    mockHandleRun.mockImplementation(() => {})
+    handleRun.mockImplementation(() => {})
 
-    const { result } = renderHook(() => useChat({}), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    })
+    const { result } = renderChat()
 
     act(() => {
       result.current.handleSend({ query: 'first' }, {})
@@ -95,12 +82,15 @@ describe('useChat – handleSend', () => {
     })
 
     expect(mockNotify).toHaveBeenCalledWith('appDebug.errorMessage.waitForResponse')
+    expect(handleRun).toHaveBeenCalledTimes(1)
+    expect(result.current.chatList).toEqual([
+      expect.objectContaining({ content: 'first', isAnswer: false }),
+      expect.objectContaining({ content: '', isAnswer: true }),
+    ])
   })
 
   it('should strip url from local_file transfer method files', () => {
-    const { result } = renderHook(() => useChat({}), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    })
+    const { result } = renderChat()
 
     act(() => {
       result.current.handleSend(
@@ -135,31 +125,30 @@ describe('useChat – handleSend', () => {
       )
     })
 
-    expect(mockHandleRun).toHaveBeenCalledTimes(1)
-    const [bodyParams] = mockHandleRun.mock.calls[0]!
-    const localFile = bodyParams.files!.find((f) => f.transfer_method === 'local_file')
-    const remoteFile = bodyParams.files!.find((f) => f.transfer_method === 'remote_url')
+    expect(handleRun).toHaveBeenCalledTimes(1)
+    const [bodyParams] = handleRun.mock.calls[0]!
+    const files = bodyParams.files as { transfer_method: string; url: string }[]
+    const localFile = files.find((file) => file.transfer_method === 'local_file')
+    const remoteFile = files.find((file) => file.transfer_method === 'remote_url')
     expect(localFile!.url).toBe('')
     expect(remoteFile!.url).toBe('https://example.com/img.png')
   })
 
   it('should abort previous workflowEventsAbortController before sending', () => {
     const controller = new AbortController()
-    mockHandleRun.mockImplementation((_params: unknown, callbacks: WorkflowRunCallbacks) => {
-      callbacks.getAbortController!(controller)
-      callbacks.onCompleted!(false)
+    handleRun.mockImplementation((_params, callbacks) => {
+      callbacks!.getAbortController!(controller)
+      callbacks!.onCompleted!(false)
     })
 
-    const { result } = renderHook(() => useChat({}), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    })
+    const { result } = renderChat()
 
     act(() => {
       result.current.handleSend({ query: 'first' }, {})
     })
 
-    mockHandleRun.mockImplementation((_params: unknown, callbacks: WorkflowRunCallbacks) => {
-      callbacks.getAbortController!(new AbortController())
+    handleRun.mockImplementation((_params, callbacks) => {
+      callbacks!.getAbortController!(new AbortController())
     })
 
     act(() => {

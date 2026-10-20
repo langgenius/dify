@@ -15,7 +15,7 @@ from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext,
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from enums.human_input import HumanInputFormStatus, ValueSourceType
 from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from models.enums import CreatorUserRole
 from models.human_input import HumanInputForm
 from models.human_input_entities import SelectInputConfig, StringListSource, UserActionConfig
@@ -79,7 +79,7 @@ def _build_resumption_context(workflow_run_id: str) -> WorkflowResumptionContext
         call_depth=0,
         workflow_execution_id=workflow_run_id,
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     runtime_state.variable_pool.add(("start", "options"), ["approve", "reject"])
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(

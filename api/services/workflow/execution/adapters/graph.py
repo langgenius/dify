@@ -1,6 +1,6 @@
 import logging
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, cast
 
 from pydantic import BaseModel, ConfigDict
@@ -19,7 +19,8 @@ from core.workflow.variable_pool_initializer import add_variables_to_pool
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.graph import Graph
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.graph.scoping import resolve_container_id
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models import Account
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
@@ -33,6 +34,7 @@ from services.workflow.execution.adapters.node_factory import (
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import environment_variable_values
+from services.workflow_node_variables import load_additional_node_variables
 
 logger = logging.getLogger(__name__)
 
@@ -43,15 +45,6 @@ class _WorkflowGraphNodeData(BaseNodeData):
     start_node_id: str | None = None
     iteration_id: str | None = None
     loop_id: str | None = None
-
-    def parent_id_for(self, key: str) -> str | None:
-        match key:
-            case "iteration_id":
-                return self.iteration_id
-            case "loop_id":
-                return self.loop_id
-            case _:
-                return None
 
 
 class _WorkflowGraphNodeConfig(BaseModel):
@@ -125,9 +118,10 @@ class WorkflowGraphBuilder:
     def build(
         self,
         graph_config: Mapping[str, Any],
-        graph_runtime_state: GraphRuntimeState,
+        graph_runtime_state: RuntimeState,
         user_from: UserFrom,
         invoke_from: InvokeFrom,
+        call_depth: int,
         workflow_id: str = "",
         tenant_id: str = "",
         user_id: str = "",
@@ -154,14 +148,14 @@ class WorkflowGraphBuilder:
             workflow_id=workflow_id,
             graph_config=graph_config,
             run_context=run_context,
-            call_depth=0,
+            call_depth=call_depth,
         )
 
         # Use the provided graph_runtime_state for consistent state management
 
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=graph_runtime_state,
             draft_variable_saver=self._draft_variable_saver,
             agent_binding_resolver=self._agent_binding_resolver,
             workflow_runtime=self._workflow_runtime,
@@ -187,7 +181,7 @@ class WorkflowGraphBuilder:
         user_id: str,
         app_type: CreditUsageAppType | None = None,
         trace_session_id: str | None = None,
-    ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
+    ) -> tuple[Graph, VariablePool, RuntimeState]:
         """
         Prepare graph, variable pool, and runtime state for single node execution
         (either single iteration or single loop).
@@ -212,7 +206,11 @@ class WorkflowGraphBuilder:
                 environment_variables=environment_variable_values(workflow),
             ),
         )
-        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.time())
+        graph_runtime_state = RuntimeState(
+            workflow_id=workflow.id,
+            variable_pool=variable_pool,
+            start_at=time.time(),
+        )
 
         # Determine which type of single node execution and get graph/variable_pool
         if single_iteration_run:
@@ -221,7 +219,6 @@ class WorkflowGraphBuilder:
                 node_id=single_iteration_run.node_id,
                 user_inputs=dict(single_iteration_run.inputs),
                 graph_runtime_state=graph_runtime_state,
-                node_type_filter_key="iteration_id",
                 node_type_label="iteration",
                 user_id=user_id,
                 app_type=app_type,
@@ -233,7 +230,6 @@ class WorkflowGraphBuilder:
                 node_id=single_loop_run.node_id,
                 user_inputs=dict(single_loop_run.inputs),
                 graph_runtime_state=graph_runtime_state,
-                node_type_filter_key="loop_id",
                 node_type_label="loop",
                 user_id=user_id,
                 app_type=app_type,
@@ -243,7 +239,7 @@ class WorkflowGraphBuilder:
             raise ValueError("Neither single_iteration_run nor single_loop_run is specified")
 
         # Return the graph, variable_pool, and the same graph_runtime_state used during graph creation
-        # This ensures all nodes in the graph reference the same GraphRuntimeState instance
+        # This ensures all nodes in the graph reference the same RuntimeState instance
         return graph, variable_pool, graph_runtime_state
 
     def _get_graph_and_variable_pool_for_single_node_run(
@@ -251,8 +247,7 @@ class WorkflowGraphBuilder:
         workflow: WorkflowSnapshot,
         node_id: str,
         user_inputs: dict[str, Any],
-        graph_runtime_state: GraphRuntimeState,
-        node_type_filter_key: str,  # 'iteration_id' or 'loop_id'
+        graph_runtime_state: RuntimeState,
         node_type_label: str = "node",  # 'iteration' or 'loop' for error messages
         *,
         user_id: str = "",
@@ -269,7 +264,6 @@ class WorkflowGraphBuilder:
             node_id: The node ID to execute
             user_inputs: User inputs for the node
             graph_runtime_state: The graph runtime state
-            node_type_filter_key: The key to filter nodes ('iteration_id' or 'loop_id')
             node_type_label: Label for error messages ('iteration' or 'loop')
 
         Returns:
@@ -280,18 +274,31 @@ class WorkflowGraphBuilder:
 
         node_user_inputs = dict(user_inputs)
 
-        # filter nodes only in the specified node type (iteration or loop)
-        main_node_config = next((node for node in source_graph_config.nodes if node.id == node_id), None)
-        start_node_id = main_node_config.data.start_node_id if main_node_config else None
-        selected_node_configs = [
-            node
-            for node in source_graph_config.nodes
-            if node.id == node_id
-            or node.data.parent_id_for(node_type_filter_key) == node_id
-            or (start_node_id and node.id == start_node_id)
-        ]
+        graph_config = source_graph_config.to_graph_config()
 
-        node_ids = [node.id for node in selected_node_configs]
+        # Resolve ownership against the complete graph, then retain every nested
+        # descendant of the selected container for isolated execution.
+        all_node_configs = graph_config["nodes"]
+        nodes_by_id = {node["id"]: node for node in all_node_configs}
+        container_ids = {node["id"]: resolve_container_id(node, nodes_by_id=nodes_by_id) for node in all_node_configs}
+        node_ids = {node_id}
+        while True:
+            child_node_ids = {node["id"] for node in all_node_configs if container_ids[node["id"]] in node_ids}
+            child_node_ids -= node_ids
+            if not child_node_ids:
+                break
+            node_ids.update(child_node_ids)
+
+        # Preserve ownership resolved with the complete ancestry before removing
+        # nodes outside the debug subtree. Nested legacy IDs can otherwise become ambiguous.
+        selected_node_configs = []
+        for node in all_node_configs:
+            if node["id"] not in node_ids:
+                continue
+            selected_node = dict(node)
+            selected_node["data"] = dict(node["data"])
+            selected_node["data"]["container_id"] = container_ids[node["id"]]
+            selected_node_configs.append(_WorkflowGraphNodeConfig.model_validate(selected_node))
 
         # filter edges only in the specified node type
         selected_edge_configs = [
@@ -303,7 +310,7 @@ class WorkflowGraphBuilder:
         node_configs = [node.to_graph_node_config() for node in selected_node_configs]
         edge_configs = [edge.model_dump(mode="python", exclude_unset=True) for edge in selected_edge_configs]
         graph_config = {
-            **source_graph_config.to_graph_config(),
+            **graph_config,
             "nodes": node_configs,
             "edges": edge_configs,
         }
@@ -329,7 +336,7 @@ class WorkflowGraphBuilder:
 
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=graph_runtime_state,
             draft_variable_saver=self._draft_variable_saver,
             agent_binding_resolver=self._agent_binding_resolver,
             workflow_runtime=self._workflow_runtime,
@@ -370,7 +377,7 @@ class WorkflowGraphBuilder:
                 graph_config=graph_config, config=target_node_config.to_typed_node_config()
             )
         except NotImplementedError:
-            variable_mapping = {}
+            variable_mapping = dict[str, Sequence[str]]()
         variable_mapping = inject_default_system_variable_mappings(
             node_id=target_node_config.id,
             node_type=node_type,
@@ -384,6 +391,14 @@ class WorkflowGraphBuilder:
             variable_mapping=variable_mapping,
             user_inputs=node_user_inputs,
         )
+        variable_mapping = load_additional_node_variables(
+            node_config=target_node_config.to_typed_node_config(),
+            graph_config=graph_config,
+            variable_mapping=variable_mapping,
+            variable_loader=self._variable_loader,
+            variable_pool=variable_pool,
+            user_inputs=node_user_inputs,
+        )
 
         WorkflowEntry.mapping_user_inputs_to_variable_pool(
             variable_mapping=variable_mapping,
@@ -394,7 +409,11 @@ class WorkflowGraphBuilder:
 
         # init graph after constructor-time context has been loaded
         graph = Graph.init(
-            graph_config=graph_config, node_factory=node_factory, root_node_id=node_id, skip_validation=True
+            graph_config=graph_config,
+            node_factory=node_factory,
+            root_node_id=node_id,
+            container_id=container_ids[node_id],
+            skip_validation=True,
         )
 
         if not graph:

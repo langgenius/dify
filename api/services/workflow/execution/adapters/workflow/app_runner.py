@@ -1,47 +1,68 @@
 import logging
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import replace
 from typing import Protocol, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.execution_coordinator import app_task_command_channel_key
 from core.app.entities.app_invoke_entities import (
-    DifyRunContext,
     InvokeFrom,
     WorkflowAppGenerateEntity,
     get_credit_usage_app_type,
 )
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
+from core.app.entities.queue_entities import NodeExecutionSnapshot
+from core.workflow.nodes.human_input.pause_reason import PauseReason
 from core.workflow.snippet_start import get_compatible_start_aliases
-from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
-from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
+from core.workflow.system_variables import (
+    build_bootstrap_variables,
+    build_system_variables,
+)
+from core.workflow.variable_pool_initializer import (
+    add_node_inputs_to_pool,
+    add_variables_to_pool,
+)
+from enums.human_input import HumanInputFormStatus
 from extensions.ext_redis import redis_client
-from extensions.otel import WorkflowAppRunnerHandler, trace_span
-from extensions.workflow_warm_shutdown import WORKFLOW_WARM_SHUTDOWN_ABORT_REASON, celery_warm_shutdown_started
+from extensions.workflow_warm_shutdown import (
+    WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,
+    celery_warm_shutdown_started,
+)
+from graphon.engine.command import RedisChannel
+from graphon.engine.filter import ResponseStreamFilter
+from graphon.engine.layer import Layer
+from graphon.engine_events import EngineEvent
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowType
-from graphon.filters import ResponseStreamFilter
-from graphon.graph_engine.command_channels import RedisChannel
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.runtime.graph_runtime_state import GraphExecutionProtocol
+from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime.execution import GraphExecution
 from graphon.variable_loader import VariableLoader
 from libs.datetime_utils import naive_utc_now
 from models import Account
+from models.human_input_contracts import HumanInputFormRecord
+from services.human_input.ports import HumanInputFormReader
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.events import WorkflowEventPublisher
 from services.workflow.execution.adapters.graph import WorkflowGraphBuilder
 from services.workflow.execution.adapters.node_factory import get_default_root_node_id
-from services.workflow.execution.adapters.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from services.workflow.execution.adapters.workflow.app_config_manager import WorkflowAppConfig
+from services.workflow.execution.adapters.node_runtime import (
+    DifyHumanInputNodeRuntime,
+    resolve_dify_run_context,
+)
+from services.workflow.execution.adapters.workflow.app_config_manager import (
+    WorkflowAppConfig,
+)
 from services.workflow.execution.adapters.workflow.command_channels import (
     CelerySignalCommandChannel,
     CombinedCommandChannel,
     StopFlagCommandChannel,
 )
-from services.workflow.execution.adapters.workflow.stop_aware_ready_queue import attach_stop_aware_ready_queue
+from services.workflow.execution.adapters.workflow.stop_aware_ready_queue import (
+    attach_stop_aware_ready_queue,
+)
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
+from services.workflow.execution.contracts import PreparedWorkflowRun, WorkflowRunEntry
 from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import environment_variable_values
 
@@ -51,7 +72,7 @@ logger = logging.getLogger(__name__)
 class WorkflowExecutionCancellation(Protocol):
     """Cancellation supplied by the execution owner, independent of its lease policy."""
 
-    def bind(self, execution: GraphExecutionProtocol) -> None: ...
+    def bind(self, execution: GraphExecution) -> None: ...
     def is_cancelled(self) -> bool: ...
     def raise_if_cancelled(self) -> None: ...
 
@@ -71,11 +92,9 @@ class WorkflowAppRunner:
         workflow: WorkflowSnapshot,
         system_user_id: str,
         root_node_id: str | None = None,
-        workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_engine_layers: Sequence[Layer] = (),
         cancellation: WorkflowExecutionCancellation | None = None,
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_runtime_state: RuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
     ):
@@ -88,9 +107,7 @@ class WorkflowAppRunner:
             workflow_runtime=runtime,
         )
         self._queue_manager = queue_manager
-        self._events = WorkflowEventPublisher(
-            queue_manager, resolve_pause=runtime.resolve_pause, notify_pause=runtime.notify_pause
-        )
+        self._events = WorkflowEventPublisher(queue_manager, notify_pause=runtime.notify_pause)
         self._draft_variable_saver = draft_variable_saver
         self._graph_engine_layers = graph_engine_layers
         self.application_generate_entity = application_generate_entity
@@ -98,16 +115,15 @@ class WorkflowAppRunner:
         self._workflow = workflow
         self._sys_user_id = system_user_id
         self._root_node_id = root_node_id
-        self._workflow_execution_repository = workflow_execution_repository
-        self._workflow_node_execution_repository = workflow_node_execution_repository
         self._resume_graph_runtime_state = graph_runtime_state
         self._response_stream_filter = response_stream_filter
 
-    @trace_span(WorkflowAppRunnerHandler)
-    def run(self):
-        """
-        Run application
-        """
+    @property
+    def human_form_reader(self) -> HumanInputFormReader:
+        return self._runtime.human_form_reader
+
+    def prepare(self) -> PreparedWorkflowRun | None:
+        """Prepare graph execution and passive application observers."""
         app_config = self.application_generate_entity.app_config
         app_config = cast(WorkflowAppConfig, app_config)
         invoke_from = self.application_generate_entity.invoke_from
@@ -132,6 +148,7 @@ class WorkflowAppRunner:
                 root_node_id=self._root_node_id,
                 app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
+                call_depth=self.application_generate_entity.call_depth,
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             graph, variable_pool, graph_runtime_state = self._graphs.build_single_node(
@@ -173,7 +190,9 @@ class WorkflowAppRunner:
                 ),
             )
 
-            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+            graph_runtime_state = RuntimeState(
+                workflow_id=self._workflow.id, variable_pool=variable_pool, start_at=time.perf_counter()
+            )
             graph = self._graphs.build(
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,
@@ -185,6 +204,7 @@ class WorkflowAppRunner:
                 root_node_id=root_node_id,
                 app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
+                call_depth=self.application_generate_entity.call_depth,
             )
 
         # RUN WORKFLOW
@@ -219,52 +239,60 @@ class WorkflowAppRunner:
 
         workflow_entry = WorkflowEntry(
             human_form_reader=self._runtime.human_form_reader,
-            tenant_id=self._workflow.tenant_id,
-            app_id=self._workflow.app_id,
-            workflow_id=self._workflow.id,
             graph=graph,
             graph_config=self._workflow.graph_dict,
-            user_id=self.application_generate_entity.user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
             call_depth=self.application_generate_entity.call_depth,
-            variable_pool=variable_pool,
             graph_runtime_state=graph_runtime_state,
             command_channel=command_channel,
             response_stream_filter=self._response_stream_filter,
         )
 
-        persistence_layer = WorkflowPersistenceLayer(
-            application_generate_entity=self.application_generate_entity,
-            workflow_info=PersistenceWorkflowInfo(
-                workflow_id=self._workflow.id,
-                workflow_type=WorkflowType(self._workflow.type),
-                version=self._workflow.version,
-                graph_data=self._workflow.graph_dict,
-            ),
-            workflow_execution_repository=self._workflow_execution_repository,
-            workflow_node_execution_repository=self._workflow_node_execution_repository,
-            trace_manager=self.application_generate_entity.trace_manager,
+        return PreparedWorkflowRun(
+            entry=workflow_entry,
+            workflow_type=WorkflowType(self._workflow.type),
+            workflow_version=self._workflow.version,
+            generate_entity=self.application_generate_entity,
+            application_layers=self._graph_engine_layers,
         )
 
-        workflow_entry.graph_engine.layer(persistence_layer)
-        workflow_entry.graph_engine.layer(
-            build_workflow_agent_workspace_retirement_layer(
-                dify_run_context=DifyRunContext(
-                    tenant_id=self._workflow.tenant_id,
-                    app_id=self._workflow.app_id,
-                    user_id=self.application_generate_entity.user_id,
-                    user_from=user_from,
-                    invoke_from=invoke_from,
-                    app_type=get_credit_usage_app_type(app_config.app_mode),
-                    trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
-                )
+    def publish_human_input_results(
+        self,
+        workflow_entry: WorkflowRunEntry,
+        pending_forms: Mapping[str, HitlRequired],
+        forms: Mapping[str, HumanInputFormRecord],
+        published_form_ids: set[str],
+    ) -> None:
+        restored_forms = dict(forms)
+        run_context = resolve_dify_run_context(workflow_entry.graph_engine.graph.root_node.run_context)
+        human_input_runtime = DifyHumanInputNodeRuntime(run_context, forms=self._runtime.human_forms)
+        for form_id, form in forms.items():
+            if form.status != HumanInputFormStatus.SUBMITTED:
+                continue
+            restored_data = human_input_runtime.restore_submitted_data(
+                inputs=form.definition.inputs,
+                submitted_data=form.submitted_data or {},
             )
+            restored_forms[form_id] = replace(form, submitted_data=dict(restored_data))
+        self._events.publish_human_input_results(
+            workflow_entry,
+            pending_forms,
+            restored_forms,
+            published_form_ids,
         )
-        for layer in self._graph_engine_layers:
-            workflow_entry.graph_engine.layer(layer)
 
-        generator = workflow_entry.run()
-
-        for event in generator:
-            self._events.publish(workflow_entry, event)
+    def handle_event(
+        self,
+        workflow_entry: WorkflowRunEntry,
+        event: EngineEvent,
+        *,
+        node_run_index: int = 1,
+        node_execution_snapshots: tuple[NodeExecutionSnapshot, ...] = (),
+        pause_reasons: Sequence[PauseReason] = (),
+    ) -> None:
+        self._events.publish(
+            workflow_entry,
+            event,
+            node_run_index=node_run_index,
+            node_execution_snapshots=node_execution_snapshots,
+            pause_reasons=pause_reasons,
+        )
