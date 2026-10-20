@@ -1501,7 +1501,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           apiKeys: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, variables, _onMutateResult, context) => {
+                onSettled: (_data, _error, variables, _onMutateResult, context) => {
                   void context.client.invalidateQueries({
                     queryKey: consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
                       input: { params: { resource_id: variables.params.resource_id } },
@@ -1785,7 +1785,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         apiKeys: {
           post: {
             mutationOptions: {
-              onSuccess: (_data, _variables, _onMutateResult, context) => {
+              onSettled: (_data, _error, _variables, _onMutateResult, context) => {
                 void context.client.invalidateQueries({
                   queryKey: consoleQuery.datasets.apiKeys.get.key(),
                 })
@@ -2108,7 +2108,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           apiKeys: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, variables, _result, context) =>
+                onSettled: (_data, _error, variables, _result, context) =>
                   void Promise.all([
                     context.client.invalidateQueries({
                       queryKey: consoleQuery.agent.byAgentId.apiKeys.get.queryKey({

@@ -1439,10 +1439,11 @@ export const zApiKeyItem = z.object({
 })
 
 /**
- * ApiKeyList
+ * ApiKeyListWithLimitResponse
  */
-export const zApiKeyList = z.object({
+export const zApiKeyListWithLimitResponse = z.object({
   data: z.array(zApiKeyItem),
+  max_keys: z.int().gt(0),
 })
 
 /**
@@ -8620,7 +8621,7 @@ export const zGetAppsByResourceIdApiKeysPath = z.object({
 /**
  * API keys retrieved successfully
  */
-export const zGetAppsByResourceIdApiKeysResponse = zApiKeyList
+export const zGetAppsByResourceIdApiKeysResponse = zApiKeyListWithLimitResponse
 
 export const zPostAppsByResourceIdApiKeysPath = z.object({
   resource_id: z.uuid(),
