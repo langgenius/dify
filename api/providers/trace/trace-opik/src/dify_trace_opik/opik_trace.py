@@ -47,6 +47,21 @@ def wrap_metadata(metadata, **kwargs):
     return metadata
 
 
+def mark_internal(metadata: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of the metadata flagged as internal for Opik.
+
+    ``metadata._opik.is_internal`` is the flag Opik uses to mark internal,
+    non-user-facing items. Other keys under ``_opik`` are kept; a non-dict
+    ``_opik`` value is replaced, since Opik owns that key. The input dict is
+    not modified.
+    """
+    opik_metadata = metadata.get("_opik")
+    if not isinstance(opik_metadata, dict):
+        opik_metadata = {}
+
+    return {**metadata, "_opik": {**opik_metadata, "is_internal": True}}
+
+
 def _seed_to_uuid4(seed: str) -> str:
     """Derive a deterministic UUID4-formatted string from an arbitrary seed.
 
@@ -413,12 +428,18 @@ class OpikDataTrace(BaseTraceInstance):
         self.add_span(span_data)
 
     def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
+        metadata = wrap_metadata(trace_info.metadata)
+
+        # The conversation-title call is an internal helper, not a chat turn: mark the trace
+        # internal, but keep its thread_id so it stays linked to its conversation.
+        # Only the trace is marked: Opik hides internal spans by default, and this span
+        # should stay visible when the trace is opened.
         trace_data = {
             "id": prepare_opik_uuid(trace_info.start_time, trace_info.trace_id or trace_info.message_id),
             "name": TraceTaskName.GENERATE_NAME_TRACE,
             "start_time": trace_info.start_time,
             "end_time": trace_info.end_time,
-            "metadata": wrap_metadata(trace_info.metadata),
+            "metadata": mark_internal(metadata),
             "input": trace_info.inputs,
             "output": trace_info.outputs,
             "thread_id": trace_info.conversation_id,
@@ -433,7 +454,7 @@ class OpikDataTrace(BaseTraceInstance):
             "name": TraceTaskName.GENERATE_NAME_TRACE,
             "start_time": trace_info.start_time,
             "end_time": trace_info.end_time,
-            "metadata": wrap_metadata(trace_info.metadata),
+            "metadata": metadata,
             "input": wrap_dict("input", trace_info.inputs),
             "output": wrap_dict("output", trace_info.outputs),
             "tags": ["generate_name"],
