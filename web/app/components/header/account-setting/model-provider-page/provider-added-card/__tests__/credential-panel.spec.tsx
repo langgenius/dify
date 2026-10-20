@@ -264,20 +264,19 @@ describe('CredentialPanel', () => {
     expect(mockUpdateModelList).toHaveBeenCalledExactlyOnceWith('llm')
   })
 
-  it('reports a failed priority change without refreshing and allows retry', async () => {
+  it('keeps a failed priority change retryable without refreshing or duplicate feedback', async () => {
     const user = userEvent.setup()
-    mockChangePriorityFn.mockRejectedValueOnce(new Error('Unavailable'))
+    const request = createDeferred<{ result: string }>()
+    mockChangePriorityFn.mockReturnValueOnce(request.promise)
     renderWithQueryClient(createProvider())
     await user.click(screen.getByRole('button', { name: 'common.operation.config' }))
     const apiKey = screen.getByRole('button', { name: /apiKeyOption/ })
     await user.click(apiKey)
-    await waitFor(() =>
-      expect(mockToastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'common.actionMsg.modifiedUnsuccessfully',
-      }),
-    )
-    expect(apiKey).toBeEnabled()
+    await waitFor(() => expect(apiKey).toBeDisabled())
+    await act(async () => request.reject(new Error('Unavailable')))
+    await waitFor(() => expect(apiKey).toBeEnabled())
+    // The service-boundary stub bypasses the transport's own error feedback.
+    expect(mockToastNotify).not.toHaveBeenCalled()
     expect(mockUpdateModelProviders).not.toHaveBeenCalled()
     expect(mockUpdateModelList).not.toHaveBeenCalled()
     await user.click(apiKey)
