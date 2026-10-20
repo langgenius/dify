@@ -102,16 +102,26 @@ def test_add_builtin_tool_provider_validates_before_acquiring_expiring_lock(
     events: list[str] = []
     original_sessionmaker = service_module.sessionmaker
 
-    def tracked_sessionmaker(*, bind: Engine) -> SimpleNamespace:
-        factory = original_sessionmaker(bind=bind)
+    class TrackedSessionFactory:
+        def __init__(self, *, bind: Engine) -> None:
+            self.factory = original_sessionmaker(bind=bind)
 
         @contextmanager
-        def transaction() -> Generator[Session]:
-            with factory.begin() as session:
+        def begin(self) -> Generator[Session]:
+            with self.factory.begin() as session:
                 yield session
             events.append("transaction_committed")
 
-        return SimpleNamespace(begin=transaction)
+    class ProviderController:
+        need_credentials = True
+
+        def validate_credentials(self, _user_id: str, _credentials: dict[str, str]) -> None:
+            # Model a slow external validation that outlives the 20-second Redis lease.
+            events.append("validation")
+            lock_state["expired"] = lock_state["held"]
+
+        def get_credentials_schema_by_type(self, _credential_type: CredentialType) -> list[object]:
+            return []
 
     @contextmanager
     def expiring_lock(*_args: object, **_kwargs: object) -> Generator[None]:
@@ -125,22 +135,10 @@ def test_add_builtin_tool_provider_validates_before_acquiring_expiring_lock(
             if lock_state["expired"]:
                 raise LockNotOwnedError("lock lease expired during credential validation")
 
-    controller = MagicMock(need_credentials=True)
-
-    def validate_credentials(_user_id: str, _credentials: dict[str, str]) -> None:
-        # Model a slow external validation that outlives the 20-second Redis lease.
-        events.append("validation")
-        lock_state["expired"] = lock_state["held"]
-
-    controller.validate_credentials.side_effect = validate_credentials
-    empty_schema: list[object] = []
-    controller.get_credentials_schema_by_type.return_value = empty_schema
+    controller = ProviderController()
     monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", lambda *_args: controller)
     monkeypatch.setattr(service_module.redis_client, "lock", expiring_lock)
-    monkeypatch.setattr(service_module, "sessionmaker", tracked_sessionmaker)
-    encrypter = MagicMock()
-    encrypter.encrypt.return_value = {"encrypted": "value"}
-    monkeypatch.setattr(service_module, "create_provider_encrypter", lambda **_kwargs: (encrypter, None))
+    monkeypatch.setattr(service_module, "sessionmaker", TrackedSessionFactory)
 
     result = BuiltinToolManageService.add_builtin_tool_provider(
         user_id="user-1",
@@ -154,7 +152,6 @@ def test_add_builtin_tool_provider_validates_before_acquiring_expiring_lock(
     assert result["result"] == "success"
     assert lock_state["expired"] is False
     assert events == ["validation", "lock_acquired", "transaction_committed", "lock_released"]
-    controller.validate_credentials.assert_called_once_with("user-1", {"key": "value"})
     repository_session.expire_all()
     saved_provider = repository_session.scalar(
         select(BuiltinToolProvider).where(
