@@ -13,6 +13,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
@@ -21,24 +22,22 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
-    with_current_user,
 )
 from core.entities.model_entities import DefaultModelSetting
 from core.entities.provider_entities import CredentialConfiguration
+from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.helper import uuid_value
-from libs.login import login_required
-from models import Account
+from libs.login import current_account_with_tenant, login_required
+from machinery.context import RequestContext
 from services.entities.model_provider_entities import (
     DefaultModelResponse,
     ModelWithProviderEntityResponse,
     ProviderWithModelsResponse,
 )
-from services.model_load_balancing_service import ModelLoadBalancingService
 from services.model_provider.service import ModelProviderService
 
 logger = logging.getLogger(__name__)
@@ -265,14 +264,13 @@ class ModelProviderModelApi(Resource):
 
     @console_ns.expect(console_ns.models[ParserPostModels.__name__])
     @console_ns.response(200, "Model updated successfully", console_ns.models[SimpleResultResponse.__name__])
-    @setup_required
-    @login_required
-    @is_admin_or_owner_required
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
-    @account_initialization_required
-    @with_current_tenant_id
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+        rbac_checks=[RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace())],
+    )
     @model_validate(ParserPostModels)
-    def post(self, req_data: ParserPostModels, tenant_id: str, provider: str):
+    def post(self, req_data: ParserPostModels, request_context: RequestContext, provider: str):
+        tenant_id = request_context.active_workspace_id
         # To save the model's load balance configs
 
         if req_data.config_from == "custom-model":
@@ -287,28 +285,17 @@ class ModelProviderModelApi(Resource):
                 credential_id=req_data.credential_id,
             )
 
-        model_load_balancing_service = ModelLoadBalancingService()
-
         if req_data.load_balancing and req_data.load_balancing.configs:
             # save load balancing configs
-            model_load_balancing_service.update_load_balancing_configs(
-                tenant_id=tenant_id,
+            application_services().model_load_balancing.update_configs(
+                request_context,
                 provider=provider,
                 model=req_data.model,
                 model_type=req_data.model_type,
                 configs=req_data.load_balancing.configs,
                 config_from=req_data.config_from or "",
-                session=db.session(),
+                enabled=bool(req_data.load_balancing.enabled),
             )
-
-            if req_data.load_balancing.enabled:
-                model_load_balancing_service.enable_model_load_balancing(
-                    tenant_id=tenant_id, provider=provider, model=req_data.model, model_type=req_data.model_type
-                )
-            else:
-                model_load_balancing_service.disable_model_load_balancing(
-                    tenant_id=tenant_id, provider=provider, model=req_data.model, model_type=req_data.model_type
-                )
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
@@ -338,15 +325,13 @@ class ModelProviderModelCredentialApi(Resource):
         "Model credentials retrieved successfully",
         console_ns.models[ModelCredentialResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @is_admin_or_owner_required
-    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+        rbac_checks=[RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace())],
+    )
     @model_validate(ParserGetCredentials)
-    def get(self, req_data: ParserGetCredentials, tenant_id: str, user: Account, provider: str):
+    def get(self, req_data: ParserGetCredentials, request_context: RequestContext, provider: str):
+        tenant_id = request_context.active_workspace_id
         model_provider_service = ModelProviderService()
         current_credential = model_provider_service.get_model_credential(
             tenant_id=tenant_id,
@@ -356,13 +341,11 @@ class ModelProviderModelCredentialApi(Resource):
             credential_id=req_data.credential_id,
         )
 
-        model_load_balancing_service = ModelLoadBalancingService()
-        is_load_balancing_enabled, load_balancing_configs = model_load_balancing_service.get_load_balancing_configs(
-            tenant_id=tenant_id,
+        is_load_balancing_enabled, load_balancing_configs = application_services().model_load_balancing.get_configs(
+            request_context,
             provider=provider,
             model=req_data.model,
             model_type=req_data.model_type,
-            session=db.session(),
             config_from=req_data.config_from or "",
         )
 
@@ -373,7 +356,7 @@ class ModelProviderModelCredentialApi(Resource):
             available_credentials = model_provider_service.get_provider_available_credentials(
                 tenant_id=tenant_id,
                 provider=provider,
-                user=user,
+                user=current_account_with_tenant().account,
                 credential_query=application_services().credential_queries,
             )
         else:

@@ -31,6 +31,8 @@ from core.entities.model_entities import DefaultModelSetting
 from core.provider_manager import ProviderManager
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from libs.login import AccountWithTenant
+from machinery.context import RequestContext
 from models import Account
 from models.provider import TenantDefaultModel
 from tests.unit_tests.model_factories import make_account
@@ -38,6 +40,10 @@ from tests.unit_tests.model_factories import make_account
 
 def _account() -> Account:
     return make_account(account_id="u1", name="Model User", email="model-user@example.com")
+
+
+def _context(tenant_id: str) -> RequestContext:
+    return RequestContext("request", None, "u1", tenant_id)
 
 
 class TestDefaultModelApi:
@@ -187,6 +193,30 @@ class TestDefaultModelApi:
 
 
 class TestModelProviderModelApi:
+    @pytest.mark.parametrize("load_balancing", [None, {"configs": []}, {"enabled": True}])
+    def test_post_without_configs_does_not_change_load_balancing(self, app: Flask, load_balancing: object) -> None:
+        payload = ParserPostModels.model_validate(
+            {"model": "gpt-4", "model_type": ModelType.LLM, "load_balancing": load_balancing}
+        )
+        api = ModelProviderModelApi()
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.workspace.models.application_services") as services,
+        ):
+            assert unwrap(api.post)(api, payload, _context("workspace"), "openai") == ({"result": "success"}, 200)
+        services.assert_not_called()
+
+    def test_custom_model_requires_a_credential_before_changing_configs(self, app: Flask) -> None:
+        payload = ParserPostModels(model="gpt-4", model_type=ModelType.LLM, config_from="custom-model")
+        api = ModelProviderModelApi()
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.workspace.models.application_services") as services,
+        ):
+            with pytest.raises(ValueError, match="credential_id is required"):
+                unwrap(api.post)(api, payload, _context("workspace"), "openai")
+        services.assert_not_called()
+
     def test_get_models_success(self, app: Flask) -> None:
         api = ModelProviderModelApi()
         method = unwrap(api.get)
@@ -217,11 +247,20 @@ class TestModelProviderModelApi:
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.models.ModelProviderService"),
-            patch("controllers.console.workspace.models.ModelLoadBalancingService"),
+            patch("controllers.console.workspace.models.application_services") as services,
         ):
-            result, status = method(api, ParserPostModels.model_validate(payload), "tenant1", "openai")
+            result, status = method(api, ParserPostModels.model_validate(payload), _context("tenant1"), "openai")
 
         assert status == 200
+        services.return_value.model_load_balancing.update_configs.assert_called_once_with(
+            _context("tenant1"),
+            provider="openai",
+            model="gpt-4",
+            model_type=ModelType.LLM,
+            configs=[{"weight": 1}],
+            config_from="",
+            enabled=True,
+        )
 
     def test_delete_model_success(self, app: Flask) -> None:
         api = ModelProviderModelApi()
@@ -273,6 +312,42 @@ class TestModelProviderModelApi:
 
 
 class TestModelProviderModelCredentialApi:
+    def test_predefined_credentials_keep_account_visibility(self, app: Flask) -> None:
+        api = ModelProviderModelCredentialApi()
+        user = _account()
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.workspace.models.ModelProviderService") as provider,
+            patch(
+                "controllers.console.workspace.models.current_account_with_tenant",
+                return_value=AccountWithTenant(user, "tenant1"),
+            ),
+            patch("controllers.console.workspace.models.application_services") as services,
+        ):
+            provider.return_value.get_model_credential.return_value = None
+            provider.return_value.get_provider_available_credentials.return_value = list[object]()
+            services.return_value.model_load_balancing.get_configs.return_value = (False, list[object]())
+            response = unwrap(api.get)(
+                api,
+                ParserGetCredentials(model="gpt-4", model_type=ModelType.LLM, config_from="predefined-model"),
+                _context("tenant1"),
+                "openai",
+            )
+        assert response["available_credentials"] == []
+        provider.return_value.get_provider_available_credentials.assert_called_once_with(
+            tenant_id="tenant1",
+            provider="openai",
+            user=user,
+            credential_query=services.return_value.credential_queries,
+        )
+        services.return_value.model_load_balancing.get_configs.assert_called_once_with(
+            _context("tenant1"),
+            provider="openai",
+            model="gpt-4",
+            model_type=ModelType.LLM,
+            config_from="predefined-model",
+        )
+
     def test_get_credentials_success(self, app: Flask) -> None:
         api = ModelProviderModelCredentialApi()
         method = unwrap(api.get)
@@ -286,7 +361,7 @@ class TestModelProviderModelCredentialApi:
                 },
             ),
             patch("controllers.console.workspace.models.ModelProviderService") as provider_service,
-            patch("controllers.console.workspace.models.ModelLoadBalancingService") as lb_service,
+            patch("controllers.console.workspace.models.application_services") as lb_service,
         ):
             provider_service.return_value.get_model_credential.return_value = {
                 "credentials": dict[str, object](),
@@ -296,13 +371,12 @@ class TestModelProviderModelCredentialApi:
             provider_service.return_value.provider_manager.get_provider_model_available_credentials.return_value = list[
                 object
             ]()
-            lb_service.return_value.get_load_balancing_configs.return_value = (False, list[object]())
+            lb_service.return_value.model_load_balancing.get_configs.return_value = (False, list[object]())
 
             result = method(
                 api,
                 ParserGetCredentials(model="gpt-4", model_type=ModelType.LLM),
-                "tenant1",
-                _account(),
+                _context("tenant1"),
                 "openai",
             )
 
@@ -333,17 +407,16 @@ class TestModelProviderModelCredentialApi:
         with (
             app.test_request_context("/", query_string={"model": "gpt", "model_type": ModelType.LLM}),
             patch("controllers.console.workspace.models.ModelProviderService") as service,
-            patch("controllers.console.workspace.models.ModelLoadBalancingService") as lb,
+            patch("controllers.console.workspace.models.application_services") as lb,
         ):
             service.return_value.get_model_credential.return_value = None
             service.return_value.provider_manager.get_provider_model_available_credentials.return_value = list[object]()
-            lb.return_value.get_load_balancing_configs.return_value = (False, list[object]())
+            lb.return_value.model_load_balancing.get_configs.return_value = (False, list[object]())
 
             result = method(
                 api,
                 ParserGetCredentials(model="gpt", model_type=ModelType.LLM),
-                "t1",
-                _account(),
+                _context("t1"),
                 "openai",
             )
 

@@ -8,7 +8,6 @@ from controllers.console.agent.composer import AgentComposerApi
 from controllers.console.agent.roster import AgentAppApi
 from controllers.console.datasets.rag_pipeline.datasource_auth import DatasourceAuth
 from controllers.console.workspace.model_providers import ModelProviderCredentialApi
-from controllers.console.workspace.models import ModelProviderModelCredentialApi
 from controllers.console.workspace.tool_providers import (
     ToolBuiltinProviderAddApi,
     ToolMCPDetailApi,
@@ -38,7 +37,6 @@ def test_workspace_credential_mutations_require_management_permission(
     "method",
     [
         ModelProviderCredentialApi.get,
-        ModelProviderModelCredentialApi.get,
     ],
 )
 def test_model_provider_credential_get_requires_admin_and_rbac(

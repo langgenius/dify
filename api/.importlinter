@@ -1181,3 +1181,32 @@ forbidden_modules =
     services.account.adapters
     sqlalchemy
     werkzeug
+
+[importlinter:contract:model-load-balancing-application-boundary]
+name = Console load-balancing application operations are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.model_load_balancing_application_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    services.model_load_balancing_adapters
+    services.model_load_balancing_service
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:console-load-balancing-controller-boundary]
+name = Console load-balancing controllers use the application boundary
+type = forbidden
+source_modules =
+    controllers.console.workspace.load_balancing_config
+    controllers.console.workspace.models
+forbidden_modules =
+    extensions.ext_database
+    repositories
+    services.model_load_balancing_service
+    sqlalchemy
+allow_indirect_imports = True

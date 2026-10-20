@@ -139,6 +139,8 @@ from services.knowledge.indexing.adapters.sources import NotionSourceResolver
 from services.knowledge.indexing.estimate import IndexingEstimateApplicationService
 from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.message_file_preview_service import MessageFilePreviewService
+from services.model_load_balancing_adapters import ModelLoadBalancingOperations
+from services.model_load_balancing_application_service import ModelLoadBalancingApplicationService
 from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
     NetworkAccessGroupGateway,
@@ -404,6 +406,20 @@ def test_build_application_services_wires_api_based_extension_boundary(
     assert isinstance(services.api_based_extensions, APIBasedExtensionApplicationService)
     assert isinstance(services.api_based_extensions._secrets, WorkspaceTokenCipher)
     assert isinstance(services.api_based_extensions._probe, APIBasedExtensionPingProbe)
+
+
+def test_build_application_services_wires_model_load_balancing_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=_redis(),
+    )
+    assert isinstance(services.model_load_balancing, ModelLoadBalancingApplicationService)
+    assert isinstance(services.model_load_balancing._operations, ModelLoadBalancingOperations)
+    assert services.model_load_balancing._operations._session_factory is sqlite_session_factory
 
 
 def test_build_application_services_reuses_file_service(
