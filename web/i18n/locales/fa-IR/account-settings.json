@@ -63,7 +63,6 @@
   "account.workspaceNamePlaceholder": "نام فضای کاری را وارد کنید",
   "resourceAccessToken.accessibleResources": "منابع قابل دسترسی",
   "resourceAccessToken.actions": "اقدامات",
-  "resourceAccessToken.app": "برنامه",
   "resourceAccessToken.appCount": "{{count}} برنامه",
   "resourceAccessToken.appsCount": "{{count}} برنامه‌ها",
   "resourceAccessToken.appsSection": "برنامه‌ها",
@@ -80,7 +79,6 @@
   "resourceAccessToken.editTitle": "ویرایش توکن دسترسی",
   "resourceAccessToken.empty": "هنوز توکن دسترسی وجود ندارد",
   "resourceAccessToken.emptyDescription": "برای اینکه کارهای خودکار و سامانه‌های خارجی بتوانند منابع انتخاب‌شده را با Difyctl پیدا کنند و به آن‌ها دسترسی داشته باشند، توکن دسترسی بسازید.",
-  "resourceAccessToken.knowledge": "پایگاه دانش",
   "resourceAccessToken.knowledgeBasesSection": "پایگاه‌های دانش",
   "resourceAccessToken.knowledgeCount": "{{count}} پایگاه دانش",
   "resourceAccessToken.knowledgesCount": "{{count}} پایگاه‌های دانش",
@@ -100,6 +98,5 @@
   "resourceAccessToken.tabApps": "برنامه‌ها",
   "resourceAccessToken.tabKnowledgeBases": "پایگاه‌های دانش",
   "resourceAccessToken.token": "توکن",
-  "resourceAccessToken.total": "مجموع {{total}}",
-  "resourceAccessToken.trackingId": "شناسه رهگیری"
+  "resourceAccessToken.total": "مجموع {{total}}"
 }

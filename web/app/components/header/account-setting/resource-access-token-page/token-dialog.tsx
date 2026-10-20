@@ -3,7 +3,15 @@
 import type { FormEvent } from 'react'
 import type { DialogState, ResourceCandidate } from './types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
@@ -111,32 +119,21 @@ export default function ResourceAccessTokenDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
-      <DialogContent
-        backdropProps={{ forceRender: true }}
-        className="w-160 border-none p-8 pb-6 text-left"
-      >
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <DialogTitle className="mb-5 pr-8 text-xl font-semibold text-text-primary">
-          {isEdit
-            ? t(($) => $['resourceAccessToken.editTitle'], { ns: 'accountSettings' })
-            : createdToken
-              ? t(($) => $['resourceAccessToken.createdToken'], { ns: 'accountSettings' })
-              : t(($) => $['resourceAccessToken.createTitle'], { ns: 'accountSettings' })}
-        </DialogTitle>
+      <DialogContent backdropProps={{ forceRender: true }} className="w-168 overflow-hidden">
+        <DialogHeader>
+          <DialogTitle>
+            {isEdit
+              ? t(($) => $['resourceAccessToken.editTitle'], { ns: 'accountSettings' })
+              : createdToken
+                ? t(($) => $['resourceAccessToken.createdToken'], { ns: 'accountSettings' })
+                : t(($) => $['resourceAccessToken.createTitle'], { ns: 'accountSettings' })}
+          </DialogTitle>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
 
         {createdToken ? (
-          <div className="grid gap-5">
-            <div className="grid gap-2">
+          <>
+            <DialogBody className="grid gap-2">
               <div className="system-sm-regular text-text-tertiary">
                 {t(($) => $['resourceAccessToken.createdTokenDescription'], {
                   ns: 'accountSettings',
@@ -154,37 +151,39 @@ export default function ResourceAccessTokenDialog({
                   <span aria-hidden className="i-ri-file-copy-line size-4" />
                 </IconButton>
               </div>
-            </div>
-            <div className="flex justify-end">
+            </DialogBody>
+            <DialogFooter>
               <Button onClick={() => onOpenChange(false)}>
                 {t(($) => $['resourceAccessToken.done'], { ns: 'accountSettings' })}
               </Button>
-            </div>
-          </div>
+            </DialogFooter>
+          </>
         ) : (
-          <form className="grid gap-5" onSubmit={handleSubmit}>
-            <Field name="name">
-              <FieldLabel>{nameLabel}</FieldLabel>
-              <Input
-                required
-                value={name}
-                placeholder={t(($) => $['resourceAccessToken.namePlaceholder'], {
-                  ns: 'accountSettings',
-                })}
-                onChange={(event) => setName(event.target.value)}
+          <form className="contents" onSubmit={handleSubmit}>
+            <DialogBody className="grid gap-6">
+              <Field name="name" className="border-b border-divider-subtle pb-6">
+                <FieldLabel>{nameLabel}</FieldLabel>
+                <Input
+                  required
+                  value={name}
+                  placeholder={t(($) => $['resourceAccessToken.namePlaceholder'], {
+                    ns: 'accountSettings',
+                  })}
+                  onChange={(event) => setName(event.target.value)}
+                />
+                <FieldError match="valueMissing">
+                  {t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: nameLabel })}
+                </FieldError>
+              </Field>
+
+              <ResourceSelector
+                initialResources={initialResources}
+                selectedResources={selectedResources}
+                onToggle={toggleResource}
               />
-              <FieldError match="valueMissing">
-                {t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: nameLabel })}
-              </FieldError>
-            </Field>
+            </DialogBody>
 
-            <ResourceSelector
-              initialResources={initialResources}
-              selectedResources={selectedResources}
-              onToggle={toggleResource}
-            />
-
-            <div className="flex items-center justify-end gap-2">
+            <DialogFooter>
               <Button type="button" onClick={() => onOpenChange(false)}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
@@ -197,7 +196,7 @@ export default function ResourceAccessTokenDialog({
                   ? t(($) => $['operation.save'], { ns: 'common' })
                   : t(($) => $['operation.create'], { ns: 'common' })}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         )}
       </DialogContent>

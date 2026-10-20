@@ -15,7 +15,7 @@ def _cloud_edition(config_overrides: Callable[..., None]) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
 
-def test_refresh_invalidates_vector_space_cache():
+def test_refresh_invalidates_vector_space_cache() -> None:
     with (
         patch(
             "tasks.refresh_billing_vector_space_task.BillingService.invalidate_vector_space_cache"
@@ -26,7 +26,7 @@ def test_refresh_invalidates_vector_space_cache():
     invalidate_cache.assert_called_once_with("tenant-1")
 
 
-def test_refresh_failure_schedules_retry():
+def test_refresh_failure_schedules_retry() -> None:
     error = RuntimeError("billing unavailable")
 
     with (
@@ -42,7 +42,7 @@ def test_refresh_failure_schedules_retry():
     retry.assert_called_once_with(exc=error, countdown=30)
 
 
-def test_dispatch_failure_does_not_propagate():
+def test_dispatch_failure_does_not_propagate() -> None:
     with (
         patch.object(refresh_billing_vector_space_task, "delay", side_effect=RuntimeError("broker unavailable")),
     ):

@@ -1,20 +1,23 @@
 'use client'
-import type { AlertDialogContentProps, AlertDialogProps } from '@langgenius/dify-ui/alert-dialog'
+import type { DialogContentProps, DialogProps } from '@langgenius/dify-ui/dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import {
-  AlertDialog,
-  AlertDialogCancelButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
 
-type CreatedApiKeyDialogProps = Required<Pick<AlertDialogProps, 'open' | 'onOpenChange'>> &
-  Pick<AlertDialogContentProps, 'finalFocus'> & {
+type CreatedApiKeyDialogProps = Required<Pick<DialogProps, 'open' | 'onOpenChange'>> &
+  Pick<DialogContentProps, 'finalFocus'> & {
     value: string | undefined
     revealOnce?: boolean
   }
@@ -30,30 +33,21 @@ export function CreatedApiKeyDialog({
   const copyButtonRef = useRef<HTMLButtonElement>(null)
 
   return (
-    <AlertDialog
-      open={open}
-      onOpenChange={(nextOpen, details) => {
-        if (!nextOpen && details.reason === 'escape-key') details.cancel()
-        else onOpenChange(nextOpen, details)
-      }}
-    >
-      <AlertDialogContent
+    <Dialog open={open} disablePointerDismissal onOpenChange={onOpenChange}>
+      <DialogContent
         initialFocus={copyButtonRef}
         finalFocus={finalFocus}
         backdropProps={{ forceRender: true }}
-        className="overflow-hidden"
       >
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            {t(($) => $['apiKeyModal.createdTitle'], { ns: 'appApi' })}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['apiKeyModal.createdTitle'], { ns: 'appApi' })}</DialogTitle>
+          <DialogDescription>
             {revealOnce
               ? t(($) => $['apiKeyModal.revealOnceTips'], { ns: 'appApi' })
               : t(($) => $['apiKeyModal.generateTips'], { ns: 'appApi' })}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <div className="px-6 pb-4">
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody>
           <InputGroup>
             <InputGroupInput
               aria-label={t(($) => $['apiKeyModal.secretKey'], { ns: 'appApi' })}
@@ -67,13 +61,13 @@ export function CreatedApiKeyDialog({
               <CopyFeedback ref={copyButtonRef} content={value ?? ''} />
             </InputGroupAddon>
           </InputGroup>
-        </div>
-        <div className="flex justify-end px-6 pb-6">
-          <AlertDialogCancelButton variant="primary">
+        </DialogBody>
+        <DialogFooter>
+          <DialogClose render={<Button variant="primary" />}>
             {t(($) => $['apiKeyModal.saved'], { ns: 'appApi' })}
-          </AlertDialogCancelButton>
-        </div>
-      </AlertDialogContent>
-    </AlertDialog>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

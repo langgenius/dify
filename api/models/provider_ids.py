@@ -1,8 +1,7 @@
-from typing import override
-
 """Provider ID entities for plugin system."""
 
 import re
+from typing import override
 
 from werkzeug.exceptions import NotFound
 

@@ -1,28 +1,20 @@
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
-import { QueryClient } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
 import { useSetAtom } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { AgentScope } from '@/features/agent-v2/analytics'
+import { consoleQuery } from '@/service/console'
+import { createDefaultModelFixture } from '@/test/console/model-provider'
 import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestQueryClient } from '@/test/query-client'
 import { renderWorkflowHook } from '../../../__tests__/workflow-test-env'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 import { useCreateInlineAgentBinding, useWorkflowInlineAgentDetail } from '../hooks'
 
 const mockDefaultModel = vi.hoisted(() => ({
-  value: {
-    model: 'gpt-4o-mini',
-    model_type: 'llm',
-    provider: {
-      provider: 'langgenius/openai/openai',
-      icon_small: {
-        en_US: 'openai',
-        zh_Hans: 'openai',
-      },
-    },
-  },
+  value: undefined as ReturnType<typeof createDefaultModelFixture> | undefined,
 }))
 const mockComposerMutationFn = vi.hoisted(() =>
   vi.fn(async (variables: unknown) => ({
@@ -39,11 +31,6 @@ const mockComposerMutationFn = vi.hoisted(() =>
       current_snapshot_id: 'inline-snapshot-1',
     },
     variables,
-  })),
-)
-const mockComposerMutationOptions = vi.hoisted(() =>
-  vi.fn(() => ({
-    mutationFn: mockComposerMutationFn,
   })),
 )
 const mockSnippetComposerMutationFn = vi.hoisted(() =>
@@ -63,72 +50,15 @@ const mockSnippetComposerMutationFn = vi.hoisted(() =>
     variables,
   })),
 )
-const mockSnippetComposerMutationOptions = vi.hoisted(() =>
-  vi.fn(() => ({
-    mutationFn: mockSnippetComposerMutationFn,
+const mockAppComposerQueryFn = vi.hoisted(() =>
+  vi.fn(async (_input: unknown): Promise<{ agent?: { id: string } }> => ({
+    agent: { id: 'app-agent' },
   })),
 )
-const mockAppComposerQueryFn = vi.hoisted(() =>
-  vi.fn(async (): Promise<{ agent?: { id: string } }> => ({ agent: { id: 'app-agent' } })),
-)
 const mockSnippetComposerQueryFn = vi.hoisted(() =>
-  vi.fn(async () => ({ agent: { id: 'snippet-agent' } })),
+  vi.fn(async (_input: unknown) => ({ agent: { id: 'snippet-agent' } })),
 )
-const mockAppComposerQueryOptions = vi.hoisted(() =>
-  vi.fn(
-    (options: {
-      input: symbol | { params: { app_id: string; node_id: string } }
-      refetchInterval?: (query: {
-        state: {
-          data?: {
-            agent?: unknown
-          }
-        }
-      }) => number | false
-      retry?: number
-    }) => {
-      const { input } = options
-
-      return {
-        queryKey:
-          typeof input === 'symbol'
-            ? ['workflow-agent-composer-disabled']
-            : ['workflow-agent-composer', input.params.app_id, input.params.node_id],
-        queryFn: typeof input === 'symbol' ? input : mockAppComposerQueryFn,
-        refetchInterval: options.refetchInterval,
-        retry: options.retry,
-      }
-    },
-  ),
-)
-const mockSnippetComposerQueryOptions = vi.hoisted(() =>
-  vi.fn(
-    (options: {
-      input: symbol | { params: { snippet_id: string; node_id: string } }
-      refetchInterval?: (query: {
-        state: {
-          data?: {
-            agent?: unknown
-          }
-        }
-      }) => number | false
-      retry?: number
-    }) => {
-      const { input } = options
-
-      return {
-        queryKey:
-          typeof input === 'symbol'
-            ? ['snippet-agent-composer-disabled']
-            : ['snippet-agent-composer', input.params.snippet_id, input.params.node_id],
-        queryFn: typeof input === 'symbol' ? input : mockSnippetComposerQueryFn,
-        refetchInterval: options.refetchInterval,
-        retry: options.retry,
-      }
-    },
-  ),
-)
-const trackCreateAppMock = vi.hoisted(() => vi.fn())
+const trackEventMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -136,14 +66,10 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useDefaultModel: () => ({
-    data: mockDefaultModel.value,
-  }),
-}))
-
-vi.mock('@/utils/create-app-tracking', () => ({
-  trackCreateApp: trackCreateAppMock,
+vi.mock('@/app/components/base/amplitude/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/base/amplitude/utils')>()),
+  trackEvent: trackEventMock,
+  flushEvents: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', async (importOriginal) => ({
@@ -153,84 +79,63 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
-    consoleQuery: {
-      agent: {
-        byAgentId: {
-          get: {
-            queryOptions: vi.fn(),
-          },
-        },
-      },
-      apps: {
-        byAppId: {
-          get: actual.consoleQuery.apps.byAppId.get,
-          workflows: {
-            draft: {
-              systemVariables: actual.consoleQuery.apps.byAppId.workflows.draft.systemVariables,
-              conversationVariables:
-                actual.consoleQuery.apps.byAppId.workflows.draft.conversationVariables,
-              nodes: {
-                byNodeId: {
-                  agentComposer: {
-                    get: {
-                      queryOptions: mockAppComposerQueryOptions,
-                      queryKey: ({
-                        input,
-                      }: {
-                        input: { params: { app_id: string; node_id: string } }
-                      }) => ['workflow-agent-composer', input.params.app_id, input.params.node_id],
-                    },
-                    put: {
-                      mutationOptions: mockComposerMutationOptions,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      snippets: {
-        bySnippetId: {
-          workflows: {
-            draft: {
-              nodes: {
-                byNodeId: {
-                  agentComposer: {
-                    get: {
-                      queryOptions: mockSnippetComposerQueryOptions,
-                      queryKey: ({
-                        input,
-                      }: {
-                        input: { params: { snippet_id: string; node_id: string } }
-                      }) => [
-                        'snippet-agent-composer',
-                        input.params.snippet_id,
-                        input.params.node_id,
-                      ],
-                    },
-                    put: {
-                      mutationOptions: mockSnippetComposerMutationOptions,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get': (input) =>
+        mockAppComposerQueryFn(input),
+      'snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get': (input) =>
+        mockSnippetComposerQueryFn(input),
+      'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put': (input) =>
+        mockComposerMutationFn(input),
+      'snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put': (input) =>
+        mockSnippetComposerMutationFn(input),
+      'workspaces.current.defaultModel.get': async () =>
+        mockDefaultModel.value ? { data: mockDefaultModel.value } : new Promise(() => {}),
+    }),
   }
 })
+
+const appComposerKey = () =>
+  consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+    input: { params: { app_id: 'app-1', node_id: 'node-1' } },
+  })
+const snippetComposerKey = () =>
+  consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+    input: { params: { snippet_id: 'snippet-1', node_id: 'node-1' } },
+  })
 
 const createInlineAgentBindingQueryClient = (appMode: AppMode = 'workflow') => {
   const queryClient = createConsoleQueryClient()
   seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: appMode }))
+  if (mockDefaultModel.value) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.defaultModel.get.queryKey({
+        input: { query: { model_type: 'llm' } },
+      }),
+      {
+        data: mockDefaultModel.value,
+      },
+    )
+  }
   return queryClient
 }
 
 describe('useWorkflowInlineAgentDetail', () => {
+  afterEach(() => vi.useRealTimers())
+  it.each([
+    [undefined, 'agent-1'],
+    ['node-1', undefined],
+  ])('does not request a composer without both node and agent IDs (%s, %s)', (nodeId, agentId) => {
+    const { result } = renderWorkflowHook(() => useWorkflowInlineAgentDetail(nodeId, agentId), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(mockAppComposerQueryFn).not.toHaveBeenCalled()
+    expect(mockSnippetComposerQueryFn).not.toHaveBeenCalled()
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockAppComposerQueryFn.mockReset()
@@ -240,46 +145,26 @@ describe('useWorkflowInlineAgentDetail', () => {
   })
 
   it('loads inline agent detail through the snippet composer API', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
+    const queryClient = createTestQueryClient()
     const { result } = renderWorkflowHook(
       () => useWorkflowInlineAgentDetail('node-1', 'snippet-agent'),
       {
         queryClient,
-        resource: { kind: 'snippet' as const, snippetId: 'snippet-1' },
-        hooksStoreProps: {
-          fileSettings: {} as never,
-        },
+        resource: { kind: 'snippet', snippetId: 'snippet-1' },
       },
     )
 
     await waitFor(() => expect(result.current.data).toEqual({ agent: { id: 'snippet-agent' } }))
-    expect(mockSnippetComposerQueryOptions).toHaveBeenCalledWith({
-      input: {
-        params: {
-          snippet_id: 'snippet-1',
-          node_id: 'node-1',
-        },
-      },
+    expect(mockSnippetComposerQueryFn).toHaveBeenCalledExactlyOnceWith({
+      params: { snippet_id: 'snippet-1', node_id: 'node-1' },
     })
-    expect(mockSnippetComposerQueryFn).toHaveBeenCalled()
     expect(mockAppComposerQueryFn).not.toHaveBeenCalled()
   })
 
-  it('polls until a copied inline agent composer is created for the new node', async () => {
+  it('polls until a copied inline agent composer is created, then stops', async () => {
+    vi.useFakeTimers()
     mockAppComposerQueryFn.mockResolvedValueOnce({ agent: undefined })
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
+    const queryClient = createTestQueryClient()
     const { result } = renderWorkflowHook(
       () =>
         useWorkflowInlineAgentDetail('copied-node', 'source-inline-agent', {
@@ -287,29 +172,24 @@ describe('useWorkflowInlineAgentDetail', () => {
         }),
       {
         queryClient,
-        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-        hooksStoreProps: {
-          fileSettings: {} as never,
-        },
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       },
     )
 
-    await waitFor(() => expect(mockAppComposerQueryFn).toHaveBeenCalledTimes(2), {
-      timeout: 1500,
-    })
+    await act(() => vi.advanceTimersByTimeAsync(0))
+    expect(mockAppComposerQueryFn).toHaveBeenCalledTimes(1)
+    await act(() => vi.advanceTimersByTimeAsync(1001))
     expect(result.current.data).toEqual({ agent: { id: 'app-agent' } })
+    expect(mockAppComposerQueryFn).toHaveBeenCalledTimes(2)
+    await act(() => vi.advanceTimersByTimeAsync(3000))
+    expect(mockAppComposerQueryFn).toHaveBeenCalledTimes(2)
   })
 
   it('retries five times and stops polling when loading the copied inline agent composer fails', async () => {
+    vi.useFakeTimers()
     mockAppComposerQueryFn.mockRejectedValue(new Error('Agent composer was not created'))
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          retryDelay: 0,
-        },
-      },
-    })
+    const queryClient = createTestQueryClient()
+    queryClient.setDefaultOptions({ queries: { retry: false, retryDelay: 0 } })
     const { result } = renderWorkflowHook(
       () =>
         useWorkflowInlineAgentDetail('copied-node', 'source-inline-agent', {
@@ -317,18 +197,14 @@ describe('useWorkflowInlineAgentDetail', () => {
         }),
       {
         queryClient,
-        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-        hooksStoreProps: {
-          fileSettings: {} as never,
-        },
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       },
     )
 
-    await waitFor(() => expect(result.current.isError).toBe(true))
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1200))
-    })
-
+    await act(() => vi.advanceTimersByTimeAsync(10))
+    expect(result.current.isError).toBe(true)
+    expect(mockAppComposerQueryFn).toHaveBeenCalledTimes(6)
+    await act(() => vi.advanceTimersByTimeAsync(3000))
     expect(mockAppComposerQueryFn).toHaveBeenCalledTimes(6)
   })
 })
@@ -336,17 +212,10 @@ describe('useWorkflowInlineAgentDetail', () => {
 describe('useCreateInlineAgentBinding', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockDefaultModel.value = {
+    mockDefaultModel.value = createDefaultModelFixture({
       model: 'gpt-4o-mini',
-      model_type: 'llm',
-      provider: {
-        provider: 'langgenius/openai/openai',
-        icon_small: {
-          en_US: 'openai',
-          zh_Hans: 'openai',
-        },
-      },
-    }
+      provider: { provider: 'langgenius/openai/openai' },
+    })
   })
 
   it('creates inline agent with the default text generation model', async () => {
@@ -354,10 +223,7 @@ describe('useCreateInlineAgentBinding', () => {
     const queryClient = createInlineAgentBindingQueryClient()
     const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
-      resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-      hooksStoreProps: {
-        fileSettings: {} as never,
-      },
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     })
 
     act(() => {
@@ -365,36 +231,33 @@ describe('useCreateInlineAgentBinding', () => {
     })
 
     await waitFor(() => expect(mockComposerMutationFn).toHaveBeenCalled())
-    expect(mockComposerMutationFn).toHaveBeenCalledWith(
-      {
-        params: {
-          app_id: 'app-1',
-          node_id: 'node-1',
+    expect(mockComposerMutationFn).toHaveBeenCalledWith({
+      params: {
+        app_id: 'app-1',
+        node_id: 'node-1',
+      },
+      body: {
+        variant: 'workflow',
+        save_strategy: 'node_job_only',
+        binding: {
+          binding_type: 'inline_agent',
         },
-        body: {
-          variant: 'workflow',
-          save_strategy: 'node_job_only',
-          binding: {
-            binding_type: 'inline_agent',
+        soul_lock: {
+          locked: false,
+        },
+        agent_soul: {
+          schema_version: 1,
+          prompt: {
+            system_prompt: '',
           },
-          soul_lock: {
-            locked: false,
-          },
-          agent_soul: {
-            schema_version: 1,
-            prompt: {
-              system_prompt: '',
-            },
-            model: {
-              model_provider: 'langgenius/openai/openai',
-              model: 'gpt-4o-mini',
-              plugin_id: 'langgenius/openai',
-            },
+          model: {
+            model_provider: 'langgenius/openai/openai',
+            model: 'gpt-4o-mini',
+            plugin_id: 'langgenius/openai',
           },
         },
       },
-      expect.any(Object),
-    )
+    })
     await waitFor(() =>
       expect(onSuccess).toHaveBeenCalledWith({
         binding_type: 'inline_agent',
@@ -402,7 +265,7 @@ describe('useCreateInlineAgentBinding', () => {
         current_snapshot_id: 'inline-snapshot-1',
       }),
     )
-    expect(queryClient.getQueryData(['workflow-agent-composer', 'app-1', 'node-1'])).toEqual(
+    expect(queryClient.getQueryData(appComposerKey())).toEqual(
       expect.objectContaining({
         agent_soul: expect.objectContaining({
           schema_version: 1,
@@ -414,21 +277,21 @@ describe('useCreateInlineAgentBinding', () => {
         }),
       }),
     )
-    expect(trackCreateAppMock).toHaveBeenCalledWith({
-      source: 'studio_blank',
-      appMode: 'agent-v2',
-      agentScope: AgentScope.InWorkflow,
-    })
+    expect(trackEventMock).toHaveBeenCalledWith(
+      'create_app',
+      expect.objectContaining({
+        source: 'studio_blank',
+        app_mode: 'agent-v2',
+        agent_scope: AgentScope.InWorkflow,
+      }),
+    )
   })
 
   it('tracks inline agent creation with the chatflow scope', async () => {
     const queryClient = createInlineAgentBindingQueryClient('advanced-chat')
     const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
-      resource: { kind: 'app' as const, appId: 'chatflow-1', mode: 'advanced-chat' as const },
-      hooksStoreProps: {
-        fileSettings: {} as never,
-      },
+      resource: { kind: 'app', appId: 'chatflow-1', mode: 'advanced-chat' },
     })
 
     act(() => {
@@ -436,11 +299,14 @@ describe('useCreateInlineAgentBinding', () => {
     })
 
     await waitFor(() => {
-      expect(trackCreateAppMock).toHaveBeenCalledWith({
-        source: 'studio_blank',
-        appMode: 'agent-v2',
-        agentScope: AgentScope.InChatflow,
-      })
+      expect(trackEventMock).toHaveBeenCalledWith(
+        'create_app',
+        expect.objectContaining({
+          source: 'studio_blank',
+          app_mode: 'agent-v2',
+          agent_scope: AgentScope.InChatflow,
+        }),
+      )
     })
   })
 
@@ -449,10 +315,7 @@ describe('useCreateInlineAgentBinding', () => {
     const queryClient = createInlineAgentBindingQueryClient()
     const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
-      resource: { kind: 'snippet' as const, snippetId: 'snippet-1' },
-      hooksStoreProps: {
-        fileSettings: {} as never,
-      },
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
     })
 
     act(() => {
@@ -460,22 +323,19 @@ describe('useCreateInlineAgentBinding', () => {
     })
 
     await waitFor(() => expect(mockSnippetComposerMutationFn).toHaveBeenCalled())
-    expect(mockSnippetComposerMutationFn).toHaveBeenCalledWith(
-      {
-        params: {
-          snippet_id: 'snippet-1',
-          node_id: 'node-1',
-        },
-        body: expect.objectContaining({
-          variant: 'workflow',
-          save_strategy: 'node_job_only',
-          binding: {
-            binding_type: 'inline_agent',
-          },
-        }),
+    expect(mockSnippetComposerMutationFn).toHaveBeenCalledWith({
+      params: {
+        snippet_id: 'snippet-1',
+        node_id: 'node-1',
       },
-      expect.any(Object),
-    )
+      body: expect.objectContaining({
+        variant: 'workflow',
+        save_strategy: 'node_job_only',
+        binding: {
+          binding_type: 'inline_agent',
+        },
+      }),
+    })
     await waitFor(() =>
       expect(onSuccess).toHaveBeenCalledWith({
         binding_type: 'inline_agent',
@@ -483,7 +343,7 @@ describe('useCreateInlineAgentBinding', () => {
         current_snapshot_id: 'snippet-inline-snapshot-1',
       }),
     )
-    expect(queryClient.getQueryData(['snippet-agent-composer', 'snippet-1', 'node-1'])).toEqual(
+    expect(queryClient.getQueryData(snippetComposerKey())).toEqual(
       expect.objectContaining({
         binding: expect.objectContaining({
           agent_id: 'snippet-inline-agent-1',
@@ -494,15 +354,12 @@ describe('useCreateInlineAgentBinding', () => {
   })
 
   it('creates inline agent with a model-less initial soul before the default model loads', async () => {
-    mockDefaultModel.value = undefined as never
+    mockDefaultModel.value = undefined
     const onSuccess = vi.fn()
     const queryClient = createInlineAgentBindingQueryClient()
     const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
-      resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-      hooksStoreProps: {
-        fileSettings: {} as never,
-      },
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     })
 
     act(() => {
@@ -510,31 +367,28 @@ describe('useCreateInlineAgentBinding', () => {
     })
 
     await waitFor(() => expect(mockComposerMutationFn).toHaveBeenCalled())
-    expect(mockComposerMutationFn).toHaveBeenCalledWith(
-      {
-        params: {
-          app_id: 'app-1',
-          node_id: 'node-1',
+    expect(mockComposerMutationFn).toHaveBeenCalledWith({
+      params: {
+        app_id: 'app-1',
+        node_id: 'node-1',
+      },
+      body: {
+        variant: 'workflow',
+        save_strategy: 'node_job_only',
+        binding: {
+          binding_type: 'inline_agent',
         },
-        body: {
-          variant: 'workflow',
-          save_strategy: 'node_job_only',
-          binding: {
-            binding_type: 'inline_agent',
-          },
-          soul_lock: {
-            locked: false,
-          },
-          agent_soul: {
-            schema_version: 1,
-            prompt: {
-              system_prompt: '',
-            },
+        soul_lock: {
+          locked: false,
+        },
+        agent_soul: {
+          schema_version: 1,
+          prompt: {
+            system_prompt: '',
           },
         },
       },
-      expect.any(Object),
-    )
+    })
     await waitFor(() =>
       expect(onSuccess).toHaveBeenCalledWith({
         binding_type: 'inline_agent',
@@ -542,6 +396,25 @@ describe('useCreateInlineAgentBinding', () => {
         current_snapshot_id: 'inline-snapshot-1',
       }),
     )
+  })
+
+  it('reports creation failure without caching a binding or tracking a created agent', async () => {
+    mockComposerMutationFn.mockRejectedValueOnce(new Error('Creation failed'))
+    const queryClient = createInlineAgentBindingQueryClient()
+    const onError = vi.fn()
+    const onSuccess = vi.fn()
+    const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
+      queryClient,
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
+    await act(async () => {
+      await result.current.createInlineAgentBinding('node-1', { onError, onSuccess })
+    })
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(onSuccess).not.toHaveBeenCalled()
+    expect(queryClient.getQueryData(appComposerKey())).toBeUndefined()
+    expect(trackEventMock).not.toHaveBeenCalled()
+    expect(result.current.isCreatingInlineAgent).toBe(false)
   })
 
   it('finishes inline creation after the caller component unmounts', async () => {
@@ -556,10 +429,7 @@ describe('useCreateInlineAgentBinding', () => {
     const queryClient = createInlineAgentBindingQueryClient()
     const { result, unmount } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
-      resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-      hooksStoreProps: {
-        fileSettings: {} as never,
-      },
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     })
 
     act(() => {
@@ -586,7 +456,7 @@ describe('useCreateInlineAgentBinding', () => {
         current_snapshot_id: 'inline-snapshot-1',
       }),
     )
-    expect(queryClient.getQueryData(['workflow-agent-composer', 'app-1', 'node-1'])).toEqual(
+    expect(queryClient.getQueryData(appComposerKey())).toEqual(
       expect.objectContaining({
         agent_soul: expect.objectContaining({
           schema_version: 1,
@@ -602,16 +472,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
   })
 
   it('saves inline agent composer changes through the workflow node composer API', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-        mutations: {
-          retry: false,
-        },
-      },
-    })
+    const queryClient = createTestQueryClient()
     const { result } = renderWorkflowHook(
       () => ({
         ...useWorkflowInlineAgentConfigureSync({
@@ -629,10 +490,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       }),
       {
         queryClient,
-        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-        hooksStoreProps: {
-          fileSettings: {} as never,
-        },
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       },
     )
 
@@ -647,30 +505,27 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       await result.current.saveDraft()
     })
 
-    expect(mockComposerMutationFn).toHaveBeenCalledWith(
-      {
-        params: {
-          app_id: 'app-1',
-          node_id: 'node-1',
-        },
-        body: expect.objectContaining({
-          variant: 'workflow',
-          save_strategy: 'node_job_only',
-          agent_soul: expect.objectContaining({
-            schema_version: 1,
-            prompt: expect.objectContaining({
-              system_prompt: 'Workflow inline prompt',
-            }),
-            model: expect.objectContaining({
-              model_provider: 'langgenius/openai/openai',
-              model: 'gpt-4o-mini',
-            }),
+    expect(mockComposerMutationFn).toHaveBeenCalledWith({
+      params: {
+        app_id: 'app-1',
+        node_id: 'node-1',
+      },
+      body: expect.objectContaining({
+        variant: 'workflow',
+        save_strategy: 'node_job_only',
+        agent_soul: expect.objectContaining({
+          schema_version: 1,
+          prompt: expect.objectContaining({
+            system_prompt: 'Workflow inline prompt',
+          }),
+          model: expect.objectContaining({
+            model_provider: 'langgenius/openai/openai',
+            model: 'gpt-4o-mini',
           }),
         }),
-      },
-      expect.any(Object),
-    )
-    expect(queryClient.getQueryData(['workflow-agent-composer', 'app-1', 'node-1'])).toEqual(
+      }),
+    })
+    expect(queryClient.getQueryData(appComposerKey())).toEqual(
       expect.objectContaining({
         agent_soul: expect.objectContaining({
           schema_version: 1,
@@ -680,16 +535,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
   })
 
   it('saves inline agent composer changes through the snippet composer API', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-        mutations: {
-          retry: false,
-        },
-      },
-    })
+    const queryClient = createTestQueryClient()
     const { result } = renderWorkflowHook(
       () => ({
         ...useWorkflowInlineAgentConfigureSync({
@@ -703,10 +549,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       }),
       {
         queryClient,
-        resource: { kind: 'snippet' as const, snippetId: 'snippet-1' },
-        hooksStoreProps: {
-          fileSettings: {} as never,
-        },
+        resource: { kind: 'snippet', snippetId: 'snippet-1' },
       },
     )
 
@@ -721,25 +564,22 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       await result.current.saveDraft()
     })
 
-    expect(mockSnippetComposerMutationFn).toHaveBeenCalledWith(
-      {
-        params: {
-          snippet_id: 'snippet-1',
-          node_id: 'node-1',
-        },
-        body: expect.objectContaining({
-          variant: 'workflow',
-          save_strategy: 'node_job_only',
-          agent_soul: expect.objectContaining({
-            prompt: expect.objectContaining({
-              system_prompt: 'Snippet inline prompt',
-            }),
+    expect(mockSnippetComposerMutationFn).toHaveBeenCalledWith({
+      params: {
+        snippet_id: 'snippet-1',
+        node_id: 'node-1',
+      },
+      body: expect.objectContaining({
+        variant: 'workflow',
+        save_strategy: 'node_job_only',
+        agent_soul: expect.objectContaining({
+          prompt: expect.objectContaining({
+            system_prompt: 'Snippet inline prompt',
           }),
         }),
-      },
-      expect.any(Object),
-    )
-    expect(queryClient.getQueryData(['snippet-agent-composer', 'snippet-1', 'node-1'])).toEqual(
+      }),
+    })
+    expect(queryClient.getQueryData(snippetComposerKey())).toEqual(
       expect.objectContaining({
         agent_soul: expect.objectContaining({
           schema_version: 1,
@@ -750,16 +590,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
   })
 
   it('still saves manually when inline agent autosave is disabled', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-        mutations: {
-          retry: false,
-        },
-      },
-    })
+    const queryClient = createTestQueryClient()
     const { result } = renderWorkflowHook(
       () => ({
         ...useWorkflowInlineAgentConfigureSync({
@@ -774,10 +605,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       }),
       {
         queryClient,
-        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-        hooksStoreProps: {
-          fileSettings: {} as never,
-        },
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       },
     )
 
@@ -792,38 +620,26 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       await result.current.saveDraft()
     })
 
-    expect(mockComposerMutationFn).toHaveBeenCalledWith(
-      {
-        params: {
-          app_id: 'app-1',
-          node_id: 'node-1',
-        },
-        body: expect.objectContaining({
-          variant: 'workflow',
-          save_strategy: 'node_job_only',
-          agent_soul: expect.objectContaining({
-            schema_version: 1,
-            prompt: expect.objectContaining({
-              system_prompt: 'Manual inline prompt',
-            }),
+    expect(mockComposerMutationFn).toHaveBeenCalledWith({
+      params: {
+        app_id: 'app-1',
+        node_id: 'node-1',
+      },
+      body: expect.objectContaining({
+        variant: 'workflow',
+        save_strategy: 'node_job_only',
+        agent_soul: expect.objectContaining({
+          schema_version: 1,
+          prompt: expect.objectContaining({
+            system_prompt: 'Manual inline prompt',
           }),
         }),
-      },
-      expect.any(Object),
-    )
+      }),
+    })
   })
 
   it('does not save manually when the inline agent composer draft is unchanged', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-        mutations: {
-          retry: false,
-        },
-      },
-    })
+    const queryClient = createTestQueryClient()
     const { result } = renderWorkflowHook(
       () =>
         useWorkflowInlineAgentConfigureSync({
@@ -835,10 +651,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
         }),
       {
         queryClient,
-        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-        hooksStoreProps: {
-          fileSettings: {} as never,
-        },
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       },
     )
 
@@ -847,20 +660,11 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
     })
 
     expect(mockComposerMutationFn).not.toHaveBeenCalled()
-    expect(queryClient.getQueryData(['workflow-agent-composer', 'app-1', 'node-1'])).toBeUndefined()
+    expect(queryClient.getQueryData(appComposerKey())).toBeUndefined()
   })
 
   it('saves the effective inline model when the form draft is unchanged', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-        mutations: {
-          retry: false,
-        },
-      },
-    })
+    const queryClient = createTestQueryClient()
     const { result } = renderWorkflowHook(
       () =>
         useWorkflowInlineAgentConfigureSync({
@@ -876,10 +680,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
         }),
       {
         queryClient,
-        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
-        hooksStoreProps: {
-          fileSettings: {} as never,
-        },
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       },
     )
 
@@ -899,7 +700,6 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
           }),
         }),
       }),
-      expect.any(Object),
     )
   })
 })

@@ -43,8 +43,8 @@ from core.workflow.nodes.human_input.pause_reason import (
 )
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime import RuntimeState
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.datetime_utils import to_utc_timestamp
@@ -54,6 +54,7 @@ from models.workflow import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.factory import DifyAPIRepositoryFactory
+from services.app_task_service import AppTaskService
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,18 @@ def build_workflow_event_stream(
             pause_entity = None
 
     resumption_context = _load_resumption_context(pause_entity)
+    if (
+        pause_entity is not None
+        and resumption_context is not None
+        and workflow_run.tenant_id == tenant_id
+        and workflow_run.app_id == app_id
+    ):
+        AppTaskService.index_workflow_pause_task(
+            workflow_run=workflow_run,
+            pause_entity=pause_entity,
+            resumption_context=resumption_context,
+            workflow_run_repo=workflow_run_repo,
+        )
     message_context: MessageContext | None = None
     if app_mode == AppMode.ADVANCED_CHAT:
         if workflow_run.status == WorkflowExecutionStatus.PAUSED:
@@ -543,7 +556,7 @@ def _load_variable_pool_from_resumption_context(
 ) -> ReadOnlyVariablePool | None:
     if resumption_context is None:
         return None
-    state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
 
     return state.variable_pool
 
@@ -597,7 +610,7 @@ def _build_pause_event(
     outputs: dict[str, Any] = {}
     variable_pool: ReadOnlyVariablePool | None = None
     if resumption_context is not None:
-        state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+        state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
         outputs = dict(WorkflowRuntimeTypeConverter().to_json_encodable(state.outputs or {}))
         variable_pool = state.variable_pool
 

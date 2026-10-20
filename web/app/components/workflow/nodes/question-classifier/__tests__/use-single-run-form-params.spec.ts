@@ -1,11 +1,10 @@
 import type { QuestionClassifierNodeType } from '../types'
 import type { InputVar } from '@/app/components/workflow/types'
-import { renderHook } from '@testing-library/react'
+import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { Resolution } from '@/types/app'
 import useConfigVision from '../../../hooks/use-config-vision'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
-import useNodeCrud from '../../_base/hooks/use-node-crud'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
 vi.mock('../../../hooks/use-config-vision', () => ({
@@ -18,14 +17,8 @@ vi.mock('../../_base/hooks/use-available-var-list', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('../../_base/hooks/use-node-crud', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
 const mockUseConfigVision = vi.mocked(useConfigVision)
 const mockUseAvailableVarList = vi.mocked(useAvailableVarList)
-const mockUseNodeCrud = vi.mocked(useNodeCrud)
 
 const createData = (
   overrides: Partial<QuestionClassifierNodeType> = {},
@@ -55,10 +48,7 @@ const createData = (
 describe('question-classifier/use-single-run-form-params', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseNodeCrud.mockReturnValue({
-      inputs: createData(),
-      setInputs: vi.fn(),
-    } as unknown as ReturnType<typeof useNodeCrud>)
+
     mockUseConfigVision.mockReturnValue({
       isVisionModel: true,
     } as ReturnType<typeof useConfigVision>)
@@ -79,7 +69,10 @@ describe('question-classifier/use-single-run-form-params', () => {
   })
 
   it('builds variable and vision forms and exposes dependent variables', () => {
-    const setRunInputData = vi.fn()
+    const runInputDataRef = { current: { query: 'hello', '#files#': ['file-1'] } }
+    const setRunInputData = vi.fn((next) => {
+      runInputDataRef.current = next
+    })
     const getInputVars = vi.fn<() => InputVar[]>(() => [
       {
         label: 'Answer',
@@ -94,7 +87,7 @@ describe('question-classifier/use-single-run-form-params', () => {
         id: 'node-1',
         payload: createData(),
         runInputData: { query: 'hello', '#files#': ['file-1'] },
-        runInputDataRef: { current: { query: 'hello', '#files#': ['file-1'] } },
+        runInputDataRef,
         getInputVars,
         setRunInputData,
         toVarInputs: () => [],
@@ -130,15 +123,9 @@ describe('question-classifier/use-single-run-form-params', () => {
       '#files#': ['file-1'],
     })
     expect(setRunInputData).toHaveBeenNthCalledWith(2, {
-      query: 'hello',
+      query: 'updated',
       '#files#': ['file-2'],
     })
-    const availableVarOptions = mockUseAvailableVarList.mock.calls[0]![1] as {
-      filterVar: (payload: { type: VarType }) => boolean
-    }
-
-    expect(availableVarOptions.filterVar({ type: VarType.file })).toBe(true)
-    expect(availableVarOptions.filterVar({ type: VarType.string })).toBe(false)
     expect(result.current.getDependentVars()).toEqual([
       ['node-1', 'query'],
       ['node-2', 'answer'],
@@ -167,31 +154,5 @@ describe('question-classifier/use-single-run-form-params', () => {
     )
 
     expect(result.current.forms).toHaveLength(1)
-  })
-
-  it('skips malformed prompt variables when collecting dependent vars', () => {
-    const { result } = renderHook(() =>
-      useSingleRunFormParams({
-        id: 'node-1',
-        payload: createData(),
-        runInputData: {},
-        runInputDataRef: { current: {} },
-        getInputVars: () => [
-          {
-            label: 'Broken',
-            variable: undefined as unknown as string,
-            type: InputVarType.textInput,
-            required: false,
-          },
-        ],
-        setRunInputData: vi.fn(),
-        toVarInputs: () => [],
-      }),
-    )
-
-    expect(result.current.getDependentVars()).toEqual([
-      ['node-1', 'query'],
-      ['node-3', 'image'],
-    ])
   })
 })

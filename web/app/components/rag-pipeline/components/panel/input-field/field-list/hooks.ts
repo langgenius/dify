@@ -124,15 +124,18 @@ export const useFieldList = ({
       t,
     ],
   )
-  const handleOpenInputFieldEditor = useCallback((id?: string) => {
-    const index = inputFieldsRef.current.findIndex((field) => field.variable === id)
-    editingFieldIndex.current = index
-    toggleInputFieldEditPanel?.({
-      onClose: handleCloseInputFieldEditor,
-      onSubmit: handleSubmitField,
-      initialData: inputFieldsRef.current[index],
-    })
-  }, [])
+  const handleOpenInputFieldEditor = useCallback(
+    (id?: string) => {
+      const index = inputFieldsRef.current.findIndex((field) => field.variable === id)
+      editingFieldIndex.current = index
+      toggleInputFieldEditPanel?.({
+        onClose: handleCloseInputFieldEditor,
+        onSubmit: handleSubmitField,
+        initialData: inputFieldsRef.current[index],
+      })
+    },
+    [handleCloseInputFieldEditor, handleSubmitField, toggleInputFieldEditPanel],
+  )
   return {
     inputFields,
     handleListSortChange,

@@ -21,7 +21,7 @@ from core.workflow.human_input_adapter import (
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
@@ -138,7 +138,7 @@ def _create_workflow_pause_state(
     )
     db_session_with_containers.add(workflow_run)
 
-    runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=0.0)
     resumption_context = WorkflowResumptionContext(
         generate_entity={
             "type": AppMode.WORKFLOW,

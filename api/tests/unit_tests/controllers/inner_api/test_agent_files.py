@@ -74,9 +74,9 @@ def test_upload_request_payload_requires_non_negative_max_size() -> None:
         "mimetype": "application/pdf",
     }
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="1 validation error for AgentFileUploadRequestPayload\\\nmax_size"):
         AgentFileUploadRequestPayload.model_validate(payload)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="1 validation error for AgentFileUploadRequestPayload\\\nmax_size"):
         AgentFileUploadRequestPayload.model_validate({**payload, "max_size": -1})
 
     assert AgentFileUploadRequestPayload.model_validate({**payload, "max_size": 0}).max_size == 0

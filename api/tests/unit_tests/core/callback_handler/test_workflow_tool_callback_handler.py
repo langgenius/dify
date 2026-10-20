@@ -195,7 +195,7 @@ class TestDifyWorkflowCallbackHandler:
         bad_message.model_dump_json.side_effect = ValueError("JSON error")
 
         # Act & Assert
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="JSON error"):
             list(
                 handler.on_tool_execution(
                     tool_name=tool_name,

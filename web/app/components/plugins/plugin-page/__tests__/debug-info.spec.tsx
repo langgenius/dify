@@ -72,10 +72,6 @@ describe('DebugInfo', () => {
     await user.click(trigger)
 
     expect(screen.getByText('plugin.debugInfo.title')).toBeInTheDocument()
-    expect(screen.getByText('plugin.debugInfo.title').closest('.w-90')).toHaveClass(
-      'rounded-2xl',
-      'shadow-2xl',
-    )
     expect(screen.getByRole('link', { name: 'plugin.debugInfo.viewDocs' })).toHaveAttribute(
       'href',
       'https://docs.example.com/develop-plugin/features-and-specs/plugin-types/remote-debug-a-plugin',

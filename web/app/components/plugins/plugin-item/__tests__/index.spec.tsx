@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import type { PluginDeclaration, PluginDetail } from '../../types'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -12,25 +12,6 @@ const mockEnableMarketplace = vi.fn(() => true)
 const mockTheme = vi.fn(() => 'light')
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: mockTheme() }),
-}))
-
-const mockGetValueFromI18nObject = vi.fn((obj: Record<string, string>) => obj?.en_US || '')
-vi.mock('@/hooks/use-i18n', () => ({
-  useRenderI18nObject: () => mockGetValueFromI18nObject,
-}))
-
-const mockCategoriesMap: Record<string, { name: string; label: string }> = {
-  tool: { name: 'tool', label: 'Tools' },
-  model: { name: 'model', label: 'Models' },
-  extension: { name: 'extension', label: 'Extensions' },
-  'agent-strategy': { name: 'agent-strategy', label: 'Agents' },
-  datasource: { name: 'datasource', label: 'Data Sources' },
-}
-vi.mock('../../hooks', () => ({
-  useCategories: () => ({
-    categories: Object.values(mockCategoriesMap),
-    categoriesMap: mockCategoriesMap,
-  }),
 }))
 
 const mockSelectedItem = vi.fn((): { type: 'plugin'; id: string } | undefined => undefined)
@@ -74,46 +55,14 @@ const render = (ui: ReactElement) =>
     systemFeatures: { enable_marketplace: mockEnableMarketplace() },
   })
 
-vi.mock('../action', () => ({
-  default: ({ onDelete, pluginName }: { onDelete: () => void; pluginName: string }) => (
-    <div data-testid="plugin-action" data-plugin-name={pluginName}>
-      <button data-testid="delete-button" onClick={onDelete}>
-        Delete
-      </button>
-    </div>
-  ),
+const requests = vi.hoisted(() => ({ uninstall: vi.fn() }))
+vi.mock('@/service/plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/plugins')>()),
+  uninstallPlugin: requests.uninstall,
 }))
 
-vi.mock('../../card/base/corner-mark', () => ({
-  default: ({ text }: { text: string }) => <div data-testid="corner-mark">{text}</div>,
-}))
-
-vi.mock('../../card/base/title', () => ({
-  default: ({ title }: { title: string }) => <div data-testid="plugin-title">{title}</div>,
-}))
-
-vi.mock('../../card/base/description', () => ({
-  default: ({ text }: { text: string }) => <div data-testid="plugin-description">{text}</div>,
-}))
-
-vi.mock('../../card/base/org-info', () => ({
-  default: ({ orgName, packageName }: { orgName: string; packageName: string }) => (
-    <div data-testid="org-info" data-org={orgName} data-package={packageName}>
-      {orgName}/{packageName}
-    </div>
-  ),
-}))
-
-vi.mock('../../base/badges/verified', () => ({
-  default: ({ text }: { text: string }) => <div data-testid="verified-badge">{text}</div>,
-}))
-
-vi.mock('../../../base/badge', () => ({
-  default: ({ text, hasRedCornerMark }: { text: string; hasRedCornerMark?: boolean }) => (
-    <div data-testid="version-badge" data-has-update={hasRedCornerMark}>
-      {text}
-    </div>
-  ),
+vi.mock('@/context/modal-context', () => ({
+  useModalContext: () => ({ setShowUpdatePluginModal: vi.fn() }),
 }))
 
 const createPluginDeclaration = (
@@ -171,839 +120,194 @@ const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail
   ...overrides,
 })
 
-describe('PluginItem', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockTheme.mockReturnValue('light')
-    mockSelectedItem.mockReturnValue(undefined)
-    mockEnableMarketplace.mockReturnValue(true)
-    mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo('1.0.0'))
-    mockGetValueFromI18nObject.mockImplementation((obj: Record<string, string>) => obj?.en_US || '')
+beforeEach(() => {
+  vi.clearAllMocks()
+  requests.uninstall.mockResolvedValue({ success: true })
+  mockTheme.mockReturnValue('light')
+  mockSelectedItem.mockReturnValue(undefined)
+  mockEnableMarketplace.mockReturnValue(true)
+  mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo('1.0.0'))
+})
+
+describe('Installed plugin card', () => {
+  it.each([
+    { source: PluginSource.github, label: 'GitHub', version: '1.5.0', author: true },
+    { source: PluginSource.marketplace, label: 'marketplace', version: '2.0.0', author: true },
+    { source: PluginSource.local, label: 'Local Plugin', version: '2.0.0', author: false },
+    { source: PluginSource.debugging, label: 'Debugging Plugin', version: '2.0.0', author: false },
+  ])(
+    'shows the source and correct installed version for $source plugins',
+    ({ source, label, version, author }) => {
+      render(
+        <PluginItem
+          plugin={createPluginDetail({
+            source,
+            version: '2.0.0',
+            meta: { repo: 'owner/repo', version: '1.5.0', package: 'pkg.difypkg' },
+          })}
+        />,
+      )
+      expect(screen.getByRole('button', { name: 'Test Plugin' })).toBeInTheDocument()
+      expect(screen.getByText('Test plugin description')).toBeInTheDocument()
+      expect(screen.getByText(label)).toBeInTheDocument()
+      expect(screen.getByText(version)).toBeInTheDocument()
+      expect(!!screen.queryByText('test-author')).toBe(author)
+      if (source === PluginSource.github)
+        expect(screen.getByRole('link', { name: /GitHub/ })).toHaveAttribute(
+          'href',
+          'https://github.com/owner/repo',
+        )
+      else if (source === PluginSource.marketplace)
+        expect(screen.getByRole('link', { name: /marketplace/ })).toHaveAttribute(
+          'href',
+          expect.stringContaining('/plugins/test-author/test-plugin'),
+        )
+      else expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    },
+  )
+
+  it('counts visible endpoint declarations independently of active endpoint instances', () => {
+    render(
+      <PluginItem
+        plugin={createPluginDetail({
+          declaration: createPluginDeclaration({
+            endpoint: {
+              settings: [],
+              endpoints: [
+                { path: '/first', method: 'POST' },
+                { path: '/second', method: 'GET' },
+                { path: '/hidden', method: 'GET', hidden: true },
+              ],
+            },
+          }),
+          endpoints_active: 0,
+        })}
+      />,
+    )
+    expect(screen.getByText('plugin.endpointsEnabled:{"num":2}')).toBeInTheDocument()
   })
 
-  describe('Rendering', () => {
-    it('should render plugin item with basic info', () => {
-      // Arrange
-      const plugin = createPluginDetail()
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByTestId('plugin-title')).toBeInTheDocument()
-      expect(screen.getByTestId('plugin-description')).toBeInTheDocument()
-      expect(screen.queryByTestId('corner-mark')).not.toBeInTheDocument()
-      expect(screen.getByTestId('version-badge')).toBeInTheDocument()
-    })
-
-    it('should keep the plugin name visible without exposing a decorative image', () => {
-      // Arrange
-      const plugin = createPluginDetail()
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.queryByRole('img')).not.toBeInTheDocument()
-      expect(screen.getByText('Test Plugin')).toBeVisible()
-    })
-
-    it('should not render category label in corner mark', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({ category: PluginCategoryEnum.model }),
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.queryByTestId('corner-mark')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Plugin Sources', () => {
-    it('should render GitHub source with repo link', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        source: PluginSource.github,
-        meta: { repo: 'owner/repo', version: '1.0.0', package: 'pkg.difypkg' },
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      const githubLink = screen.getByRole('link')
-      expect(githubLink).toHaveAttribute('href', 'https://github.com/owner/repo')
-      expect(screen.getByText('GitHub')).toBeInTheDocument()
-    })
-
-    it('should render marketplace source with link when enabled', () => {
-      // Arrange
-      mockEnableMarketplace.mockReturnValue(true)
-      const plugin = createPluginDetail({
-        source: PluginSource.marketplace,
-        declaration: createPluginDeclaration({ author: 'test-author', name: 'test-plugin' }),
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByText('marketplace')).toBeInTheDocument()
-    })
-
-    it('should render local source indicator', () => {
-      // Arrange
-      const plugin = createPluginDetail({ source: PluginSource.local })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByText('Local Plugin')).toBeInTheDocument()
-    })
-
-    it('should render debugging source indicator', () => {
-      // Arrange
-      const plugin = createPluginDetail({ source: PluginSource.debugging })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByText('Debugging Plugin')).toBeInTheDocument()
-    })
-
-    it('should show org info for GitHub source', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        source: PluginSource.github,
-        declaration: createPluginDeclaration({ author: 'github-author' }),
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByTestId('org-info')).toHaveAttribute('data-org', 'github-author')
-    })
-
-    it('should show org info for marketplace source', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        source: PluginSource.marketplace,
-        declaration: createPluginDeclaration({ author: 'marketplace-author' }),
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByTestId('org-info')).toHaveAttribute('data-org', 'marketplace-author')
-    })
-
-    it('should not show org info for local source', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        source: PluginSource.local,
-        declaration: createPluginDeclaration({ author: 'local-author' }),
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByTestId('org-info')).toHaveAttribute('data-org', '')
-    })
-  })
-
-  describe('Endpoint Declaration', () => {
-    it('should show endpoints info when declaration has endpoint', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({
-          category: PluginCategoryEnum.tool,
-          endpoint: {
-            settings: [],
-            endpoints: [
-              { path: '/test', method: 'POST' },
-              { path: '/another-test', method: 'GET' },
-              { path: '/hidden-test', method: 'POST', hidden: true },
-            ],
-          },
-        }),
-        endpoints_active: 0,
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByTitle('plugin.endpointsEnabled:{"num":2}')).toBeInTheDocument()
-    })
-
-    it('should not show endpoints info when declaration has no endpoint', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({ category: PluginCategoryEnum.tool }),
-        endpoints_active: 3,
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.queryByText(/plugin\.endpointsEnabled/)).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Version Compatibility', () => {
-    it('should show warning icon when Dify version is not compatible', () => {
-      // Arrange
-      mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo('0.3.0'))
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({
-          meta: { version: '1.0.0', minimum_dify_version: '0.5.0' },
-        }),
-      })
-
-      // Act
-      const { container } = render(<PluginItem plugin={plugin} />)
-
-      // Assert - Warning icon should be rendered
-      const warningIcon = container.querySelector('.text-text-accent')
-      expect(warningIcon).toBeInTheDocument()
-    })
-
-    it('should not show warning when Dify version is compatible', () => {
-      // Arrange
-      mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo('1.0.0'))
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({
-          meta: { version: '1.0.0', minimum_dify_version: '0.5.0' },
-        }),
-      })
-
-      // Act
-      const { container } = render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      const warningIcon = container.querySelector('.text-text-accent')
-      expect(warningIcon).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Deprecated Plugin', () => {
-    it('should show deprecated indicator for deprecated marketplace plugin', () => {
-      // Arrange
-      mockEnableMarketplace.mockReturnValue(true)
-      const plugin = createPluginDetail({
-        source: PluginSource.marketplace,
-        status: 'deleted',
-        deprecated_reason: 'Plugin is no longer maintained',
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByText('plugin.deprecated')).toBeInTheDocument()
-    })
-
-    it('should show background effect for deprecated plugin', () => {
-      // Arrange
-      mockEnableMarketplace.mockReturnValue(true)
-      const plugin = createPluginDetail({
-        source: PluginSource.marketplace,
-        status: 'deleted',
-        deprecated_reason: 'Plugin is deprecated',
-      })
-
-      // Act
-      const { container } = render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      const bgEffect = container.querySelector('.blur-\\[120px\\]')
-      expect(bgEffect).toBeInTheDocument()
-    })
-
-    it('should not show deprecated indicator for active plugin', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        source: PluginSource.marketplace,
-        status: 'active',
-        deprecated_reason: '',
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.queryByText('plugin.deprecated')).not.toBeInTheDocument()
-    })
-
-    it('should not show deprecated indicator for non-marketplace source', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        source: PluginSource.github,
-        status: 'deleted',
-        deprecated_reason: 'Some reason',
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.queryByText('plugin.deprecated')).not.toBeInTheDocument()
-    })
-
-    it('should not show deprecated when marketplace is disabled', () => {
-      // Arrange
-      mockEnableMarketplace.mockReturnValue(false)
-      const plugin = createPluginDetail({
-        source: PluginSource.marketplace,
-        status: 'deleted',
-        deprecated_reason: 'Some reason',
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.queryByText('plugin.deprecated')).not.toBeInTheDocument()
-    })
-  })
-
-  // ==================== Verified Badge Tests ====================
-  describe('Verified Badge', () => {
-    it('should show verified badge for verified plugin', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({ verified: true }),
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByTestId('verified-badge')).toBeInTheDocument()
-    })
-
-    it('should not show verified badge for unverified plugin', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({ verified: false }),
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.queryByTestId('verified-badge')).not.toBeInTheDocument()
-    })
-  })
-
-  // ==================== Version Badge Tests ====================
-  describe('Version Badge', () => {
-    it('should show version from meta for GitHub source', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        source: PluginSource.github,
-        version: '2.0.0',
-        meta: { repo: 'owner/repo', version: '1.5.0', package: 'pkg' },
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByTestId('version-badge')).toHaveTextContent('1.5.0')
-    })
-
-    it('should show version from plugin for marketplace source', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        source: PluginSource.marketplace,
-        version: '2.0.0',
-        meta: { repo: 'owner/repo', version: '1.5.0', package: 'pkg' },
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByTestId('version-badge')).toHaveTextContent('2.0.0')
-    })
-
-    it('should show update indicator when new version available', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        source: PluginSource.marketplace,
-        version: '1.0.0',
-        latest_version: '2.0.0',
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByTestId('version-badge')).toHaveAttribute('data-has-update', 'true')
-    })
-
-    it('should not show update indicator when version is latest', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        source: PluginSource.marketplace,
-        version: '1.0.0',
-        latest_version: '1.0.0',
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByTestId('version-badge')).toHaveAttribute('data-has-update', 'false')
-    })
-
-    it('should not show update indicator for non-marketplace source', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        source: PluginSource.github,
-        version: '1.0.0',
-        latest_version: '2.0.0',
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByTestId('version-badge')).toHaveAttribute('data-has-update', 'false')
-    })
-  })
-
-  // ==================== User Interactions Tests ====================
-  describe('User Interactions', () => {
-    it('should select the plugin with the named card button using Enter or Space', async () => {
-      // Arrange
-      const plugin = createPluginDetail({ plugin_id: 'test-plugin-id' })
-      const user = userEvent.setup()
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-      const cardButton = screen.getByRole('button', { name: 'Test Plugin' })
-      await user.tab()
-      expect(cardButton).toHaveFocus()
-      await user.keyboard('{Enter}')
-      await user.keyboard(' ')
-
-      // Assert
-      expect(mockSetSelectedItem).toHaveBeenNthCalledWith(1, {
-        type: 'plugin',
-        id: 'test-plugin-id',
-      })
-      expect(mockSetSelectedItem).toHaveBeenNthCalledWith(2, {
-        type: 'plugin',
-        id: 'test-plugin-id',
-      })
-    })
-
-    it('should keep source links and actions separate from the card button', async () => {
-      const user = userEvent.setup()
+  it.each(['0.3.0', '0.5.0', '1.0.0'])(
+    'warns when Dify %s cannot run the installed plugin',
+    (version) => {
+      mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo(version))
       render(<PluginItem plugin={createPluginDetail()} />)
-
-      const cardButton = screen.getByRole('button', { name: 'Test Plugin' })
-      const marketplaceLink = screen.getByRole('link')
-      const deleteButton = screen.getByTestId('delete-button')
-      expect(cardButton).not.toContainElement(marketplaceLink)
-      expect(cardButton).not.toContainElement(deleteButton)
-
-      await user.click(deleteButton)
-      expect(mockSetSelectedItem).not.toHaveBeenCalled()
-    })
-
-    it('should highlight selected plugin', () => {
-      // Arrange
-      mockSelectedItem.mockReturnValue({ type: 'plugin', id: 'test-plugin-id' })
-      const plugin = createPluginDetail({ plugin_id: 'test-plugin-id' })
-
-      // Act
-      const { container } = render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      const pluginContainer = container.firstChild as HTMLElement
-      expect(pluginContainer).toHaveClass(
-        'after:inset-ring-components-option-card-option-selected-border',
+      expect(!!screen.queryByRole('button', { name: /plugin.difyVersionNotCompatible/ })).toBe(
+        version === '0.3.0',
       )
-    })
+    },
+  )
 
-    it('should not highlight unselected plugin', () => {
-      // Arrange
-      mockSelectedItem.mockReturnValue({ type: 'plugin', id: 'other-plugin-id' })
-      const plugin = createPluginDetail({ plugin_id: 'test-plugin-id' })
-
-      // Act
-      const { container } = render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      const pluginContainer = container.firstChild as HTMLElement
-      expect(pluginContainer).not.toHaveClass(
-        'after:inset-ring-components-option-card-option-selected-border',
-      )
-    })
-
-    it('should stop propagation when action area is clicked', () => {
-      // Arrange
-      const plugin = createPluginDetail()
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-      const actionArea = screen.getByTestId('plugin-action').parentElement
-      fireEvent.click(actionArea!)
-
-      // Assert - selecting the plugin should not be triggered
-      expect(mockSetSelectedItem).not.toHaveBeenCalled()
-    })
-
-    it('should only reveal actions on card hover or focus', () => {
-      // Arrange
-      const plugin = createPluginDetail()
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByTestId('plugin-action').parentElement).toHaveClass(
-        'absolute',
-        'top-1/2',
-        'right-0',
-        '-translate-y-1/2',
-        'pointer-events-none',
-        'opacity-0',
-        'group-hover/plugin-item:pointer-events-auto',
-        'group-hover/plugin-item:opacity-100',
-        'group-focus-within/plugin-item:pointer-events-auto',
-        'group-focus-within/plugin-item:opacity-100',
-        '[@media(hover:none)]:pointer-events-auto',
-        '[@media(hover:none)]:opacity-100',
-      )
-    })
-  })
-
-  // ==================== Delete Callback Tests ====================
-  describe('Delete Callback', () => {
-    it('should call refreshPluginList when delete is triggered', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({ category: PluginCategoryEnum.tool }),
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-      fireEvent.click(screen.getByTestId('delete-button'))
-
-      // Assert
-      expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: PluginCategoryEnum.tool })
-    })
-
-    it('should pass correct category to refreshPluginList', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({ category: PluginCategoryEnum.model }),
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-      fireEvent.click(screen.getByTestId('delete-button'))
-
-      // Assert
-      expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: PluginCategoryEnum.model })
-    })
-  })
-
-  // ==================== Theme Tests ====================
-  describe('Theme Support', () => {
-    it('should use dark icon when theme is dark and dark icon exists', () => {
-      // Arrange
-      mockTheme.mockReturnValue('dark')
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({
-          icon: 'light-icon.png',
-          icon_dark: 'dark-icon.png',
-        }),
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      const img = screen.getByRole('presentation')
-      expect(img.getAttribute('src')).toContain('dark-icon.png')
-    })
-
-    it('should use light icon when theme is light', () => {
-      // Arrange
-      mockTheme.mockReturnValue('light')
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({
-          icon: 'light-icon.png',
-          icon_dark: 'dark-icon.png',
-        }),
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      const img = screen.getByRole('presentation')
-      expect(img.getAttribute('src')).toContain('light-icon.png')
-    })
-
-    it('should use light icon when dark icon is not available', () => {
-      // Arrange
-      mockTheme.mockReturnValue('dark')
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({
-          icon: 'light-icon.png',
-          icon_dark: undefined,
-        }),
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      const img = screen.getByRole('presentation')
-      expect(img.getAttribute('src')).toContain('light-icon.png')
-    })
-
-    it('should use external URL directly for icon', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({
-          icon: 'https://example.com/icon.png',
-        }),
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      const img = screen.getByRole('presentation')
-      expect(img).toHaveAttribute('src', 'https://example.com/icon.png')
-    })
-  })
-
-  // ==================== Memoization Tests ====================
-  describe('Memoization', () => {
-    it('should memoize orgName based on source and author', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        source: PluginSource.github,
-        declaration: createPluginDeclaration({ author: 'test-author' }),
-      })
-
-      // Act
+  it.each([
+    { source: PluginSource.marketplace, enabled: true, expected: true },
+    { source: PluginSource.marketplace, enabled: false, expected: false },
+    { source: PluginSource.github, enabled: true, expected: false },
+  ])(
+    'reports withdrawal only for available marketplace entries: %j',
+    ({ source, enabled, expected }) => {
+      mockEnableMarketplace.mockReturnValue(enabled)
+      const plugin = createPluginDetail({ source })
       const { rerender } = render(<PluginItem plugin={plugin} />)
-
-      // First render should show author
-      expect(screen.getByTestId('org-info')).toHaveAttribute('data-org', 'test-author')
-
-      // Re-render with same plugin
-      rerender(<PluginItem plugin={plugin} />)
-
-      // Should still show same author
-      expect(screen.getByTestId('org-info')).toHaveAttribute('data-org', 'test-author')
-    })
-
-    it('should update orgName when source changes', () => {
-      // Arrange
-      const githubPlugin = createPluginDetail({
-        source: PluginSource.github,
-        declaration: createPluginDeclaration({ author: 'github-author' }),
-      })
-      const localPlugin = createPluginDetail({
-        source: PluginSource.local,
-        declaration: createPluginDeclaration({ author: 'local-author' }),
-      })
-
-      // Act
-      const { rerender } = render(<PluginItem plugin={githubPlugin} />)
-      expect(screen.getByTestId('org-info')).toHaveAttribute('data-org', 'github-author')
-
-      rerender(<PluginItem plugin={localPlugin} />)
-      expect(screen.getByTestId('org-info')).toHaveAttribute('data-org', '')
-    })
-
-    it('should memoize isDeprecated based on status and deprecated_reason', () => {
-      // Arrange
-      mockEnableMarketplace.mockReturnValue(true)
-      const activePlugin = createPluginDetail({
-        source: PluginSource.marketplace,
-        status: 'active',
-        deprecated_reason: '',
-      })
-      const deprecatedPlugin = createPluginDetail({
-        source: PluginSource.marketplace,
-        status: 'deleted',
-        deprecated_reason: 'Deprecated',
-      })
-
-      // Act
-      const { rerender } = render(<PluginItem plugin={activePlugin} />)
       expect(screen.queryByText('plugin.deprecated')).not.toBeInTheDocument()
+      rerender(
+        <PluginItem
+          plugin={{ ...plugin, status: 'deleted', deprecated_reason: 'No longer maintained' }}
+        />,
+      )
+      expect(!!screen.queryByText('plugin.deprecated')).toBe(expected)
+      if (!enabled)
+        expect(screen.queryByRole('link', { name: /marketplace/ })).not.toBeInTheDocument()
+    },
+  )
 
-      rerender(<PluginItem plugin={deprecatedPlugin} />)
-      expect(screen.getByText('plugin.deprecated')).toBeInTheDocument()
+  it('selects the plugin from the card and keeps its actions separate', async () => {
+    const user = userEvent.setup()
+    render(<PluginItem plugin={createPluginDetail()} />)
+    const card = screen.getByRole('button', { name: 'Test Plugin' })
+    await user.tab()
+    expect(card).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(mockSetSelectedItem).toHaveBeenCalledExactlyOnceWith({ type: 'plugin', id: 'plugin-1' })
+    mockSetSelectedItem.mockClear()
+    const action = screen.getByRole('button', { name: 'plugin.action.delete' })
+    expect(card).not.toContainElement(action)
+    expect(card).not.toContainElement(screen.getByRole('link', { name: /marketplace/ }))
+    await user.click(action)
+    expect(screen.getByRole('alertdialog', { name: 'plugin.action.delete' })).toHaveTextContent(
+      'test-plugin',
+    )
+    expect(mockSetSelectedItem).not.toHaveBeenCalled()
+  })
+
+  it('refreshes the current plugin category after a real uninstall succeeds', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<PluginItem plugin={createPluginDetail()} />)
+    rerender(
+      <PluginItem
+        plugin={createPluginDetail({
+          installation_id: 'new-installation',
+          declaration: createPluginDeclaration({ category: PluginCategoryEnum.model }),
+        })}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'plugin.action.delete' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(requests.uninstall).toHaveBeenCalledExactlyOnceWith('new-installation')
+    expect(mockRefreshPluginList).toHaveBeenCalledExactlyOnceWith({
+      category: PluginCategoryEnum.model,
     })
   })
 
-  describe('Edge Cases', () => {
-    it('should handle empty icon gracefully', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({ icon: '' }),
-      })
+  it.each([
+    { source: PluginSource.github, canDelete: true, canUpdate: true, update: true, info: true },
+    { source: PluginSource.github, canDelete: false, canUpdate: false, update: false, info: true },
+    {
+      source: PluginSource.marketplace,
+      canDelete: false,
+      canUpdate: true,
+      update: false,
+      info: false,
+    },
+  ])(
+    'exposes permitted actions for $source (delete: $canDelete, update: $canUpdate)',
+    ({ source, canDelete, canUpdate, update, info }) => {
+      render(
+        <PluginItem
+          plugin={createPluginDetail({ source })}
+          canDeletePlugin={canDelete}
+          canUpdatePlugin={canUpdate}
+        />,
+      )
+      expect(!!screen.queryByRole('button', { name: 'plugin.action.delete' })).toBe(canDelete)
+      expect(!!screen.queryByRole('button', { name: 'plugin.action.checkForUpdates' })).toBe(update)
+      expect(!!screen.queryByRole('button', { name: 'plugin.action.pluginInfo' })).toBe(info)
+    },
+  )
 
-      // Act & Assert - Should not throw when icon is empty
-      expect(() => render(<PluginItem plugin={plugin} />)).not.toThrow()
-
-      // The img element should still be rendered
-      const img = screen.getByRole('presentation')
-      expect(img).toBeInTheDocument()
-    })
-
-    it('should handle missing meta for non-GitHub source', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        source: PluginSource.local,
-        meta: undefined,
-      })
-
-      // Act & Assert - Should not throw
-      expect(() => render(<PluginItem plugin={plugin} />)).not.toThrow()
-    })
-
-    it('should handle empty label gracefully', () => {
-      // Arrange
-      mockGetValueFromI18nObject.mockReturnValue('')
-      const plugin = createPluginDetail()
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByTestId('plugin-title')).toHaveTextContent('')
-    })
-
-    it('should count declaration endpoints when endpoints_active is zero', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({
-          category: PluginCategoryEnum.extension,
-          endpoint: {
-            settings: [],
-            endpoints: [
-              { path: '/test', method: 'POST' },
-              { path: '/another-test', method: 'GET' },
-              { path: '/third-test', method: 'PUT' },
-            ],
-          },
-        }),
-        endpoints_active: 0,
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByTitle('plugin.endpointsEnabled:{"num":3}')).toBeInTheDocument()
-    })
-
-    it('should handle null latest_version', () => {
-      // Arrange
-      const plugin = createPluginDetail({
-        source: PluginSource.marketplace,
-        version: '1.0.0',
-        latest_version: null as unknown as string,
-      })
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert - Should not show update indicator
-      expect(screen.getByTestId('version-badge')).toHaveAttribute('data-has-update', 'false')
-    })
-  })
-
-  // ==================== Prop Variations ====================
-  describe('Prop Variations', () => {
-    it('should render correctly with minimal required props', () => {
-      // Arrange
-      const plugin = createPluginDetail()
-
-      // Act & Assert
-      expect(() => render(<PluginItem plugin={plugin} />)).not.toThrow()
-    })
-
-    it('should handle different category types', () => {
-      // Arrange
-      const categories = [
-        PluginCategoryEnum.tool,
-        PluginCategoryEnum.model,
-        PluginCategoryEnum.extension,
-        PluginCategoryEnum.agent,
-        PluginCategoryEnum.datasource,
-      ]
-
-      categories.forEach((category) => {
-        const plugin = createPluginDetail({
-          declaration: createPluginDeclaration({ category }),
-        })
-
-        // Act & Assert
-        expect(() => render(<PluginItem plugin={plugin} />)).not.toThrow()
-      })
-    })
-
-    it('should handle all source types', () => {
-      // Arrange
-      const sources = [
-        PluginSource.marketplace,
-        PluginSource.github,
-        PluginSource.local,
-        PluginSource.debugging,
-      ]
-
-      sources.forEach((source) => {
-        const plugin = createPluginDetail({ source })
-
-        // Act & Assert
-        expect(() => render(<PluginItem plugin={plugin} />)).not.toThrow()
-      })
-    })
-  })
-
-  describe('Callback Stability', () => {
-    it('should update handleDelete when category changes', () => {
-      // Arrange
-      const toolPlugin = createPluginDetail({
-        declaration: createPluginDeclaration({ category: PluginCategoryEnum.tool }),
-      })
-      const modelPlugin = createPluginDetail({
-        declaration: createPluginDeclaration({ category: PluginCategoryEnum.model }),
-      })
-
-      // Act
-      const { rerender } = render(<PluginItem plugin={toolPlugin} />)
-      fireEvent.click(screen.getByTestId('delete-button'))
-      expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: PluginCategoryEnum.tool })
-
-      mockRefreshPluginList.mockClear()
-      rerender(<PluginItem plugin={modelPlugin} />)
-      fireEvent.click(screen.getByTestId('delete-button'))
-      expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: PluginCategoryEnum.model })
-    })
+  it.each([
+    { theme: 'dark', icon: 'light.png', dark: 'dark.png', expected: 'dark.png' },
+    { theme: 'light', icon: 'light.png', dark: 'dark.png', expected: 'light.png' },
+    { theme: 'dark', icon: 'light.png', dark: undefined, expected: 'light.png' },
+    {
+      theme: 'light',
+      icon: 'https://example.com/icon.png',
+      dark: undefined,
+      expected: 'https://example.com/icon.png',
+    },
+  ])('resolves the plugin icon in $theme mode: $expected', ({ theme, icon, dark, expected }) => {
+    mockTheme.mockReturnValue(theme)
+    render(
+      <PluginItem
+        plugin={createPluginDetail({
+          declaration: createPluginDeclaration({ icon, icon_dark: dark }),
+        })}
+      />,
+    )
+    expect(screen.getByRole('presentation')).toHaveAttribute(
+      'src',
+      expect.stringContaining(expected),
+    )
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 })

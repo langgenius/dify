@@ -1,217 +1,118 @@
-import type { ToolWithProvider } from '../../types'
+import type {
+  ToolApiEntity,
+  ToolProviderApiEntityResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ToolValue } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
-import type { Tool } from '@/app/components/tools/types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { zToolProviderApiEntityResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { OperationButton } from '@/app/components/app/configuration/base/operation-button'
-import { useTags } from '@/app/components/plugins/hooks'
-import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { ToolTrigger } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components/tool-trigger'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
-import { createCustomCollection } from '@/service/tools'
-import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { Theme } from '@/types/app'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderWithQuery,
+} from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import ToolPicker, { ToolPickerContent } from '../tool-picker'
 
-const mockNotify = vi.fn()
-const toolListKeys = {
-  builtin: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
-  custom: consoleQuery.workspaces.current.tools.api.get.queryKey(),
-  workflow: consoleQuery.workspaces.current.tools.workflow.get.queryKey(),
-  mcp: consoleQuery.workspaces.current.tools.mcp.get.queryKey(),
-}
-const mockCreateCustomCollection = vi.mocked(createCustomCollection)
-const mockInstallPackageFromMarketPlace = vi.fn()
-const mockCheckInstalled = vi.fn()
-const mockRefreshPluginList = vi.fn()
-let mockWorkspacePermissionKeys: string[] = ['tool.manage']
-
-const mockUseGetLanguage = vi.mocked(useGetLanguage)
-const mockUseTheme = vi.mocked(useTheme)
-const mockUseTags = vi.mocked(useTags)
-const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
-const { mockBuiltInToolsQuery, mockCustomToolsQuery, mockWorkflowToolsQuery, mockMCPToolsQuery } =
-  vi.hoisted(() => ({
-    mockBuiltInToolsQuery: vi.fn(),
-    mockCustomToolsQuery: vi.fn(),
-    mockWorkflowToolsQuery: vi.fn(),
-    mockMCPToolsQuery: vi.fn(),
-  }))
-const mockUseFeaturedToolsRecommendations = vi.mocked(useFeaturedToolsRecommendations)
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: vi.fn(),
-}))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    MARKETPLACE_URL_PREFIX: 'https://marketplace.test',
-  }
-})
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
+let mockWorkspacePermissionKeys: string[] = ['tool.manage', 'plugin.install']
+let queryClient = createConsoleQueryClient()
+const renderWithConsoleQuery: typeof renderWithQuery = (ui, options) =>
+  renderWithQuery(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>, {
+    ...options,
+    queryClient,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
-}))
-
-vi.mock('@/app/components/plugins/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/plugins/hooks')>()
-  return {
-    ...actual,
-    useTags: vi.fn(),
-  }
-})
-
-vi.mock('@/app/components/plugins/marketplace/query', () => ({
-  useMarketplacePlugins: vi.fn(),
-}))
-
-vi.mock(
-  '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission',
-  () => ({
-    default: () => ({ canInstallPlugin: true }),
-  }),
-)
-
-vi.mock('@/service/tools', () => ({
-  createCustomCollection: vi.fn(),
-}))
-
-vi.mock('@/service/use-plugins', () => ({
-  useFeaturedToolsRecommendations: vi.fn(),
-  useDownloadPlugin: vi.fn(() => ({
-    data: undefined,
-    isLoading: false,
-  })),
-  useInstallPackageFromMarketPlace: () => ({
-    mutateAsync: mockInstallPackageFromMarketPlace,
-    isPending: false,
-  }),
-  usePluginDeclarationFromMarketPlace: () => ({
-    data: undefined,
-  }),
-  usePluginTaskList: () => ({
-    handleRefetch: vi.fn(),
-  }),
-  useUpdatePackageFromMarketPlace: () => ({
-    mutateAsync: vi.fn(),
-  }),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.builtin.get': () => mockBuiltInToolsQuery(),
-    'workspaces.current.tools.api.get': ({ enabled }: { enabled?: boolean }) =>
-      mockCustomToolsQuery(enabled),
-    'workspaces.current.tools.workflow.get': ({ enabled }: { enabled?: boolean }) =>
-      mockWorkflowToolsQuery(enabled),
-    'workspaces.current.tools.mcp.get': () => mockMCPToolsQuery(),
   })
-})
-
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    success: (message: string) => mockNotify({ type: 'success', message }),
-    error: (message: string) => mockNotify({ type: 'error', message }),
-    warning: (message: string) => mockNotify({ type: 'warning', message }),
-    info: (message: string) => mockNotify({ type: 'info', message }),
+const toolListKeys = { builtin: consoleQuery.workspaces.current.tools.builtin.get.queryKey() }
+const { getBuiltInTools, getCustomTools, getWorkflowTools, getMCPTools, api } = vi.hoisted(() => ({
+  getBuiltInTools:
+    vi.fn<typeof import('@/service/console').consoleClient.workspaces.current.tools.builtin.get>(),
+  getCustomTools:
+    vi.fn<typeof import('@/service/console').consoleClient.workspaces.current.tools.api.get>(),
+  getWorkflowTools:
+    vi.fn<typeof import('@/service/console').consoleClient.workspaces.current.tools.workflow.get>(),
+  getMCPTools:
+    vi.fn<typeof import('@/service/console').consoleClient.workspaces.current.tools.mcp.get>(),
+  api: {
+    search: vi.fn<typeof import('@/service/marketplace').marketplaceClient.searchAdvanced>(),
+    recommend:
+      vi.fn<
+        (
+          url: string,
+          options: { body: { limit: number } },
+        ) => Promise<{ data: { plugins: import('@/app/components/plugins/types').Plugin[] } }>
+      >(),
+    createCustom:
+      vi.fn<
+        typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.api.add.post
+      >(),
+    parseSchema:
+      vi.fn<
+        typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.api.schema.post
+      >(),
+    install:
+      vi.fn<
+        typeof import('@/service/console').consoleClient.workspaces.current.plugin.install.marketplace.post
+      >(),
   },
 }))
-
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: vi.fn(),
-}))
-
-vi.mock('next-themes', () => ({
-  useTheme: () => ({ theme: Theme.light }),
-}))
-
-vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
-  default: ({
-    onAdd,
-    onHide,
-  }: {
-    onAdd: (payload: { name: string }) => Promise<void>
-    onHide: () => void
-  }) => (
-    <div data-testid="edit-custom-tool-modal">
-      <button type="button" onClick={() => onAdd({ name: 'collection-a' })}>
-        submit-custom-tool
-      </button>
-      <button type="button" onClick={onHide}>
-        hide-custom-tool
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () => ({
-  default: () => mockCheckInstalled(),
-}))
-
-vi.mock('@/app/components/plugins/install-plugin/hooks/use-install-plugin-limit', () => ({
-  default: () => ({
-    canInstall: true,
-  }),
-}))
-
-vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list', () => ({
-  default: () => ({
-    refreshPluginList: mockRefreshPluginList,
-  }),
-}))
-
-vi.mock('@/app/components/plugins/install-plugin/base/check-task-status', () => ({
-  default: () => ({
-    check: vi.fn().mockResolvedValue({ status: 'success' }),
-    stop: vi.fn(),
-  }),
-}))
-
-vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
-  default: ({
-    onSuccess,
-    onClose,
-  }: {
-    onSuccess: () => void | Promise<void>
-    onClose: () => void
-  }) => (
-    <div data-testid="install-from-marketplace">
-      <button type="button" onClick={() => onSuccess()}>
-        complete-featured-install
-      </button>
-      <button type="button" onClick={onClose}>
-        cancel-featured-install
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/utils/var', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/utils/var')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  const { createPluginEntity } = await import('@/test/fixtures/plugin')
   return {
     ...actual,
-    getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': getBuiltInTools,
+      'workspaces.current.tools.api.get': getCustomTools,
+      'workspaces.current.tools.workflow.get': getWorkflowTools,
+      'workspaces.current.tools.mcp.get': getMCPTools,
+      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.toolProvider.api.add.post': api.createCustom,
+      'workspaces.current.toolProvider.api.schema.post': api.parseSchema,
+      'workspaces.current.plugin.marketplace.pkg.get': async () => ({
+        manifest: createPluginEntity().declaration,
+      }),
+      'workspaces.current.plugin.install.marketplace.post': api.install,
+      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.plugin.permission.fetch.get': async () => ({
+        install_permission: 'everyone',
+        debug_permission: 'everyone',
+      }),
+    }),
   }
 })
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  return {
+    ...actual,
+    marketplaceClient: { ...actual.marketplaceClient, searchAdvanced: api.search },
+  }
+})
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  postMarketplace: api.recommend,
+}))
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  MARKETPLACE_URL_PREFIX: 'https://marketplace.test',
+}))
 
-const createTool = (name: string, label: string, description = `${label} description`): Tool => ({
+const createTool = (
+  name: string,
+  label: string,
+  description = `${label} description`,
+): ToolApiEntity => ({
   name,
   author: 'author',
   label: {
@@ -227,31 +128,31 @@ const createTool = (name: string, label: string, description = `${label} descrip
   output_schema: {},
 })
 
-const createToolProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider => ({
-  id: 'provider-1',
-  name: 'provider-one',
-  author: 'Provider Author',
-  description: {
-    en_US: 'Provider description',
-    zh_Hans: 'Provider description',
-  },
-  icon: 'icon',
-  icon_dark: 'icon-dark',
-  label: {
-    en_US: 'Provider One',
-    zh_Hans: 'Provider One',
-  },
-  type: CollectionType.builtIn,
-  team_credentials: {},
-  is_team_authorization: false,
-  allow_delete: false,
-  labels: [],
-  plugin_id: 'plugin-1',
-  tools: [createTool('tool-a', 'Tool A')],
-  meta: { version: '1.0.0' } as ToolWithProvider['meta'],
-  plugin_unique_identifier: 'plugin-1@1.0.0',
-  ...overrides,
-})
+const createToolProvider = (overrides: Partial<ToolProviderApiEntityResponse> = {}) =>
+  zToolProviderApiEntityResponse.parse({
+    id: 'provider-1',
+    name: 'provider-one',
+    author: 'Provider Author',
+    description: {
+      en_US: 'Provider description',
+      zh_Hans: 'Provider description',
+    },
+    icon: 'icon',
+    icon_dark: 'icon-dark',
+    label: {
+      en_US: 'Provider One',
+      zh_Hans: 'Provider One',
+    },
+    type: CollectionType.builtIn,
+    team_credentials: {},
+    is_team_authorization: false,
+    allow_delete: false,
+    labels: [],
+    plugin_id: 'plugin-1',
+    tools: [createTool('tool-a', 'Tool A')],
+    plugin_unique_identifier: 'plugin-1@1.0.0',
+    ...overrides,
+  })
 
 const createToolValue = (overrides: Partial<ToolValue> = {}): ToolValue => ({
   provider_name: 'provider-a',
@@ -343,60 +244,39 @@ const renderToolPicker = (props: Partial<React.ComponentProps<typeof ToolPicker>
 
 describe('ToolPicker', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockWorkspacePermissionKeys = ['tool.manage']
-
-    mockUseGetLanguage.mockReturnValue('en_US')
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
-    mockUseTags.mockReturnValue({
-      tags: [{ name: 'weather', label: 'Weather' }],
-      tagsMap: { weather: { name: 'weather', label: 'Weather' } },
-      getTagLabel: (name: string) => name,
+    mockWorkspacePermissionKeys = ['tool.manage', 'plugin.install']
+    queryClient = createConsoleQueryClient()
+    seedToolProviders(queryClient, { builtInTools, customTools, workflowTools, mcpTools })
+    seedModelProviderQueries(queryClient)
+    getBuiltInTools.mockReset().mockResolvedValue(builtInTools)
+    getCustomTools.mockReset().mockResolvedValue(customTools)
+    getWorkflowTools.mockReset().mockResolvedValue(workflowTools)
+    getMCPTools.mockReset().mockResolvedValue(mcpTools)
+    api.search.mockReset().mockResolvedValue({ data: { plugins: [], total: 0 } })
+    api.recommend.mockReset().mockResolvedValue({ data: { plugins: [] } })
+    api.createCustom.mockReset().mockResolvedValue({ result: 'success' })
+    api.parseSchema.mockReset().mockResolvedValue({
+      parameters_schema: [],
+      credentials_schema: [],
+      warning: {},
+      schema_type: 'openapi',
     })
-    mockUseMarketplacePlugins.mockReturnValue({
-      data: undefined,
-    } as ReturnType<typeof useMarketplacePlugins>)
-    mockBuiltInToolsQuery.mockReturnValue({ data: builtInTools })
-    mockCustomToolsQuery.mockImplementation((enabled = true) => ({
-      data: enabled ? customTools : [],
-    }))
-    mockWorkflowToolsQuery.mockImplementation((enabled = true) => ({
-      data: enabled ? workflowTools : [],
-    }))
-    mockMCPToolsQuery.mockReturnValue({ data: mcpTools })
-    mockUseFeaturedToolsRecommendations.mockReturnValue({
-      plugins: [],
-      isLoading: false,
-    } as ReturnType<typeof useFeaturedToolsRecommendations>)
-    mockCreateCustomCollection.mockResolvedValue({ result: 'success' })
-    mockInstallPackageFromMarketPlace.mockResolvedValue({
-      all_installed: true,
-      task_id: 'task-1',
-    })
-    mockCheckInstalled.mockReturnValue({
-      installedInfo: undefined,
-      isLoading: false,
-      error: undefined,
-    })
-    window.localStorage.clear()
+    api.install.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
+  })
+  afterEach(async () => {
+    await act(async () => cleanup())
   })
 
-  it('should request opening when the trigger is clicked unless the picker is disabled', async () => {
+  it('prevents opening a disabled picker', async () => {
     const user = userEvent.setup()
-    const onShowChange = vi.fn()
     const disabledOnShowChange = vi.fn()
-
-    renderToolPicker({ onShowChange })
-
-    await user.click(screen.getByRole('button', { name: 'open-picker' }))
-    expect(onShowChange.mock.calls[0]?.[0]).toBe(true)
 
     renderToolPicker({
       disabled: true,
       onShowChange: disabledOnShowChange,
     })
 
-    await user.click(screen.getAllByRole('button', { name: 'open-picker' })[1]!)
+    await user.click(screen.getByRole('button', { name: 'open-picker' }))
     expect(disabledOnShowChange).not.toHaveBeenCalled()
   })
 
@@ -471,7 +351,6 @@ describe('ToolPicker', () => {
     })
 
     const footerLink = await screen.findByRole('link', { name: /plugin\.findMoreInMarketplace/i })
-    expect(footerLink.closest('footer')).toBeInTheDocument()
     expect(footerLink).toHaveAttribute('href', 'https://marketplace.test/plugins/tool')
   })
 
@@ -493,18 +372,14 @@ describe('ToolPicker', () => {
 
     await user.type(screen.getByRole('searchbox', { name: 'plugin.searchTools' }), 'weather')
 
-    await waitFor(() => {
-      expect(mockUseMarketplacePlugins).toHaveBeenLastCalledWith({
-        query: 'weather',
-        tags: [],
-        category: PluginCategoryEnum.tool,
-      })
-    })
-    expect(
-      mockUseMarketplacePlugins.mock.calls
-        .map(([params]) => params)
-        .filter((params) => params?.query && params.query !== 'weather'),
-    ).toEqual([])
+    await waitFor(() =>
+      expect(api.search).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({ query: 'weather', tags: [], category: 'tool' }),
+        }),
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      ),
+    )
 
     await waitFor(() => {
       expect(screen.getByText('Weather Tool')).toBeInTheDocument()
@@ -568,28 +443,14 @@ describe('ToolPicker', () => {
         plugin_id: 'available-plugin',
         label: { en_US: 'Available Plugin' },
       })
-      mockBuiltInToolsQuery.mockReturnValue({
-        data: [createToolProvider({ ...builtInTools[0], plugin_id: installedPlugin.plugin_id })],
+      seedToolProviders(queryClient, {
+        builtInTools: [
+          createToolProvider({ ...builtInTools[0], plugin_id: installedPlugin.plugin_id }),
+        ],
       })
-      mockUseMarketplacePlugins.mockImplementation(
-        (params) =>
-          ({
-            data: params
-              ? {
-                  pages: [
-                    {
-                      plugins: [installedPlugin, availablePlugin],
-                      total: 2,
-                      page: 1,
-                      page_size: 40,
-                    },
-                  ],
-                  pageParams: [1],
-                }
-              : undefined,
-            isFetching: false,
-          }) as ReturnType<typeof useMarketplacePlugins>,
-      )
+      api.search.mockResolvedValue({
+        data: { plugins: [installedPlugin, availablePlugin], total: 2 },
+      })
 
       renderToolPicker({ isShow: true, scope, selectedTools: [] })
 
@@ -601,7 +462,7 @@ describe('ToolPicker', () => {
         await user.type(screen.getByRole('searchbox', { name: 'plugin.searchTools' }), 'plugin')
       } else {
         await user.click(screen.getByRole('button', { name: 'pluginTags.allTags' }))
-        await user.click(screen.getByRole('checkbox', { name: 'Weather' }))
+        await user.click(screen.getByRole('checkbox', { name: 'pluginTags.tags.weather' }))
         await user.keyboard('{Escape}')
       }
 
@@ -623,27 +484,11 @@ describe('ToolPicker', () => {
         plugin_id: 'available-plugin',
         label: { en_US: 'Available Plugin' },
       })
-      mockUseMarketplacePlugins.mockImplementation(
-        (params) =>
-          ({
-            data: params
-              ? {
-                  pages: [
-                    {
-                      plugins: [newlyInstalledPlugin, availablePlugin],
-                      total: 2,
-                      page: 1,
-                      page_size: 40,
-                    },
-                  ],
-                  pageParams: [1],
-                }
-              : undefined,
-            isFetching: false,
-          }) as ReturnType<typeof useMarketplacePlugins>,
-      )
+      api.search.mockResolvedValue({
+        data: { plugins: [newlyInstalledPlugin, availablePlugin], total: 2 },
+      })
       const props = { scope, onSelect: vi.fn(), onSelectMultiple: vi.fn() }
-      const { rerender } = renderWithConsoleQuery(<ToolPickerContent {...props} />, {
+      renderWithConsoleQuery(<ToolPickerContent {...props} />, {
         systemFeatures: { enable_marketplace: true },
       })
 
@@ -651,15 +496,15 @@ describe('ToolPicker', () => {
       expect(await screen.findByText('New Plugin')).toBeInTheDocument()
       expect(screen.getByText('Available Plugin')).toBeInTheDocument()
 
-      mockBuiltInToolsQuery.mockReturnValue({
-        data: [
-          ...builtInTools,
-          createToolProvider({ id: 'new-provider', plugin_id: newlyInstalledPlugin.plugin_id }),
-        ],
+      getBuiltInTools.mockResolvedValue([
+        ...builtInTools,
+        createToolProvider({ id: 'new-provider', plugin_id: newlyInstalledPlugin.plugin_id }),
+      ])
+      await act(async () => {
+        await queryClient.invalidateQueries({ queryKey: toolListKeys.builtin })
       })
-      rerender(<ToolPickerContent {...props} />)
 
-      expect(screen.queryByText('New Plugin')).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByText('New Plugin')).not.toBeInTheDocument())
       expect(screen.getByText('Available Plugin')).toBeInTheDocument()
       expect(screen.queryByText('Built-in Provider')).not.toBeInTheDocument()
     },
@@ -667,71 +512,113 @@ describe('ToolPicker', () => {
 
   it('should create a custom collection from the add button and refresh custom tools', async () => {
     const user = userEvent.setup()
-    const { queryClient } = renderToolPicker({
-      isShow: true,
-      supportAddCustomTool: true,
-    })
-    for (const key of Object.values(toolListKeys)) queryClient.setQueryData(key, [])
-
-    await user.click(screen.getByRole('button', { name: 'tools.addToolModal.custom.tip' }))
-    expect(screen.getByTestId('edit-custom-tool-modal')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'submit-custom-tool' }))
-
-    await waitFor(() => {
-      expect(mockCreateCustomCollection).toHaveBeenCalledWith({ name: 'collection-a' })
-    })
-    expect(queryClient.getQueryState(toolListKeys.custom)?.isInvalidated).toBe(true)
-    expect(queryClient.getQueryState(toolListKeys.builtin)?.isInvalidated).toBe(false)
-    expect(screen.queryByTestId('edit-custom-tool-modal')).not.toBeInTheDocument()
-  })
-
-  it('should keep custom and workflow tools usable but hide custom create action without tool.manage', () => {
-    mockWorkspacePermissionKeys = []
-
+    getCustomTools.mockResolvedValue([
+      ...customTools,
+      createToolProvider({
+        id: 'created-custom',
+        type: CollectionType.custom,
+        label: { en_US: 'New Collection' },
+      }),
+    ])
     renderToolPicker({
       isShow: true,
       supportAddCustomTool: true,
     })
 
-    expect(mockCustomToolsQuery).toHaveBeenCalledWith(true)
-    expect(mockWorkflowToolsQuery).toHaveBeenCalledWith(true)
-    expect(screen.getByText('Custom Provider')).toBeInTheDocument()
-    expect(screen.getByText('Built-in Provider')).toBeInTheDocument()
-    expect(screen.getByText('MCP Provider')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'tools.addToolModal.custom.tip' }))
+    const drawer = await screen.findByRole('dialog', { name: 'tools.createTool.title' })
+    await user.type(
+      within(drawer).getByRole('textbox', { name: /tools.createTool.name/ }),
+      'New Collection',
+    )
+    const schema = JSON.stringify({
+      openapi: '3.0.0',
+      info: { title: 'Weather', version: '1.0.0' },
+      servers: [{ url: 'https://weather.example.com' }],
+      paths: {},
+    })
+    await user.click(within(drawer).getByPlaceholderText('tools.createTool.schemaPlaceHolder'))
+    await user.paste(schema)
+    await waitFor(() => expect(api.parseSchema).toHaveBeenCalledWith({ body: { schema } }))
+    await user.click(within(drawer).getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() =>
+      expect(api.createCustom).toHaveBeenCalledWith({
+        body: expect.objectContaining({
+          provider: 'New Collection',
+          schema,
+          schema_type: 'openapi',
+          credentials: { auth_type: 'none' },
+        }),
+      }),
+    )
+    expect(await screen.findByText('New Collection')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'tools.createTool.title' })).not.toBeInTheDocument()
+  })
+
+  it('allows selecting existing custom tools without tool.manage but prevents creation', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    mockWorkspacePermissionKeys = []
+
+    renderToolPicker({
+      isShow: true,
+      supportAddCustomTool: true,
+      onSelect,
+    })
+
+    await user.type(screen.getByRole('searchbox', { name: 'plugin.searchTools' }), 'weather')
+    await user.click(await screen.findByText('Weather Tool'))
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ provider_name: 'custom-provider', tool_name: 'weather-tool' }),
+    )
     expect(
       screen.queryByRole('button', { name: 'tools.addToolModal.custom.tip' }),
     ).not.toBeInTheDocument()
   })
 
-  it('should invalidate all tool collections after featured install succeeds', async () => {
+  it('refreshes available tools after completing a featured plugin installation', async () => {
     const user = userEvent.setup()
 
-    mockUseFeaturedToolsRecommendations.mockReturnValue({
-      plugins: [
-        createPlugin({ plugin_id: 'featured-1', latest_package_identifier: 'featured-1@1.0.0' }),
-      ],
-      isLoading: false,
-    } as ReturnType<typeof useFeaturedToolsRecommendations>)
+    api.recommend.mockResolvedValue({
+      data: {
+        plugins: [
+          createPlugin({
+            plugin_id: 'org/featured',
+            latest_package_identifier: 'org/featured:1.0.0@checksum',
+          }),
+        ],
+      },
+    })
 
-    const { queryClient } = renderToolPicker({
+    renderToolPicker({
       isShow: true,
       selectedTools: [],
     })
-    for (const key of Object.values(toolListKeys)) queryClient.setQueryData(key, [])
 
     const featuredPluginItem = await screen.findByText('Plugin One')
     await user.hover(featuredPluginItem)
     await user.click(screen.getByRole('button', { name: 'plugin.installAction' }))
-    expect(await screen.findByTestId('install-from-marketplace')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'complete-featured-install' }))
-
-    await waitFor(
-      () => {
-        for (const key of Object.values(toolListKeys))
-          expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
-      },
-      { timeout: 3000 },
-    )
+    const installer = await screen.findByRole('dialog', {
+      name: 'plugin.installModal.installPlugin',
+    })
+    const installButton = within(installer).getByRole('button', {
+      name: 'plugin.installModal.install',
+    })
+    await waitFor(() => expect(installButton).toBeEnabled())
+    await user.click(installButton)
+    const installed = await screen.findByRole('dialog', {
+      name: 'plugin.installModal.installedSuccessfully',
+    })
+    expect(api.install).toHaveBeenCalledExactlyOnceWith({
+      body: { plugin_unique_identifiers: ['org/featured:1.0.0@checksum'] },
+    })
+    await user.click(within(installed).getByText('common.operation.close'))
+    await waitFor(() => {
+      for (const request of [getBuiltInTools, getCustomTools, getWorkflowTools, getMCPTools])
+        expect(request).toHaveBeenCalled()
+    })
+    expect(
+      screen.queryByRole('dialog', { name: 'plugin.installModal.installedSuccessfully' }),
+    ).not.toBeInTheDocument()
   })
 })

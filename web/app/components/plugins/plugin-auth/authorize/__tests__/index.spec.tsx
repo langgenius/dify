@@ -1,615 +1,128 @@
-import type { ReactNode } from 'react'
-import type { PluginPayload } from '../../types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { render } from '@/test/console/render'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AuthCategory } from '../../types'
 import Authorize from '../index'
 
-// Create a wrapper with QueryClientProvider for real component testing
-const createConsoleQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: 0,
+const requests = vi.hoisted(() => ({ authorize: vi.fn(), popup: vi.fn() }))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: async (url: string) => {
+    const target = new URL(url)
+    const path = target.pathname.replace('/console/api', '')
+    if (path.endsWith('/oauth/client-schema'))
+      return Response.json({
+        schema: [],
+        is_system_oauth_params_exists: true,
+        is_oauth_custom_client_enabled: false,
+        redirect_uri: '',
+      })
+    return Response.json(
+      await requests.authorize(path, {
+        params: { visibility: target.searchParams.get('visibility') ?? undefined },
+      }),
+    )
+  },
+}))
+vi.mock('@/hooks/use-oauth', () => ({ openOAuthPopup: requests.popup }))
+const pluginPayload = { category: AuthCategory.tool, provider: 'test-provider' }
+const permissions = ['credential.use', 'credential.create', 'credential.manage']
+
+beforeEach(() =>
+  requests.authorize.mockResolvedValue({ authorization_url: 'https://auth.example.test' }),
+)
+
+it.each([
+  [false, false, null, null],
+  [true, false, 'plugin.auth.useOAuthAuth', null],
+  [false, true, null, 'plugin.auth.useApiAuth'],
+  [true, true, 'plugin.auth.addOAuth', 'plugin.auth.addApi'],
+] as const)(
+  'exposes the supported authorization methods (OAuth=%s, API key=%s)',
+  async (canOAuth, canApiKey, oauthLabel, apiLabel) => {
+    render(<Authorize pluginPayload={pluginPayload} canOAuth={canOAuth} canApiKey={canApiKey} />, {
+      workspacePermissionKeys: permissions,
+    })
+    if (oauthLabel) expect(await screen.findByRole('button', { name: oauthLabel })).toBeEnabled()
+    else
+      expect(
+        screen.queryByRole('button', { name: /plugin.auth.(useOAuthAuth|addOAuth|setupOAuth)/ }),
+      ).not.toBeInTheDocument()
+    if (apiLabel) expect(screen.getByRole('button', { name: apiLabel })).toBeEnabled()
+    else
+      expect(
+        screen.queryByRole('button', { name: /plugin.auth.(useApiAuth|addApi)/ }),
+      ).not.toBeInTheDocument()
+  },
+)
+
+it.each([
+  [false, false],
+  [true, true],
+  [false, true],
+])(
+  'blocks authorization when credential.create=%s and unavailable=%s',
+  async (canCreate, unavailable) => {
+    const user = userEvent.setup()
+    const onApiKeyClick = vi.fn()
+    render(
+      <Authorize
+        pluginPayload={pluginPayload}
+        canOAuth
+        canApiKey
+        notAllowCustomCredential={unavailable}
+        onApiKeyClick={onApiKeyClick}
+      />,
+      {
+        workspacePermissionKeys: canCreate ? permissions : ['credential.use'],
       },
-    },
-  })
+    )
+    const oauth = await screen.findByRole('button', { name: 'plugin.auth.addOAuth' })
+    const api = screen.getByRole('button', { name: 'plugin.auth.addApi' })
+    expect(oauth).toBeDisabled()
+    expect(api).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'plugin.auth.oauthClientSettings' })).toBeDisabled()
+    await user.click(oauth)
+    await user.click(api)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(onApiKeyClick).not.toHaveBeenCalled()
+    expect(requests.authorize).not.toHaveBeenCalled()
+  },
+)
 
-const createWrapper = () => {
-  const testQueryClient = createConsoleQueryClient()
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
+it('delegates API key opening to its parent once credentials become available', async () => {
+  const user = userEvent.setup()
+  const onApiKeyClick = vi.fn()
+  const { rerender } = render(
+    <Authorize
+      pluginPayload={pluginPayload}
+      canApiKey
+      notAllowCustomCredential
+      onApiKeyClick={onApiKeyClick}
+    />,
+    { workspacePermissionKeys: permissions },
   )
-}
-
-// Mock API hooks - only mock network-related hooks
-const mockGetPluginOAuthClientSchema = vi.fn()
-const mockConsoleState = vi.hoisted(() => ({
-  workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
-}))
-
-vi.mock('../../hooks/use-credential', () => ({
-  useGetPluginOAuthUrlHook: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ authorization_url: '' }),
-  }),
-  useGetPluginOAuthClientSchemaHook: () => ({
-    data: mockGetPluginOAuthClientSchema(),
-    isLoading: false,
-  }),
-  useSetPluginOAuthCustomClientHook: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({}),
-  }),
-  useDeletePluginOAuthCustomClientHook: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({}),
-  }),
-  useInvalidPluginOAuthClientSchemaHook: () => vi.fn(),
-  useAddPluginCredentialHook: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({}),
-  }),
-  useUpdatePluginCredentialHook: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({}),
-  }),
-  useGetPluginCredentialSchemaHook: () => ({
-    data: [],
-    isLoading: false,
-  }),
-}))
-
-// Mock openOAuthPopup - window operations
-vi.mock('@/hooks/use-oauth', () => ({
-  openOAuthPopup: vi.fn(),
-}))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
-  }))
+  expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeDisabled()
+  rerender(<Authorize pluginPayload={pluginPayload} canApiKey onApiKeyClick={onApiKeyClick} />)
+  await user.click(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' }))
+  expect(onApiKeyClick).toHaveBeenCalledOnce()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
 
-// Mock service/use-triggers - API service
-vi.mock('@/service/use-triggers', () => ({
-  useTriggerPluginDynamicOptions: () => ({
-    data: { options: [] },
-    isLoading: false,
-  }),
-  useTriggerPluginDynamicOptionsInfo: () => ({
-    data: null,
-    isLoading: false,
-  }),
-  useInvalidTriggerDynamicOptions: () => vi.fn(),
-}))
-
-// Factory function for creating test PluginPayload
-const createPluginPayload = (overrides: Partial<PluginPayload> = {}): PluginPayload => ({
-  category: AuthCategory.tool,
-  provider: 'test-provider',
-  ...overrides,
-})
-
-describe('Authorize', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockConsoleState.workspacePermissionKeys = [
-      'credential.use',
-      'credential.create',
-      'credential.manage',
-    ]
-    mockGetPluginOAuthClientSchema.mockReturnValue({
-      schema: [],
-      is_oauth_custom_client_enabled: false,
-      is_system_oauth_params_exists: false,
-    })
+it('passes the selected provider and visibility through authorization and reports completion', async () => {
+  const user = userEvent.setup()
+  const onUpdate = vi.fn()
+  render(<Authorize pluginPayload={pluginPayload} canOAuth onUpdate={onUpdate} />, {
+    workspacePermissionKeys: permissions,
   })
-
-  // ==================== Rendering Tests ====================
-  describe('Rendering', () => {
-    it('should render nothing when canOAuth and canApiKey are both false/undefined', () => {
-      const pluginPayload = createPluginPayload()
-
-      render(<Authorize pluginPayload={pluginPayload} canOAuth={false} canApiKey={false} />, {
-        wrapper: createWrapper(),
-      })
-
-      expect(screen.queryByRole('button')).not.toBeInTheDocument()
-    })
-
-    it('should render only OAuth button when canOAuth is true and canApiKey is false', () => {
-      const pluginPayload = createPluginPayload()
-
-      render(<Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={false} />, {
-        wrapper: createWrapper(),
-      })
-
-      // OAuth button should exist (either configured or setup button)
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
-
-    it('should render only API Key button when canApiKey is true and canOAuth is false', () => {
-      const pluginPayload = createPluginPayload()
-
-      render(<Authorize pluginPayload={pluginPayload} canOAuth={false} canApiKey={true} />, {
-        wrapper: createWrapper(),
-      })
-
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
-
-    it('should render both OAuth and API Key buttons when both are true', () => {
-      const pluginPayload = createPluginPayload()
-
-      render(<Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={true} />, {
-        wrapper: createWrapper(),
-      })
-
-      const buttons = screen.getAllByRole('button')
-      expect(buttons.length).toBe(2)
-    })
-
-    it('should render divider when showDivider is true and both buttons are shown', () => {
-      const pluginPayload = createPluginPayload()
-
-      render(
-        <Authorize
-          pluginPayload={pluginPayload}
-          canOAuth={true}
-          canApiKey={true}
-          showDivider={true}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getByText('or')).toBeInTheDocument()
-    })
-
-    it('should not render divider when showDivider is false', () => {
-      const pluginPayload = createPluginPayload()
-
-      render(
-        <Authorize
-          pluginPayload={pluginPayload}
-          canOAuth={true}
-          canApiKey={true}
-          showDivider={false}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.queryByText('or')).not.toBeInTheDocument()
-    })
-
-    it('should not render divider when only one button type is shown', () => {
-      const pluginPayload = createPluginPayload()
-
-      render(
-        <Authorize
-          pluginPayload={pluginPayload}
-          canOAuth={true}
-          canApiKey={false}
-          showDivider={true}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.queryByText('or')).not.toBeInTheDocument()
-    })
-
-    it('should render divider by default (showDivider defaults to true)', () => {
-      const pluginPayload = createPluginPayload()
-
-      render(<Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={true} />, {
-        wrapper: createWrapper(),
-      })
-
-      expect(screen.getByText('or')).toBeInTheDocument()
-    })
-  })
-
-  // ==================== Props Testing ====================
-  describe('Props Testing', () => {
-    describe('theme prop', () => {
-      it('should render buttons when theme is secondary', () => {
-        const pluginPayload = createPluginPayload()
-
-        render(
-          <Authorize
-            pluginPayload={pluginPayload}
-            theme="secondary"
-            canOAuth={true}
-            canApiKey={true}
-          />,
-          { wrapper: createWrapper() },
-        )
-
-        const buttons = screen.getAllByRole('button')
-        expect(buttons).toHaveLength(2)
-      })
-    })
-
-    describe('credential.create permission', () => {
-      it('should disable OAuth button when credential.create is missing', () => {
-        const pluginPayload = createPluginPayload()
-        mockConsoleState.workspacePermissionKeys = ['credential.use']
-
-        render(<Authorize pluginPayload={pluginPayload} canOAuth={true} />, {
-          wrapper: createWrapper(),
-        })
-
-        expect(screen.getByRole('button')).toBeDisabled()
-      })
-
-      it('should disable API Key button when credential.create is missing', () => {
-        const pluginPayload = createPluginPayload()
-        mockConsoleState.workspacePermissionKeys = ['credential.use']
-
-        render(<Authorize pluginPayload={pluginPayload} canApiKey={true} />, {
-          wrapper: createWrapper(),
-        })
-
-        expect(screen.getByRole('button')).toBeDisabled()
-      })
-
-      it('should not disable buttons when credential.create is present', () => {
-        const pluginPayload = createPluginPayload()
-
-        render(<Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={true} />, {
-          wrapper: createWrapper(),
-        })
-
-        const buttons = screen.getAllByRole('button')
-        buttons.forEach((button) => {
-          expect(button).not.toBeDisabled()
-        })
-      })
-    })
-
-    describe('notAllowCustomCredential prop', () => {
-      it('should disable OAuth button when notAllowCustomCredential is true', () => {
-        const pluginPayload = createPluginPayload()
-
-        render(
-          <Authorize
-            pluginPayload={pluginPayload}
-            canOAuth={true}
-            notAllowCustomCredential={true}
-          />,
-          { wrapper: createWrapper() },
-        )
-
-        expect(screen.getByRole('button')).toBeDisabled()
-      })
-
-      it('should disable API Key button when notAllowCustomCredential is true', () => {
-        const pluginPayload = createPluginPayload()
-
-        render(
-          <Authorize
-            pluginPayload={pluginPayload}
-            canApiKey={true}
-            notAllowCustomCredential={true}
-          />,
-          { wrapper: createWrapper() },
-        )
-
-        expect(screen.getByRole('button')).toBeDisabled()
-      })
-
-      it('should disable all buttons when notAllowCustomCredential is true', () => {
-        const pluginPayload = createPluginPayload()
-
-        render(
-          <Authorize
-            pluginPayload={pluginPayload}
-            canOAuth={true}
-            canApiKey={true}
-            notAllowCustomCredential={true}
-          />,
-          { wrapper: createWrapper() },
-        )
-
-        const buttons = screen.getAllByRole('button')
-        buttons.forEach((button) => expect(button).toBeDisabled())
-      })
-    })
-  })
-
-  // ==================== Button Text Variations ====================
-  describe('Button Text Variations', () => {
-    it('should show correct OAuth text based on canApiKey', () => {
-      const pluginPayload = createPluginPayload()
-
-      // When canApiKey is false, should show "useOAuthAuth"
-      const { rerender } = render(
-        <Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={false} />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getByRole('button')).toHaveTextContent('plugin.auth')
-
-      // When canApiKey is true, button text changes
-      rerender(<Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={true} />)
-
-      const buttons = screen.getAllByRole('button')
-      expect(buttons.length).toBe(2)
-    })
-  })
-
-  // ==================== Memoization Dependencies ====================
-  describe('Memoization and Re-rendering', () => {
-    it('should update when canApiKey changes', () => {
-      const pluginPayload = createPluginPayload()
-
-      const { rerender } = render(
-        <Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={false} />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getAllByRole('button').length).toBe(1)
-
-      rerender(<Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={true} />)
-
-      expect(screen.getAllByRole('button').length).toBe(2)
-    })
-
-    it('should update when canOAuth changes', () => {
-      const pluginPayload = createPluginPayload()
-
-      const { rerender } = render(
-        <Authorize pluginPayload={pluginPayload} canOAuth={false} canApiKey={true} />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getAllByRole('button').length).toBe(1)
-
-      rerender(<Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={true} />)
-
-      expect(screen.getAllByRole('button').length).toBe(2)
-    })
-
-    it('should change button styling when theme changes', () => {
-      const pluginPayload = createPluginPayload()
-
-      const { rerender } = render(
-        <Authorize pluginPayload={pluginPayload} canApiKey={true} theme="primary" />,
-        { wrapper: createWrapper() },
-      )
-
-      const primaryClassName = screen.getByRole('button').className
-
-      rerender(<Authorize pluginPayload={pluginPayload} canApiKey={true} theme="secondary" />)
-
-      const secondaryClassName = screen.getByRole('button').className
-      expect(primaryClassName).not.toBe(secondaryClassName)
-    })
-  })
-
-  // ==================== Edge Cases ====================
-  describe('Edge Cases', () => {
-    it('should handle undefined pluginPayload properties gracefully', () => {
-      const pluginPayload: PluginPayload = {
-        category: AuthCategory.tool,
-        provider: 'test-provider',
-        providerType: undefined,
-        detail: undefined,
-      }
-
-      expect(() => {
-        render(<Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={true} />, {
-          wrapper: createWrapper(),
-        })
-      }).not.toThrow()
-    })
-
-    it('should handle all auth categories', () => {
-      const categories = [
-        AuthCategory.tool,
-        AuthCategory.datasource,
-        AuthCategory.model,
-        AuthCategory.trigger,
-      ]
-
-      categories.forEach((category) => {
-        const pluginPayload = createPluginPayload({ category })
-
-        const { unmount } = render(
-          <Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={true} />,
-          { wrapper: createWrapper() },
-        )
-
-        expect(screen.getAllByRole('button').length).toBe(2)
-
-        unmount()
-      })
-    })
-
-    it('should handle empty string provider', () => {
-      const pluginPayload = createPluginPayload({ provider: '' })
-
-      expect(() => {
-        render(<Authorize pluginPayload={pluginPayload} canOAuth={true} />, {
-          wrapper: createWrapper(),
-        })
-      }).not.toThrow()
-    })
-
-    it('should stay disabled when credential.create is missing and custom credentials are unavailable', () => {
-      const pluginPayload = createPluginPayload()
-      mockConsoleState.workspacePermissionKeys = ['credential.use']
-
-      render(
-        <Authorize
-          pluginPayload={pluginPayload}
-          canOAuth={true}
-          canApiKey={true}
-          notAllowCustomCredential={true}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const buttons = screen.getAllByRole('button')
-      buttons.forEach((button) => {
-        expect(button).toBeDisabled()
-      })
-    })
-  })
-
-  // ==================== Component Memoization ====================
-  describe('Component Memoization', () => {
-    it('should reflect notAllowCustomCredential change via button disabled state', () => {
-      const pluginPayload = createPluginPayload()
-
-      const { rerender } = render(
-        <Authorize
-          pluginPayload={pluginPayload}
-          canOAuth={true}
-          notAllowCustomCredential={false}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getByRole('button')).not.toBeDisabled()
-
-      rerender(
-        <Authorize pluginPayload={pluginPayload} canOAuth={true} notAllowCustomCredential={true} />,
-      )
-
-      expect(screen.getByRole('button')).toBeDisabled()
-    })
-  })
-
-  // ==================== Integration with pluginPayload ====================
-  describe('pluginPayload Integration', () => {
-    it('should pass pluginPayload to OAuth button', () => {
-      const pluginPayload = createPluginPayload({
-        provider: 'special-provider',
-        category: AuthCategory.model,
-      })
-
-      render(<Authorize pluginPayload={pluginPayload} canOAuth={true} />, {
-        wrapper: createWrapper(),
-      })
-
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
-
-    it('should pass pluginPayload to API Key button', () => {
-      const pluginPayload = createPluginPayload({
-        provider: 'another-provider',
-        category: AuthCategory.datasource,
-      })
-
-      render(<Authorize pluginPayload={pluginPayload} canApiKey={true} />, {
-        wrapper: createWrapper(),
-      })
-
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
-
-    it('should handle pluginPayload with detail property', () => {
-      const pluginPayload = createPluginPayload({
-        detail: {
-          plugin_id: 'test-plugin',
-          name: 'Test Plugin',
-        } as PluginPayload['detail'],
-      })
-
-      expect(() => {
-        render(<Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={true} />, {
-          wrapper: createWrapper(),
-        })
-      }).not.toThrow()
-    })
-  })
-
-  // ==================== Conditional Rendering Scenarios ====================
-  describe('Conditional Rendering Scenarios', () => {
-    it('should handle rapid prop changes', () => {
-      const pluginPayload = createPluginPayload()
-
-      const { rerender } = render(
-        <Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={true} />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getAllByRole('button').length).toBe(2)
-
-      rerender(<Authorize pluginPayload={pluginPayload} canOAuth={false} canApiKey={true} />)
-      expect(screen.getAllByRole('button').length).toBe(1)
-
-      rerender(<Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={false} />)
-      expect(screen.getAllByRole('button').length).toBe(1)
-
-      rerender(<Authorize pluginPayload={pluginPayload} canOAuth={false} canApiKey={false} />)
-      expect(screen.queryByRole('button')).not.toBeInTheDocument()
-    })
-
-    it('should correctly toggle divider visibility based on button combinations', () => {
-      const pluginPayload = createPluginPayload()
-
-      const { rerender } = render(
-        <Authorize
-          pluginPayload={pluginPayload}
-          canOAuth={true}
-          canApiKey={true}
-          showDivider={true}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getByText('or')).toBeInTheDocument()
-
-      rerender(
-        <Authorize
-          pluginPayload={pluginPayload}
-          canOAuth={true}
-          canApiKey={false}
-          showDivider={true}
-        />,
-      )
-
-      expect(screen.queryByText('or')).not.toBeInTheDocument()
-
-      rerender(
-        <Authorize
-          pluginPayload={pluginPayload}
-          canOAuth={false}
-          canApiKey={true}
-          showDivider={true}
-        />,
-      )
-
-      expect(screen.queryByText('or')).not.toBeInTheDocument()
-    })
-  })
-
-  // ==================== Accessibility ====================
-  describe('Accessibility', () => {
-    it('should have accessible button elements', () => {
-      const pluginPayload = createPluginPayload()
-
-      render(<Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={true} />, {
-        wrapper: createWrapper(),
-      })
-
-      const buttons = screen.getAllByRole('button')
-      expect(buttons.length).toBe(2)
-    })
-
-    it('should indicate permission-disabled state for accessibility', () => {
-      const pluginPayload = createPluginPayload()
-      mockConsoleState.workspacePermissionKeys = ['credential.use']
-
-      render(<Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={true} />, {
-        wrapper: createWrapper(),
-      })
-
-      const buttons = screen.getAllByRole('button')
-      buttons.forEach((button) => {
-        expect(button).toBeDisabled()
-      })
-    })
-  })
+  await user.click(await screen.findByRole('button', { name: 'plugin.auth.useOAuthAuth' }))
+  await user.click(screen.getByRole('button', { name: 'plugin.auth.authorize' }))
+  await waitFor(() => expect(requests.popup).toHaveBeenCalledOnce())
+  expect(requests.authorize).toHaveBeenCalledExactlyOnceWith(
+    '/oauth/plugin/test-provider/tool/authorization-url',
+    { params: { visibility: 'only_me' } },
+  )
+  expect(onUpdate).not.toHaveBeenCalled()
+  requests.popup.mock.calls[0]![1]()
+  expect(onUpdate).toHaveBeenCalledOnce()
 })

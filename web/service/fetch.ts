@@ -1,5 +1,6 @@
 import type { AfterResponseHook, BeforeRequestHook, Hooks } from 'ky'
 import type { IOtherOptions } from './base'
+import type { RequestGuard } from './request-guard'
 import Cookies from 'js-cookie'
 import ky from 'ky'
 import {
@@ -16,6 +17,7 @@ import {
 import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
 import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
+import { captureRequestGuard } from './request-guard'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
@@ -45,11 +47,16 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
   }
 }
 
-const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
+const afterResponseErrorCode = (
+  otherOptions: IOtherOptions,
+  requestGuard: RequestGuard | undefined,
+): AfterResponseHook => {
   return async ({ request, response }) => {
     if (isHttpErrorStatus(response.status)) {
       const error = await httpErrorFromResponse(response)
       const errorData = error.data
+      const handled = requestGuard?.handleError(response.status, errorData, error)
+      if (handled || requestGuard?.isActive() === false) throw error
       const shouldNotifyError =
         response.status >= 400 &&
         response.status !== 401 &&
@@ -103,6 +110,7 @@ export const getBaseOptions = (): RequestInit => ({
   redirect: 'follow',
 })
 
+/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 async function base<T>(
   url: string,
   options: FetchOptionType = {},
@@ -136,6 +144,8 @@ async function base<T>(
     fetchCompat = false,
     request,
   } = otherOptions
+  const requestGuard = captureRequestGuard(url, isPublicAPI, request?.method || init.method)
+  requestGuard?.beforeRequest()
 
   const headers = new Headers(headersFromProps || {})
 
@@ -167,7 +177,10 @@ async function base<T>(
         ...(baseHooks.beforeRequest || []),
         isPublicAPI && beforeRequestPublicWithCode,
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
-      afterResponse: [...(baseHooks.afterResponse || []), afterResponseErrorCode(otherOptions)],
+      afterResponse: [
+        ...(baseHooks.afterResponse || []),
+        afterResponseErrorCode(otherOptions, requestGuard),
+      ],
     },
   })
 
@@ -209,6 +222,7 @@ async function base<T>(
  * Includes credentials, Authorization (if available), and CSRF header
  * so the request is authenticated, matching the headers sent by the
  * standard `base()` fetch wrapper.
+ * @deprecated New keepalive transports require a scoped lint exception.
  */
 export function postWithKeepalive(url: string, body: Record<string, unknown>): void {
   const headers = new Headers({

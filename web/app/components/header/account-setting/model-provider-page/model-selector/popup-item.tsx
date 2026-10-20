@@ -264,7 +264,7 @@ function PopupItem({
               </>
             )
             const row = needsConfiguration ? (
-              <div className={rowClassName} onPointerDown={onPreviewCardClose}>
+              <div className={rowClassName}>
                 {rowContent}
                 {canCreateCredential && (
                   <Button
@@ -284,7 +284,6 @@ function PopupItem({
                 aria-current={isSelected ? 'true' : undefined}
                 disabled={!isSelectable}
                 className={cn(rowClassName, 'w-[calc(100%-0.5rem)] justify-start')}
-                onPointerDown={onPreviewCardClose}
                 onClick={() => onSelect(model.provider, modelItem)}
               >
                 {rowContent}
@@ -294,6 +293,7 @@ function PopupItem({
             return (
               <li key={modelItem.model}>
                 <PreviewCardTrigger
+                  onPointerDown={onPreviewCardClose}
                   delay={150}
                   closeDelay={150}
                   handle={previewCardHandle}

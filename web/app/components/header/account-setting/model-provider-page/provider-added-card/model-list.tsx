@@ -2,7 +2,13 @@ import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/w
 import type { ComponentType, FC } from 'react'
 import type { Credential, ModelItem, ModelProvider } from '../declarations'
 import type { ModelLoadBalancingModalProps } from './model-load-balancing-modal'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,19 +28,23 @@ const ModelLoadBalancingLoadingDialog = ({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose?.()}>
-      <DialogContent className="w-160 max-w-none border-none px-8 pt-8 text-left align-middle">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['modelProvider.auth.configModel'], { ns: 'modelProvider' })}
-        </DialogTitle>
-        <div className="flex items-center gap-2 py-8" role="status" aria-busy="true">
-          <span
-            aria-hidden
-            className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
-          />
-          <span className="system-sm-regular text-text-secondary">
-            {t(($) => $.loading, { ns: 'common' })}
-          </span>
-        </div>
+      <DialogContent className="w-160">
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $['modelProvider.auth.configModel'], { ns: 'modelProvider' })}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <div className="flex items-center gap-2 py-8" role="status" aria-busy="true">
+            <span
+              aria-hidden
+              className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
+            />
+            <span className="system-sm-regular text-text-secondary">
+              {t(($) => $.loading, { ns: 'common' })}
+            </span>
+          </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

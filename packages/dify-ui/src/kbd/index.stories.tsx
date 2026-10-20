@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { DisplayHotkey, FormatDisplayOptions } from '@tanstack/react-hotkeys'
+import type { DisplayHotkeyChord, FormatDisplayOptions } from '@tanstack/react-hotkeys'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { Kbd, KbdGroup } from '.'
 import {
@@ -48,7 +48,7 @@ function HotkeyKbdGroup({
   color = 'gray',
   platform = 'mac',
 }: {
-  hotkey: DisplayHotkey
+  hotkey: DisplayHotkeyChord
   color?: 'gray' | 'white'
   platform?: FormatDisplayOptions['platform']
 }) {

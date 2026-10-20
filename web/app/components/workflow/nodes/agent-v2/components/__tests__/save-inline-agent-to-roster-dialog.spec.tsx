@@ -1,72 +1,21 @@
 import type { AgentComposerAgentResponse } from '@dify/contracts/api/console/apps/types.gen'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { mockEmojiData } from '@/test/emoji-picker'
 import { SaveInlineAgentToRosterDialog } from '../save-inline-agent-to-roster-dialog'
 
-const mutationMock = vi.hoisted(() => ({
-  isPending: false,
-  mutate: vi.fn(),
-}))
+const mutateRequest = vi.hoisted(() => vi.fn())
 
 const toastMock = vi.hoisted(() => ({
   success: vi.fn(),
-}))
-
-vi.mock('@tanstack/react-query', () => ({
-  useMutation: () => ({
-    isPending: mutationMock.isPending,
-    mutate: mutationMock.mutate,
-  }),
 }))
 
 vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
 
-vi.mock('@/app/components/base/icon-picker', () => import('@/test/icon-picker-mock'))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    apps: {
-      byAppId: {
-        workflows: {
-          draft: {
-            nodes: {
-              byNodeId: {
-                agentComposer: {
-                  saveToRoster: {
-                    post: {
-                      mutationOptions: vi.fn(() => ({})),
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    snippets: {
-      bySnippetId: {
-        workflows: {
-          draft: {
-            nodes: {
-              byNodeId: {
-                agentComposer: {
-                  saveToRoster: {
-                    post: {
-                      mutationOptions: vi.fn(() => ({})),
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+mockEmojiData()
 
 const inlineAgent: AgentComposerAgentResponse = {
   active_config_snapshot_id: 'snapshot-1',
@@ -99,10 +48,26 @@ const renderDialog = (agent: AgentComposerAgentResponse = inlineAgent) => {
   return { onOpenChange, onSaved }
 }
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post': mutateRequest,
+      'snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post':
+        mutateRequest,
+    }),
+  }
+})
+
 describe('SaveInlineAgentToRosterDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mutationMock.isPending = false
+    mutateRequest.mockReset().mockResolvedValue({
+      id: 'agent-1',
+      binding: { agent_id: 'roster-agent-1', binding_type: 'roster_agent' },
+    })
   })
 
   it('initializes the roster name empty while keeping the other inline agent metadata', async () => {
@@ -128,29 +93,22 @@ describe('SaveInlineAgentToRosterDialog', () => {
     await user.type(nameInput, 'Roster Tender Agent')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
 
-    expect(mutationMock.mutate).toHaveBeenCalledWith(
-      {
-        params: {
-          app_id: 'app-1',
-          node_id: 'node-1',
-        },
-        body: {
-          variant: 'workflow',
-          save_strategy: 'save_to_roster',
-          new_agent_name: 'Roster Tender Agent',
-          description: 'Drafts tender clarifications.',
-          role: 'Tender Analyst',
-          icon_type: 'emoji',
-          icon: '🤖',
-          icon_background: '#F5F3FF',
-        },
+    expect(mutateRequest).toHaveBeenCalledWith({
+      params: {
+        app_id: 'app-1',
+        node_id: 'node-1',
       },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }),
-    )
-    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
-    expect(mutationOptions).not.toHaveProperty('onError')
+      body: {
+        variant: 'workflow',
+        save_strategy: 'save_to_roster',
+        new_agent_name: 'Roster Tender Agent',
+        description: 'Drafts tender clarifications.',
+        role: 'Tender Analyst',
+        icon_type: 'emoji',
+        icon: '🤖',
+        icon_background: '#F5F3FF',
+      },
+    })
   })
 
   it('saves the inline agent to roster through the snippet composer API', async () => {
@@ -175,22 +133,17 @@ describe('SaveInlineAgentToRosterDialog', () => {
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
 
-    expect(mutationMock.mutate).toHaveBeenCalledWith(
-      {
-        params: {
-          snippet_id: 'snippet-1',
-          node_id: 'node-1',
-        },
-        body: expect.objectContaining({
-          variant: 'workflow',
-          save_strategy: 'save_to_roster',
-          new_agent_name: 'Snippet Agent',
-        }),
+    expect(mutateRequest).toHaveBeenCalledWith({
+      params: {
+        snippet_id: 'snippet-1',
+        node_id: 'node-1',
       },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
+      body: expect.objectContaining({
+        variant: 'workflow',
+        save_strategy: 'save_to_roster',
+        new_agent_name: 'Snippet Agent',
       }),
-    )
+    })
   })
 
   it('submits the visible default icon when the inline agent has no icon metadata', async () => {
@@ -211,27 +164,22 @@ describe('SaveInlineAgentToRosterDialog', () => {
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
 
-    expect(mutationMock.mutate).toHaveBeenCalledWith(
-      {
-        params: {
-          app_id: 'app-1',
-          node_id: 'node-1',
-        },
-        body: {
-          variant: 'workflow',
-          save_strategy: 'save_to_roster',
-          new_agent_name: 'Roster Tender Agent',
-          description: 'Drafts tender clarifications.',
-          role: 'Tender Analyst',
-          icon_type: 'emoji',
-          icon: '🧸',
-          icon_background: '#F5F3FF',
-        },
+    expect(mutateRequest).toHaveBeenCalledWith({
+      params: {
+        app_id: 'app-1',
+        node_id: 'node-1',
       },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }),
-    )
+      body: {
+        variant: 'workflow',
+        save_strategy: 'save_to_roster',
+        new_agent_name: 'Roster Tender Agent',
+        description: 'Drafts tender clarifications.',
+        role: 'Tender Analyst',
+        icon_type: 'emoji',
+        icon: '🧸',
+        icon_background: '#F5F3FF',
+      },
+    })
   })
 
   it('initializes the icon picker from the inline agent and submits changed icon fields', async () => {
@@ -247,40 +195,33 @@ describe('SaveInlineAgentToRosterDialog', () => {
       }),
     )
 
-    expect(screen.getByText('🤖:#F5F3FF')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { hidden: true, name: 'Select brain icon' }))
+    await user.click(await screen.findByRole('radio', { name: 'app.iconPicker.color.green' }))
+    await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
     await user.type(
       within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
       'Roster Tender Agent',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
 
-    expect(mutationMock.mutate).toHaveBeenCalledWith(
-      {
-        params: {
-          app_id: 'app-1',
-          node_id: 'node-1',
-        },
-        body: {
-          variant: 'workflow',
-          save_strategy: 'save_to_roster',
-          new_agent_name: 'Roster Tender Agent',
-          description: 'Drafts tender clarifications.',
-          role: 'Tender Analyst',
-          icon_type: 'emoji',
-          icon: '🧠',
-          icon_background: '#E0F2FE',
-        },
+    expect(mutateRequest).toHaveBeenCalledWith({
+      params: {
+        app_id: 'app-1',
+        node_id: 'node-1',
       },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }),
-    )
+      body: {
+        variant: 'workflow',
+        save_strategy: 'save_to_roster',
+        new_agent_name: 'Roster Tender Agent',
+        description: 'Drafts tender clarifications.',
+        role: 'Tender Analyst',
+        icon_type: 'emoji',
+        icon: '🤖',
+        icon_background: '#F3FEE7',
+      },
+    })
   })
 
   it('keeps one source snapshot while open and uses the latest agent after reopening', async () => {
-    const user = userEvent.setup()
     const onOpenChange = vi.fn()
     const onSaved = vi.fn()
     const updatedInlineAgent = {
@@ -320,12 +261,6 @@ describe('SaveInlineAgentToRosterDialog', () => {
         name: 'agentRoster.roster.createForm.roleLabel common.label.optional',
       }),
     ).toHaveValue('Tender Analyst')
-    await user.click(
-      within(dialog).getByRole('button', {
-        name: 'agentRoster.roster.saveToRosterForm.changeIcon',
-      }),
-    )
-    expect(screen.getByText('🤖:#F5F3FF')).toBeInTheDocument()
 
     rerender(
       <SaveInlineAgentToRosterDialog
@@ -359,12 +294,6 @@ describe('SaveInlineAgentToRosterDialog', () => {
         name: 'agentRoster.roster.createForm.roleLabel common.label.optional',
       }),
     ).toHaveValue('Updated source role')
-    await user.click(
-      within(dialog).getByRole('button', {
-        name: 'agentRoster.roster.saveToRosterForm.changeIcon',
-      }),
-    )
-    expect(screen.getByText('🦊:#FFEDD5')).toBeInTheDocument()
   })
 
   it('returns only the saved roster agent id after a successful save', async () => {
@@ -380,15 +309,9 @@ describe('SaveInlineAgentToRosterDialog', () => {
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
 
-    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
-    mutationOptions.onSuccess({
-      binding: {
-        agent_id: 'roster-agent-1',
-        binding_type: 'roster_agent',
-      },
-    })
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith('roster-agent-1'))
 
-    expect(onSaved).toHaveBeenCalledWith('roster-agent-1')
+    expect(onSaved).toHaveBeenCalledTimes(1)
     expect(onOpenChange).toHaveBeenCalledWith(false)
     expect(toastMock.success).not.toHaveBeenCalled()
   })

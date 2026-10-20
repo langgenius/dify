@@ -552,7 +552,7 @@ class TestConversationServiceSummarization:
         mock_llm_generator.return_value = generated_name
 
         # Act
-        result = ConversationService.auto_generate_name(app_model, conversation, session=db_session_with_containers)
+        ConversationService.auto_generate_name(app_model, conversation, session=db_session_with_containers)
 
         # Assert
         assert conversation.name == generated_name  # Name updated on conversation object
@@ -609,7 +609,7 @@ class TestConversationServiceSummarization:
         mock_llm_generator.side_effect = Exception("LLM service unavailable")
 
         # Act
-        result = ConversationService.auto_generate_name(app_model, conversation, session=db_session_with_containers)
+        ConversationService.auto_generate_name(app_model, conversation, session=db_session_with_containers)
 
         # Assert
         assert conversation.name == original_name  # Name remains unchanged
@@ -636,7 +636,7 @@ class TestConversationServiceSummarization:
         mock_naive_utc_now.return_value = mock_time
 
         # Act
-        result = ConversationService.rename(
+        ConversationService.rename(
             app_model=app_model,
             conversation_id=conversation.id,
             user=user,

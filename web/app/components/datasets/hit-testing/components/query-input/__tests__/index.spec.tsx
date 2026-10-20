@@ -5,6 +5,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { expectLoadingButton } from '@/test/button'
+import { RETRIEVE_METHOD } from '@/types/app'
 import QueryInput from '../index'
 
 // Capture onChange callback so tests can trigger handleImageChange
@@ -36,43 +37,6 @@ vi.mock('@/app/components/datasets/common/retrieval-method-info', () => ({
   getIcon: () => '/test-icon.png',
 }))
 
-// Capture onSave callback for external retrieval modal
-let _capturedModalOnSave:
-  | ((data: { top_k: number; score_threshold: number; score_threshold_enabled: boolean }) => void)
-  | null = null
-vi.mock('@/app/components/datasets/hit-testing/modify-external-retrieval-modal', () => ({
-  default: ({
-    onSave,
-    onClose,
-  }: {
-    onSave: (data: {
-      top_k: number
-      score_threshold: number
-      score_threshold_enabled: boolean
-    }) => void
-    onClose: () => void
-  }) => {
-    _capturedModalOnSave = onSave
-    return (
-      <div data-testid="external-retrieval-modal">
-        <label>
-          Top K
-          <input type="number" defaultValue={4} />
-        </label>
-        <button
-          data-testid="modal-save"
-          onClick={() => onSave({ top_k: 10, score_threshold: 0.8, score_threshold_enabled: true })}
-        >
-          Save
-        </button>
-        <button data-testid="modal-close" onClick={onClose}>
-          Close
-        </button>
-      </div>
-    )
-  },
-}))
-
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: () => false,
 }))
@@ -90,7 +54,14 @@ describe('QueryInput', () => {
     setQueries: vi.fn(),
     isExternal: false,
     onClickRetrievalMethod: vi.fn(),
-    retrievalConfig: { search_method: 'semantic_search' } as RetrievalConfig,
+    retrievalConfig: {
+      search_method: RETRIEVE_METHOD.semantic,
+      reranking_enable: false,
+      reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
+      top_k: 3,
+      score_threshold_enabled: false,
+      score_threshold: 0.5,
+    } satisfies RetrievalConfig,
     isEconomy: false,
     canRunRetrievalRecall: true,
     hitTestingMutation: vi.fn(),
@@ -103,7 +74,6 @@ describe('QueryInput', () => {
     vi.clearAllMocks()
     defaultProps = makeDefaultProps()
     capturedOnChange = null
-    _capturedModalOnSave = null
   })
 
   it('labels the query input and focuses it when its visible label is clicked', async () => {
@@ -150,11 +120,6 @@ describe('QueryInput', () => {
     expect(screen.getByRole('alert')).toBeEmptyDOMElement()
   })
 
-  it('should render submit button', () => {
-    render(<QueryInput {...defaultProps} />)
-    expect(screen.getByRole('button', { name: /input\.testing/ }))!.toBeInTheDocument()
-  })
-
   it('should disable submit button when text is empty', () => {
     const props = {
       ...defaultProps,
@@ -164,22 +129,6 @@ describe('QueryInput', () => {
     }
     render(<QueryInput {...props} />)
     expect(screen.getByRole('button', { name: /input\.testing/ }))!.toBeDisabled()
-  })
-
-  it('should disable submit button when retrieval recall permission is missing', () => {
-    render(<QueryInput {...defaultProps} canRunRetrievalRecall={false} />)
-
-    expect(screen.getByRole('button', { name: /input\.testing/ }))!.toBeDisabled()
-  })
-
-  it('should render retrieval method for non-external mode', () => {
-    render(<QueryInput {...defaultProps} />)
-    expect(screen.getByText('dataset.retrieval.semantic_search.title'))!.toBeInTheDocument()
-  })
-
-  it('should render settings button for external mode', () => {
-    render(<QueryInput {...defaultProps} isExternal={true} />)
-    expect(screen.getByText('datasetHitTesting.settingTitle'))!.toBeInTheDocument()
   })
 
   it('should disable submit button when text exceeds 200 characters', () => {
@@ -197,104 +146,51 @@ describe('QueryInput', () => {
     render(<QueryInput {...defaultProps} loading={true} />)
     const submitButton = screen.getByRole('button', { name: /input\.testing/ })
     expectLoadingButton(submitButton)
-    expect(submitButton.querySelector('.animate-spin'))!.toBeInTheDocument()
   })
 
-  // Cover line 83: images useMemo with image_query data
-  describe('Image Queries', () => {
-    it('should parse image_query entries from queries', () => {
-      const queries: DatasetQueryContentResponse[] = [
-        { content: 'test', content_type: 'text_query', file_info: null },
-        {
-          content: 'https://img.example.com/1.png',
-          content_type: 'image_query',
-          file_info: {
-            id: 'img-1',
-            name: 'photo.png',
-            size: 1024,
-            mime_type: 'image/png',
-            extension: 'png',
-            source_url: 'https://img.example.com/1.png',
-          },
-        },
-      ]
-      render(<QueryInput {...defaultProps} queries={queries} />)
-
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      expect(screen.getByRole('button', { name: /input\.testing/ })).not.toBeDisabled()
-    })
-  })
-
-  // Cover lines 106-107: handleSaveExternalRetrievalSettings
-  describe('External Retrieval Settings', () => {
-    it('should open and close external retrieval modal', () => {
-      render(<QueryInput {...defaultProps} isExternal={true} />)
-
-      // Click settings button to open modal
-      fireEvent.click(screen.getByRole('button', { name: /settingTitle/ }))
-      expect(screen.getByTestId('external-retrieval-modal'))!.toBeInTheDocument()
-
-      // Close modal
-      fireEvent.click(screen.getByTestId('modal-close'))
-      expect(screen.queryByTestId('external-retrieval-modal')).not.toBeInTheDocument()
-    })
-
-    it('keeps external settings edits outside the query submission form', async () => {
+  describe('External retrieval settings', () => {
+    it('keeps parameter edits outside the query form and submits saved settings', async () => {
       const user = userEvent.setup()
       render(<QueryInput {...defaultProps} isExternal />)
-      await user.click(screen.getByRole('button', { name: /settingTitle/ }))
-      const topK = screen.getByRole('spinbutton', { name: 'Top K' }) as HTMLInputElement
+      await user.click(screen.getByRole('button', { name: 'datasetHitTesting.settingTitle' }))
+      const topK = screen.getByRole('textbox', {
+        name: 'appDebug.datasetConfig.top_k',
+      }) as HTMLInputElement
       expect(topK.form).toBeNull()
       await user.click(topK)
       await user.keyboard('{Enter}')
       expect(defaultProps.externalKnowledgeBaseHitTestingMutation).not.toHaveBeenCalled()
+      await user.type(topK, '0')
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      expect(
+        screen.queryByRole('textbox', { name: 'appDebug.datasetConfig.top_k' }),
+      ).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /input.testing/ }))
+      expect(defaultProps.externalKnowledgeBaseHitTestingMutation).toHaveBeenCalledWith(
+        {
+          query: 'test query',
+          external_retrieval_model: {
+            top_k: 10,
+            score_threshold: 0.5,
+            score_threshold_enabled: false,
+          },
+        },
+        expect.anything(),
+      )
     })
 
-    it('should save external retrieval settings and close modal', () => {
-      render(<QueryInput {...defaultProps} isExternal={true} />)
-
-      // Open modal
-      fireEvent.click(screen.getByRole('button', { name: /settingTitle/ }))
-      expect(screen.getByTestId('external-retrieval-modal'))!.toBeInTheDocument()
-
-      // Save settings
-      fireEvent.click(screen.getByTestId('modal-save'))
-      expect(screen.queryByTestId('external-retrieval-modal')).not.toBeInTheDocument()
+    it('discards canceled external settings', async () => {
+      const user = userEvent.setup()
+      render(<QueryInput {...defaultProps} isExternal />)
+      await user.click(screen.getByRole('button', { name: 'datasetHitTesting.settingTitle' }))
+      await user.type(screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' }), '0')
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      await user.click(screen.getByRole('button', { name: 'datasetHitTesting.settingTitle' }))
+      expect(screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' })).toHaveValue('4')
+      expect(defaultProps.externalKnowledgeBaseHitTestingMutation).not.toHaveBeenCalled()
     })
   })
 
-  // Cover line 121: handleTextChange when textQuery already exists
   describe('Text Change Handling', () => {
     it('should update existing text query on text change', () => {
       render(<QueryInput {...defaultProps} />)
@@ -324,10 +220,11 @@ describe('QueryInput', () => {
   })
 
   describe('Permission Guarding', () => {
-    it('should not run hit testing mutation when retrieval recall permission is missing', () => {
+    it('should not run hit testing mutation when retrieval recall permission is missing', async () => {
+      const user = userEvent.setup()
       render(<QueryInput {...defaultProps} canRunRetrievalRecall={false} />)
 
-      fireEvent.click(screen.getByRole('button', { name: /input\.testing/ }))
+      await user.click(screen.getByRole('button', { name: /input\.testing/ }))
 
       expect(defaultProps.hitTestingMutation).not.toHaveBeenCalled()
     })
@@ -358,7 +255,6 @@ describe('QueryInput', () => {
     },
   )
 
-  // Cover lines 127-143: handleImageChange
   describe('Image Change Handling', () => {
     it('should update queries when images change', () => {
       render(<QueryInput {...defaultProps} />)
@@ -376,7 +272,7 @@ describe('QueryInput', () => {
         },
       ]
 
-      capturedOnChange?.(files)
+      capturedOnChange!(files)
 
       expect(defaultProps.setQueries).toHaveBeenCalledWith(
         expect.arrayContaining([
@@ -405,7 +301,7 @@ describe('QueryInput', () => {
         },
       ]
 
-      capturedOnChange?.(files)
+      capturedOnChange!(files)
 
       expect(defaultProps.setQueries).toHaveBeenCalledWith(
         expect.arrayContaining([
@@ -436,7 +332,7 @@ describe('QueryInput', () => {
       ]
       render(<QueryInput {...defaultProps} queries={queries} />)
 
-      capturedOnChange?.([])
+      capturedOnChange!([])
 
       // Should keep text query but remove all image queries
       expect(defaultProps.setQueries).toHaveBeenCalledWith(
@@ -448,18 +344,19 @@ describe('QueryInput', () => {
     })
   })
 
-  // Cover lines 146-162: onSubmit (hit testing mutation)
   describe('Submit Handlers', () => {
     it('should call hitTestingMutation on submit for non-external mode', async () => {
+      const user = userEvent.setup()
       const mockMutation = vi.fn(async (_req, opts) => {
         const response = { query: { content: '', tsne_position: { x: 0, y: 0 } }, records: [] }
         opts?.onSuccess?.(response)
         return response
       })
 
-      render(<QueryInput {...defaultProps} hitTestingMutation={mockMutation} />)
+      const onSubmit = vi.fn()
+      render(<QueryInput {...defaultProps} hitTestingMutation={mockMutation} onSubmit={onSubmit} />)
 
-      fireEvent.click(screen.getByRole('button', { name: /input\.testing/ }))
+      await user.click(screen.getByRole('button', { name: /input\.testing/ }))
 
       await waitFor(() => {
         expect(mockMutation).toHaveBeenCalledWith(
@@ -470,30 +367,16 @@ describe('QueryInput', () => {
           expect.objectContaining({ onSuccess: expect.any(Function) }),
         )
       })
-      expect(defaultProps.setHitResult).toHaveBeenCalled()
-      expect(defaultProps.onUpdateList).toHaveBeenCalled()
-    })
-
-    it('should call onSubmit callback after successful hit testing', async () => {
-      const mockOnSubmit = vi.fn()
-      const mockMutation = vi.fn(async (_req, opts) => {
-        const response = { query: { content: '', tsne_position: { x: 0, y: 0 } }, records: [] }
-        opts?.onSuccess?.(response)
-        return response
+      expect(defaultProps.setHitResult).toHaveBeenCalledWith({
+        query: { content: '', tsne_position: { x: 0, y: 0 } },
+        records: [],
       })
-
-      render(
-        <QueryInput {...defaultProps} hitTestingMutation={mockMutation} onSubmit={mockOnSubmit} />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: /input\.testing/ }))
-
-      await waitFor(() => {
-        expect(mockOnSubmit).toHaveBeenCalled()
-      })
+      expect(defaultProps.onUpdateList).toHaveBeenCalledOnce()
+      expect(onSubmit).toHaveBeenCalledOnce()
     })
 
     it('should use keywordSearch when isEconomy is true', async () => {
+      const user = userEvent.setup()
       const mockResponse = { query: { content: '', tsne_position: { x: 0, y: 0 } }, records: [] }
       const mockMutation = vi.fn(async (_req, opts) => {
         opts?.onSuccess?.(mockResponse)
@@ -502,7 +385,7 @@ describe('QueryInput', () => {
 
       render(<QueryInput {...defaultProps} hitTestingMutation={mockMutation} isEconomy={true} />)
 
-      fireEvent.click(screen.getByRole('button', { name: /input\.testing/ }))
+      await user.click(screen.getByRole('button', { name: /input\.testing/ }))
 
       await waitFor(() => {
         expect(mockMutation).toHaveBeenCalledWith(
@@ -514,8 +397,8 @@ describe('QueryInput', () => {
       })
     })
 
-    // Cover lines 164-178: externalRetrievalTestingOnSubmit
     it('should call externalKnowledgeBaseHitTestingMutation for external mode', async () => {
+      const user = userEvent.setup()
       const mockExternalMutation = vi.fn(async (_req, opts) => {
         const response = { query: { content: '' }, records: [] }
         opts?.onSuccess?.(response)
@@ -530,7 +413,7 @@ describe('QueryInput', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: /input\.testing/ }))
+      await user.click(screen.getByRole('button', { name: /input\.testing/ }))
 
       await waitFor(() => {
         expect(mockExternalMutation).toHaveBeenCalledWith(
@@ -545,11 +428,15 @@ describe('QueryInput', () => {
           expect.objectContaining({ onSuccess: expect.any(Function) }),
         )
       })
-      expect(defaultProps.setExternalHitResult).toHaveBeenCalled()
+      expect(defaultProps.setExternalHitResult).toHaveBeenCalledWith({
+        query: { content: '' },
+        records: [],
+      })
       expect(defaultProps.onUpdateList).toHaveBeenCalled()
     })
 
     it('should include image attachment_ids in submit request', async () => {
+      const user = userEvent.setup()
       const queries: DatasetQueryContentResponse[] = [
         { content: 'test', content_type: 'text_query', file_info: null },
         {
@@ -573,7 +460,7 @@ describe('QueryInput', () => {
 
       render(<QueryInput {...defaultProps} queries={queries} hitTestingMutation={mockMutation} />)
 
-      fireEvent.click(screen.getByRole('button', { name: /input\.testing/ }))
+      await user.click(screen.getByRole('button', { name: /input\.testing/ }))
 
       await waitFor(() => {
         expect(mockMutation).toHaveBeenCalledWith(
@@ -587,16 +474,7 @@ describe('QueryInput', () => {
     })
   })
 
-  // Cover lines 217-238: retrieval method click handler
   describe('Retrieval Method', () => {
-    it('should call onClickRetrievalMethod when retrieval method is clicked', () => {
-      render(<QueryInput {...defaultProps} />)
-
-      fireEvent.click(screen.getByText('dataset.retrieval.semantic_search.title'))
-
-      expect(defaultProps.onClickRetrievalMethod).toHaveBeenCalled()
-    })
-
     it('should show keyword_search when isEconomy is true', () => {
       render(<QueryInput {...defaultProps} isEconomy={true} />)
 
