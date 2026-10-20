@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import pytest
@@ -39,6 +40,7 @@ def test_deletion_invalidates_cache_after_commit_and_not_on_failure(
     service = AppApiKeyService(
         keys=AppApiKeyRepository(session_factory=sqlite_session_factory),
         cache=cache,
+        max_keys=10,
     )
     key = service.create_key(context, "app")
 
@@ -202,3 +204,91 @@ def test_agent_resolution_checks_entire_owner_chain(
     sqlite_session.commit()
     with pytest.raises(ApiKeyResourceNotFoundError, match="Agent not found"):
         service.list_agent_keys(context, "agent")
+
+
+@pytest.mark.parametrize("limit", [3, 10])
+def test_configured_limit_through_composition(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+    limit: int,
+) -> None:
+    from services.auth.api_key_contracts import ApiKeyLimitExceededError
+
+    config_overrides(APP_API_KEY_MAX_KEYS_PER_APP=limit)
+    sqlite_session.add_all(
+        [
+            App(id=name, tenant_id="tenant", name=name, mode=AppMode.CHAT, enable_site=False, enable_api=True)
+            for name in ("app", "other")
+        ]
+    )
+    sqlite_session.commit()
+    service = build_app_api_key_service(database_client=sqlite_session_factory)
+    context = RequestContext("request", None, "actor", "tenant")
+    for _ in range(limit):
+        service.create_key(context, "app")
+    with pytest.raises(ApiKeyLimitExceededError):
+        service.create_key(context, "app")
+    assert len(service.list_keys(context, "app")) == limit
+    assert service.create_key(context, "other") in service.list_keys(context, "other")
+
+
+def test_lowering_limit_preserves_keys_and_deletion_restores_capacity(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from services.api_token_service import ApiTokenCache
+    from services.auth.api_key_contracts import ApiKeyLimitExceededError
+
+    sqlite_session.add(
+        App(id="app", tenant_id="tenant", name="App", mode=AppMode.CHAT, enable_site=False, enable_api=True)
+    )
+    sqlite_session.commit()
+    context = RequestContext("request", None, "actor", "tenant")
+    config_overrides(APP_API_KEY_MAX_KEYS_PER_APP=3)
+    initial = build_app_api_key_service(database_client=sqlite_session_factory)
+    keys = [initial.create_key(context, "app") for _ in range(3)]
+    config_overrides(APP_API_KEY_MAX_KEYS_PER_APP=2)
+    lowered = build_app_api_key_service(database_client=sqlite_session_factory)
+    assert set(lowered.list_keys(context, "app")) == set(keys)
+    with pytest.raises(ApiKeyLimitExceededError):
+        lowered.create_key(context, "app")
+    monkeypatch.setattr(ApiTokenCache, "delete", lambda *_args: True)
+    for key in keys[:2]:
+        lowered.delete_key(context, "app", key.id)
+    lowered.create_key(context, "app")
+    assert len(lowered.list_keys(context, "app")) == 2
+
+
+def test_agent_and_app_share_configured_capacity(
+    service: AppApiKeyService,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+) -> None:
+    from services.auth.api_key_contracts import ApiKeyLimitExceededError
+
+    context = RequestContext("request", None, "actor", "tenant")
+    service.create_key(context, "app")
+    agent = _persist_agent(sqlite_session)
+    agent.active_config_snapshot_id = "snapshot"
+    sqlite_session.add(
+        AgentConfigRevision(
+            tenant_id="tenant",
+            agent_id="agent",
+            current_snapshot_id="snapshot",
+            revision=1,
+            operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+        )
+    )
+    sqlite_session.commit()
+    config_overrides(APP_API_KEY_MAX_KEYS_PER_APP=2)
+    configured = build_app_api_key_service(database_client=sqlite_session_factory)
+    configured.create_agent_key(context, "agent")
+    assert configured.list_agent_keys(context, "agent") == configured.list_keys(context, "app")
+    with pytest.raises(ApiKeyLimitExceededError):
+        configured.create_agent_key(context, "agent")
+    with pytest.raises(ApiKeyLimitExceededError):
+        configured.create_key(context, "app")

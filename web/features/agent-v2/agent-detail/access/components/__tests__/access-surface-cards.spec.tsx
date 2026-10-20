@@ -1058,6 +1058,7 @@ describe('Agent access surface cards', () => {
       const user = userEvent.setup()
       mocks.apiAccessQueryFn.mockResolvedValue(createAgentApiAccessResponse({ api_key_count: 1 }))
       mocks.apiKeysQueryFn.mockResolvedValue({
+        max_keys: 10,
         data: [
           {
             created_at: 1781660000,

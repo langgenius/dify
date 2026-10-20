@@ -14,7 +14,7 @@ from controllers.console.error import ApiKeyLimitExceededHTTPError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission
 from extensions.ext_application_services import application_services
-from fields.api_key_fields import ApiKeyItem, ApiKeyList, build_masked_api_key_list
+from fields.api_key_fields import ApiKeyItem, ApiKeyList, ApiKeyListWithLimitResponse, build_masked_api_key_list
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
@@ -32,7 +32,7 @@ from services.knowledge.api_key_service import UnknownDatasetIdsError
 API_KEY_EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
 API_KEY_DELETE_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
 
-register_response_schema_models(console_ns, ApiKeyItem, ApiKeyList)
+register_response_schema_models(console_ns, ApiKeyItem, ApiKeyList, ApiKeyListWithLimitResponse)
 
 
 @contextmanager
@@ -73,7 +73,9 @@ class AppApiKeyListResource(Resource):
     @console_ns.doc("get_app_api_keys")
     @console_ns.doc(description="Get all API keys for an app")
     @console_ns.doc(params={"resource_id": "App ID"})
-    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
+    @console_ns.response(
+        200, "API keys retrieved successfully", console_ns.models[ApiKeyListWithLimitResponse.__name__]
+    )
     @console_account_admission(
         allowed_roles=API_KEY_EDIT_ROLES,
         rbac_checks=[
@@ -84,7 +86,9 @@ class AppApiKeyListResource(Resource):
     def get(self, request_context: RequestContext, resource_id: UUID) -> dict[str, object]:
         with api_key_errors():
             keys = application_services().app_api_keys.list_keys(request_context, str(resource_id))
-        return dump_response(ApiKeyList, {"data": keys})
+        return dump_response(
+            ApiKeyListWithLimitResponse, {"data": keys, "max_keys": application_services().app_api_keys.max_keys}
+        )
 
     @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.doc("create_app_api_key")

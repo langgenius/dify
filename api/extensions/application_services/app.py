@@ -96,4 +96,5 @@ def build_app_api_key_service(*, database_client: sessionmaker[Session]) -> AppA
     return AppApiKeyService(
         keys=AppApiKeyRepository(session_factory=database_client),
         cache=ApiTokenCache,
+        max_keys=dify_config.APP_API_KEY_MAX_KEYS_PER_APP,
     )

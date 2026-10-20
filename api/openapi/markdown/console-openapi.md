@@ -545,7 +545,7 @@ Check if activation token is valid
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent service API keys | **application/json**: [ApiKeyList](#apikeylist)<br> |
+| 200 | Agent service API keys | **application/json**: [ApiKeyListWithLimitResponse](#apikeylistwithlimitresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/api-keys
@@ -5337,7 +5337,7 @@ Get all API keys for an app
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
+| 200 | API keys retrieved successfully | **application/json**: [ApiKeyListWithLimitResponse](#apikeylistwithlimitresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{resource_id}/api-keys
@@ -5685,7 +5685,7 @@ Get dataset API keys
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
+| 200 | API keys retrieved successfully | **application/json**: [ApiKeyListWithLimitResponse](#apikeylistwithlimitresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/api-keys
@@ -17547,6 +17547,13 @@ Auth Token is invalid or account already activated, please check again.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [ApiKeyItem](#apikeyitem) ] |  | Yes |
+
+#### ApiKeyListWithLimitResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ApiKeyItem](#apikeyitem) ] |  | Yes |
+| max_keys | integer |  | Yes |
 
 #### ApiProviderDetailResponse
 

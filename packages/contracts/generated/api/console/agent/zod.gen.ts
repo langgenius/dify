@@ -95,10 +95,11 @@ export const zApiKeyItem = z.object({
 })
 
 /**
- * ApiKeyList
+ * ApiKeyListWithLimitResponse
  */
-export const zApiKeyList = z.object({
+export const zApiKeyListWithLimitResponse = z.object({
   data: z.array(zApiKeyItem),
+  max_keys: z.int().gt(0),
 })
 
 /**
@@ -3610,7 +3611,7 @@ export const zGetAgentByAgentIdApiKeysPath = z.object({
 /**
  * Agent service API keys
  */
-export const zGetAgentByAgentIdApiKeysResponse = zApiKeyList
+export const zGetAgentByAgentIdApiKeysResponse = zApiKeyListWithLimitResponse
 
 export const zPostAgentByAgentIdApiKeysPath = z.object({
   agent_id: z.uuid(),

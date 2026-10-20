@@ -41,6 +41,7 @@ KEY_ID = UUID("00000000-0000-0000-0000-000000000002")
 
 @dataclass
 class RecordingKeys:
+    max_keys: int = 3
     calls: list[tuple[str, RequestContext, str, str, str | None]] = field(default_factory=list)
     error: Exception | None = None
 
@@ -85,6 +86,7 @@ class RecordingKeys:
 @dataclass
 class RecordingDatasetKeys:
     recorder: RecordingKeys
+    workspace_max_keys: int = 1000
 
     def list_keys(self, context: RequestContext, dataset_id: str) -> tuple[ApiKeyRecord, ...]:
         return (self.recorder._record("list", context, "dataset", dataset_id),)
@@ -324,3 +326,38 @@ def test_both_http_routes_enforce_the_same_key_limit(persisted_keys_app: KeysApp
         assert response.json is not None
         assert response.json["code"] == "max_keys_exceeded"
     assert len(sqlite_session.scalars(select(ApiToken)).all()) == 10
+
+
+@pytest.mark.parametrize(
+    ("path", "limit"), [(f"/app/{RESOURCE_ID}", 3), (f"/agent/{RESOURCE_ID}", 3), ("/workspace-keys", 1000)]
+)
+def test_list_returns_configured_max_keys(keys_app: KeysApp, path: str, limit: int) -> None:
+    app, _, _ = keys_app
+    response = app.test_client().get(path)
+    assert response.status_code == 200
+    assert response.json is not None
+    assert response.json["max_keys"] == limit
+
+
+def test_legacy_dataset_list_has_no_limit_metadata(keys_app: KeysApp) -> None:
+    app, _, _ = keys_app
+    response = app.test_client().get(f"/dataset/{RESOURCE_ID}")
+    assert response.status_code == 200
+    assert response.json is not None
+    assert set(response.json) == {"data"}
+
+
+@pytest.mark.parametrize("kind", ["app", "agent", "workspace"])
+def test_empty_list_returns_configured_limit(keys_app: KeysApp, monkeypatch: pytest.MonkeyPatch, kind: str) -> None:
+    app, _, _ = keys_app
+    if kind == "workspace":
+        monkeypatch.setattr(RecordingDatasetKeys, "list_workspace_keys", lambda *_args: ())
+        path = "/workspace-keys"
+        limit = 1000
+    else:
+        monkeypatch.setattr(RecordingKeys, "list_keys" if kind == "app" else "list_agent_keys", lambda *_args: ())
+        path = f"/{kind}/{RESOURCE_ID}"
+        limit = 3
+    response = app.test_client().get(path)
+    assert response.status_code == 200
+    assert response.json == {"data": [], "max_keys": limit}

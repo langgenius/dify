@@ -3,12 +3,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  API_KEY_LIMIT,
   ApiKeyCreateAction,
   ApiKeyDialogContent,
 } from '@/app/components/api-key/api-key-dialog-content'
@@ -31,6 +30,7 @@ export function ServiceApi({ apiBaseUrl }: ServiceApiProps) {
   const canManageApiKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
   const createKey = useMutation(consoleQuery.datasets.apiKeys.post.mutationOptions())
   const deleteKey = useMutation(consoleQuery.datasets.apiKeys.byApiKeyId.delete.mutationOptions())
+  const keys = useQuery(consoleQuery.datasets.apiKeys.get.queryOptions({ enabled: false }))
   const pending = createKey.isPending || deleteKey.isPending
 
   return (
@@ -69,10 +69,13 @@ export function ServiceApi({ apiBaseUrl }: ServiceApiProps) {
           </PopoverContent>
         </Popover>
         <ApiKeyDialogContent
-          limitDescription={t(($) => $['apiKeyModal.workspaceKeyLimit'], {
-            ns: 'appApi',
-            limit: API_KEY_LIMIT,
-          })}
+          limitDescription={
+            keys.data &&
+            t(($) => $['apiKeyModal.workspaceKeyLimit'], {
+              ns: 'appApi',
+              limit: keys.data.max_keys,
+            })
+          }
           closeDisabled={pending}
           finalFocus={triggerRef}
         >
@@ -113,11 +116,13 @@ function DatasetApiKeys({
   onCreate,
   onDelete,
 }: DatasetApiKeysProps) {
-  const keys = useSuspenseQuery(consoleQuery.datasets.apiKeys.get.queryOptions())
+  const keys = useSuspenseQuery(
+    consoleQuery.datasets.apiKeys.get.queryOptions({ refetchOnMount: 'always' }),
+  )
   const [scopeOpen, setScopeOpen] = useState(false)
   const [createdOpen, setCreatedOpen] = useState(false)
   const createButtonRef = useRef<HTMLButtonElement>(null)
-  const atLimit = keys.data.data.length >= API_KEY_LIMIT
+  const atLimit = keys.data.data.length >= keys.data.max_keys
   return (
     <ApiKeyListContent
       apiKeys={keys.data.data}
@@ -135,7 +140,7 @@ function DatasetApiKeys({
       <ApiKeyCreateAction
         ref={createButtonRef}
         atLimit={atLimit}
-        disabled={!canManage}
+        disabled={!canManage || keys.isError}
         focusableWhenDisabled={canManage}
         loading={isCreating}
         onClick={() => setScopeOpen(true)}
@@ -151,7 +156,7 @@ function DatasetApiKeys({
         open={scopeOpen}
         onOpenChange={setScopeOpen}
         isCreating={isCreating}
-        createDisabled={!canManage || atLimit}
+        createDisabled={!canManage || keys.isError || atLimit}
         finalFocus={() => (createdOpen ? false : createButtonRef.current)}
         onConfirm={(datasetIds) =>
           onCreate(datasetIds, () => {

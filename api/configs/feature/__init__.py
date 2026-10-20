@@ -1734,8 +1734,19 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
     )
 
 
+class ApiKeyConfig(BaseSettings):
+    APP_API_KEY_MAX_KEYS_PER_APP: PositiveInt = Field(
+        default=10, description="Maximum API keys per App, including its Agent API keys."
+    )
+    DATASET_API_KEY_MAX_KEYS_PER_WORKSPACE: PositiveInt = Field(
+        default=10,
+        description="Workspace dataset-key creation threshold. Legacy dataset creation retains its threshold of 10.",
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
+    ApiKeyConfig,
     AppExecutionConfig,
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
     CodeExecutionSandboxConfig,

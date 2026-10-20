@@ -7,7 +7,6 @@ import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/re
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  API_KEY_LIMIT,
   ApiKeyCreateAction,
   ApiKeyDialogContent,
 } from '@/app/components/api-key/api-key-dialog-content'
@@ -63,7 +62,9 @@ export function ApiSecretKeyButton({
       </DialogTrigger>
       <ApiKeyDialogContent
         closeDisabled={pending}
-        limitDescription={t(($) => $['apiKeyModal.keyLimit'], { limit: API_KEY_LIMIT })}
+        limitDescription={
+          keys.data && t(($) => $['apiKeyModal.keyLimit'], { limit: keys.data.max_keys })
+        }
       >
         <AppApiKeys
           appId={appId}
@@ -104,11 +105,12 @@ function AppApiKeys({
   const keys = useSuspenseQuery(
     consoleQuery.apps.byResourceId.apiKeys.get.queryOptions({
       input: { params: { resource_id: appId } },
+      refetchOnMount: 'always',
     }),
   )
   const [createdOpen, setCreatedOpen] = useState(false)
   const createButtonRef = useRef<HTMLButtonElement>(null)
-  const atLimit = keys.data.data.length >= API_KEY_LIMIT
+  const atLimit = keys.data.data.length >= keys.data.max_keys
   return (
     <ApiKeyListContent
       apiKeys={keys.data.data}
@@ -126,7 +128,7 @@ function AppApiKeys({
       <ApiKeyCreateAction
         ref={createButtonRef}
         atLimit={atLimit}
-        disabled={!canManage}
+        disabled={!canManage || keys.isError}
         focusableWhenDisabled={canManage}
         loading={isCreating}
         onClick={() => onCreate(() => setCreatedOpen(true))}
