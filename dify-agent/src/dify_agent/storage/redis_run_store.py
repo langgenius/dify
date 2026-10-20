@@ -342,10 +342,21 @@ class RedisRunStore(RunEventSink):
         )
 
     async def get_events(self, run_id: str, *, after: str = "0-0", limit: int = 100) -> RunEventsResponse:
-        """Read a bounded page of events after ``after`` cursor."""
+        """Read a nonblocking page strictly after ``after`` using Redis 6.0-compatible XREAD.
+
+        An empty page preserves the supplied cursor; a missing run raises
+        ``RunNotFoundError``.
+        """
         await self.get_run(run_id)
-        raw_events = await self.redis.xrange(run_events_key(self.prefix, run_id), min=f"({after}", count=limit)
-        events = [self._decode_event(run_id, raw_id, fields) for raw_id, fields in raw_events]
+        response = await self.redis.xread(
+            {run_events_key(self.prefix, run_id): after},
+            count=limit,
+        )
+        events = [
+            self._decode_event(run_id, raw_id, fields)
+            for _stream_name, entries in response
+            for raw_id, fields in entries
+        ]
         next_cursor = events[-1].id if events else after
         return RunEventsResponse(run_id=run_id, events=events, next_cursor=next_cursor)
 
