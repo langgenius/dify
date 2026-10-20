@@ -11,8 +11,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.plugin.entities.plugin_daemon import CredentialType
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from repositories.credentials.query_repository import CredentialQueryRepository
-from services.tools import legacy_builtin_tools_manage_service as service_module
-from services.tools.legacy_builtin_tools_manage_service import BuiltinToolManageService
+from repositories.tools.provider_repository import ToolProviderRepository
+from services.tools import builtin_tools_manage_service as service_module
+from services.tools.builtin import credentials as credential_module
+from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 
 @pytest.fixture
@@ -97,12 +99,13 @@ class TestListBuiltinToolProviderTools:
         monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", MagicMock(return_value=controller))
         convert = MagicMock(return_value=MagicMock())
         monkeypatch.setattr(service_module.ToolTransformService, "convert_tool_entity_to_api_entity", convert)
-        monkeypatch.setattr(service_module.ToolLabelManager, "get_tool_labels", MagicMock(return_value=[]))
+        controller.tool_labels = ["search"]
 
         result = BuiltinToolManageService.list_builtin_tool_provider_tools("tenant-1", "google")
 
         assert len(result) == 2
         assert convert.call_count == 2
+        assert all(call.kwargs["labels"] == ["search"] for call in convert.call_args_list)
 
     def test_empty_tools(self, monkeypatch: pytest.MonkeyPatch) -> None:
         controller = MagicMock()
@@ -321,10 +324,14 @@ class TestGetOauthClient:
         encrypter = MagicMock()
         encrypter.decrypt.return_value = {"client_id": "id", "client_secret": "secret"}
         monkeypatch.setattr(
-            service_module, "create_provider_encrypter", MagicMock(return_value=(encrypter, MagicMock()))
+            credential_module, "create_provider_encrypter", MagicMock(return_value=(encrypter, MagicMock()))
         )
 
-        result = BuiltinToolManageService.get_oauth_client("tenant-1", "google")
+        result = BuiltinToolManageService.get_oauth_client(
+            "tenant-1",
+            "google",
+            tool_providers=ToolProviderRepository(sessionmaker(repository_session.get_bind(), expire_on_commit=False)),
+        )
 
         assert result == {"client_id": "id", "client_secret": "secret"}
         encrypter.decrypt.assert_called_once_with({"encrypted": "data"})
@@ -339,12 +346,16 @@ class TestGetOauthClient:
         controller.get_oauth_client_schema.return_value = list[object]()
         monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", MagicMock(return_value=controller))
         monkeypatch.setattr(
-            service_module, "create_provider_encrypter", MagicMock(return_value=(MagicMock(), MagicMock()))
+            credential_module, "create_provider_encrypter", MagicMock(return_value=(MagicMock(), MagicMock()))
         )
         decrypt = MagicMock(return_value={"sys_key": "sys_val"})
-        monkeypatch.setattr(service_module, "decrypt_system_params", decrypt)
+        monkeypatch.setattr(credential_module, "decrypt_system_params", decrypt)
 
-        result = BuiltinToolManageService.get_oauth_client("tenant-1", "google")
+        result = BuiltinToolManageService.get_oauth_client(
+            "tenant-1",
+            "google",
+            tool_providers=ToolProviderRepository(sessionmaker(repository_session.get_bind(), expire_on_commit=False)),
+        )
 
         assert result == {"sys_key": "sys_val"}
         decrypt.assert_called_once_with("enc")

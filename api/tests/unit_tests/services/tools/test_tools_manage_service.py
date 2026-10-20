@@ -1,40 +1,54 @@
 from unittest.mock import MagicMock, patch
 
-from services.tools.legacy_tools_manage_service import ToolCommonService
+from services.tools.tools_manage_service import ToolCommonService
 
 
 class TestToolCommonService:
-    @patch("services.tools.legacy_tools_manage_service.ToolTransformService")
-    @patch("services.tools.legacy_tools_manage_service.ToolManager")
-    def test_list_tool_providers_transforms_and_returns(self, mock_manager, mock_transform):
+    @patch("services.tools.tools_manage_service.ToolTransformService")
+    @patch("services.tools.tools_manage_service.ToolManager")
+    def test_list_tool_providers_transforms_and_returns(
+        self, mock_manager, mock_transform, *, workflow_queries, tool_providers
+    ):
         mock_provider1 = MagicMock()
         mock_provider1.to_dict.return_value = {"name": "provider1"}
         mock_provider2 = MagicMock()
         mock_provider2.to_dict.return_value = {"name": "provider2"}
         mock_manager.list_providers_from_api.return_value = [mock_provider1, mock_provider2]
 
-        result = ToolCommonService.list_tool_providers("user-1", "tenant-1")
+        result = ToolCommonService.list_tool_providers(
+            "user-1", "tenant-1", workflow_queries=workflow_queries, tool_providers=tool_providers
+        )
 
-        mock_manager.list_providers_from_api.assert_called_once_with("user-1", "tenant-1", None)
+        mock_manager.list_providers_from_api.assert_called_once_with(
+            "user-1", "tenant-1", None, workflow_queries=workflow_queries, tool_providers=tool_providers
+        )
         assert mock_transform.repack_provider.call_count == 2
         assert result == [{"name": "provider1"}, {"name": "provider2"}]
 
-    @patch("services.tools.legacy_tools_manage_service.ToolTransformService")
-    @patch("services.tools.legacy_tools_manage_service.ToolManager")
-    def test_list_tool_providers_with_type_filter(self, mock_manager, mock_transform):
+    @patch("services.tools.tools_manage_service.ToolTransformService")
+    @patch("services.tools.tools_manage_service.ToolManager")
+    def test_list_tool_providers_with_type_filter(
+        self, mock_manager, mock_transform, *, workflow_queries, tool_providers
+    ):
         mock_manager.list_providers_from_api.return_value = []
 
-        result = ToolCommonService.list_tool_providers("user-1", "tenant-1", typ="builtin")
+        result = ToolCommonService.list_tool_providers(
+            "user-1", "tenant-1", typ="builtin", workflow_queries=workflow_queries, tool_providers=tool_providers
+        )
 
-        mock_manager.list_providers_from_api.assert_called_once_with("user-1", "tenant-1", "builtin")
+        mock_manager.list_providers_from_api.assert_called_once_with(
+            "user-1", "tenant-1", "builtin", workflow_queries=workflow_queries, tool_providers=tool_providers
+        )
         assert result == []
 
-    @patch("services.tools.legacy_tools_manage_service.ToolTransformService")
-    @patch("services.tools.legacy_tools_manage_service.ToolManager")
-    def test_list_tool_providers_empty(self, mock_manager, mock_transform):
+    @patch("services.tools.tools_manage_service.ToolTransformService")
+    @patch("services.tools.tools_manage_service.ToolManager")
+    def test_list_tool_providers_empty(self, mock_manager, mock_transform, *, workflow_queries, tool_providers):
         mock_manager.list_providers_from_api.return_value = []
 
-        result = ToolCommonService.list_tool_providers("u", "t")
+        result = ToolCommonService.list_tool_providers(
+            "u", "t", workflow_queries=workflow_queries, tool_providers=tool_providers
+        )
 
         assert result == []
         mock_transform.repack_provider.assert_not_called()

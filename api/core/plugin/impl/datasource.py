@@ -17,7 +17,7 @@ from core.plugin.entities.plugin_daemon import (
 from core.plugin.impl.base import BasePluginClient
 from core.schemas.resolver import resolve_dify_schema_refs
 from models.provider_ids import DatasourceProviderID, GenericProviderID
-from services.tools.legacy_tools_transform_service import ToolTransformService
+from services.tools.tools_transform_service import ToolTransformService
 
 
 class PluginDatasourceManager(BasePluginClient):

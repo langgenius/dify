@@ -87,7 +87,7 @@ class MCPClientWithAuthRetry(MCPClient):
             # Create a temporary session only for auth retry
             # This session is short-lived and only exists during the auth operation
 
-            from services.tools.legacy_mcp_tools_manage_service import MCPToolManageService
+            from services.tools.mcp_tools_manage_service import MCPToolManageService
 
             with Session(db.engine) as session, session.begin():
                 mcp_service = MCPToolManageService(session=session)

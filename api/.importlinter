@@ -74,7 +74,7 @@ ignore_imports =
     core.app.task_pipeline.message_cycle_manager -> services.annotation_service
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
     core.helper.credential_utils -> services.system_feature_service
-    core.mcp.auth_client -> services.tools.legacy_mcp_tools_manage_service
+    core.mcp.auth_client -> services.tools.mcp_tools_manage_service
     core.provider_manager -> services.credit_pool_service
     core.provider_manager -> services.feature_service
     core.rag.datasource.retrieval_service -> services.knowledge.external.service
