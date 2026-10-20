@@ -1,15 +1,12 @@
-import type {
-  AppDetailWithSite,
-  UpdateAppPayload,
-} from '@dify/contracts/api/console/apps/types.gen'
-import type { DialogActions, DialogProps } from '@langgenius/dify-ui/dialog'
+'use client'
+
+import type { AppPartial, UpdateAppPayload } from '@dify/contracts/api/console/apps/types.gen'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { IconPickerInputValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  Dialog,
   DialogBody,
   DialogClose,
-  DialogContent,
   DialogFooter,
   DialogHeader,
   DialogHeaderCloseButton,
@@ -19,9 +16,19 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dif
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@langgenius/dify-ui/number-field'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -31,137 +38,61 @@ import {
   IconPickerTrigger,
 } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { getRedirection } from '@/utils/app-redirection'
-import { updateCachedAppMetadata } from './metadata'
 
-type AppMetadataDialogProps = Pick<DialogProps, 'open' | 'onOpenChange'> & {
-  appDetail: AppDetailWithSite
-  operation: 'edit' | 'duplicate'
-}
+const SUBMIT_APP_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
-export function AppMetadataDialog({
-  appDetail,
-  operation,
-  open,
-  onOpenChange,
-}: AppMetadataDialogProps) {
-  const actionsRef = useRef<DialogActions>(null)
-  const { t } = useTranslation(['app'])
-  const nameInputRef = useRef<HTMLInputElement>(null)
-  const queryClient = useQueryClient()
-  const { replace } = useRouter()
-  const { data: features } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const edit = useMutation(
-    consoleQuery.apps.byAppId.put.mutationOptions({
-      onSuccess: (app) => {
-        queryClient.setQueryData(
-          consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appDetail.id } } }),
-          (cached) => updateCachedAppMetadata(cached, app),
-        )
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
-        actionsRef.current?.close()
-        void import('@/app/components/workflow/collaboration/core/websocket-manager')
-          .then(({ webSocketClient }) => {
-            webSocketClient.getSocket(appDetail.id)?.emit('collaboration_event', {
-              type: 'app_meta_update',
-              data: { timestamp: Date.now() },
-              timestamp: Date.now(),
-            })
-          })
-          .catch(() => {})
-      },
-      onError: () => toast.error(t(($) => $.editFailed, { ns: 'app' })),
-    }),
-  )
-  const copy = useMutation(
-    consoleQuery.apps.byAppId.copy.post.mutationOptions({
-      onError: () => toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' })),
-    }),
-  )
-  const isPending = edit.isPending || copy.isPending
-  const submit = (body: UpdateAppPayload) => {
-    if (isPending) return
-    if (operation === 'edit') edit.mutate({ params: { app_id: appDetail.id }, body })
-    else
-      copy.mutate(
-        {
-          params: { app_id: appDetail.id },
-          body: {
-            name: body.name,
-            icon_type: body.icon_type,
-            icon: body.icon,
-            icon_background: body.icon_background,
-          },
-        },
-        {
-          onSuccess: (app) => {
-            if (!('mode' in app)) {
-              toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
-              return
-            }
-            actionsRef.current?.close()
-            toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
-            getRedirection(app, replace, { isRbacEnabled: features.rbac_enabled })
-          },
-        },
-      )
-  }
-  return (
-    <Dialog
-      actionsRef={actionsRef}
-      open={open}
-      disablePointerDismissal={operation === 'edit'}
-      onOpenChange={(nextOpen, details) => {
-        if (!nextOpen && isPending && details.reason !== 'imperative-action') details.cancel()
-        else onOpenChange?.(nextOpen, details)
-      }}
-    >
-      <DialogContent initialFocus={nameInputRef}>
-        <AppMetadataForm
-          nameInputRef={nameInputRef}
-          appDetail={appDetail}
-          operation={operation}
-          isPending={isPending}
-          onSubmit={submit}
-        />
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-type AppMetadataFormProps = Pick<AppMetadataDialogProps, 'appDetail' | 'operation'> & {
+type AppMetadataFormProps = {
+  appDetail: Pick<
+    AppPartial,
+    | 'name'
+    | 'description'
+    | 'icon_type'
+    | 'icon'
+    | 'icon_background'
+    | 'icon_url'
+    | 'use_icon_as_answer_icon'
+    | 'max_active_requests'
+  > &
+    Partial<Pick<AppPartial, 'mode'>>
+  operation: 'edit' | 'duplicate' | 'create'
   nameInputRef: React.RefObject<HTMLInputElement | null>
   isPending: boolean
+  error?: string
   onSubmit: (body: UpdateAppPayload) => void
 }
 
-function AppMetadataForm({
+export function AppMetadataForm({
   appDetail,
   operation,
   nameInputRef,
   isPending,
   onSubmit,
+  error,
 }: AppMetadataFormProps) {
   const { t } = useTranslation(['app', 'common', 'explore'])
   const formRef = useRef<HTMLFormElement>(null)
   const [source] = useState(appDetail)
   const [selectedIcon, setSelectedIcon] = useState<IconPickerValue | null>(null)
-  const { data: features } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: (data) => data.deployment_edition,
+  })
   const isEdit = operation === 'edit'
   const { data: quota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: !isEdit && features.deployment_edition === 'CLOUD',
+      enabled: !isEdit && deploymentEdition === 'CLOUD',
       select: (data) => data.apps,
     }),
   )
-  const quotaUnavailable = !isEdit && features.deployment_edition === 'CLOUD' && !quota
-  const isFull = !isEdit && !!quota && quota.limit > 0 && quota.size >= quota.limit
+  const quotaUnavailable = !isEdit && deploymentEdition === 'CLOUD' && !quota
+  const isFull =
+    !isEdit &&
+    deploymentEdition === 'CLOUD' &&
+    !!quota &&
+    quota.limit > 0 &&
+    quota.size >= quota.limit
   const icon: IconPickerInputValue | undefined =
     selectedIcon ??
     (source.icon_type === 'image' && source.icon
@@ -175,9 +106,25 @@ function AppMetadataForm({
     <Form
       className="contents"
       ref={formRef}
+      onKeyDown={(event) => {
+        if (
+          isPending ||
+          quotaUnavailable ||
+          isFull ||
+          event.defaultPrevented ||
+          event.nativeEvent.isComposing ||
+          !(event.target instanceof Node) ||
+          !event.currentTarget.contains(event.target) ||
+          !matchesKeyboardEvent(event.nativeEvent, SUBMIT_APP_HOTKEY)
+        )
+          return
+        event.preventDefault()
+        event.stopPropagation()
+        if (!event.repeat) event.currentTarget.requestSubmit()
+      }}
       onFormSubmit={(values, details) => {
         if (details.event.target !== formRef.current) return
-        const name = String(values.name ?? '')
+        const name = typeof values.name === 'string' ? values.name : ''
         if (isPending || quotaUnavailable || isFull || !name.trim()) return
         const body: UpdateAppPayload = {
           name,
@@ -193,14 +140,15 @@ function AppMetadataForm({
               : undefined
             : source.icon_background,
         }
+        if (operation !== 'duplicate')
+          body.description = typeof values.description === 'string' ? values.description : ''
         if (isEdit) {
-          body.description = String(values.description ?? '')
           body.use_icon_as_answer_icon =
             typeof values.use_icon_as_answer_icon === 'boolean'
               ? values.use_icon_as_answer_icon
-              : source.use_icon_as_answer_icon
-          if (values.max_active_requests !== '' && values.max_active_requests !== undefined)
-            body.max_active_requests = Number(values.max_active_requests)
+              : (source.use_icon_as_answer_icon ?? false)
+          if (typeof values.max_active_requests === 'number')
+            body.max_active_requests = values.max_active_requests
         }
         onSubmit(body)
       }}
@@ -209,7 +157,9 @@ function AppMetadataForm({
         <DialogTitle>
           {isEdit
             ? t(($) => $.editAppTitle, { ns: 'app' })
-            : t(($) => $.duplicateTitle, { ns: 'app' })}
+            : operation === 'duplicate'
+              ? t(($) => $.duplicateTitle, { ns: 'app' })
+              : t(($) => $['appCustomize.title'], { ns: 'explore', name: source.name })}
         </DialogTitle>
         <DialogHeaderCloseButton
           disabled={isPending}
@@ -244,23 +194,33 @@ function AppMetadataForm({
               ref={nameInputRef}
               defaultValue={source.name}
               readOnly={isPending}
+              placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' })}
               required
             />
             <FieldError className="col-span-2" />
           </Field>
         </Fieldset>
+        {operation !== 'duplicate' && (
+          <Field name="description">
+            <FieldLabel>{t(($) => $['newApp.captionDescription'], { ns: 'app' })}</FieldLabel>
+            <Textarea
+              defaultValue={source.description ?? ''}
+              readOnly={isPending}
+              placeholder={t(($) => $['newApp.appDescriptionPlaceholder'], { ns: 'app' })}
+            />
+          </Field>
+        )}
         {isEdit && (
           <>
-            <Field name="description">
-              <FieldLabel>{t(($) => $['newApp.captionDescription'], { ns: 'app' })}</FieldLabel>
-              <Textarea defaultValue={source.description} readOnly={isPending} />
-            </Field>
             {(source.mode === 'chat' ||
               source.mode === 'advanced-chat' ||
               source.mode === 'agent-chat') && (
               <Field name="use_icon_as_answer_icon">
                 <FieldLabel>{t(($) => $['answerIcon.title'], { ns: 'app' })}</FieldLabel>
-                <Switch defaultChecked={source.use_icon_as_answer_icon} disabled={isPending} />
+                <Switch
+                  defaultChecked={source.use_icon_as_answer_icon ?? false}
+                  disabled={isPending}
+                />
                 <FieldDescription>
                   {t(($) => $['answerIcon.descriptionInExplore'], { ns: 'app' })}
                 </FieldDescription>
@@ -268,18 +228,42 @@ function AppMetadataForm({
             )}
             <Field name="max_active_requests">
               <FieldLabel>{t(($) => $.maxActiveRequests, { ns: 'app' })}</FieldLabel>
-              <Input
-                type="number"
+              <NumberField
                 min={0}
-                defaultValue={source.max_active_requests ?? ''}
+                step={1}
+                smallStep={1}
+                defaultValue={source.max_active_requests ?? undefined}
                 readOnly={isPending}
-              />
+              >
+                <NumberFieldGroup>
+                  <NumberFieldInput
+                    placeholder={t(($) => $.maxActiveRequestsPlaceholder, { ns: 'app' })}
+                  />
+                  <NumberFieldControls>
+                    <NumberFieldIncrement
+                      aria-label={t(($) => $['operation.increaseValue'], { ns: 'common' })}
+                    />
+                    <NumberFieldDecrement
+                      aria-label={t(($) => $['operation.decreaseValue'], { ns: 'common' })}
+                    />
+                  </NumberFieldControls>
+                </NumberFieldGroup>
+              </NumberField>
               <FieldDescription>{t(($) => $.maxActiveRequestsTip, { ns: 'app' })}</FieldDescription>
               <FieldError />
             </Field>
           </>
         )}
-        {isFull && <AppsFull loc="app-duplicate-create" />}
+        {isFull && (
+          <AppsFull
+            loc={operation === 'duplicate' ? 'app-duplicate-create' : 'app-explore-create'}
+          />
+        )}
+        {error && (
+          <p role="alert" className="body-sm-regular text-text-destructive">
+            {error}
+          </p>
+        )}
       </DialogBody>
       <DialogFooter>
         <DialogClose disabled={isPending} render={<Button type="button" />}>
@@ -293,7 +277,16 @@ function AppMetadataForm({
         >
           {isEdit
             ? t(($) => $['operation.save'], { ns: 'common' })
-            : t(($) => $.duplicate, { ns: 'app' })}
+            : operation === 'duplicate'
+              ? t(($) => $.duplicate, { ns: 'app' })
+              : t(($) => $['operation.create'], { ns: 'common' })}
+          <KbdGroup>
+            {formatForDisplay(SUBMIT_APP_HOTKEY, { parts: true }).map((key) => (
+              <Kbd key={key} color="white">
+                {key}
+              </Kbd>
+            ))}
+          </KbdGroup>
         </Button>
       </DialogFooter>
     </Form>
