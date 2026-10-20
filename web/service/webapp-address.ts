@@ -22,7 +22,15 @@ export const parseWebAppAddress = (pathname: string): WebAppAddress | null => {
   }
 
   const [route, code, ...rest] = segments
-  if (!route || !code || rest.length > 0 || !WEB_APP_ROUTE_SEGMENTS.has(route)) return null
+  const isConversationMigration =
+    route === 'chat' && rest.length === 1 && rest[0] === 'migrate-conversations'
+  if (
+    !route ||
+    !code ||
+    (rest.length > 0 && !isConversationMigration) ||
+    !WEB_APP_ROUTE_SEGMENTS.has(route)
+  )
+    return null
   if (WEB_APP_SIGNIN_SEGMENTS.has(code)) return null
   return { kind: 'default', code }
 }
