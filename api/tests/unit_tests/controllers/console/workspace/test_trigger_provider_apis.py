@@ -39,6 +39,9 @@ from core.trigger.entities.api_entities import SubscriptionBuilderApiEntity, Tri
 from core.trigger.entities.entities import RequestLog
 from models.account import Account
 from services.credentials.query import CredentialQuery
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
+
+_OAUTH_IDENTIFIER = f"langgenius/github:1.0.0@{'a' * 64}"
 
 
 @pytest.fixture
@@ -397,7 +400,7 @@ class TestTriggerOAuthApis:
             app.test_request_context("/"),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerProviderService.get_oauth_client",
-                return_value={"a": 1},
+                return_value=PluginOAuthClientConfig(_OAUTH_IDENTIFIER, {"a": 1}),
             ),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.create_trigger_subscription_builder",
@@ -406,14 +409,17 @@ class TestTriggerOAuthApis:
             patch(
                 "controllers.console.workspace.trigger_providers.OAuthProxyService.create_proxy_context",
                 return_value="ctx",
-            ),
+            ) as create_context,
             patch(
                 "controllers.console.workspace.trigger_providers.OAuthHandler.get_authorization_url",
                 return_value=MagicMock(authorization_url="url"),
-            ),
+            ) as authorize,
         ):
             resp = method(api, "t1", mock_user(), "github")
             assert resp.status_code == 200
+        assert create_context.call_args.kwargs["extra_data"]["plugin_unique_identifier"] == _OAUTH_IDENTIFIER
+        assert authorize.call_args.kwargs["plugin_unique_identifier"] == _OAUTH_IDENTIFIER
+        assert authorize.call_args.kwargs["system_credentials"] == {"a": 1}
 
     def test_oauth_authorize_no_client(self, app: Flask) -> None:
         api = TriggerOAuthAuthorizeApi()
@@ -445,6 +451,9 @@ class TestTriggerOAuthApis:
             "user_id": "u1",
             "tenant_id": "t1",
             "subscription_builder_id": "b1",
+            "plugin_id": "langgenius/github",
+            "provider": "github",
+            "plugin_unique_identifier": _OAUTH_IDENTIFIER,
         }
 
         with (
@@ -454,18 +463,20 @@ class TestTriggerOAuthApis:
             ),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerProviderService.get_oauth_client",
-                return_value={"a": 1},
+                return_value=PluginOAuthClientConfig(_OAUTH_IDENTIFIER, {"a": 1}),
             ),
             patch(
                 "controllers.console.workspace.trigger_providers.OAuthHandler.get_credentials",
                 return_value=MagicMock(credentials={"a": 1}, expires_at=1),
-            ),
+            ) as get_credentials,
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.update_trigger_subscription_builder"
             ) as mock_update_builder,
         ):
             resp = method(api, "github")
             assert resp.status_code == 302
+        assert get_credentials.call_args.kwargs["plugin_unique_identifier"] == _OAUTH_IDENTIFIER
+        assert get_credentials.call_args.kwargs["system_credentials"] == {"a": 1}
         mock_update_builder.assert_called_once_with(
             tenant_id="t1",
             user_id="u1",
@@ -506,6 +517,9 @@ class TestTriggerOAuthApis:
             "user_id": "u1",
             "tenant_id": "t1",
             "subscription_builder_id": "b1",
+            "plugin_id": "langgenius/github",
+            "provider": "github",
+            "plugin_unique_identifier": _OAUTH_IDENTIFIER,
         }
 
         with (
@@ -516,7 +530,7 @@ class TestTriggerOAuthApis:
             ),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerProviderService.get_oauth_client",
-                return_value={"a": 1},
+                return_value=PluginOAuthClientConfig(_OAUTH_IDENTIFIER, {"a": 1}),
             ),
             patch(
                 "controllers.console.workspace.trigger_providers.OAuthHandler.get_credentials",
