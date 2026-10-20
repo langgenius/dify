@@ -121,11 +121,7 @@ const ConnectionPicker = ({
             <p role="status" className="system-xs-regular text-text-tertiary">
               {t(($) => $['auth.connection.loadError'], { ns: 'plugin' })}
             </p>
-            <Button
-              onClick={loadError.onRetry}
-              loading={loadError.isRetrying}
-              disabled={loadError.isRetrying}
-            >
+            <Button onClick={loadError.onRetry} loading={loadError.isRetrying}>
               {t(($) => $['operation.retry'], { ns: 'common' })}
             </Button>
           </div>
