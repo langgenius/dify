@@ -1,10 +1,10 @@
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Protocol
-from unittest.mock import MagicMock, create_autospec, patch
+from typing import Protocol, cast
+from unittest.mock import create_autospec, patch
 
 import pytest
 from sqlalchemy import event, select
@@ -17,6 +17,7 @@ from core.credit_usage import CreditUsageCreatedBy
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_context import get_credit_usage_metadata
 from core.model_manager import ModelManager
+from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
@@ -28,7 +29,14 @@ from graphon.model_runtime.entities.message_entities import AssistantPromptMessa
 from libs.helper import generate_text_hash
 from libs.pagination import PaginatedResult
 from machinery.context import RequestContext
-from models.dataset import ChildChunk, Dataset, Document, DocumentSegment, SegmentAttachmentBinding
+from models.dataset import (
+    ChildChunk,
+    Dataset,
+    Document,
+    DocumentSegment,
+    DocumentSegmentSummary,
+    SegmentAttachmentBinding,
+)
 from models.enums import CreatorUserRole, DocumentCreatedFrom, SegmentStatus, SummaryStatus
 from models.model import UploadFile
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
@@ -555,9 +563,27 @@ def indexing_probe(
             return TokenModel()
 
     monkeypatch.setattr(indexing_module, "Vector", vector)
-    summary_vector = MagicMock(side_effect=vector)
-    summary_vector.resolve_vector_type.return_value = "qdrant"
-    monkeypatch.setattr(summary_module, "Vector", summary_vector)
+    vectorize_summary = summary_module.SummaryIndexAdapter.vectorize_summary
+
+    def vectorize(
+        record: DocumentSegmentSummary,
+        segment: DocumentSegment,
+        dataset: Dataset,
+        session: Session | None = None,
+        *,
+        new_session: Callable[[], Session] | None = None,
+        vector_factory: Callable[[], Vector] | None = None,
+    ) -> None:
+        vectorize_summary(
+            record,
+            segment,
+            dataset,
+            session=session,
+            new_session=new_session or sqlite_session_factory,
+            vector_factory=vector_factory or (lambda: cast(Vector, probe)),
+        )
+
+    monkeypatch.setattr(summary_module.SummaryIndexAdapter, "vectorize_summary", staticmethod(vectorize))
     monkeypatch.setattr(indexing_module.ModelManager, "for_tenant", lambda **_kwargs: ModelLookup())
     repository = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
     summary_redis = IndexRedisStub()
@@ -1213,11 +1239,16 @@ def test_manual_summary_save_cancels_a_previously_queued_regeneration(
         segment_id=created.data.id,
         values={"content": "replacement", "summary": manual_summary},
     )
-    generate = MagicMock()
+    generations: list[str] = []
+
+    def generate(*_args: object, **_kwargs: object) -> tuple[str, LLMUsage]:
+        generations.append("generated")
+        return "unexpected summary", LLMUsage.empty_usage()
+
     monkeypatch.setattr(ParagraphIndexProcessor, "generate_summary_from_inputs", generate)
     writes_after_manual_save = probe.writes
     regenerate_segment_summary_task.run(**probe.summary_jobs[0])
-    generate.assert_not_called()
+    assert generations == []
     assert probe.writes == writes_after_manual_save
     summary = repository.get_indexing_snapshot(reference).summary
     if manual_summary:

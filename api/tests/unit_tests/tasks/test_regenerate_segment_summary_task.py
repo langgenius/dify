@@ -1,9 +1,12 @@
-from dataclasses import dataclass
-from unittest.mock import MagicMock
+from collections.abc import Iterator
+from dataclasses import dataclass, field
+from typing import Literal
 
 import pytest
+from redis import Redis
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
+from typing_extensions import TypedDict
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
@@ -13,22 +16,41 @@ from services.knowledge.resource_scope import DatasetRef, SegmentRef
 from tasks import regenerate_segment_summary_task as task_module
 
 
+class SummaryJob(TypedDict, closed=True):
+    tenant_id: str
+    dataset_id: str
+    document_id: str
+    segment_id: str
+    expected_index_node_hash: str | None
+    token: str
+
+
 @dataclass
 class SummaryQueue:
     ref: SegmentRef
-    redis: MagicMock
-    task: MagicMock
-    tokens: dict[str, str]
+    tokens: dict[str, str] = field(default_factory=dict)
+    jobs: list[SummaryJob] = field(default_factory=list)
+    countdowns: list[int] = field(default_factory=list)
+    token_writes: list[tuple[str, int, str]] = field(default_factory=list)
+    enqueue_error: Exception | None = None
+
+    def enqueue(self, *, kwargs: SummaryJob, countdown: int) -> None:
+        if self.enqueue_error is not None:
+            raise self.enqueue_error
+        self.jobs.append(kwargs)
+        self.countdowns.append(countdown)
 
     def schedule(self, sessions: sessionmaker[Session], expected_hash: str = "hash-1") -> str | None:
         return task_module.schedule_segment_summary_regeneration(self.ref, expected_hash, new_session=sessions)
 
     def run(self, *, job: int = -1) -> None:
-        task_module.regenerate_segment_summary_task.run(**self.task.call_args_list[job].kwargs["kwargs"])
+        task_module.regenerate_segment_summary_task.run(**self.jobs[job])
 
 
 @pytest.fixture
-def summary_queue(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> SummaryQueue:
+def summary_queue(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> Iterator[SummaryQueue]:
     with sqlite_session_factory.begin() as session:
         session.add(
             Dataset(
@@ -84,28 +106,39 @@ def summary_queue(sqlite_session_factory: sessionmaker[Session], monkeypatch: py
                 error="old error",
             )
         )
-    tokens: dict[str, str] = {}
-    redis = MagicMock()
-    redis.get.side_effect = lambda key: tokens[key].encode() if key in tokens else None
-    redis.setex.side_effect = lambda key, _ttl, token: tokens.update({key: token})
-    redis.delete.side_effect = lambda key: tokens.pop(key, None)
+    queue = SummaryQueue(DatasetRef("tenant-1", "dataset-1").document("document-1").segment("segment-1"))
+
+    def get_token(key: str) -> bytes | None:
+        token = queue.tokens.get(key)
+        return token.encode() if token is not None else None
+
+    def set_token(key: str, ttl: int, token: str) -> None:
+        queue.tokens[key] = token
+        queue.token_writes.append((key, ttl, token))
 
     def evaluate(_script: str, _numkeys: int, key: str, token: str, *replacement: str) -> int:
-        if tokens.get(key) != token:
+        if queue.tokens.get(key) != token:
             return 0
         if replacement:
-            tokens[key] = replacement[0]
+            queue.tokens[key] = replacement[0]
         else:
-            tokens.pop(key)
+            queue.tokens.pop(key)
         return 1
 
-    redis.eval.side_effect = evaluate
-    monkeypatch.setattr(task_module, "redis_client", redis)
-    task = MagicMock()
-    monkeypatch.setattr(task_module.regenerate_segment_summary_task, "apply_async", task)
-    return SummaryQueue(
-        DatasetRef("tenant-1", "dataset-1").document("document-1").segment("segment-1"), redis, task, tokens
-    )
+    # Keep real SDK objects, patching only the external Redis/broker operations.
+    # These sequential unit tests check the task's version policy, not Redis Lua or locking itself.
+    with Redis() as redis:
+        lock = redis.lock("summary-test")
+        monkeypatch.setattr(lock, "acquire", lambda: True)
+        monkeypatch.setattr(lock, "release", lambda: None)
+        monkeypatch.setattr(redis, "lock", lambda *_args, **_kwargs: lock)
+        monkeypatch.setattr(redis, "get", get_token)
+        monkeypatch.setattr(redis, "setex", set_token)
+        monkeypatch.setattr(redis, "delete", lambda key: queue.tokens.pop(key, None))
+        monkeypatch.setattr(redis, "eval", evaluate)
+        monkeypatch.setattr(task_module, "redis_client", redis)
+        monkeypatch.setattr(task_module.regenerate_segment_summary_task, "apply_async", queue.enqueue)
+        yield queue
 
 
 def test_schedule_preserves_summary_and_uses_ten_minute_countdown(
@@ -113,18 +146,18 @@ def test_schedule_preserves_summary_and_uses_ten_minute_countdown(
 ) -> None:
     token = summary_queue.schedule(sqlite_session_factory)
     assert token is not None
-    summary_queue.task.assert_called_once_with(
-        kwargs={
+    assert summary_queue.jobs == [
+        {
             "tenant_id": "tenant-1",
             "dataset_id": "dataset-1",
             "document_id": "document-1",
             "segment_id": "segment-1",
             "expected_index_node_hash": "hash-1",
             "token": token,
-        },
-        countdown=600,
-    )
-    summary_queue.redis.setex.assert_called_once_with("segment_summary_regeneration:segment-1", 3600, token)
+        }
+    ]
+    assert summary_queue.countdowns == [600]
+    assert summary_queue.token_writes == [("segment_summary_regeneration:segment-1", 3600, token)]
     with sqlite_session_factory() as session:
         summary = session.scalar(select(DocumentSegmentSummary))
         assert summary is not None
@@ -137,21 +170,29 @@ def test_schedule_preserves_summary_and_uses_ten_minute_countdown(
 def test_latest_edit_replaces_token_and_superseded_delivery_does_not_generate(
     summary_queue: SummaryQueue, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    generate = MagicMock(return_value=("latest summary", LLMUsage.empty_usage()))
-    update = MagicMock()
+    generations: list[str] = []
+    updates: list[tuple[str, str, str]] = []
+
+    def generate(segment: DocumentSegment, *_args: object, **_kwargs: object) -> tuple[str, LLMUsage]:
+        generations.append(segment.content)
+        return "latest summary", LLMUsage.empty_usage()
+
+    def update(segment: DocumentSegment, dataset: Dataset, content: str, *, session: Session) -> None:
+        assert isinstance(session, Session)
+        updates.append((segment.id, dataset.id, content))
+
     monkeypatch.setattr(task_module.SummaryIndexAdapter, "generate_summary_for_segment", generate)
     monkeypatch.setattr(task_module.SummaryIndexAdapter, "update_summary_for_segment", update)
     summary_queue.schedule(sqlite_session_factory)
     summary_queue.schedule(sqlite_session_factory)
     summary_queue.run(job=0)
-    generate.assert_not_called()
+    assert generations == []
     summary_queue.run()
-    generate.assert_called_once()
-    update.assert_called_once()
-    assert update.call_args.args[2] == "latest summary"
+    assert generations == ["edited content"]
+    assert updates == [("segment-1", "dataset-1", "latest summary")]
     assert not summary_queue.tokens
     summary_queue.run()
-    assert generate.call_count == 1
+    assert generations == ["edited content"]
 
 
 @pytest.mark.parametrize("change", ["new_edit", "manual_edit", "content_hash", "settings", "disabled", "deleted"])
@@ -195,10 +236,15 @@ def test_result_is_discarded_when_segment_changes_during_generation(
         return "obsolete summary", LLMUsage.empty_usage()
 
     monkeypatch.setattr(task_module.SummaryIndexAdapter, "generate_summary_for_segment", generate)
-    update = MagicMock()
+    updates: list[str] = []
+
+    def update(_segment: DocumentSegment, _dataset: Dataset, content: str, *, session: Session) -> None:
+        assert isinstance(session, Session)
+        updates.append(content)
+
     monkeypatch.setattr(task_module.SummaryIndexAdapter, "update_summary_for_segment", update)
     summary_queue.run()
-    update.assert_not_called()
+    assert updates == []
     with sqlite_session_factory() as session:
         summary = session.scalar(select(DocumentSegmentSummary))
         assert summary is not None
@@ -212,15 +258,20 @@ def test_task_rejects_foreign_owner_chain(
     summary_queue: SummaryQueue,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
-    owner: str,
+    owner: Literal["tenant_id", "dataset_id", "document_id"],
 ) -> None:
     summary_queue.schedule(sqlite_session_factory)
-    args = dict(summary_queue.task.call_args.kwargs["kwargs"])
+    args = summary_queue.jobs[-1].copy()
     args[owner] = "foreign-owner"
-    generate = MagicMock()
+    generations: list[str] = []
+
+    def generate(segment: DocumentSegment, *_args: object, **_kwargs: object) -> tuple[str, LLMUsage]:
+        generations.append(segment.id)
+        return "unexpected summary", LLMUsage.empty_usage()
+
     monkeypatch.setattr(task_module.SummaryIndexAdapter, "generate_summary_for_segment", generate)
     task_module.regenerate_segment_summary_task.run(**args)
-    generate.assert_not_called()
+    assert generations == []
     assert not summary_queue.tokens
 
 
@@ -251,10 +302,15 @@ def test_task_skips_ineligible_segment(
             summary.enabled = False
         else:
             segment.status = SegmentStatus.WAITING
-    generate = MagicMock()
+    generations: list[str] = []
+
+    def generate(segment: DocumentSegment, *_args: object, **_kwargs: object) -> tuple[str, LLMUsage]:
+        generations.append(segment.id)
+        return "unexpected summary", LLMUsage.empty_usage()
+
     monkeypatch.setattr(task_module.SummaryIndexAdapter, "generate_summary_for_segment", generate)
     summary_queue.run()
-    generate.assert_not_called()
+    assert generations == []
     assert not summary_queue.tokens
 
 
@@ -266,15 +322,16 @@ def test_failure_preserves_existing_summary_and_records_error(
     failure: str,
 ) -> None:
     if failure == "broker":
-        summary_queue.task.side_effect = ConnectionError("broker unavailable")
+        summary_queue.enqueue_error = ConnectionError("broker unavailable")
         assert summary_queue.schedule(sqlite_session_factory) is None
     else:
         summary_queue.schedule(sqlite_session_factory)
-        generate = MagicMock()
-        if failure == "model":
-            generate.side_effect = ValueError("model unavailable")
-        else:
-            generate.return_value = ("" if failure == "empty" else " \n\t ", LLMUsage.empty_usage())
+
+        def generate(*_args: object, **_kwargs: object) -> tuple[str, LLMUsage]:
+            if failure == "model":
+                raise ValueError("model unavailable")
+            return "" if failure == "empty" else " \n\t ", LLMUsage.empty_usage()
+
         monkeypatch.setattr(task_module.SummaryIndexAdapter, "generate_summary_for_segment", generate)
         summary_queue.run()
     with sqlite_session_factory() as session:
@@ -332,4 +389,4 @@ def test_stale_or_foreign_schedule_does_not_replace_latest_token(
         summary_queue.ref = DatasetRef("tenant-1", "dataset-1").document("foreign-owner").segment("segment-1")
     assert summary_queue.schedule(sqlite_session_factory, "wrong-hash" if invalid_ref == "hash" else "hash-1") is None
     assert summary_queue.tokens == previous_tokens
-    assert summary_queue.task.call_count == 1
+    assert len(summary_queue.jobs) == 1
