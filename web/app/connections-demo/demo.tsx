@@ -8,6 +8,7 @@ import RequiredConnectionSetup from '@/app/components/share/connections/required
 import RequiredConnections from '@/app/components/share/connections/required-connections'
 import SignIn from '@/app/components/share/sign-in'
 import ConfigureConnectionsDemo from './configure-connections-demo'
+import WorkspaceOAuthDemo from './workspace-oauth-demo'
 
 const demoConnections: readonly RequiredConnection[] = [
   { id: 'notion', name: 'Notion', iconClassName: 'i-custom-public-common-notion' },
@@ -172,6 +173,8 @@ export default function ConnectionsDemo() {
         />
         <hr className="w-full border-0 border-t-2 border-divider-deep" />
         <ConfigureConnectionsDemo />
+        <hr className="w-full border-0 border-t-2 border-divider-deep" />
+        <WorkspaceOAuthDemo />
         <hr className="w-full border-0 border-t-2 border-divider-deep" />
         <SignIn className="self-start" />
       </div>
