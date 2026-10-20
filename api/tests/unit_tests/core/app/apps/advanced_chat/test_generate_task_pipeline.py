@@ -15,7 +15,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
-from core.app.apps.advanced_chat import generate_task_pipeline as pipeline_module
 from core.app.apps.advanced_chat.generate_task_pipeline import (
     AdvancedChatAppGenerateTaskPipeline,
     ConversationSnapshot,
@@ -79,6 +78,7 @@ from models.model import AppMode, EndUser, Message, MessageFile
 from models.workflow import WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from services.workflow_runtime import chatflow_pipeline as pipeline_module
 from tests.workflow_test_utils import build_test_variable_pool
 
 

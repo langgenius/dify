@@ -13,18 +13,6 @@ from pydantic import TypeAdapter, ValidationError
 from pydantic.fields import FieldInfo
 
 from configs.feature import WorkflowConfig
-from core.dify_builder import execution_policy
-from core.dify_builder.execution_policy import (
-    AdmittedNodeBinding,
-    BuilderExecutionContext,
-    BuilderExecutionContextValue,
-    BuilderExecutionPolicyError,
-    ConfirmedToolExecutionContext,
-    RestrictedAdmissionSnapshot,
-    admit_restricted_workflow,
-    context_digest,
-    validate_execution_context,
-)
 from core.dify_builder.real_call_consent import (
     ActionOutcome,
     ConfirmedToolBinding,
@@ -35,7 +23,19 @@ from core.dify_builder.real_call_consent import (
     validate_phase,
     validate_scope,
 )
-from services.dify_builder.execution_contracts import JsonToolExecutionContext
+from runtime_contracts.builder.execution import JsonToolExecutionContext
+from services.dify_builder.application import execution_policy
+from services.dify_builder.application.execution_policy import (
+    AdmittedNodeBinding,
+    BuilderExecutionContext,
+    BuilderExecutionContextValue,
+    BuilderExecutionPolicyError,
+    ConfirmedToolExecutionContext,
+    RestrictedAdmissionSnapshot,
+    admit_restricted_workflow,
+    context_digest,
+    validate_execution_context,
+)
 
 KEY = b"k" * 32
 NOW = datetime(2026, 10, 11, 12, 0, tzinfo=UTC)

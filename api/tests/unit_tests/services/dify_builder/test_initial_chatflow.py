@@ -10,7 +10,6 @@ from unittest.mock import Mock
 import pytest
 
 from core.app.app_config.entities import ModelConfig
-from core.dify_builder.handlers_build import handle_execution, handle_plan_approval, handle_resource_recommendation
 from core.dify_builder.models import (
     Action,
     Actor,
@@ -22,14 +21,19 @@ from core.dify_builder.models import (
     Session,
     Turn,
 )
-from core.dify_builder.placeholder_agent import PlaceholderAgent
-from core.dify_builder.ports import DifyPort, Repository
-from core.dify_builder.runner import Env
 from core.dify_builder.state import PcState
 from services.app.console_gateway import _CHATFLOW_STARTER_GRAPH
 from services.dify_builder.agent import build, resources
 from services.dify_builder.agent.graph_translate import to_intents
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+from services.dify_builder.application.handlers_build import (
+    handle_execution,
+    handle_plan_approval,
+    handle_resource_recommendation,
+)
+from services.dify_builder.application.placeholder_agent import PlaceholderAgent
+from services.dify_builder.application.ports import DifyPort, Repository
+from services.dify_builder.application.runner import Env
 from services.dify_builder.initial_draft import build_intents_for_draft, is_initial_chatflow
 from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, InMemoryRepository
 

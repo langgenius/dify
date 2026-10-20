@@ -30,8 +30,6 @@ import contexts
 import core.db.session_factory as session_factory_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.dify_builder import gmail_read_policy
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.models import Actor
 from core.dify_builder.real_call_consent import (
     ConfirmedToolBinding,
@@ -69,6 +67,8 @@ from core.tools.tool_manager import ToolManager
 from models.dify_builder import DifyBuilderRealCallConsent
 from models.tools import BuiltinToolProvider, ToolOAuthTenantClient
 from services.dify_builder import real_call_metadata
+from services.dify_builder.application import gmail_read_policy
+from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 from services.tools.builtin_tools_manage_service import BuilderCredentialRuntime, BuiltinToolManageService
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import (
     owned as owned,  # noqa: PLC0414 - shared pytest fixture

@@ -9,8 +9,8 @@ import pytest
 
 from core.plugin.entities.plugin import PluginInstallation
 from core.plugin.entities.plugin_daemon import PluginToolProviderEntity
+from runtime_contracts.builder.execution import BuilderExecutionPolicyError, QualifiedJsonToolBinding
 from services.dify_builder import json_tool_metadata as metadata
-from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, QualifiedJsonToolBinding
 
 TENANT = "tenant-1"
 FIXTURE = Path(__file__).parent / "fixtures/json_parse_static_provider.json"

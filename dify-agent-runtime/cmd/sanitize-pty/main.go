@@ -5,6 +5,8 @@ package main
 
 import (
 	"flag"
+	"github.com/langgenius/dify/dify-agent-runtime/internal/testscope"
+	"io"
 	"os"
 
 	"github.com/langgenius/dify/dify-agent-runtime/internal/cmdutil"
@@ -13,7 +15,15 @@ import (
 
 func main() {
 	readyFile := flag.String("ready-file", "", "path to touch before reading stdin")
+	nativeConfig := flag.String("native-config", "", "trusted native scope configuration")
 	flag.Parse()
+	var output io.Writer = os.Stdout
+	if *nativeConfig != "" {
+		writer, closeBudget, err := testscope.OpenOutputBudget(*nativeConfig, output)
+		cmdutil.HandleError(err, 1, "native output budget")
+		defer closeBudget()
+		output = writer
+	}
 
-	cmdutil.HandleError(sanitize.Run(*readyFile, os.Stdin, os.Stdout), 1, "sanitize-pty")
+	cmdutil.HandleError(sanitize.Run(*readyFile, os.Stdin, output), 1, "sanitize-pty")
 }

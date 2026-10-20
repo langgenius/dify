@@ -109,3 +109,18 @@ func setupModeTestService(t *testing.T, mode jobmode.Mode, status JobStatusName)
 	}
 	return service, persisted
 }
+
+func TestNativeOutputViolationCannotReturnSuccessfulResult(t *testing.T) {
+	service, row := setupModeTestService(t, jobmode.Stdio, StatusExited)
+	scopeDir := t.TempDir()
+	service.config.NativeScopeConfigPath = filepath.Join(scopeDir, "worker.json")
+	service.config.NativeOutputBytes = 4096
+	if err := os.WriteFile(filepath.Join(scopeDir, "violation"), []byte("native_scope_output_limit_exceeded"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	zero := 0
+	result := service.jobResultFromView(&JobStatusView{JobID: row.JobID, Status: StatusExited, Done: true, ExitCode: &zero}, row, &OutputWindow{})
+	if result.Status != StatusFailed || result.ExitCode == nil || *result.ExitCode != 125 {
+		t.Fatalf("durable budget refusal reported success: %+v", result)
+	}
+}

@@ -12,11 +12,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from dify_agent.agent_stub.server.admission import AgentStubAdmission
 from dify_agent.agent_stub.server.agent_stub_config import AgentStubConfigRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import AgentStubFileRequestHandler
+from dify_agent.agent_stub.server.knowledge import AgentStubKnowledgeHandler
 from dify_agent.agent_stub.server.routes.agent_stub import create_agent_stub_http_router
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
-from dify_agent.agent_stub.server.knowledge import AgentStubKnowledgeHandler
 
 
 def create_agent_stub_router(
@@ -24,6 +25,7 @@ def create_agent_stub_router(
     token_codec: AgentStubTokenCodec | None,
     file_request_handler: AgentStubFileRequestHandler | None = None,
     config_request_handler: AgentStubConfigRequestHandler | None = None,
+    admission: AgentStubAdmission | None = None,
     knowledge_request_handler: AgentStubKnowledgeHandler | None = None,
 ) -> APIRouter:
     """Build the embeddable stub router from pre-built server dependencies."""
@@ -31,7 +33,8 @@ def create_agent_stub_router(
         token_codec,
         file_request_handler,
         config_request_handler,
-        knowledge_request_handler,
+        admission=admission,
+        knowledge_request_handler=knowledge_request_handler,
     )
 
 

@@ -9,9 +9,9 @@ import pytest
 from core.dify_builder.contract import CONFIRM_ACTION_ID, ActionKind
 from core.dify_builder.models import DifyBuilderContext, MutationIntent, Run
 from core.dify_builder.state import PcState
-from core.dify_builder.verification import publication_decision
-from services.dify_builder.copy_ids import BuilderCopyId
-from services.dify_builder.presentation import copy_text
+from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.presentation import copy_text
+from services.dify_builder.application.verification import publication_decision
 from services.dify_builder.service import (
     _actions_for,
     _decision_for,

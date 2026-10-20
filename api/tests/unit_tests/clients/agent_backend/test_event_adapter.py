@@ -27,6 +27,32 @@ from clients.agent_backend import (
 )
 
 
+def test_event_adapter_preserves_wait_identity_without_converting_it_to_failure():
+    from dify_agent.protocol import RunWaitingEvent, RunWaitingEventData
+
+    event = RunWaitingEvent(
+        id="waiting-1", run_id="child-1", data=RunWaitingEventData(generation=3, pending_actions=())
+    )
+    adapted = AgentBackendRunEventAdapter().adapt(event)
+    assert len(adapted) == 1
+    assert adapted[0].type == "run_waiting"
+    assert adapted[0].run_id == "child-1"
+    assert adapted[0].source_event_id == "waiting-1"
+    assert adapted[0].generation == 3
+    assert adapted[0].pending_actions == ()
+
+
+def test_event_adapter_preserves_resumption_generation():
+    from dify_agent.protocol import RunResumedEvent, RunResumedEventData
+
+    adapted = AgentBackendRunEventAdapter().adapt(
+        RunResumedEvent(id="resumed-1", run_id="child-1", data=RunResumedEventData(generation=4))
+    )
+    assert len(adapted) == 1
+    assert adapted[0].type == "run_resumed"
+    assert adapted[0].generation == 4
+
+
 def test_event_adapter_maps_run_started() -> None:
     adapted = AgentBackendRunEventAdapter().adapt(RunStartedEvent(id="1-0", run_id="run-1"))
 

@@ -11,6 +11,7 @@ or terminate-grace budget does.
 from __future__ import annotations
 
 import os
+import re
 from typing import Any
 
 import httpx2 as httpx
@@ -26,6 +27,7 @@ from shellctl.shared.constants import (
     SHELL_TOOL_HTTP_TIMEOUT_GRACE_SECONDS,
 )
 from shellctl.shared.schemas import (
+    NativeScopeHandle,
     DeleteJobResponse,
     HealthResponse,
     JobInfo,
@@ -74,8 +76,11 @@ class ShellctlClient:
         client: httpx.AsyncClient | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
         request_timeout_grace_seconds: float = SHELL_TOOL_HTTP_TIMEOUT_GRACE_SECONDS,
+        native_scope: NativeScopeHandle | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
+        self.native_scope = native_scope
+        self._jobs_prefix = f"/v1/test-scopes/{native_scope.scope_id}/jobs" if native_scope else "/v1/jobs"
         self.output_limit = output_limit
         self.idle_flush_seconds = idle_flush_seconds
         self.request_timeout_grace_seconds = request_timeout_grace_seconds
@@ -83,7 +88,7 @@ class ShellctlClient:
         self._owns_client = client is None
         self._client = client or httpx.AsyncClient(
             base_url=self.base_url,
-            follow_redirects=True,
+            follow_redirects=native_scope is None,
             timeout=httpx.Timeout(DEFAULT_TIMEOUT_SECONDS, connect=DEFAULT_TIMEOUT_SECONDS),
             transport=transport,
         )
@@ -134,7 +139,15 @@ class ShellctlClient:
     async def healthz(self) -> dict[str, Any]:
         """Call the public health endpoint without requiring auth."""
 
-        response = await self._client.get("/healthz")
+        if self.native_scope is not None:
+            response = await self._request(
+                "GET", f"/v1/test-scopes/{self.native_scope.scope_id}", headers=self._auth_headers()
+            )
+            handle = NativeScopeHandle.model_validate(self._decode_response(response))
+            if handle.scope_id != self.native_scope.scope_id or handle.generation != self.native_scope.generation:
+                raise ShellctlClientError(409, "native_scope_identity_mismatch", "Scope identity mismatch")
+            return {"status": "ok"}
+        response = await self._request("GET", "/healthz")
         return self._decode_response(response)
 
     async def run(
@@ -165,8 +178,9 @@ class ShellctlClient:
             output_limit=self.output_limit,
             idle_flush_seconds=self.idle_flush_seconds,
         )
-        response = await self._client.post(
-            "/v1/jobs/run",
+        response = await self._request(
+            "POST",
+            f"{self._jobs_prefix}/run",
             json=payload.model_dump(mode="json", exclude_none=True),
             headers=self._auth_headers(),
             timeout=self._wait_request_timeout(timeout),
@@ -182,8 +196,9 @@ class ShellctlClient:
     ) -> JobResult:
         """Wait for incremental output, completion, truncation, or timeout."""
 
-        response = await self._client.post(
-            f"/v1/jobs/{job_id}/wait",
+        response = await self._request(
+            "POST",
+            f"{self._jobs_prefix}/{self._job_id(job_id)}/wait",
             json={
                 "offset": offset,
                 "timeout": timeout,
@@ -198,8 +213,9 @@ class ShellctlClient:
     async def status(self, job_id: str) -> JobStatusView:
         """Fetch the materialized status view for one job."""
 
-        response = await self._client.get(
-            f"/v1/jobs/{job_id}",
+        response = await self._request(
+            "GET",
+            f"{self._jobs_prefix}/{self._job_id(job_id)}",
             headers=self._auth_headers(),
         )
         return JobStatusView.model_validate(self._decode_response(response))
@@ -215,8 +231,9 @@ class ShellctlClient:
         params: dict[str, Any] = {"limit": limit}
         if status is not None:
             params["status"] = status
-        response = await self._client.get(
-            "/v1/jobs",
+        response = await self._request(
+            "GET",
+            self._jobs_prefix,
             params=params,
             headers=self._auth_headers(),
         )
@@ -233,8 +250,9 @@ class ShellctlClient:
     ) -> JobResult:
         """Send text input to a running job and then wait like `wait()`."""
 
-        response = await self._client.post(
-            f"/v1/jobs/{job_id}/input",
+        response = await self._request(
+            "POST",
+            f"{self._jobs_prefix}/{self._job_id(job_id)}/input",
             json={
                 "text": text,
                 "offset": offset,
@@ -250,8 +268,9 @@ class ShellctlClient:
     async def tail(self, job_id: str) -> JobResult:
         """Fetch an immediate UTF-8-safe tail snapshot for a job."""
 
-        response = await self._client.get(
-            f"/v1/jobs/{job_id}/log/tail",
+        response = await self._request(
+            "GET",
+            f"{self._jobs_prefix}/{self._job_id(job_id)}/log/tail",
             params={"output_limit": self.output_limit},
             headers=self._auth_headers(),
         )
@@ -264,8 +283,9 @@ class ShellctlClient:
     ) -> JobStatusView:
         """Terminate a job, waiting long enough for the grace window to finish."""
 
-        response = await self._client.post(
-            f"/v1/jobs/{job_id}/terminate",
+        response = await self._request(
+            "POST",
+            f"{self._jobs_prefix}/{self._job_id(job_id)}/terminate",
             json={"grace_seconds": grace_seconds},
             headers=self._auth_headers(),
             timeout=self._terminate_request_timeout(grace_seconds),
@@ -290,18 +310,36 @@ class ShellctlClient:
         }
         if force:
             request_kwargs["timeout"] = self._terminate_request_timeout(grace_seconds)
-        response = await self._client.delete(
-            f"/v1/jobs/{job_id}",
+        response = await self._request(
+            "DELETE",
+            f"{self._jobs_prefix}/{self._job_id(job_id)}",
             **request_kwargs,
         )
         return DeleteJobResponse.model_validate(self._decode_response(response))
 
+    async def _request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
+        # Enforce per request, including when the injected client follows redirects.
+        if self.native_scope is not None:
+            kwargs["follow_redirects"] = False
+        return await self._client.request(method, path, **kwargs)
+
+    def _job_id(self, job_id: str) -> str:
+        if self.native_scope is not None and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}", job_id) is None:
+            raise ValueError("native job identifier must be a safe path segment")
+        return job_id
+
     def _auth_headers(self) -> dict[str, str]:
         if not self.token:
             return {}
-        return {"Authorization": f"Bearer {self.token}"}
+        headers = {"Authorization": f"Bearer {self.token}"}
+        if self.native_scope is not None:
+            headers["X-Scope-Token"] = self.native_scope.token.get_secret_value()
+            headers["X-Scope-Generation"] = str(self.native_scope.generation)
+        return headers
 
     def _decode_response(self, response: httpx.Response) -> dict[str, Any]:
+        if self.native_scope is not None and response.is_redirect:
+            raise ShellctlClientError(response.status_code, "native_scope_redirect", "Native scope redirect rejected")
         try:
             payload = response.json()
         except ValueError as exc:  # pragma: no cover - network/proxy corruption

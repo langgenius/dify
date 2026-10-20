@@ -14,9 +14,11 @@ from sqlalchemy.orm import Session
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
 from controllers.inner_api import inner_api_ns
-from controllers.inner_api.wraps import plugin_inner_api_only
+from controllers.inner_api.wraps import agent_endpoint_api_only
 from core.workflow.nodes.knowledge_retrieval import exc as retrieval_exc
 from libs.exception import BaseHTTPException
+from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+from services.dify_builder.native_testing.agent_bridge import claim_agent_endpoint
 from services.entities.knowledge_retrieval_inner import InnerKnowledgeRetrieveRequest, InnerKnowledgeRetrieveResponse
 from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError, InnerKnowledgeRetrievalServiceError
 from services.knowledge_retrieval_inner_service import InnerKnowledgeRetrievalService
@@ -51,7 +53,7 @@ register_response_schema_models(inner_api_ns, InnerKnowledgeRetrieveResponse)
 class InnerKnowledgeRetrieveApi(Resource):
     """Retrieve knowledge from one or more datasets within the caller tenant."""
 
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("inner_knowledge_retrieve")
     @inner_api_ns.doc(description="Retrieve knowledge for trusted internal callers")
     @inner_api_ns.expect(inner_api_ns.models[InnerKnowledgeRetrieveRequest.__name__])
@@ -84,7 +86,20 @@ class InnerKnowledgeRetrieveApi(Resource):
             ) from exc
 
         try:
+            claim_agent_endpoint(
+                boundary="knowledge",
+                caller=payload.caller.model_dump(mode="json"),
+                envelope=payload.native_dispatch,
+                target={"dataset_ids": payload.dataset_ids},
+                parameters=payload.model_dump(mode="json", exclude={"caller", "native_dispatch"}),
+                kind="knowledge",
+                physical_owner_ready=False,
+            )
             response = InnerKnowledgeRetrievalService().retrieve(payload, session=session)
+        except BuilderExecutionPolicyError:
+            raise InnerKnowledgeRetrievalHttpError(
+                error_code="native_agent_control_refused", description="Native Agent dispatch refused.", status_code=409
+            ) from None
         except InnerKnowledgeRetrievalServiceError as exc:
             raise InnerKnowledgeRetrievalHttpError(
                 error_code=exc.error_code,

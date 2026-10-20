@@ -1,14 +1,24 @@
 from dataclasses import replace
-from typing import Literal
+from typing import Literal, Unpack
 
 import pytest
+from typing_extensions import TypedDict
 
 from core.dify_builder import models
-from core.dify_builder.execution_policy import ExecutionEvidenceSummary
+from core.dify_builder.models import Run
+from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 
-def verified(**changes):
+class RunChanges(TypedDict, total=False, closed=True):
+    session_id: str
+    kind: str
+    immutable: bool
+    status: str
+    verification: models.RunVerification | None
+
+
+def verified(**changes: Unpack[RunChanges]) -> Run:
     run = models.Run(
         id="r",
         dify_run_id="native",
@@ -48,8 +58,8 @@ def verified(**changes):
         ({"verification": None}, "execution_provenance_unbound"),
     ],
 )
-def test_verification_policy_denies(change, reason):
-    from core.dify_builder.verification import publication_decision
+def test_verification_policy_denies(change: RunChanges, reason: str) -> None:
+    from services.dify_builder.application.verification import publication_decision
 
     assert (
         publication_decision(
@@ -68,8 +78,8 @@ def test_verification_policy_denies(change, reason):
         ("no_output_dead_branch", True, "dead_branch_without_output"),
     ],
 )
-def test_verification_evidence_denies(field, value, reason):
-    from core.dify_builder.verification import publication_decision
+def test_verification_evidence_denies(field: str, value: str | bool, reason: str) -> None:
+    from services.dify_builder.application.verification import publication_decision
 
     run = verified()
     setattr(run.verification, field, value)
@@ -80,10 +90,13 @@ def test_verification_evidence_denies(field, value, reason):
 
 
 @pytest.mark.parametrize(("state", "allowed"), [("present", True), ("unknown", True), ("unresolved", False)])
-def test_verification_present_null_and_unknown_are_reviewable(state, allowed):
-    from core.dify_builder.verification import publication_decision, result_card
+def test_verification_present_null_and_unknown_are_reviewable(
+    state: Literal["present", "unknown", "unresolved"], allowed: bool
+) -> None:
+    from services.dify_builder.application.verification import publication_decision, result_card
 
     run = verified()
+    assert run.verification is not None
     run.verification.output_findings = [
         models.OutputFinding(
             node_id="end", output_name="result", selector=["tool", "text"], state=state, reason="key_presence"
@@ -135,7 +148,7 @@ def confirmed_run(
 
 
 def test_confirmed_success_is_publishable_only_when_sealed_and_revision_exact() -> None:
-    from core.dify_builder.verification import publication_decision
+    from services.dify_builder.application.verification import publication_decision
 
     def decide(run: models.Run) -> models.PublicationDecision:
         return publication_decision(run, session_id="s", current_revision="rev", current_graph_revision="graph")
@@ -160,7 +173,7 @@ def test_confirmed_card_has_ids_status_and_reasons_but_no_native_content(
     import json
     from dataclasses import asdict
 
-    from core.dify_builder.verification import result_card
+    from services.dify_builder.application.verification import result_card
 
     card = result_card(confirmed_run(outcome, action=action, status=status))
     text = json.dumps(asdict(card))
@@ -202,7 +215,7 @@ def json_run(
 
 @pytest.mark.parametrize("text", ["Error: invalid JSON", "not valid { JSON"])
 def test_json_native_success_text_remains_data_requiring_review(text: str) -> None:
-    from core.dify_builder.verification import publication_decision, result_card
+    from services.dify_builder.application.verification import publication_decision, result_card
 
     run = json_run(text=text)
     card = result_card(run)
@@ -216,7 +229,7 @@ def test_json_native_success_text_remains_data_requiring_review(text: str) -> No
 
 
 def test_json_completion_preserves_required_output_and_revision_gates() -> None:
-    from core.dify_builder.verification import publication_decision, result_card
+    from services.dify_builder.application.verification import publication_decision, result_card
 
     run = json_run()
     assert run.verification is not None
@@ -244,8 +257,16 @@ def test_json_completion_preserves_required_output_and_revision_gates() -> None:
         ("native_failed", "failed", "execution_failed"),
     ],
 )
-def test_json_noncompletion_blocks_publication(outcome, status, expected) -> None:
-    from core.dify_builder.verification import is_execution_policy_blocker, publication_decision, result_card
+def test_json_noncompletion_blocks_publication(
+    outcome: Literal["restricted_execution_completed", "execution_evidence_unknown", "native_failed"],
+    status: str,
+    expected: str,
+) -> None:
+    from services.dify_builder.application.verification import (
+        is_execution_policy_blocker,
+        publication_decision,
+        result_card,
+    )
 
     run = json_run(outcome=outcome, status=status)
     assert is_execution_policy_blocker(run)
@@ -260,3 +281,44 @@ def test_json_noncompletion_blocks_publication(outcome, status, expected) -> Non
     assert "SECRET-PROVIDER-ERROR" not in english_text(card.failure_reason)
     if status == "failed":
         assert card.terminal_outputs is None
+
+
+def test_observed_preparation_failure_has_specific_copy_without_entering_repair():
+    from services.dify_builder.application.verification import is_execution_policy_blocker, result_card
+
+    run = verified(status="failed", dify_run_id="", error="private daemon response token=secret")
+    run.verification.execution_evidence = ExecutionEvidenceSummary(
+        request_id="request",
+        policy_version="builder-confirmed-run-v1",
+        mode="confirmed_run",
+        sealed=True,
+        safety_outcome="preparation_failed",
+        sandbox_profile="native",
+        failure_phase="preparation",
+        failure_reason="connection_refused",
+    )
+    assert is_execution_policy_blocker(run)
+    card = result_card(run)
+    assert card.outcome == "execution_failed"
+    assert card.failure_reason.id == "test.preparationFailed"
+    assert card.failure_reason.params == {"reason": "connection_refused"}
+    assert card.failure_phase == "preparation"
+    assert card.failure_code == "connection_refused"
+    assert "secret" not in english_text(card.failure_reason)
+
+
+def test_unknown_execution_asks_for_reconciliation_instead_of_rerun():
+    from services.dify_builder.application.verification import result_card
+
+    run = verified(status="running", dify_run_id="")
+    run.verification.execution_evidence = ExecutionEvidenceSummary(
+        request_id="request",
+        policy_version="builder-confirmed-run-v1",
+        mode="confirmed_run",
+        sealed=False,
+        safety_outcome="execution_evidence_unknown",
+        sandbox_profile="native",
+    )
+    text = english_text(result_card(run).failure_reason)
+    assert "existing Run" in text
+    assert "run again" not in text.lower()

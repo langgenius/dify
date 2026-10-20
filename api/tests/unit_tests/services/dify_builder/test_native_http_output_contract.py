@@ -8,8 +8,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.dify_builder.models import MutationIntent
-from core.workflow.generator.runner import WorkflowGenerator
-from core.workflow.graph_normalizers import derive_if_else_var_types
 from services.dify_builder.native_http_output_contract import (
     aliased_http_output,
     declares_http_output,
@@ -20,6 +18,8 @@ from services.dify_builder.native_http_output_contract import (
     snapshot_http_plan_context,
 )
 from services.dify_builder.preflight import new_preflight_problems, preflight_errors, vet_intents
+from services.workflow_generation.graph_normalizers import derive_if_else_var_types
+from services.workflow_generation.runner import WorkflowGenerator
 
 
 def http_graph(operator: str = "is", value: str = "private-expected-value") -> dict:

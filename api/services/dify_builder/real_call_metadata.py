@@ -16,14 +16,14 @@ from collections.abc import Sequence
 
 from pydantic import ValidationError
 
-from core.dify_builder import gmail_read_policy
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError, canonical_digest
 from core.dify_builder.real_call_consent import InstalledToolBinding
 from core.plugin.entities.plugin import PluginInstallation, PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginToolProviderEntity
 from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.entities.tool_entities import ToolEntity
+from services.dify_builder.application import gmail_read_policy
+from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError, canonical_digest
 
 
 def get_message_schema_digest(tool: ToolEntity) -> str:

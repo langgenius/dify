@@ -11,6 +11,8 @@ default values) belongs in the builders. The planner commits to the minimum
 topology and node types so every builder gets a tight scaffold.
 """
 
+from core.workflow.generator.prompts.builder_prompts import CODE_FAILURE_POLICY_RULES
+
 PLANNER_SYSTEM_PROMPT = """You are a Dify workflow planner.
 
 Given a user's natural-language description of an automation, you choose the
@@ -27,6 +29,11 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
 - "template-transform"  — Jinja2 string templating.
 - "http-request"        — call an external HTTP API.
 - "tool"                — call a Dify built-in / plugin tool (e.g. web search, time, audio).
+- "agent"               — native New Agent v2, ONLY when a confirmed published
+                          roster Agent ID and snapshot ID are provided in the
+                          instruction. Copy that binding exactly; never invent
+                          an Agent, snapshot, published output schema, or legacy
+                          Agent strategy. Caller output names follow the task.
 - "if-else"             — conditional branch on a value.
 - "iteration"           — run a sub-pipeline over each item of a list (parallel-friendly map).
 - "loop"                — repeat a sub-pipeline until an exit condition is met.
@@ -125,16 +132,19 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
     terminal node must match the chosen mode (rule 2): "end" for workflow,
     "answer" for advanced-chat.
 16. Declare producer output names in ``node_outputs``:
-    ``{"<node id>": ["<output name>", ...]}``. Add an entry ONLY for the node
-    types that choose their own output names — "code" (its ``outputs`` keys),
-    "parameter-extractor" (its parameter names), "human-input" (its inputs'
-    variable names), and an "llm" node you intend to emit structured output
-    (its schema fields). Every other type has fixed engine outputs; never
-    list those. Each node's config is generated in isolation, so a consumer
-    may reference ONLY the names declared here — name them after the data the
-    consumers actually need. Keep the declaration small: at most 6 names per
-    node, and at most 10 declared nodes in the whole map. If a workflow has
-    more producers than that, declare the ones other nodes actually read.
+    ``{"<node id>": ["<output name>", ...]}``. Use at most 6 names per node
+    and at most 10 declared nodes in the whole map. Each config is generated
+    in isolation: consumers may reference ONLY the names declared here.
+    Add entries for types choosing their output names: "code" (``outputs``
+    keys), "parameter-extractor" (parameter names), "human-input" (input
+    variable names), "llm" structured output (schema fields), and native
+    New Agent caller custom ``agent_declared_outputs`` names.
+    Agent custom outputs are top-level variables; do not invent published
+    Agent output schemas or legacy Agent strategy outputs. System ``text``
+    and route-dependent ``switch`` are not custom declarations.
+    Other types have fixed engine outputs; never list those. Name outputs
+    after data consumers actually need. For larger workflows, declare the
+    producers other nodes actually read.
 
 # Output schema
 
@@ -159,6 +169,9 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
   "node_outputs": {"<producer node id>": ["<output name>"]}
 }
 """
+
+
+PLANNER_SYSTEM_PROMPT += CODE_FAILURE_POLICY_RULES
 
 
 PLANNER_USER_PROMPT = """# Mode

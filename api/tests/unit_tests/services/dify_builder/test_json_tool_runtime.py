@@ -28,14 +28,14 @@ from core.workflow.human_input_adapter import adapt_node_data_for_graph
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool.exc import ToolRuntimeInvocationError, ToolRuntimeResolutionError
 from graphon.runtime import VariablePool
-from services.dify_builder import json_tool_metadata as metadata
-from services.dify_builder.execution_contracts import (
+from runtime_contracts.builder.execution import (
     AdmittedNodeBinding,
     JsonToolExecutionContext,
     QualifiedJsonToolBinding,
     canonical_digest,
     context_digest,
 )
+from services.dify_builder import json_tool_metadata as metadata
 from services.dify_builder.json_tool_metadata import InstalledJsonParse
 from services.dify_builder.json_tool_runtime import (
     JsonRuntimeBinding,

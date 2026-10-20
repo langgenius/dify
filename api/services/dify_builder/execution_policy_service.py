@@ -16,8 +16,21 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.app.app_config.workflow_ui_based_app.variables.manager import WorkflowVariablesConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator
-from core.dify_builder import gmail_read_policy
-from core.dify_builder.execution_policy import (
+from core.dify_builder.input_schema import start_schema
+from core.dify_builder.models import Actor, Inputs
+from core.rbac import RBACPermission, RBACResourceScope
+from libs.datetime_utils import naive_utc_now
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.dify_builder import (
+    DifyBuilderExecutionRequest,
+    DifyBuilderRealCallConsent,
+    DifyBuilderSession,
+    DifyBuilderTestInput,
+)
+from models.model import App
+from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
+from services.dify_builder.application import gmail_read_policy
+from services.dify_builder.application.execution_policy import (
     MAX_OBSERVATIONS,
     BoundedID,
     BuilderExecutionContext,
@@ -41,19 +54,6 @@ from core.dify_builder.execution_policy import (
     scalar_inputs_digest,
     validate_execution_context,
 )
-from core.dify_builder.input_schema import start_schema
-from core.dify_builder.models import Actor, Inputs
-from core.rbac import RBACPermission, RBACResourceScope
-from libs.datetime_utils import naive_utc_now
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
-from models.dify_builder import (
-    DifyBuilderExecutionRequest,
-    DifyBuilderRealCallConsent,
-    DifyBuilderSession,
-    DifyBuilderTestInput,
-)
-from models.model import App
-from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
 from services.dify_builder.json_tool_execution import admit_json_workflow, resolve_json_parameters
 from services.dify_builder.json_tool_metadata import (
     InstalledJsonParse,

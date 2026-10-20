@@ -5,30 +5,34 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError, HttpFixtureSetV1, HttpResponseFixtureV1
 from core.dify_builder.models import Action, Actor, Turn
-from core.dify_builder.ports import DifyPort
+from services.dify_builder.application.execution_policy import (
+    BuilderExecutionPolicyError,
+    HttpFixtureSetV1,
+    HttpResponseFixtureV1,
+)
+from services.dify_builder.application.ports import DifyPort
 
 
-def stamp(dify, turn):
-    return importlib.import_module("core.dify_builder.testdata").stamp_testdata_http_fixtures(
+def stamp(dify: DifyPort, turn: Turn) -> HttpFixtureSetV1 | None:
+    return importlib.import_module("services.dify_builder.application.testdata").stamp_testdata_http_fixtures(
         dify, app_id="app", turn=turn
     )
 
 
-def sample(**overrides):
+def sample(**overrides: object) -> dict[str, object]:
     return {"node_id": "http", "status_code": 201, "content_type": "text/plain", "body": "private", **overrides}
 
 
 @pytest.mark.parametrize("action", [None, Action(kind="provide_testdata", payload={"inputs": {}})])
-def test_absent_http_fixtures_do_not_stamp(action):
+def test_absent_http_fixtures_do_not_stamp(action: Action | None) -> None:
     dify = MagicMock(spec=DifyPort)
     assert stamp(dify, Turn(actor=Actor(account_id="account", tenant_id="tenant"), action=action)) is None
     dify.stamp_http_fixtures.assert_not_called()
 
 
 @pytest.mark.parametrize("raw", [None, {}, [sample(source="generated_sample")], [sample(status_code=True)]])
-def test_invalid_public_http_fixtures_refuse_before_stamp(raw):
+def test_invalid_public_http_fixtures_refuse_before_stamp(raw: object) -> None:
     dify = MagicMock(spec=DifyPort)
     turn = Turn(
         actor=Actor(account_id="account", tenant_id="tenant"),
@@ -40,7 +44,7 @@ def test_invalid_public_http_fixtures_refuse_before_stamp(raw):
     dify.stamp_http_fixtures.assert_not_called()
 
 
-def test_shared_stamp_passes_actor_exact_base_revision_and_immutable_public_fixtures():
+def test_shared_stamp_passes_actor_exact_base_revision_and_immutable_public_fixtures() -> None:
     dify = MagicMock(spec=DifyPort)
     actor = Actor(account_id="account", tenant_id="tenant")
     revision = "a" * 64
@@ -56,7 +60,7 @@ def test_shared_stamp_passes_actor_exact_base_revision_and_immutable_public_fixt
     assert "source" not in raw[0]
 
 
-def test_shared_stamp_never_replaces_a_stale_submitted_base_revision():
+def test_shared_stamp_never_replaces_a_stale_submitted_base_revision() -> None:
     dify = MagicMock(spec=DifyPort)
     dify.stamp_http_fixtures.side_effect = BuilderExecutionPolicyError("stale_http_fixtures")
     actor = Actor(account_id="account", tenant_id="tenant")

@@ -1,15 +1,14 @@
 from datetime import datetime
-from typing import cast, override
+from typing import override
 from unittest.mock import MagicMock
 
 import pytest
 
 from core.dify_builder.contract import FormCard, SessionView, UserItem
-from core.dify_builder.handlers_edit import edit_registry
 from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Graph, Session, Turn
-from core.dify_builder.ports import DifyBuilderAgent, DifyPort, Repository
-from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState
+from services.dify_builder.application.handlers_edit import edit_registry
+from services.dify_builder.application.runner import Env, Runner
 from services.dify_builder.service import DifyBuilderService, SessionLock, resolve_submitted_action
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
 
@@ -22,7 +21,9 @@ class ImpactAgent(StubAgent):
         self.impact_calls: list[tuple[str, Graph]] = []
 
     @override
-    def analyze_impact(self, _goal_text: str, _graph: Graph) -> dict[str, list[object] | dict[str, str]]:
+    def analyze_impact(
+        self, _goal_text: str, _graph: Graph, *, reply_language=None
+    ) -> dict[str, list[object] | dict[str, str]]:
         self.impact_calls.append((_goal_text, _graph))
         return {
             "fields": [{"key": "tone", "label": "Tone", "type": "text"}],
@@ -65,10 +66,9 @@ def edit_flow() -> EditFlow:
             FormCard(variant="edit_rules", title="Edit rules", values=context.edit_rules).to_item(seq=1, at_version=1),
         ],
     )
-    # Shared engine fakes use positional parameter names for the port methods.
-    repository = cast(Repository, repo)
+    repository = repo
     runner = Runner(
-        Env(dify=cast(DifyPort, dify), agent=cast(DifyBuilderAgent, agent), repo=repository, now=lambda: datetime.min),
+        Env(dify=dify, agent=agent, repo=repository, now=lambda: datetime.min),
         edit_registry(),
     )
     lock = MagicMock(spec=SessionLock)

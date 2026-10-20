@@ -13,9 +13,10 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import ValidationError
 
-from core.dify_builder import gmail_read_policy
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError, RestrictedAdmissionSnapshot
-from core.dify_builder.gmail_read_policy import (
+from core.dify_builder.real_call_consent import CredentialReference, GmailReadParameters, InstalledToolBinding
+from services.dify_builder.application import gmail_read_policy
+from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError, RestrictedAdmissionSnapshot
+from services.dify_builder.application.gmail_read_policy import (
     GmailGetMessageEnvelope,
     admit_get_message_workflow,
     classify_get_message_result,
@@ -24,7 +25,6 @@ from core.dify_builder.gmail_read_policy import (
     normalize_get_message_parameters,
     qualify_installed_action,
 )
-from core.dify_builder.real_call_consent import CredentialReference, GmailReadParameters, InstalledToolBinding
 
 Graph = dict[str, list[dict[str, object]]]
 NOW = datetime(2026, 10, 11, 12, 0, tzinfo=UTC)

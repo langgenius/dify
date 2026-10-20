@@ -10,6 +10,10 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-14-builder-unified-native-testing-design.md`, approved by the user after its written review; source baseline `13368bd5fa91a613c65ccc1bd328fcadac732cf2`.
 
+## Current execution boundary — 2026-10-16
+
+Implement this lane within Dify, including the in-repository `dify-agent/` and `dify-agent-runtime/` owners. Reuse official Graphon 0.7.0, the existing plugin daemon, Sandbox and deployment capabilities. Changes or releases in another repository are not default dependencies: consider an exception only when a verified gap and comparison with Dify-only alternatives show a substantial benefit. Do not turn frozen Sandbox/Graphon publication work into an Agent acceptance prerequisite. Actual supported behavior, consent, recovery and side-effect evidence remain required; report unresolved capabilities explicitly. The coordinator's Dify-first constraint supersedes contrary older steps below.
+
 ## Global Constraints
 
 - This document is a plan; authoring it runs no tests, imports, services, network calls, CI, deployment or ticket changes and makes no product changes.

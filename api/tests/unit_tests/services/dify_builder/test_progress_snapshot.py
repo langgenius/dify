@@ -9,9 +9,9 @@ import pytest
 from configs import dify_config
 from core.dify_builder.contract import ExecutionActivity, ExecutionProgress
 from extensions.redis_names import serialize_redis_name
+from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.presentation import copy_text
 from services.dify_builder import progress_snapshot, session_lock
-from services.dify_builder.copy_ids import BuilderCopyId
-from services.dify_builder.presentation import copy_text
 
 
 def _snapshot() -> progress_snapshot.ProgressSnapshot:

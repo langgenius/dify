@@ -11,6 +11,7 @@ from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_ROOT_APP_ID_KEY,
 )
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import WorkflowExecutionStatus
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from machinery.context import RequestContext
@@ -277,6 +278,10 @@ class WorkflowRunService:
         snapshot = load_workflow_pause_snapshot(pause_record.pause, session_factory=self._session_factory)
         human_input_reasons: list[HumanInputRequired] = []
         for reason in snapshot.reasons:
+            if isinstance(reason, SchedulingPause):
+                # Scheduling waits have no human form; their message can carry
+                # private runtime state and must not enter this response.
+                continue
             if not isinstance(reason, HumanInputRequired):
                 raise NotImplementedError(f"Pause details do not support {type(reason).__name__}")
             human_input_reasons.append(reason)

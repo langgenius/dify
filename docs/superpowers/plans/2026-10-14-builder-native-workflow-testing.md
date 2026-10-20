@@ -6,9 +6,15 @@
 
 **Architecture:** 本计划只负责原生 Workflow lane，消费协调计划提供的上下文、effect ledger、预算、授权及生命周期服务。原生节点类、变量类型和图语义继续由 Dify/Graphon 所有；新领域逻辑放在 `api/services/dify_builder/native_testing/`，`api/core/` 仅增加依赖注入和控制结果透传。Agent 协议和 CodeSandbox 基座由对应 lane 交付后接入，不在本计划重复实现。
 
-**Tech Stack:** Python 3.13、Pydantic v2、SQLAlchemy、现有 Celery、Graphon 当前锁定 `0.7.0` 及本计划要求发布的兼容 0.7 补丁。
+**Tech Stack:** Python 3.13、Pydantic v2、SQLAlchemy、现有 Celery、Graphon 当前锁定的正式 `0.7.0`。
 
 **Spec:** [已批准设计](../specs/2026-10-14-builder-unified-native-testing-design.md)。源码基线 `13368bd5fa91a613c65ccc1bd328fcadac732cf2`。
+
+**执行更新（2026-10-15）：** 用户明确撤销 Graphon 0.8 的全部迁移与协议改动，恢复正式 `0.7.0` 基线。NW3 继续在 0.7 的引擎、事件和运行状态接口上实现最小中立控制协议，重新验证普通运行、历史 snapshot、暂停/恢复和防重复副作用；0.8 的实现与测试仅保留为已取消的历史记录，不进入当前依赖或验收。
+
+## 主仓优先更新（2026-10-16）
+
+用户要求尽可能只在 Dify 主仓完成，跨仓修改仅在比较主仓替代方案后证明显著更优时考虑。以下 NW3 中的 Graphon 上游补丁、发布及依赖升级步骤保留为历史提案，不再是当前任务或默认阻塞依赖；优先使用正式 0.7.0 的现有公开接口和 Dify 内部适配。Sandbox 等其他仓库同样冻结。真实 checkpoint、授权、恢复和副作用保障仍须验证，不能以普通失败或模拟成功替代。执行依赖以协调计划的“主仓优先约束”为准。
 
 ## Global Constraints
 

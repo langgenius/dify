@@ -3,13 +3,14 @@
 from dataclasses import fields, replace
 
 from core.dify_builder.contract import FormCard
-from core.dify_builder.handlers_fix import append_assistant, append_card, build_form_fields
 from core.dify_builder.models import DifyBuilderContext, Session
 from core.dify_builder.progress import ProgressReporter
-from core.dify_builder.runner import Env, StepResult
 from core.dify_builder.state import PcState
-from services.dify_builder.copy_ids import BuilderCopyId
-from services.dify_builder.presentation import copy_text
+from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.presentation import copy_text
+from services.dify_builder.application.handlers_fix import append_assistant, append_card, build_form_fields
+from services.dify_builder.application.runner import Env, StepResult
+from services.dify_builder.execution_messages import cognition_failure_message
 
 
 def edit_planning_failed(
@@ -52,7 +53,7 @@ def edit_planning_failed(
         env,
         session,
         context,
-        copy_text(BuilderCopyId.REPLIES_BUILDER_COULDN_T_PRODUCE_A_USABLE),
+        cognition_failure_message(env.diagnostics, copy_text(BuilderCopyId.REPLIES_BUILDER_COULDN_T_PRODUCE_A_USABLE)),
         execution=execution,
         cards=["form"] if form_items else None,
         turn_id=progress.operation_id,

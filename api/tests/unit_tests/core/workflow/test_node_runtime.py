@@ -22,7 +22,6 @@ from core.app.file_access import FileAccessScope, bind_file_access_scope, grant_
 from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.helper.ssrf_proxy import graphon_ssrf_proxy
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.real_call_consent import ConfirmedToolGuard
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
@@ -103,6 +102,7 @@ from models.dataset import SegmentAttachmentBinding
 from models.enums import CreatorUserRole
 from models.model import StorageType, UploadFile
 from models.tools import ToolFile
+from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
     ModerationUnavailableInvocationError,

@@ -12,11 +12,11 @@ from unittest.mock import Mock
 
 import pytest
 
-from core.dify_builder import gmail_read_policy
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.plugin.entities.plugin import PluginInstallation
 from core.plugin.entities.plugin_daemon import PluginToolProviderEntity
 from services.dify_builder import real_call_metadata
+from services.dify_builder.application import gmail_read_policy
+from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 
 TENANT = "tenant-1"
 PLUGIN = "langgenius/dify-gmail"

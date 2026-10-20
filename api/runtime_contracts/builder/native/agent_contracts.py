@@ -1,0 +1,171 @@
+"""Pure protected Agent association structures, never backend ACK/cleanup authority.
+
+The trusted future backend producer must read its actual checkpoint/event and
+verified terminal state before storing these records. Parsing or storing a
+reference does not authorize an effect, resume, or physical-capacity release.
+"""
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal, Self
+
+if TYPE_CHECKING:
+    from dify_agent.protocol.schemas import CreateRunRequest
+from uuid import UUID
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    TypeAdapter,
+    field_validator,
+    model_validator,
+)
+
+from runtime_contracts.builder.execution import Digest
+from runtime_contracts.builder.native.contracts import (
+    ID,
+    Counter,
+    FiniteJSON,
+    FrozenDTO,
+    NativeTestContextRef,
+)
+
+
+class AgentTestWorkspaceRef(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
+    binding_id: str
+    workspace_id: str
+    backend_binding_ref: str
+    backend_workspace_ref: str
+    pinned_snapshot_id: str
+    home_snapshot_id: str | None
+    workspace_generation: int
+
+    @model_validator(mode="after")
+    def blank_home_is_normal_workspace_only(self) -> Self:
+        if self.home_snapshot_id is None and self.workspace_generation != 0:
+            raise ValueError("isolated workspace requires a pinned Home Snapshot")
+        return self
+
+
+class AgentParentNodeRef(FrozenDTO):
+    """Actual bound execution UUID and existing protected typed inputs, not an effect key."""
+
+    ref: NativeTestContextRef
+    execution_id: ID
+    input_result_ref: ID
+    input_digest: Digest
+
+    @field_validator("execution_id")
+    @classmethod
+    def canonical_execution_uuid(cls, value: str) -> str:
+        if str(UUID(value)) != value:
+            raise ValueError("expected canonical execution UUID")
+        return value
+
+
+class AgentNodeAssociation(FrozenDTO):
+    parent_node: AgentParentNodeRef
+    workflow_native_run_id: ID
+    agent_run_id: ID
+    config_ref: ID
+    config_digest: Digest
+    pinned_snapshot_id: ID
+    home_snapshot_id: ID | None
+    workspace: AgentTestWorkspaceRef
+
+    @field_validator("workspace", mode="before")
+    @classmethod
+    def strict_workspace_values(cls, value: object) -> object:
+        raw = value.model_dump() if isinstance(value, AgentTestWorkspaceRef) else value
+        if not isinstance(raw, dict):
+            raise ValueError("expected workspace reference")
+        for name in AgentTestWorkspaceRef.model_fields:
+            if (
+                name == "home_snapshot_id"
+                and name in raw
+                and raw[name] is None
+                and raw.get("workspace_generation") == 0
+            ):
+                continue
+            TypeAdapter(Counter if name == "workspace_generation" else ID).validate_python(raw.get(name))
+        return value
+
+    @model_validator(mode="after")
+    def distinct_runs_and_pins(self) -> Self:
+        if self.agent_run_id == self.workflow_native_run_id:
+            raise ValueError("Agent and Workflow Run identities are distinct")
+        if (self.pinned_snapshot_id, self.home_snapshot_id) != (
+            self.workspace.pinned_snapshot_id,
+            self.workspace.home_snapshot_id,
+        ):
+            raise ValueError("workspace pin mismatch")
+        return self
+
+
+class AgentWaitAssociation(FrozenDTO):
+    """Selected private object/event references; cannot certify an external Redis ACK."""
+
+    parent_node: AgentParentNodeRef
+    association_object_ref: ID
+    agent_generation: Counter
+    checkpoint_object_ref: ID
+    checkpoint_digest: Digest
+    backend_wait_event_id: ID
+
+
+class AgentProtectedState(FrozenDTO):
+    """Owned decoded material; actual backend proof and current C02 checks remain external."""
+
+    association_object_ref: ID
+    association: AgentNodeAssociation
+    wait: AgentWaitAssociation | None
+    checkpoint: FiniteJSON
+    terminal_result_ref: ID | None
+    terminal_result: FiniteJSON
+
+
+class AgentPreparedConfig(FrozenDTO):
+    parent_node: AgentParentNodeRef
+    workflow_native_run_id: ID
+    workspace: AgentTestWorkspaceRef
+    config_ref: ID
+    config_digest: Digest
+    config: FiniteJSON
+
+
+@dataclass(frozen=True, slots=True)
+class AgentDefinitionReceipt:
+    """Immutable receipt captured from the definition used to compose, never a wire grant."""
+
+    node_id: str
+    stamp: str
+
+
+@dataclass(frozen=True, slots=True)
+class AgentCreateInserted:
+    """Local outcome of this exact successful SQL insertion, never a wire grant."""
+
+    config_ref: str
+    config_digest: str
+    kind: Literal["inserted"] = "inserted"
+
+
+@dataclass(frozen=True, slots=True)
+class AgentCreateExisting:
+    """Discovery/unknown only. Identical immutable bytes never confer POST ownership."""
+
+    config_ref: str
+    config_digest: str
+    association_object_ref: str | None = None
+    kind: Literal["existing"] = "existing"
+
+
+type AgentCreateClaim = AgentCreateInserted | AgentCreateExisting
+
+
+@dataclass(frozen=True, slots=True)
+class AgentStartPreparation:
+    claim: AgentCreateClaim
+    parent_node: AgentParentNodeRef
+    # Kept out of this module's imports to preserve the existing API DTO dependency DAG.
+    request: "CreateRunRequest"

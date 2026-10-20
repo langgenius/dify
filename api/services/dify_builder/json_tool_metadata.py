@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.impl.tool import PluginToolManager
-from services.dify_builder.execution_contracts import (
+from runtime_contracts.builder.execution import (
     BuilderExecutionPolicyError,
     QualifiedJsonToolBinding,
     canonical_digest,

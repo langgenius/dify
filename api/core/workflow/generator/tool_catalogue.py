@@ -22,7 +22,7 @@ import json
 import logging
 import re
 import unicodedata
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from operator import itemgetter
@@ -33,7 +33,7 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolDescription
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
-from services.tools.api_tool_catalogue import list_api_tool_metadata
+from repositories.api_tool_catalogue import list_api_tool_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +118,9 @@ class LegacyToolFallbackSelection:
         return max(0, len(self.entries) - self.limit)
 
 
-def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
+def build_tool_catalogue(
+    tenant_id: str, *, on_source_error: Callable[[str], None] | None = None
+) -> list[ToolCatalogueEntry]:
     """
     Enumerate installed tools for the given tenant.
 
@@ -138,6 +140,8 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
     try:
         providers.extend(ToolManager.list_plugin_providers(tenant_id))
     except Exception:
+        if on_source_error is not None:
+            on_source_error("plugin_inventory")
         logger.exception("Workflow generator: failed to list plugin tool providers; keeping built-in tools only")
 
     for provider in providers:
@@ -163,6 +167,8 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
             tools = list(provider.get_tools())
             provider_label, provider_description, provider_tags = _provider_capability(provider)
         except Exception:
+            if on_source_error is not None:
+                on_source_error("tool_provider")
             logger.exception(
                 "Workflow generator: failed to list tools for provider %s",
                 provider_name,
@@ -192,6 +198,8 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
                     )
                 )
             except Exception:
+                if on_source_error is not None:
+                    on_source_error("tool_schema")
                 logger.exception(
                     "Workflow generator: failed to describe a tool in provider %s",
                     provider_name,
@@ -201,6 +209,8 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
     try:
         entries.extend(list_api_tool_metadata(tenant_id))
     except Exception:
+        if on_source_error is not None:
+            on_source_error("api_tool_inventory")
         logger.exception("Workflow generator: failed to list public API tool metadata; keeping other tools")
 
     entries.sort(key=itemgetter("provider_name", "tool_name"))

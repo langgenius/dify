@@ -43,7 +43,7 @@ def deps_for(client, config, state=None):
             "knowledge": {"config": config.model_dump(mode="json"), "state": state or State().model_dump(mode="json")},
             "execution_context": {"config": identity.model_dump(mode="json"), "state": {}},
         },
-        services=Services(client, client),
+        services=Services(client, client, inner_api_key="test-inner-key"),
         run_id="test",
     )
 

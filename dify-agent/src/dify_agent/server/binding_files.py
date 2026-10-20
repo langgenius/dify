@@ -219,6 +219,15 @@ class BindingFileService:
             raise _normalize_binding_file_error(exc) from exc
 
     async def download_file(self, request: BindingFileDownloadRequest) -> BindingFileDownloadResponse:
+        if request.backend_binding_ref.startswith("native:"):
+            # The ordinary upload path mints an execution-context credential.
+            # Native export must have its own capability owner before either
+            # that materialization or acquisition of the isolated runtime.
+            raise BindingFileError(
+                "native_file_export_requires_capability",
+                "Native test file export requires an explicit capability",
+                status_code=409,
+            )
         context = request.execution_context
         if not context.user_id or not context.user_from:
             raise BindingFileError(

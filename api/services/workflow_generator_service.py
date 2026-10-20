@@ -1,9 +1,9 @@
 """
 Workflow generator service.
 
-Thin facade over ``core.workflow.generator.WorkflowGenerator`` that owns the
-model-manager / model-instance plumbing. Controllers call this; the pure
-domain class never touches the model registry directly.
+Facade over ``services.workflow_generation.runner.WorkflowGenerator`` that owns
+model-manager / model-instance plumbing. Controllers call this facade; the
+injected runner coordinates graph generation and source qualification.
 
 Pattern mirrors ``LLMGenerator.generate_rule_config`` — see
 ``core/llm_generator/llm_generator.py`` — but lives in ``services/`` because
@@ -18,7 +18,6 @@ from typing import Any
 from core.app.app_config.entities import ModelConfig
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.model_manager import ModelInstance, ModelManager
-from core.workflow.generator import WorkflowGenerator
 from core.workflow.generator.tool_catalogue import (
     ToolCatalogueEntry,
     build_tool_catalogue,
@@ -29,6 +28,7 @@ from core.workflow.generator.types import (
     WorkflowGenerationModeRequest,
 )
 from graphon.model_runtime.entities.model_entities import ModelType
+from services.workflow_generation.runner import WorkflowGenerator
 
 logger = logging.getLogger(__name__)
 

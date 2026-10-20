@@ -10,13 +10,13 @@ import pytest
 from controllers.console.dify_builder_fields import DifyBuilderConversationPageResponse, DifyBuilderSessionViewResponse
 from core.dify_builder.contract import ConversationItemAppendedEventData
 from core.dify_builder.errors import BadRequestError
-from core.dify_builder.handlers_build import handle_publish as publish_build
-from core.dify_builder.handlers_edit import handle_publish as publish_edit
-from core.dify_builder.handlers_fix import handle_publish as publish_fix
 from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Session, Turn
-from core.dify_builder.ports import DifyBuilderAgent, DifyPort, Repository
-from core.dify_builder.runner import Env, Handler, Runner
 from core.dify_builder.state import PcState
+from services.dify_builder.application.handlers_build import handle_publish as publish_build
+from services.dify_builder.application.handlers_edit import handle_publish as publish_edit
+from services.dify_builder.application.handlers_fix import handle_publish as publish_fix
+from services.dify_builder.application.ports import DifyBuilderAgent, DifyPort, Repository
+from services.dify_builder.application.runner import Env, Handler, Runner
 from services.dify_builder.service import DifyBuilderService, SessionLock
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent, seed_verified_run
 

@@ -16,7 +16,7 @@ from typing import Annotated, Any, Literal, Protocol
 
 from pydantic import AfterValidator, BeforeValidator, Field, StrictBool, StrictInt, model_validator
 
-from core.dify_builder.execution_policy import (
+from runtime_contracts.builder.execution import (
     BoundedID,
     BuilderExecutionPolicyError,
     ConfirmedToolExecutionContext,

@@ -10,7 +10,6 @@ import pytest
 from sqlalchemy.engine import Engine
 
 from core.tools.utils.parser import ApiBasedToolSchemaParser
-from core.workflow.generator.runner import WorkflowGenerator
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry, build_tool_catalogue, find_tool_entry
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -23,6 +22,7 @@ from services.dify_builder.api_tool_output_context import (
     format_api_tool_code_system_rules,
     format_api_tool_output_context,
 )
+from services.workflow_generation.runner import WorkflowGenerator
 from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     TENANT_ID,
     FakeToolDaemon,

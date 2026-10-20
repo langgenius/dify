@@ -1,6 +1,7 @@
 """A streaming run inside a Celery task must not wait for another pool slot."""
 
 import json
+from collections.abc import Callable, Generator
 from unittest.mock import MagicMock
 
 import pytest
@@ -17,8 +18,8 @@ from services.app_generate_service import AppGenerateService
 @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
 @pytest.mark.parametrize("ending", ["complete", "close", "error"])
 def test_in_process_stream_does_not_enqueue_a_child_task_and_releases_its_rate_limit(
-    monkeypatch: pytest.MonkeyPatch, config_overrides, mode, ending
-):
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], mode: AppMode, ending: str
+) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     app = MagicMock(spec=App)
     app.id = "app-1"
@@ -36,9 +37,9 @@ def test_in_process_stream_does_not_enqueue_a_child_task_and_releases_its_rate_l
     monkeypatch.setattr(module, "RateLimit", MagicMock(return_value=limiter))
     enqueue = MagicMock(side_effect=AssertionError("the parent task owns the only worker slot"))
     monkeypatch.setattr(module.workflow_based_app_execution_task, "delay", enqueue)
-    closed = []
+    closed: list[bool] = []
 
-    def stream():
+    def stream() -> Generator[dict[str, object]]:
         try:
             yield {"event": "workflow_started", "workflow_run_id": "run-1", "data": {"inputs": {"query": "hello"}}}
             if ending == "error":
@@ -85,7 +86,9 @@ def test_in_process_stream_does_not_enqueue_a_child_task_and_releases_its_rate_l
     limiter.exit.assert_called_once_with("request-1")
 
 
-def test_posted_live_mode_cannot_select_builder_policy(monkeypatch, config_overrides):
+def test_posted_live_mode_cannot_select_builder_policy(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
     from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
 
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
@@ -104,7 +107,7 @@ def test_posted_live_mode_cannot_select_builder_policy(monkeypatch, config_overr
     limiter.enter = MagicMock(return_value="request")
     limiter.exit = MagicMock()
     monkeypatch.setattr(module, "RateLimit", MagicMock(return_value=limiter))
-    generate = MagicMock(return_value=iter(()))
+    generate = MagicMock(side_effect=lambda **_: (event for event in ()))
     monkeypatch.setattr(module.WorkflowAppGenerator, "generate", generate)
     for policy in (None, marker):
         with Session() as session:
@@ -125,8 +128,10 @@ def test_posted_live_mode_cannot_select_builder_policy(monkeypatch, config_overr
 
 
 @pytest.mark.parametrize("mode", ["advanced-chat", "agent", "agent-chat"])
-def test_restricted_dispatch_rejects_other_modes_before_guardrails(monkeypatch, mode):
-    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+def test_restricted_dispatch_rejects_other_modes_before_guardrails(
+    monkeypatch: pytest.MonkeyPatch, mode: AppMode
+) -> None:
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
     from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
 
     guardrails = MagicMock(side_effect=AssertionError("must refuse before native dispatch"))
@@ -145,8 +150,8 @@ def test_restricted_dispatch_rejects_other_modes_before_guardrails(monkeypatch, 
     guardrails.assert_not_called()
 
 
-def test_restricted_marker_cannot_enter_agent_dispatch_of_workflow_app(monkeypatch):
-    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+def test_restricted_marker_cannot_enter_agent_dispatch_of_workflow_app(monkeypatch: pytest.MonkeyPatch) -> None:
+    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
     from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
 
     app = MagicMock(spec=App)
@@ -170,3 +175,40 @@ def test_restricted_marker_cannot_enter_agent_dispatch_of_workflow_app(monkeypat
             builder_execution_admit=MagicMock(),
         )
     agent.assert_not_called()
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+@pytest.mark.parametrize("transport", ["in_process", "celery"])
+def test_pre_generator_tool_admission_failure_has_qualified_preparation_boundary(monkeypatch, mode, transport):
+    from core.tools.errors import ToolProviderCredentialValidationError
+    from services.dify_builder.native_launch_observation import NativeLaunchObservation
+
+    app = MagicMock(spec=App)
+    app.mode = mode
+    app.is_agent_with_session.return_value = False
+    user = MagicMock(spec=Account)
+    monkeypatch.setattr(AppGenerateService, "_get_workflow", MagicMock(return_value=MagicMock()))
+    monkeypatch.setattr(
+        AppGenerateService,
+        "_run_with_guardrails",
+        staticmethod(lambda **kwargs: kwargs["action"](MagicMock(), "request")),
+    )
+    monkeypatch.setattr(
+        AppGenerateService,
+        "_admit_normal_draft_tools",
+        MagicMock(side_effect=ToolProviderCredentialValidationError("metadata service unavailable")),
+    )
+    generator = MagicMock(side_effect=AssertionError("no worker dispatch"))
+    monkeypatch.setattr(module.WorkflowAppGenerator, "generate", generator)
+    monkeypatch.setattr(module.AdvancedChatAppGenerator, "generate", generator)
+    observation = NativeLaunchObservation()
+    with (
+        observation.track(),
+        Session() as session,
+        pytest.raises(ToolProviderCredentialValidationError, match="metadata service unavailable"),
+    ):
+        AppGenerateService.generate(
+            app, user, {"inputs": {}}, InvokeFrom.DEBUGGER, session=session, workflow_execution_mode=transport
+        )
+    assert observation.failed_before_dispatch is (transport == "in_process")
+    generator.assert_not_called()

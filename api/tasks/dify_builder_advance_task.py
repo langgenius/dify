@@ -46,23 +46,26 @@ from core.dify_builder.contract import (
     post_canvas_action_id,
 )
 from core.dify_builder.errors import ConflictError
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError, ConfirmedToolExecutionContext
-from core.dify_builder.handlers_build import build_registry
-from core.dify_builder.handlers_edit import edit_registry
-from core.dify_builder.handlers_fix import fix_registry
 from core.dify_builder.models import CONFIRMED_TOOL_ACTION, Action, Actor, Session, Turn
-from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState, is_terminal
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
+from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.presentation import copy_text
 from services.dify_builder import app_naming, progress_bus, progress_snapshot, session_lock
 from services.dify_builder.action_policy import requires_app_revision
 from services.dify_builder.agent.localize import LanguageDetector
 from services.dify_builder.agent_factory import build_dify_builder_agent
-from services.dify_builder.copy_ids import BuilderCopyId
+from services.dify_builder.application.execution_policy import (
+    BuilderExecutionPolicyError,
+    ConfirmedToolExecutionContext,
+)
+from services.dify_builder.application.handlers_build import build_registry
+from services.dify_builder.application.handlers_edit import edit_registry
+from services.dify_builder.application.handlers_fix import fix_registry
+from services.dify_builder.application.runner import Env, Runner
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.errors import HashMismatchError
-from services.dify_builder.presentation import copy_text
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision
@@ -330,7 +333,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                     progress.operation_id,
                 )
 
-        language_detector = LanguageDetector(agent.model_or_none)
+        language_detector = LanguageDetector(agent.model_or_none, prior_language=_fc.reply_language)
 
         def rename_app(proposed: str) -> str:
             assert actor is not None
@@ -563,3 +566,23 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                 )
             except Exception:
                 logger.exception("dify_builder terminal error frame also failed to publish for session %s", session_id)
+
+
+@shared_task(queue="dify_builder")
+def advance_native_test(*, ref: dict, generation: int, dispatch_id: str, actor: dict) -> None:
+    """V2-only delivery: trusted SQL reload, never ordinary Runner fallback.
+
+    The application composition owner supplies qualified native collaborators.
+    Queue arguments are references, not approval flags or serialized state.
+    """
+    from runtime_contracts.builder.native.contracts import decode_native_ref
+    from services.dify_builder.wiring import build_native_dispatch_lifecycle
+
+    actual_ref = decode_native_ref(ref)
+    service = build_native_dispatch_lifecycle(
+        ref=actual_ref,
+        generation=generation,
+        dispatch_id=dispatch_id,
+        actor_hint=Actor(**actor),
+    )
+    service.execute_dispatch(ref=actual_ref, generation=generation, dispatch_id=dispatch_id)

@@ -3,9 +3,9 @@
 from core.dify_builder.contract import RecoveryClass
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import Action, ConversationItem, DifyBuilderContext, Session, Turn
-from core.dify_builder.ports import DifyPort
-from core.dify_builder.recovery import apply_recovery_action, classify
 from core.dify_builder.state import PcState, is_terminal, is_waiting
+from services.dify_builder.application.ports import DifyPort
+from services.dify_builder.application.recovery import apply_recovery_action, classify
 
 
 def prepare_recovery_step(

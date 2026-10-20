@@ -3,13 +3,13 @@
 from typing import cast
 
 from core.dify_builder.contract import Action, ActionKind, DecisionItem
-from core.dify_builder.handlers_fix import action_kind, append_assistant, append_card
 from core.dify_builder.models import Diagnosis, DifyBuilderContext, Session, Turn
 from core.dify_builder.progress import ProgressReporter
-from core.dify_builder.runner import Env, StepResult
 from core.dify_builder.state import PcState
-from services.dify_builder.copy_ids import BuilderCopyId
-from services.dify_builder.presentation import copy_text, text_parts
+from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.presentation import copy_text, text_parts
+from services.dify_builder.application.handlers_fix import action_kind, append_assistant, append_card
+from services.dify_builder.application.runner import Env, StepResult
 
 NO_REPAIR_REPLY = copy_text(BuilderCopyId.REPLIES_NO_AUTOMATIC_FIX_FOUND_TRY_AGAIN_OR_FINISH_THIS_SESSION)
 NO_REPAIR_REASON = "No safe automatic fix found — try again or finish this session."

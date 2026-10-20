@@ -4,6 +4,7 @@ Stub-specific protocol DTOs live under ``dify_agent.agent_stub.protocol`` so the
 run API package boundary stays explicit.
 """
 
+from .run_recovery import LookupRunRequest, create_run_fingerprint
 from .schemas import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
@@ -99,3 +100,53 @@ __all__ = [
     "RunSucceededEventData",
     "utc_now",
 ]
+
+from .native_testing import (
+    AgentNativeTestRef,
+    AgentOperationKey,
+    AgentEffectIntent,
+    AgentDispatchPermit,
+    AgentApprovalWait,
+    AgentRecordedResult,
+    AgentPolicyStop,
+    AgentEffectDecision,
+    AgentEffectReceipt,
+    AgentCheckpointRef,
+    AgentWaitingReceipt,
+    AgentResumeReceipt,
+    AgentCancellationReceipt,
+    NativeTestCapabilities,
+    NativeTestProtocolUnsupported,
+    ContinueRunRequest,
+    ContinuationClaim,
+    require_native_test_capabilities,
+)
+from .schemas import RunWaitingEvent, RunWaitingEventData, RunResumedEvent, RunResumedEventData
+
+__all__ += [
+    "AgentNativeTestRef",
+    "AgentOperationKey",
+    "AgentEffectIntent",
+    "AgentDispatchPermit",
+    "AgentApprovalWait",
+    "AgentRecordedResult",
+    "AgentPolicyStop",
+    "AgentEffectDecision",
+    "AgentEffectReceipt",
+    "AgentCheckpointRef",
+    "AgentWaitingReceipt",
+    "AgentResumeReceipt",
+    "AgentCancellationReceipt",
+    "NativeTestCapabilities",
+    "NativeTestProtocolUnsupported",
+    "ContinueRunRequest",
+    "ContinuationClaim",
+    "require_native_test_capabilities",
+    "RunWaitingEvent",
+    "RunWaitingEventData",
+    "RunResumedEvent",
+    "RunResumedEventData",
+]
+
+
+__all__ += ["LookupRunRequest", "create_run_fingerprint"]

@@ -37,7 +37,7 @@ from models.workflow import Workflow
 from services.workflow_execution_identity import build_workflow_execution_identity
 
 if TYPE_CHECKING:
-    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from runtime_contracts.workflow_driver import WorkflowRunDriver
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
@@ -104,7 +104,7 @@ class WorkflowTool(Tool):
         # transform the tool parameters
         tool_parameters, files = self._transform_args(tool_parameters=tool_parameters)
 
-        from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+        from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 
         if self.execution_driver is None:
             raise ToolInvokeError("Workflow execution driver is required")

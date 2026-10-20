@@ -567,3 +567,71 @@ async def test_shellctl_client_health_returns_model_and_healthz_stays_compatible
 
     assert health == HealthResponse(status="ok")
     assert healthz == {"status": "ok"}
+
+
+def _native_handle():
+    from shellctl.shared.schemas import NativeScopeHandle
+
+    return NativeScopeHandle(scope_id="scope-one", generation=7, status="ready", token="scope-secret")
+
+
+def test_native_handle_never_serializes_credentials() -> None:
+    handle = _native_handle()
+    assert "scope-secret" not in repr(handle)
+    assert "token" not in handle.model_dump()
+    assert "scope-secret" not in handle.model_dump_json()
+
+
+@pytest.mark.anyio
+async def test_native_client_scoped_route_and_authority() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/test-scopes/scope-one/jobs"
+        assert request.headers["Authorization"] == "Bearer control-secret"
+        assert request.headers["X-Scope-Token"] == "scope-secret"
+        assert request.headers["X-Scope-Generation"] == "7"
+        return httpx.Response(200, json={"jobs": []})
+
+    async with ShellctlClient(
+        "http://native.test",
+        token="control-secret",
+        native_scope=_native_handle(),
+        transport=httpx.MockTransport(handler),
+    ) as client:
+        assert await client.list_jobs() == []
+
+
+@pytest.mark.anyio
+async def test_native_client_rejects_redirect_with_injected_following_transport() -> None:
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url.path)
+        if request.url.path == "/v1/jobs":
+            return httpx.Response(200, json={"jobs": []})
+        return httpx.Response(307, headers={"location": "/v1/jobs"})
+
+    async with httpx.AsyncClient(
+        base_url="http://native.test", follow_redirects=True, transport=httpx.MockTransport(handler)
+    ) as transport:
+        async with ShellctlClient(
+            "http://native.test", token="control-secret", native_scope=_native_handle(), client=transport
+        ) as client:
+            with pytest.raises(ShellctlClientError, match="native_scope_redirect"):
+                await client.list_jobs()
+    assert seen == ["/v1/test-scopes/scope-one/jobs"]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("job_id", ["../other", "a/b", "%2e%2e", "a?x=1", "", ".", ".."])
+async def test_native_client_rejects_job_path_escape_before_transport(job_id: str) -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        pytest.fail("unsafe identifier reached transport")
+
+    async with ShellctlClient(
+        "http://native.test",
+        token="control-secret",
+        native_scope=_native_handle(),
+        transport=httpx.MockTransport(handler),
+    ) as client:
+        with pytest.raises(ValueError, match="job identifier"):
+            await client.status(job_id)

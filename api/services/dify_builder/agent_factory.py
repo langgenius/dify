@@ -8,7 +8,7 @@ choice; there is no runtime placeholder mode.
 from collections.abc import Callable
 from typing import Any
 
-from core.dify_builder.ports import DifyBuilderAgent
+from services.dify_builder.application.ports import DifyBuilderAgent
 
 __all__ = ["build_dify_builder_agent", "set_dify_builder_agent_factory"]
 

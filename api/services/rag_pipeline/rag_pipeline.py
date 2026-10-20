@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import (
@@ -33,7 +32,6 @@ from core.rag.entities import DatasourceCompletedEvent, DatasourceErrorEvent, Da
 from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.llm_environment_variable import validate_llm_environment_model_references
-from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
 from core.workflow.system_variables import (
     SystemVariableKey,
     build_bootstrap_variables,
@@ -42,7 +40,6 @@ from core.workflow.system_variables import (
     get_system_segment,
 )
 from core.workflow.variable_pool_initializer import add_variables_to_pool
-from core.workflow.workflow_entry import WorkflowEntry
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from extensions.ext_database import db
 from graphon.engine_events import NodeEvent, NodeRunFailedEvent, NodeRunSucceededEvent
@@ -97,6 +94,9 @@ from services.workflow_node_execution_trace_service import (
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
 from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_runtime.entry import WorkflowEntry
+from services.workflow_runtime.node_factory import LATEST_VERSION, get_node_type_classes_mapping
+from services.workflow_runtime.pipeline_generator import PipelineGenerator
 
 logger = logging.getLogger(__name__)
 

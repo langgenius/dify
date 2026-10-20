@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Iterator
 from contextlib import ExitStack
-from typing import Any, cast
+from typing import Any, Never, cast
 
 import httpx
 import pytest
@@ -32,7 +32,7 @@ def sandbox_client(mocker: MockerFixture) -> Iterator[Callable[[httpx.Response |
                 return result
 
             client = stack.enter_context(httpx.Client(transport=httpx.MockTransport(send)))
-            mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
+            mocker.patch("clients.code_execution.get_pooled_http_client", return_value=client)
             return requests
 
         yield install
@@ -146,3 +146,168 @@ def test_execute_code_raises_when_response_contains_runtime_error(
         code_executor_module.CodeExecutor.execute_code(
             code_executor_module.CodeLanguage.PYTHON3, preload="", code="print(1)"
         )
+
+
+class RecordingTransport:
+    def __init__(self, response: str) -> None:
+        self.response = response
+        self.calls: list[dict[str, str]] = []
+
+    def execute(self, *, language: str, preload: str, code: str) -> str:
+        self.calls.append({"language": language, "preload": preload, "code": code})
+        return self.response
+
+
+@pytest.mark.parametrize(
+    ("language", "running_language"),
+    [
+        (code_executor_module.CodeLanguage.PYTHON3, "python3"),
+        (code_executor_module.CodeLanguage.JAVASCRIPT, "nodejs"),
+        (code_executor_module.CodeLanguage.JINJA2, "python3"),
+    ],
+)
+def test_injected_execute_code_uses_exact_payload_without_ordinary_resolution(
+    language: code_executor_module.CodeLanguage, running_language: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from clients import code_execution as transport_module
+    from configs import dify_config
+
+    def forbidden(*_args: object, **_kwargs: object) -> Never:
+        pytest.fail("Injected execution resolved ordinary configuration or HTTP client")
+
+    monkeypatch.setattr(type(dify_config), "__getattribute__", forbidden)
+    monkeypatch.setattr(transport_module, "get_pooled_http_client", forbidden)
+    monkeypatch.setattr(transport_module, "_build_code_executor_client", forbidden)
+    transport = RecordingTransport("raw output")
+
+    assert (
+        code_executor_module.CodeExecutor.execute_code(language, "preload", "source", transport=transport)
+        == "raw output"
+    )
+    assert transport.calls == [{"language": running_language, "preload": "preload", "code": "source"}]
+
+
+@pytest.mark.parametrize(
+    ("language", "code", "response", "expected"),
+    [
+        (
+            code_executor_module.CodeLanguage.PYTHON3,
+            "def main(a): return {'result': a}",
+            '{"result":"ok"}',
+            {"result": "ok"},
+        ),
+        (
+            code_executor_module.CodeLanguage.JAVASCRIPT,
+            "function main({a}) { return {result: a}; }",
+            '{"result":42}',
+            {"result": 42},
+        ),
+        (
+            code_executor_module.CodeLanguage.JINJA2,
+            '{{ a | upper }}\n"quoted"',
+            'OK\n"quoted"',
+            {"result": 'OK\n"quoted"'},
+        ),
+    ],
+)
+def test_injected_workflow_runs_actual_transformer_roundtrip(
+    language: code_executor_module.CodeLanguage,
+    code: str,
+    response: str,
+    expected: dict[str, Any],
+    mocker: MockerFixture,
+) -> None:
+    import re
+    from base64 import b64decode, b64encode
+
+    transformer = code_executor_module.CodeExecutor.code_template_transformers[language]
+    transform = mocker.spy(transformer, "transform_caller")
+    transport = RecordingTransport(f"noise\n<<RESULT>>{response}<<RESULT>>\n")
+    result = code_executor_module.CodeExecutor.execute_workflow_code_template(
+        language, code, {"a": "ok"}, transport=transport
+    )
+
+    assert result == expected
+    assert len(transport.calls) == 1
+    call = transport.calls[0]
+    assert call["language"] == ("nodejs" if language == code_executor_module.CodeLanguage.JAVASCRIPT else "python3")
+    transform.assert_called_once_with(code, {"a": "ok"})
+    runner, preload = transform.spy_return
+    assert call["code"] == runner
+    assert call["preload"] == preload
+    input_pattern = (
+        r"Buffer.from\('([^']+)', 'base64'\)"
+        if language == code_executor_module.CodeLanguage.JAVASCRIPT
+        else r"inputs_obj = json.loads\(b64decode\('([^']+)'\)"
+    )
+    encoded_inputs = re.search(input_pattern, call["code"])
+    assert encoded_inputs is not None
+    assert json.loads(b64decode(encoded_inputs.group(1))) == {"a": "ok"}
+    if language == code_executor_module.CodeLanguage.JINJA2:
+        assert code not in call["code"]
+        assert b64encode(code.encode()).decode() in call["code"]
+        assert "from jinja2.sandbox import SandboxedEnvironment" in call["code"]
+        assert "return template.render(**inputs)" in call["code"]
+        assert "_jinja2_preload_()" in call["preload"]
+    else:
+        assert code in call["code"]
+        assert call["preload"] == ""
+        assert (
+            "output_obj = main(**inputs_obj)"
+            if language == code_executor_module.CodeLanguage.PYTHON3
+            else "var output_obj = main(inputs_obj)"
+        ) in call["code"]
+
+
+def test_injected_private_control_base_exception_propagates_unchanged() -> None:
+    class PrivateControl(BaseException):
+        pass
+
+    control = PrivateControl("stop")
+
+    class StoppingTransport:
+        def execute(self, *, language: str, preload: str, code: str) -> str:
+            assert (language, preload) == ("python3", "")
+            assert "def main(): pass" in code
+            raise control
+
+    with pytest.raises(PrivateControl) as caught:
+        code_executor_module.CodeExecutor.execute_workflow_code_template(
+            code_executor_module.CodeLanguage.PYTHON3, "def main(): pass", {}, transport=StoppingTransport()
+        )
+    assert caught.value is control
+
+
+def test_concurrent_injected_transports_do_not_cross_scopes() -> None:
+    from concurrent.futures import ThreadPoolExecutor
+    from dataclasses import dataclass
+    from threading import Barrier
+
+    barrier = Barrier(2)
+
+    @dataclass(frozen=True)
+    class ScopedTransport:
+        scope: str
+
+        def execute(self, *, language: str, preload: str, code: str) -> str:
+            barrier.wait(timeout=5)
+            assert code == self.scope
+            assert preload == f"preload-{self.scope}"
+            assert language == "python3"
+            return self.scope
+
+    def run(scope: str) -> str:
+        return code_executor_module.CodeExecutor.execute_code(
+            code_executor_module.CodeLanguage.PYTHON3, f"preload-{scope}", scope, transport=ScopedTransport(scope)
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(run, scope) for scope in ("tenant-a", "tenant-b")]
+        assert [future.result(timeout=10) for future in futures] == ["tenant-a", "tenant-b"]
+
+
+def test_injected_transport_does_not_bypass_unsupported_language() -> None:
+    transport = RecordingTransport("unused")
+    with pytest.raises(code_executor_module.CodeExecutionError, match="Unsupported language ruby"):
+        code_executor_module.CodeExecutor.execute_code(cast(Any, "ruby"), "", "", transport=transport)
+    assert transport.calls == []

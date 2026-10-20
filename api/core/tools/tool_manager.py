@@ -1,5 +1,7 @@
+import json
 import logging
 import mimetypes
+import time
 from collections.abc import Callable, Generator, Mapping
 from os import listdir, path
 from threading import Lock
@@ -16,10 +18,6 @@ import contexts
 from configs import dify_config
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
-import json
-import time
-
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.models import Actor
 from core.dify_builder.real_call_consent import (
     EXPECTED_PLUGIN_IDENTIFIER_HEADER,
@@ -30,7 +28,6 @@ from core.entities import PluginCredentialType
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
-from core.tools.utils.encryption import create_provider_encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.exc import PluginDaemonNotFoundError, PluginNotFoundError
 from core.plugin.impl.tool import PluginToolManager
@@ -53,14 +50,14 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
     emoji_icon_adapter,
 )
-from core.tools.errors import ToolProviderNotFoundError
+from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.mcp_tool.provider import MCPToolProviderController
 from core.tools.mcp_tool.tool import MCPTool
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from core.tools.utils.encryption import create_tool_provider_encrypter
+from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
@@ -69,11 +66,14 @@ from graphon.runtime import VariablePool
 from graphon.variables.template_resolution import convert_template
 from models.provider_ids import ToolProviderID
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
+from runtime_contracts.builder.execution import (
+    BuilderExecutionPolicyError,
+)
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
-    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from runtime_contracts.workflow_driver import WorkflowRunDriver
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +101,18 @@ class WorkflowToolRuntimeSpec(Protocol):
 
     @property
     def credential_id(self) -> str | None: ...
+
+
+class WorkflowToolRuntimeKwargs(TypedDict, total=False):
+    """Internal optional native draft bindings; ordinary callers omit them."""
+
+    draft_tool_workflow_id: str
+    builder_expected_credential_fingerprint: str
+    builder_credential_refreshed: Callable[[str], None] | None
+
+
+class _DraftToolRuntimeKwargs(WorkflowToolRuntimeKwargs, total=False):
+    draft_tool_app_id: str
 
 
 class ToolCredentialResolver(Protocol):
@@ -222,12 +234,14 @@ class ToolManager:
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
         credential_id: str | None = None,
-        execution_driver: "WorkflowRunDriver | None" = None,
         *,
         confirmed_guard: ConfirmedToolGuard | None = None,
         draft_tool_workflow_id: str | None = None,
+        builder_expected_credential_fingerprint: str | None = None,
+        builder_credential_refreshed: Callable[[str], None] | None = None,
         draft_tool_app_id: str | None = None,
         json_provider_validator: Callable[[object, object], None] | None = None,
+        execution_driver: "WorkflowRunDriver | None" = None,
     ) -> BuiltinTool | PluginTool | ApiTool | WorkflowTool | MCPTool:
         """
         get the tool runtime
@@ -287,6 +301,8 @@ class ToolManager:
                 provider=provider_id,
                 action=tool_name,
                 credential_id=credential_id,
+                expected_credential_fingerprint=builder_expected_credential_fingerprint,
+                on_credential_refreshed=builder_credential_refreshed,
             )
         match provider_type:
             case ToolProviderType.BUILT_IN:
@@ -311,31 +327,30 @@ class ToolManager:
                             tool_invoke_from=tool_invoke_from,
                         )
                     )
-                selected_id = (
-                    credential_id
-                    if isinstance(provider_controller, PluginToolProviderController) and is_valid_uuid(credential_id)
-                    else None
-                )
-                if cls._credential_resolver is None:
-                    raise RuntimeError("Tool credential resolver is not configured")
-                credentials, credential_type = cls._credential_resolver(
-                    controller=provider_controller,
-                    provider_id=provider_id,
-                    workspace_id=tenant_id,
-                    credential_id=selected_id,
-                )
+                if draft_selection is not None:
+                    from services.tools.ordinary_tool_credentials import resolve_ordinary_tool_credentials
 
-                return builtin_tool.fork_tool_runtime(
-                    runtime=ToolRuntime(
+                    runtime = resolve_ordinary_tool_credentials(
+                        provider_controller=provider_controller,
+                        provider_id=provider_id,
                         tenant_id=tenant_id,
                         user_id=user_id,
-                        credentials=dict(credentials),
-                        credential_type=credential_type,
-                        runtime_parameters={},
                         invoke_from=invoke_from,
                         tool_invoke_from=tool_invoke_from,
+                        credential_id=credential_id,
+                        draft_selection=draft_selection,
                     )
-                )
+                else:
+                    runtime = cls._get_ordinary_tool_runtime(
+                        provider_controller=provider_controller,
+                        provider_id=provider_id,
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        invoke_from=invoke_from,
+                        tool_invoke_from=tool_invoke_from,
+                        credential_id=credential_id,
+                    )
+                return builtin_tool.fork_tool_runtime(runtime=runtime)
 
             case ToolProviderType.API:
                 api_provider, credentials = cls.get_api_provider_controller(tenant_id, provider_id)
@@ -381,13 +396,19 @@ class ToolManager:
             case ToolProviderType.APP:
                 raise NotImplementedError("app provider not implemented")
             case ToolProviderType.PLUGIN:
-                plugin_tool = cls.get_plugin_provider(provider_id, tenant_id).get_tool(tool_name)
-                runtime = getattr(plugin_tool, "runtime", None)
-                if runtime is not None:
-                    runtime.user_id = user_id
-                    runtime.invoke_from = invoke_from
-                    runtime.tool_invoke_from = tool_invoke_from
-                return plugin_tool
+                plugin_controller = cls.get_plugin_provider(provider_id, tenant_id)
+                plugin_tool = plugin_controller.get_tool(tool_name)
+                return plugin_tool.fork_tool_runtime(
+                    runtime=cls._get_ordinary_tool_runtime(
+                        provider_controller=plugin_controller,
+                        provider_id=provider_id,
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        invoke_from=invoke_from,
+                        tool_invoke_from=tool_invoke_from,
+                        credential_id=credential_id,
+                    )
+                )
             case ToolProviderType.MCP:
                 mcp_tool = cls.get_mcp_provider_controller(tenant_id, provider_id).get_tool(tool_name)
                 runtime = getattr(mcp_tool, "runtime", None)
@@ -400,6 +421,55 @@ class ToolManager:
                 raise ToolProviderNotFoundError(f"provider type {provider_type.value} not found")
             case _:
                 raise ToolProviderNotFoundError(f"provider type {provider_type} not found")
+
+    @classmethod
+    def _get_ordinary_tool_runtime(
+        cls,
+        *,
+        provider_controller: BuiltinToolProviderController,
+        provider_id: str,
+        tenant_id: str,
+        user_id: str | None,
+        invoke_from: InvokeFrom,
+        tool_invoke_from: ToolInvokeFrom,
+        credential_id: str | None,
+    ) -> ToolRuntime:
+        """Resolve admitted ordinary calls with the configured credential service.
+
+        No-auth tools skip credential reads. Explicit plugin references must be
+        valid stored IDs; they cannot fall back to another workspace credential.
+        Draft and confirmed calls retain their separate admission and refresh owners.
+        """
+        if not provider_controller.need_credentials:
+            return ToolRuntime(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                credentials={},
+                invoke_from=invoke_from,
+                tool_invoke_from=tool_invoke_from,
+            )
+        selected_id = None
+        if isinstance(provider_controller, PluginToolProviderController) and credential_id:
+            if not is_valid_uuid(credential_id):
+                raise ToolProviderCredentialValidationError("Select a valid stored Tool credential reference.")
+            selected_id = credential_id
+        if cls._credential_resolver is None:
+            raise RuntimeError("Tool credential resolver is not configured")
+        credentials, credential_type = cls._credential_resolver(
+            controller=provider_controller,
+            provider_id=provider_id,
+            workspace_id=tenant_id,
+            credential_id=selected_id,
+        )
+        return ToolRuntime(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            credentials=dict(credentials),
+            credential_type=credential_type,
+            runtime_parameters={},
+            invoke_from=invoke_from,
+            tool_invoke_from=tool_invoke_from,
+        )
 
     @classmethod
     def _get_confirmed_tool_runtime(
@@ -632,11 +702,13 @@ class ToolManager:
         user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: "VariablePool | None" = None,
-        execution_driver: "WorkflowRunDriver | None" = None,
-        workflow_tool_definition: WorkflowTool | None = None,
         *,
         confirmed_guard: ConfirmedToolGuard | None = None,
         draft_tool_workflow_id: str | None = None,
+        builder_expected_credential_fingerprint: str | None = None,
+        builder_credential_refreshed: Callable[[str], None] | None = None,
+        execution_driver: "WorkflowRunDriver | None" = None,
+        workflow_tool_definition: WorkflowTool | None = None,
     ) -> Tool:
         """
         get the workflow tool runtime
@@ -661,6 +733,14 @@ class ToolManager:
                 confirmed_guard=confirmed_guard,
             )
 
+        draft_options: _DraftToolRuntimeKwargs = {}
+        if builder_expected_credential_fingerprint is not None:
+            draft_options["builder_expected_credential_fingerprint"] = builder_expected_credential_fingerprint
+            draft_options["builder_credential_refreshed"] = builder_credential_refreshed
+        if draft_tool_workflow_id is not None:
+            draft_options["draft_tool_workflow_id"] = draft_tool_workflow_id
+            draft_options["draft_tool_app_id"] = app_id
+
         if workflow_tool_definition is None:
             tool_runtime = cls.get_tool_runtime(
                 provider_type=workflow_tool.provider_type,
@@ -672,11 +752,7 @@ class ToolManager:
                 tool_invoke_from=ToolInvokeFrom.WORKFLOW,
                 credential_id=workflow_tool.credential_id,
                 execution_driver=execution_driver,
-                **(
-                    {"draft_tool_workflow_id": draft_tool_workflow_id, "draft_tool_app_id": app_id}
-                    if draft_tool_workflow_id is not None
-                    else {}
-                ),
+                **draft_options,
             )
         else:
             tool_runtime = workflow_tool_definition.fork_tool_runtime(

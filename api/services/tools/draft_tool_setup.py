@@ -14,10 +14,11 @@ The snapshot is internal, tenant/action-bound and never persisted in a graph.
 
 from __future__ import annotations
 
+import hashlib
 import json
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Never
 from uuid import UUID
 
 from core.tools.errors import ToolProviderCredentialValidationError
@@ -53,6 +54,7 @@ class DraftToolDeclarations:
 
     tenant_id: str
     tools: tuple[ToolDeclaration, ...]
+    source_unavailable: bool = False
 
 
 def inventory_tool_nodes(graph: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -76,14 +78,15 @@ def prepare_tool_declarations(*, tenant_id: str, graph: Mapping[str, Any]) -> Dr
     requested = {tool_key(node["data"]) for node in inventory_tool_nodes(graph)}
     if not requested:
         return DraftToolDeclarations(tenant_id=tenant_id, tools=())
+    failures: list[str] = []
     try:
-        entries = build_tool_catalogue(tenant_id)
+        entries = build_tool_catalogue(tenant_id, on_source_error=failures.append)
     except Exception:
-        raise ToolProviderCredentialValidationError(
-            "Installed Tool setup could not be verified. Try again before testing or publishing."
-        ) from None
+        entries = []
+        failures.append("catalogue")
     return DraftToolDeclarations(
         tenant_id=tenant_id,
+        source_unavailable=bool(failures),
         tools=tuple(
             ToolDeclaration(
                 provider=entry["provider_name"],
@@ -96,6 +99,19 @@ def prepare_tool_declarations(*, tenant_id: str, graph: Mapping[str, Any]) -> Dr
             if (entry["provider_name"], entry["tool_name"]) in requested
         ),
     )
+
+
+def _refuse_missing_declaration(declarations: DraftToolDeclarations, provider: str, action: str) -> Never:
+    if declarations.source_unavailable:
+        from services.dify_builder.native_launch_observation import observe_resource
+
+        # Positive source failure, not merely an empty catalogue or absent
+        # credential. Associate only the requested declaration lookup.
+        with observe_resource("tool", provider, action):
+            raise ToolProviderCredentialValidationError(
+                "Installed Tool metadata service unavailable. Check workspace access and plugin services."
+            )
+    raise ToolProviderCredentialValidationError("Tool action is not verified as installed in this workspace.")
 
 
 def _selected_credential_metadata(
@@ -185,7 +201,7 @@ def validate_tool_setup(
     for node in nodes:
         declaration = by_key.get(tool_key(node["data"]))
         if declaration is None:
-            raise ToolProviderCredentialValidationError("Tool action is not verified as installed in this workspace.")
+            _refuse_missing_declaration(declarations, *tool_key(node["data"]))
         if not declaration.needs_credentials:
             continue
         # Imported here to keep the application's composition root out of this
@@ -311,6 +327,8 @@ class DraftToolRuntimeSelection:
     tenant_id: str
     actor_id: str
     credential: ToolCredentialMetadata | None
+    expected_credential_fingerprint: str | None = None
+    on_credential_refreshed: Callable[[str], None] | None = None
 
 
 def prepare_draft_tool_runtime_selection(
@@ -324,6 +342,8 @@ def prepare_draft_tool_runtime_selection(
     provider: str,
     action: str,
     credential_id: object,
+    expected_credential_fingerprint: str | None = None,
+    on_credential_refreshed: Callable[[str], None] | None = None,
 ) -> DraftToolRuntimeSelection | None:
     """Recheck at the actual Tool boundary; published/subworkflow delegation stays native.
 
@@ -371,7 +391,7 @@ def prepare_draft_tool_runtime_selection(
         (tool for tool in declarations.tools if (tool.provider, tool.action) == (provider, action)), None
     )
     if declaration is None:
-        raise ToolProviderCredentialValidationError("Tool action is not verified as installed in this workspace.")
+        _refuse_missing_declaration(declarations, provider, action)
     if not declaration.needs_credentials:
         return DraftToolRuntimeSelection(tenant_id, actor_id, None)
     from extensions.ext_application_services import application_services
@@ -388,7 +408,9 @@ def prepare_draft_tool_runtime_selection(
         raise ToolProviderCredentialValidationError("Tool credential setup could not be verified.") from None
     if metadata is None:
         raise ToolProviderCredentialValidationError("Configure or select an authorized Tool credential before testing.")
-    return DraftToolRuntimeSelection(tenant_id, actor_id, metadata)
+    return DraftToolRuntimeSelection(
+        tenant_id, actor_id, metadata, expected_credential_fingerprint, on_credential_refreshed
+    )
 
 
 def constrain_draft_tool_credential_read(
@@ -421,3 +443,14 @@ def constrain_draft_tool_credential_read(
         credential_type=CredentialType.BUILTIN_TOOL_PROVIDER,
         actor_id=selection.actor_id,
     )
+
+
+def tool_credential_fingerprint(credential: BuiltinToolProvider) -> str:
+    """Opaque confirmed account/version binding; encrypted values never leave this owner.
+
+    Include ciphertext because updates can share one database timestamp second.
+    This binds the detached native value read before decryption or OAuth refresh.
+    """
+    return hashlib.sha256(
+        f"{credential.id}:{credential.updated_at}:{credential.encrypted_credentials}".encode()
+    ).hexdigest()

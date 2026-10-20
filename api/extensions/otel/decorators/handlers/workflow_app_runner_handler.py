@@ -32,6 +32,12 @@ class WorkflowAppRunnerHandler(SpanHandler):
                 return wrapped(*args, **kwargs)
 
             entity = runner.application_generate_entity
+            from core.app.entities.app_invoke_entities import AppGenerateEntity
+
+            if isinstance(entity, AppGenerateEntity) and entity.native_test_required:
+                # Marked execution has its own bounded observation owner. This
+                # suppresses telemetry only; it grants no execution authority.
+                return wrapped(*args, **kwargs)
             app_config = getattr(entity, "app_config", None)
             if app_config is None:
                 return wrapped(*args, **kwargs)

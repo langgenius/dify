@@ -6,11 +6,16 @@ import {
   zGetDifyBuilderSessionsBySessionIdConversationPath,
   zGetDifyBuilderSessionsBySessionIdConversationQuery,
   zGetDifyBuilderSessionsBySessionIdConversationResponse,
+  zGetDifyBuilderSessionsBySessionIdNativeTestInputPath,
+  zGetDifyBuilderSessionsBySessionIdNativeTestInputResponse,
+  zGetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdPath,
+  zGetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResponse,
   zGetDifyBuilderSessionsBySessionIdPath,
   zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdPath,
   zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdResponse,
   zGetDifyBuilderSessionsBySessionIdResponse,
   zGetDifyBuilderSessionsBySessionIdStreamPath,
+  zGetDifyBuilderSessionsBySessionIdStreamQuery,
   zGetDifyBuilderSessionsBySessionIdStreamResponse,
   zPostDifyBuilderAgentPingResponse,
   zPostDifyBuilderSessionsBody,
@@ -20,6 +25,18 @@ import {
   zPostDifyBuilderSessionsBySessionIdMessagesBody,
   zPostDifyBuilderSessionsBySessionIdMessagesPath,
   zPostDifyBuilderSessionsBySessionIdMessagesResponse,
+  zPostDifyBuilderSessionsBySessionIdNativeTestsBody,
+  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelBody,
+  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelPath,
+  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelResponse,
+  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsBody,
+  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsPath,
+  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsResponse,
+  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeBody,
+  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumePath,
+  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeResponse,
+  zPostDifyBuilderSessionsBySessionIdNativeTestsPath,
+  zPostDifyBuilderSessionsBySessionIdNativeTestsResponse,
   zPostDifyBuilderSessionsBySessionIdRealCallConsentsBody,
   zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmBody,
   zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmPath,
@@ -110,7 +127,121 @@ export const messages = {
   post: post3,
 }
 
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDifyBuilderSessionsBySessionIdNativeTestInput',
+    path: '/dify-builder/sessions/{session_id}/native-test-input',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetDifyBuilderSessionsBySessionIdNativeTestInputPath }))
+  .output(zGetDifyBuilderSessionsBySessionIdNativeTestInputResponse)
+
+export const nativeTestInput = {
+  get: get2,
+}
+
 export const post4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancel',
+    path: '/dify-builder/sessions/{session_id}/native-tests/{request_id}/cancel',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelBody,
+      params: zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelPath,
+    }),
+  )
+  .output(zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelResponse)
+
+export const cancel = {
+  post: post4,
+}
+
+export const post5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisions',
+    path: '/dify-builder/sessions/{session_id}/native-tests/{request_id}/decisions',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsBody,
+      params: zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsPath,
+    }),
+  )
+  .output(zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsResponse)
+
+export const decisions = {
+  post: post5,
+}
+
+export const post6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResume',
+    path: '/dify-builder/sessions/{session_id}/native-tests/{request_id}/resume',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeBody,
+      params: zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumePath,
+    }),
+  )
+  .output(zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeResponse)
+
+export const resume = {
+  post: post6,
+}
+
+export const get3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDifyBuilderSessionsBySessionIdNativeTestsByRequestId',
+    path: '/dify-builder/sessions/{session_id}/native-tests/{request_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdPath }))
+  .output(zGetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResponse)
+
+export const byRequestId = {
+  get: get3,
+  cancel,
+  decisions,
+  resume,
+}
+
+export const post7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDifyBuilderSessionsBySessionIdNativeTests',
+    path: '/dify-builder/sessions/{session_id}/native-tests',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostDifyBuilderSessionsBySessionIdNativeTestsBody,
+      params: zPostDifyBuilderSessionsBySessionIdNativeTestsPath,
+    }),
+  )
+  .output(zPostDifyBuilderSessionsBySessionIdNativeTestsResponse)
+
+export const nativeTests = {
+  post: post7,
+  byRequestId,
+}
+
+export const post8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -127,10 +258,10 @@ export const post4 = oc
   .output(zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmResponse)
 
 export const confirm = {
-  post: post4,
+  post: post8,
 }
 
-export const post5 = oc
+export const post9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -148,10 +279,10 @@ export const post5 = oc
   .output(zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteResponse)
 
 export const execute = {
-  post: post5,
+  post: post9,
 }
 
-export const get2 = oc
+export const get4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -163,12 +294,12 @@ export const get2 = oc
   .output(zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdResponse)
 
 export const byConsentId = {
-  get: get2,
+  get: get4,
   confirm,
   execute,
 }
 
-export const post6 = oc
+export const post10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -186,11 +317,11 @@ export const post6 = oc
   .output(zPostDifyBuilderSessionsBySessionIdRealCallConsentsResponse)
 
 export const realCallConsents = {
-  post: post6,
+  post: post10,
   byConsentId,
 }
 
-export const get3 = oc
+export const get5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -198,14 +329,19 @@ export const get3 = oc
     path: '/dify-builder/sessions/{session_id}/stream',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetDifyBuilderSessionsBySessionIdStreamPath }))
+  .input(
+    z.object({
+      params: zGetDifyBuilderSessionsBySessionIdStreamPath,
+      query: zGetDifyBuilderSessionsBySessionIdStreamQuery.optional(),
+    }),
+  )
   .output(eventIterator(zGetDifyBuilderSessionsBySessionIdStreamResponse))
 
 export const stream = {
-  get: get3,
+  get: get5,
 }
 
-export const get4 = oc
+export const get6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -217,15 +353,17 @@ export const get4 = oc
   .output(zGetDifyBuilderSessionsBySessionIdResponse)
 
 export const bySessionId = {
-  get: get4,
+  get: get6,
   actions,
   conversation,
   messages,
+  nativeTestInput,
+  nativeTests,
   realCallConsents,
   stream,
 }
 
-export const post7 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -237,7 +375,7 @@ export const post7 = oc
   .output(eventIterator(zPostDifyBuilderSessionsResponse))
 
 export const sessions = {
-  post: post7,
+  post: post11,
   bySessionId,
 }
 
