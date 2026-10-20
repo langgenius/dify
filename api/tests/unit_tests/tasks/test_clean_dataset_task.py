@@ -22,7 +22,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from celery.exceptions import Retry
-from flask import Flask
 from sqlalchemy import Engine, event
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
@@ -134,10 +133,14 @@ def mock_get_image_upload_file_ids() -> Iterator[MagicMock]:
 
 
 @pytest.fixture
-def elasticsearch_delete_endpoint() -> Iterator[tuple[int, list[int], list[tuple[str, int]]]]:
+def elasticsearch_delete_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Iterator[tuple[int, list[int], list[tuple[str, int]]]]:
     """Serve real SDK requests with Elasticsearch's missing-index response shape."""
     pytest.importorskip("elasticsearch")
-    pytest.importorskip("dify_vdb_elasticsearch.elasticsearch_vector")
+    elasticsearch_vector = pytest.importorskip("dify_vdb_elasticsearch.elasticsearch_vector")
+    from elasticsearch import Elasticsearch
+
     responses: list[int] = []
     requests: list[tuple[str, int]] = []
 
@@ -174,9 +177,23 @@ def elasticsearch_delete_endpoint() -> Iterator[tuple[int, list[int], list[tuple
     server = HTTPServer(("127.0.0.1", 0), Handler)
     thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
+    client = Elasticsearch(
+        [f"http://127.0.0.1:{server.server_port}"],
+        request_timeout=2,
+        max_retries=0,
+        retry_on_timeout=False,
+    )
+
+    def local_client(**_options: object) -> Elasticsearch:
+        return client
+
+    # Celery can enter a different Flask app from the test fixture's app.
+    # Bind only SDK construction; keep real ping/info/delete and error decoding.
+    monkeypatch.setattr(elasticsearch_vector, "Elasticsearch", local_client)
     try:
         yield server.server_port, responses, requests
     finally:
+        client.close()
         server.shutdown()
         thread.join(timeout=1)
         server.server_close()
@@ -662,8 +679,6 @@ class TestIndexProcessorParameters:
     def test_missing_elasticsearch_index_allows_parent_child_cleanup_after_retry(
         self,
         commit_fails: bool,
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
         elasticsearch_delete_endpoint: tuple[int, list[int], list[tuple[str, int]]],
         dataset_id: str,
         tenant_id: str,
@@ -672,20 +687,9 @@ class TestIndexProcessorParameters:
         mock_storage: MagicMock,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        port, responses, requests = elasticsearch_delete_endpoint
+        _port, responses, requests = elasticsearch_delete_endpoint
         expected_statuses = [200, 404] if commit_fails else [404]
         responses.extend(expected_statuses)
-        for key, value in {
-            "ELASTICSEARCH_USE_CLOUD": False,
-            "ELASTICSEARCH_HOST": "http://127.0.0.1",
-            "ELASTICSEARCH_PORT": port,
-            "ELASTICSEARCH_USERNAME": "elastic",
-            "ELASTICSEARCH_PASSWORD": "test",
-            "ELASTICSEARCH_REQUEST_TIMEOUT": 2,
-            "ELASTICSEARCH_MAX_RETRIES": 0,
-            "ELASTICSEARCH_RETRY_ON_TIMEOUT": False,
-        }.items():
-            monkeypatch.setitem(app.config, key, value)
         document = _persist_document(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
         segment = _persist_segment(
             orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id, document_id=document.id
