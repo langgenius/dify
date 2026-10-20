@@ -530,6 +530,34 @@ def test_im_assessment_controls_message_form_and_auth_without_losing_email(
     adapter.close.assert_called_once()
 
 
+def test_im_link_subject_stays_literal_like_email_while_body_renders_markdown(context: Context, providers):
+    from core.human_input_v2.im_integration.adapters.entities import CardAssessment
+    from services.human_input_v2.composition import build_human_input_delivery_service
+
+    _add_im(context)
+    adapter, email_send = providers
+    adapter.dynamic_card_messaging.assess.return_value = CardAssessment(False, "file input")
+    node = _node(Contact(contact_id=_CONTACT))
+    node.message_template.subject = "### Review {{#start.name#}}"
+    node.message_template.body = "# H1\n\n[Approval]({{#url#}})"
+    pool = VariablePool()
+    pool.add(["start", "name"], "**Alice**")
+    created = context.prepare(node, pool)
+    assert isinstance(created, CreatedForm)
+
+    build_human_input_delivery_service(tenant_id=_TENANT, session_factory=context.sessions).deliver(
+        form=created.form,
+        recipient=created.recipients[0],
+        message_template=created.message_template,
+    )
+
+    message = adapter.messaging.send_text.call_args.args[1]
+    assert adapter.messaging.send_text.call_args.kwargs["subject"] == "### Review **Alice**"
+    assert message.startswith("# H1\n\n[Approval](https://console.example.com/human-input/")
+    assert email_send.call_args.kwargs["subject"] == "### Review **Alice**"
+    assert "<h1>H1</h1>" in email_send.call_args.kwargs["html"]
+
+
 @pytest.mark.parametrize("contact_kind", ["workspace", "organization"])
 @pytest.mark.parametrize("app_web_url", ["https://app.example.com", ""])
 def test_account_contact_notifications_use_console_form_page(
@@ -1801,6 +1829,97 @@ def test_im_card_tasks_replace_exact_cards_with_committed_submission(context: Co
     # Redelivery renders the identical committed state, without another submission.
     update_human_input_im_card_task.run(**published.call_args_list[0].kwargs["kwargs"])
     assert replacements[2] == replacements[0]
+
+
+def test_im_card_updates_render_typed_inputs_and_skip_missing_values(
+    context: Context, created_im_cards: tuple[str, str, set[str], Mock, Mock, Mock]
+) -> None:
+    from core.human_input_v2.im_integration.adapters.entities import StaticCardIntent
+    from core.human_input_v2.resolved_form import (
+        FileInput,
+        FileListInput,
+        MarkdownFragment,
+        ParagraphInput,
+        SelectInput,
+    )
+    from core.human_input_v2.shared.values import RecipientId
+    from graphon.file import File, FileTransferMethod, FileType
+    from graphon.variables.segments import ArrayFileSegment, FileSegment, NoneSegment, StringSegment
+    from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
+    from services.human_input_v2.im_card_service import HumanInputIMCardService
+
+    form_id, _, deliveries, adapter, _, _ = created_im_cards
+    attachment = File(
+        file_id="file-1",
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://example.com/review.pdf",
+        filename="review.pdf",
+        extension=".pdf",
+        mime_type="application/pdf",
+        size=100,
+    )
+    file_input = FileInput(
+        output_variable_name="attachment",
+        allowed_file_types=(FileType.DOCUMENT,),
+        allowed_file_extensions=(".pdf",),
+        allowed_file_upload_methods=(FileTransferMethod.REMOTE_URL,),
+    )
+    file_list = FileListInput(
+        output_variable_name="files",
+        allowed_file_types=file_input.allowed_file_types,
+        allowed_file_extensions=file_input.allowed_file_extensions,
+        allowed_file_upload_methods=file_input.allowed_file_upload_methods,
+        number_limits=3,
+    )
+    with context.sessions.begin() as session:
+        record = session.get(HumanInputForm, form_id)
+        assert record is not None
+        record.resolved_form = record.resolved_form.model_copy(
+            update={
+                "parts": record.resolved_form.parts
+                + (
+                    MarkdownFragment(text="; choice: "),
+                    SelectInput(output_variable_name="choice", options=("Yes", "No"), default_value=None),
+                    MarkdownFragment(text="; attachment: "),
+                    file_input,
+                    MarkdownFragment(text="; files: "),
+                    file_list,
+                    MarkdownFragment(text="; empty files: "),
+                    file_list.model_copy(update={"output_variable_name": "empty_files"}),
+                    MarkdownFragment(text="; omitted: "),
+                    ParagraphInput(output_variable_name="missing", default_value=None),
+                    file_input.model_copy(update={"output_variable_name": "null_file"}),
+                )
+            }
+        )
+        recipient = session.scalars(sa.select(HumanInputRecipient)).one()
+        SQLAlchemyFormRepository(session, _TENANT, _APP).submit_form(
+            form_id,
+            submitted_by_recipient_id=RecipientId(recipient.id),
+            selected_action_id="approve",
+            raw_submission_inputs={},
+            normalized_submission_data={
+                "note": StringSegment(value="Accepted {{#$output.choice#}}"),
+                "choice": StringSegment(value="Yes"),
+                "attachment": FileSegment(value=attachment),
+                "files": ArrayFileSegment(value=[attachment, attachment]),
+                "empty_files": ArrayFileSegment(value=[]),
+                "null_file": NoneSegment(),
+            },
+        )
+
+    service = HumanInputIMCardService(session_factory=context.sessions)
+    for delivery_id in deliveries:
+        service.update_card(tenant_id=_TENANT, form_id=form_id, delivery_id=delivery_id)
+
+    replacements = adapter.dynamic_card_messaging.replace_with_static.call_args_list
+    assert len(replacements) == len(deliveries)
+    expected = StaticCardIntent(
+        "Frozen\n\nReview: Accepted {{#$output.choice#}}; choice: Yes; attachment: [file]; "
+        "files: [2 files]; empty files: [0 files]; omitted: \n\nSubmitted: Approve"
+    )
+    assert all(call.args[1] == expected for call in replacements)
 
 
 def test_im_card_updates_do_not_depend_on_attempt_history(context: Context, created_im_cards):

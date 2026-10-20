@@ -3,10 +3,12 @@ import {
   addRecipient,
   createRecipientDraft,
   deriveRecipientSummary,
+  findConflictingContact,
   getRecipientCanonicalKey,
   getRecipientValidationError,
   hasDuplicateRecipients,
   removeRecipient,
+  replaceContactRecipient,
   updateRecipient,
 } from '../recipient-utils'
 
@@ -129,5 +131,47 @@ describe('Human Input v2 recipient utilities', () => {
       hasInitiator: true,
     })
     expect(removeRecipient(selected, 0)).toEqual([{ type: 'initiator' }])
+  })
+
+  it('locks only other contacts with the same normalized email', () => {
+    const contacts = [
+      { id: 'alice', email: ' Alice@Example.com ' },
+      { id: 'alice-external', email: 'alice@example.com' },
+      { id: 'unknown', email: '' },
+    ]
+    const selected: HumanInputV2Recipient[] = [
+      { type: 'contact', contact_id: 'alice' },
+      { type: 'onetime_email', email: 'bob@example.com' },
+    ]
+
+    expect(findConflictingContact(selected, contacts[1]!, contacts)).toEqual(contacts[0])
+    expect(findConflictingContact(selected, contacts[0]!, contacts)).toBeUndefined()
+    expect(
+      findConflictingContact(selected, { id: 'bob', email: 'bob@example.com' }, contacts),
+    ).toBeUndefined()
+    expect(findConflictingContact(selected, contacts[2]!, contacts)).toBeUndefined()
+    expect(
+      findConflictingContact(selected, { id: 'missing', email: 'other@example.com' }, contacts),
+    ).toBeUndefined()
+  })
+
+  it('replaces the occupying contact in place without changing other recipient identities', () => {
+    const selected: HumanInputV2Recipient[] = [
+      { type: 'initiator' },
+      { type: 'contact', contact_id: 'alice' },
+      { type: 'onetime_email', email: 'alice@example.com' },
+      { type: 'contact', contact_id: 'bob' },
+    ]
+    const snapshot = structuredClone(selected)
+
+    expect(replaceContactRecipient(selected, 'alice', 'alice-external')).toEqual([
+      selected[0],
+      { type: 'contact', contact_id: 'alice-external' },
+      selected[2],
+      selected[3],
+    ])
+    expect(selected).toEqual(snapshot)
+    expect(replaceContactRecipient(selected, 'missing', 'alice-external')).toBe(selected)
+    expect(replaceContactRecipient(selected, 'alice', 'bob')).toBe(selected)
   })
 })

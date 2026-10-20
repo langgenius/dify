@@ -110,12 +110,16 @@ def _encrypted_challenge(*, token: str | None = _VERIFICATION_TOKEN, encrypt_key
         (_VERIFICATION_TOKEN, _ENCRYPT_KEY, _plaintext_challenge()),
         (_VERIFICATION_TOKEN, _ENCRYPT_KEY, _encrypted_challenge()),
         (None, _ENCRYPT_KEY, _encrypted_challenge(token=None)),
+        (None, None, _plaintext_challenge()),
+        (None, None, _plaintext_challenge(token=None)),
     ],
     ids=(
         "plaintext-token-auth",
         "plaintext-token-auth-with-encryption-configured",
         "encrypted-token-and-decryption-auth",
         "encrypted-decryption-auth",
+        "plaintext-without-configured-verification",
+        "plaintext-without-configured-verification-or-request-token",
     ),
 )
 def test_valid_url_verification_returns_exact_response_without_consumer_or_remote_io(
@@ -150,7 +154,6 @@ def test_valid_url_verification_returns_exact_response_without_consumer_or_remot
         (_VERIFICATION_TOKEN, _ENCRYPT_KEY, _encrypted_challenge(token="wrong-test-only-token")),
         (_VERIFICATION_TOKEN, _ENCRYPT_KEY, _encrypted_challenge(encrypt_key="wrong-test-only-key")),
         (_VERIFICATION_TOKEN, None, _encrypted_challenge()),
-        (None, None, _plaintext_challenge(token=None)),
         (None, _ENCRYPT_KEY, _plaintext_challenge(token=None)),
     ],
     ids=(
@@ -158,7 +161,6 @@ def test_valid_url_verification_returns_exact_response_without_consumer_or_remot
         "encrypted-wrong-token",
         "encrypted-wrong-key",
         "encrypted-missing-key",
-        "plaintext-no-auth-material",
         "plaintext-bypasses-configured-encryption",
     ),
 )
@@ -181,5 +183,29 @@ def test_invalid_or_unauthenticated_url_verification_fails_closed_without_consum
     response = handler.handle(WebhookRequest("POST", (), body, _RECEIVED_AT))
 
     assert response.status_code != 200
+    assert response.body == b'{"code":1}'
+    assert consumer.events == []
+
+
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
+@pytest.mark.parametrize(
+    "body",
+    [
+        b'{"type":"url_verification"}',
+        b'{"type":"url_verification","challenge":123}',
+        b'{"type":"event_callback","challenge":"test-only-challenge"}',
+        b'{"type":"url_verification","challenge":',
+    ],
+    ids=("missing-challenge", "invalid-challenge-type", "business-event", "malformed-json"),
+)
+def test_invalid_url_verification_without_configured_authentication_is_rejected(
+    monkeypatch: pytest.MonkeyPatch, provider: IMProvider, body: bytes
+) -> None:
+    consumer = _CountingConsumer()
+    handler = _create_handler(monkeypatch, provider, consumer, verification_token=None, encrypt_key=None)
+
+    response = handler.handle(WebhookRequest("POST", (), body, _RECEIVED_AT))
+
+    assert response.status_code in (400, 401)
     assert response.body == b'{"code":1}'
     assert consumer.events == []

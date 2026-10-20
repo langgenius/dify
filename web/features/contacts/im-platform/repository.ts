@@ -21,6 +21,7 @@ import type {
   SaveContactImCredentialsCommand,
   TestContactImConnectionCommand,
 } from './types'
+import { z } from 'zod'
 import { consoleClient } from '@/service/console'
 import {
   ContactImRepositoryError,
@@ -346,6 +347,21 @@ function credentialsFor(
   }
 }
 
+const channelProviderErrorSchema = z.object({
+  code: z.literal('bad_request'),
+  message: z.string().min(1),
+})
+
+async function channelProviderErrorMessage(error: unknown): Promise<string | undefined> {
+  if (!(error instanceof Response) || error.status !== 400) return undefined
+  try {
+    const parsed = channelProviderErrorSchema.safeParse(await error.clone().json())
+    return parsed.success ? parsed.data.message : undefined
+  } catch {
+    return undefined
+  }
+}
+
 async function channelRequest<T>(request: () => Promise<T>): Promise<T> {
   try {
     return await request()
@@ -357,7 +373,10 @@ async function channelRequest<T>(request: () => Promise<T>): Promise<T> {
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.NoPermission)
     if (status === 409)
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.ConfigurationUpdated)
-    throw new ContactImRepositoryError(ContactImRepositoryErrorCode.MutationFailed)
+    throw new ContactImRepositoryError(
+      ContactImRepositoryErrorCode.MutationFailed,
+      await channelProviderErrorMessage(error),
+    )
   }
 }
 

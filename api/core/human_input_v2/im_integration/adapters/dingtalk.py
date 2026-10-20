@@ -12,7 +12,6 @@ import json
 from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass
-from enum import StrEnum
 from typing import Literal, Protocol, override
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
@@ -25,6 +24,8 @@ from alibabacloud_dingtalk.robot_1_0.models import BatchSendOTOHeaders, BatchSen
 from alibabacloud_tea_openapi.models import Config
 from alibabacloud_tea_util.models import RuntimeOptions
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from requests.exceptions import Timeout as RequestsTimeout
+from Tea.exceptions import TeaException
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.avatar import read_avatars
@@ -33,9 +34,11 @@ from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
     CredentialTestFailureKind,
     CredentialTestSuccess,
+    CredentialTestTimeoutError,
     Directory,
     DirectoryEntry,
     DirectoryReadFailure,
+    IMProviderError,
     MessageAccepted,
     MessageSendingError,
     MessageSendingResult,
@@ -62,7 +65,6 @@ _SDK_TIMEOUT_MILLISECONDS = 5000
 _HTTP_SUCCESS_STATUS_MIN = 200
 _HTTP_SUCCESS_STATUS_MAX_EXCLUSIVE = 300
 
-_CREDENTIAL_TEST_FAILED = "DingTalk credential testing could not be completed."
 _CREDENTIAL_REJECTED = "DingTalk rejected the credential test."
 _AUTHORIZATION_SCOPE_UNVERIFIED = "DingTalk could not verify complete member authorization."
 _TENANT_BOUNDARY_UNAVAILABLE = "DingTalk could not verify the configured corporation directory boundary."
@@ -91,20 +93,18 @@ class _RobotClient(Protocol):
     ) -> object: ...
 
 
-class _DirectoryHTTPClient(Protocol):
-    def get(self, url: str, *, access_token: str) -> bytes: ...
+@dataclass(frozen=True, slots=True)
+class _DirectoryHTTPResponse:
+    body: bytes
+    http_status: int
 
-    def post(self, url: str, *, access_token: str, body: dict[str, int]) -> bytes: ...
+
+class _DirectoryHTTPClient(Protocol):
+    def get(self, url: str, *, access_token: str) -> _DirectoryHTTPResponse: ...
+
+    def post(self, url: str, *, access_token: str, body: dict[str, int]) -> _DirectoryHTTPResponse: ...
 
     def close(self) -> None: ...
-
-
-class _AccessTokenError(Exception):
-    pass
-
-
-class _AuthenticationRejectedError(_AccessTokenError):
-    pass
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,24 +113,47 @@ class _AccessToken:
     expires_in: int
 
 
+class _AccessTokenResponseBody(BaseModel):
+    model_config = ConfigDict(strict=True, from_attributes=True)
+
+    access_token: str = Field(min_length=1)
+    expires_in: int = Field(gt=0)
+
+
+class _AccessTokenResponse(BaseModel):
+    model_config = ConfigDict(strict=True, from_attributes=True)
+
+    body: _AccessTokenResponseBody
+
+
 class _DirectoryHTTPError(Exception):
     pass
 
 
 class _DirectoryProviderRejectedError(_DirectoryHTTPError):
-    pass
+    def __init__(self, provider_error_code: int | None, *, http_status: int) -> None:
+        super().__init__()
+        self.provider_error_code = str(provider_error_code) if provider_error_code is not None else None
+        self.http_status = http_status
 
 
-class _BaselineVerification(StrEnum):
-    VERIFIED = "verified"
-    REJECTED = "rejected"
-    UNKNOWN = "unknown"
+class _OAuthErrorData(BaseModel):
+    model_config = ConfigDict(extra="ignore", strict=True)
+
+    status_code: int | None = Field(default=None, alias="statusCode")
+
+
+class _OAuthErrorResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore", strict=True, hide_input_in_errors=True)
+
+    code: str | None = None
+    data: _OAuthErrorData | None = None
 
 
 class _ProviderResponse(BaseModel):
     model_config = ConfigDict(extra="ignore", strict=True)
 
-    errcode: int
+    errcode: int | None = None
     errmsg: str | None = None
 
 
@@ -207,17 +230,14 @@ class _SDKAccessTokenProvider(AccessTokenProvider):
 
 class _UrllibDirectoryHTTPClient(_DirectoryHTTPClient):
     @override
-    def get(self, url: str, *, access_token: str) -> bytes:
+    def get(self, url: str, *, access_token: str) -> _DirectoryHTTPResponse:
         target = f"{url}?{urllib_parse.urlencode({'access_token': access_token})}"
         request = urllib_request.Request(target, method="GET")
-        try:
-            with urllib_request.urlopen(request, timeout=_HTTP_TIMEOUT_SECONDS) as response:
-                return response.read()
-        except (OSError, ValueError, urllib_error.URLError):
-            raise _DirectoryHTTPError from None
+        with urllib_request.urlopen(request, timeout=_HTTP_TIMEOUT_SECONDS) as response:
+            return _DirectoryHTTPResponse(body=response.read(), http_status=response.status)
 
     @override
-    def post(self, url: str, *, access_token: str, body: dict[str, int]) -> bytes:
+    def post(self, url: str, *, access_token: str, body: dict[str, int]) -> _DirectoryHTTPResponse:
         target = f"{url}?{urllib_parse.urlencode({'access_token': access_token})}"
         request = urllib_request.Request(
             target,
@@ -225,11 +245,8 @@ class _UrllibDirectoryHTTPClient(_DirectoryHTTPClient):
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        try:
-            with urllib_request.urlopen(request, timeout=_HTTP_TIMEOUT_SECONDS) as response:
-                return response.read()
-        except (OSError, ValueError, urllib_error.URLError):
-            raise _DirectoryHTTPError from None
+        with urllib_request.urlopen(request, timeout=_HTTP_TIMEOUT_SECONDS) as response:
+            return _DirectoryHTTPResponse(body=response.read(), http_status=response.status)
 
     @override
     def close(self) -> None:
@@ -308,7 +325,11 @@ class _DingTalkMessaging(IMMessaging):
         self._client = client
 
     @override
-    def send_text(self, provider_user_id: ProviderUserId, body: str) -> MessageSendingResult:
+    def send_text(
+        self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
+    ) -> MessageSendingResult:
+        if subject is not None:
+            body = f"{subject}\n\n{body}"
         try:
             access_token = self._token_provider.get()
             response = self._client.batch_send_otowith_options(
@@ -376,25 +397,56 @@ class DingTalkIMProviderAdapter:
 
     def test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
         try:
-            access_token = _get_access_token(self._credential_test_client, self._credentials)
-        except _AuthenticationRejectedError:
-            return CredentialTestFailure(CredentialTestFailureKind.AUTHENTICATION_REJECTED, _CREDENTIAL_REJECTED)
-        except Exception:
-            return CredentialTestFailure(CredentialTestFailureKind.UNKNOWN, _CREDENTIAL_TEST_FAILED)
+            return self._test_credentials()
+        except (TimeoutError, RequestsTimeout) as error:
+            raise CredentialTestTimeoutError() from error
+        except urllib_error.HTTPError as error:
+            try:
+                rejection = _ProviderResponse.model_validate_json(error.read())
+            except ValidationError:
+                provider_error_code = None
+            else:
+                provider_error_code = str(rejection.errcode) if rejection.errcode is not None else None
+            return CredentialTestFailure(
+                CredentialTestFailureKind.UNKNOWN, _CREDENTIAL_REJECTED, provider_error_code, http_status=error.code
+            )
+        except urllib_error.URLError as error:
+            if isinstance(error.reason, TimeoutError):
+                raise CredentialTestTimeoutError() from error
+            raise
 
-        if not _has_complete_member_authorization(self._http_client, access_token):
+    def _test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
+        try:
+            access_token = _get_access_token(self._credential_test_client, self._credentials)
+        except TeaException as error:
+            rejection = _OAuthErrorResponse.model_validate({"code": error.code, "data": error.data})
+            status_code = rejection.data.status_code if rejection.data is not None else None
+            if rejection.code is None and status_code is None:
+                raise
+            kind = (
+                CredentialTestFailureKind.AUTHENTICATION_REJECTED
+                if status_code in {400, 401, 403}
+                else CredentialTestFailureKind.UNKNOWN
+            )
+            return CredentialTestFailure(kind, _CREDENTIAL_REJECTED, rejection.code, http_status=status_code)
+
+        try:
+            complete_authorization = _has_complete_member_authorization(self._http_client, access_token)
+        except _DirectoryProviderRejectedError as error:
             return CredentialTestFailure(
                 CredentialTestFailureKind.UNKNOWN,
                 _AUTHORIZATION_SCOPE_UNVERIFIED,
+                error.provider_error_code,
+                http_status=error.http_status,
             )
-        baseline = _verify_root_boundary(self._http_client, access_token)
-        if baseline is _BaselineVerification.REJECTED:
+        if not complete_authorization:
             return CredentialTestFailure(
-                CredentialTestFailureKind.TENANT_ID_UNAVAILABLE,
-                _TENANT_BOUNDARY_UNAVAILABLE,
+                CredentialTestFailureKind.PERMISSION_DENIED,
+                _AUTHORIZATION_SCOPE_UNVERIFIED,
             )
-        if baseline is _BaselineVerification.UNKNOWN:
-            return CredentialTestFailure(CredentialTestFailureKind.UNKNOWN, _CREDENTIAL_TEST_FAILED)
+        baseline_failure = _verify_root_boundary(self._http_client, access_token)
+        if baseline_failure is not None:
+            return baseline_failure
         return CredentialTestSuccess(IMProvider.DING_TALK, self._credentials.corp_id)
 
     @property
@@ -449,60 +501,40 @@ def _get_access_token(client: _OAuthClient, credentials: DingTalkCredentials) ->
 
 
 def _request_access_token(client: _OAuthClient, credentials: DingTalkCredentials) -> _AccessToken:
+    response = client.get_token(
+        credentials.corp_id,
+        GetTokenRequest(
+            client_id=credentials.client_id,
+            client_secret=credentials.client_secret,
+            grant_type="client_credentials",
+        ),
+    )
     try:
-        response = client.get_token(
-            credentials.corp_id,
-            GetTokenRequest(
-                client_id=credentials.client_id,
-                client_secret=credentials.client_secret,
-                grant_type="client_credentials",
-            ),
-        )
-    except Exception as error:
-        if _is_authentication_rejection(error):
-            raise _AuthenticationRejectedError from None
-        raise _AccessTokenError from None
-
-    response_body = getattr(response, "body", None)
-    access_token = getattr(response_body, "access_token", None)
-    expires_in = getattr(response_body, "expires_in", None)
-    if (
-        not isinstance(access_token, str)
-        or not access_token
-        or not isinstance(expires_in, int)
-        or isinstance(expires_in, bool)
-        or expires_in <= 0
-    ):
-        raise _AccessTokenError
-    return _AccessToken(access_token, expires_in)
+        response_body = _AccessTokenResponse.model_validate(response).body
+    except ValidationError as error:
+        raise IMProviderError(f"DingTalk returned an invalid access token response: {error}") from error
+    return _AccessToken(response_body.access_token, response_body.expires_in)
 
 
-def _is_authentication_rejection(error: Exception) -> bool:
-    status_code = getattr(error, "status_code", None)
-    if status_code is None:
-        status_code = getattr(error, "statusCode", None)
-    return status_code in {400, 401, 403}
-
-
-def _verify_root_boundary(http_client: _DirectoryHTTPClient, access_token: str) -> _BaselineVerification:
+def _verify_root_boundary(http_client: _DirectoryHTTPClient, access_token: str) -> CredentialTestFailure | None:
     try:
         _department_children(http_client, access_token, _ROOT_DEPARTMENT_ID)
-    except _DirectoryProviderRejectedError:
-        return _BaselineVerification.REJECTED
-    except Exception:
-        return _BaselineVerification.UNKNOWN
-    return _BaselineVerification.VERIFIED
+    except _DirectoryProviderRejectedError as error:
+        return CredentialTestFailure(
+            CredentialTestFailureKind.TENANT_ID_UNAVAILABLE,
+            _TENANT_BOUNDARY_UNAVAILABLE,
+            error.provider_error_code,
+            http_status=error.http_status,
+        )
+    return None
 
 
 def _has_complete_member_authorization(
     http_client: _DirectoryHTTPClient,
     access_token: str,
 ) -> bool:
-    try:
-        response_body = http_client.get(_AUTHORIZATION_SCOPE_URL, access_token=access_token)
-        scope = _parse_response(response_body, _AuthorizationScopeResponse).auth_org_scopes
-    except _DirectoryHTTPError:
-        return False
+    response_body = http_client.get(_AUTHORIZATION_SCOPE_URL, access_token=access_token)
+    scope = _parse_response(response_body, _AuthorizationScopeResponse).auth_org_scopes
     return _ROOT_DEPARTMENT_ID in scope.authed_dept
 
 
@@ -518,7 +550,7 @@ def _department_children(
     )
     payload = _parse_response(response_body, _DepartmentListResponse)
     if payload.result is None:
-        raise _DirectoryHTTPError
+        raise IMProviderError("DingTalk did not provide department results.")
     return payload.result
 
 
@@ -535,21 +567,18 @@ def _user_page(
     )
     payload = _parse_response(response_body, _UserListResponse)
     if payload.result is None:
-        raise _DirectoryHTTPError
+        raise IMProviderError("DingTalk did not provide user results.")
     return payload.result
 
 
 def _parse_response[ResponseT: _ProviderResponse](
-    response_body: bytes,
+    response_body: _DirectoryHTTPResponse,
     response_type: type[ResponseT],
 ) -> ResponseT:
-    try:
-        payload = response_type.model_validate_json(response_body)
-    except (ValidationError, ValueError):
-        raise _DirectoryHTTPError from None
-    if payload.errcode != 0:
-        raise _DirectoryProviderRejectedError
-    return payload
+    rejection = _ProviderResponse.model_validate_json(response_body.body)
+    if rejection.errcode != 0:
+        raise _DirectoryProviderRejectedError(rejection.errcode, http_status=response_body.http_status)
+    return response_type.model_validate_json(response_body.body)
 
 
 def _optional_non_blank(value: str | None) -> str | None:

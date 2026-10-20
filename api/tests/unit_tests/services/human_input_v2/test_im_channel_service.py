@@ -418,6 +418,33 @@ def test_classified_provider_failures_map_to_safe_stable_errors(
     assert state.events == ["build_adapter", "test_credentials", "adapter_close"]
 
 
+@pytest.mark.parametrize("operation", ["test", "create"])
+def test_provider_diagnostics_reach_channel_errors_without_raw_provider_reason(monkeypatch, operation: str) -> None:
+    state = _State()
+    service = _TestService(state)
+    _install_adapter(
+        monkeypatch,
+        state,
+        result=CredentialTestFailure(
+            CredentialTestFailureKind.UNKNOWN,
+            "raw provider-secret-diagnostic",
+            "missing_scope",
+            ("users:read.email",),
+        ),
+    )
+
+    command = service.test if operation == "test" else service.create
+    with pytest.raises(ChannelProviderError) as captured:
+        command(_SLACK)
+
+    assert captured.value.status_description == (
+        "The provider connection could not be established. API error code: missing_scope. "
+        "Missing permissions: users:read.email."
+    )
+    assert "provider-secret-diagnostic" not in str(captured.value)
+    assert state.current is None
+
+
 @pytest.mark.parametrize("failure_point", ["build", "test", "close", "cipher"])
 def test_unclassified_provider_adapter_and_cipher_failures_propagate_unchanged(
     monkeypatch: pytest.MonkeyPatch,

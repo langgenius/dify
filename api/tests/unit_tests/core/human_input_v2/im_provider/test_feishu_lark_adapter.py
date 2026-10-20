@@ -9,6 +9,8 @@ from typing import Literal, overload
 
 import httpx
 import pytest
+from lark_oapi.core.exception import ObtainAccessTokenException
+from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
 from core.human_input import ButtonStyle
@@ -32,6 +34,7 @@ from core.human_input_v2.im_integration.adapters import (
 )
 from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
 from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials, LarkCredentials
+from core.human_input_v2.im_integration.adapters.entities import IMProviderError
 from core.human_input_v2.im_integration.adapters.feishu_lark import (
     FeishuIMProviderAdapter,
     LarkIMProviderAdapter,
@@ -359,12 +362,72 @@ def test_credential_failure_is_classified_and_safe(
         gateway.scope_responses.append(scope_response)
     adapter = _adapter(monkeypatch, provider, gateway)
 
+    if expected_kind is CredentialTestFailureKind.TENANT_ID_UNAVAILABLE:
+        with pytest.raises(IMProviderError):
+            adapter.test_credentials()
+        return
     result = adapter.test_credentials()
 
     assert isinstance(result, CredentialTestFailure)
     assert result.kind is expected_kind
     assert "sanitized rejection" not in result.reason
     assert "sanitized-app-secret" not in result.reason
+
+
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
+@pytest.mark.parametrize("stage", ["tenant", "scope", "department"])
+def test_credential_failure_preserves_provider_code_and_explicit_permission_violations(
+    monkeypatch,
+    provider,
+    stage,
+) -> None:
+    rejection = {
+        "code": 99991672,
+        "data": {},
+        "msg": "raw message with sanitized-app-secret",
+        "error": {"permission_violations": [{"type": "action", "subject": "contact:contact.base:readonly"}]},
+    }
+    gateway = FakeSDKGateway()
+    gateway.tenant_responses.append(rejection if stage == "tenant" else _tenant_response())
+    if stage == "scope":
+        gateway.scope_responses.append(rejection)
+    if stage == "department":
+        gateway.scope_responses.append(_scope_page())
+        gateway.department_responses.append(rejection)
+
+    result = _adapter(monkeypatch, provider, gateway).test_credentials()
+
+    assert isinstance(result, CredentialTestFailure)
+    assert result.provider_error_code == "99991672"
+    assert result.missing_permissions == ("contact:contact.base:readonly",)
+    assert "sanitized-app-secret" not in repr(result)
+
+
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
+def test_credential_failure_preserves_token_endpoint_error_code(monkeypatch, provider) -> None:
+    gateway = FakeSDKGateway()
+    gateway.tenant_responses.append(ObtainAccessTokenException("token rejected", 10014, "sanitized-app-secret"))
+
+    result = _adapter(monkeypatch, provider, gateway).test_credentials()
+
+    assert isinstance(result, CredentialTestFailure)
+    assert result.provider_error_code == "10014"
+    assert result.missing_permissions == ()
+    assert "sanitized-app-secret" not in repr(result)
+
+
+@pytest.mark.parametrize(
+    "error_details", [None, {}, {"permission_violations": [{"type": "field", "subject": "user_id"}]}]
+)
+def test_credential_failure_does_not_infer_permissions_from_error_code(monkeypatch, error_details) -> None:
+    gateway = FakeSDKGateway()
+    gateway.tenant_responses.append({"code": 99991672, "error": error_details})
+
+    result = _adapter(monkeypatch, IMProvider.FEISHU, gateway).test_credentials()
+
+    assert isinstance(result, CredentialTestFailure)
+    assert result.provider_error_code == "99991672"
+    assert result.missing_permissions == ()
 
 
 @pytest.mark.parametrize(
@@ -428,12 +491,19 @@ def test_credentials_reject_incomplete_or_malformed_scope_pagination(
     gateway.scope_responses.extend(scope_responses)
     adapter = _adapter(monkeypatch, provider, gateway)
 
-    result = adapter.test_credentials()
-
-    assert isinstance(result, CredentialTestFailure)
-    assert result.kind is CredentialTestFailureKind.UNKNOWN
+    provider_rejection = any(isinstance(page, Mapping) and page.get("code") == 403 for page in scope_responses)
+    execution_errors = [page for page in scope_responses if isinstance(page, Exception)]
+    if provider_rejection:
+        result = adapter.test_credentials()
+        assert isinstance(result, CredentialTestFailure)
+        assert result.kind is CredentialTestFailureKind.UNKNOWN
+    else:
+        expected_error = type(execution_errors[0]) if execution_errors else (IMProviderError, ValidationError)
+        with pytest.raises(expected_error) as captured:
+            adapter.test_credentials()
+        if execution_errors:
+            assert captured.value is execution_errors[0]
     assert not any(call[0] == "list_departments" for call in gateway.calls)
-    assert "sanitized" not in result.reason.casefold()
 
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
@@ -453,10 +523,14 @@ def test_credentials_reject_non_integer_scope_success_code(
     )
     adapter = _adapter(monkeypatch, provider, gateway)
 
-    result = adapter.test_credentials()
-
-    assert isinstance(result, CredentialTestFailure)
-    assert result.kind is CredentialTestFailureKind.UNKNOWN
+    if invalid_code is None:
+        result = adapter.test_credentials()
+        assert isinstance(result, CredentialTestFailure)
+        assert result.kind is CredentialTestFailureKind.UNKNOWN
+        assert result.provider_error_code is None
+    else:
+        with pytest.raises(ValueError):
+            adapter.test_credentials()
     assert not any(call[0] == "list_departments" for call in gateway.calls)
 
 
@@ -488,12 +562,19 @@ def test_credentials_require_authoritative_root_department_proof(
     gateway.department_responses.append(root_response)
     adapter = _adapter(monkeypatch, provider, gateway)
 
-    result = adapter.test_credentials()
-
-    assert isinstance(result, CredentialTestFailure)
-    assert result.kind is CredentialTestFailureKind.UNKNOWN
+    if isinstance(root_response, Mapping) and root_response.get("code") == 403:
+        result = adapter.test_credentials()
+        assert isinstance(result, CredentialTestFailure)
+        assert result.kind is CredentialTestFailureKind.UNKNOWN
+    else:
+        expected_error = (
+            type(root_response) if isinstance(root_response, Exception) else (IMProviderError, ValidationError)
+        )
+        with pytest.raises(expected_error) as captured:
+            adapter.test_credentials()
+        if isinstance(root_response, Exception):
+            assert captured.value is root_response
     assert gateway.calls[-1] == ("list_departments", ("0", None))
-    assert "sanitized" not in result.reason.casefold()
 
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
@@ -1087,27 +1168,42 @@ def test_directory_rejects_non_integer_success_code_without_partial_snapshot(
 
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
-def test_text_send_uses_union_id_exact_plain_text_and_one_creation(
+@pytest.mark.parametrize(
+    ("subject", "expected_elements"),
+    [
+        (None, [{"tag": "markdown", "content": "# Decision\n\n**Approve**"}]),
+        (
+            "### Review **Alice**",
+            [
+                {"tag": "markdown", "content": r"# \#\#\# Review \*\*Alice\*\*"},
+                {"tag": "markdown", "content": "# Decision\n\n**Approve**"},
+            ],
+        ),
+    ],
+)
+def test_text_send_uses_union_id_and_preserves_markdown_in_one_creation(
     monkeypatch: pytest.MonkeyPatch,
     provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
+    subject: str | None,
+    expected_elements: list[dict[str, str]],
 ) -> None:
     gateway = FakeSDKGateway()
     gateway.tenant_responses.append(_tenant_response())
     gateway.create_responses.append({"code": 0, "data": {"message_id": "om_sanitized_message"}})
     adapter = _adapter(monkeypatch, provider, gateway)
 
-    result = adapter.messaging.send_text(ProviderUserId("union_sanitized_user"), "Rendered plain text")
+    result = adapter.messaging.send_text(ProviderUserId("union_sanitized_user"), "# Decision\n\n**Approve**", subject)
 
     assert isinstance(result, MessageAccepted)
     creation = [call for call in gateway.calls if call[0] == "create_message"]
     assert len(creation) == 1
     receive_id, msg_type, content = creation[0][1]
-    assert (receive_id, msg_type) == ("union_sanitized_user", "text")
-    assert json.loads(content) == {"text": "Rendered plain text"}
+    assert (receive_id, msg_type) == ("union_sanitized_user", "interactive")
+    assert json.loads(content) == {"schema": "2.0", "body": {"elements": expected_elements}}
 
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
-def test_text_send_falls_back_to_content_equivalent_plain_text(
+def test_text_send_preserves_body_markdown_without_a_subject(
     monkeypatch: pytest.MonkeyPatch, provider: Literal[IMProvider.FEISHU, IMProvider.LARK]
 ) -> None:
     gateway = FakeSDKGateway()
@@ -1122,7 +1218,10 @@ def test_text_send_falls_back_to_content_equivalent_plain_text(
 
     assert isinstance(result, MessageAccepted)
     creation = next(call for call in gateway.calls if call[0] == "create_message")
-    assert json.loads(creation[1][2]) == {"text": "Decision: Approve"}
+    assert json.loads(creation[1][2]) == {
+        "schema": "2.0",
+        "body": {"elements": [{"tag": "markdown", "content": "Decision: **Approve**"}]},
+    }
 
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])

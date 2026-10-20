@@ -29,6 +29,7 @@ from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
     CredentialTestFailureKind,
     CredentialTestSuccess,
+    IMProviderError,
 )
 from core.human_input_v2.im_integration.adapters.factory import build_im_provider_adapter
 from core.human_input_v2.shared import AccountId, TenantId
@@ -277,25 +278,33 @@ class IMChannelService(ABC):
         adapter = build_im_provider_adapter(credentials)
         try:
             tested = adapter.test_credentials()
+        except IMProviderError as error:
+            raise ChannelProviderError(ProviderFailureKind.CONNECTION_FAILURE, str(error)) from error
         finally:
             adapter.close()
 
         if isinstance(tested, CredentialTestFailure):
-            self._raise_provider_failure(tested.kind)
+            self._raise_provider_failure(tested)
         if tested.provider is not credentials.provider:
             raise AssertionError("provider adapter returned a mismatched provider")
         return tested
 
     @staticmethod
-    def _raise_provider_failure(kind: CredentialTestFailureKind) -> Never:
-        if kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED:
+    def _raise_provider_failure(failure: CredentialTestFailure) -> Never:
+        if failure.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED:
             raise ChannelProviderError(
                 ProviderFailureKind.INVALID_CREDENTIALS,
                 _INVALID_CREDENTIALS_DESCRIPTION,
+                provider_error_code=failure.provider_error_code,
+                missing_permissions=failure.missing_permissions,
+                http_status=failure.http_status,
             )
         raise ChannelProviderError(
             ProviderFailureKind.CONNECTION_FAILURE,
             _CONNECTION_FAILURE_DESCRIPTION,
+            provider_error_code=failure.provider_error_code,
+            missing_permissions=failure.missing_permissions,
+            http_status=failure.http_status,
         )
 
     @staticmethod

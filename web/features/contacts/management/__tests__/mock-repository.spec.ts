@@ -1,3 +1,4 @@
+import type { GetContactResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ContactsManagementRepository } from '../repository'
 import type { ContactsFeatureContextValue } from '../types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -485,6 +486,7 @@ describe('contacts API repository', () => {
       ...externalContact,
       avatar_url: '',
       email: null,
+      im_binding_details: [],
       im_bindings: [],
     })
     expect(vi.mocked(contacts.byContactId.get).mock.calls[0]?.[0]).toEqual({
@@ -499,6 +501,48 @@ describe('contacts API repository', () => {
     const unavailable = Object.assign(new Error('API unavailable'), { status: 503 })
     vi.mocked(contacts.byContactId.get).mockRejectedValueOnce(unavailable)
     await expect(repository.getContact(externalContact.id)).rejects.toBe(unavailable)
+  })
+
+  it('preserves complete IM binding details from the generated contact endpoint', async () => {
+    const bindingDetails: GetContactResponse['im_binding_details'] = [
+      {
+        id: 'binding-feishu',
+        provider: 'feishu',
+        scope: 'workspace',
+        identity: {
+          id: 'identity-feishu',
+          display_name: 'Feishu Member',
+          email: 'feishu@example.com',
+          provider_user_id: 'feishu-user',
+        },
+      },
+      {
+        id: 'binding-slack',
+        provider: 'slack',
+        scope: 'organization',
+        identity: {
+          id: 'identity-slack',
+          display_name: null,
+          email: null,
+          provider_user_id: 'slack-user',
+        },
+      },
+    ]
+    const contact = {
+      ...externalContact,
+      type: 'workspace' as const,
+      im_bindings: bindingDetails.map(({ id, provider, scope }) => ({ id, provider, scope })),
+    }
+    vi.mocked(contacts.byContactId.get).mockResolvedValue({
+      contact,
+      im_binding_details: bindingDetails,
+    })
+
+    await expect(createContactsApiRepository().getContact(contact.id)).resolves.toEqual({
+      ...contact,
+      email: null,
+      im_binding_details: bindingDetails,
+    })
   })
 
   it('sends backend field names for creation and editing and returns the server contact ID', async () => {

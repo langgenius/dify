@@ -222,6 +222,40 @@ def _headers(body: bytes, *, secret: str = _SIGNING_SECRET, age: int = 0) -> dic
     }
 
 
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK, IMProvider.SLACK])
+def test_url_verification_returns_provider_response_without_persisting_or_publishing_an_event(
+    context, approval, callback_app, provider
+):
+    from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentialsAdapter
+
+    _, channel_id = approval
+    app, published = callback_app
+    if provider in (IMProvider.FEISHU, IMProvider.LARK):
+        credentials = IMProviderCredentialsAdapter.validate_python(
+            {"provider": provider, "app_id": "cli_test_app", "app_secret": "test-app-secret"}
+        )
+        with context.sessions.begin() as session:
+            channel = session.get_one(HumanInputIMChannel, channel_id)
+            cipher = TenantBoundCredentialCipher(KeyProviderManager().provider, str(context.execution.tenant_id))
+            channel.provider = provider
+            channel.encrypted_credentials = IMCredentialCodec(cipher).seal(credentials)
+
+    body = json.dumps(
+        {"type": "url_verification", "challenge": "url-verification-challenge", "token": "test-verification-token"}
+    ).encode()
+    headers = _headers(body) if provider is IMProvider.SLACK else {}
+    headers["Content-Type"] = "application/json"
+
+    response = app.test_client().post(_PATH, data=body, headers=headers)
+
+    assert response.status_code == 200
+    assert response.content_type == "application/json"
+    assert response.get_json() == {"challenge": "url-verification-challenge"}
+    assert published == []
+    with context.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(IMMessageInbox)) == 0
+
+
 def test_signed_callback_is_committed_before_ack_then_submitted_by_worker(context, approval, callback_app, monkeypatch):
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 

@@ -63,6 +63,43 @@ export function addRecipient(
   return [...recipients, recipient]
 }
 
+export function findConflictingContact<T extends { id: string; email: string }>(
+  recipients: HumanInputV2Recipient[],
+  candidate: { id: string; email: string },
+  contacts: readonly T[],
+): T | undefined {
+  const email = candidate.email.trim().toLowerCase()
+  if (!email) return undefined
+
+  return contacts.find(
+    (contact) =>
+      contact.id !== candidate.id &&
+      contact.email.trim().toLowerCase() === email &&
+      recipients.some(
+        (recipient) => recipient.type === 'contact' && recipient.contact_id === contact.id,
+      ),
+  )
+}
+
+export function replaceContactRecipient(
+  recipients: HumanInputV2Recipient[],
+  previousContactId: string,
+  nextContactId: string,
+): HumanInputV2Recipient[] {
+  if (
+    !nextContactId.trim() ||
+    recipients.some(
+      (recipient) => recipient.type === 'contact' && recipient.contact_id === nextContactId,
+    )
+  )
+    return recipients
+
+  const index = recipients.findIndex(
+    (recipient) => recipient.type === 'contact' && recipient.contact_id === previousContactId,
+  )
+  return updateRecipient(recipients, index, { type: 'contact', contact_id: nextContactId })
+}
+
 export function updateRecipient(
   recipients: HumanInputV2Recipient[],
   index: number,

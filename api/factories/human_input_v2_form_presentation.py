@@ -1,6 +1,8 @@
 """Project frozen forms into the shared Dify form-rendering contract."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import assert_never
 
 from core.human_input_v2.resolved_form import (
     FileInput,
@@ -21,6 +23,7 @@ from core.workflow.nodes.human_input.entities import (
     UserActionConfig,
 )
 from core.workflow.nodes.human_input.enums import ValueSourceType
+from graphon.variables.segments import ArrayFileSegment, Segment
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,3 +91,28 @@ def build_form_presentation(form: ResolvedForm) -> FormPresentation:
         ],
         resolved_default_values=defaults,
     )
+
+
+def render_filled_content(form: ResolvedForm, inputs: Mapping[str, Segment]) -> str:
+    """Render accepted inputs consistently across workflow events and delivery channels."""
+    # Render source-ordered parts once: submitted text containing output markers
+    # must not be interpreted as another template substitution.
+    fragments: list[str] = []
+    for part in form.parts:
+        if isinstance(part, MarkdownFragment):
+            fragments.append(part.text)
+            continue
+        segment = inputs.get(part.output_variable_name)
+        if segment is None or segment.to_object() is None:
+            continue
+        match part:
+            case ParagraphInput() | SelectInput():
+                fragments.append(segment.text)
+            case FileInput():
+                fragments.append("[file]")
+            case FileListInput():
+                assert isinstance(segment, ArrayFileSegment), "Accepted file-list input must retain its Segment type"
+                fragments.append(f"[{len(segment.value)} files]")
+            case _:
+                assert_never(part)
+    return "".join(fragments)

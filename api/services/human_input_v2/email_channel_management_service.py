@@ -149,15 +149,19 @@ class HumanInputEmailChannelManagementService:
     def _send_test(self, candidate: ResendCandidate) -> None:
         try:
             self._provider_gateway.send_test(candidate)
-        except EmailProviderValidationError:
+        except EmailProviderValidationError as error:
             raise ChannelProviderError(
                 ProviderFailureKind.INVALID_CREDENTIALS,
                 _INVALID_CREDENTIALS_DESCRIPTION,
+                provider_error_code=error.provider_error_code,
+                http_status=error.http_status,
             ) from None
-        except EmailProviderOperationError:
+        except EmailProviderOperationError as error:
             raise ChannelProviderError(
                 ProviderFailureKind.CONNECTION_FAILURE,
                 _CONNECTION_FAILURE_DESCRIPTION,
+                provider_error_code=error.provider_error_code,
+                http_status=error.http_status,
             ) from None
         except Exception:
             # Provider exceptions can contain request bodies or credentials, so this

@@ -1,3 +1,5 @@
+import pytest
+
 from core.workflow.human_input_adapter import EmailDeliveryConfig, EmailRecipients
 from graphon.runtime import VariablePool
 
@@ -21,6 +23,21 @@ def test_render_markdown_body_renders_markdown_to_html():
 
     assert "<strong>Bold</strong>" in rendered
     assert '<a href="https://example.com">link</a>' in rendered
+
+
+@pytest.mark.parametrize(
+    ("body", "expected"),
+    [
+        ("# Heading", "<h1>Heading</h1>"),
+        ("## Heading", "<h2>Heading</h2>"),
+        ("### Heading", "<h3>Heading</h3>"),
+        ("#### Heading", "<h4>Heading</h4>"),
+        ("##### Heading", "<h5>Heading</h5>"),
+        ("###### Heading", "<h6>Heading</h6>"),
+    ],
+)
+def test_render_markdown_body_preserves_heading_levels(body: str, expected: str) -> None:
+    assert EmailDeliveryConfig.render_markdown_body(body) == expected
 
 
 def test_render_markdown_body_sanitizes_unsafe_html():

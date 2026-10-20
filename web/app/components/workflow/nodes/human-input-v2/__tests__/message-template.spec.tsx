@@ -1,18 +1,26 @@
+import type {
+  ChannelSummary,
+  ListChannelsResponse,
+} from '@dify/contracts/api/console/workspace/types.gen'
 import type { ComponentProps } from 'react'
 import type { Shape } from '@/app/components/workflow/hooks-store/store'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
 import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { VarType } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import MessageTemplate from '../components/message-template'
+import { createChannelsQueryClient } from './channel-fixtures'
 
 const mocks = vi.hoisted(() => ({
   isChatMode: false,
   syncDraft: vi.fn<Shape['doSyncWorkflowDraft']>(),
 }))
+
+const originalBody = 'Original body {{#url#}}'
 
 vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
   useIsChatMode: () => mocks.isChatMode,
@@ -48,19 +56,18 @@ vi.mock(
 const renderTemplate = (
   overrides: Partial<ComponentProps<typeof MessageTemplate>> = {},
   storeOverrides: Partial<Shape> = {},
+  configuredProviders?: ChannelSummary['provider'][],
 ) => {
   const props: ComponentProps<typeof MessageTemplate> = {
     nodeId: 'human-input-v2',
-    value: { subject: 'Original subject', body: 'Original body' },
+    value: { subject: 'Original subject', body: originalBody },
     onChange: vi.fn(),
     readonly: false,
     availableVars: [],
     availableNodes: [],
     ...overrides,
   }
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  })
+  const queryClient = createChannelsQueryClient(configuredProviders)
   const hooksStore = createHooksStore({
     configsMap: {
       flowId: 'app-template-test',
@@ -79,6 +86,7 @@ const renderTemplate = (
     ),
     props,
     hooksStore,
+    queryClient,
   }
 }
 
@@ -138,24 +146,24 @@ describe('Human Input v2 Message Template', () => {
   it('preserves existing subject variables while committing subject and body edits together', async () => {
     const user = userEvent.setup()
     const { props } = renderTemplate({
-      value: { subject: 'Original subject{{#start.email#}}', body: 'Original body' },
+      value: { subject: 'Original subject{{#start.email#}}', body: originalBody },
     })
     await openTemplate(user)
 
     const subject = screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')
     const body = screen.getByLabelText('message-body-editor')
     expect(subject).toHaveValue('Original subject{{#start.email#}}')
-    expect(body).toHaveValue('Original body')
+    expect(body).toHaveValue(originalBody)
 
     await user.type(subject, ' updated')
     await user.clear(body)
-    await user.type(body, 'Updated body without a request URL')
+    await user.paste('Updated body {{#url#}}')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(props.onChange).toHaveBeenCalledTimes(1)
     expect(props.onChange).toHaveBeenCalledWith({
       subject: 'Original subject{{#start.email#}} updated',
-      body: 'Updated body without a request URL',
+      body: 'Updated body {{#url#}}',
     })
   })
 
@@ -199,13 +207,15 @@ describe('Human Input v2 Message Template', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(screen.getAllByRole('alert')).toHaveLength(2)
+    expect(screen.getByText('workflow.nodes.humanInputV2.error.bodyRequired')).toBeInTheDocument()
     expect(props.onChange).not.toHaveBeenCalled()
 
     await user.type(
       screen.getByLabelText('workflow.nodes.humanInputV2.template.subject'),
       'Subject',
     )
-    await user.type(screen.getByLabelText('message-body-editor'), 'Body')
+    await user.click(screen.getByLabelText('message-body-editor'))
+    await user.paste('Body {{#url#}}')
     const save = screen.getByRole('button', { name: 'common.operation.save' })
     await user.dblClick(save)
     expect(props.onChange).toHaveBeenCalledTimes(1)
@@ -213,7 +223,10 @@ describe('Human Input v2 Message Template', () => {
 
   it('opens a non-mutating read-only view', async () => {
     const user = userEvent.setup()
-    const { props } = renderTemplate({ readonly: true })
+    const { props } = renderTemplate({
+      readonly: true,
+      value: { subject: 'Readonly subject', body: 'Legacy body without a Request URL' },
+    })
     await openTemplate(user)
 
     expect(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')).toBeDisabled()
@@ -221,6 +234,72 @@ describe('Human Input v2 Message Template', () => {
     expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
     expect(props.onChange).not.toHaveBeenCalled()
   })
+
+  it.each([
+    { body: 'Review this request', error: 'requestURLRequired' },
+    { body: 'Review {{#url#}} or {{#url#}}', error: 'requestURLDuplicate' },
+  ])(
+    'blocks saving an existing template with $error and focuses the body',
+    async ({ body, error }) => {
+      const user = userEvent.setup()
+      const { props } = renderTemplate({ value: { subject: 'Subject', body } })
+      await openTemplate(user)
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        `workflow.nodes.humanInputV2.error.${error}`,
+      )
+      await waitFor(() => expect(screen.getByLabelText('message-body-editor')).toHaveFocus())
+      expect(props.onChange).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    { action: 'save', body: 'Review this request', error: 'requestURLRequired' },
+    { action: 'save', body: 'Review {{#url#}} or {{#url#}}', error: 'requestURLDuplicate' },
+    { action: 'test', body: 'Review this request', error: 'requestURLRequired' },
+    { action: 'test', body: 'Review {{#url#}} or {{#url#}}', error: 'requestURLDuplicate' },
+  ])(
+    'validates $error while editing before $action and clears it when corrected',
+    async ({ action, body, error }) => {
+      const user = userEvent.setup()
+      const requests = setupFetch()
+      const { props } = renderTemplate()
+      if (action === 'test') await openTest(user)
+      else await openTemplate(user)
+      const editor = screen.getByLabelText('message-body-editor')
+      await user.clear(editor)
+      await user.paste(body)
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        `workflow.nodes.humanInputV2.error.${error}`,
+      )
+      if (action === 'test') await sendTest(user)
+      else await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await waitFor(() => expect(editor).toHaveFocus())
+      expect(props.onChange).not.toHaveBeenCalled()
+      expect(mocks.syncDraft).not.toHaveBeenCalled()
+      expect(requests).toHaveLength(0)
+
+      await user.clear(editor)
+      await user.paste('Review {{#url#}}')
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      if (action === 'test') {
+        await sendTest(user)
+        expect(
+          await screen.findByText('workflow.nodes.humanInputV2.template.testCompleted'),
+        ).toBeInTheDocument()
+        expect(requests).toHaveLength(1)
+      } else {
+        await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      }
+      expect(props.onChange).toHaveBeenCalledOnce()
+      expect(props.onChange).toHaveBeenCalledWith({
+        subject: 'Original subject',
+        body: 'Review {{#url#}}',
+      })
+    },
+  )
 
   it('opens test settings from the card without sending and discards changes with Close', async () => {
     const user = userEvent.setup()
@@ -250,6 +329,132 @@ describe('Human Input v2 Message Template', () => {
     )
   })
 
+  it('offers only the workspace configured Email and Slack channels for template tests', async () => {
+    const user = userEvent.setup()
+    renderTemplate()
+    await openTest(user)
+    await user.click(
+      screen.getByRole('combobox', { name: 'workflow.nodes.humanInputV2.template.testChannel' }),
+    )
+
+    expect(
+      screen.getByRole('option', { name: 'workflow.nodes.humanInputV2.debug.channel.email' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('option', { name: 'workflow.nodes.humanInputV2.debug.channel.slack' }),
+    ).toBeInTheDocument()
+    expect(screen.getAllByRole('option')).toHaveLength(2)
+    expect(
+      screen.queryByRole('option', { name: 'workflow.nodes.humanInputV2.debug.channel.feishu' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('defaults to the configured IM channel when Email is not configured', async () => {
+    const user = userEvent.setup()
+    const requests = setupFetch()
+    renderTemplate({}, {}, ['slack'])
+    await openTest(user)
+
+    expect(
+      screen.getByRole('combobox', { name: 'workflow.nodes.humanInputV2.template.testChannel' }),
+    ).toHaveTextContent('workflow.nodes.humanInputV2.debug.channel.slack')
+    await sendTest(user)
+
+    expect(
+      await screen.findByText('workflow.nodes.humanInputV2.template.testCompleted'),
+    ).toBeInTheDocument()
+    expect(requests[0]?.body).toEqual({ channel: 'slack', inputs: {} })
+  })
+
+  it('does not save or send a test when the workspace has no configured channels', async () => {
+    const user = userEvent.setup()
+    const requests = setupFetch()
+    const { props } = renderTemplate({}, {}, [])
+    await openTest(user)
+
+    expect(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.template.saveAndTest' }),
+    ).toBeDisabled()
+    await sendTest(user)
+
+    expect(mocks.syncDraft).not.toHaveBeenCalled()
+    expect(props.onChange).not.toHaveBeenCalled()
+    expect(requests).toHaveLength(0)
+  })
+
+  it('uses the remaining configured channel when the selected channel is removed while open', async () => {
+    const user = userEvent.setup()
+    const requests = setupFetch()
+    const { queryClient } = renderTemplate()
+    await openTest(user)
+    const channelQueryKey =
+      consoleQuery.workspace.current.humanInput.v2.channels.get.queryOptions().queryKey
+    const configured = queryClient.getQueryData<ListChannelsResponse>(channelQueryKey)
+
+    await act(async () => {
+      queryClient.setQueryData(channelQueryKey, {
+        channels: configured?.channels.filter((channel) => channel.kind === 'im') ?? [],
+      } satisfies ListChannelsResponse)
+    })
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: 'workflow.nodes.humanInputV2.template.testChannel' }),
+      ).toHaveTextContent('workflow.nodes.humanInputV2.debug.channel.slack'),
+    )
+    await sendTest(user)
+    expect(
+      await screen.findByText('workflow.nodes.humanInputV2.template.testCompleted'),
+    ).toBeInTheDocument()
+    expect(requests[0]?.body).toEqual({ channel: 'slack', inputs: {} })
+  })
+
+  it('does not send to a channel removed while the template is being saved', async () => {
+    const user = userEvent.setup()
+    const requests = setupFetch()
+    let finishSave = () => {}
+    mocks.syncDraft.mockImplementationOnce(
+      (_notRefresh, callbacks) =>
+        new Promise((resolve) => {
+          finishSave = () => {
+            callbacks?.onSuccess?.()
+            resolve({ hash: 'saved-draft', updatedAt: 1 })
+          }
+        }),
+    )
+    const { queryClient } = renderTemplate()
+    await openTest(user)
+    await sendTest(user)
+    expect(mocks.syncDraft).toHaveBeenCalledTimes(1)
+
+    const queryKey =
+      consoleQuery.workspace.current.humanInput.v2.channels.get.queryOptions().queryKey
+    const configured = queryClient.getQueryData<ListChannelsResponse>(queryKey)
+    await act(async () => {
+      queryClient.setQueryData(queryKey, {
+        channels: configured?.channels.filter((channel) => channel.kind === 'im') ?? [],
+      } satisfies ListChannelsResponse)
+    })
+    await waitFor(() =>
+      expect(screen.getByRole('combobox')).toHaveTextContent(
+        'workflow.nodes.humanInputV2.debug.channel.slack',
+      ),
+    )
+    await act(async () => finishSave())
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.template.saveAndTest' }),
+      ).toBeEnabled(),
+    )
+    expect(requests).toHaveLength(0)
+
+    await sendTest(user)
+    expect(
+      await screen.findByText('workflow.nodes.humanInputV2.template.testCompleted'),
+    ).toBeInTheDocument()
+    expect(requests[0]?.body).toEqual({ channel: 'slack', inputs: {} })
+  })
+
   it.each([
     { mode: 'workflow', chat: false, prefix: 'workflows' },
     { mode: 'chatflow', chat: true, prefix: 'advanced-chat/workflows' },
@@ -269,7 +474,7 @@ describe('Human Input v2 Message Template', () => {
             }
           }),
       )
-      const { props } = renderTemplate()
+      const { props } = renderTemplate({}, {}, ['resend', 'lark'])
       await openTest(user)
       await user.clear(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject'))
       await user.type(
@@ -288,7 +493,7 @@ describe('Human Input v2 Message Template', () => {
 
       expect(props.onChange).toHaveBeenCalledWith({
         subject: 'Updated test subject',
-        body: 'Original body',
+        body: originalBody,
       })
       expect(mocks.syncDraft).toHaveBeenCalledTimes(1)
       expect(requests).toHaveLength(0)
@@ -474,7 +679,7 @@ describe('Human Input v2 Message Template', () => {
       const user = userEvent.setup()
       const requests = setupFetch()
       renderTemplate({
-        value: { subject: 'Subject', body: '{{#start.tags#}}' },
+        value: { subject: 'Subject', body: '{{#start.tags#}} {{#url#}}' },
         availableVars: [
           {
             nodeId: 'start',

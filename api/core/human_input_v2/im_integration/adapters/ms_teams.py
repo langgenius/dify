@@ -6,17 +6,19 @@ import asyncio
 import binascii
 import json
 import logging
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.message import Message
+from http import HTTPStatus
+from string import punctuation
 from typing import ClassVar, Literal, override
 from urllib.parse import quote, urlsplit
 from uuid import UUID
 
 import httpx
-import jwt
-from azure.core.exceptions import ClientAuthenticationError
+from azure.core.exceptions import ClientAuthenticationError, ServiceRequestTimeoutError, ServiceResponseTimeoutError
 from azure.identity import ClientSecretCredential
 from botbuilder.schema import (
     Activity,
@@ -34,6 +36,7 @@ from botframework.connector.auth import (
 )
 from msrest.exceptions import HttpOperationError
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, ValidationError, field_validator
+from requests.exceptions import Timeout as RequestsTimeout
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
@@ -46,6 +49,7 @@ from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
     CredentialTestFailureKind,
     CredentialTestSuccess,
+    CredentialTestTimeoutError,
     Directory,
     DirectoryEntry,
     DirectoryReadFailure,
@@ -55,6 +59,7 @@ from core.human_input_v2.im_integration.adapters.entities import (
     IMCardEventDecodeResult,
     IMCardEventDecodingError,
     IMEventIngressKind,
+    IMProviderError,
     MessageAccepted,
     MessageSendingError,
     MessageSendingResult,
@@ -89,24 +94,27 @@ logger = logging.getLogger(__name__)
 
 _HTTP_TIMEOUT_SECONDS = 10.0
 _GRAPH_SCOPE = "https://graph.microsoft.com/.default"
-_GRAPH_AUDIENCE = "https://graph.microsoft.com"
 _GRAPH_USERS_URL = "https://graph.microsoft.com/v1.0/users"
 _GRAPH_DIRECTORY_PAGE_SIZE = 999
-_BOT_FRAMEWORK_AUDIENCE = "https://api.botframework.com"
-_BASELINE_GRAPH_ROLES = frozenset(("User.Read.All",))
+_GRAPH_CREDENTIAL_TEST_PAGE_SIZE = 1
 _PUBLIC_TEAMS_SERVICE_URL = "https://smba.trafficmanager.net/teams/"
 _JSON_CONTENT_TYPE = "application/json"
+_EXTENDED_MARKDOWN_TEXT_FORMAT = "extendedmarkdown"
 _TEAMS_BOT_CHANNEL_ID_PREFIX = "28:"
+_BOT_TOKEN_REJECTION_PREFIX = "Failed to get access token with error: "
 _OAUTH_CREDENTIAL_REJECTION_CODES = frozenset(("invalid_client", "invalid_grant", "unauthorized_client"))
 
 
-class _AccessTokenClaims(BaseModel):
-    model_config = ConfigDict(extra="ignore", frozen=True)
+class _GraphError(BaseModel):
+    model_config = ConfigDict(extra="ignore", strict=True)
 
-    aud: str
-    tid: str | None = None
-    roles: tuple[str, ...] = ()
-    appid: str | None = None
+    code: str | None = None
+
+
+class _GraphErrorResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore", strict=True)
+
+    error: _GraphError | None = None
 
 
 class _GraphUser(BaseModel):
@@ -202,17 +210,6 @@ def _reject_non_standard_json_constant(value: str) -> object:
     raise ValueError("non-standard JSON constant")
 
 
-def _safe_access_token_claims(token: str) -> _AccessTokenClaims | None:
-    try:
-        claims = jwt.decode(
-            token,
-            options={"verify_signature": False, "verify_aud": False, "verify_exp": False},
-        )
-        return _AccessTokenClaims.model_validate(claims)
-    except (jwt.PyJWTError, ValidationError):
-        return None
-
-
 def _canonical_guid(value: str | None) -> str | None:
     if value is None:
         return None
@@ -229,6 +226,19 @@ def _permission_error_is_credential_rejection(error: PermissionError) -> bool:
         error_text = error_text.split(sdk_error_marker, maxsplit=1)[1].lstrip()
     error_code = error_text.split(",", maxsplit=1)[0].split(":", maxsplit=1)[0].strip()
     return error_code in _OAUTH_CREDENTIAL_REJECTION_CODES
+
+
+def _microsoft_error_code(error: ClientAuthenticationError | PermissionError) -> str | None:
+    # Azure Identity and Bot Framework expose OAuth failures as text. Extract
+    # only the provider's identifier; descriptions may echo submitted secrets.
+    error_text = str(error)
+    aadsts_code = re.search(r"\bAADSTS[0-9]+\b", error_text)
+    if aadsts_code is not None:
+        return aadsts_code.group()
+    if error_text.startswith(_BOT_TOKEN_REJECTION_PREFIX):
+        oauth_code = error_text.removeprefix(_BOT_TOKEN_REJECTION_PREFIX).split(", error_description:", maxsplit=1)[0]
+        return oauth_code if oauth_code != "Unknown error" else None
+    return None
 
 
 def _log_safe_error(message: str) -> None:
@@ -585,8 +595,20 @@ class _MSTeamsMessaging(IMMessaging):
         self._client_id = client_id
 
     @override
-    def send_text(self, provider_user_id: ProviderUserId, body: str) -> MessageSendingResult:
-        return self._send_activity(provider_user_id, Activity(type="message", text=body))
+    def send_text(
+        self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
+    ) -> MessageSendingResult:
+        if subject:
+            # Keep subject content literal inside the Markdown heading.
+            escaped_subject = "".join(
+                f"\\{character}" if character in punctuation else character for character in subject
+            )
+            body = f"# {escaped_subject}\n\n{body}"
+        # Teams' default Markdown renderer does not support headings.
+        return self._send_activity(
+            provider_user_id,
+            Activity(type="message", text=body, text_format=_EXTENDED_MARKDOWN_TEXT_FORMAT),
+        )
 
     def _send_activity(
         self,
@@ -853,88 +875,75 @@ class MSTeamsIMProviderAdapter:
 
     def test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
         try:
+            return self._test_credentials()
+        except (
+            TimeoutError,
+            httpx.TimeoutException,
+            RequestsTimeout,
+            ServiceRequestTimeoutError,
+            ServiceResponseTimeoutError,
+        ) as error:
+            raise CredentialTestTimeoutError() from error
+
+    def _test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
+        try:
             graph_token = self._graph_credential.get_token(_GRAPH_SCOPE).token
-        except ClientAuthenticationError:
+        except ClientAuthenticationError as error:
+            provider_error_code = _microsoft_error_code(error)
+            if provider_error_code is None and error.response is None:
+                raise
             return CredentialTestFailure(
                 CredentialTestFailureKind.AUTHENTICATION_REJECTED,
                 "Microsoft rejected the Graph credentials.",
-            )
-        except Exception:
-            _log_safe_error("Unexpected Microsoft Graph credential test failure")
-            return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
-                "Microsoft Teams credential testing could not be completed.",
+                provider_error_code=provider_error_code,
+                http_status=error.status_code,
             )
 
-        graph_claims = _safe_access_token_claims(graph_token)
-        if graph_claims is None:
+        graph_response = self._graph_client.get(
+            _GRAPH_USERS_URL,
+            headers={"Authorization": f"Bearer {graph_token}"},
+            params={"$select": "id,displayName,mail", "$top": _GRAPH_CREDENTIAL_TEST_PAGE_SIZE},
+        )
+        if not graph_response.is_success:
+            try:
+                rejection = _GraphErrorResponse.model_validate(graph_response.json())
+            except (json.JSONDecodeError, ValidationError):
+                provider_error_code = None
+            else:
+                provider_error_code = rejection.error.code if rejection.error is not None else None
+            kind = CredentialTestFailureKind.UNKNOWN
+            if graph_response.status_code == HTTPStatus.UNAUTHORIZED:
+                kind = CredentialTestFailureKind.AUTHENTICATION_REJECTED
+            elif graph_response.status_code == HTTPStatus.FORBIDDEN:
+                kind = CredentialTestFailureKind.PERMISSION_DENIED
             return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
-                "Microsoft Graph token claims could not be confirmed.",
+                kind,
+                "Microsoft Graph rejected the directory access test.",
+                provider_error_code=provider_error_code,
+                http_status=graph_response.status_code,
             )
-        if graph_claims.tid is None:
-            return CredentialTestFailure(
-                CredentialTestFailureKind.TENANT_ID_UNAVAILABLE,
-                "Microsoft did not provide a stable tenant identity.",
-            )
-        configured_tenant_id = _canonical_guid(self._credentials.tenant_id)
-        graph_tenant_id = _canonical_guid(graph_claims.tid)
-        if configured_tenant_id is None or graph_tenant_id is None:
-            return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
-                "Microsoft Graph tenant claims could not be confirmed.",
-            )
-        if graph_tenant_id != configured_tenant_id:
-            return CredentialTestFailure(
-                CredentialTestFailureKind.AUTHENTICATION_REJECTED,
-                "Microsoft returned credentials for a different tenant.",
-            )
-        if graph_claims.aud != _GRAPH_AUDIENCE or not _BASELINE_GRAPH_ROLES.issubset(graph_claims.roles):
-            return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
-                "Microsoft Graph baseline permissions could not be confirmed.",
-            )
-
+        _GraphUsersPage.model_validate(graph_response.json())
+        # Teams has no conversation-free Connector read probe. Test its tenant-scoped
+        # Bot Framework credentials through the SDK without sending a message.
         try:
             bot_token = self._bot_credentials.get_access_token()
         except PermissionError as error:
-            if _permission_error_is_credential_rejection(error):
-                return CredentialTestFailure(
-                    CredentialTestFailureKind.AUTHENTICATION_REJECTED,
-                    "Microsoft rejected the Bot Framework credentials.",
-                )
-            return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
-                "Microsoft Teams credential testing could not be completed.",
+            if not str(error).startswith(_BOT_TOKEN_REJECTION_PREFIX):
+                raise
+            kind = (
+                CredentialTestFailureKind.AUTHENTICATION_REJECTED
+                if _permission_error_is_credential_rejection(error)
+                else CredentialTestFailureKind.UNKNOWN
             )
-        except Exception:
-            _log_safe_error("Unexpected Microsoft Bot Framework credential test failure")
             return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
-                "Microsoft Teams credential testing could not be completed.",
+                kind,
+                "Microsoft rejected the Bot Framework credentials.",
+                provider_error_code=_microsoft_error_code(error),
             )
 
-        bot_claims = _safe_access_token_claims(bot_token)
-        if bot_claims is None or bot_claims.aud != _BOT_FRAMEWORK_AUDIENCE:
-            return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
-                "Microsoft Bot Framework credentials could not be confirmed.",
-            )
-        bot_tenant_id = _canonical_guid(bot_claims.tid)
-        bot_client_id = _canonical_guid(bot_claims.appid)
-        configured_client_id = _canonical_guid(self._credentials.client_id)
-        if (
-            bot_tenant_id is None
-            or bot_client_id is None
-            or configured_client_id is None
-            or bot_tenant_id != configured_tenant_id
-            or bot_client_id != configured_client_id
-        ):
-            return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
-                "Microsoft Bot Framework credentials could not be confirmed.",
-            )
-        return CredentialTestSuccess(IMProvider.MS_TEAMS, graph_tenant_id)
+        if not bot_token:
+            raise IMProviderError("Microsoft Bot Framework did not provide an access token.")
+        return CredentialTestSuccess(IMProvider.MS_TEAMS, str(UUID(self._credentials.tenant_id)))
 
     @property
     def directory(self) -> IMDirectory:

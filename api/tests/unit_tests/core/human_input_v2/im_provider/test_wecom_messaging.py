@@ -108,8 +108,17 @@ def _install_clients(
     return access_tokens
 
 
+@pytest.mark.parametrize(
+    ("subject", "expected"),
+    [
+        (None, "Rendered **CommonMark** body\nwithout custom tags"),
+        ("### Review", "### Review\n\nRendered **CommonMark** body\nwithout custom tags"),
+    ],
+)
 def test_messaging_calls_sdk_once_with_the_directory_user_id_and_exact_body(
     monkeypatch: pytest.MonkeyPatch,
+    subject: str | None,
+    expected: str,
 ) -> None:
     wecom_module = importlib.import_module("core.human_input_v2.im_integration.adapters.wecom")
     token_client = _TokenClient(_token_response())
@@ -120,6 +129,7 @@ def test_messaging_calls_sdk_once_with_the_directory_user_id_and_exact_body(
     result = adapter.messaging.send_text(
         ProviderUserId("fake-user-001"),
         "Rendered **CommonMark** body\nwithout custom tags",
+        subject,
     )
 
     assert isinstance(result, MessageAccepted)
@@ -137,7 +147,7 @@ def test_messaging_calls_sdk_once_with_the_directory_user_id_and_exact_body(
         (
             1000001,
             ["fake-user-001"],
-            "Rendered **CommonMark** body\nwithout custom tags",
+            expected,
             "",
             "",
             0,

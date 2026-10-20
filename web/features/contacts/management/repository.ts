@@ -256,7 +256,7 @@ export function createContactsApiRepository(
           { params: { contact_id: contactId } },
           { context: { silent: true } },
         )
-        return toContactView(result.contact)
+        return { ...toContactView(result.contact), im_binding_details: result.im_binding_details }
       } catch (error) {
         if (hasStatus(error, 404)) return null
         throw error

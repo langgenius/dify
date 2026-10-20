@@ -370,7 +370,7 @@ class HumanInputDeliveryService:
                     body = template.body.replace(
                         EmailDeliveryConfig.URL_PLACEHOLDER, self._request_url(token, auth_type)
                     )
-                    result = adapter.messaging.send_text(user_id, f"{template.subject}\n\n{body}")
+                    result = adapter.messaging.send_text(user_id, body, subject=template.subject)
             except DynamicCardMessagingError:
                 result = MessageSendingError("The provider could not send the assessed card")
             message_locator = None

@@ -43,6 +43,7 @@ from core.human_input_v2.im_integration.adapters import (
     WebhookRequest,
 )
 from core.human_input_v2.im_integration.adapters import slack as slack_adapter_module
+from core.human_input_v2.im_integration.adapters.entities import IMProviderError
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.resolved_form import (
     FileInput,
@@ -357,6 +358,38 @@ def test_real_web_client_round_trips_credentials_directory_messages_and_cards(
 
 
 @pytest.mark.parametrize(
+    ("subject", "heading"),
+    [
+        ("### HITL v2 Migration Check", r"# \#\#\# HITL v2 Migration Check"),
+        ("**Review** _Alice_", r"# \*\*Review\*\* \_Alice\_"),
+        ("[Review](https://example.com)", r"# \[Review\]\(https\:\/\/example\.com\)"),
+    ],
+)
+def test_real_web_client_sends_plain_subject_separately_from_markdown_body(
+    monkeypatch: pytest.MonkeyPatch,
+    slack_api_server: _SlackApiServer,
+    subject: str,
+    heading: str,
+) -> None:
+    slack_api_server.state.enqueue("chat.postMessage", {"ok": True, "channel": "D0123456789", "ts": "1000.000001"})
+    adapter, _ = _adapter(monkeypatch, slack_api_server)
+    body = "# H1\n\n## H2\n\n[Approval](https://example.com/human-input-test)"
+
+    result = adapter.messaging.send_text(ProviderUserId("sanitized-user"), body, subject=subject)
+
+    assert isinstance(result, MessageAccepted)
+    requests = slack_api_server.state.requests_for("chat.postMessage")
+    assert len(requests) == 1
+    parameters = requests[0].parameters()
+    assert parameters["channel"] == "sanitized-user"
+    assert parameters["blocks"] == [
+        {"type": "markdown", "text": heading},
+        {"type": "markdown", "text": body},
+    ]
+    assert parameters["text"] == f"{subject}\n\n{body}"
+
+
+@pytest.mark.parametrize(
     ("content", "expected_blocks"),
     [
         (
@@ -492,6 +525,16 @@ def test_real_web_client_credential_failures_are_typed_and_sanitized(
     slack_api_server.state.enqueue("auth.test", auth_body, headers=auth_headers)
     adapter, _ = _adapter(monkeypatch, slack_api_server)
 
+    if expected_kind is CredentialTestFailureKind.TENANT_ID_UNAVAILABLE:
+        with pytest.raises(IMProviderError):
+            adapter.test_credentials()
+        return
+    if auth_body.get("ok") is True:
+        if not auth_headers:
+            with pytest.raises(IMProviderError):
+                adapter.test_credentials()
+            return
+        expected_kind = CredentialTestFailureKind.PERMISSION_DENIED
     result = adapter.test_credentials()
 
     assert isinstance(result, CredentialTestFailure)
@@ -522,6 +565,10 @@ def test_real_web_client_socket_credential_failures_are_typed(
     slack_api_server.state.enqueue("apps.connections.open", connection_body)
     adapter, _ = _adapter(monkeypatch, slack_api_server)
 
+    if connection_body.get("ok") is True:
+        with pytest.raises(IMProviderError):
+            adapter.test_credentials()
+        return
     result = adapter.test_credentials()
 
     assert isinstance(result, CredentialTestFailure)

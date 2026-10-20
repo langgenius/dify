@@ -97,7 +97,7 @@ class MessageTemplateTestService:
         except IMCredentialError:
             raise MessageTemplateTestError("The selected IM channel's credentials are unavailable.") from None
         try:
-            result = adapter.messaging.send_text(provider_user_id, f"{template.subject}\n\n{template.body}")
+            result = adapter.messaging.send_text(provider_user_id, template.body, subject=template.subject)
             if isinstance(result, MessageSendingError):
                 raise MessageTemplateSendError("The IM provider did not accept the test message.")
         finally:

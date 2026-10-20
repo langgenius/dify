@@ -222,6 +222,24 @@ class _RecordedSDKStreamClient:
 class _LarkHTTPReplay:
     def __init__(self) -> None:
         self.exchanges = TypeAdapter(dict[str, _CapturedExchange]).validate_json(_FIXTURE_PATH.read_text())
+        # Reuse captured responses while checking the current Markdown request contract.
+        for operation, markdown in (
+            ("text", "Lark protocol capture: **unit tests**\n\n测试消息"),
+            ("invalid_recipient", "Lark unit test invalid recipient"),
+        ):
+            exchange = self.exchanges[operation]
+            assert exchange.request.body is not None
+            request_body = {
+                **exchange.request.body,
+                "msg_type": "interactive",
+                "content": json.dumps(
+                    {"schema": "2.0", "body": {"elements": [{"tag": "markdown", "content": markdown}]}},
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+            }
+            current_request = exchange.request.model_copy(update={"body": request_body})
+            self.exchanges[operation] = exchange.model_copy(update={"request": current_request})
         self.responses: dict[str, _CapturedResponse] = {}
         self.requests: list[_CapturedRequest] = []
         self.unmatched: list[_CapturedRequest] = []
@@ -330,7 +348,10 @@ def test_lark_credentials_require_root_access_despite_a_successful_user_scope(re
     adapter = LarkIMProviderAdapter(_credentials())
 
     assert adapter.test_credentials() == CredentialTestFailure(
-        CredentialTestFailureKind.UNKNOWN, "Lark baseline permissions could not be confirmed."
+        CredentialTestFailureKind.UNKNOWN,
+        "Lark baseline permissions could not be confirmed.",
+        provider_error_code="40004",
+        http_status=403,
     )
 
 
@@ -346,7 +367,9 @@ def test_lark_invalid_app_secret_returns_a_safe_failure() -> None:
     adapter = LarkIMProviderAdapter(_credentials(app_secret="invalid-test-secret"))
 
     assert adapter.test_credentials() == CredentialTestFailure(
-        CredentialTestFailureKind.UNKNOWN, "Lark credential testing could not be completed."
+        CredentialTestFailureKind.UNKNOWN,
+        "Lark rejected the credential test.",
+        provider_error_code="10014",
     )
 
 
@@ -354,7 +377,10 @@ def test_lark_invalid_tenant_token_is_classified_as_authentication_rejected(repl
     replay.responses["tenant"] = replay.exchanges["invalid_token"].response
 
     assert LarkIMProviderAdapter(_credentials()).test_credentials() == CredentialTestFailure(
-        CredentialTestFailureKind.AUTHENTICATION_REJECTED, "Lark rejected the credential test."
+        CredentialTestFailureKind.AUTHENTICATION_REJECTED,
+        "Lark rejected the credential test.",
+        provider_error_code="99991663",
+        http_status=400,
     )
 
 

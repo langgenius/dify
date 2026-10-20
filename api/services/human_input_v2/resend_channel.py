@@ -6,6 +6,7 @@ from collections.abc import Callable, Mapping
 from typing import Any, Never, Protocol
 
 import httpx
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from core.helper import ssrf_proxy
 from libs.uuid_utils import uuidv7
@@ -23,6 +24,12 @@ _TEST_HTML = (
     "<p>Your Resend channel is connected to Dify Human Input.</p>"
     "<p>You can close this email after confirming delivery.</p>"
 )
+
+
+class _ResendErrorResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore", strict=True, hide_input_in_errors=True)
+
+    name: str | None = None
 
 
 class ResendHTTPResponse(Protocol):
@@ -134,23 +141,42 @@ class ResendProviderGateway:
 
     @staticmethod
     def _raise_provider_error(status_code: int, body: Mapping[str, Any]) -> Never:
-        error_name = body.get("name")
-        safe_name = error_name if isinstance(error_name, str) else None
+        try:
+            safe_name = _ResendErrorResponse.model_validate(body).name
+        except ValidationError:
+            safe_name = None
+        provider_error_code = safe_name
         if safe_name in {"missing_api_key", "invalid_api_key", "restricted_api_key"}:
-            raise EmailProviderValidationError("invalid_api_key")
+            raise EmailProviderValidationError(
+                "invalid_api_key", provider_error_code=provider_error_code, http_status=status_code
+            )
         if safe_name == "invalid_from_address":
-            raise EmailProviderValidationError("invalid_sender")
+            raise EmailProviderValidationError(
+                "invalid_sender", provider_error_code=provider_error_code, http_status=status_code
+            )
         if safe_name == "validation_error":
-            raise EmailProviderValidationError("provider_validation_failed")
+            raise EmailProviderValidationError(
+                "provider_validation_failed", provider_error_code=provider_error_code, http_status=status_code
+            )
         if safe_name in {"daily_quota_exceeded", "monthly_quota_exceeded"}:
-            raise EmailProviderOperationError("provider_quota_exhausted")
+            raise EmailProviderOperationError(
+                "provider_quota_exhausted", provider_error_code=provider_error_code, http_status=status_code
+            )
         if status_code == 429 or safe_name == "rate_limit_exceeded":
-            raise EmailProviderOperationError("provider_rate_limited")
+            raise EmailProviderOperationError(
+                "provider_rate_limited", provider_error_code=provider_error_code, http_status=status_code
+            )
         if status_code >= 500:
-            raise EmailProviderOperationError("provider_unavailable")
+            raise EmailProviderOperationError(
+                "provider_unavailable", provider_error_code=provider_error_code, http_status=status_code
+            )
         if status_code in {401, 403}:
-            raise EmailProviderValidationError("invalid_api_key")
-        raise EmailProviderValidationError("provider_rejected")
+            raise EmailProviderValidationError(
+                "invalid_api_key", provider_error_code=provider_error_code, http_status=status_code
+            )
+        raise EmailProviderValidationError(
+            "provider_rejected", provider_error_code=provider_error_code, http_status=status_code
+        )
 
 
 __all__ = [

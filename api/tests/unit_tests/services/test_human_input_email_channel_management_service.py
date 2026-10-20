@@ -369,6 +369,20 @@ def test_unexpected_provider_failure_is_detail_free_and_preserves_state() -> Non
     assert repository.events == []
 
 
+def test_email_test_exposes_upstream_code_in_safe_user_description() -> None:
+    repository = FakeRepository()
+    gateway = FakeProviderGateway([])
+    gateway.failure = EmailProviderValidationError("invalid_api_key", provider_error_code="restricted_api_key")
+
+    with pytest.raises(ChannelProviderError) as captured:
+        _service(repository, gateway).test(_SCOPE, _candidate("sensitive-api-key"))
+
+    assert captured.value.status_description == (
+        "The submitted credentials are invalid. API error code: restricted_api_key."
+    )
+    assert "sensitive-api-key" not in str(captured.value)
+
+
 def test_credential_protection_failure_is_detail_free_and_never_persists(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

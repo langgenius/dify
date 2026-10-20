@@ -30,9 +30,10 @@ import { isENV } from '@/app/components/workflow/nodes/_base/components/variable
 import { VarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
-import MailBodyInput from '../../human-input/components/delivery-method/mail-body-input'
 import { isOutput } from '../../human-input/utils'
-import { HUMAN_INPUT_V2_DEBUG_CHANNELS } from '../types'
+import { getRequestURLCount } from '../message-template-utils'
+import useConfiguredChannels from '../use-configured-channels'
+import MessageTemplateBody from './message-template-body'
 
 const getTemplateVariableType = (selector: ValueSelector, availableVars: NodeOutPutVar[]) => {
   const vars = availableVars.find((item) => item.nodeId === selector[0])?.vars
@@ -66,13 +67,16 @@ const MessageTemplate = ({
   availableVars,
   availableNodes,
 }: MessageTemplateProps) => {
-  const { t } = useTranslation(['workflow', 'common', 'workflowAgent'])
+  const { t } = useTranslation(['workflow', 'common', 'workflowAgent', 'contacts'])
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(value)
   const [submitted, setSubmitted] = useState(false)
   const [errors, setErrors] = useState({ subject: false, body: false })
   const [showTest, setShowTest] = useState(false)
-  const [channel, setChannel] = useState<MessageTemplateTestRequest['channel']>('email')
+  const [channel, setChannel] = useState<MessageTemplateTestRequest['channel']>()
+  const configured = useConfiguredChannels()
+  const selectedChannel =
+    channel && configured.channels.includes(channel) ? channel : configured.channels[0]
   const [testInputs, setTestInputs] = useState<Record<string, string>>({})
   const [testError, setTestError] = useState<string>()
   const [savingForTest, setSavingForTest] = useState(false)
@@ -93,7 +97,7 @@ const MessageTemplate = ({
   const pending = savingForTest || testMutation.isPending
   const pendingRef = useRef(false)
   const canTestRef = useRef(canTest)
-  const testContext = `${flowId}:${nodeId}:${isChatMode}`
+  const testContext = `${flowId}:${nodeId}:${isChatMode}:${selectedChannel}`
   const testContextRef = useRef(testContext)
   useEffect(() => {
     canTestRef.current = canTest
@@ -133,14 +137,24 @@ const MessageTemplate = ({
     setDraft(value)
     setErrors({ subject: false, body: false })
     setShowTest(test)
-    setChannel('email')
+    setChannel(undefined)
     setTestInputs({})
     setTestError(undefined)
     testMutation.reset()
     setOpen(true)
   }
+  const getBodyError = (body: string) => {
+    if (!body.trim())
+      return t(($) => $['nodes.humanInputV2.error.bodyRequired'], { ns: 'workflow' })
+    const count = getRequestURLCount(body)
+    if (count === 0)
+      return t(($) => $['nodes.humanInputV2.error.requestURLRequired'], { ns: 'workflow' })
+    if (count > 1)
+      return t(($) => $['nodes.humanInputV2.error.requestURLDuplicate'], { ns: 'workflow' })
+    return undefined
+  }
   const validateTemplate = () => {
-    const nextErrors = { subject: !draft.subject.trim(), body: !draft.body.trim() }
+    const nextErrors = { subject: !draft.subject.trim(), body: !!getBodyError(draft.body) }
     setErrors(nextErrors)
     if (nextErrors.subject || nextErrors.body) {
       requestAnimationFrame(() => {
@@ -149,8 +163,8 @@ const MessageTemplate = ({
           return
         }
         document
-          .getElementById(`${nodeId}-message-body-label`)
-          ?.parentElement?.querySelector<HTMLElement>('textarea, [contenteditable="true"]')
+          .getElementById(`${nodeId}-message-body`)
+          ?.querySelector<HTMLElement>('textarea, [contenteditable="true"]')
           ?.focus()
       })
       return false
@@ -170,7 +184,7 @@ const MessageTemplate = ({
     testMutation.reset()
   }
   const sendTest = async () => {
-    if (!canTest || !flowId || pendingRef.current || !validateTemplate()) return
+    if (!canTest || !flowId || !selectedChannel || pendingRef.current || !validateTemplate()) return
     resetTestResult()
     const inputs: MessageTemplateTestRequest['inputs'] = {}
     for (const variable of variables) {
@@ -235,7 +249,7 @@ const MessageTemplate = ({
       if (!canTestRef.current || testContextRef.current !== testContext) return
       await testMutation.mutateAsync({
         params: { app_id: flowId, node_id: nodeId },
-        body: { channel, inputs },
+        body: { channel: selectedChannel, inputs },
       })
     } catch (error) {
       const unavailable =
@@ -362,39 +376,19 @@ const MessageTemplate = ({
                   </div>
                 )}
               </div>
-              <div
-                role="group"
-                aria-labelledby={`${nodeId}-message-body-label`}
-                aria-describedby={errors.body ? `${nodeId}-message-body-error` : undefined}
-              >
-                <div
-                  id={`${nodeId}-message-body-label`}
-                  className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
-                >
-                  {t(($) => $['nodes.humanInputV2.template.body'], { ns: 'workflow' })}
-                </div>
-                <div className="[&>div>[contenteditable]]:min-h-[118px]">
-                  <MailBodyInput
-                    readOnly={readonly || pending}
-                    value={draft.body}
-                    nodesOutputVars={availableVars}
-                    availableNodes={availableNodes}
-                    onChange={(body) => {
-                      resetTestResult()
-                      setDraft((current) => ({ ...current, body }))
-                    }}
-                  />
-                </div>
-                {errors.body && (
-                  <div
-                    id={`${nodeId}-message-body-error`}
-                    role="alert"
-                    className="mt-1 system-xs-regular text-text-destructive"
-                  >
-                    {t(($) => $['nodes.humanInputV2.error.bodyRequired'], { ns: 'workflow' })}
-                  </div>
-                )}
-              </div>
+              <MessageTemplateBody
+                nodeId={nodeId}
+                readOnly={readonly || pending}
+                value={draft.body}
+                nodesOutputVars={availableVars}
+                availableNodes={availableNodes}
+                error={errors.body ? getBodyError(draft.body) : undefined}
+                onChange={(body) => {
+                  resetTestResult()
+                  if (body !== draft.body) setErrors((current) => ({ ...current, body: true }))
+                  setDraft((current) => ({ ...current, body }))
+                }}
+              />
               {showTest && canTest && (
                 <section
                   className="space-y-3 border-t border-divider-subtle pt-4"
@@ -405,9 +399,9 @@ const MessageTemplate = ({
                   </p>
                   <div>
                     <Select<MessageTemplateTestRequest['channel']>
-                      value={channel}
-                      disabled={pending}
-                      items={HUMAN_INPUT_V2_DEBUG_CHANNELS.map((value) => ({
+                      value={selectedChannel ?? null}
+                      disabled={pending || !configured.channels.length}
+                      items={configured.channels.map((value) => ({
                         value,
                         label: t(($) => $[`nodes.humanInputV2.debug.channel.${value}`], {
                           ns: 'workflow',
@@ -424,10 +418,14 @@ const MessageTemplate = ({
                         {t(($) => $['nodes.humanInputV2.template.testChannel'], { ns: 'workflow' })}
                       </SelectLabel>
                       <SelectTrigger className="w-full">
-                        <SelectValue />
+                        <SelectValue
+                          placeholder={t(($) => $['nodes.humanInputV2.template.notConfigured'], {
+                            ns: 'workflow',
+                          })}
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        {HUMAN_INPUT_V2_DEBUG_CHANNELS.map((value) => (
+                        {configured.channels.map((value) => (
                           <SelectItem key={value} value={value}>
                             <SelectItemText>
                               {t(($) => $[`nodes.humanInputV2.debug.channel.${value}`], {
@@ -439,6 +437,19 @@ const MessageTemplate = ({
                         ))}
                       </SelectContent>
                     </Select>
+                    {configured.isPending && (
+                      <p role="status" className="mt-1 system-xs-regular text-text-tertiary">
+                        {t(($) => $['imPlatform.loading'], { ns: 'contacts' })}
+                      </p>
+                    )}
+                    {configured.isError && (
+                      <div role="alert" className="mt-1 system-xs-regular text-text-destructive">
+                        {t(($) => $['imPlatform.loadError.title'], { ns: 'contacts' })}
+                        <Button size="small" onClick={() => void configured.refetch()}>
+                          {t(($) => $['operation.retry'], { ns: 'common' })}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   {variables.map((variable) => (
                     <div key={variable.key}>
@@ -493,7 +504,7 @@ const MessageTemplate = ({
                       {t(($) => $['nodes.humanInputV2.template.testCompleted'], { ns: 'workflow' })}
                     </p>
                   )}
-                  <Button onClick={sendTest} loading={pending}>
+                  <Button onClick={sendTest} loading={pending} disabled={!selectedChannel}>
                     {t(($) => $['nodes.humanInputV2.template.saveAndTest'], { ns: 'workflow' })}
                   </Button>
                 </section>

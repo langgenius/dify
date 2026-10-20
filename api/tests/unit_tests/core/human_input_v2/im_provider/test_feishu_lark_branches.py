@@ -22,6 +22,7 @@ from core.human_input_v2.im_integration.adapters import (
 )
 from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
 from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials, LarkCredentials
+from core.human_input_v2.im_integration.adapters.entities import IMProviderError
 from core.human_input_v2.im_integration.adapters.feishu_lark import (
     FeishuIMProviderAdapter,
     LarkIMProviderAdapter,
@@ -164,19 +165,6 @@ def test_official_gateway_rejects_an_incomplete_sdk_client(monkeypatch: pytest.M
 
 
 @pytest.mark.parametrize(
-    ("body", "expected"),
-    [
-        ("# Heading\n\n- First\n- Second", "Heading\nFirst\nSecond"),
-        ("[Dify](https://dify.ai) and `code`", "Dify (https://dify.ai) and code"),
-        ("![logo](https://example.invalid/logo.png)  \nNext", "logo\nNext"),
-        ("```python\nprint('sanitized')\n```", "print('sanitized')"),
-    ],
-)
-def test_commonmark_plain_text_preserves_visible_content(body: str, expected: str) -> None:
-    assert adapter_module._commonmark_plain_text(body) == expected
-
-
-@pytest.mark.parametrize(
     ("create_time", "expected"),
     [
         ("1704067200123456", datetime(2024, 1, 1, 0, 0, 0, 123456)),
@@ -212,7 +200,7 @@ def test_webhook_and_sdk_mapping_helpers_reject_malformed_boundaries(monkeypatch
         adapter_module._decode_json_object(b"[]")
 
     monkeypatch.setattr(adapter_module.lark.JSON, "marshal", lambda _value: None)
-    with pytest.raises(ValueError, match="response is empty"):
+    with pytest.raises(IMProviderError, match="response is empty"):
         adapter_module._sdk_response_mapping(object())
     with pytest.raises(ValueError, match="event is empty"):
         adapter_module._sdk_event_mapping(object())
@@ -306,7 +294,7 @@ def test_wrong_wrapper_credentials_and_invalid_reference_are_rejected(monkeypatc
 
 def test_sdk_mapping_rejects_non_object_json(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(adapter_module.lark.JSON, "marshal", lambda _value: json.dumps(["not", "an", "object"]))
-    with pytest.raises(ValueError, match="response is not"):
+    with pytest.raises(IMProviderError, match="response is not"):
         adapter_module._sdk_response_mapping(object())
     with pytest.raises(ValueError, match="event is not"):
         adapter_module._sdk_event_mapping(object())

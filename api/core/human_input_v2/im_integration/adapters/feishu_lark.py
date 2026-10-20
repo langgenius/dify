@@ -16,11 +16,12 @@ import json
 import logging
 import threading
 from collections import deque
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping
 from concurrent.futures import Future
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from string import punctuation
 from typing import ClassVar, Literal, Never, Protocol, override, runtime_checkable
 from urllib.parse import parse_qs, urlsplit
 
@@ -29,11 +30,11 @@ from cryptography.hazmat.primitives import padding as symmetric_padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from lark_oapi.api import contact, im, tenant
 from lark_oapi.channel import FeishuChannel, TransportConfig
+from lark_oapi.core.exception import AccessTokenException, ObtainAccessTokenException
 from lark_oapi.event.callback.model.p2_card_action_trigger import P2CardActionTrigger, P2CardActionTriggerResponse
 from lark_oapi.ws import client as sdk_ws_client_module
-from markdown_it import MarkdownIt
-from markdown_it.token import Token
 from pydantic import AliasPath, BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, ValidationError, field_validator
+from requests.exceptions import Timeout as RequestsTimeout
 from websockets.asyncio.client import ClientConnection
 
 from core.human_input import ButtonStyle
@@ -51,6 +52,7 @@ from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
     CredentialTestFailureKind,
     CredentialTestSuccess,
+    CredentialTestTimeoutError,
     Directory,
     DirectoryEntry,
     DirectoryReadFailure,
@@ -60,6 +62,7 @@ from core.human_input_v2.im_integration.adapters.entities import (
     IMCardEventDecodeResult,
     IMCardEventDecodingError,
     IMEventIngressKind,
+    IMProviderError,
     IMStreamStartError,
     IMStreamStopError,
     MessageAccepted,
@@ -116,7 +119,6 @@ _MILLISECONDS_PER_SECOND = 1_000
 _MICROSECONDS_PER_SECOND = 1_000_000
 _MILLISECOND_TIMESTAMP_DIGITS = 13
 _MICROSECOND_TIMESTAMP_DIGITS = 16
-_COMMONMARK_PARSER = MarkdownIt("commonmark", {"html": False})
 
 
 def _log_safe_error(message: str, *, extra: Mapping[str, object] | None = None) -> None:
@@ -623,8 +625,56 @@ class _TenantData(_ExternalResponseModel):
     tenant: _Tenant
 
 
-class _TenantResponse(_ExternalResponseModel):
-    code: int
+class _PermissionViolation(_ExternalResponseModel):
+    type: str | None = None
+    subject: str
+
+
+class _PermissionErrorDetails(_ExternalResponseModel):
+    permission_violations: list[_PermissionViolation] = Field(default_factory=list)
+
+
+class _HTTPResponseMetadata(_ExternalResponseModel):
+    status_code: int | None = None
+
+
+class _CredentialResponse(_ExternalResponseModel):
+    code: int | None = None
+    error: JsonValue = None
+    raw: _HTTPResponseMetadata | None = None
+
+
+def _credential_rejection(response: _CredentialResponse, reason: str) -> CredentialTestFailure:
+    try:
+        details = _PermissionErrorDetails.model_validate(response.error)
+    except ValidationError:
+        missing_permissions = ()
+    else:
+        missing_permissions = tuple(
+            sorted(
+                {
+                    violation.subject
+                    for violation in details.permission_violations
+                    if violation.type == "action" and violation.subject
+                }
+            )
+        )
+    kind = CredentialTestFailureKind.UNKNOWN
+    if response.code in _AUTHENTICATION_REJECTED_CODES:
+        kind = CredentialTestFailureKind.AUTHENTICATION_REJECTED
+    elif missing_permissions:
+        kind = CredentialTestFailureKind.PERMISSION_DENIED
+    provider_error_code = str(response.code) if response.code is not None else None
+    return CredentialTestFailure(
+        kind,
+        reason,
+        provider_error_code,
+        missing_permissions,
+        http_status=response.raw.status_code if response.raw is not None else None,
+    )
+
+
+class _TenantResponse(_CredentialResponse):
     data: _TenantData | None = None
 
 
@@ -635,8 +685,7 @@ class _ScopeData(_ExternalResponseModel):
     page_token: str | None = Field(default=None, strict=True)
 
 
-class _ScopeResponse(_ExternalResponseModel):
-    code: int
+class _ScopeResponse(_CredentialResponse):
     data: _ScopeData | None = None
 
 
@@ -677,8 +726,7 @@ class _DepartmentPageData(_ExternalResponseModel):
     page_token: str | None = Field(default=None, strict=True)
 
 
-class _DepartmentPageResponse(_ExternalResponseModel):
-    code: int
+class _DepartmentPageResponse(_CredentialResponse):
     data: _DepartmentPageData | None = None
 
 
@@ -1172,12 +1220,21 @@ class _FeishuLarkMessaging(IMMessaging):
         self._provider = provider
 
     @override
-    def send_text(self, provider_user_id: ProviderUserId, body: str) -> MessageSendingResult:
+    def send_text(
+        self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
+    ) -> MessageSendingResult:
         try:
-            plain_text = _commonmark_plain_text(body)
-            content = json.dumps({"text": plain_text}, ensure_ascii=False, separators=(",", ":"))
+            elements: list[dict[str, str]] = []
+            if subject:
+                escaped_subject = "".join(
+                    f"\\{character}" if character in punctuation else character for character in subject
+                )
+                elements.append({"tag": "markdown", "content": f"# {escaped_subject}"})
+            elements.append({"tag": "markdown", "content": body})
+            card = {"schema": "2.0", "body": {"elements": elements}}
+            content = json.dumps(card, ensure_ascii=False, separators=(",", ":"))
             response = _MessageResponse.model_validate(
-                self._gateway.create_message(str(provider_user_id), "text", content)
+                self._gateway.create_message(str(provider_user_id), "interactive", content)
             )
         except Exception:
             _log_safe_error(
@@ -1305,7 +1362,7 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
 
 
 class _FeishuLarkWebhookHandler(IMWebhookHandler):
-    """Authenticated Webhook boundary safe for concurrent calls."""
+    """Concurrent webhook boundary honoring optional provider authentication."""
 
     def __init__(
         self,
@@ -1324,17 +1381,17 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
     def handle(self, request: WebhookRequest) -> WebhookResponse:
         if request.method != "POST":
             return _webhook_response(405, {"code": 1})
-        authenticated = self._authenticate_and_decode(request)
-        if authenticated is None:
+        decoded_request = self._decode_request(request)
+        if decoded_request is None:
             return _webhook_response(401, {"code": 1})
-        decoded, encrypted, native_payload = authenticated
+        decoded, encrypted, native_payload = decoded_request
 
         if decoded.get("type") == "url_verification":
             try:
                 challenge = _WebhookChallenge.model_validate(decoded)
             except ValidationError:
                 return _webhook_response(400, {"code": 1})
-            if not self._challenge_is_authenticated(challenge.token, decrypted=encrypted):
+            if not self._challenge_matches_configuration(challenge.token, decrypted=encrypted):
                 return _webhook_response(401, {"code": 1})
             return _webhook_response(200, {"challenge": challenge.challenge})
 
@@ -1373,15 +1430,13 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
             return _webhook_response(503, {"code": 1})
         return _webhook_response(200, {"code": 0})
 
-    def _authenticate_and_decode(
+    def _decode_request(
         self,
         request: WebhookRequest,
     ) -> tuple[dict[str, object], bool, str] | None:
         # Authentication must parse Provider JSON for challenge, token, signature,
         # and tenant checks. The separate native string is never reconstructed;
         # it is persisted exactly so only the codec normalizes card callback facts.
-        if self._verification_token is None and self._encrypt_key is None:
-            return None
         try:
             outer = _decode_json_object(request.body)
             encrypted = outer.get("encrypt")
@@ -1410,9 +1465,9 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
             token is not None and hmac.compare_digest(token, self._verification_token)
         )
 
-    def _challenge_is_authenticated(self, token: str | None, *, decrypted: bool) -> bool:
+    def _challenge_matches_configuration(self, token: str | None, *, decrypted: bool) -> bool:
         if self._verification_token is None:
-            return decrypted
+            return decrypted or self._encrypt_key is None
         return token is not None and hmac.compare_digest(token, self._verification_token)
 
 
@@ -1603,56 +1658,72 @@ class _FeishuLarkIMProviderAdapter:
         return self._provider
 
     def test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
+        try:
+            return self._test_credentials()
+        except (AccessTokenException, ObtainAccessTokenException) as error:
+            return _credential_rejection(
+                _CredentialResponse(
+                    code=error.code,
+                    raw=_HTTPResponseMetadata(status_code=error.status_code)
+                    if isinstance(error, AccessTokenException)
+                    else None,
+                ),
+                f"{_provider_name(self._provider)} rejected the credential test.",
+            )
+        except (TimeoutError, RequestsTimeout) as error:
+            raise CredentialTestTimeoutError() from error
+
+    def _test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
         self._ensure_open()
-        try:
-            tenant_response = _TenantResponse.model_validate(self._gateway.query_tenant())
-        except Exception:
-            _log_safe_error("Feishu/Lark credential test failed", extra={"im_provider": self._provider.value})
-            return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
-                f"{_provider_name(self._provider)} credential testing could not be completed.",
+        tenant_payload = self._gateway.query_tenant()
+        tenant_envelope = _CredentialResponse.model_validate(tenant_payload)
+        if tenant_envelope.code != 0:
+            return _credential_rejection(
+                tenant_envelope, f"{_provider_name(self._provider)} rejected the credential test."
             )
-        if tenant_response.code != 0:
-            kind = (
-                CredentialTestFailureKind.AUTHENTICATION_REJECTED
-                if tenant_response.code in _AUTHENTICATION_REJECTED_CODES
-                else CredentialTestFailureKind.UNKNOWN
-            )
-            return CredentialTestFailure(kind, f"{_provider_name(self._provider)} rejected the credential test.")
+        tenant_response = _TenantResponse.model_validate(tenant_payload)
         if tenant_response.data is None or tenant_response.data.tenant.tenant_key is None:
-            return CredentialTestFailure(
-                CredentialTestFailureKind.TENANT_ID_UNAVAILABLE,
-                f"{_provider_name(self._provider)} did not provide a stable tenant identity.",
-            )
-        try:
-            self._validate_complete_scope()
-            self._validate_root_department_access()
-        except Exception:
-            return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN,
-                f"{_provider_name(self._provider)} baseline permissions could not be confirmed.",
-            )
+            raise IMProviderError(f"{_provider_name(self._provider)} did not provide a stable tenant identity.")
+        scope_failure = self._validate_complete_scope()
+        if scope_failure is not None:
+            return scope_failure
+        department_failure = self._validate_root_department_access()
+        if department_failure is not None:
+            return department_failure
         return CredentialTestSuccess(self._provider, tenant_response.data.tenant.tenant_key)
 
-    def _validate_complete_scope(self) -> None:
+    def _validate_complete_scope(self) -> CredentialTestFailure | None:
         page_token: str | None = None
         seen_tokens: set[str] = set()
         while True:
-            response = _ScopeResponse.model_validate(self._gateway.list_scope(page_token))
-            if response.code != 0 or response.data is None:
-                raise ValueError("directory scope page was rejected")
+            scope_payload = self._gateway.list_scope(page_token)
+            scope_envelope = _CredentialResponse.model_validate(scope_payload)
+            if scope_envelope.code != 0:
+                return _credential_rejection(
+                    scope_envelope, f"{_provider_name(self._provider)} baseline permissions could not be confirmed."
+                )
+            response = _ScopeResponse.model_validate(scope_payload)
+            if response.data is None:
+                raise IMProviderError("directory scope page was rejected")
             page_token = _next_page_token(response.data.has_more, response.data.page_token, seen_tokens)
             if page_token is None:
-                return
+                return None
 
-    def _validate_root_department_access(self) -> None:
-        response = _DepartmentPageResponse.model_validate(self._gateway.list_departments(_ROOT_DEPARTMENT, None))
-        if response.code != 0 or response.data is None:
-            raise ValueError("root department access was rejected")
+    def _validate_root_department_access(self) -> CredentialTestFailure | None:
+        department_payload = self._gateway.list_departments(_ROOT_DEPARTMENT, None)
+        department_envelope = _CredentialResponse.model_validate(department_payload)
+        if department_envelope.code != 0:
+            return _credential_rejection(
+                department_envelope, f"{_provider_name(self._provider)} baseline permissions could not be confirmed."
+            )
+        response = _DepartmentPageResponse.model_validate(department_payload)
+        if response.data is None:
+            raise IMProviderError("root department access was rejected")
         for department in response.data.items:
             if _department_identity(department) is None:
-                raise ValueError("root department response contains an invalid identity")
+                raise IMProviderError("root department response contains an invalid identity")
         _next_page_token(response.data.has_more, response.data.page_token, set())
+        return None
 
     @property
     def directory(self) -> IMDirectory:
@@ -1718,42 +1789,6 @@ def _query_tenant_id(gateway: _SDKGateway) -> str:
     if response.code != 0 or response.data is None or response.data.tenant.tenant_key is None:
         raise ValueError("stable tenant identity is unavailable")
     return response.data.tenant.tenant_key
-
-
-def _commonmark_plain_text(body: str) -> str:
-    parts: list[str] = []
-    for token in _COMMONMARK_PARSER.parse(body):
-        if token.type == "inline":
-            parts.extend(_commonmark_inline_plain_text(token.children or ()))
-        elif token.type in {"code_block", "fence"}:
-            parts.append(token.content)
-        elif token.type in {"heading_close", "list_item_close"} or (
-            token.type == "paragraph_close" and not token.hidden
-        ):
-            if parts and not parts[-1].endswith("\n"):
-                parts.append("\n")
-    return "".join(parts).rstrip("\n")
-
-
-def _commonmark_inline_plain_text(tokens: Sequence[Token]) -> list[str]:
-    parts: list[str] = []
-    links: list[tuple[int, str | None]] = []
-    for token in tokens:
-        if token.type in {"text", "code_inline"}:
-            parts.append(token.content)
-        elif token.type in {"softbreak", "hardbreak"}:
-            parts.append("\n")
-        elif token.type == "image":
-            parts.append(token.content)
-        elif token.type == "link_open":
-            href = token.attrGet("href")
-            links.append((len(parts), href if isinstance(href, str) else None))
-        elif token.type == "link_close" and links:
-            label_start, href = links.pop()
-            label = "".join(parts[label_start:])
-            if href and href != label:
-                parts.append(f" ({href})")
-    return parts
 
 
 def _valid_webhook_signature(request: WebhookRequest, encrypt_key: str) -> bytes | None:
@@ -1825,7 +1860,7 @@ def _next_page_token(has_more: bool, page_token: str | None, seen_tokens: set[st
     if not has_more:
         return None
     if page_token is None or not page_token.strip() or page_token in seen_tokens:
-        raise ValueError("invalid pagination")
+        raise IMProviderError("invalid pagination")
     seen_tokens.add(page_token)
     return page_token
 
@@ -1849,10 +1884,10 @@ def _department_identity(department: _DirectoryDepartment) -> _DepartmentIdentit
 def _sdk_response_mapping(response: object) -> Mapping[str, object]:
     serialized = lark.JSON.marshal(response)
     if serialized is None:
-        raise ValueError("SDK response is empty")
+        raise IMProviderError("SDK response is empty")
     decoded = json.loads(serialized)
     if not isinstance(decoded, dict) or any(not isinstance(key, str) for key in decoded):
-        raise ValueError("SDK response is not a JSON object")
+        raise IMProviderError("SDK response is not a JSON object")
     return decoded
 
 

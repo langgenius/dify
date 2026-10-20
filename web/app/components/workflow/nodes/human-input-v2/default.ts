@@ -8,6 +8,7 @@ import {
   buildHumanInputOutputVars,
   getHumanInputSharedValidationError,
 } from '../human-input/shared/default-utils'
+import { getRequestURLCount } from './message-template-utils'
 import { getRecipientValidationError, hasDuplicateRecipients } from './recipient-utils'
 import { isHumanInputV2DebugChannel } from './types'
 
@@ -46,6 +47,10 @@ const nodeDefault: NodeDefault<HumanInputV2NodeType> = {
       errorMessage = t(($) => $['nodes.humanInputV2.error.subjectRequired'], { ns: 'workflow' })
     else if (!payload.message_template.body.trim())
       errorMessage = t(($) => $['nodes.humanInputV2.error.bodyRequired'], { ns: 'workflow' })
+    else if (getRequestURLCount(payload.message_template.body) === 0)
+      errorMessage = t(($) => $['nodes.humanInputV2.error.requestURLRequired'], { ns: 'workflow' })
+    else if (getRequestURLCount(payload.message_template.body) > 1)
+      errorMessage = t(($) => $['nodes.humanInputV2.error.requestURLDuplicate'], { ns: 'workflow' })
     else if (
       payload.debug_mode.enabled &&
       !payload.debug_mode.channels.some(isHumanInputV2DebugChannel)

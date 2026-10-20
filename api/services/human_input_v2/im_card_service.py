@@ -11,11 +11,11 @@ from configs import dify_config
 from core.human_input_v2.im_integration.adapters import factory as im_adapter_factory_module
 from core.human_input_v2.im_integration.adapters.entities import ReplacementErrorKind, StaticCardIntent
 from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
-from core.human_input_v2.resolved_form import MarkdownFragment
 from core.human_input_v2.shared.values import TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from enums import DeploymentEdition
 from extensions.ext_key_provider import key_provider_manager
+from factories.human_input_v2_form_presentation import render_filled_content
 from repositories.human_input_v2.delivery_repository import IMMessageType, IMUserTargetSnapshot
 from repositories.human_input_v2.form_repository import Form
 from repositories.human_input_v2.im_channel_repository import IMChannel
@@ -144,14 +144,7 @@ class HumanInputIMCardService:
 def _submitted_card_intent(form: Form) -> StaticCardIntent:
     submission = form.submission
     assert submission is not None, "A submitted form must retain its accepted submission"
-    fragments: list[str] = []
-    for part in form.resolved_form.parts:
-        if isinstance(part, MarkdownFragment):
-            fragments.append(part.text)
-            continue
-        # Render source-ordered parts once; submitted output markers are text.
-        segment = submission.normalized_submission_data[part.output_variable_name]
-        fragments.append(segment.text)
+    content = render_filled_content(form.resolved_form, submission.normalized_submission_data)
     action = next(action for action in form.resolved_form.actions if action.id == submission.selected_action_id)
-    sections = [form.resolved_form.title, "".join(fragments), f"Submitted: {action.title}"]
+    sections = [form.resolved_form.title, content, f"Submitted: {action.title}"]
     return StaticCardIntent("\n\n".join(section for section in sections if section))
