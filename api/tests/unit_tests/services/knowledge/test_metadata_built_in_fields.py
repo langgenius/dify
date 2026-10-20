@@ -2,13 +2,16 @@ import time
 from datetime import datetime
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from models.dataset import build_built_in_field_values
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from models.dataset import Document, build_built_in_field_values
 from models.enums import DataSourceType
 from services.knowledge import dataset_service
 from services.knowledge.dataset_service import DocumentService
-from tests.unit_tests.model_factories import make_account, make_dataset
+from tests.unit_tests.model_factories import make_account, make_dataset, make_document
 
 CREATED_AT = datetime(2026, 10, 16, 8, 0, 0)
 CREATED_AT_EPOCH = 1792137600
@@ -114,3 +117,41 @@ def test_build_document_skips_built_in_fields_when_disabled():
     )
 
     assert not document.doc_metadata
+
+
+FRACTIONAL_CREATED_AT = datetime(2026, 10, 16, 8, 0, 0, 900000)
+
+
+def test_build_built_in_field_values_keeps_fractional_epoch_seconds():
+    values = build_built_in_field_values(
+        document_name="doc.txt",
+        uploader=None,
+        upload_date=FRACTIONAL_CREATED_AT,
+        last_update_date=FRACTIONAL_CREATED_AT,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+    )
+
+    assert values[BuiltInField.upload_date] == pytest.approx(CREATED_AT_EPOCH + 0.9, abs=1e-6)
+    assert values[BuiltInField.last_update_date] == pytest.approx(CREATED_AT_EPOCH + 0.9, abs=1e-6)
+
+
+@pytest.mark.parametrize("field", [BuiltInField.upload_date, BuiltInField.last_update_date])
+@pytest.mark.parametrize(("condition", "matches"), [("after", True), (">", True), ("=", False), ("is", False)])
+def test_fractional_built_in_dates_keep_integer_second_boundary_semantics(
+    sqlite_session_factory: sessionmaker[Session], field: BuiltInField, condition: str, matches: bool
+):
+    values = build_built_in_field_values(
+        document_name="doc.txt",
+        uploader=None,
+        upload_date=FRACTIONAL_CREATED_AT,
+        last_update_date=FRACTIONAL_CREATED_AT,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add(make_document(document_id="document-1", doc_metadata=values))
+
+    filters = DatasetRetrieval.process_metadata_filter_func(0, condition, field, CREATED_AT_EPOCH, [])
+    with sqlite_session_factory() as session:
+        found = session.scalars(select(Document.id).where(*filters)).all()
+
+    assert found == (["document-1"] if matches else [])

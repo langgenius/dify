@@ -121,7 +121,7 @@ class SQLAlchemyMetadataRepository:
             return self._record(row)
 
     @staticmethod
-    def _built_in(session: Session, document: Document) -> dict[str, str | int | None]:
+    def _built_in(session: Session, document: Document) -> dict[str, str | float | None]:
         return build_built_in_field_values(
             document_name=document.name,
             uploader=get_document_uploader(document, session=session),
