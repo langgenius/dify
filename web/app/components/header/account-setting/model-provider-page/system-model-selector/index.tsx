@@ -132,6 +132,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 
   return (
     <Dialog
+      disablePointerDismissal
       open={open}
       onOpenChange={(nextOpen, details) => {
         if (saveMutation.isPending) {

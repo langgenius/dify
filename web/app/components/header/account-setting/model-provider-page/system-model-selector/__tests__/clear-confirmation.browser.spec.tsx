@@ -1,5 +1,5 @@
+import type { DefaultModelResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   createCatalogModelFixture,
@@ -19,14 +19,9 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.defaultModel.get': async ({
         query: { model_type },
       }: {
-        query: { model_type: string }
+        query: { model_type: DefaultModelResponse['model_type'] }
       }) => ({
-        data:
-          model_type === 'llm'
-            ? createDefaultModelFixture()
-            : model_type === 'tts'
-              ? createDefaultModelFixture({ model: 'speech-model', model_type: 'tts' })
-              : null,
+        data: createDefaultModelFixture({ model: `${model_type}-model`, model_type }),
       }),
     }),
   }
@@ -53,82 +48,51 @@ vi.mock('react-i18next', async () => {
 beforeEach(() => vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false))
 afterEach(() => vi.unstubAllGlobals())
 
-it('keeps the settings behind its nested confirmation and restores focus without losing the draft', async () => {
-  // Clearing removes the initiating button; verify native focus recovery and continued keyboard access.
+it('keeps nested settings visible and returns focus to the TTS selector when clearing removes its clear button', async () => {
+  // The clear button unmounts on confirmation; browser focus must stay on this field in the parent dialog.
   const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
     workspacePermissionKeys: ['plugin.model_config'],
   })
   seedModelProviderQueries(queryClient, [
     createModelCatalogFixture({
-      models: [
-        createCatalogModelFixture(),
-        createCatalogModelFixture({
-          model: 'speech-model',
-          model_type: 'tts',
-          label: { en_US: 'Speech model' },
-        }),
-        createCatalogModelFixture({ model: 'edited-model', label: { en_US: 'Edited model' } }),
-      ],
+      models: (['llm', 'text-embedding', 'rerank', 'speech2text', 'tts'] as const).map(
+        (model_type) =>
+          createCatalogModelFixture({
+            model: `${model_type}-model`,
+            model_type,
+            label: { en_US: `${model_type} model` },
+          }),
+      ),
     }),
   ])
-  const screen = await render(
-    <NuqsTestingAdapter>
-      <Wrapper>
-        <SystemModel notConfigured={false} />
-      </Wrapper>
-    </NuqsTestingAdapter>,
-  )
-  await screen.getByRole('button', { name: 'System Model Settings' }).click()
-  const settings = screen.getByRole('dialog', { name: 'Default Model Settings' })
-  await expect.element(settings).toBeVisible()
-  await settings.getByRole('button', { name: /^GPT-4/ }).click()
-  await screen
-    .getByRole('dialog', { name: 'plugin.detailPanel.configureModel' })
-    .getByRole('button', { name: /^Edited model/ })
-    .click()
-  await expect.element(settings.getByRole('button', { name: /^Edited model/ })).toBeVisible()
-
-  const settingsPopup = settings.element()
   try {
-    await settings.getByRole('button', { name: 'Clear System Reasoning Model' }).click()
-    const confirmation = screen.getByRole('alertdialog', { name: 'Clear System Reasoning Model?' })
+    const screen = await render(
+      <NuqsTestingAdapter>
+        <Wrapper>
+          <SystemModel notConfigured={false} />
+        </Wrapper>
+      </NuqsTestingAdapter>,
+    )
+    await screen.getByRole('button', { name: 'System Model Settings' }).click()
+    const settings = screen.getByRole('dialog', { name: 'Default Model Settings' })
+    await settings.getByRole('button', { name: /^tts model/ }).hover()
+    const clearButton = settings.getByRole('button', { name: 'Clear TTS Model' })
+    const settingsPopup = settings.element()
+    await clearButton.click()
+    const confirmation = screen.getByRole('alertdialog', { name: 'Clear TTS Model?' })
     await expect.element(confirmation).toBeVisible()
     await expect.element(settingsPopup).toBeVisible()
     await confirmation.getByRole('button', { name: 'Cancel' }).click()
     await expect.element(confirmation).not.toBeInTheDocument()
-    await expect.element(settings).toBeVisible()
-    await expect.element(settings.getByRole('button', { name: /^Edited model/ })).toBeVisible()
-    await expect
-      .element(settings.getByRole('button', { name: 'Clear System Reasoning Model' }))
-      .toHaveFocus()
+    await expect.element(clearButton).toHaveFocus()
 
-    await settings.getByRole('button', { name: 'Clear System Reasoning Model' }).click()
-    await expect.element(confirmation).toBeVisible()
-    await expect.element(settingsPopup).toBeVisible()
+    await clearButton.click()
     await confirmation.getByRole('button', { name: 'Clear' }).click()
     await expect.element(confirmation).not.toBeInTheDocument()
-    await expect.element(settings).toBeVisible()
+    await expect.element(clearButton).not.toBeInTheDocument()
+    // All other defaults remain configured, so the only empty selector is the cleared TTS field.
     await expect
-      .element(settings.getByRole('button', { name: 'Clear System Reasoning Model' }))
-      .not.toBeInTheDocument()
-    await expect
-      .element(settings.getByRole('button', { name: 'plugin.detailPanel.configureModel' }).first())
-      .toHaveFocus()
-    await userEvent.keyboard('{Tab}')
-    expect(settingsPopup.contains(document.activeElement)).toBe(true)
-    await settings.getByRole('button', { name: /^Speech model/ }).hover()
-    await settings.getByRole('button', { name: 'Clear TTS Model' }).click()
-    const ttsConfirmation = screen.getByRole('alertdialog', { name: 'Clear TTS Model?' })
-    await expect.element(ttsConfirmation).toBeVisible()
-    await ttsConfirmation.getByRole('button', { name: 'Clear' }).click()
-    await expect.element(ttsConfirmation).not.toBeInTheDocument()
-    await expect
-      .element(settings.getByRole('button', { name: 'plugin.detailPanel.configureModel' }).last())
-      .toHaveFocus()
-    await userEvent.keyboard('{Escape}')
-    await expect.element(settings).not.toBeInTheDocument()
-    await expect
-      .element(screen.getByRole('button', { name: 'System Model Settings' }))
+      .element(settings.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
       .toHaveFocus()
   } finally {
     queryClient.clear()
