@@ -66,7 +66,6 @@ export default interface Resources {
     'account.workspaceNamePlaceholder': 'Enter workspace name'
     'resourceAccessToken.accessibleResources': 'Accessible Resources'
     'resourceAccessToken.actions': 'Actions'
-    'resourceAccessToken.app': 'App'
     'resourceAccessToken.appCount': '{{count}} App'
     'resourceAccessToken.appsCount': '{{count}} Apps'
     'resourceAccessToken.appsSection': 'Apps'
@@ -83,7 +82,6 @@ export default interface Resources {
     'resourceAccessToken.editTitle': 'Edit access token'
     'resourceAccessToken.empty': 'No access tokens yet'
     'resourceAccessToken.emptyDescription': 'Create an access token for automated tasks and external systems to discover and access selected resource through Difyctl.'
-    'resourceAccessToken.knowledge': 'Knowledge'
     'resourceAccessToken.knowledgeBasesSection': 'Knowledge bases'
     'resourceAccessToken.knowledgeCount': '{{count}} Knowledge'
     'resourceAccessToken.knowledgesCount': '{{count}} Knowledges'
@@ -104,7 +102,6 @@ export default interface Resources {
     'resourceAccessToken.tabKnowledgeBases': 'Knowledge bases'
     'resourceAccessToken.token': 'Token'
     'resourceAccessToken.total': '{{total}} total'
-    'resourceAccessToken.trackingId': 'Tracking ID'
   }
   agentRoster: {
     'roster.createAgent': 'Create agent'

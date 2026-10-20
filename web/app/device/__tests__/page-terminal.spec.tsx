@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DeviceFlowError } from '@/service/device-flow'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import DevicePage from '../page'
 
@@ -22,7 +23,10 @@ vi.mock('@/service/device-flow', async (importOriginal) => ({
 }))
 
 vi.mock('@/features/account-profile/client', () => ({
-  userProfileQueryOptions: () => ({ queryKey: ['profile'], queryFn: async () => null }),
+  userProfileQueryOptions: () => ({
+    queryKey: consoleQueryKey('account.profile.get'),
+    queryFn: async () => null,
+  }),
 }))
 
 const VALID_CODE = 'ABCD-3456'
@@ -40,7 +44,7 @@ beforeEach(() => {
 
 async function reachTerminal(rejectWith: unknown) {
   mockDeviceLookup.mockRejectedValue(rejectWith)
-  render(<DevicePage />)
+  render(<DevicePage />, { accountProfile: null })
   const user = userEvent.setup()
   await user.type(screen.getByRole('textbox'), VALID_CODE)
   await user.click(screen.getByRole('button', { name: /deviceFlow.codeEntry.continue/i }))
@@ -80,7 +84,7 @@ describe('error_sso dedicated view', () => {
 
   it('renders the dedicated SSO error screen (not the code-entry page)', async () => {
     mockSearchParams = { sso_error: 'sso_failed', user_code: 'ABCD-3456' }
-    render(<DevicePage />)
+    render(<DevicePage />, { accountProfile: null })
     expect(await screen.findByText(TITLE)).toBeInTheDocument()
     expect(await screen.findByText(GENERIC)).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
@@ -89,7 +93,7 @@ describe('error_sso dedicated view', () => {
 
   it('shows the email special-case copy', async () => {
     mockSearchParams = { sso_error: 'email_belongs_to_dify_account', user_code: 'ABCD-3456' }
-    render(<DevicePage />)
+    render(<DevicePage />, { accountProfile: null })
     expect(await screen.findByText(EMAIL_COPY)).toBeInTheDocument()
     expect(screen.queryByText('email_belongs_to_dify_account')).not.toBeInTheDocument()
   })
@@ -98,7 +102,7 @@ describe('error_sso dedicated view', () => {
     const user = userEvent.setup()
     mockSearchParams = { sso_error: 'sso_failed', user_code: 'ABCD-3456' }
     mockDeviceLookup.mockResolvedValue({ valid: true })
-    render(<DevicePage />)
+    render(<DevicePage />, { accountProfile: null })
     await screen.findByText(TITLE)
     await user.click(screen.getByRole('button', { name: BACK_TO_LOGIN }))
     await screen.findByText('deviceFlow.chooser.subtitle')
@@ -106,7 +110,7 @@ describe('error_sso dedicated view', () => {
   })
 
   it('shows no SSO error screen when sso_error is absent', () => {
-    render(<DevicePage />)
+    render(<DevicePage />, { accountProfile: null })
     expect(screen.getByRole('textbox')).toBeInTheDocument()
     expect(screen.queryByText(TITLE)).not.toBeInTheDocument()
     expect(document.title).toBe('deviceFlow.codeEntry.title - Dify')

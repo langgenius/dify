@@ -326,9 +326,8 @@ describe('SkillDetailPage clipboard', () => {
       })
       return mocks.skillDetail
     })
-    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+
     mocks.skillDetailQueryOptions.mockImplementation(() => ({
-      queryKey: ['skill-detail'],
       queryFn: async () => mocks.skillDetail,
     }))
     renderSkillDetailPage()
@@ -390,9 +389,8 @@ describe('SkillDetailPage clipboard', () => {
         return copiedDetail
       })
     mocks.skillDetailGetFn.mockResolvedValueOnce(latestDetail)
-    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+
     mocks.skillDetailQueryOptions.mockImplementation(() => ({
-      queryKey: ['skill-detail'],
       queryFn: async () => mocks.skillDetail,
     }))
     renderSkillDetailPage()
@@ -472,9 +470,8 @@ describe('SkillDetailPage clipboard', () => {
       .mockRejectedValueOnce(conflict)
       .mockResolvedValueOnce(afterBetaCopy)
     mocks.skillDetailGetFn.mockResolvedValueOnce(refreshedDetail)
-    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+
     mocks.skillDetailQueryOptions.mockImplementation(() => ({
-      queryKey: ['skill-detail'],
       queryFn: async () => mocks.skillDetail,
     }))
     renderSkillDetailPage()
