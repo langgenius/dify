@@ -35,6 +35,16 @@ class TraceExportUncertainError(RetryableTraceDispatchError):
 
 def frozen_project_url(provider: str, config: Mapping[str, Any]) -> str | None:
     """Read only persisted destination metadata, without credentials or vendor I/O."""
+    if provider == "arize":
+        try:
+            from dify_trace_arize_phoenix.arize_configuration import project_url
+        except ModuleNotFoundError:
+            return None
+
+        # Never substitute the current app destination for a historical run.
+        # Unverified legacy redirects remain stored, but are not presented as
+        # project links. A future config save does not backfill that snapshot.
+        return project_url(config)
     # These adapters expose a platform console, not the run's destination project.
     if provider in {"aliyun", "tencent"}:
         return None
