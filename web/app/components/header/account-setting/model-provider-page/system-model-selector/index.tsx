@@ -34,12 +34,7 @@ import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { ModelTypeEnum } from '../declarations'
 import { useInvalidateDefaultModel, useUpdateModelList } from '../hooks'
-import {
-  ModelSelector,
-  ModelSelectorContent,
-  ModelSelectorRoot,
-  ModelSelectorTrigger,
-} from '../model-selector'
+import { ModelSelector } from '../model-selector'
 
 type SystemModelSelectorProps = {
   className?: string
@@ -291,6 +286,9 @@ function SystemModelSession({
   }
 
   const getClearProps = (modelType: ModelTypeEnum, labelKey: SystemModelLabelKey) => ({
+    triggerRef: (element: HTMLButtonElement | null) => {
+      modelTriggersRef.current[modelType] = element
+    },
     onClear: canManageSystemDefaultModel
       ? () => {
           if (
@@ -387,7 +385,7 @@ function SystemModelSession({
                 'modelProvider.systemReasoningModel.tip',
               )}
               <div>
-                <ModelSelectorRoot
+                <ModelSelector
                   disabled={isSaving}
                   {...getClearProps(
                     ModelTypeEnum.textGeneration,
@@ -402,14 +400,7 @@ function SystemModelSession({
                   onValueChange={(model) =>
                     handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)
                   }
-                >
-                  <ModelSelectorTrigger
-                    ref={(element) => {
-                      modelTriggersRef.current[ModelTypeEnum.textGeneration] = element
-                    }}
-                  />
-                  <ModelSelectorContent />
-                </ModelSelectorRoot>
+                />
               </div>
             </div>
             <div className="flex flex-col gap-1">
@@ -458,7 +449,7 @@ function SystemModelSession({
                 'modelProvider.speechToTextModel.tip',
               )}
               <div>
-                <ModelSelectorRoot
+                <ModelSelector
                   disabled={isSaving}
                   {...getClearProps(
                     ModelTypeEnum.speech2text,
@@ -473,20 +464,13 @@ function SystemModelSession({
                   onValueChange={(model) =>
                     handleChangeDefaultModel(ModelTypeEnum.speech2text, model)
                   }
-                >
-                  <ModelSelectorTrigger
-                    ref={(element) => {
-                      modelTriggersRef.current[ModelTypeEnum.speech2text] = element
-                    }}
-                  />
-                  <ModelSelectorContent />
-                </ModelSelectorRoot>
+                />
               </div>
             </div>
             <div className="flex flex-col gap-1">
               {renderModelLabel('modelProvider.ttsModel.key', 'modelProvider.ttsModel.tip')}
               <div>
-                <ModelSelectorRoot
+                <ModelSelector
                   disabled={isSaving}
                   {...getClearProps(ModelTypeEnum.tts, 'modelProvider.ttsModel.key')}
                   value={defaultModels?.[ModelTypeEnum.tts]}
@@ -496,14 +480,7 @@ function SystemModelSession({
                   onConfigureEmptyState={onClose}
                   showModelMeta={false}
                   onValueChange={(model) => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
-                >
-                  <ModelSelectorTrigger
-                    ref={(element) => {
-                      modelTriggersRef.current[ModelTypeEnum.tts] = element
-                    }}
-                  />
-                  <ModelSelectorContent />
-                </ModelSelectorRoot>
+                />
               </div>
             </div>
           </div>
