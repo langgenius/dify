@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path, { normalize, sep } from 'node:path'
-import { getTranslationSourceKey } from '../../../scripts/check-i18n-plurals.ts'
+import { getTranslationSourceKey } from '../../../i18n-plurals.ts'
 import { cleanJsonText } from '../utils.js'
 
 function extractPlaceholders(str) {

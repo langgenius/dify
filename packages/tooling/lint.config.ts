@@ -2,8 +2,10 @@
 
 import type { OxlintConfig } from 'vite-plus/lint'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { repositoryRoot } from './paths.ts'
 
-const rootDir = import.meta.dirname
+const rootDir = repositoryRoot
 const webPackageJson = path.resolve(rootDir, 'web/package.json')
 const difyUiPackageJson = path.resolve(rootDir, 'packages/dify-ui/package.json')
 const enableTailwindCanonicalClasses = process.env.TAILWIND_CANONICAL_CLASSES === 'true'
@@ -229,7 +231,6 @@ export const lintConfig = {
     'docker/**',
     'docs/**',
     'scripts/**/*',
-    '!scripts/check-web-production-unused-after-knip-fix.mjs',
     'sdks/php-client/**',
     'sdks/python-client/**',
     '**/.next/**',
@@ -256,7 +257,7 @@ export const lintConfig = {
     ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
     {
       name: 'dify',
-      specifier: './web/plugins/eslint/index.js',
+      specifier: './plugins/eslint/index.js',
     },
     {
       name: 'eslint-react',
@@ -274,7 +275,11 @@ export const lintConfig = {
     'eslint-plugin-perfectionist',
     'eslint-plugin-regexp',
     'eslint-plugin-storybook',
-  ],
+  ].map((plugin) =>
+    typeof plugin === 'string'
+      ? fileURLToPath(import.meta.resolve(plugin))
+      : { ...plugin, specifier: fileURLToPath(import.meta.resolve(plugin.specifier)) },
+  ),
   options: {
     reportUnusedDisableDirectives: 'error',
     respectEslintDisableDirectives: false,

@@ -4,7 +4,7 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { expect, it } from 'vite-plus/test'
-import { stylingContractRules } from '../../../lint.config'
+import { stylingContractRules } from '../../lint.config'
 
 function lintFixture(source: string) {
   const require = createRequire(import.meta.url)
