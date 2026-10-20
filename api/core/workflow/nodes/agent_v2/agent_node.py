@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import json
 import logging
+import time
+import uuid
 from collections.abc import Generator, Mapping, Sequence
+from functools import singledispatchmethod
 from typing import TYPE_CHECKING, Any, override
 
 from dify_agent.protocol import CancelRunRequest
@@ -24,8 +28,9 @@ from clients.agent_backend import (
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_INVOCATION_ID_KEY
+from core.workflow.nodes.agent.events import AgentLogEvent, NodeRunAgentLogEvent
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.engine_events import NodeRunPauseRequestedEvent
+from graphon.engine_events import NodeEvent, NodeRunPauseRequestedEvent
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -70,6 +75,172 @@ logger = logging.getLogger(__name__)
 type _TerminalAgentBackendEvent = (
     AgentBackendRunSucceededInternalEvent | AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent
 )
+
+_AGENT_LOG_ID_NAMESPACE = uuid.UUID("5f6f9f53-2e5f-4ff1-9d6f-2d9b0e0f3f61")
+_TOOL_CALL_EVENT_KINDS = frozenset({"function_tool_call", "output_tool_call"})
+_TOOL_RESULT_EVENT_KINDS = frozenset({"function_tool_result", "output_tool_result"})
+
+
+class _AgentBackendLogTranslator:
+    """Map backend stream events to the existing ``agent_log`` event shape."""
+
+    def __init__(self, *, node_id: str, node_execution_id: str, run_id: str) -> None:
+        self._node_id = node_id
+        self._node_execution_id = node_execution_id
+        self._run_id = run_id
+        self._tool_started_at: dict[str, float] = {}
+        self._sequence = 0
+
+    def translate(self, data: Any, *, event_kind: str | None) -> list[AgentLogEvent]:
+        """Translate completed tool and reasoning events; ignore deltas and unknown shapes."""
+        if not isinstance(data, Mapping):
+            return []
+
+        kind = event_kind or data.get("event_kind")
+        part = data.get("part")
+        if not isinstance(kind, str) or not isinstance(part, Mapping):
+            return []
+
+        if kind in _TOOL_CALL_EVENT_KINDS:
+            return self._tool_call(part)
+        if kind in _TOOL_RESULT_EVENT_KINDS:
+            return self._tool_result(part)
+        if kind == "part_end":
+            part_kind = part.get("part_kind")
+            if part_kind == "thinking":
+                return self._thinking(part)
+            if part_kind == "builtin-tool-call":
+                return self._tool_call(part, builtin=True)
+            if part_kind == "builtin-tool-return":
+                return self._tool_result(part, builtin=True)
+        return []
+
+    def _tool_call(self, part: Mapping[str, Any], *, builtin: bool = False) -> list[AgentLogEvent]:
+        tool_name = part.get("tool_name")
+        if not isinstance(tool_name, str) or not tool_name:
+            return []
+
+        tool_call_id = part.get("tool_call_id")
+        if isinstance(tool_call_id, str) and tool_call_id:
+            self._tool_started_at[tool_call_id] = time.perf_counter()
+        return [
+            self._event(
+                message_id=self._tool_message_id(tool_call_id),
+                label=tool_name,
+                status="start",
+                data={
+                    "tool_name": tool_name,
+                    "tool_call_id": tool_call_id,
+                    "tool_input": _decode_tool_args(part.get("args")),
+                    "output": None,
+                },
+                metadata=self._tool_metadata(tool_name=tool_name, builtin=builtin),
+            )
+        ]
+
+    def _tool_result(self, part: Mapping[str, Any], *, builtin: bool = False) -> list[AgentLogEvent]:
+        tool_call_id = part.get("tool_call_id")
+        tool_name = part.get("tool_name")
+        content = part.get("content")
+        failed = part.get("part_kind") == "retry-prompt"
+        metadata = self._tool_metadata(tool_name=tool_name, builtin=builtin)
+        elapsed_time = self._elapsed_time(tool_call_id)
+        if elapsed_time is not None:
+            metadata["elapsed_time"] = elapsed_time
+
+        return [
+            self._event(
+                message_id=self._tool_message_id(tool_call_id),
+                label=tool_name if isinstance(tool_name, str) and tool_name else "tool",
+                status="error" if failed else "success",
+                error=_stringify(content) if failed else None,
+                data={
+                    "tool_name": tool_name,
+                    "tool_call_id": tool_call_id,
+                    "observation": content,
+                    "output": content,
+                },
+                metadata=metadata,
+            )
+        ]
+
+    def _thinking(self, part: Mapping[str, Any]) -> list[AgentLogEvent]:
+        content = part.get("content")
+        if not isinstance(content, str) or not content.strip():
+            return []
+        return [
+            self._event(
+                message_id=self._next_message_id("thinking"),
+                label="thinking",
+                status="success",
+                data={"thought": content},
+                metadata={"kind": "reasoning"},
+            )
+        ]
+
+    def _event(
+        self,
+        *,
+        message_id: str,
+        label: str,
+        status: str,
+        data: dict[str, Any],
+        metadata: dict[str, Any],
+        error: str | None = None,
+    ) -> AgentLogEvent:
+        return AgentLogEvent(
+            message_id=message_id,
+            label=label,
+            node_execution_id=self._node_execution_id,
+            parent_id=None,
+            error=error,
+            status=status,
+            data=data,
+            metadata=metadata,
+            node_id=self._node_id,
+        )
+
+    @staticmethod
+    def _tool_metadata(*, tool_name: Any, builtin: bool) -> dict[str, Any]:
+        metadata: dict[str, Any] = {"kind": "builtin_tool" if builtin else "tool"}
+        if isinstance(tool_name, str) and tool_name:
+            metadata["tool_name"] = tool_name
+        return metadata
+
+    def _elapsed_time(self, tool_call_id: Any) -> float | None:
+        if not isinstance(tool_call_id, str):
+            return None
+        started_at = self._tool_started_at.pop(tool_call_id, None)
+        if started_at is None:
+            return None
+        return time.perf_counter() - started_at
+
+    def _tool_message_id(self, tool_call_id: Any) -> str:
+        if isinstance(tool_call_id, str) and tool_call_id:
+            return str(uuid.uuid5(_AGENT_LOG_ID_NAMESPACE, f"{self._run_id}:tool:{tool_call_id}"))
+        return self._next_message_id("tool")
+
+    def _next_message_id(self, prefix: str) -> str:
+        self._sequence += 1
+        return str(uuid.uuid5(_AGENT_LOG_ID_NAMESPACE, f"{self._run_id}:{prefix}:{self._sequence}"))
+
+
+def _decode_tool_args(args: Any) -> Any:
+    if not isinstance(args, str):
+        return args
+    try:
+        return json.loads(args)
+    except ValueError:
+        return args
+
+
+def _stringify(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    try:
+        return json.dumps(value, ensure_ascii=False, default=str)
+    except (TypeError, ValueError):
+        return str(value)
 
 
 class DifyAgentNode(Node[DifyAgentNodeData]):
@@ -126,6 +297,29 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     @override
     def populate_start_event(self, event) -> None:
         event.extras["agent_node"] = {"version": "2", "agent_node_kind": self.node_data.agent_node_kind}
+
+    @override
+    @singledispatchmethod
+    def _dispatch(  # pyrefly: ignore[missing-override-decorator]
+        self, event: NodeEventPayload
+    ) -> NodeEvent:
+        return super()._dispatch(event)
+
+    @_dispatch.register
+    def _dispatch_agent_log(self, event: AgentLogEvent) -> NodeRunAgentLogEvent:
+        return NodeRunAgentLogEvent(
+            id=self.execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            message_id=event.message_id,
+            label=event.label,
+            node_execution_id=event.node_execution_id,
+            parent_id=event.parent_id,
+            error=event.error,
+            status=event.status,
+            data=event.data,
+            metadata=event.metadata,
+        )
 
     @override
     def _run(self) -> Generator[NodeEventPayload | NodeRunPauseRequestedEvent]:
@@ -445,7 +639,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         metadata: dict[str, Any],
         stream_text: bool,
     ) -> Generator[
-        StreamChunkEvent,
+        StreamChunkEvent | AgentLogEvent,
         None,
         tuple[_TerminalAgentBackendEvent | None, StreamCompletedEvent | None],
     ]:
@@ -490,12 +684,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         metadata: dict[str, Any],
         stream_text: bool,
     ) -> Generator[
-        StreamChunkEvent,
+        StreamChunkEvent | AgentLogEvent,
         None,
         tuple[_TerminalAgentBackendEvent | None, StreamCompletedEvent | None],
     ]:
         stream_event_count = 0
         last_event_id: str | None = None
+        log_translator = _AgentBackendLogTranslator(
+            node_id=self._node_id,
+            node_execution_id=self.execution_id,
+            run_id=run_id,
+        )
         try:
             for public_event in self._agent_backend_client.stream_events(
                 run_id,
@@ -510,6 +709,10 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     if internal_event.type == AgentBackendInternalEventType.STREAM_EVENT:
                         if isinstance(internal_event, AgentBackendStreamInternalEvent):
                             self._record_stream_metadata(metadata, internal_event)
+                            yield from log_translator.translate(
+                                internal_event.data,
+                                event_kind=internal_event.event_kind,
+                            )
                         continue
                     if internal_event.type == AgentBackendInternalEventType.AGENT_MESSAGE_DELTA:
                         if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):

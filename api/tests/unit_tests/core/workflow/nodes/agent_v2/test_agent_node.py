@@ -1,7 +1,7 @@
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import cast
+from typing import cast, override
 from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
@@ -21,7 +21,14 @@ from dify_agent.protocol import (
     RunSucceededEventData,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
-from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
+from pydantic_ai.messages import (
+    FunctionToolCallEvent,
+    FunctionToolResultEvent,
+    PartDeltaEvent,
+    TextPartDelta,
+    ToolCallPart,
+    ToolReturnPart,
+)
 from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
@@ -35,6 +42,7 @@ from clients.agent_backend import (
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
+from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
@@ -294,6 +302,48 @@ class AgentMessageDeltaBackendClient(FakeAgentBackendRunClient):
         )
 
 
+class ToolCallAndResultBackendClient(FakeAgentBackendRunClient):
+    @override
+    def _events(self, run_id: str) -> tuple[RunEvent, ...]:
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        return (
+            RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at),
+            PydanticAIStreamRunEvent(
+                id="2-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=FunctionToolCallEvent(
+                    part=ToolCallPart(
+                        tool_name="get_weather",
+                        args={"city": "Beijing"},
+                        tool_call_id="call-1",
+                    )
+                ),
+            ),
+            PydanticAIStreamRunEvent(
+                id="2-1",
+                run_id=run_id,
+                created_at=created_at,
+                data=FunctionToolResultEvent(
+                    part=ToolReturnPart(
+                        tool_name="get_weather",
+                        content={"temperature": "25°C"},
+                        tool_call_id="call-1",
+                    )
+                ),
+            ),
+            RunSucceededEvent(
+                id="3-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=RunSucceededEventData(
+                    output={"text": "25°C"},
+                    session_snapshot=SessionSnapshot(layers={}),
+                ),
+            ),
+        )
+
+
 class FailingStreamBackendClient(FakeAgentBackendRunClient):
     def __init__(self) -> None:
         super().__init__()
@@ -518,6 +568,21 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert "credentials" not in layers["llm"]["config"]
     assert DIFY_AGENT_OUTPUT_LAYER_ID not in layers
     assert "output_type_check" not in agent_log
+
+
+def test_agent_node_streams_backend_tool_calls_as_agent_log_events():
+    events = list(_node(agent_backend_client=ToolCallAndResultBackendClient()).run())
+
+    agent_logs = [event for event in events if isinstance(event, NodeRunAgentLogEvent)]
+    assert len(agent_logs) == 2
+    started, finished = agent_logs
+    assert started.label == finished.label == "get_weather"
+    assert started.status == "start"
+    assert finished.status == "success"
+    assert started.message_id == finished.message_id
+    assert started.data["tool_call_id"] == finished.data["tool_call_id"] == "call-1"
+    assert started.data["tool_input"] == {"city": "Beijing"}
+    assert finished.data["observation"] == {"temperature": "25°C"}
 
 
 def test_agent_node_structured_success_preserves_text_and_checks_only_custom_outputs():
