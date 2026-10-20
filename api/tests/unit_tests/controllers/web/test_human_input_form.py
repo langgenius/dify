@@ -11,9 +11,9 @@ import pytest
 from flask import Flask
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
 
 import controllers.web.human_input_form as human_input_module
+from controllers.common.errors import AccessDeniedError
 from controllers.web.error import WebFormRateLimitExceededError
 from enums.human_input import RecipientType, ValueSourceType
 from models import Tenant
@@ -398,7 +398,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
 def test_get_form_raises_forbidden_when_site_missing(
     monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session
 ):
-    """GET raises Forbidden if site cannot be resolved."""
+    """GET raises AccessDeniedError if site cannot be resolved."""
 
     expiration_time = datetime(2099, 1, 3, tzinfo=UTC)
     _, app_model, _ = _persist_app_site(database_session, include_site=False)
@@ -433,7 +433,7 @@ def test_get_form_raises_forbidden_when_site_missing(
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
-        with pytest.raises(Forbidden):
+        with pytest.raises(AccessDeniedError):
             HumanInputFormApi().get("token-1")
     limiter_mock.is_rate_limited.assert_called_once_with("203.0.113.10")
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
@@ -442,7 +442,7 @@ def test_get_form_raises_forbidden_when_site_missing(
 def test_get_form_raises_forbidden_when_tenant_archived(
     monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session
 ) -> None:
-    """GET raises Forbidden when the app's tenant is archived."""
+    """GET raises AccessDeniedError when the app's tenant is archived."""
 
     expiration_time = datetime(2099, 1, 3, tzinfo=UTC)
     tenant, app_model, _ = _persist_app_site(database_session)
@@ -479,7 +479,7 @@ def test_get_form_raises_forbidden_when_tenant_archived(
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
-        with pytest.raises(Forbidden):
+        with pytest.raises(AccessDeniedError):
             HumanInputFormApi().get("token-1")
 
 

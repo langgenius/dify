@@ -196,7 +196,11 @@ def test_build_snapshot_events_applies_message_context() -> None:
         (None, None, "run-1"),
     ],
 )
-def test_resolve_task_id_priority(context_task_id, buffered_task_id, expected) -> None:
+def test_resolve_task_id_priority(
+    context_task_id: str | None,
+    buffered_task_id: str | None,
+    expected: str,
+) -> None:
     resumption_context = _build_resumption_context(context_task_id) if context_task_id else None
     buffer_state = BufferState(
         queue=queue.Queue(),
@@ -739,7 +743,7 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
-    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
+    monkeypatch.setattr(service_module.WorkflowEventStream, "get_response_topic", MagicMock(return_value=topic))
     message_context_lookup = MagicMock(side_effect=lambda *_args, **_kwargs: call_order.append("message") or None)
     app_lookup = MagicMock(return_value=None)
     monkeypatch.setattr(
@@ -834,6 +838,7 @@ def test_build_advanced_chat_snapshot_requires_conversation_context(
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
+    monkeypatch.setattr(service_module.WorkflowEventStream, "get_response_topic", MagicMock())
     monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=resumption_context))
     conversation_lookup = MagicMock(return_value=None)
     app_lookup = MagicMock(return_value=None)
@@ -870,6 +875,7 @@ def test_build_non_suspended_advanced_chat_snapshot_uses_app_scoped_fallback(
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
+    monkeypatch.setattr(service_module.WorkflowEventStream, "get_response_topic", MagicMock())
     load_resumption_context = MagicMock(return_value=None)
     monkeypatch.setattr(service_module, "_load_resumption_context", load_resumption_context)
     conversation_lookup = MagicMock(return_value=None)
@@ -917,7 +923,7 @@ def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_id
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
-    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
+    monkeypatch.setattr(service_module.WorkflowEventStream, "get_response_topic", MagicMock(return_value=topic))
     monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=None))
     monkeypatch.setattr(service_module, "_build_snapshot_events", MagicMock(return_value=[]))
     monkeypatch.setattr(service_module, "_resolve_task_id", MagicMock(return_value="task-1"))
@@ -972,7 +978,7 @@ def test_build_workflow_event_stream_should_exit_when_buffer_done_and_empty(
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
-    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
+    monkeypatch.setattr(service_module.WorkflowEventStream, "get_response_topic", MagicMock(return_value=topic))
     monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=None))
     monkeypatch.setattr(service_module, "_build_snapshot_events", MagicMock(return_value=[]))
     monkeypatch.setattr(service_module, "_resolve_task_id", MagicMock(return_value="task-1"))
@@ -1016,7 +1022,7 @@ def test_build_workflow_event_stream_should_continue_when_pause_loading_fails(
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
-    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
+    monkeypatch.setattr(service_module.WorkflowEventStream, "get_response_topic", MagicMock(return_value=topic))
     monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=None))
     monkeypatch.setattr(service_module, "_resolve_task_id", MagicMock(return_value="task-1"))
     snapshot_builder = MagicMock(return_value=[{"event": StreamEvent.WORKFLOW_FINISHED}])
@@ -1290,7 +1296,7 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
-    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
+    monkeypatch.setattr(service_module.WorkflowEventStream, "get_response_topic", MagicMock(return_value=topic))
     monkeypatch.setattr(
         service_module, "_load_resumption_context", MagicMock(return_value=_build_resumption_context("task-1"))
     )
@@ -1429,7 +1435,7 @@ def test_stream_continues_with_live_events_when_all_forms_submitted(
     monkeypatch.setattr(factory, "create_api_workflow_run_repository", lambda _sm: _PausedRunRepo(pause_entity))
     monkeypatch.setattr(factory, "create_api_workflow_node_execution_repository", lambda _sm: _EmptyNodeRepo())
     topic = _Topic(_StaticSubscription())
-    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", lambda *_args: topic)
+    monkeypatch.setattr(service_module.WorkflowEventStream, "get_response_topic", lambda *_args: topic)
     resumption_context = _build_resumption_context("task-1")
     monkeypatch.setattr(service_module, "_load_resumption_context", lambda _pause_entity: resumption_context)
     live_finished = {"event": StreamEvent.WORKFLOW_FINISHED.value, "task_id": "task-1"}
