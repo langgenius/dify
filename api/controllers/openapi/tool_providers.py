@@ -13,7 +13,11 @@ from werkzeug.exceptions import BadRequest
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
-from controllers.openapi._errors import CredentialNotFound, CredentialOAuthOnly, ProviderNotFound
+from controllers.openapi._errors import (
+    CredentialNotFound,
+    CredentialOAuthOnly,
+    ProviderNotFound,
+)
 from controllers.openapi._i18n import localized
 from controllers.openapi._models import (
     CredentialFormField,
@@ -33,13 +37,20 @@ from controllers.openapi._models import (
 )
 from controllers.openapi._search import matches
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.requirements import ADMIN_ROLES, WORKSPACE_READ_GUARDS, workspace_write_guards
-from core.db.session_factory import session_factory
+from controllers.openapi.auth.requirements import (
+    ADMIN_ROLES,
+    WORKSPACE_READ_GUARDS,
+    workspace_write_guards,
+)
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import ToolParameter
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
-from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity, ToolProviderCredentialApiEntity
+from core.tools.entities.api_entities import (
+    ToolApiEntity,
+    ToolProviderApiEntity,
+    ToolProviderCredentialApiEntity,
+)
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
@@ -47,7 +58,6 @@ from extensions.ext_application_services import application_services
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.tools.mcp_tools_manage_service import MCPToolManageService
-from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
 _PROVIDER_EXAMPLE: Final = "langgenius/tavily/tavily"
 _ToolProviderController = BuiltinToolProviderController | PluginToolProviderController
@@ -119,16 +129,27 @@ def _write_response(ctx: Context, provider: str, credential_id: str) -> Credenti
 
 
 def _mcp_providers(ctx: Context) -> list[ToolProviderApiEntity]:
-    with session_factory.create_session() as session:
-        return MCPToolManageService(session=session).list_providers(tenant_id=ctx.workspace.id, include_sensitive=False)
+    return MCPToolManageService.list_providers(
+        tenant_id=ctx.workspace.id,
+        include_sensitive=False,
+        tool_providers=application_services().tools.tool_providers,
+    )
 
 
 _TOOL_SOURCES: Final[dict[ToolSource, Callable[[Context], list[ToolProviderApiEntity]]]] = {
-    ToolSource.BUILTIN: lambda ctx: BuiltinToolManageService.list_builtin_tools(ctx.account.id, ctx.workspace.id),
-    ToolSource.WORKFLOW: lambda ctx: WorkflowToolManageService.list_tenant_workflow_tools(
-        ctx.account.id, ctx.workspace.id
+    ToolSource.BUILTIN: lambda ctx: BuiltinToolManageService.list_builtin_tools(
+        ctx.account.id,
+        ctx.workspace.id,
+        tool_providers=application_services().tools.tool_providers,
     ),
-    ToolSource.API: lambda ctx: ApiToolManageService.list_api_tools(ctx.workspace.id),
+    ToolSource.WORKFLOW: lambda ctx: application_services().tools.workflows.list_tenant_workflow_tools(
+        ctx.account.id,
+        ctx.workspace.id,
+    ),
+    ToolSource.API: lambda ctx: ApiToolManageService.list_api_tools(
+        ctx.workspace.id,
+        tool_providers=application_services().tools.tool_providers,
+    ),
     ToolSource.MCP: _mcp_providers,
 }
 
