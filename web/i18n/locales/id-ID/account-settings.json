@@ -63,7 +63,6 @@
   "account.workspaceNamePlaceholder": "Masukkan nama ruang kerja",
   "resourceAccessToken.accessibleResources": "Sumber daya yang dapat diakses",
   "resourceAccessToken.actions": "Tindakan",
-  "resourceAccessToken.app": "Aplikasi",
   "resourceAccessToken.appCount": "{{count}} Aplikasi",
   "resourceAccessToken.appsCount": "{{count}} Aplikasi",
   "resourceAccessToken.appsSection": "Aplikasi",
@@ -80,7 +79,6 @@
   "resourceAccessToken.editTitle": "Edit token akses",
   "resourceAccessToken.empty": "Belum ada token akses",
   "resourceAccessToken.emptyDescription": "Buat token akses agar tugas otomatis dan sistem eksternal dapat menemukan serta menggunakan sumber daya pilihan melalui Difyctl.",
-  "resourceAccessToken.knowledge": "Basis pengetahuan",
   "resourceAccessToken.knowledgeBasesSection": "Basis pengetahuan",
   "resourceAccessToken.knowledgeCount": "{{count}} Basis pengetahuan",
   "resourceAccessToken.knowledgesCount": "{{count}} Basis pengetahuan",
@@ -100,6 +98,5 @@
   "resourceAccessToken.tabApps": "Aplikasi",
   "resourceAccessToken.tabKnowledgeBases": "Basis pengetahuan",
   "resourceAccessToken.token": "Token",
-  "resourceAccessToken.total": "Total {{total}}",
-  "resourceAccessToken.trackingId": "ID pelacakan"
+  "resourceAccessToken.total": "Total {{total}}"
 }

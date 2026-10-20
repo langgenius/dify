@@ -275,6 +275,7 @@ export type ModelConfig = {
   model: Model
   dataset_configs: DatasetConfigs
   file_upload?: {
+    enabled?: boolean
     image: VisionSettings
   } & UploadFileSetting
   files?: VisionFile[]

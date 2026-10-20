@@ -1,4 +1,4 @@
-import type { WorkflowPublishResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { RagPipelineWorkflowPublishResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import type { Node } from '@/app/components/workflow/types'
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
@@ -37,10 +37,7 @@ const api = vi.hoisted(() => ({
   >(),
   publish:
     vi.fn<
-      (
-        url: string,
-        options: { body: { marked_name: string; marked_comment: string } },
-      ) => Promise<WorkflowPublishResponse>
+      typeof import('@/service/console').consoleClient.rag.pipelines.byPipelineId.workflows.publish.post
     >(),
   template:
     vi.fn<
@@ -53,10 +50,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useSearchParams: () => new URLSearchParams(),
   usePathname: () => '/datasets/dataset-1/pipeline',
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-}))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  post: api.publish,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -72,6 +65,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       }),
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.publish.post': api.publish,
       'rag.pipelines.byPipelineId.workflows.publish.get': async () =>
         createWorkflowResponseFixture(),
       'rag.pipelines.byPipelineId.customized.publish.post': api.template,
@@ -260,10 +254,7 @@ it('publishes a valid pipeline and updates its publication state and dataset cac
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'workflow.common.published' })).toBeDisabled(),
   )
-  expect(api.publish).toHaveBeenCalledExactlyOnceWith(
-    '/rag/pipelines/pipeline-1/workflows/publish',
-    { body: { marked_name: '', marked_comment: '' } },
-  )
+  expect(api.publish).toHaveBeenCalledExactlyOnceWith({ params: { pipeline_id: 'pipeline-1' } })
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'pipeline.common.goToAddDocuments' })).toHaveAttribute(
     'href',
@@ -340,7 +331,7 @@ it('keeps the draft available after a publish failure and supports retry', async
 
 it('publishes with the scoped shortcut and suppresses repeats during and after publication', async () => {
   const user = userEvent.setup()
-  const pending = createDeferred<WorkflowPublishResponse>()
+  const pending = createDeferred<RagPipelineWorkflowPublishResponse>()
   api.publish.mockReturnValueOnce(pending.promise)
   renderPipeline()
   const button = await openPublisher(user)

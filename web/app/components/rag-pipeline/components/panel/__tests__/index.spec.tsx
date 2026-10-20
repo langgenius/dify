@@ -29,18 +29,16 @@ const api = vi.hoisted(() => ({
   history: vi.fn<(url: string, options?: unknown) => Promise<FetchWorkflowDraftPageResponse>>(),
   update:
     vi.fn<
-      (
-        url: string,
-        options: { body: { marked_name: string; marked_comment: string } },
-      ) => Promise<ReturnType<typeof createWorkflowResponseFixture>>
+      typeof import('@/service/console').consoleClient.rag.pipelines.byPipelineId.workflows.byWorkflowId.patch
     >(),
-  remove: vi.fn<(url: string) => Promise<void>>(),
+  remove:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.rag.pipelines.byPipelineId.workflows.byWorkflowId.delete
+    >(),
 }))
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   get: api.history,
-  patch: api.update,
-  del: api.remove,
 }))
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -53,6 +51,8 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.byWorkflowId.patch': api.update,
+      'rag.pipelines.byPipelineId.workflows.byWorkflowId.delete': api.remove,
       'rag.pipelines.byPipelineId.workflows.draft.preProcessing.parameters.get': async () => ({
         variables: [],
       }),
@@ -176,9 +176,15 @@ beforeEach(() => {
     if (url !== '/rag/pipelines/pipeline-1/workflows') throw new Error(`Unexpected GET: ${url}`)
     return { items: versions, page: 1, limit: 10, total: versions.length, has_more: false }
   })
-  api.update.mockReset().mockImplementation(async (_url, { body }) => {
-    versions = [version(body)]
-    return createWorkflowResponseFixture({ ...body, id: 'release-1' })
+  api.update.mockReset().mockImplementation(async ({ body }) => {
+    versions = [
+      version({ marked_name: body.marked_name ?? '', marked_comment: body.marked_comment ?? '' }),
+    ]
+    return createWorkflowResponseFixture({
+      marked_name: body.marked_name ?? '',
+      marked_comment: body.marked_comment ?? '',
+      id: 'release-1',
+    })
   })
   api.remove.mockReset().mockImplementation(async () => {
     versions = []
@@ -209,20 +215,18 @@ it('loads, edits and deletes versions belonging to this pipeline', async () => {
   await user.type(title, 'Pipeline v2')
   await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
   expect(await screen.findByText('Pipeline v2')).toBeVisible()
-  expect(api.update).toHaveBeenCalledExactlyOnceWith(
-    '/rag/pipelines/pipeline-1/workflows/release-1',
-    {
-      body: { marked_name: 'Pipeline v2', marked_comment: '' },
-    },
-  )
+  expect(api.update).toHaveBeenCalledExactlyOnceWith({
+    params: { pipeline_id: 'pipeline-1', workflow_id: 'release-1' },
+    body: { marked_name: 'Pipeline v2', marked_comment: '' },
+  })
   await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
   await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
   const confirm = await screen.findByRole('alertdialog')
   await user.click(within(confirm).getByRole('button', { name: 'common.operation.delete' }))
   await waitFor(() =>
-    expect(api.remove).toHaveBeenCalledExactlyOnceWith(
-      '/rag/pipelines/pipeline-1/workflows/release-1',
-    ),
+    expect(api.remove).toHaveBeenCalledExactlyOnceWith({
+      params: { pipeline_id: 'pipeline-1', workflow_id: 'release-1' },
+    }),
   )
   await waitFor(() => expect(screen.queryByText('Pipeline v2')).not.toBeInTheDocument())
 })

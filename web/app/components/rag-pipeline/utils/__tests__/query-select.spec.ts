@@ -88,6 +88,10 @@ describe('pipeline query selectors', () => {
     ).toEqual([graphNode])
   })
 
+  it('returns no nodes when the pipeline has no published workflow', () => {
+    expect(selectPublishedPipelineNodes(null)).toEqual([])
+  })
+
   it('should drop variables of unsupported types and unknown upload settings', () => {
     const { variables } = selectPipelineStepParameters({
       variables: [
