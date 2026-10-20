@@ -590,9 +590,12 @@ describe('SkillDetailPage builder', () => {
     )
 
     renderSkillDetailPage()
+    const builder = await screen.findByRole('region', {
+      name: 'skill.skillManagement.detail.builder.title',
+    })
     // The settings button waits for the model list and its lazily loaded contract segment.
     await user.click(
-      await screen.findByRole(
+      await within(builder).findByRole(
         'button',
         { name: 'modelProvider.modelProvider.modelSettings' },
         { timeout: 5000 },
@@ -605,10 +608,12 @@ describe('SkillDetailPage builder', () => {
     await user.clear(temperature)
     await user.type(temperature, '1.2')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
-    await user.type(
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    await user.click(
       screen.getByPlaceholderText('skill.skillManagement.detail.builder.modifyPlaceholder'),
-      'Update the skill{Enter}',
     )
+    await user.paste('Update the skill')
+    await user.keyboard('{Enter}')
 
     expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
       expect.objectContaining({

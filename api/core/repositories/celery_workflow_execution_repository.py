@@ -12,6 +12,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.repositories.factory import WorkflowExecutionRepository
+from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from graphon.entities import WorkflowExecution
 from models import Account, CreatorUserRole, EndUser
 from models.enums import WorkflowRunTriggeredFrom
@@ -86,12 +87,24 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
         # Determine user role based on user type
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
 
+        self._sql_repository = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=session_factory,
+            tenant_id=tenant_id,
+            user=user,
+            app_id=app_id,
+            triggered_from=triggered_from,
+        )
+
         logger.info(
             "Initialized CeleryWorkflowExecutionRepository for tenant %s, app %s, triggered_from %s",
             self._tenant_id,
             self._app_id,
             self._triggered_from,
         )
+
+    @override
+    def save_synchronously(self, execution: WorkflowExecution) -> None:
+        self._sql_repository.save(execution)
 
     @override
     def save(self, execution: WorkflowExecution):
