@@ -13,7 +13,7 @@ from core.app.entities.queue_entities import QueueWorkflowStartedEvent
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_redis import RedisClientWrapper
 from graphon.entities import WorkflowStartReason
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from models.account import Account
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowType
@@ -47,9 +47,9 @@ def _build_generate_entity(run_id: str) -> WorkflowAppGenerateEntity:
     )
 
 
-def _build_runtime_state(run_id: str) -> GraphRuntimeState:
+def _build_runtime_state(run_id: str) -> RuntimeState:
     variable_pool = build_test_variable_pool(variables=build_system_variables(workflow_execution_id=run_id))
-    return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    return RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter())
 
 
 def _build_pipeline(run_id: str, unbound_session_factory: sessionmaker[Session]) -> WorkflowAppGenerateTaskPipeline:
@@ -94,7 +94,9 @@ def test_workflow_app_log_saved_only_on_initial_start(unbound_session_factory: s
     assert pipeline._workflow_execution_id == run_id
 
 
-def test_workflow_app_log_skipped_on_resumption_start(unbound_session_factory: sessionmaker[Session]) -> None:
+def test_workflow_app_log_skipped_on_resumption_start(
+    unbound_session_factory: sessionmaker[Session],
+) -> None:
     run_id = "run-resume"
     pipeline = _build_pipeline(run_id, unbound_session_factory)
     pipeline._save_workflow_app_log = MagicMock()

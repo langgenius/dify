@@ -5,7 +5,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
-from typing import Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -22,7 +22,7 @@ from core.app.entities.task_entities import (
     WorkflowAppPausedBlockingResponse,
     WorkflowAppStreamResponse,
 )
-from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
+from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.helper.trace_id_helper import (
     extract_external_trace_id_from_args,
     extract_parent_trace_context_from_args,
@@ -32,10 +32,10 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.trigger.constants import is_trigger_node_type
 from factories import file_factory
-from graphon.filters import ResponseStreamFilter
-from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.engine.filter import ResponseStreamFilter
+from graphon.engine.layer import Layer
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models.account import Account
@@ -56,6 +56,9 @@ from services.workflow.execution.adapters.workflow.generate_task_pipeline import
 from services.workflow.execution.generation_service import generate_response
 from services.workflow.execution.ports import WorkflowRuntime
 
+if TYPE_CHECKING:
+    from services.workflow.execution.contracts import WorkflowRunDriver
+
 logger = logging.getLogger(__name__)
 
 
@@ -64,11 +67,13 @@ class WorkflowAppGenerator(AppInputAdapter):
         self,
         *,
         runtime: WorkflowRuntime,
+        execution_driver: WorkflowRunDriver,
         draft_variable_loader: Callable[[WorkflowSnapshot, str], VariableLoader] | None = None,
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
         cancellation: WorkflowExecutionCancellation | None = None,
     ) -> None:
         self._runtime = runtime
+        self._execution_driver = execution_driver
         super().__init__(
             draft_variable_loader=draft_variable_loader,
             draft_variable_saver=draft_variable_saver,
@@ -89,9 +94,9 @@ class WorkflowAppGenerator(AppInputAdapter):
         workflow_run_id: str | uuid.UUID | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_engine_layers: Sequence[Layer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
-    ) -> Generator[Mapping[str, Any] | str, None, None]: ...
+    ) -> Generator[Mapping[str, Any] | str]: ...
 
     @overload
     def generate(
@@ -107,7 +112,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         workflow_run_id: str | uuid.UUID | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_engine_layers: Sequence[Layer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any]: ...
 
@@ -125,9 +130,9 @@ class WorkflowAppGenerator(AppInputAdapter):
         workflow_run_id: str | uuid.UUID | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_engine_layers: Sequence[Layer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]: ...
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
     def generate(
         self,
@@ -142,9 +147,9 @@ class WorkflowAppGenerator(AppInputAdapter):
         workflow_run_id: str | uuid.UUID | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_engine_layers: Sequence[Layer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
@@ -159,7 +164,7 @@ class WorkflowAppGenerator(AppInputAdapter):
                 mappings=files,
                 tenant_id=app_model.tenant_id,
                 config=file_extra_config,
-                strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
+                strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
                 access_controller=self._file_access_controller,
             )
 
@@ -192,7 +197,7 @@ class WorkflowAppGenerator(AppInputAdapter):
                     user_inputs=inputs,
                     variables=app_config.variables,
                     tenant_id=app_model.tenant_id,
-                    strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
+                    strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
                 )
             # init application generate entity
             application_generate_entity = WorkflowAppGenerateEntity(
@@ -259,14 +264,14 @@ class WorkflowAppGenerator(AppInputAdapter):
         workflow: WorkflowSnapshot,
         user: Account | EndUser,
         application_generate_entity: WorkflowAppGenerateEntity,
-        graph_runtime_state: GraphRuntimeState,
+        graph_runtime_state: RuntimeState,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_engine_layers: Sequence[Layer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         response_stream_filter: ResponseStreamFilter | None = None,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Resume a paused workflow execution using the persisted runtime state.
 
@@ -312,11 +317,11 @@ class WorkflowAppGenerator(AppInputAdapter):
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_engine_layers: Sequence[Layer] = (),
+        graph_runtime_state: RuntimeState | None = None,
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -336,8 +341,6 @@ class WorkflowAppGenerator(AppInputAdapter):
         ):
             if self._cancellation is not None:
                 self._cancellation.raise_if_cancelled()
-            graph_layers: list[GraphEngineLayer] = list(graph_engine_layers)
-
             # init queue manager
             queue_manager = WorkflowAppQueueManager(
                 task_id=application_generate_entity.task_id,
@@ -345,17 +348,6 @@ class WorkflowAppGenerator(AppInputAdapter):
                 invoke_from=application_generate_entity.invoke_from,
                 app_mode=app_model.mode,
             )
-
-            resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
-            if pause_state_config is not None:
-                graph_layers.append(
-                    PauseStatePersistenceLayer(
-                        session_factory=pause_state_config.session_factory,
-                        generate_entity=application_generate_entity,
-                        state_owner_user_id=pause_state_config.state_owner_user_id,
-                        response_stream_filter=resolved_response_stream_filter,
-                    )
-                )
 
             # new thread with request context and contextvars
             context = contextvars.copy_context()
@@ -373,9 +365,10 @@ class WorkflowAppGenerator(AppInputAdapter):
                     "root_node_id": root_node_id,
                     "workflow_execution_repository": workflow_execution_repository,
                     "workflow_node_execution_repository": workflow_node_execution_repository,
-                    "graph_engine_layers": tuple(graph_layers),
+                    "graph_engine_layers": graph_engine_layers,
+                    "pause_state_config": pause_state_config,
                     "graph_runtime_state": graph_runtime_state,
-                    "response_stream_filter": resolved_response_stream_filter,
+                    "response_stream_filter": response_stream_filter,
                 },
             )
 
@@ -410,7 +403,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         user: Account | EndUser,
         args: Mapping[str, Any],
         streaming: bool = True,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -493,7 +486,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         user: Account | EndUser,
         args: Mapping[str, Any],
         streaming: bool = True,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -579,9 +572,10 @@ class WorkflowAppGenerator(AppInputAdapter):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_engine_layers: Sequence[Layer] = (),
+        graph_runtime_state: RuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        pause_state_config: PauseStateLayerConfig | None = None,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -606,8 +600,6 @@ class WorkflowAppGenerator(AppInputAdapter):
                     variable_loader=variable_loader,
                     workflow=workflow,
                     system_user_id=system_user_id,
-                    workflow_execution_repository=workflow_execution_repository,
-                    workflow_node_execution_repository=workflow_node_execution_repository,
                     root_node_id=root_node_id,
                     graph_engine_layers=graph_engine_layers,
                     graph_runtime_state=graph_runtime_state,
@@ -615,7 +607,9 @@ class WorkflowAppGenerator(AppInputAdapter):
                 )
 
                 with active_workflow_task(application_generate_entity.task_id):
-                    runner.run()
+                    self._execution_driver(
+                        runner, pause_state_config, workflow_execution_repository, workflow_node_execution_repository
+                    )
             except GenerateTaskStoppedError:
                 logger.warning("Task stopped", exc_info=True)
                 pass
@@ -645,7 +639,7 @@ class WorkflowAppGenerator(AppInputAdapter):
     ) -> (
         WorkflowAppBlockingResponse
         | WorkflowAppPausedBlockingResponse
-        | Generator[WorkflowAppStreamResponse, None, None]
+        | Generator[WorkflowAppStreamResponse]
     ):
         """
         Handle response.
@@ -674,7 +668,7 @@ class WorkflowAppGenerator(AppInputAdapter):
             return generate_task_pipeline.process()
         except ValueError as e:
             if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
-                raise GenerateTaskStoppedError()
+                raise GenerateTaskStoppedError() from e
             else:
                 logger.exception(
                     "Fails to process generate task pipeline, task_id: %s", application_generate_entity.task_id

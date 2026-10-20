@@ -4,7 +4,7 @@ Console/Studio Human Input Form APIs.
 
 import json
 import logging
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from typing import Any
 
 from flask import Response, jsonify, request
@@ -36,6 +36,7 @@ from libs.external_api import error_responses
 from libs.login import login_required
 from models import Account, App
 from models.enums import CreatorUserRole
+from models.human_input_entities import FormInputConfig
 from models.model import AppMode
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
@@ -68,8 +69,10 @@ register_response_schema_models(
 )
 
 
-def _jsonify_form_definition(form: Form) -> Response:
+def _jsonify_form_definition(form: Form, *, inputs: Sequence[FormInputConfig] | None = None) -> Response:
     payload = form.get_definition().model_dump()
+    if inputs is not None:
+        payload["inputs"] = [form_input.model_dump(mode="json") for form_input in inputs]
     payload["expiration_time"] = int(form.expiration_time.timestamp())
     return Response(json.dumps(payload, ensure_ascii=False), mimetype="application/json")
 
@@ -108,7 +111,7 @@ class ConsoleHumanInputFormApi(Resource):
 
         self._ensure_console_access(form, current_tenant_id)
 
-        return _jsonify_form_definition(form)
+        return _jsonify_form_definition(form, inputs=service.resolve_form_inputs(form))
 
     @error_responses(FormExpiredError, FormSubmittedError, InvalidFormDataError)
     @account_initialization_required
@@ -214,12 +217,12 @@ class ConsoleWorkflowEventsApi(Resource):
 
         else:
             msg_generator = MessageGenerator()
-            generator: BaseAppGenerator
+            generator: type[BaseAppGenerator]
             match app.mode:
                 case AppMode.ADVANCED_CHAT:
-                    generator = AdvancedChatAppGenerator()
+                    generator = AdvancedChatAppGenerator
                 case AppMode.WORKFLOW:
-                    generator = WorkflowAppGenerator()
+                    generator = WorkflowAppGenerator
                 case _:
                     raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 
