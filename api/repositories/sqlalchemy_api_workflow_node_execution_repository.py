@@ -229,7 +229,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         """
         Get a workflow node execution by its ID.
 
-        This method replicates the query pattern from WorkflowDraftVariableService
+        This method replicates the query pattern from WorkflowVariableService
         and WorkflowService.single_step_run_workflow_node() using SQLAlchemy 2.0 style syntax.
 
         When `tenant_id` is None, it's the caller's responsibility to ensure proper data isolation between tenants.
@@ -243,7 +243,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         Returns:
             The WorkflowNodeExecutionModel if found, or None if not found
         """
-        stmt = WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel))
+        stmt = WorkflowNodeExecutionModel.preload_offload_data_and_files(select(WorkflowNodeExecutionModel))
         stmt = stmt.where(WorkflowNodeExecutionModel.id == execution_id)
 
         # Add tenant filtering if provided

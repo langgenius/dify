@@ -5,10 +5,11 @@ from __future__ import annotations
 import mimetypes
 import os
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Literal, NotRequired, TypedDict, assert_never, cast
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.file_access import FileAccessControllerProtocol
 from core.db.session_factory import session_factory
@@ -76,6 +77,7 @@ def build_from_mapping(
     config: FileUploadConfig | None = None,
     strict_type_validation: bool = False,
     access_controller: FileAccessControllerProtocol,
+    sessions: Callable[[], Session] | None = None,
 ) -> File:
     transfer_method_value = mapping.get("transfer_method")
     if not transfer_method_value:
@@ -90,6 +92,7 @@ def build_from_mapping(
                 transfer_method=transfer_method,
                 strict_type_validation=strict_type_validation,
                 access_controller=access_controller,
+                sessions=sessions,
             )
         case FileTransferMethod.REMOTE_URL:
             file = _build_from_remote_url(
@@ -98,6 +101,7 @@ def build_from_mapping(
                 transfer_method=transfer_method,
                 strict_type_validation=strict_type_validation,
                 access_controller=access_controller,
+                sessions=sessions,
             )
         case FileTransferMethod.TOOL_FILE:
             file = _build_from_tool_file(
@@ -106,6 +110,7 @@ def build_from_mapping(
                 transfer_method=transfer_method,
                 strict_type_validation=strict_type_validation,
                 access_controller=access_controller,
+                sessions=sessions,
             )
         case FileTransferMethod.DATASOURCE_FILE:
             file = _build_from_datasource_file(
@@ -114,6 +119,7 @@ def build_from_mapping(
                 transfer_method=transfer_method,
                 strict_type_validation=strict_type_validation,
                 access_controller=access_controller,
+                sessions=sessions,
             )
         case _:
             assert_never(transfer_method)
@@ -136,6 +142,7 @@ def build_from_mappings(
     tenant_id: str,
     strict_type_validation: bool = False,
     access_controller: FileAccessControllerProtocol,
+    sessions: Callable[[], Session] | None = None,
 ) -> Sequence[File]:
     # TODO(QuantumGhost): Performance concern - each mapping triggers a separate database query.
     # Implement batch processing to reduce database load when handling multiple files.
@@ -147,6 +154,7 @@ def build_from_mappings(
             config=config,
             strict_type_validation=strict_type_validation,
             access_controller=access_controller,
+            sessions=sessions,
         )
         for mapping in valid_mappings
     ]
@@ -194,6 +202,7 @@ def _build_from_local_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
     access_controller: FileAccessControllerProtocol,
+    sessions: Callable[[], Session] | None = None,
 ) -> File:
     upload_file_id = resolve_mapping_file_id(mapping, "upload_file_id")
     if not upload_file_id:
@@ -208,7 +217,7 @@ def _build_from_local_file(
         UploadFile.id == upload_file_id,
         UploadFile.tenant_id == tenant_id,
     )
-    with session_factory.create_session() as session:
+    with (sessions or session_factory.create_session)() as session:
         row = session.scalar(access_controller.apply_upload_file_filters(stmt))
         if row is None:
             raise ValueError("Invalid upload file")
@@ -241,6 +250,7 @@ def _build_from_remote_url(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
     access_controller: FileAccessControllerProtocol,
+    sessions: Callable[[], Session] | None = None,
 ) -> File:
     upload_file_id = resolve_mapping_file_id(mapping, "upload_file_id")
     if upload_file_id:
@@ -253,7 +263,7 @@ def _build_from_remote_url(
             UploadFile.id == upload_file_id,
             UploadFile.tenant_id == tenant_id,
         )
-        with session_factory.create_session() as session:
+        with (sessions or session_factory.create_session)() as session:
             upload_file = session.scalar(access_controller.apply_upload_file_filters(stmt))
             if upload_file is None:
                 raise ValueError("Invalid upload file")
@@ -313,6 +323,7 @@ def _build_from_tool_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
     access_controller: FileAccessControllerProtocol,
+    sessions: Callable[[], Session] | None = None,
 ) -> File:
     tool_file_id = resolve_mapping_file_id(mapping, "tool_file_id")
     if not tool_file_id:
@@ -322,7 +333,7 @@ def _build_from_tool_file(
         ToolFile.id == tool_file_id,
         ToolFile.tenant_id == tenant_id,
     )
-    with session_factory.create_session() as session:
+    with (sessions or session_factory.create_session)() as session:
         tool_file = session.scalar(access_controller.apply_tool_file_filters(stmt))
         if tool_file is None:
             raise ValueError(f"ToolFile {tool_file_id} not found")
@@ -361,6 +372,7 @@ def _build_from_datasource_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
     access_controller: FileAccessControllerProtocol,
+    sessions: Callable[[], Session] | None = None,
 ) -> File:
     datasource_file_id = resolve_mapping_file_id(mapping, "datasource_file_id")
     if not datasource_file_id:
@@ -370,7 +382,7 @@ def _build_from_datasource_file(
         UploadFile.id == datasource_file_id,
         UploadFile.tenant_id == tenant_id,
     )
-    with session_factory.create_session() as session:
+    with (sessions or session_factory.create_session)() as session:
         datasource_file = session.scalar(access_controller.apply_upload_file_filters(stmt))
         if datasource_file is None:
             raise ValueError(f"DatasourceFile {mapping.get('datasource_file_id')} not found")
