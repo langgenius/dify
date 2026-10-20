@@ -15,14 +15,17 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from graphon.engine_events import NodeRunFailedEvent
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from graphon.graph_events import NodeRunFailedEvent
 from graphon.node_events.base import NodeRunResult
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from models import Account, Tenant
 from models.dataset import (
     Dataset,
@@ -206,26 +209,29 @@ def _persist(session: Session, *entities: object) -> None:
     session.commit()
 
 
-def _make_failed_published_node_run() -> tuple[SimpleNamespace, NodeRunFailedEvent]:
-    class FakeVariablePool:
-        def __init__(self) -> None:
-            self._values = {
-                ("sys", "invoke_from"): SimpleNamespace(value=InvokeFrom.PUBLISHED_PIPELINE),
-                ("sys", "app_id"): SimpleNamespace(value="pipeline-1"),
-                ("sys", "dataset_id"): SimpleNamespace(value="dataset-1"),
-                ("sys", "document_id"): SimpleNamespace(value="doc-1"),
-            }
-
-        def get(self, path: list[str]) -> SimpleNamespace | None:
-            return self._values.get(tuple(path))
-
-    node_instance = SimpleNamespace(
-        workflow_id="wf-1",
-        node_type="start",
-        title="Start",
-        graph_runtime_state=SimpleNamespace(variable_pool=FakeVariablePool()),
-        error_strategy=None,
+def _make_start_node(data: StartNodeData | None = None, variable_pool: VariablePool | None = None) -> StartNode:
+    return StartNode(
+        node_id="node-1",
+        data=data if data is not None else StartNodeData(title="Start"),
+        init_params=InitParams(workflow_id="wf-1", graph_config={}, run_context={}, call_depth=0),
+        runtime_state=RuntimeState(
+            workflow_id="wf-1",
+            variable_pool=variable_pool if variable_pool is not None else VariablePool(),
+            start_at=time.perf_counter(),
+        ),
     )
+
+
+def _make_failed_published_node_run() -> tuple[StartNode, NodeRunFailedEvent]:
+    variable_pool = VariablePool()
+    for name, value in {
+        "invoke_from": InvokeFrom.PUBLISHED_PIPELINE,
+        "app_id": "pipeline-1",
+        "dataset_id": "dataset-1",
+        "document_id": "doc-1",
+    }.items():
+        variable_pool.add(["sys", name], value)
+    node_instance = _make_start_node(variable_pool=variable_pool)
     run_result = NodeRunResult(
         status=WorkflowNodeExecutionStatus.FAILED,
         error="boom",
@@ -829,7 +835,7 @@ def test_run_datasource_node_preview_online_document(
 def test_handle_node_run_result_success(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    from graphon.graph_events import NodeRunSucceededEvent
+    from graphon.engine_events import NodeRunSucceededEvent
     from graphon.node_events.base import NodeRunResult
 
     # 1. Setup mock node and result
@@ -1426,16 +1432,15 @@ def test_handle_node_run_result_default_value_strategy(
 ) -> None:
     from datetime import datetime
 
-    from graphon.graph_events import NodeRunFailedEvent
+    from graphon.engine_events import NodeRunFailedEvent
     from graphon.node_events.base import NodeRunResult
 
-    node_instance = SimpleNamespace(
-        workflow_id="wf-1",
-        node_type=BuiltinNodeTypes.START,
-        title="Start",
-        error_strategy=ErrorStrategy.DEFAULT_VALUE,
-        default_value_dict={"fallback": "ok"},
-        graph_runtime_state=SimpleNamespace(variable_pool=mocker.Mock()),
+    node_instance = _make_start_node(
+        StartNodeData(
+            title="Start",
+            error_strategy=ErrorStrategy.DEFAULT_VALUE,
+            default_value=[{"key": "fallback", "value": "ok", "type": "string"}],
+        )
     )
 
     failed_result = NodeRunResult(
@@ -1846,13 +1851,7 @@ def test_get_datasource_plugins_raises_when_workflow_not_found(
 def test_handle_node_run_result_raises_when_no_terminal_event(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    node_instance = SimpleNamespace(
-        workflow_id="wf-1",
-        node_type="start",
-        title="Start",
-        graph_runtime_state=SimpleNamespace(variable_pool=SimpleNamespace(get=lambda _: None)),
-        error_strategy=None,
-    )
+    node_instance = _make_start_node()
 
     def _event_generator():
         yield object()

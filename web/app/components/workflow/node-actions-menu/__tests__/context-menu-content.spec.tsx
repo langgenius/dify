@@ -1,18 +1,17 @@
-import type { AvailableNodesMetaData } from '../../hooks-store'
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { use, useLayoutEffect } from 'react'
-import { useNodes } from 'reactflow'
+import {
+  CANVAS_NODES_STATUS_NAME,
+  CanvasNodesCatalogProbe,
+} from '@/app/components/workflow/__tests__/canvas-nodes-catalog-probe'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { HooksStoreContext } from '../../hooks-store'
 import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
-import { useWorkflowNodeCatalog } from '../../node-catalog'
 import { NodeActionsContextMenuContent } from '../context-menu-content'
 
 // Node metadata comes from the per-app block registry, which has its own suite.
@@ -42,41 +41,27 @@ vi.mock('../change-block-popup', () => ({
 
 const mockUseNodeMetaData = vi.mocked(useNodeMetaData)
 
-// Publishes the real block catalog so copy/duplicate know which nodes are copyable.
-const CanvasNodes = () => {
-  const catalog = useWorkflowNodeCatalog()
-  const hooksStore = use(HooksStoreContext)!
-  useLayoutEffect(() => {
-    const nodesMap = catalog.nodesMap as NonNullable<AvailableNodesMetaData['nodesMap']>
-    hooksStore.setState({
-      availableNodesMetaData: {
-        nodes: catalog.nodes.map((node) => nodesMap[node.metaData.type]),
-        nodesMap,
-      },
-    })
-  }, [catalog, hooksStore])
-  const nodes = useNodes()
-  return <output aria-label="Canvas nodes">{nodes.map((node) => node.id).join(',')}</output>
-}
-
 const canvasNodeIds = () =>
-  (screen.getByRole('status', { hidden: true }).textContent ?? '').split(',').filter(Boolean)
+  (screen.getByLabelText(CANVAS_NODES_STATUS_NAME, { selector: 'output' }).textContent ?? '')
+    .split(',')
+    .filter(Boolean)
 
 const renderContextMenu = (readOnly = false) => {
   const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })
   seedModelProviderQueries(queryClient)
+  const onClose = vi.fn()
 
-  return renderWorkflowFlowComponent(
+  const renderResult = renderWorkflowFlowComponent(
     <>
       <ContextMenu open>
         <NodeActionsContextMenuContent
           id="node-1"
           data={{ type: BlockEnum.Code, title: 'Code Node', desc: '' }}
-          onClose={() => undefined}
+          onClose={onClose}
           showHelpLink={false}
         />
       </ContextMenu>
-      <CanvasNodes />
+      <CanvasNodesCatalogProbe />
     </>,
     {
       initialStoreState: { canvasReadOnly: readOnly },
@@ -92,6 +77,8 @@ const renderContextMenu = (readOnly = false) => {
       queryClient,
     },
   )
+
+  return { ...renderResult, onClose }
 }
 
 describe('NodeActionsContextMenuContent', () => {
@@ -112,10 +99,11 @@ describe('NodeActionsContextMenuContent', () => {
     { name: /workflow\.common\.duplicate/, clipboard: undefined, nodeCount: 2 },
   ])('runs the $name context-menu item on click', async ({ name, clipboard, nodeCount }) => {
     const user = userEvent.setup()
-    const { store } = renderContextMenu()
+    const { onClose, store } = renderContextMenu()
 
     await user.click(screen.getByRole('menuitem', { name }))
 
+    expect(onClose).toHaveBeenCalledTimes(1)
     if (clipboard)
       expect(store.getState().clipboardElements.map((node) => node.id)).toEqual(clipboard)
     await waitFor(() => expect(canvasNodeIds()).toHaveLength(nodeCount))

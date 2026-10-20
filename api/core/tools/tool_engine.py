@@ -231,7 +231,7 @@ class ToolEngine:
             yield from tool.invoke(session, user_id, tool_parameters, conversation_id, app_id, message_id)
         except Exception as e:
             meta.error = str(e)
-            raise ToolEngineInvokeError(meta)
+            raise ToolEngineInvokeError(meta) from e
         finally:
             ended_at = datetime.now(UTC)
             meta.time_cost = (ended_at - started_at).total_seconds()
