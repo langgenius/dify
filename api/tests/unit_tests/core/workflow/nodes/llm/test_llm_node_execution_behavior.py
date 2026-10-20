@@ -25,7 +25,7 @@ from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.node_events import StreamCompletedEvent
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -77,14 +77,16 @@ def init_llm_node(config: dict[str, object]) -> LLMNode:
     )
     variable_pool.add(["abc", "output"], "sunny")
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(
+        workflow_id=workflow_id, variable_pool=variable_pool, start_at=time.perf_counter()
+    )
     run_context = resolve_dify_run_context(init_params.run_context)
 
     node = LLMNode(
         node_id=str(uuid.uuid4()),
         data=LLMNodeData.model_validate(config["data"]),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
         credentials_provider=DifyCredentialsProvider(run_context=run_context),
         model_factory=DifyModelFactory(run_context=run_context),
         model_instance=DifyPreparedLLM(make_model_instance(provider="openai", model="gpt-3.5-turbo")),
@@ -174,7 +176,7 @@ def test_execute_llm(monkeypatch: pytest.MonkeyPatch) -> None:
 
     node._model_instance = build_model_instance()
 
-    with patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_1):
+    with patch("graphon.nodes.llm.llm_utils.fetch_prompt_messages", mock_fetch_prompt_messages_1):
         # execute node
         result = node._run()
         assert isinstance(result, Generator)
@@ -275,7 +277,7 @@ def test_execute_llm_with_jinja2(monkeypatch: pytest.MonkeyPatch) -> None:
 
     node._model_instance = build_model_instance()
 
-    with patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_2):
+    with patch("graphon.nodes.llm.llm_utils.fetch_prompt_messages", mock_fetch_prompt_messages_2):
         # execute node
         result = node._run()
 

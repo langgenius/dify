@@ -1,43 +1,20 @@
+import type { HumanInputFormPreviewResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { HumanInputNodeType } from '../../types'
 import type { WorkflowAppMode } from '@/app/components/apps/app-type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { act } from '@testing-library/react'
-import { renderEditorHook as renderHookWithConsoleQuery } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { renderWorkflowFlowHook as renderHookWithConsoleQuery } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { withSelectorKey } from '@/test/i18n-mock'
 import { TransferMethod } from '@/types/app'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
-const mockUseTranslation = vi.hoisted(() => vi.fn())
-const mockUseParams = vi.hoisted(() => vi.fn())
-const mockFetchHumanInputNodeStepRunForm = vi.hoisted(() => vi.fn())
-const mockSubmitHumanInputNodeStepRunForm = vi.hoisted(() => vi.fn())
-const mockUseNodeCrud = vi.hoisted(() => vi.fn())
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => mockUseTranslation(),
-}))
-
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useParams: () => mockUseParams(),
-}))
-
-vi.mock('@/service/workflow', () => ({
-  fetchHumanInputNodeStepRunForm: (...args: unknown[]) =>
-    mockFetchHumanInputNodeStepRunForm(...args),
-  submitHumanInputNodeStepRunForm: (...args: unknown[]) =>
-    mockSubmitHumanInputNodeStepRunForm(...args),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockUseNodeCrud(...args),
-}))
+const previewForm = vi.hoisted(() => vi.fn())
+const request = vi.hoisted(() => vi.fn<typeof import('@/service/base').request>())
+vi.mock('@/service/base', () => ({ request }))
 
 const createPayload = (overrides: Partial<HumanInputNodeType> = {}): HumanInputNodeType => ({
   title: 'Human Input',
@@ -113,13 +90,6 @@ describe('human-input/hooks/use-single-run-form-params', () => {
       mode: 'workflow' as const,
     }
 
-    mockUseTranslation.mockReturnValue({
-      t: withSelectorKey((key: string) => key),
-    })
-    mockUseParams.mockImplementation(() => ({ appId: appDetail?.id }))
-    mockUseNodeCrud.mockImplementation(() => ({
-      inputs: currentInputs,
-    }))
     getInputVars.mockReturnValue([
       createInputVar(),
       createInputVar({
@@ -134,8 +104,15 @@ describe('human-input/hooks/use-single-run-form-params', () => {
         variable: undefined,
       } as unknown as InputVar,
     ])
-    mockFetchHumanInputNodeStepRunForm.mockResolvedValue(mockFormData)
-    mockSubmitHumanInputNodeStepRunForm.mockResolvedValue({})
+    previewForm.mockResolvedValue(mockFormData)
+    request.mockReset().mockImplementation(async (url, _init, options) => {
+      if (new URL(url).pathname.endsWith('/form/preview')) {
+        return Response.json(
+          await previewForm(new URL(url).pathname, await options?.request?.json()),
+        )
+      }
+      return Response.json({})
+    })
   })
 
   const uploadedFile: FileEntity = {
@@ -175,7 +152,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     expect(result.current.forms).toHaveLength(1)
     expect(result.current.forms[0]).toEqual(
       expect.objectContaining({
-        label: 'nodes.humanInput.singleRun.label',
+        label: 'workflowHumanInput.nodes.humanInput.singleRun.label',
         values: { topic: 'AI' },
         inputs: [
           expect.objectContaining({ variable: '#start.topic#' }),
@@ -279,7 +256,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
         },
       ],
     } satisfies HumanInputFormData
-    mockFetchHumanInputNodeStepRunForm.mockResolvedValue(formDataWithFiles)
+    previewForm.mockResolvedValue(formDataWithFiles)
 
     const { result } = renderHook(() =>
       useSingleRunFormParams({
@@ -291,16 +268,15 @@ describe('human-input/hooks/use-single-run-form-params', () => {
       }),
     )
 
+    const previewInputs = Object.freeze({ topic: 'AI', ignored: undefined as unknown as string })
     await act(async () => {
-      await result.current.handleShowGeneratedForm({
-        topic: 'AI',
-        ignored: undefined as unknown as string,
-      })
+      await result.current.handleShowGeneratedForm(previewInputs)
     })
+    expect(previewInputs).toHaveProperty('ignored', undefined)
 
     expect(result.current.showGeneratedForm).toBe(true)
-    expect(mockFetchHumanInputNodeStepRunForm).toHaveBeenCalledWith(
-      '/apps/app-1/workflows/draft/human-input/nodes/node-1/form',
+    expect(previewForm).toHaveBeenCalledWith(
+      '/console/api/apps/app-1/workflows/draft/human-input/nodes/node-1/form/preview',
       {
         inputs: { topic: 'AI' },
       },
@@ -319,36 +295,37 @@ describe('human-input/hooks/use-single-run-form-params', () => {
       })
     })
 
-    expect(mockSubmitHumanInputNodeStepRunForm).toHaveBeenCalledWith(
-      '/apps/app-1/workflows/draft/human-input/nodes/node-1/form',
-      {
-        inputs: { topic: 'AI' },
-        form_inputs: {
-          answer: 'approved',
-          attachment: {
+    expect(new URL(request.mock.calls[1]![0]).pathname).toBe(
+      '/console/api/apps/app-1/workflows/draft/human-input/nodes/node-1/form/run',
+    )
+    expect(request.mock.calls[1]?.[2]?.request?.method).toBe('POST')
+    expect(await request.mock.calls[1]?.[2]?.request?.json()).toEqual({
+      inputs: { topic: 'AI' },
+      form_inputs: {
+        answer: 'approved',
+        attachment: {
+          type: 'document',
+          transfer_method: TransferMethod.local_file,
+          url: '',
+          upload_file_id: 'upload-file-1',
+        },
+        references: [
+          {
             type: 'document',
             transfer_method: TransferMethod.local_file,
             url: '',
             upload_file_id: 'upload-file-1',
           },
-          references: [
-            {
-              type: 'document',
-              transfer_method: TransferMethod.local_file,
-              url: '',
-              upload_file_id: 'upload-file-1',
-            },
-            {
-              type: 'document',
-              transfer_method: TransferMethod.remote_url,
-              url: 'https://example.com/reference.pdf',
-              upload_file_id: '',
-            },
-          ],
-        },
-        action: 'approve',
+          {
+            type: 'document',
+            transfer_method: TransferMethod.remote_url,
+            url: 'https://example.com/reference.pdf',
+            upload_file_id: '',
+          },
+        ],
       },
-    )
+      action: 'approve',
+    })
 
     act(() => {
       result.current.handleHideGeneratedForm()
@@ -377,13 +354,99 @@ describe('human-input/hooks/use-single-run-form-params', () => {
       await result.current.handleFetchFormContent({ topic: 'hello' })
     })
 
-    expect(mockFetchHumanInputNodeStepRunForm).toHaveBeenCalledWith(
-      '/apps/app-2/advanced-chat/workflows/draft/human-input/nodes/node-9/form',
+    expect(previewForm).toHaveBeenCalledWith(
+      '/console/api/apps/app-2/advanced-chat/workflows/draft/human-input/nodes/node-9/form/preview',
       {
         inputs: { topic: 'hello' },
       },
     )
 
-    expect(mockFetchHumanInputNodeStepRunForm).toHaveBeenCalledTimes(1)
+    expect(previewForm).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      await result.current.handleSubmitHumanInputForm({
+        inputs: undefined,
+        form_inputs: undefined,
+        action: 'approve',
+      })
+    })
+    expect(new URL(request.mock.calls[1]![0]).pathname).toBe(
+      '/console/api/apps/app-2/advanced-chat/workflows/draft/human-input/nodes/node-9/form/run',
+    )
+    expect(await request.mock.calls[1]?.[2]?.request?.json()).toEqual({
+      inputs: { topic: 'hello' },
+      form_inputs: {},
+      action: 'approve',
+    })
+  })
+
+  it('should normalize optional field settings without losing empty defaults or zero limits', async () => {
+    previewForm.mockResolvedValue({
+      form_id: 'preview',
+      node_id: 'node-1',
+      node_title: 'Human Input',
+      form_content: '{{#$output.answer#}}',
+      inputs: [
+        { type: 'paragraph', output_variable_name: 'answer', default: null },
+        {
+          type: 'paragraph',
+          output_variable_name: 'topic',
+          default: { type: 'variable', selector: ['start', 'topic'], value: '' },
+        },
+        {
+          type: 'select',
+          output_variable_name: 'choice',
+          option_source: { type: 'constant', value: [] },
+        },
+        { type: 'file', output_variable_name: 'attachment' },
+        { type: 'file-list', output_variable_name: 'attachments', number_limits: 0 },
+      ],
+      actions: [{ id: 'approve', title: 'Approve' }],
+      resolved_default_values: { topic: '' },
+      display_in_ui: false,
+      expiration_time: 0,
+    } satisfies HumanInputFormPreviewResponse)
+
+    const { result } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'node-1',
+        payload: currentInputs,
+        runInputData: {},
+        getInputVars,
+        setRunInputData: mockSetRunInputData,
+      }),
+    )
+
+    await act(async () => {
+      await result.current.handleFetchFormContent({})
+    })
+
+    expect(result.current.formData).toMatchObject({
+      inputs: [
+        { type: 'paragraph', default: { type: 'constant', selector: [], value: '' } },
+        {
+          type: 'paragraph',
+          default: { type: 'variable', selector: ['start', 'topic'], value: '' },
+        },
+        { type: 'select', option_source: { type: 'constant', selector: [], value: [] } },
+        {
+          type: 'file',
+          allowed_file_types: [],
+          allowed_file_extensions: [],
+          allowed_file_upload_methods: [],
+        },
+        {
+          type: 'file-list',
+          allowed_file_types: [],
+          allowed_file_extensions: [],
+          allowed_file_upload_methods: [],
+          number_limits: 0,
+        },
+      ],
+      actions: [{ id: 'approve', title: 'Approve', button_style: 'default' }],
+      resolved_default_values: { topic: '' },
+      form_token: null,
+      display_in_ui: false,
+      expiration_time: 0,
+    })
   })
 })

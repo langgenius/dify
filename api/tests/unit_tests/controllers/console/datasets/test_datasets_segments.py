@@ -285,7 +285,11 @@ def test_batch_import_status_preserves_missing_job_contract(app: Flask) -> None:
     method = unwrap(DatasetDocumentSegmentBatchImportStatusApi.get)
 
     segments.get_batch_import_status.side_effect = SegmentBatchImportNotFoundError("The job does not exist.")
-    with app.test_request_context("/"), _patch_services(segments), pytest.raises(ValueError):
+    with (
+        app.test_request_context("/"),
+        _patch_services(segments),
+        pytest.raises(ValueError, match="The job does not exist\\."),
+    ):
         method(DatasetDocumentSegmentBatchImportStatusApi(), _context(), "job-1")
 
     segments.get_batch_import_status.side_effect = None

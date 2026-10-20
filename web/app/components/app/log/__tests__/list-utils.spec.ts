@@ -6,13 +6,13 @@ import {
   applyAnnotationEdited,
   applyAnnotationRemoved,
   buildChatThreadState,
+  getAllChatItemIndex,
   getCompletionMessageFiles,
   getConversationRowValues,
   getDetailVarList,
   getFormattedChatList,
   getThreadChatItems,
   isNearTopLoadMore,
-  mergePaginatedChatItems,
   mergeUniqueChatItems,
 } from '../list-utils'
 
@@ -138,7 +138,7 @@ describe('log list utils', () => {
     )
   })
 
-  it('should merge unique chat items and handle pagination retries', () => {
+  it('should prepend new chat items without duplicating existing messages', () => {
     const prevItems = createChatItems()
     const merged = mergeUniqueChatItems(prevItems, [
       { id: 'answer-2', content: 'reply', isAnswer: true } as IChatItem,
@@ -152,30 +152,6 @@ describe('log list utils', () => {
       'question-2',
       'answer-2',
     ])
-
-    expect(
-      mergePaginatedChatItems({
-        maxRetryCount: 3,
-        newItems: [],
-        prevItems,
-        retryCount: 1,
-      }),
-    ).toEqual({
-      items: prevItems,
-      retryCount: 2,
-    })
-
-    expect(
-      mergePaginatedChatItems({
-        maxRetryCount: 3,
-        newItems: [],
-        prevItems,
-        retryCount: 3,
-      }),
-    ).toEqual({
-      items: prevItems,
-      retryCount: 0,
-    })
   })
 
   it('should build thread state and support switching siblings', () => {
@@ -211,18 +187,39 @@ describe('log list utils', () => {
   it('should update annotation state helpers', () => {
     const items = createChatItems()
 
-    expect(applyAnnotationEdited(items, 'updated question', 'updated answer', 1)[0]!.content).toBe(
-      'updated question',
-    )
-    expect(
-      applyAnnotationAdded(items, 'annotation-1', 'Dify', 'question', 'answer', 1)[1]!.annotation,
-    ).toEqual(
+    const annotated = applyAnnotationAdded(items, 'annotation-1', 'Dify', 'question', 'answer', 1)
+    expect(annotated[0]!.content).toBe('question')
+    expect(annotated[1]!.annotation).toEqual(
       expect.objectContaining({
         id: 'annotation-1',
         authorName: 'Dify',
+        logAnnotation: expect.objectContaining({ content: 'answer' }),
       }),
     )
-    expect(applyAnnotationRemoved(items, 1)[1]!.annotation).toBeUndefined()
+    const edited = applyAnnotationEdited(annotated, 'updated question', 'updated answer', 1)
+    expect(edited[0]!.content).toBe('updated question')
+    expect(edited[1]!.annotation?.logAnnotation?.content).toBe('updated answer')
+    expect(applyAnnotationRemoved(edited, 1)[1]!.annotation).toBeUndefined()
+    expect(items[0]!.content).toBe('hello')
+    expect(items[1]!.annotation).toBeUndefined()
+  })
+
+  it('should map a thread index to allChatItems when the conversation has regenerated branches', () => {
+    const allChatItems = [
+      ...createChatItems(),
+      { id: 'question-3', content: 'next', isAnswer: false, parentMessageId: 'answer-1' },
+      { id: 'answer-3', content: 'regenerated', isAnswer: true, parentMessageId: 'question-3' },
+    ] as IChatItem[]
+    const { threadChatItems } = buildChatThreadState({ allChatItems, hasMore: false })
+
+    expect(threadChatItems.map((item) => item.id)).toEqual([
+      'question-1',
+      'answer-1',
+      'question-3',
+      'answer-3',
+    ])
+    expect(getAllChatItemIndex(allChatItems, threadChatItems, 3)).toBe(5)
+    expect(getAllChatItemIndex(allChatItems, threadChatItems, 4)).toBe(-1)
   })
 
   it('should derive urls, scroll thresholds, row values, and detail metadata', () => {

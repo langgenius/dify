@@ -1,8 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { getTranslationSourceKey } from '@dify/tooling/i18n-plurals'
 import data from '../i18n/languages.ts'
-import { getTranslationSourceKey } from './check-i18n-plurals.ts'
 import { findValueIssues, formatValueIssue } from './check-i18n-values.ts'
 
 const __filename = fileURLToPath(import.meta.url)

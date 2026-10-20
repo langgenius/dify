@@ -40,6 +40,7 @@ from services.remote_file_service import RemoteFileInvalidUrlError as RemoteFile
 from services.remote_file_service import RemoteFileNotFoundError as RemoteFileNotFoundServiceError
 from services.remote_file_service import RemoteFileUnavailableError as RemoteFileUnavailableServiceError
 from services.remote_file_service import RemoteFileUrlBlockedError as RemoteFileUrlBlockedServiceError
+from tests.unit_tests.model_factories import make_end_user
 
 REMOTE_FILE_ERROR_CASES: tuple[tuple[type[RemoteFileError], type[BaseHTTPException], str, int], ...] = (
     (RemoteFileInvalidUrlServiceError, RemoteFileInvalidUrlError, "remote_file_invalid_url", 400),
@@ -54,7 +55,6 @@ REMOTE_FILE_ERROR_CASES: tuple[tuple[type[RemoteFileError], type[BaseHTTPExcepti
         502,
     ),
 )
-from tests.unit_tests.model_factories import make_end_user
 
 
 def _app_model() -> App:

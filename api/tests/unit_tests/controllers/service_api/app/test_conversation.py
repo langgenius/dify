@@ -124,12 +124,12 @@ class TestConversationListQuery:
 
     def test_query_rejects_limit_below_minimum(self):
         """Test query rejects limit < 1."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for ConversationListQuery\\\nlimit"):
             ConversationListQuery(limit=0)
 
     def test_query_rejects_limit_above_maximum(self):
         """Test query rejects limit > 100."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for ConversationListQuery\\\nlimit"):
             ConversationListQuery(limit=101)
 
     @pytest.mark.parametrize(
@@ -164,18 +164,36 @@ class TestConversationRenamePayload:
 
     def test_payload_requires_name_when_auto_generate_false(self):
         """Test that name is required when auto_generate is False."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError,
+            match=(
+                "1 validation error for ConversationRenamePayload\\\n  Value error, "
+                "name is required when auto_generate is false"
+            ),
+        ) as exc_info:
             ConversationRenamePayload(auto_generate=False)
         assert "name is required when auto_generate is false" in str(exc_info.value)
 
     def test_payload_requires_non_empty_name_when_auto_generate_false(self):
         """Test that empty string name is rejected."""
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=(
+                "1 validation error for ConversationRenamePayload\\\n  Value error, "
+                "name is required when auto_generate is false"
+            ),
+        ):
             ConversationRenamePayload(name="", auto_generate=False)
 
     def test_payload_requires_non_whitespace_name_when_auto_generate_false(self):
         """Test that whitespace-only name is rejected."""
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=(
+                "1 validation error for ConversationRenamePayload\\\n  Value error, "
+                "name is required when auto_generate is false"
+            ),
+        ):
             ConversationRenamePayload(name="   ", auto_generate=False)
 
     def test_payload_name_with_special_characters(self):
@@ -221,37 +239,49 @@ class TestConversationVariablesQuery:
 
     def test_query_rejects_sql_injection_single_quote(self):
         """Test that single quotes are rejected (SQL injection prevention)."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="1 validation error for ConversationVariablesQuery\\\nvariable_name"
+        ) as exc_info:
             ConversationVariablesQuery(variable_name="'; DROP TABLE users;--")
         assert "can only contain" in str(exc_info.value)
 
     def test_query_rejects_sql_injection_double_quote(self):
         """Test that double quotes are rejected."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="1 validation error for ConversationVariablesQuery\\\nvariable_name"
+        ) as exc_info:
             ConversationVariablesQuery(variable_name='name"test')
         assert "can only contain" in str(exc_info.value)
 
     def test_query_rejects_sql_injection_semicolon(self):
         """Test that semicolons are rejected."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="1 validation error for ConversationVariablesQuery\\\nvariable_name"
+        ) as exc_info:
             ConversationVariablesQuery(variable_name="name;malicious")
         assert "can only contain" in str(exc_info.value)
 
     def test_query_rejects_sql_injection_comment(self):
         """Test that SQL comments are rejected."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="1 validation error for ConversationVariablesQuery\\\nvariable_name"
+        ) as exc_info:
             ConversationVariablesQuery(variable_name="name--comment")
         assert "invalid characters" in str(exc_info.value)
 
     def test_query_rejects_special_characters(self):
         """Test that special characters are rejected."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="1 validation error for ConversationVariablesQuery\\\nvariable_name"
+        ) as exc_info:
             ConversationVariablesQuery(variable_name="name@domain")
         assert "can only contain" in str(exc_info.value)
 
     def test_query_rejects_backticks(self):
         """Test that backticks are rejected (SQL injection prevention)."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="1 validation error for ConversationVariablesQuery\\\nvariable_name"
+        ) as exc_info:
             ConversationVariablesQuery(variable_name="`table`")
         assert "can only contain" in str(exc_info.value)
 
@@ -537,11 +567,17 @@ class TestConversationService:
 
 class TestConversationPayloadsController:
     def test_rename_requires_name(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=(
+                "1 validation error for ConversationRenamePayload\\\n  Value error, "
+                "name is required when auto_generate is false"
+            ),
+        ):
             ConversationRenamePayload(auto_generate=False, name="")
 
     def test_variables_query_invalid_name(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for ConversationVariablesQuery\\\nvariable_name"):
             ConversationVariablesQuery(variable_name="bad;")
 
 

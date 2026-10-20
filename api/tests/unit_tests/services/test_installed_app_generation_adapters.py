@@ -312,7 +312,7 @@ def test_streaming_preparation_errors_raise_eagerly_and_rollback_runtime_writes(
         raise failure
 
     _patch_generation(monkeypatch, harness, generate, streaming=True, more_like_this=more_like_this)
-    with pytest.raises(ValueError) as raised:
+    with pytest.raises(ValueError, match="query must be a string") as raised:
         _invoke_generation(harness, streaming=True, more_like_this=more_like_this)
 
     assert raised.value is failure

@@ -49,13 +49,9 @@ const useKnowledgeDatasetSelection = ({
         setSelectedDatasets(dataSetsWithDetail)
       }
 
-      const nextInputs = produce(currentInputs, (draft) => {
-        draft.dataset_ids = datasetIds
-      })
-      setInputs(nextInputs)
       setSelectedDatasetsLoaded(true)
     })()
-  }, [inputRef, setInputs])
+  }, [inputRef])
 
   const handleOnDatasetsChange = useCallback(
     (newDatasets: DatasetDetailWithPartialMembersResponse[]) => {

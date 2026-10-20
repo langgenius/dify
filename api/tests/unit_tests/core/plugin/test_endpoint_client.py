@@ -292,7 +292,9 @@ class TestPluginEndpointClientDelete:
 
         with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
-            with pytest.raises(Exception) as exc_info:
+            with pytest.raises(
+                Exception, match="req_id:  PluginDaemonUnauthorizedError: unauthorized access"
+            ) as exc_info:
                 endpoint_client.delete_endpoint(
                     tenant_id=tenant_id,
                     user_id=user_id,

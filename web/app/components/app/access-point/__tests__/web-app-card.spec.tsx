@@ -13,6 +13,7 @@ import { toast } from '@/app/notifications'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
@@ -71,12 +72,6 @@ vi.mock('@/service/access-control/use-app-access-control', async (importOriginal
 
 vi.mock('@/service/share', () => ({
   getUserCanAccess: mocks.getUserCanAccess,
-}))
-
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['system-features'],
-  }),
 }))
 
 vi.mock('@/app/components/base/app-icon', () => ({
@@ -138,7 +133,7 @@ function renderCard(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
     { ...createAppInfo(mode), ...appOverrides, access_mode: accessMode },
   )
-  queryClient.setQueryData(['system-features'], {
+  seedSystemFeatures(queryClient, {
     webapp_auth: { enabled: showAccessControl },
   })
 
@@ -289,15 +284,6 @@ describe('WebAppAccessPointCard', () => {
     )
   })
 
-  it('shows the current access mode without a redundant section label', () => {
-    renderCard('chat')
-
-    expect(screen.queryByText(/publishApp\.title/)).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /accessControlDialog\.accessItems\.anyone/ }),
-    ).toBeEnabled()
-  })
-
   it('disables Open and explains when the user cannot access the Web App', async () => {
     const user = userEvent.setup()
     mocks.getUserCanAccess.mockResolvedValue({ result: false })
@@ -403,20 +389,6 @@ describe('WebAppAccessPointCard', () => {
     expect(
       screen.getByRole('dialog', { name: 'appOverview.overview.appInfo.embedded.title' }),
     ).toBeInTheDocument()
-  })
-
-  it('updates site status through the generated contract', async () => {
-    const user = userEvent.setup()
-    renderCard('chat')
-
-    await user.click(screen.getByRole('switch'))
-
-    await waitFor(() => {
-      expect(mocks.siteEnable.mock.calls[0]?.[0]).toEqual({
-        params: { app_id: 'app-1' },
-        body: { enable_site: false },
-      })
-    })
   })
 
   it('keeps site status changes behind Access Point management permission', async () => {
@@ -547,7 +519,10 @@ describe('WebAppAccessPointCard', () => {
     await user.click(accessSwitch)
 
     expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
-    expect(mocks.siteEnable).toHaveBeenCalledTimes(1)
+    expect(mocks.siteEnable).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-1' },
+      body: { enable_site: false },
+    })
 
     await user.click(accessSwitch)
 
