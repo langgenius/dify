@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Generator
 from contextlib import contextmanager
+from typing import NoReturn
 from unittest.mock import patch
 
 import pytest
@@ -13,7 +15,7 @@ from models import Tenant
 
 
 @contextmanager
-def _bind_session_factory(session: Session):
+def _bind_session_factory(session: Session) -> Generator[None]:
     database_session_factory = sessionmaker(
         bind=session.get_bind(),
         expire_on_commit=False,
@@ -34,7 +36,7 @@ def test_with_session_write_commits_on_success(sqlite_session: Session) -> None:
 
     class Handler:
         @session_module.with_session(write=True)
-        def post(self, session: Session):
+        def post(self, session: Session) -> str:
             nonlocal commit_observed, injected_session
             injected_session = session
 
@@ -59,7 +61,7 @@ def test_with_session_write_commits_on_success(sqlite_session: Session) -> None:
 def test_with_session_default_write_commits_on_success(sqlite_session: Session) -> None:
     class Handler:
         @session_module.with_session
-        def post(self, session: Session):
+        def post(self, session: Session) -> str:
             session.add(Tenant(name="default write tenant"))
             return "ok"
 
@@ -76,7 +78,7 @@ def test_with_session_write_rolls_back_on_error(sqlite_session: Session) -> None
 
     class Handler:
         @session_module.with_session(write=True)
-        def get(self, session: Session):
+        def get(self, session: Session) -> NoReturn:
             nonlocal rollback_observed, injected_session
             injected_session = session
 
@@ -103,7 +105,7 @@ def test_with_session_write_allows_commit_then_more_database_work(sqlite_engine:
 
         class Handler:
             @session_module.with_session
-            def post(self, session: Session):
+            def post(self, session: Session) -> int | None:
                 session.commit()
                 return session.scalar(select(literal(1)))
 
@@ -116,7 +118,7 @@ def test_with_session_read_mode_does_not_commit(sqlite_session: Session) -> None
 
     class Handler:
         @session_module.with_session(write=False)
-        def get(self, session: Session):
+        def get(self, session: Session) -> str:
             nonlocal injected_session
             injected_session = session
             session.add(Tenant(name="uncommitted read tenant"))
@@ -134,7 +136,7 @@ def test_with_session_read_mode_does_not_commit(sqlite_session: Session) -> None
 def test_with_session_preserves_wrapped_metadata() -> None:
     class Handler:
         @session_module.with_session
-        def get(self, _session: Session):
+        def get(self, _session: Session) -> str:
             """handler docs"""
             return "ok"
 
